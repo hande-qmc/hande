@@ -194,7 +194,8 @@ contains
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
-        use calc, only: seed, truncation_level, truncate_space, initiator_approximation
+        use calc, only: seed, truncation_level, truncate_space, initiator_approximation, &
+                                linked_cluster
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level
@@ -241,6 +242,8 @@ contains
         logical :: update_tau
 
         integer :: nspawnings_left, nspawnings_total
+
+        integer(i0) :: fexcit(sys%basis%string_len)
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=real_factor)
 
@@ -274,8 +277,13 @@ contains
             ! ...and allocate det_info_t components...
             call alloc_det_info_t(sys, cdet(i))
             ! ...and cluster_t components
-            allocate(cluster(i)%excitors(truncation_level+2), stat=ierr)
-            call check_allocate('cluster%excitors', truncation_level+2, ierr)
+            if (linked_cluster) then
+                allocate(cluster(i)%excitors(4), stat=ierr)
+                call check_allocate('cluster%excitors', 4, ierr)
+            else
+                allocate(cluster(i)%excitors(truncation_level+2), stat=ierr)
+                call check_allocate('cluster%excitors', truncation_level+2, ierr)
+            end if
         end do
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_pops(walker_length), stat=ierr)
@@ -347,18 +355,28 @@ contains
                     ! [note] - D0_normalisation will need to be real for CCMC with real excips.
                     D0_normalisation = int(walker_population(1,D0_pos))
 
-                    ! Maximum possible cluster size that we can generate.
-                    ! Usually this is either the number of electrons or the
-                    ! truncation level + 2 but we must handle the case where we are
-                    ! growing the initial population from a single/small number of
-                    ! excitors.
-                    ! Can't include the reference in the cluster, so -1 from the
-                    ! total number of excitors.
-                    max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers-1)
+                    if (.not.linked_cluster) then
+                        ! Maximum possible cluster size that we can generate.
+                        ! Usually this is either the number of electrons or the
+                        ! truncation level + 2 but we must handle the case where we are
+                        ! growing the initial population from a single/small number of
+                        ! excitors.
+                        ! Can't include the reference in the cluster, so -1 from the
+                        ! total number of excitors.
+                        max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers-1)
+                    else 
+                        ! The BCH expansion of the Hamiltonian terminates at fourth
+                        ! order in T so at most four excitors needed in the cluster
+                        max_cluster_size = 4
+                    end if
 
                 else
 
-                    max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers)
+                    if (.not.linked_cluster) then
+                        max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers)
+                    else
+                        max_cluster_size = 4
+                    end if
 
                     ! Can't find D0 on this processor.  (See how D0_pos is used
                     ! in select_cluster.)
@@ -366,9 +384,6 @@ contains
 
                 end if
 
-                ! The BCH expansion of the Hamiltonian terminates at fourth
-                ! order in T so at most four excitors needed in the custer
-                if (linked_cluster .and. max_cluster_size > 4) max_cluster_size = 4
 
 #ifdef PARALLEL
                 call mpi_bcast(D0_normalisation, 1, mpi_integer, D0_proc, MPI_COMM_WORLD, ierr)
@@ -384,6 +399,8 @@ contains
                 nattempts_spawn=0
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
+                ! The number of excitors to select cannot be more than the total population
+                if (linked_cluster .and. max_cluster_size > tot_abs_pop) max_cluster_size = tot_abs_pop
 
                 bloom_threshold = ceiling(max(nattempts, tot_walkers)*bloom_stats%prop*real(bloom_stats%encoding_factor,p))
 
@@ -506,6 +523,32 @@ contains
                             call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it))
                         end if
 
+                    else if (cluster(it)%excitation_level == huge(0) .and. linked_cluster) then
+
+                        ! Spawning
+                        ! This has the potential to create blooms, so we allow for multiple
+                        ! spawning events per cluster.
+                        ! The number of spawning events is decided by the value
+                        ! of cluster%amplitude/cluster%pselect.  If this is
+                        ! greater than cluster_multispawn_threshold, then nspawnings is
+                        ! increased to the ratio of these.
+                        nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
+                                                         cluster_multispawn_threshold))
+
+                        nattempts_spawn = nattempts_spawn + nspawnings_total
+                        do i = 1, nspawnings_total
+                           call linked_spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
+                                          gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit)
+
+                           if (nspawned /= 0_int_p) then
+                               call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn, fexcit)
+                               if (abs(nspawned) > bloom_threshold) then
+                                   ! [todo] - adapt bloom_handler to handle real psips/excips.
+                                   call accumulate_bloom_stats(bloom_stats, nspawned)
+                               end if
+                           end if
+                        end do
+
                     end if
 
                 end do
@@ -613,7 +656,7 @@ contains
         !        output all fields in cluster have been set.
 
         use basis_types, only: basis_t
-        use calc, only: truncation_level
+        use calc, only: truncation_level, linked_cluster
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
@@ -637,7 +680,7 @@ contains
         real(p) :: rand, psize, cluster_population
         integer :: i, pos, prev_pos, excitor_sgn
         integer(int_p) :: pop(max_size)
-        logical :: hit, allowed
+        logical :: hit, allowed, all_allowed
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -706,6 +749,10 @@ contains
         ! when collapsing/combining excitors or if it could never have been
         ! valid
         allowed = min_size <= max_size
+        ! For linked coupled cluster we keep building the cluster after a
+        ! disallowed excitation so need to know if there has been a disallowed
+        ! excitation at all
+        all_allowed = min_size <= max_size
 
         select case(cluster%nexcitors)
         case(0)
@@ -747,7 +794,13 @@ contains
                 else
                     call collapse_cluster(basis, walker_dets(:,pos), int(walker_population(1,pos)), &
                                           cdet%f, cluster_population, allowed)
-                    if (.not.allowed) exit
+                    if (.not.allowed) then
+                        if (.not.linked_cluster) then
+                            exit
+                        else
+                            all_allowed = .false.
+                        end if
+                    end if
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
@@ -767,7 +820,7 @@ contains
             ! the maximum excitation included in the CC wavefunction.
             if (cluster%excitation_level > truncation_level+2) allowed = .false.
 
-            if (allowed) then
+            if (allowed.or.linked_cluster) then
                 ! We chose excitors with a probability proportional to their
                 ! occupation.  However, because (for example) the cluster t_X t_Y
                 ! and t_Y t_X collapse onto the same excitor (where X and Y each
@@ -788,6 +841,11 @@ contains
                 ! Simply set excitation level to a too high (fake) level to avoid
                 ! this cluster being used.
                 cluster%excitation_level = huge(0)
+            end if
+
+            if (linked_cluster.and. .not.all_allowed) then
+                cluster%excitation_level = huge(0)
+                allowed = .false.
             end if
 
         end select
@@ -1053,8 +1111,9 @@ contains
         ! actually spawned by positive excips.
         integer(int_p), parameter :: parent_sign = 1_int_p
         real(p) :: hmatel, pgen
-        integer(i0) :: fexcit(sys%basis%string_len)
+        integer(i0) :: fexcit(sys%basis%string_len), funlinked(sys%basis%string_len)
         integer :: excitor_sign, excitor_level
+        logical :: linked
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -1062,11 +1121,20 @@ contains
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
-        if (linked_cluster) then
+        if (linked_cluster .and. hmatel /= 0.0_p) then
             ! For Linked Coupled Cluster we reject any spawning where the
             ! Hamiltonian is not linked to every cluster operator
+            ! The matrix element to be evaluated is not <D|H a|D0> but <D|[H,a]|D0>
             if (cluster%nexcitors > 0) then
-                if (.not. linked_excitation(sys%basis, connection, cluster)) hmatel = 0.0_p
+                call linked_excitation(sys%basis, connection, cluster, linked, funlinked)
+                if (.not. linked) then
+                    hmatel = 0.0_p
+                else if (any(funlinked /= 0)) then
+                    ! Single excitation: need to modify the matrix element
+                    ! Subtract off the matrix element from the cluster without
+                    ! the unlinked T
+                    hmatel = hmatel - unlinked_commutator(sys, connection, cluster, cdet%f, funlinked)
+                end if
             end if
         end if
 
@@ -1150,11 +1218,23 @@ contains
             ! reference determinant 
             select case (cluster%nexcitors)
             case(0)
+                ! Death on the reference is unchanged
                 KiiAi = (-shift(1))*cluster%amplitude
             case(1)
+                ! Evaluating the commutator gives
+                ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
                 KiiAi = cdet%data(1)*cluster%amplitude
+            case(2)
+                ! Evaluate the commutator
+                ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2, 
+                ! a1 a2 D0 = D3) so the commutator gives:
+                ! <D3|[[H,a1],a2]|D0> = <D3|H|D3> - <D2|H|D2> - <D1|H|D1> + <D0|H|D0>
+                KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
+                    - sc0_ptr(sys, cluster%excitors(2)%f) + H00)*cluster%amplitude
             case default
-                KiiAi = (sc0_ptr(sys, cdet%f) - H00)*cluster%amplitude
+                ! At most two cluster operators can be linked to the diagonal
+                ! part of H so this must be an unlinked cluster
+                KiiAi = 0.0_p
             end select
         end if
 
@@ -1213,6 +1293,7 @@ contains
 
         use bit_utils, only: count_set_bits
         use const, only: i0_end
+        use calc, only: linked_cluster
 
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: excitor(basis%string_len)
@@ -1250,6 +1331,12 @@ contains
             ! cluster.
             ! => not valid
             allowed = .false.
+
+            if (linked_cluster) then
+                ! We still use the cluster so need its amplitude
+                !(but what about signs?)
+                cluster_population = cluster_population*excitor_population
+            end if
         else
             ! Applying the excitor to the existing cluster of excitors results
             ! in a valid cluster.
@@ -1303,7 +1390,7 @@ contains
 
     end subroutine collapse_cluster
 
-    subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_sign)
+    pure subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_sign)
 
         ! We usually consider an excitor as a bit string representation of the
         ! determinant formed by applying the excitor (a group of annihilation
@@ -1420,16 +1507,22 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    pure function linked_excitation(basis, connection, cluster) result(linked)
-        ! For Linked Coupled Cluster, the only elements of He^T that need to
-        ! be sampled are those with a common index between the Hamiltonian and
-        ! each excitor in the cluster (by Wick's Theorem). This routine checks that 
-        ! the determinant selected to spawn on is linked to the cluster
+    pure subroutine linked_excitation(basis, connection, cluster, linked, excitor)
+        ! For Linked Coupled Cluster, the only terms of H that need to
+        ! be sampled are those which are connected to (ie have a
+        ! creation/annihilation operator in common with) each excitor in the
+        ! cluster (by Wick's Theorem). This routine tests which excitors are
+        ! connected to the Hamiltonian.
         ! In:
         !    basis: information about the single-particle basis
         !    connection: the excitation connecting the current excitor and the
         !    child excitor
         !    cluster: the cluster of excitation operators
+        ! Out:
+        !    linked: if the Hamiltonian is connected to the cluster 
+        !    excitor: if a single excitation, there can be one cluster operator
+        !    unconnected to the Hamiltonian. If so this is the corresponding bit
+        !    string (otherwise 0)
 
         use fciqmc_data, only: f0
         use excitations, only: excit_t, create_excited_det
@@ -1439,13 +1532,15 @@ contains
         type(basis_t), intent(in) :: basis
         type(excit_t), intent(in) :: connection
         type(cluster_t), intent(in) :: cluster
-        logical :: linked
+        logical, intent(out) :: linked
+        integer(i0), intent(out) :: excitor(basis%string_len)
 
-        integer :: i, orb, bit_pos, bit_element
+        integer :: i, orb, bit_pos, bit_element, unconnected
         integer(i0) :: excitor_excitation(basis%string_len)
         integer(i0) :: h_excitation(basis%string_len)
 
-        linked = .true. 
+        unconnected = 0
+        excitor = 0
 
         ! Get bit string of orbitals in H excitation
         ! (modified from create_excited_det)
@@ -1469,11 +1564,437 @@ contains
             excitor_excitation = ieor(cluster%excitors(i)%f, f0)
             if (all(iand(h_excitation, excitor_excitation) == 0)) then
                 ! no orbitals in common between H and cluster
-                linked = .false.
-                exit
+                unconnected = unconnected + 1
+                excitor = cluster%excitors(i)%f
             end if
         end do
 
-    end function linked_excitation
+        select case(connection%nexcit)
+        case(1)
+            ! For a single excitation, H contains the sum
+            ! \sum_j <ij||aj>a^+j^+ji so can connect to one excitor that has no
+            ! orbitals in common with the excitation
+            linked = (unconnected <= 1)
+        case(2)
+            ! Double excitation, H only has the term <ab||ij>a^+b^+ji so must
+            ! have on orbital in common with all cluster operators
+            linked = (unconnected == 0)
+        end select
+
+        if (.not. linked) excitor = 0
+
+    end subroutine linked_excitation
+
+    pure function unlinked_commutator(sys, connection, cluster, cdet, funlinked) result(hmatel)
+        ! Evaluates <Dj|[H,T]|Di> for the case when H is a single excitation
+        ! not involving the same orbitals as T
+        ! In:
+        !    sys: the system being studied
+        !    connection: excitation connection between the current excitor
+        !        and the child excitor, on which progeny are spawned.
+        !    element of H is being evaluated between
+        !    cluster: the cluster of excitors
+        !    cdet: the determinant formed by the cluster
+        !    funlinked: the excitor in the cluster that is not linked to H
+        ! Returns:
+        !    <Dj|TH|Di>
+
+        use system, only: sys_t
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use ccmc_data, only: cluster_t
+        use hamiltonian, only: get_hmatel
+        use fciqmc_data, only: f0
+
+        type(sys_t), intent(in) :: sys
+        type(excit_t), intent(in) :: connection
+        type(cluster_t), intent(in) :: cluster
+        integer(i0), intent(in) :: cdet(sys%basis%string_len)
+        integer(i0), intent(in) :: funlinked(sys%basis%string_len)
+        real(p) :: hmatel
+
+        integer(i0) :: deti(sys%basis%string_len), detj(sys%basis%string_len)
+        integer :: i, found, excitor_level, excitor_sign
+        logical :: allowed
+        real(p) :: population
+
+        ! Find the determinant obtained by applying all of the cluster operators
+        ! linked to H to D0
+        population = 0.0_p ! The population doesn't matter as the commutator does not change the amplitude
+        found = 0
+        if (cluster%nexcitors > 1) then
+            do i = 1, cluster%nexcitors
+                if (any(cluster%excitors(i)%f /= funlinked)) then
+                    ! Linked excitor, needed in cluster
+                    found = found + 1
+                    if (found == 1) then
+                        deti = cluster%excitors(i)%f
+                    else
+                        call collapse_cluster(sys%basis, cluster%excitors(i)%f, 1, &
+                            deti, population, allowed)
+                    end if
+                end if
+            end do
+        else
+            ! Only the unlinked excitor
+            deti = f0
+        end if
+
+        ! Now we want to evaluate <D_i^a|H_i^a|D> ...
+        call create_excited_det(sys%basis, deti, connection, detj)
+        hmatel = get_hmatel(sys, deti, detj)
+
+        ! Possible sign changes
+        hmatel = hmatel*cluster%cluster_to_det_sign
+        excitor_level = get_excitation_level(f0, deti)
+        call convert_excitor_to_determinant(deti, excitor_level, excitor_sign)
+        if (excitor_sign < 0) hmatel = -hmatel
+
+        call create_excited_det(sys%basis, cdet, connection, deti)
+        excitor_level = get_excitation_level(f0, detj)
+        call convert_excitor_to_determinant(detj, excitor_level, excitor_sign)
+        if (excitor_sign < 0) hmatel = -hmatel
+        excitor_level = get_excitation_level(f0, deti)
+        call convert_excitor_to_determinant(deti, excitor_level, excitor_sign)
+        if (excitor_sign < 0) hmatel = -hmatel
+
+    end function unlinked_commutator
+
+    subroutine linked_spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
+                            nspawnings_total, fexcit)
+
+        ! When the cluster contains a repeated excitation, terms in the commutator 
+        ! need to be considered to choose connection (and also to get pgen)
+
+        ! In:
+        !    sys: system being studied.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
+        !    cluster: information about the cluster which forms the excitor.  In
+        !        particular, we use the amplitude, cluster_to_det_sign and pselect
+        !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
+        !        the excitation generator.
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%full *must* be set to a procedure which generates
+        !        a complete excitation.
+        ! In/Out:
+        !    rng: random number generator.
+        !    nspawnings_total: The total number of spawnings attemped by the current cluster
+        !        in the current timestep.
+        ! Out:
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
+        !    connection: excitation connection between the current excitor
+        !        and the child excitor, on which progeny are spawned.
+        !    fexcit: the bitstring of the determinant to spawn on to (as it is
+        !        not necessarily easy to get from the connection)
+
+        use ccmc_data, only: cluster_t
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use dSFMT_interface, only: dSFMT_t
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use fciqmc_data, only: f0
+        use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
+        use spawning, only: attempt_to_spawn
+        use system, only: sys_t
+        use parallel, only: iproc
+        use checking, only: check_allocate, check_deallocate
+        use hamiltonian, only: get_hmatel
+        use bit_utils, only: count_set_bits
+
+        type(sys_t), intent(in) :: sys
+        integer(int_p), intent(in) :: spawn_cutoff
+        integer(int_p), intent(in) :: real_factor
+        type(det_info_t), intent(in) :: cdet
+        type(cluster_t), intent(in) :: cluster
+        type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: nspawnings_total
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        integer(int_p), intent(out) :: nspawn
+        type(excit_t), intent(out) :: connection
+        integer(i0) :: fexcit(sys%basis%string_len)
+
+        ! We incorporate the sign of the amplitude into the Hamiltonian matrix
+        ! element, so we 'pretend' to attempt_to_spawn that all excips are
+        ! actually spawned by positive excips.
+        integer(int_p), parameter :: parent_sign = 1_int_p
+        integer :: excitor_sign, excitor_level
+
+        type(cluster_t) :: left_cluster, right_cluster
+        integer :: ierr, i, j, npartitions, orb, bit_pos, bit_element
+        real(p) :: ppart, pgen, hmatel, pop, delta_h, cluster_population
+        type(det_info_t) :: ldet, rdet
+        logical :: allowed
+        integer(i0) :: new_det(sys%basis%string_len)
+
+        ! Need to use clusters that don't give a valid excitation
+        ! for spawning as even if HTT = 0, THT might not be.
+        ! 1) Find excitors with common orbitals and choose an order for the Ts st 
+        ! any that share an orbital are separated by H
+        ! 2) Choose excitation
+        ! 3) Evaluate commutator (not all terms necessary?)
+        ! 4) Attempt to spawn
+
+        call alloc_det_info_t(sys, rdet)
+        call alloc_det_info_t(sys, ldet)
+        allocate(right_cluster%excitors(4), stat=ierr)
+        call check_allocate('right_cluster%excitors', 4, ierr)
+        allocate(left_cluster%excitors(4), stat=ierr)
+        call check_allocate('left_cluster%excitors', 4, ierr)
+
+        call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed)
+        pop = 1
+
+        if (allowed) then
+            call decoder_ptr(sys, rdet%f, rdet)
+            call gen_excit_ptr%full(rng, sys, rdet, pgen, connection, hmatel)
+            ! check that left_cluster can be applied to the resulting excitor to
+            ! give a cluster to spawn on to
+            call create_excited_det(sys%basis, rdet%f, connection, fexcit)
+            call collapse_cluster(sys%basis, ldet%f, 1, fexcit, pop, allowed)
+
+            ! If hmatel is 0 then the excitation generator returned an invalid excitor
+            if (hmatel /= 0.0_p .and. allowed) then
+                ! pgen and hmatel need recalculating to account for other permutations
+                npartitions = nint(1.0/ppart)
+                hmatel = 0.0_p
+                pgen = 0.0_p
+                do i = 1, npartitions
+                    ! Iterate over all allowed partitions and get contribution to
+                    ! hmatel and pgen
+                    call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, i)
+                    if (allowed) then
+                        ! need to check that the excitation is valid!
+                        do j = 1, connection%nexcit
+                            ! i/j orbital should be occupied
+                            orb = connection%from_orb(j)
+                            bit_pos = sys%basis%bit_lookup(1,orb)
+                            bit_element = sys%basis%bit_lookup(2,orb)
+                            if (.not. btest(rdet%f(bit_element), bit_pos)) then
+                                allowed = .false.
+                                exit
+                            end if
+                            ! a/b orbital should be unoccupied
+                            orb = connection%to_orb(j)
+                            bit_pos = sys%basis%bit_lookup(1,orb)
+                            bit_element = sys%basis%bit_lookup(2,orb)
+                            if (btest(rdet%f(bit_element), bit_pos)) then
+                                allowed = .false.
+                                exit
+                            end if
+                        end do
+
+                        if (allowed) then
+
+                            call create_excited_det(sys%basis, rdet%f, connection, new_det)
+                            call decoder_ptr(sys, rdet%f, rdet)
+                            pgen = pgen + calc_pgen(sys, rdet%f, new_det, connection, rdet)
+
+                            ! Sign of the term in the commutator depends on the number of Ts in left_cluster
+                            ! also need to account for possible sign change on going from excitor to determinant
+                            ! for each of the determinants
+                            delta_h = get_hmatel(sys, rdet%f, new_det)
+                            if (mod(left_cluster%nexcitors,2) /= 0) delta_h = -delta_h
+                            excitor_level = get_excitation_level(f0, rdet%f)
+                            call convert_excitor_to_determinant(rdet%f, excitor_level, excitor_sign)
+                            if (excitor_sign < 0) delta_h = -delta_h
+                            excitor_level = get_excitation_level(f0, new_det)
+                            call convert_excitor_to_determinant(new_det, excitor_level, excitor_sign)
+                            if (excitor_sign < 0) delta_h = -delta_h
+                            hmatel = hmatel + delta_h
+                        end if
+                    end if
+                end do
+
+                ! apply additional factors to pgen
+                pgen = pgen*cluster%pselect*nspawnings_total/npartitions
+
+                ! When two of the excitors in the cluster are the same, cluster%pselect is too big by 
+                ! a factor of 2 so we correct pgen
+                ! The calculation of the commutator above is also wrong by a factor of 2
+                ! (if 3 are the same there are no allowed partitions so pgen doesn't matter)
+                do i = 1, cluster%nexcitors
+                    do j = i+1, cluster%nexcitors
+                        if (all(cluster%excitors(i)%f == cluster%excitors(j)%f)) then
+                            pgen = pgen * 0.5
+                            hmatel = hmatel * 0.5
+                        end if
+                    end do
+                end do
+
+                ! correct hmatel for cluster amplitude and possible sign change
+                hmatel = hmatel*cluster%amplitude
+                ! Does cluster%amplitude need a sign correction?
+                ! How many sign changes incurred in collapse of whole cluster,
+                ! and how many for each separate?
+                ! Does it depend on the partitioning? - work some examples out
+                ! with pen+paper
+
+                nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+
+            else
+                nspawn = 0
+            end if
+
+        else
+            nspawn = 0
+        end if
+
+        deallocate(right_cluster%excitors, stat=ierr)
+        call check_deallocate('right_cluster%excitors', ierr)
+        deallocate(left_cluster%excitors, stat=ierr)
+        call check_deallocate('left_cluster%excitors', ierr)
+        call dealloc_det_info_t(rdet)
+        call dealloc_det_info_t(ldet)
+
+    end subroutine linked_spawner_ccmc
+    
+    subroutine partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet, rdet, allowed, part_number)
+        ! Divides a cluster into two halves such that any excitors that share an
+        ! orbital are in different halves
+        ! In:
+        !    cluster: the cluster of excitors
+        !    sys: the system being studied
+        !    part_number: (optional) use to enumerate partitons rather than
+        !    choose a random one
+        ! In/Out:
+        !    rng: random number generator
+        ! Out:
+        !    left_cluster: the excitors to be applied after the Hamiltonian
+        !    right_cluster: the excitors to be applied before the Hamiltonian
+        !    ppart: the probability of choosing this partition
+        !    ldet: the determinant formed by applying left_cluster to the reference
+        !    rdet: the determinant formed by applying right_cluster to the reference
+        !    allowed: are left_cluster and right_cluster both valid clusters
+
+        use ccmc_data, only: cluster_t
+        use system, only: sys_t
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        type(cluster_t), intent(in) :: cluster
+        type(cluster_t), intent(inout) :: left_cluster, right_cluster 
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: ppart
+        integer(i0), intent(inout) :: ldet(sys%basis%string_len), rdet(sys%basis%string_len)
+        logical, intent(out) :: allowed
+        integer, intent(in), optional :: part_number
+
+        integer :: i, j, in_left, in_right, side
+        real(p) :: rand, population
+
+        in_left = 0
+        in_right = 0
+        ppart = 1.0_p
+        allowed = .true.
+        ! collapsing the clusters may give a sign change
+        population = 1.0
+
+        do i = 1, cluster%nexcitors
+            if (present(part_number)) then
+                if (btest(part_number, i-1)) then
+                    side = 1
+                else
+                    side = -1
+                end if
+            else
+                ! for simplicity of generation probabilities just assign everything
+                ! randomly to left or right
+                ppart = ppart * 0.5
+                rand = get_rand_close_open(rng)
+                if (rand < 0.5) then
+                    side = -1
+                else
+                    side = 1
+                end if
+            end if
+            if (side == -1) then
+                ! add to left_cluster
+                in_left = in_left + 1
+                left_cluster%excitors(in_left)%f => cluster%excitors(i)%f
+                if (in_left == 1) then
+                    ldet = cluster%excitors(i)%f
+                else
+                    call collapse_cluster(sys%basis, cluster%excitors(i)%f, 1, ldet, population, allowed)
+                    if (.not.allowed) exit
+                end if
+            else
+                ! add to right
+                in_right = in_right + 1
+                right_cluster%excitors(1)%f => null()
+                right_cluster%excitors(in_right)%f => cluster%excitors(i)%f
+                if (in_right == 1) then
+                    rdet = cluster%excitors(i)%f
+                else
+                    call collapse_cluster(sys%basis, cluster%excitors(i)%f, 1, rdet, population, allowed)
+                    if (.not.allowed) exit
+                end if
+            end if
+        end do
+
+        left_cluster%nexcitors = in_left
+        right_cluster%nexcitors = in_right
+
+    end subroutine partition_cluster
+
+    pure function calc_pgen(sys, f1, f2, connection, parent_det) result(pgen)
+        ! calculate the probability of an excitation being selected
+        ! wrapper round system specific functions
+        
+        use system
+        use excitations, only: excit_t
+        use fciqmc_data, only: no_renorm
+        use excit_gen_mol, only: calc_pgen_single_mol_no_renorm, calc_pgen_double_mol_no_renorm, &
+                                 calc_pgen_single_mol, calc_pgen_double_mol
+        use point_group_symmetry, only: gamma_sym, cross_product_pg_basis, pg_sym_conj
+        use determinants, only: det_info_t
+        use fciqmc_data, only: pattempt_single, pattempt_double
+        
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
+        type(excit_t), intent(in) :: connection
+        type(det_info_t), intent(in) :: parent_det
+        real(p) :: pgen
+
+        integer :: spin, a, b, ij_sym
+
+        select case(sys%system)
+        case(read_in)
+            if (no_renorm) then
+                if (connection%nexcit == 1) then
+                    pgen = calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))*pattempt_single
+                else
+                    a = connection%to_orb(1)
+                    b = connection%to_orb(2)
+                    spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
+                    pgen = calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), connection%to_orb(2), spin)*pattempt_double
+                end if
+            else
+                if (connection%nexcit == 1) then
+                    pgen = calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, parent_det%symunocc, &
+                        connection%to_orb(1))*pattempt_single
+                else
+                    a = connection%to_orb(1)
+                    b = connection%to_orb(2)
+                    spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
+                    ij_sym = pg_sym_conj(cross_product_pg_basis(a, b, sys%basis%basis_fns))
+                    pgen = calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)*pattempt_double
+                end if
+            end if
+            ! TODO: model hamiltonians
+!        case(hub_k)
+!            calc_pgen_hub_k_(_no_renorm?)
+!        case(hub_real, chung_landau, heisenberg)
+!            calc_pgen_real(_no_renorm?)
+!        case(ueg)
+!            calc_pgen_ueg_no_renorm
+
+        end select
+
+    end function calc_pgen
 
 end module ccmc
