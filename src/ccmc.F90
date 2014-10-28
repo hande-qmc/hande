@@ -436,8 +436,12 @@ contains
                                             cumulative_abs_pops, tot_abs_pop, min_cluster_size, max_cluster_size, &
                                             cdet(it), cluster(it))
                     else if (iattempt <= nattempts) then
-                        ! We just select the empty cluster
-                        call create_null_cluster(D0_normalisation+0.0_p,D0_normalisation,cdet(it),cluster(it))
+                        ! We just select the empty cluster.
+                        ! As in the original algorithm, allow this to happen on
+                        ! each processor and hence scale the selection
+                        ! probability by nprocs.  See comments in select_cluster
+                        ! for more details.
+                        call create_null_cluster(real(nprocs*D0_normalisation,p),D0_normalisation,cdet(it),cluster(it))
                     else
                         ! From nattempts..2*nattempts-D0_normalisation, we just
                         ! select a non-composite cluster with a single excitor.
