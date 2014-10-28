@@ -432,8 +432,9 @@ contains
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                     if (iattempt <= nstochastic_clusters) then
-                        call select_cluster(rng(it), sys%basis, nattempts, D0_normalisation, D0_pos, cumulative_abs_pops, &
-                                            tot_abs_pop, min_cluster_size, max_cluster_size, cdet(it), cluster(it))
+                        call select_cluster(rng(it), sys%basis, nstochastic_clusters, D0_normalisation, D0_pos,   &
+                                            cumulative_abs_pops, tot_abs_pop, min_cluster_size, max_cluster_size, &
+                                            cdet(it), cluster(it))
                     else if (iattempt <= nattempts) then
                         ! We just select the empty cluster
                         call create_null_cluster(D0_normalisation+0.0_p,D0_normalisation,cdet(it),cluster(it))
