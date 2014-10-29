@@ -184,6 +184,7 @@ DET_SIZE
     64, corresponding to using 32-bit and 64-bit integers respectively.  The
     recommended value is 32 unless more than 32 basis functions are used, in
     which case 64 is also a good choice.
+.. [review] - AJWT: Do we know for certain that 32-bit is generally better than 64?   
 POP_SIZE
     Default: 32
 
