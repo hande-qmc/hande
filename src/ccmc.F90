@@ -183,7 +183,6 @@ contains
         !    sys: system being studied.
 
         use bit_utils, only: bit_str_cmp
-        use calc, only: ccmc_full_nc, linked_cluster
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
@@ -195,7 +194,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation, &
-                                linked_cluster
+                                linked_cluster, ccmc_full_nc
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level
@@ -1752,13 +1751,17 @@ contains
         if (allowed) then
             call decoder_ptr(sys, rdet%f, rdet)
             call gen_excit_ptr%full(rng, sys, rdet, pgen, connection, hmatel)
-            ! check that left_cluster can be applied to the resulting excitor to
-            ! give a cluster to spawn on to
-            call create_excited_det(sys%basis, rdet%f, connection, fexcit)
-            call collapse_cluster(sys%basis, ldet%f, 1, fexcit, pop, allowed)
-
             ! If hmatel is 0 then the excitation generator returned an invalid excitor
-            if (hmatel /= 0.0_p .and. allowed) then
+            if (hmatel /= 0.0_p) then
+                ! check that left_cluster can be applied to the resulting excitor to
+                ! give a cluster to spawn on to
+                call create_excited_det(sys%basis, rdet%f, connection, fexcit)
+                call collapse_cluster(sys%basis, ldet%f, 1, fexcit, pop, allowed)
+            else
+                allowed = .false.
+            end if
+
+            if (allowed) then
                 ! pgen and hmatel need recalculating to account for other permutations
                 npartitions = nint(1.0/ppart)
                 hmatel = 0.0_p
