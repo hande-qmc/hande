@@ -639,9 +639,11 @@ contains
         !   N is the number of excips on the reference.  Hence in order to have selection
         !   probabilities consistent and independent of the number of processors being
         !   used (which amounts to a processor-dependent timestep scaling)
+        ! [review] - RSTF: Should this say we need to multiply by nprocs
         ! * assuming each excitor spends (on average) the same amount of time on each
         !   processor, the probability that N excitors being on the same processor at
         !   a given timestep is 1/nprocs^{N-1).
+        ! [review] - RSTF: N in the two points above refers to two different quantities
         ! The easiest way to handle both of these is to multiply the number of attempts by
         ! the number of processors here and then deal with additional factors of 1/nprocs
         ! when creating composite clusters.
