@@ -1816,26 +1816,8 @@ contains
                 ! apply additional factors to pgen
                 pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-                ! When two of the excitors in the cluster are the same, cluster%pselect is too big by 
-                ! a factor of 2 so we correct pgen
-                ! The calculation of the commutator above is also wrong by a factor of 2
-                ! (if 3 are the same there are no allowed partitions so pgen doesn't matter)
-                do i = 1, cluster%nexcitors
-                    do j = i+1, cluster%nexcitors
-                        if (all(cluster%excitors(i)%f == cluster%excitors(j)%f)) then
-                            pgen = pgen * 0.5
-                            hmatel = hmatel * 0.5
-                        end if
-                    end do
-                end do
-
                 ! correct hmatel for cluster amplitude and possible sign change
                 hmatel = hmatel*cluster%amplitude
-                ! Does cluster%amplitude need a sign correction?
-                ! How many sign changes incurred in collapse of whole cluster,
-                ! and how many for each separate?
-                ! Does it depend on the partitioning? - work some examples out
-                ! with pen+paper
 
                 nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
