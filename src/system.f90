@@ -478,8 +478,9 @@ contains
                 case(ueg)
                     ! set nvirt in basis once the basis set has been generated.
                 case(ringium)
-                    ! Spin manifolds are degenerate in 1D
+                    ! Spin manifolds are degenerate in 1D - set all electrons spin up
                     sys%nvirt = 2*(sys%ringium%maxlz + 1) - sys%nel
+                    sys%ms = sys%nel
                 end select
 
                 if (sys%system /= ueg .and. sys%system /= ringium) then

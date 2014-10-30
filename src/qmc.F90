@@ -639,6 +639,7 @@ contains
         use excit_gen_hub_k
         use excit_gen_op_hub_k
         use excit_gen_real_lattice
+        use excit_gen_ringium
         use excit_gen_ueg, only: gen_excit_ueg_no_renorm
         use hamiltonian_chung_landau, only: slater_condon0_chung_landau
         use hamiltonian_hub_k, only: slater_condon0_hub_k
@@ -646,6 +647,7 @@ contains
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg
+        use hamiltonian_ringium, only: slater_condon0_ringium
         use heisenberg_estimators
         use importance_sampling
         use operators
@@ -777,6 +779,14 @@ contains
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
             end if
+
+        case(ringium)
+
+            update_proj_energy_ptr => update_proj_energy_ringium
+            sc0_ptr => slater_condon0_ringium
+
+            gen_excit_ptr%full => gen_excit_ringium_no_renorm
+            decoder_ptr => decode_det_occ
 
         case default
             call stop_all('init_proc_pointers','QMC not implemented for this system yet.')
