@@ -181,10 +181,12 @@ DET_SIZE
     a single integer is not sufficient.
 
     This option sets the integer length to be used.  Allowed values are 32 and
-    64, corresponding to using 32-bit and 64-bit integers respectively.  The
-    recommended value is 32 unless more than 32 basis functions are used, in
-    which case 64 is also a good choice.
-.. [review] - AJWT: Do we know for certain that 32-bit is generally better than 64?   
+    64, corresponding to using 32-bit and 64-bit integers respectively.  As bit
+    operations on a 64-bit integer are faster than those on two 32-bit integers,
+    using DET_SIZE=64 is recommended for production calculations.  (Note,
+    however, that this will use more memory than DET_SIZE=32 if the number of
+    basis functions is closer to a multiple of 32 rather than 64.  This is
+    rarely a concern in practice.)
 POP_SIZE
     Default: 32
 
