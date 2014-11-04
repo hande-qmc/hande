@@ -389,7 +389,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot)
+    subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot, beta_cycle)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -423,6 +423,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
+        integer, intent(in) :: beta_cycle
         real(p) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
         integer(int_64) :: npsips_this_proc, npsips
@@ -467,7 +468,7 @@ contains
                 end if
             case(ueg)
                 if (propagate_to_beta) then
-                    call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, sym_in, ireplica)
+                    call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, sym_in, ireplica, beta_cycle)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
                 end if
@@ -628,28 +629,46 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica)
+    subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica, beta_cycle)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis alogorithm.
+        ! We first uniformly distribute psips on all excitation levels then
+        ! perform the metropolis algorithm on each psips whereby we generate
+        ! a new determinant which is accepted/rejected based on the value of the
+        ! total energy of the Slater determinant. The total energy is determined
+        ! by the form of single particle Hamiltonian we are using in our trial
+        ! density matrix.
+
+        ! In:
+        !    sys: system being studied.
+        !    beta: (inverse) temperature at which we're looking to sample the
+        !        trial density matrix at.
+        !    sys: symmetry index of determinant space we wish to sample.
+        !    npsips: number of psips to distribute in this sector.
+        !    ireplica: replica index.
+        !    beta_cycle: iteration number.
+        ! In/Out:
+        !    rng: random number generator.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system
         use determinants, only: decode_det, alloc_det_info_t, det_info_t, &
                                 dealloc_det_info_t
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, metropolis_attempts
-        use fciqmc_data, only: f0, qmc_spawn, sampling_size
+        use fciqmc_data, only: real_factor, metropolis_attempts, reuse_initial_config
+        use fciqmc_data, only: f0, qmc_spawn, sampling_size, initial_config
         use parallel, only: nprocs, nthreads, parent
         use proc_pointers, only: sc0_ptr, gen_excit_ptr, decoder_ptr
         use utils, only: int_fmt
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        real(dp) :: beta
+        real(dp), intent(in) :: beta
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
+        integer, intent(in) :: beta_cycle
 
         integer(int_p) :: ref_pop
         integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
@@ -662,6 +681,7 @@ contains
         real(p), target :: tmp_data(sampling_size)
         type(det_info_t) :: cdet
         type(excit_t) :: connection
+        integer :: metropolis_attempts_loop
 
         ref_pop = 0
         naccept = 0
@@ -670,23 +690,34 @@ contains
 
         call alloc_det_info_t(sys, cdet, .false.)
 
-        ! Initially uniformly distribute psips along each excitation level.
-        ! This probably won't be good at high/low temperatures.
-        ! [todo] - Initialise according to the temperature.
-        do
-            rand_level = int(get_rand_close_open(rng)*(sys%max_number_excitations+1))
-            ! Forbidden in K = 0 subspace.
-            if (rand_level == 1) cycle
-            call create_nfold_excitation(sys, rng, rand_level, sym, weight, f0, f_new, cdet)
-            idet = idet + 1
-            call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
-                                                        sys%basis%tensor_label_len, real_factor, ireplica)
-            if (idet == npsips) exit
-        end do
+        if (.not. reuse_initial_config .or. beta_cycle == 1) then
+            ! Initially uniformly distribute psips along each excitation level.
+            ! This probably won't be good at high/low temperatures.
+            ! [todo] - Temperature Dependent intitialisation.
+            do
+                rand_level = int(get_rand_close_open(rng)*(sys%max_number_excitations+1))
+                ! Forbidden in K = 0 subspace.
+                if (rand_level == 1) cycle
+                call create_nfold_excitation(sys, rng, rand_level, sym, weight, f0, f_new, cdet)
+                idet = idet + 1
+                call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
+                                                            sys%basis%tensor_label_len, real_factor, ireplica)
+                if (idet == npsips) exit
+            end do
+            metropolis_attempts_loop = metropolis_attempts
+        else if (reuse_initial_config .and. beta_cycle > 1) then
+            ! Use the previous beta loop's initial configuration as the new guess for the distribution.
+            ! We can then perform metropolis on top of this.
+            qmc_spawn%sdata = initial_config%sdata
+            qmc_spawn%head = initial_config%head
+            ! [todo] - Check what a good reduction factor is when doing error
+            ! analysis properly.
+            metropolis_attempts_loop = 100
+        end if
 
         cdet%f => ftmp
         ! Visit every walker metropolis_attempts times.
-        do iattempt = 1, metropolis_attempts
+        do iattempt = 1, metropolis_attempts_loop
             ! Allow every psip to attempt a proposal move.
             do proc = 0, nprocs-1
                 do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
@@ -722,6 +753,13 @@ contains
         if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", &
                            '//int_fmt(metropolis_attempts,1)//')') real(naccept)/nsuccess, &
                            (metropolis_attempts*npsips-nsuccess)/npsips
+
+        ! Copy the starting configuration so that it can be reused at the next
+        ! beta loop.
+        ! [todo] - There is probably a better way of doing this than just
+        ! copying it.
+        initial_config%sdata = qmc_spawn%sdata
+        initial_config%head = qmc_spawn%head
 
         call dealloc_det_info_t(cdet, .false.)
 

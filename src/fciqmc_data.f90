@@ -301,6 +301,10 @@ type(spawn_t) :: qmc_spawn
 ! Walker information: received list for non-blocking communications.
 type(spawn_t) :: received_list
 
+! Additional spawned list for storing starting configuration when using
+! importance sampling in dmqmc.
+type(spawn_t) :: initial_config
+
 ! spawn times of the progeny (only used for ct_fciqmc)
 real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
 
@@ -594,6 +598,10 @@ real(dp) :: init_beta
 ! Number of metropolis attempts (per psip) we use when generating
 ! the trial density matrix.
 integer :: metropolis_attempts = 1000
+! Reuse the the previous beta loop's trial density matrix as a guess for the
+! next beta loop's which we can then perform metropolis on top of.
+! Default: false i.e. generate a new density matrix from scratch each beta loop.
+logical :: reuse_initial_config = .false.
 
 !--- Calculation modes ---
 
@@ -858,6 +866,7 @@ contains
         end if
         call dealloc_parallel_t(par_info)
         call dealloc_spawn_t(qmc_spawn)
+        call dealloc_spawn_t(initial_config)
 
     end subroutine end_fciqmc
 

@@ -88,7 +88,7 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, init_tot_nparticles, tot_nparticles)
+            call create_initial_density_matrix(rng, sys, init_tot_nparticles, tot_nparticles, beta_cycle)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
