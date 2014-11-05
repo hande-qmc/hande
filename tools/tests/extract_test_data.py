@@ -81,7 +81,13 @@ def use_server(filename, port, host=''):
     s.connect((host, port))
     filename = os.path.join(os.getcwd(), filename)
     s.sendall(filename.encode('utf-8'))
-    output = s.recv(1024).decode('utf-8')
+    output = ''
+    while True:
+        data = s.recv(1024)
+        if data:
+            output += data.decode('utf-8')
+        else:
+            break
     s.close()
     return output
 
