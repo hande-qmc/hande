@@ -78,26 +78,40 @@ calc_data : list of `:class:`pandas.Series`
     estimation).
 '''
 
-    md_regex = dict(
+    # metadata from ...
+
+    # ... output header
+    md_header = dict(
         UUID = '^ Calculation UUID:',
+        git_hash = 'VCS BASE repository version:',
+    )
+
+    # ... input (echoed in output)
+    md_input = dict(
         calc_type = '^ *(simple_fciqmc|fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc) *$',
         sym = r'\bsym\b +\d+',
         ms = r'\bms\b +-*\d+',
         nel = r'\bnel\b|\belectrons\b',
-        nbasis = 'Number of basis functions:',
-        truncation = 'truncation_level',
         tau = r'\btau\b',
+        truncation = 'truncation_level',
+        target = 'varyshift_target',
+        shift_damping = 'shift_damping',
+    )
+
+    # ... main body of output (ie after input but before QMC data table)
+    md_body = dict(
+        nbasis = 'Number of basis functions:',
         seed = 'random number generator with a seed of',
         bit_length = 'Bit-length',
-        ref = 'Reference determinant, \|D0> = ',
-        ref_energy = r'E0 = <D0\|H\|D0>',
+        ref = 'Reference determinant, |D0> = ',
+        ref_energy = r'E0 = <D0|H|D0>',
         psingle = 'Probability of attempting a single',
         pdouble = 'Probability of attempting a double',
         init_pop = 'Initial population on',
-        git_hash = 'VCS BASE repository version:',
-        target = 'varyshift_target',
-        shift_damping = 'shift_damping',
-        mc_cycles = 'mc_cycles',
+    )
+
+    # ... footer of output (ie after QMC data table)
+    md_footer = dict(
         min_psips_per_mpi_process = 'Min # of particles on a processor:',
         max_psips_per_mpi_process = 'Max # of particles on a processor:',
         mean_psips_per_mpi_process = 'Mean # of particles on a processor:',
@@ -108,8 +122,10 @@ calc_data : list of `:class:`pandas.Series`
         max_communication_time = 'Max time taken by walker communication:',
         mean_communication_time = 'Mean time taken by walker communication:',
         wall_time = 'Wall time:',
-        cpu_time = 'CPU time \(per processor\):'
+        cpu_time = 'CPU time (per processor):'
     )
+    md_keys = [x for v in (md_header, md_input, md_body, md_footer)
+            for x in v.keys()]
     md_int = ['sym', 'ms', 'nel', 'nbasis', 'truncation', 'seed',
          'bit_length',  'min_dets_per_mpi_process', 'max_dets_per_mpi_process']
 
@@ -118,15 +134,13 @@ calc_data : list of `:class:`pandas.Series`
          'mean_dets_per_mpi_process', 'mean_communication_time', 'wall_time',
          'cpu_time', 'min_communication_time', 'max_communication_time']
 
-    for (k,v) in md_regex.items():
-        md_regex[k] = re.compile(v, re.IGNORECASE)
-    input_regex = re.compile('Input options')
+    input_pattern = 'Input options'
     underline_regex = re.compile('----+')
 
     # Read metadata and figure out how the start line of the data table.
     f = open(filename, 'r')
     start_line = 0
-    metadata = pd.Series(index=md_regex.keys(), name='metadata')
+    metadata = pd.Series(index=md_keys, name='metadata')
     metadata['input'] = []
     unseen_calc = True
     have_git_hash_next = False
@@ -135,39 +149,61 @@ calc_data : list of `:class:`pandas.Series`
     calc_titles = ['diagonalisation results', 'Hilbert space']
     column_names = []
     for line in f:
+        hit = False
         start_line += 1
         # extract metadata.
-        if have_git_hash_next:
-             metadata['git_hash'] = line.split()[0]
-             have_git_hash_next = False
         if have_input <= 3:
+            # input
             if have_input == 2 and line.strip() and \
                     not underline_regex.search(line):
                 metadata['input'].append(line.strip())
-            if input_regex.search(line) or \
+                for (k,v) in md_input.items():
+                    if re.search(v,line):
+                        if k == 'calc_type':
+                            if unseen_calc:
+                                unseen_calc = False
+                                metadata[k] = line.split()[0]
+                        else:
+                            metadata[k] = \
+                                    extract_last_field(line, k, md_int, md_float)
+                        hit = True
+                        break
+                if hit:
+                    # only need to find each key once...
+                    md_input.pop(k)
+            if input_pattern in line or \
                     (have_input > 0 and underline_regex.search(line)):
                 have_input += 1
-        for (k,v) in md_regex.items():
-            if v.search(line):
-                # Special cases for unusual formats...
-                if k == 'ref':
-                    metadata[k] = v.split(line)[-1].strip()
-                elif k == 'calc_type':
-                    if unseen_calc:
-                        unseen_calc = False
-                        metadata[k] = line.split()[0]
-                elif k == 'seed':
-                    metadata[k] = int(float(line.split()[-1]))
-                elif k == 'git_hash':
-                    have_git_hash_next = True
-                elif k == 'hilbert_space':
-                    metadata[k] = float(line.split()[7])
-                else:
-                    metadata[k] = extract_last_field(line, k, md_int, md_float)
-        if any(k in line for k in calc_titles):
-            (cdata, nread) = _extract_calc_data(f, line)
-            calc_data.append(cdata)
-            start_line += nread
+        if have_input == 0:
+            # header
+            if have_git_hash_next:
+                metadata['git_hash'] = line.split()[0]
+                have_git_hash_next = False
+            for (k,v) in md_header.items():
+                if v in line:
+                    if k == 'git_hash':
+                        have_git_hash_next = True
+                    elif k :
+                        metadata[k] = extract_last_field(line, k, md_int, md_float)
+        else:
+            # body
+            for (k,v) in md_body.items():
+                if v in line:
+                    # Special cases for unusual formats...
+                    if k == 'ref':
+                        metadata[k] = v.split(line)[-1].strip()
+                    elif k == 'seed':
+                        metadata[k] = int(float(line.split()[-1]))
+                    else:
+                        metadata[k] = extract_last_field(line, k, md_int, md_float)
+                    hit = True
+                    break
+            if hit:
+                md_body.pop(k)
+            if any(k in line for k in calc_titles):
+                (cdata, nread) = _extract_calc_data(f, line)
+                calc_data.append(cdata)
+                start_line += nread
 
         # Hunt for start of data table.
         if ' # iterations' in line:
@@ -189,8 +225,8 @@ calc_data : list of `:class:`pandas.Series`
 
         # Extract meta data from the end of the calulation.
         for line in end_lines[-skip_footer:]:
-            for (k,v) in md_regex.items():
-                if v.search(line):
+            for (k,v) in md_footer.items():
+                if v in line:
                     metadata[k] = extract_last_field(line, k, md_int, md_float)
 
         if float(os.path.getsize(filename))/1024 < 8000 or not temp_file:
