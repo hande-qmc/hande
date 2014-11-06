@@ -635,11 +635,11 @@ contains
 
         ! Each processor does nattempts.
         ! However:
-        ! * each processor is allowed to select the reference (on average) N_0 times, where
-        !   N_0 is the number of excips on the reference.  Hence in order to have selection
-        !   probabilities consistent and independent of the number of processors being
-        !   used (which amounts to a processor-dependent timestep scaling), we need to
-        !   multiply the probability the reference is selected by nprocs.
+        ! * if min_size=0, then each processor is allowed to select the reference (on
+        !   average) nattempts/2 times.  Hence in order to have selection probabilities
+        !   consistent and independent of the number of processors being used (which
+        !   amounts to a processor-dependent timestep scaling), we need to multiply the
+        !   probability the reference is selected by nprocs.
         ! * assuming each excitor spends (on average) the same amount of time on each
         !   processor, the probability that X excitors are on the same processor at
         !   a given timestep is 1/nprocs^{X-1).
