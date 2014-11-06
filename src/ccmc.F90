@@ -633,8 +633,19 @@ contains
         !   p_clust is the probability of choosing a specific cluster given
         !           the choice of size.
 
-        ! Each processor does nattempts, so the selection probability
-        ! is nattempts*nprocs as there are nprocs processors.
+        ! Each processor does nattempts.
+        ! However:
+        ! * if min_size=0, then each processor is allowed to select the reference (on
+        !   average) nattempts/2 times.  Hence in order to have selection probabilities
+        !   consistent and independent of the number of processors being used (which
+        !   amounts to a processor-dependent timestep scaling), we need to multiply the
+        !   probability the reference is selected by nprocs.
+        ! * assuming each excitor spends (on average) the same amount of time on each
+        !   processor, the probability that X excitors are on the same processor at
+        !   a given timestep is 1/nprocs^{X-1).
+        ! The easiest way to handle both of these is to multiply the number of attempts by
+        ! the number of processors here and then deal with additional factors of 1/nprocs
+        ! when creating composite clusters.
         ! NB within a processor those nattempts can be split amongst OpenMP
         ! threads though that doesn't affect this probability.
         cluster%pselect = nattempts*nprocs
@@ -728,7 +739,10 @@ contains
                 ! initiator status for the cluster
                 if (abs(walker_population(1,pos)) <= initiator_population) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = pop/tot_pop.
-                ! This is divided by nprocs as each excitor spends its time moving between nprocs processors
+                ! Each excitor spends the same amount of time on each processor.  Given
+                ! the selection of the first excitor, the probability this excitor is also
+                ! on this processor is 1/nprocs.  (Note additional factor of nprocs
+                ! already included in pselect to handle the case of the first excitor.)
                 cluster%pselect = (cluster%pselect*abs(walker_population(1,pos))/nprocs)/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
                 prev_pos = pos
@@ -888,6 +902,9 @@ contains
         !   p_clust is the probability of choosing a specific cluster given
         !           the choice of size.
 
+        ! This excitor can only be selected on this processor and only one excitor is
+        ! selected in the cluster, so unlike selecting the reference or composite
+        ! clusters, there are no additional factors of nprocs or 1/nprocs to include.
         cluster%pselect = nattempts
 
         cluster%nexcitors = 1
