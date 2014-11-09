@@ -21,6 +21,11 @@ interface bit_str_cmp
     module procedure bit_str_64_cmp
 end interface
 
+interface count_set_bits
+    module procedure count_set_bits_int_32
+    module procedure count_set_bits_int_64
+end interface
+
 contains
 
 !--- Counting set bits ---
@@ -45,30 +50,26 @@ contains
 
     end function naive_count_set_bits
 
-    elemental function count_set_bits(b) result(nbits)
+    elemental function count_set_bits_int_32(b) result(nbits)
+
+        ! In:
+        !    A 32-bit integer.
+        ! Returns:
+        !    The number of set bits in b.
+
+        ! This uses a branch-free algorithm.  See comments below for details.
 
         integer :: nbits
-        integer(i0), intent(in) :: b
-        integer(i0) :: tmp
+        integer(int_4), intent(in) :: b
+        integer(int_4) :: tmp
 
-#if DET_SIZE == 32
         ! For 32 bit integers:
-        integer(i0), parameter :: m1 = Z'55555555'
-        integer(i0), parameter :: m2 = Z'33333333'
-        integer(i0), parameter :: m3 = Z'0F0F0F0F'
-        integer(i0), parameter :: m4 = Z'01010101'
-
-#elif DET_SIZE == 64
-        ! For 64 bit integers:
-        integer(i0), parameter :: m1 = Z'5555555555555555'
-        integer(i0), parameter :: m2 = Z'3333333333333333'
-        integer(i0), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
-        integer(i0), parameter :: m4 = Z'0101010101010101'
-#endif
+        integer(int_4), parameter :: m1 = Z'55555555'
+        integer(int_4), parameter :: m2 = Z'33333333'
+        integer(int_4), parameter :: m3 = Z'0F0F0F0F'
+        integer(int_4), parameter :: m4 = Z'01010101'
 
         ! This is quite cool.
-
-        tmp = b
 
         ! For a more detailed explanation and discussion see:
         !   http://everything2.com/title/Counting+1+bits
@@ -91,7 +92,7 @@ contains
         ! etc., where & indicates AND and >> is the shift right operator.
         ! Further optimisations are:
         ! * Any & operations can be omitted where there is no danger that
-        ! a field's sum will carry over into the next field.
+        !   a field's sum will carry over into the next field.
         ! * The first line can be replaced by:
         !     x = x - ( (x>>1) & 01010101...)
         !   thanks to the population (number of set bits) in an integer
@@ -101,22 +102,42 @@ contains
         !   followed by a right shift.
         ! Thus the following (extremely fast) algorithms.
 
-#if DET_SIZE == 32
         ! For 32 bit integers:
+        tmp = b
         tmp = tmp - iand(ishft(tmp,-1), m1)
         tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
         tmp = iand((tmp + ishft(tmp,-4)), m3)*m4
         nbits = ishft(tmp, -24)
 
-#elif DET_SIZE == 64
+    end function count_set_bits_int_32
+
+    elemental function count_set_bits_int_64(b) result(nbits)
+
+        ! In:
+        !    A 64-bit integer.
+        ! Returns:
+        !    The number of set bits in b.
+
+        ! This is the 64-bit equivalent of count_set_bits_int_32; see comments there for
+        ! more details.
+
+        integer :: nbits
+        integer(int_8), intent(in) :: b
+        integer(int_8) :: tmp
+
         ! For 64 bit integers:
+        integer(int_8), parameter :: m1 = Z'5555555555555555'
+        integer(int_8), parameter :: m2 = Z'3333333333333333'
+        integer(int_8), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
+        integer(int_8), parameter :: m4 = Z'0101010101010101'
+
+        tmp = b
         tmp = tmp - iand(ishft(tmp,-1), m1)
         tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
         tmp = iand(tmp, m3) + iand(ishft(tmp,-4), m3)
         nbits = ishft(tmp*m4, -56)
-#endif
 
-    end function count_set_bits
+    end function count_set_bits_int_64
 
 !--- I/O helpers ---
 
