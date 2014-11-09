@@ -1,3 +1,8 @@
+module popcnt_intrinsic
+    ! Module which can be used along to rename the F2008 popcnt intrinsic.
+    intrinsic popcnt
+end module popcnt_intrinsic
+
 module bit_utils
 
 #include "cdefs.h"
@@ -8,6 +13,10 @@ module bit_utils
 ! as these are used in storing determinants.
 
 use const
+
+#ifdef USE_POPCNT
+use popcnt_intrinsic, only: count_set_bits=>popcnt
+#endif
 
 implicit none
 
@@ -21,10 +30,12 @@ interface bit_str_cmp
     module procedure bit_str_64_cmp
 end interface
 
+#ifndef USE_POPCNT
 interface count_set_bits
     module procedure count_set_bits_int_32
     module procedure count_set_bits_int_64
 end interface
+#endif
 
 contains
 
