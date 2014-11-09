@@ -139,15 +139,15 @@ contains
         !        as item, else this is where item should go to keep the list
         !        sorted.
 
-        use const, only: int_4
+        use const, only: int_32
 
-        integer(int_4), intent(in) :: list(:), item
+        integer(int_32), intent(in) :: list(:), item
         integer, intent(in) :: istart, iend
         logical, intent(out) :: hit
         integer, intent(out) :: pos
 
         integer :: hi, lo
-        integer(int_4) :: compare
+        integer(int_32) :: compare
 
         if (istart > iend) then
 
@@ -175,11 +175,11 @@ contains
                 pos = (hi+lo)/2
 
                 compare = item - list(pos)
-                if (compare == 0_int_4) then
+                if (compare == 0_int_32) then
                     ! hit!
                     hit = .true.
                     exit
-                else if (compare > 0_int_4) then
+                else if (compare > 0_int_32) then
                     ! list(pos) is "smaller" than item.
                     ! The lowest position item can take is hence pos + 1 (i.e. if
                     ! item is greater than pos by smaller than pos + 1).
@@ -205,11 +205,11 @@ contains
             ! the element before or after where item should be placed.
             if (hi == lo) then
                 compare = item - list(hi)
-                if (compare == 0_int_4) then
+                if (compare == 0_int_32) then
                     ! hit!
                     hit = .true.
                     pos = hi
-                else if (compare > 0_int_4) then
+                else if (compare > 0_int_32) then
                     ! list(pos) is smaller than item.
                     ! item should be placed in the next slot.
                     pos = hi + 1
@@ -242,15 +242,15 @@ contains
         !        as item, else this is where item should go to keep the list
         !        sorted.
 
-        use const, only: int_8
+        use const, only: int_64
 
-        integer(int_8), intent(in) :: list(:), item
+        integer(int_64), intent(in) :: list(:), item
         integer, intent(in) :: istart, iend
         logical, intent(out) :: hit
         integer, intent(out) :: pos
 
         integer :: hi, lo
-        integer(int_8) :: compare
+        integer(int_64) :: compare
 
         if (istart > iend) then
 
@@ -278,11 +278,11 @@ contains
                 pos = (hi+lo)/2
 
                 compare = item - list(pos)
-                if (compare == 0_int_8) then
+                if (compare == 0_int_64) then
                     ! hit!
                     hit = .true.
                     exit
-                else if (compare > 0_int_8) then
+                else if (compare > 0_int_64) then
                     ! list(pos) is "smaller" than item.
                     ! The lowest position item can take is hence pos + 1 (i.e. if
                     ! item is greater than pos by smaller than pos + 1).
@@ -308,11 +308,11 @@ contains
             ! the element before or after where item should be placed.
             if (hi == lo) then
                 compare = item - list(hi)
-                if (compare == 0_int_8) then
+                if (compare == 0_int_64) then
                     ! hit!
                     hit = .true.
                     pos = hi
-                else if (compare > 0_int_8) then
+                else if (compare > 0_int_64) then
                     ! list(pos) is smaller than item.
                     ! item should be placed in the next slot.
                     pos = hi + 1

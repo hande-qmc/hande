@@ -8,10 +8,10 @@ use, intrinsic :: iso_c_binding, only: c_int32_t, c_int64_t
 
 implicit none
 
-! 4-byte integer.
-integer, parameter :: int_4 = selected_int_kind(6)
-! 8-byte integer.
-integer, parameter :: int_8 = selected_int_kind(15)
+! 32-bit (4-byte) integer.
+integer, parameter :: int_32 = selected_int_kind(6)
+! 64-bit (8-byte) integer.
+integer, parameter :: int_64 = selected_int_kind(15)
 
 ! Integers of kind i0 are used as a bit string to store determinants.
 ! Adjusting i0 varies the size of the integer and may improve performance.
@@ -25,31 +25,31 @@ integer, parameter :: int_8 = selected_int_kind(15)
 ! is much faster than doing them on 2 32-bit integers, so the waste in memory is
 ! usually worth the performance benefit..
 #if DET_SIZE == 32
-integer, parameter :: i0 = int_4
+integer, parameter :: i0 = int_32
 ! C int type which interoperates with i0.
 integer, parameter :: c_i0 = c_int32_t
 #elif DET_SIZE == 64
-integer, parameter :: i0 = int_8
+integer, parameter :: i0 = int_64
 integer, parameter :: c_i0 = c_int64_t
 #endif
 
 ! int_p determines whether 32 or 64 integers are used for walker_population.
 #if POP_SIZE == 32
-integer, parameter :: int_p = int_4
+integer, parameter :: int_p = int_32
 #elif POP_SIZE == 64
-integer, parameter :: int_p = int_8
+integer, parameter :: int_p = int_64
 #else
 ! Use 32-bit integers by default.
-integer, parameter :: int_p = int_4
+integer, parameter :: int_p = int_32
 #endif
 
 ! The sdata array holds both walker populations and determinants together.
 ! Therefore, if 64-bit integers are being used for either walker populations
 ! or determinants, int_s must be 64-bit. Otherwise it can be 32-bit.
 #if POP_SIZE == 64 || DET_SIZE == 64
-integer, parameter :: int_s = int_8
+integer, parameter :: int_s = int_64
 #else
-integer, parameter :: int_s = int_4
+integer, parameter :: int_s = int_32
 #endif
 
 ! Number of bits in an integer of type i0.
@@ -70,8 +70,8 @@ integer, parameter :: sp = selected_real_kind(6,37)
 integer, parameter :: dp = selected_real_kind(15,307)
 
 ! long integer; used for psip population (where we can exceed 2e9)
-! [todo] - combine with int_8.
-integer, parameter :: lint = int_8
+! [todo] - combine with int_64.
+integer, parameter :: lint = int_64
 
 ! Compile time choice of precision level.
 ! We use p for all real kinds unless double precision is *absolutely* required

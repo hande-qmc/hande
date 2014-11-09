@@ -357,23 +357,23 @@ contains
         !    cutoff: the value to round up to.
         !    ntypes: the number of values in population to apply this op to.
 
-        use const, only: int_4
+        use const, only: int_32
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer(int_4), intent(inout) :: population(:)
-        integer(int_4), intent(in) :: cutoff
+        integer(int_32), intent(inout) :: population(:)
+        integer(int_32), intent(in) :: cutoff
         integer, intent(in) :: ntypes
         integer :: itype
         real(p) :: r
 
         do itype = 1, ntypes
-            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_4) then
+            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_32) then
                 r = get_rand_close_open(rng)*cutoff
                 if (abs(population(itype)) > r) then
                     population(itype) = sign(cutoff, population(itype))
                 else
-                    population(itype) = 0_int_4
+                    population(itype) = 0_int_32
                 end if
             end if
         end do
@@ -393,23 +393,23 @@ contains
         !    cutoff: the value to round up to.
         !    ntypes: the number of values in population to apply this op to.
 
-        use const, only: int_8
+        use const, only: int_64
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer(int_8), intent(inout) :: population(:)
-        integer(int_8), intent(in) :: cutoff
+        integer(int_64), intent(inout) :: population(:)
+        integer(int_64), intent(in) :: cutoff
         integer, intent(in) :: ntypes
         integer :: itype
         real(p) :: r
 
         do itype = 1, ntypes
-            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_8) then
+            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_64) then
                 r = get_rand_close_open(rng)*cutoff
                 if (abs(population(itype)) > r) then
                     population(itype) = sign(cutoff, population(itype))
                 else
-                    population(itype) = 0_int_8
+                    population(itype) = 0_int_64
                 end if
             end if
         end do

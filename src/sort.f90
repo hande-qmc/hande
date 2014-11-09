@@ -1,6 +1,6 @@
 module sort
 
-use const, only: int_4, int_8, p
+use const, only: int_32, int_64, p
 
 private
 public :: qsort
@@ -24,7 +24,7 @@ contains
 
     pure subroutine qsort_int_32_list(list, head, nsort)
 
-        ! Sort a 2D array of int_4 integers.
+        ! Sort a 2D array of int_32 integers.
 
         ! list(:,i) is regarded as greater than list(:,j) if the first
         ! non-identical element between list(:,i) and list(:,j) is greater in
@@ -43,7 +43,7 @@ contains
 
         use bit_utils, only: operator(.bitstrgt.)
 
-        integer(int_4), intent(inout) :: list(:,:)
+        integer(int_32), intent(inout) :: list(:,:)
         integer, intent(in), optional :: head, nsort
 
         ! Threshold.  When a sublist gets to this length, switch to using
@@ -54,7 +54,7 @@ contains
         integer, parameter :: stack_max = 50
 
         integer :: pivot, lo, hi, i, j, ns
-        integer(int_4) :: tmp(ubound(list,dim=1))
+        integer(int_32) :: tmp(ubound(list,dim=1))
 
         ! Stack.  This is the auxilliary memory required by quicksort.
         integer :: stack(2,stack_max), nstack
@@ -145,7 +145,7 @@ contains
                 ! With a stack_max of 50, we can sort arrays of length
                 ! 1125899906842624.  It is safe to say this will never be
                 ! exceeded, and so this test can be skipped.
-!                if (nstack > stack_max) call stop_all('qsort_int_4_list', "parameter stack_max too small")
+!                if (nstack > stack_max) call stop_all('qsort_int_32_list', "parameter stack_max too small")
 
                 if (hi - i + 1 >= j - lo) then
                     stack(2,nstack) = hi
@@ -164,8 +164,8 @@ contains
 
         pure subroutine swap_sublist(s1,s2)
 
-            integer(int_4), intent(inout) :: s1(:), s2(:)
-            integer(int_4) :: tmp(ubound(s1,dim=1))
+            integer(int_32), intent(inout) :: s1(:), s2(:)
+            integer(int_32) :: tmp(ubound(s1,dim=1))
 
             tmp = s1
             s1 = s2
@@ -177,7 +177,7 @@ contains
 
     pure subroutine qsort_int_64_list(list, head, nsort)
 
-        ! Sort a 2D array of int_8 integers.
+        ! Sort a 2D array of int_64 integers.
 
         ! list(:,i) is regarded as greater than list(:,j) if the first
         ! non-identical element between list(:,i) and list(:,j) is greater in
@@ -196,7 +196,7 @@ contains
 
         use bit_utils, only: operator(.bitstrgt.)
 
-        integer(int_8), intent(inout) :: list(:,:)
+        integer(int_64), intent(inout) :: list(:,:)
         integer, intent(in), optional :: head, nsort
 
         ! Threshold.  When a sublist gets to this length, switch to using
@@ -207,7 +207,7 @@ contains
         integer, parameter :: stack_max = 50
 
         integer :: pivot, lo, hi, i, j, ns
-        integer(int_8) :: tmp(ubound(list,dim=1))
+        integer(int_64) :: tmp(ubound(list,dim=1))
 
         ! Stack.  This is the auxilliary memory required by quicksort.
         integer :: stack(2,stack_max), nstack
@@ -298,7 +298,7 @@ contains
                 ! With a stack_max of 50, we can sort arrays of length
                 ! 1125899906842624.  It is safe to say this will never be
                 ! exceeded, and so this test can be skipped.
-!                if (nstack > stack_max) call stop_all('qsort_int_8_list', "parameter stack_max too small")
+!                if (nstack > stack_max) call stop_all('qsort_int_64_list', "parameter stack_max too small")
 
                 if (hi - i + 1 >= j - lo) then
                     stack(2,nstack) = hi
@@ -317,8 +317,8 @@ contains
 
         pure subroutine swap_sublist(s1,s2)
 
-            integer(int_8), intent(inout) :: s1(:), s2(:)
-            integer(int_8) :: tmp(ubound(s1,dim=1))
+            integer(int_64), intent(inout) :: s1(:), s2(:)
+            integer(int_64) :: tmp(ubound(s1,dim=1))
 
             tmp = s1
             s1 = s2
@@ -337,7 +337,7 @@ contains
         ! In/Out:
         !    list: list of integers.  List is sorted on output.
 
-        integer(int_4), intent(inout) :: list(:)
+        integer(int_32), intent(inout) :: list(:)
         real :: tmp
         integer :: i, j
 
@@ -364,7 +364,7 @@ contains
         ! In/Out:
         !    list: list of integers.  List is sorted on output.
 
-        integer(int_8), intent(inout) :: list(:)
+        integer(int_64), intent(inout) :: list(:)
         real :: tmp
         integer :: i, j
 
