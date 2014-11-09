@@ -40,9 +40,9 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
-        integer(lint) :: init_tot_nparticles
+        integer(int_64) :: init_tot_nparticles
         real(dp) :: tot_nparticles_old(sampling_size), real_population(sampling_size)
-        integer(lint) :: nattempts
+        integer(int_64) :: nattempts
         integer :: nel_temp, nattempts_current_det
         type(det_info_t) :: cdet1, cdet2
         integer(int_p) :: nspawned, ndeath
@@ -78,7 +78,7 @@ contains
         nreport = nreport+1
                             
         if (all_sym_sectors) nel_temp = sys%nel
-        init_tot_nparticles = nint(D0_population, lint)
+        init_tot_nparticles = nint(D0_population, int_64)
 
         do beta_cycle = 1, beta_loops
 

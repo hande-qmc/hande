@@ -55,7 +55,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
-        integer(lint) :: nattempts
+        integer(int_64) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
         real(dp) :: real_population(sampling_size)
         type(det_info_t) :: cdet

@@ -2,7 +2,7 @@ module hfs_data
 
 ! Module for storing data specific to Hellmann--Feynman sampling.
 
-use const, only: p, i0, lint, dp
+use const, only: p, i0, int_64, dp
 
 implicit none
 

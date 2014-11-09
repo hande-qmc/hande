@@ -5,8 +5,8 @@ module utils
 implicit none
 
 interface int_fmt
-    module procedure int_fmt_int
-    module procedure int_fmt_lint
+    module procedure int_fmt_int_32
+    module procedure int_fmt_int_64
 end interface int_fmt
 
 contains
@@ -181,7 +181,7 @@ contains
 
 !--- format statement formatting ---
 
-    elemental function int_fmt_int(i, padding) result(fmt1)
+    elemental function int_fmt_int_32(i, padding) result(fmt1)
 
         ! In:
         !    i: an integer
@@ -209,9 +209,9 @@ contains
 
         fmt1 = int_fmt_helper(logi, padding)
 
-    end function int_fmt_int
+    end function int_fmt_int_32
 
-    elemental function int_fmt_lint(i, padding) result(fmt1)
+    elemental function int_fmt_int_64(i, padding) result(fmt1)
 
         ! In:
         !    i: a long integer
@@ -223,10 +223,10 @@ contains
 
         ! This does take i/o formatting to a slightly OCD level addmittedly...
 
-        use const, only: lint, dp
+        use const, only: int_64, dp
 
         character(4) :: fmt1
-        integer(lint), intent(in) :: i
+        integer(int_64), intent(in) :: i
         integer, intent(in), optional :: padding
         real(dp) :: logi
 
@@ -239,7 +239,7 @@ contains
 
         fmt1 = int_fmt_helper(logi, padding)
 
-    end function int_fmt_lint
+    end function int_fmt_int_64
 
     elemental function int_fmt_helper(logi, padding) result(fmt1)
 

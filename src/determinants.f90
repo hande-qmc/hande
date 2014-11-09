@@ -66,9 +66,9 @@ contains
 
         integer :: i, j, k, bit_pos, bit_element, ierr, site_index
         character(4) :: fmt1
-        integer(lint) :: tot_ndets
+        integer(int_64) :: tot_ndets
 
-        tot_ndets = nint(binom_r(sys%basis%nbasis, sys%nel), lint)
+        tot_ndets = nint(binom_r(sys%basis%nbasis, sys%nel), int_64)
         fmt1 = int_fmt(tot_ndets, padding=1)
         if (parent .and. doing_calc(exact_diag+lanczos_diag)) &
                 write (6,'(1X,a32,'//fmt1//')') 'Total size of determinant space:', tot_ndets

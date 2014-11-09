@@ -115,7 +115,7 @@ contains
         integer :: nwalker_int, nwalker_int_p, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(sys%basis%string_len)
-        integer(lint) :: tmp_lint
+        integer(int_64) :: tmp_int_64
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -433,8 +433,8 @@ contains
 
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
-            tmp_lint = calculate_hf_signed_pop()
-            call mpi_allreduce(tmp_lint, hf_signed_pop, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            tmp_int_64 = calculate_hf_signed_pop()
+            call mpi_allreduce(tmp_int_64, hf_signed_pop, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
             hf_signed_pop = calculate_hf_signed_pop()
 #endif
@@ -491,8 +491,8 @@ contains
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', pattempt_single
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', pattempt_double
             if (doing_calc(dmqmc_calc)) then
-                write (6,'(1X,a54,'//int_fmt(int(D0_population,lint),1)//')') &
-                              'Initial population on the trace of the density matrix:', int(D0_population,lint)
+                write (6,'(1X,a54,'//int_fmt(int(D0_population,int_64),1)//')') &
+                              'Initial population on the trace of the density matrix:', int(D0_population,int_64)
             else
                 write (6,'(1X,a44,1X,f11.4,/)') &
                               'Initial population on reference determinant:',D0_population

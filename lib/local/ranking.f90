@@ -13,8 +13,8 @@ implicit none
 interface insertion_rank
     module procedure insertion_rank_sp
     module procedure insertion_rank_dp
-    module procedure insertion_rank_int
-    module procedure insertion_rank_lint
+    module procedure insertion_rank_int_32
+    module procedure insertion_rank_int_64
 end interface
 
 contains
@@ -137,7 +137,7 @@ contains
 
     end subroutine insertion_rank_dp
 
-    pure subroutine insertion_rank_int(arr, rank)
+    pure subroutine insertion_rank_int_32(arr, rank)
 
         ! Rank an array of integers in increasing order using the insertion sort
         ! algorithm.
@@ -181,9 +181,9 @@ contains
         end do
 
 
-    end subroutine insertion_rank_int
+    end subroutine insertion_rank_int_32
 
-    pure subroutine insertion_rank_lint(arr, rank)
+    pure subroutine insertion_rank_int_64(arr, rank)
 
         ! Rank an array of long integers in increasing order using the insertion sort
         ! algorithm.
@@ -208,7 +208,7 @@ contains
         !    i-th element in the sorted list of values of arr.
         !    NOTE: rank must have at least the dimensions of arr on input.
 
-        integer(lint), intent(in) :: arr(:)
+        integer(int_64), intent(in) :: arr(:)
         integer, intent(inout) :: rank(:) ! inout to avoid automatic deallocation
                                           ! of an allocatable array on entry
         integer :: i, j, tmp
@@ -226,6 +226,6 @@ contains
             rank(j+1) = tmp
         end do
 
-    end subroutine insertion_rank_lint
+    end subroutine insertion_rank_int_64
 
 end module ranking
