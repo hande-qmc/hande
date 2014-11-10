@@ -206,6 +206,8 @@ contains
 
                 if (parent) write (6,'()')
 
+                if (truncate_space) call dealloc_det_info_t(det0)
+
             end if
 
         end select
