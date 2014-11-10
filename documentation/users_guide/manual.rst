@@ -1256,11 +1256,18 @@ Calculation options: CCMC options
 **ccmc_linked**
     Default: off
 
-    The spawning dynamics sample the terms H*T^n. The linked cluster theorem means that the only
-    terms which contribute are those where the exitation sampled from the Hamiltonian has an orbital
-    in common with each excitor in the cluster operator (this also means that clusters with more than 
-    4 excitors in can be ignored). Rejecting spawning from unlinked clusters gives more stable
-    dynamics and a lower plateau height.
+    The original CCMC algorithm solves the equations
+
+    <D_m|H - E|\psi_CC> = 0.
+    It is possible to instead sample the equivalent equations
+
+    <D_m|e^-T (H - E)|\psi_CC> = 0.
+
+    Using the Hausdorff expansion of the Hamiltonian and the linked cluster theorem means 
+    that the only clusters which contribute are those with at most four excitors and where 
+    the exitation sampled from the Hamiltonian has an orbital in common with each excitor 
+    in the cluster operator. Using this option can give substantial reductions in the 
+    plateau height.
     
 Calculation options: DMQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

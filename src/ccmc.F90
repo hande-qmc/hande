@@ -441,14 +441,14 @@ contains
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
                 !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
-                !$omp         nspawnings_left, nspawnings_total,i             ) &
+                !$omp         nspawnings_left, nspawnings_total, fexcit       ) &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level, &
                 !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
                 !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
                 !$omp        proj_energy, real_factor, min_cluster_size,        &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
-                !$omp        nsingle_excitors, cluster_multispawn_threshold)
+                !$omp        nsingle_excitors, cluster_multispawn_threshold, linked_cluster)
                 it = get_thread_id()
                 iexcip_pos = 1
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
@@ -524,13 +524,9 @@ contains
 
                     else if (cluster(it)%excitation_level == huge(0) .and. linked_cluster) then
 
-                        ! Spawning
-                        ! This has the potential to create blooms, so we allow for multiple
-                        ! spawning events per cluster.
-                        ! The number of spawning events is decided by the value
-                        ! of cluster%amplitude/cluster%pselect.  If this is
-                        ! greater than cluster_multispawn_threshold, then nspawnings is
-                        ! increased to the ratio of these.
+                        ! When samplin e^-T H e^T, the cluster operators in e^-T
+                        ! and e^T can excite to/from the same orbital, requiring
+                        ! a different spawning routine
                         nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
                                                          cluster_multispawn_threshold))
 
@@ -1123,7 +1119,8 @@ contains
         if (linked_cluster .and. hmatel /= 0.0_p) then
             ! For Linked Coupled Cluster we reject any spawning where the
             ! Hamiltonian is not linked to every cluster operator
-            ! The matrix element to be evaluated is not <D|H a|D0> but <D|[H,a]|D0>
+            ! The matrix element to be evaluated is not <D_i|H a_i|D0> but <D_i|[H,a_i]|D0>
+            ! (and similarly for composite clusters)
             if (cluster%nexcitors > 0) then
                 call linked_excitation(sys%basis, connection, cluster, linked, funlinked)
                 if (.not. linked) then
@@ -1131,7 +1128,7 @@ contains
                 else if (any(funlinked /= 0)) then
                     ! Single excitation: need to modify the matrix element
                     ! Subtract off the matrix element from the cluster without
-                    ! the unlinked T
+                    ! the unlinked a_i operator
                     hmatel = hmatel - unlinked_commutator(sys, connection, cluster, cdet%f, funlinked)
                 end if
             end if
@@ -1333,7 +1330,6 @@ contains
 
             if (linked_cluster) then
                 ! We still use the cluster so need its amplitude
-                !(but what about signs?)
                 cluster_population = cluster_population*excitor_population
             end if
         else
@@ -1585,8 +1581,8 @@ contains
     end subroutine linked_excitation
 
     pure function unlinked_commutator(sys, connection, cluster, cdet, funlinked) result(hmatel)
-        ! Evaluates <Dj|[H,T]|Di> for the case when H is a single excitation
-        ! not involving the same orbitals as T
+        ! Evaluates <Dj|[H,a]|Di> for the case when H is a single excitation
+        ! not involving the same orbitals as a
         ! In:
         !    sys: the system being studied
         !    connection: excitation connection between the current excitor
@@ -1596,7 +1592,8 @@ contains
         !    cdet: the determinant formed by the cluster
         !    funlinked: the excitor in the cluster that is not linked to H
         ! Returns:
-        !    <Dj|TH|Di>
+        !    <Dj|a H|Di> (to be subtracted from <Dj|H a|Di> calculated when the
+        !           excitation was chosen to give the commutator)
 
         use system, only: sys_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
@@ -1643,6 +1640,7 @@ contains
         hmatel = get_hmatel(sys, deti, detj)
 
         ! Possible sign changes
+        ! <D_k|a_i|D_j> = <D_k|a_i a_j|D_0> * <D_j|a_j|D_0>
         hmatel = hmatel*cluster%cluster_to_det_sign
         excitor_level = get_excitation_level(f0, deti)
         call convert_excitor_to_determinant(deti, excitor_level, excitor_sign)
@@ -1661,8 +1659,11 @@ contains
     subroutine linked_spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
                             nspawnings_total, fexcit)
 
-        ! When the cluster contains a repeated excitation, terms in the commutator 
-        ! need to be considered to choose connection (and also to get pgen)
+        ! When sampling e^-T H e^T, clusters need to be considered where two
+        ! operators excite from/to the same orbital (one in the "left cluster"
+        ! for e^-T and one in the "right cluster" for e^T). This makes the
+        ! selection of an excitation more complicated as all possible
+        ! partitionings of the cluster need to be accounted for.
 
         ! In:
         !    sys: system being studied.
@@ -1730,12 +1731,9 @@ contains
         logical :: allowed
         integer(i0) :: new_det(sys%basis%string_len)
 
-        ! Need to use clusters that don't give a valid excitation
-        ! for spawning as even if HTT = 0, THT might not be.
-        ! 1) Find excitors with common orbitals and choose an order for the Ts st 
-        ! any that share an orbital are separated by H
-        ! 2) Choose excitation
-        ! 3) Evaluate commutator (not all terms necessary?)
+        ! 1) Choose an order for the excitors 
+        ! 2) Choose excitation from right_cluster|D_0>
+        ! 3) Evaluate commutator and pgen
         ! 4) Attempt to spawn
 
         call alloc_det_info_t(sys, rdet)
@@ -1816,7 +1814,7 @@ contains
                 ! apply additional factors to pgen
                 pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-                ! correct hmatel for cluster amplitude and possible sign change
+                ! correct hmatel for cluster amplitude 
                 hmatel = hmatel*cluster%amplitude
 
                 nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
@@ -1844,8 +1842,8 @@ contains
         ! In:
         !    cluster: the cluster of excitors
         !    sys: the system being studied
-        !    part_number: (optional) use to enumerate partitons rather than
-        !    choose a random one
+        !    part_number: (optional) use to enumerate partitions rather than
+        !            choosing a random one
         ! In/Out:
         !    rng: random number generator
         ! Out:
@@ -1876,11 +1874,12 @@ contains
         in_right = 0
         ppart = 1.0_p
         allowed = .true.
-        ! collapsing the clusters may give a sign change
         population = 1.0
 
         do i = 1, cluster%nexcitors
             if (present(part_number)) then
+                ! Use integers 1 to 2^n as bitstrings to consider all
+                ! partititions in turn
                 if (btest(part_number, i-1)) then
                     side = 1
                 else
@@ -1929,7 +1928,17 @@ contains
     pure function calc_pgen(sys, f1, f2, connection, parent_det) result(pgen)
         ! calculate the probability of an excitation being selected
         ! wrapper round system specific functions
-        
+        ! In:
+        !    sys: the system being studied
+        !    f1: bit string representation of parent excitor
+        !    f2: bit string representation of child excitor
+        !    connection: excitation connection between the current excitor
+        !        and the child excitor, on which progeny are spawned.
+        !    parent_det: information on the parent excitor
+        ! Returns: 
+        !    The probability of generating the excitation specified by
+        !    connection, assuming the excitation is valid
+
         use system
         use excitations, only: excit_t
         use fciqmc_data, only: no_renorm
