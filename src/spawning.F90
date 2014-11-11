@@ -1161,7 +1161,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use determinants, only: det_compare
+        use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use calc, only: truncation_level
         use errors, only: stop_all
@@ -1195,7 +1195,7 @@ contains
         ! as they are. If not then swap bitstring ends so that the
         ! new psips are reflected into the upper triangle of the density
         ! matrix as they try to spawn.
-        if (det_compare(f_new, f2, basis%string_len) == -1) then
+        if (bit_str_cmp(f_new, f2) == -1) then
             f_new_tot(:basis%string_len) = f_new
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
         else
@@ -1246,8 +1246,8 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
+        use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use determinants, only: det_compare
         use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit, create_excited_det, get_excitation_level
@@ -1282,7 +1282,7 @@ contains
             ! as they are. If not then swap bitstring ends so that the
             ! new psips are reflected into the upper triangle of the density
             ! matrix as they try to spawn.
-            if (det_compare(f_new, f2, basis%string_len) == -1) then
+            if (bit_str_cmp(f_new, f2) == -1) then
                 f_new_tot(:basis%string_len) = f_new
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
             else

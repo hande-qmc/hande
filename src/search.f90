@@ -35,6 +35,7 @@ contains
         !        sorted.
 
         use const, only: i0
+        use bit_utils, only: bit_str_cmp
 
         integer(i0), intent(in) :: list(:,:), item(:)
         integer, intent(in) :: istart, iend
@@ -68,7 +69,7 @@ contains
                 ! search algorithm.
                 pos = (hi+lo)/2
 
-                compare = list_compare(list(:,pos), item)
+                compare = bit_str_cmp(list(:,pos), item)
                 select case(compare)
                 case (0)
                     ! hit!
@@ -99,7 +100,7 @@ contains
             ! element which doesn't exist yet) the binary search can find either
             ! the element before or after where item should be placed.
             if (hi == lo) then
-                compare = list_compare(list(:,hi), item)
+                compare = bit_str_cmp(list(:,hi), item)
                 select case(compare)
                 case (0)
                     ! hit!
@@ -117,41 +118,6 @@ contains
             end if
 
         end if
-
-        contains
-
-            pure function list_compare(item1, item2) result(compare)
-
-                ! In:
-                !    f1(tensor_label_len): bit string representation of the Slater
-                !        determinant.
-                !    f2(tensor_label_len): bit string representation of the Slater
-                !        determinant.
-                !    (For DMQMC this bitstring contains information for both determinants)
-                ! Returns:
-                !    0 if f1 and f2 are identical;
-                !    1 if the first non-identical element in f1 is smaller than the
-                !    corresponding element in f2;
-                !    -1 if the first non-identical element in f1 is greater than the
-                !    corresponding element in f2;
-
-                integer :: compare
-                integer(i0), intent(in) :: item1(:), item2(:)
-
-                integer :: i
-
-                compare = 0
-                do i = 1, ubound(item1, dim=1)
-                    if (item1(i) < item2(i)) then
-                        compare = 1
-                        exit
-                    else if (item1(i) > item2(i)) then
-                        compare = -1
-                        exit
-                    end if
-                end do
-
-            end function list_compare
 
     end subroutine binary_search_i0_list
 

@@ -548,42 +548,6 @@ contains
 
     end function spin_orb_list
 
-!--- Comparison of determinants ---
-
-    pure function det_compare(f1, f2, flength) result(compare)
-
-        ! In:
-        !    f1(flength): bit string.
-        !    f2(flength): bit string.
-        !    flength: size of bit string.  Should be string_len for comparing
-        !    determinants and tensor_label_len for comparing pairs of density
-        !    matrix labels (DMQMC only).
-        ! Returns:
-        !    0 if f1 and f2 are identical;
-        !    1 if the first non-identical element in f1 is smaller than the
-        !    corresponding element in f2;
-        !    -1 if the first non-identical element in f1 is greater than the
-        !    corresponding element in f2;
-
-        integer :: compare
-        integer, intent(in) :: flength
-        integer(i0), intent(in) :: f1(flength), f2(flength)
-
-        integer :: i
-
-        compare = 0
-        do i = 1, flength
-            if (f1(i) < f2(i)) then
-                compare = 1
-                exit
-            else if (f1(i) > f2(i)) then
-                compare = -1
-                exit
-            end if
-        end do
-
-    end function det_compare
-
 !--- Output ---
 
     subroutine write_det(basis_set, nel, f, iunit, new_line)

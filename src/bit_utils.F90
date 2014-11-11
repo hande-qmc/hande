@@ -16,6 +16,16 @@ interface operator(.bitstrgt.)
     module procedure bit_str_64_gt
 end interface
 
+interface bit_str_cmp
+    module procedure bit_str_32_cmp
+    module procedure bit_str_64_cmp
+end interface
+
+interface count_set_bits
+    module procedure count_set_bits_int_32
+    module procedure count_set_bits_int_64
+end interface
+
 contains
 
 !--- Counting set bits ---
@@ -40,43 +50,26 @@ contains
 
     end function naive_count_set_bits
 
-    elemental function count_set_bits(b) result(nbits)
+    elemental function count_set_bits_int_32(b) result(nbits)
+
+        ! In:
+        !    A 32-bit integer.
+        ! Returns:
+        !    The number of set bits in b.
+
+        ! This uses a branch-free algorithm.  See comments below for details.
 
         integer :: nbits
-        integer(i0), intent(in) :: b
-        integer(i0) :: tmp
+        integer(int_4), intent(in) :: b
+        integer(int_4) :: tmp
 
-        ! For 8 bit integers:
-#if DET_SIZE == 8
-        integer(i0), parameter :: m1 = Z'55'
-        integer(i0), parameter :: m2 = Z'33'
-        integer(i0), parameter :: m3 = Z'0F'
-
-#elif DET_SIZE == 16
-        ! For 16 bit integers:
-        integer(i0), parameter :: m1 = Z'5555'
-        integer(i0), parameter :: m2 = Z'3333'
-        integer(i0), parameter :: m3 = Z'0F0F'
-        integer(i0), parameter :: m4 = Z'0101'
-
-#elif DET_SIZE == 32
         ! For 32 bit integers:
-        integer(i0), parameter :: m1 = Z'55555555'
-        integer(i0), parameter :: m2 = Z'33333333'
-        integer(i0), parameter :: m3 = Z'0F0F0F0F'
-        integer(i0), parameter :: m4 = Z'01010101'
-
-#elif DET_SIZE == 64
-        ! For 64 bit integers:
-        integer(i0), parameter :: m1 = Z'5555555555555555'
-        integer(i0), parameter :: m2 = Z'3333333333333333'
-        integer(i0), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
-        integer(i0), parameter :: m4 = Z'0101010101010101'
-#endif
+        integer(int_4), parameter :: m1 = Z'55555555'
+        integer(int_4), parameter :: m2 = Z'33333333'
+        integer(int_4), parameter :: m3 = Z'0F0F0F0F'
+        integer(int_4), parameter :: m4 = Z'01010101'
 
         ! This is quite cool.
-
-        tmp = b
 
         ! For a more detailed explanation and discussion see:
         !   http://everything2.com/title/Counting+1+bits
@@ -99,7 +92,7 @@ contains
         ! etc., where & indicates AND and >> is the shift right operator.
         ! Further optimisations are:
         ! * Any & operations can be omitted where there is no danger that
-        ! a field's sum will carry over into the next field.
+        !   a field's sum will carry over into the next field.
         ! * The first line can be replaced by:
         !     x = x - ( (x>>1) & 01010101...)
         !   thanks to the population (number of set bits) in an integer
@@ -109,35 +102,42 @@ contains
         !   followed by a right shift.
         ! Thus the following (extremely fast) algorithms.
 
-#if DET_SIZE == 8
-        ! For 8 bit integers:
-        tmp = tmp - iand(ishft(tmp,-1), m1)
-        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
-        nbits = iand(tmp + ishft(tmp,-4), m3)
-
-#elif DET_SIZE == 16
-        ! For 16 bit integers:
-        tmp = tmp - iand(ishft(tmp,-1), m1)
-        tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
-        tmp = iand(tmp + ishft(tmp,-4), m3)*m4
-        nbits = ishft(tmp, -8)
-
-#elif DET_SIZE == 32
         ! For 32 bit integers:
+        tmp = b
         tmp = tmp - iand(ishft(tmp,-1), m1)
         tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
         tmp = iand((tmp + ishft(tmp,-4)), m3)*m4
         nbits = ishft(tmp, -24)
 
-#elif DET_SIZE == 64
+    end function count_set_bits_int_32
+
+    elemental function count_set_bits_int_64(b) result(nbits)
+
+        ! In:
+        !    A 64-bit integer.
+        ! Returns:
+        !    The number of set bits in b.
+
+        ! This is the 64-bit equivalent of count_set_bits_int_32; see comments there for
+        ! more details.
+
+        integer :: nbits
+        integer(int_8), intent(in) :: b
+        integer(int_8) :: tmp
+
         ! For 64 bit integers:
+        integer(int_8), parameter :: m1 = Z'5555555555555555'
+        integer(int_8), parameter :: m2 = Z'3333333333333333'
+        integer(int_8), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
+        integer(int_8), parameter :: m4 = Z'0101010101010101'
+
+        tmp = b
         tmp = tmp - iand(ishft(tmp,-1), m1)
         tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
         tmp = iand(tmp, m3) + iand(ishft(tmp,-4), m3)
         nbits = ishft(tmp*m4, -56)
-#endif
 
-    end function count_set_bits
+    end function count_set_bits_int_64
 
 !--- I/O helpers ---
 
@@ -247,26 +247,26 @@ contains
 
 !--- Comparison of bit strings---
 
-    pure function bit_str_32_gt(f1, f2) result(gt)
+    pure function bit_str_32_gt(b1, b2) result(gt)
 
         ! In:
-        !    f1(:), f2(:) bit string.
+        !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if the first element of f1 which is not equal to the
-        !    corresponding element of f2 is greater than the corresponding
-        !    element in f2.
+        !    True if the first element of b1 which is not equal to the
+        !    corresponding element of b2 is greater than the corresponding
+        !    element in b2.
 
         logical :: gt
-        integer(int_4), intent(in) :: f1(:), f2(:)
+        integer(int_4), intent(in) :: b1(:), b2(:)
 
         integer :: i
 
         gt = .false.
-        do i = 1, ubound(f1,dim=1)
-            if (f1(i) > f2(i)) then
+        do i = 1, ubound(b1,dim=1)
+            if (b1(i) > b2(i)) then
                 gt = .true.
                 exit
-            else if (f1(i) < f2(i)) then
+            else if (b1(i) < b2(i)) then
                 gt = .false.
                 exit
             end if
@@ -274,31 +274,89 @@ contains
 
     end function bit_str_32_gt
 
-    pure function bit_str_64_gt(f1, f2) result(gt)
+    pure function bit_str_64_gt(b1, b2) result(gt)
 
         ! In:
-        !    f1(:), f2(:) bit string.
+        !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if the first element of f1 which is not equal to the
-        !    corresponding element of f2 is greater than the corresponding
-        !    element in f2.
+        !    True if the first element of b1 which is not equal to the
+        !    corresponding element of b2 is greater than the corresponding
+        !    element in b2.
 
         logical :: gt
-        integer(int_8), intent(in) :: f1(:), f2(:)
+        integer(int_8), intent(in) :: b1(:), b2(:)
 
         integer :: i
 
         gt = .false.
-        do i = 1, ubound(f1,dim=1)
-            if (f1(i) > f2(i)) then
+        do i = 1, ubound(b1,dim=1)
+            if (b1(i) > b2(i)) then
                 gt = .true.
                 exit
-            else if (f1(i) < f2(i)) then
+            else if (b1(i) < b2(i)) then
                 gt = .false.
                 exit
             end if
         end do
 
     end function bit_str_64_gt
+
+    pure function bit_str_32_cmp(b1, b2) result(cmp)
+
+        ! In:
+        !    b1(:), b2(:): bit string.
+        ! Returns:
+        !    0 if b1 and b2 are identical;
+        !    1 if the first non-identical element in b1 is smaller than the
+        !    corresponding element in b2;
+        !    -1 if the first non-identical element in b1 is greater than the
+        !    corresponding element in b2;
+
+        integer :: cmp
+        integer(int_4), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        cmp = 0
+        do i = 1, ubound(b1, dim=1)
+            if (b1(i) < b2(i)) then
+                cmp = 1
+                exit
+            else if (b1(i) > b2(i)) then
+                cmp = -1
+                exit
+            end if
+        end do
+
+    end function bit_str_32_cmp
+
+    pure function bit_str_64_cmp(b1, b2) result(cmp)
+
+        ! In:
+        !    b1(:), b2(:): bit string.
+        ! Returns:
+        !    0 if b1 and b2 are identical;
+        !    1 if the first non-identical element in b1 is smaller than the
+        !    corresponding element in b2;
+        !    -1 if the first non-identical element in b1 is greater than the
+        !    corresponding element in b2;
+
+        integer :: cmp
+        integer(int_8), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        cmp = 0
+        do i = 1, ubound(b1, dim=1)
+            if (b1(i) < b2(i)) then
+                cmp = 1
+                exit
+            else if (b1(i) > b2(i)) then
+                cmp = -1
+                exit
+            end if
+        end do
+
+    end function bit_str_64_cmp
 
 end module bit_utils
