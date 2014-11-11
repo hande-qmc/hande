@@ -52,7 +52,7 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, ideterm
         integer :: iter
-        integer(lint) :: nattempts
+        integer(int_64) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
 
         integer(i0) :: f_child(sys%basis%string_len)

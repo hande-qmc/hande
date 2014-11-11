@@ -4,7 +4,7 @@ module ct_fciqmc
 ! directly to the next spawning event without a timestep).
 
 use fciqmc_data
-use const, only: p, lint
+use const, only: p, int_64
 
 implicit none
 
@@ -40,7 +40,7 @@ contains
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events
         integer :: ireport, idet
-        integer(lint) :: nattempts
+        integer(int_64) :: nattempts
         real(dp) :: nparticles_old(sampling_size)
         integer :: iparticle, max_nexcitations, ierr, proc_id
         integer(int_p) :: tmp_pop

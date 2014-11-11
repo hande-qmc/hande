@@ -60,14 +60,14 @@ contains
         ! This uses a branch-free algorithm.  See comments below for details.
 
         integer :: nbits
-        integer(int_4), intent(in) :: b
-        integer(int_4) :: tmp
+        integer(int_32), intent(in) :: b
+        integer(int_32) :: tmp
 
         ! For 32 bit integers:
-        integer(int_4), parameter :: m1 = Z'55555555'
-        integer(int_4), parameter :: m2 = Z'33333333'
-        integer(int_4), parameter :: m3 = Z'0F0F0F0F'
-        integer(int_4), parameter :: m4 = Z'01010101'
+        integer(int_32), parameter :: m1 = Z'55555555'
+        integer(int_32), parameter :: m2 = Z'33333333'
+        integer(int_32), parameter :: m3 = Z'0F0F0F0F'
+        integer(int_32), parameter :: m4 = Z'01010101'
 
         ! This is quite cool.
 
@@ -122,14 +122,14 @@ contains
         ! more details.
 
         integer :: nbits
-        integer(int_8), intent(in) :: b
-        integer(int_8) :: tmp
+        integer(int_64), intent(in) :: b
+        integer(int_64) :: tmp
 
         ! For 64 bit integers:
-        integer(int_8), parameter :: m1 = Z'5555555555555555'
-        integer(int_8), parameter :: m2 = Z'3333333333333333'
-        integer(int_8), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
-        integer(int_8), parameter :: m4 = Z'0101010101010101'
+        integer(int_64), parameter :: m1 = Z'5555555555555555'
+        integer(int_64), parameter :: m2 = Z'3333333333333333'
+        integer(int_64), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
+        integer(int_64), parameter :: m4 = Z'0101010101010101'
 
         tmp = b
         tmp = tmp - iand(ishft(tmp,-1), m1)
@@ -257,7 +257,7 @@ contains
         !    element in b2.
 
         logical :: gt
-        integer(int_4), intent(in) :: b1(:), b2(:)
+        integer(int_32), intent(in) :: b1(:), b2(:)
 
         integer :: i
 
@@ -284,7 +284,7 @@ contains
         !    element in b2.
 
         logical :: gt
-        integer(int_8), intent(in) :: b1(:), b2(:)
+        integer(int_64), intent(in) :: b1(:), b2(:)
 
         integer :: i
 
@@ -313,7 +313,7 @@ contains
         !    corresponding element in b2;
 
         integer :: cmp
-        integer(int_4), intent(in) :: b1(:), b2(:)
+        integer(int_32), intent(in) :: b1(:), b2(:)
 
         integer :: i
 
@@ -342,7 +342,7 @@ contains
         !    corresponding element in b2;
 
         integer :: cmp
-        integer(int_8), intent(in) :: b1(:), b2(:)
+        integer(int_64), intent(in) :: b1(:), b2(:)
 
         integer :: i
 

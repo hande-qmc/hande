@@ -165,7 +165,7 @@ module ccmc
 ! accumulate all negative signs and take them into account when
 ! determining the sign of the child excips.
 
-use const, only: i0, int_p, lint, p
+use const, only: i0, int_p, int_64, p
 
 implicit none
 
@@ -215,8 +215,8 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
-        integer(lint) :: iattempt, nattempts, nclusters, nstochastic_clusters
-        integer(lint) :: nattempts_spawn
+        integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters
+        integer(int_64) :: nattempts_spawn
         real(dp) :: nparticles_old(sampling_size)
         type(det_info_t), allocatable :: cdet(:)
 
@@ -373,7 +373,7 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(real_factor, nattempts, ndeath, int(D0_normalisation,lint))
+                call init_mc_cycle(real_factor, nattempts, ndeath, int(D0_normalisation,int_64))
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
                 ! per cluster
@@ -613,7 +613,7 @@ contains
         use parallel, only: nprocs
 
         type(basis_t), intent(in) :: basis
-        integer(lint), intent(in) :: nattempts
+        integer(int_64), intent(in) :: nattempts
         integer, intent(in) :: D0_pos, normalisation
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         integer :: min_size, max_size
@@ -887,7 +887,7 @@ contains
         use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data, initiator_population
         use search, only: binary_search
 
-        integer(lint), intent(in) :: iexcip, nattempts
+        integer(int_64), intent(in) :: iexcip, nattempts
         integer, intent(inout) :: iexcip_pos
         integer, intent(in) :: D0_pos, normalisation
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop

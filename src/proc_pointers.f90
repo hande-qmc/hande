@@ -1,6 +1,6 @@
 module proc_pointers
 
-use const, only: i0, p, dp, lint, int_p
+use const, only: i0, p, dp, int_64, int_p
 use determinants, only: det_info_t
 use excitations, only: excit
 

@@ -76,7 +76,7 @@ module load_balancing
 !    should probably be performed at the start of a calculation if the population
 !    is held constant.
 
-use const , only: lint, p, dp, int_p
+use const , only: int_64, p, dp, int_p
 
 implicit none
 

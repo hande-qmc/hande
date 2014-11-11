@@ -210,7 +210,7 @@ type load_t
     ! Population which must be reached before load balancing is attempted.
     ! Default = 1000.
     ! Input option: load_balancing_pop
-    integer(lint) :: pop = 1000
+    integer(int_64) :: pop = 1000
     ! Percentage load imbalance we aim to achieve when performing load balancing.
     ! i.e. min_pop = (1-percent_imbal)*av_pop, max_pop = (1+percent_imbal)*av_pop.
     ! Default = 0.05

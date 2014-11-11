@@ -409,11 +409,11 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(lint), intent(in) :: target_nparticles_tot
+        integer(int_64), intent(in) :: target_nparticles_tot
         real(dp), intent(out) :: nparticles_tot(sampling_size)
         real(dp) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
-        integer(lint) :: npsips_this_proc, npsips
+        integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
         real(dp) :: r, prob
 
@@ -421,7 +421,7 @@ contains
         ! If the initial number of psips does not split evenly between all
         ! processors, add the leftover psips to the first processors in order.
         if (target_nparticles_tot-(nprocs*npsips_this_proc) > iproc) &
-              npsips_this_proc = npsips_this_proc + 1_lint
+              npsips_this_proc = npsips_this_proc + 1_int_64
 
         nparticles_temp = 0.0_dp
 
@@ -437,13 +437,13 @@ contains
                         ! The size of this symmetry sector alone.
                         sector_size = binom_r(sys%lattice%nsites, nel)
                         prob = real(npsips_this_proc,dp)*sector_size/total_size
-                        npsips = floor(prob, lint)
+                        npsips = floor(prob, int_64)
                         ! If there are a non-integer number of psips to be
                         ! spawned in this sector then add an extra psip with the
                         ! required probability.
                         prob = prob - npsips
                         r = get_rand_close_open(rng)
-                        if (r < prob) npsips = npsips + 1_lint
+                        if (r < prob) npsips = npsips + 1_int_64
 
                         nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, dp)
                         call random_distribution_heisenberg(rng, sys%basis, nel, npsips, ireplica)
@@ -503,9 +503,9 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
         integer, intent(in) :: spins_up
-        integer(lint), intent(in) :: npsips
+        integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
-        integer(lint) :: i
+        integer(int_64) :: i
         integer :: rand_basis, bits_set
         integer :: bit_element, bit_position
         integer(i0) :: f(basis%string_len)

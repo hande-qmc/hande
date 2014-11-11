@@ -534,7 +534,7 @@ contains
         real(p) :: rate
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath
-        integer(lint), intent(in) :: nattempts
+        integer(int_64), intent(in) :: nattempts
         real(dp) :: ndeath_real
 
         ! Death is not scaled when using reals.

@@ -357,23 +357,23 @@ contains
         !    cutoff: the value to round up to.
         !    ntypes: the number of values in population to apply this op to.
 
-        use const, only: int_4
+        use const, only: int_32
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer(int_4), intent(inout) :: population(:)
-        integer(int_4), intent(in) :: cutoff
+        integer(int_32), intent(inout) :: population(:)
+        integer(int_32), intent(in) :: cutoff
         integer, intent(in) :: ntypes
         integer :: itype
         real(p) :: r
 
         do itype = 1, ntypes
-            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_4) then
+            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_32) then
                 r = get_rand_close_open(rng)*cutoff
                 if (abs(population(itype)) > r) then
                     population(itype) = sign(cutoff, population(itype))
                 else
-                    population(itype) = 0_int_4
+                    population(itype) = 0_int_32
                 end if
             end if
         end do
@@ -393,23 +393,23 @@ contains
         !    cutoff: the value to round up to.
         !    ntypes: the number of values in population to apply this op to.
 
-        use const, only: int_8
+        use const, only: int_64
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        integer(int_8), intent(inout) :: population(:)
-        integer(int_8), intent(in) :: cutoff
+        integer(int_64), intent(inout) :: population(:)
+        integer(int_64), intent(in) :: cutoff
         integer, intent(in) :: ntypes
         integer :: itype
         real(p) :: r
 
         do itype = 1, ntypes
-            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_8) then
+            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_64) then
                 r = get_rand_close_open(rng)*cutoff
                 if (abs(population(itype)) > r) then
                     population(itype) = sign(cutoff, population(itype))
                 else
-                    population(itype) = 0_int_8
+                    population(itype) = 0_int_64
                 end if
             end if
         end do
@@ -426,7 +426,7 @@ contains
         use utils, only: int_fmt
 
         real(dp) :: load_data(sampling_size, nprocs)
-        integer(lint) :: load_data_lint(nprocs)
+        integer(int_64) :: load_data_int_64(nprocs)
         integer :: i, ierr
         real(dp) :: comms(nprocs)
         character(4) :: lfmt
@@ -446,13 +446,13 @@ contains
                     write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer8, load_data_lint, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(tot_walkers, 1, mpi_integer8, load_data_int_64, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                lfmt = int_fmt(maxval(load_data_lint),0)
-                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_lint)
-                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_lint)
-                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_lint), p)/nprocs
+                lfmt = int_fmt(maxval(load_data_int_64),0)
+                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int_64)
+                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int_64)
+                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_int_64), p)/nprocs
                 write (6,'()')
                 write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s.")') minval(comms)
                 write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s.")') maxval(comms)
@@ -666,8 +666,8 @@ contains
         use load_balancing, only: do_load_balancing
 
         integer(int_p), intent(in) :: real_factor
-        integer(lint), intent(in), optional :: min_attempts
-        integer(lint), intent(out) :: nattempts
+        integer(int_64), intent(in), optional :: min_attempts
+        integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
 
         ! Reset the current position in the spawning array to be the
@@ -811,7 +811,7 @@ contains
 
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath
-        integer(lint), intent(in) :: nattempts
+        integer(int_64), intent(in) :: nattempts
 
         ! Add the spawning rate (for the processor) to the running
         ! total.
