@@ -693,7 +693,7 @@ contains
         use calc, only: trial_function, neel_singlet
         use heisenberg_estimators, only: neel_singlet_data
         use hfs_data, only: O00
-        use proc_pointers, only: sc0_ptr, op0_ptr
+        use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -713,11 +713,10 @@ contains
             walker_data(2,pos) = op0_ptr(sys, det) - O00
         else if (doing_calc(dmqmc_calc)) then
             if (propagate_to_beta) then
-                ! Store the HF energy of the Slater determinant for so we can
-                ! propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj), where H^T is
-                ! the "trial" Hamiltonian.
+                ! Store H^T_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj),
+                ! where H^T_ii is the "trial" Hamiltonian.
                 associate(bl=>sys%basis%string_len)
-                    walker_data(1,pos) = sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - (walker_data(1,pos)+H00)
+                    walker_data(1,pos) = trial_dm_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - (walker_data(1,pos) + H00)
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.

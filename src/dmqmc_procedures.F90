@@ -659,7 +659,7 @@ contains
         use fciqmc_data, only: real_factor, metropolis_attempts, reuse_initial_config
         use fciqmc_data, only: f0, qmc_spawn, sampling_size, initial_config
         use parallel, only: nprocs, nthreads, parent
-        use proc_pointers, only: sc0_ptr, gen_excit_ptr, decoder_ptr
+        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
         use utils, only: int_fmt
 
         type(dSFMT_t), intent(inout) :: rng
@@ -723,7 +723,7 @@ contains
                 do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
                     f_old = qmc_spawn%sdata(:sys%basis%string_len,idet)
                     ! [todo] - This information should be saved in sdata perhaps.
-                    E_old = sc0_ptr(sys, f_old)
+                    E_old = trial_dm_ptr(sys, f_old)
                     ftmp = f_old
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
@@ -732,17 +732,18 @@ contains
                     ! the current determinant.
                     call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
                     ! Check that we didn't generate a null excitation.
-                    ! [todo] - Modify accordingly if pgen is ever calculated for the ueg.
+                    ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
                     if (hmatel == 0) cycle
                     nsuccess = nsuccess + 1
                     call create_excited_det(sys%basis, cdet%f, connection, f_new)
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
-                    E_new = sc0_ptr(sys, f_new)
+                    E_new = trial_dm_ptr(sys, f_new)
                     prob = exp(-1.0_dp*beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
                         ! Accept the new determinant by modifying the entry
                         ! in spawned walker list.
+                        naccept = naccept + 1
                         qmc_spawn%sdata(:sys%basis%string_len,idet) = f_new
                         qmc_spawn%sdata(sys%basis%string_len+1:sys%basis%tensor_label_len,idet) = f_new
                     end if

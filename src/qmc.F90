@@ -604,7 +604,7 @@ contains
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol
-        use hamiltonian_ueg, only: slater_condon0_ueg
+        use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
         use importance_sampling
@@ -716,6 +716,13 @@ contains
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
 
+            if (propagate_to_beta) then
+                if (free_electron_trial) then
+                    trial_dm_ptr => kinetic_energy_ueg
+                else
+                    trial_dm_ptr => slater_condon0_ueg
+                end if
+            end if
             if (no_renorm) then
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ

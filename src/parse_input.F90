@@ -219,6 +219,8 @@ contains
                 call readi(metropolis_attempts)
             case('REUSE_INITIAL_CONFIG')
                 reuse_initial_config = .true.
+            case('FREE_ELECTRON_TRIAL')
+                free_electron_trial = .true.
 
             case('CCMC_FULL_NC')
                 ccmc_full_nc = .true.
@@ -860,6 +862,7 @@ contains
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(reuse_initial_config, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)

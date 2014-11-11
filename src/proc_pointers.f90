@@ -142,6 +142,7 @@ procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_correlation_ptr =>
 
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
+procedure(i_sc0), pointer :: trial_dm_ptr => null()
 
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 
