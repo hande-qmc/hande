@@ -1,0 +1,11 @@
+( Exact size of CISDT space is 36021. )
+read INTDUMP
+nel 10
+
+ms 0
+sym 0
+
+truncation_level 3
+estimate_hilbert_space 1000000
+
+seed 160806604
