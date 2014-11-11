@@ -219,11 +219,13 @@ contains
         integer(int_64) :: nattempts_spawn
         real(dp) :: nparticles_old(sampling_size)
         type(det_info_t), allocatable :: cdet(:)
+        type(det_info_t), allocatable :: ldet(:), rdet(:)
 
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events, ierr
         type(excit_t) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
+        type(cluster_t), allocatable :: left_cluster(:), right_cluster(:)
         type(dSFMT_t), allocatable :: rng(:)
         real(p) :: junk, bloom_threshold
 
@@ -270,15 +272,33 @@ contains
         call check_allocate('cdet', size(cdet), ierr)
         allocate(cluster(0:nthreads-1), stat=ierr)
         call check_allocate('cluster', size(cluster), ierr)
+        if (linked_cluster) then
+            allocate(ldet(0:nthreads-1), stat=ierr)
+            call check_allocate('ldet', size(ldet), ierr)
+            allocate(rdet(0:nthreads-1), stat=ierr)
+            call check_allocate('rdet', size(rdet), ierr)
+            allocate(left_cluster(0:nthreads-1), stat=ierr)
+            call check_allocate('left_cluster', size(left_cluster), ierr)
+            allocate(right_cluster(0:nthreads-1), stat=ierr)
+            call check_allocate('right_cluster', size(right_cluster), ierr)
+        end if
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
             call dSFMT_init(seed+iproc+i*nprocs, 50000, rng(i))
             ! ...and allocate det_info_t components...
             call alloc_det_info_t(sys, cdet(i))
+            if (linked_cluster) then
+                call alloc_det_info_t(sys, ldet(i))
+                call alloc_det_info_t(sys, rdet(i))
+            end if
             ! ...and cluster_t components
             if (linked_cluster) then
                 allocate(cluster(i)%excitors(4), stat=ierr)
                 call check_allocate('cluster%excitors', 4, ierr)
+                allocate(left_cluster(i)%excitors(4), stat=ierr)
+                call check_allocate('left_cluster%excitors', 4, ierr)
+                allocate(right_cluster(i)%excitors(4), stat=ierr)
+                call check_allocate('right_cluster%excitors', 4, ierr)
             else
                 allocate(cluster(i)%excitors(truncation_level+2), stat=ierr)
                 call check_allocate('cluster%excitors', truncation_level+2, ierr)
@@ -448,7 +468,9 @@ contains
                 !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
                 !$omp        proj_energy, real_factor, min_cluster_size,        &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
-                !$omp        nsingle_excitors, cluster_multispawn_threshold, linked_cluster)
+                !$omp        nsingle_excitors, cluster_multispawn_threshold,    &
+                !$omp        linked_cluster, ldet, rdet, left_cluster,          &
+                !$omp        right_cluster)
                 it = get_thread_id()
                 iexcip_pos = 1
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
@@ -533,7 +555,8 @@ contains
                         nattempts_spawn = nattempts_spawn + nspawnings_total
                         do i = 1, nspawnings_total
                            call linked_spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
-                                          gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit)
+                                          gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
+                                          rdet(it), left_cluster(it), right_cluster(it))
 
                            if (nspawned /= 0_int_p) then
                                call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn, fexcit)
@@ -1657,7 +1680,7 @@ contains
     end function unlinked_commutator
 
     subroutine linked_spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
-                            nspawnings_total, fexcit)
+                            nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
         ! operators excite from/to the same orbital (one in the "left cluster"
@@ -1717,6 +1740,8 @@ contains
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
         integer(i0) :: fexcit(sys%basis%string_len)
+        type(det_info_t), intent(inout) :: ldet, rdet
+        type(cluster_t), intent(inout) :: left_cluster, right_cluster
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -1724,10 +1749,8 @@ contains
         integer(int_p), parameter :: parent_sign = 1_int_p
         integer :: excitor_sign, excitor_level
 
-        type(cluster_t) :: left_cluster, right_cluster
         integer :: ierr, i, j, npartitions, orb, bit_pos, bit_element
         real(p) :: ppart, pgen, hmatel, pop, delta_h, cluster_population
-        type(det_info_t) :: ldet, rdet
         logical :: allowed
         integer(i0) :: new_det(sys%basis%string_len)
 
@@ -1735,13 +1758,6 @@ contains
         ! 2) Choose excitation from right_cluster|D_0>
         ! 3) Evaluate commutator and pgen
         ! 4) Attempt to spawn
-
-        call alloc_det_info_t(sys, rdet)
-        call alloc_det_info_t(sys, ldet)
-        allocate(right_cluster%excitors(4), stat=ierr)
-        call check_allocate('right_cluster%excitors', 4, ierr)
-        allocate(left_cluster%excitors(4), stat=ierr)
-        call check_allocate('left_cluster%excitors', 4, ierr)
 
         call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed)
         pop = 1
@@ -1826,13 +1842,6 @@ contains
         else
             nspawn = 0
         end if
-
-        deallocate(right_cluster%excitors, stat=ierr)
-        call check_deallocate('right_cluster%excitors', ierr)
-        deallocate(left_cluster%excitors, stat=ierr)
-        call check_deallocate('left_cluster%excitors', ierr)
-        call dealloc_det_info_t(rdet)
-        call dealloc_det_info_t(ldet)
 
     end subroutine linked_spawner_ccmc
     
