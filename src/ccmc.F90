@@ -1408,7 +1408,7 @@ contains
 
     end subroutine collapse_cluster
 
-    pure subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_sign)
+    pure subroutine convert_excitor_to_determinant(excitor, excitor_level, excitor_sign, reference)
 
         ! We usually consider an excitor as a bit string representation of the
         ! determinant formed by applying the excitor (a group of annihilation
@@ -1460,6 +1460,7 @@ contains
         !    excitor_level: excitation level, relative to the reference
         !        determinant, of the excitor.  Equal to the number of
         !        annihilation (or indeed creation) operators in the excitor.
+        !   reference (optional): bit string of reference determinant
         ! Out:
         !    excitor_sign: sign due to applying the excitor to the reference
         !    determinant to form a Slater determinant, i.e. < D_i | a_i D_0 >,
@@ -1473,12 +1474,20 @@ contains
         integer(i0), intent(in) :: excitor(:)
         integer, intent(in) :: excitor_level
         integer, intent(inout) :: excitor_sign
+        integer(i0), intent(in), optional :: reference(:)
 
+        integer(i0) :: f(size(excitor))
         integer(i0) :: excitation(size(excitor))
         integer :: ibasis, ibit, ncreation, nannihilation
 
+        if (present(reference)) then
+            f = reference
+        else
+            f = f0
+        end if
+
         ! Bits involved in the excitation from the reference determinant.
-        excitation = ieor(f0, excitor)
+        excitation = ieor(f, excitor)
 
         nannihilation = excitor_level
         ncreation = excitor_level
@@ -1489,7 +1498,7 @@ contains
         ! by applying the excitor to the reference determinant.
         do ibasis = 1, size(excitor)
             do ibit = 0, i0_end
-                if (btest(f0(ibasis),ibit)) then
+                if (btest(f(ibasis),ibit)) then
                     ! Occupied orbital in reference.
                     if (btest(excitation(ibasis),ibit)) then
                         ! Orbital excited from...annihilate electron.
@@ -1662,19 +1671,15 @@ contains
         call create_excited_det(sys%basis, deti, connection, detj)
         hmatel = get_hmatel(sys, deti, detj)
 
-        ! Possible sign changes
-        ! <D_k|a_i|D_j> = <D_k|a_i a_j|D_0> * <D_j|a_j|D_0>
+        ! Possible sign changes from <D_k|a_unlinked|D_i^a> and <D|a|D_0>
         hmatel = hmatel*cluster%cluster_to_det_sign
         excitor_level = get_excitation_level(f0, deti)
         call convert_excitor_to_determinant(deti, excitor_level, excitor_sign)
         if (excitor_sign < 0) hmatel = -hmatel
 
         call create_excited_det(sys%basis, cdet, connection, deti)
-        excitor_level = get_excitation_level(f0, detj)
-        call convert_excitor_to_determinant(detj, excitor_level, excitor_sign)
-        if (excitor_sign < 0) hmatel = -hmatel
-        excitor_level = get_excitation_level(f0, deti)
-        call convert_excitor_to_determinant(deti, excitor_level, excitor_sign)
+        excitor_level = get_excitation_level(deti, detj)
+        call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, detj)
         if (excitor_sign < 0) hmatel = -hmatel
 
     end function unlinked_commutator
@@ -1717,7 +1722,7 @@ contains
         !        not necessarily easy to get from the connection)
 
         use ccmc_data, only: cluster_t
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use fciqmc_data, only: f0
@@ -1725,7 +1730,6 @@ contains
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
         use parallel, only: iproc
-        use checking, only: check_allocate, check_deallocate
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
 
@@ -1751,15 +1755,16 @@ contains
 
         integer :: ierr, i, j, npartitions, orb, bit_pos, bit_element
         real(p) :: ppart, pgen, hmatel, pop, delta_h, cluster_population
-        logical :: allowed
+        logical :: allowed, sign_change
         integer(i0) :: new_det(sys%basis%string_len)
+        integer(i0) :: excitor(sys%basis%string_len)
 
         ! 1) Choose an order for the excitors 
         ! 2) Choose excitation from right_cluster|D_0>
         ! 3) Evaluate commutator and pgen
         ! 4) Attempt to spawn
 
-        call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed)
+        call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change)
         pop = 1
 
         if (allowed) then
@@ -1783,7 +1788,7 @@ contains
                 do i = 1, npartitions
                     ! Iterate over all allowed partitions and get contribution to
                     ! hmatel and pgen
-                    call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, i)
+                    call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change, i)
                     if (allowed) then
                         ! need to check that the excitation is valid!
                         do j = 1, connection%nexcit
@@ -1808,20 +1813,26 @@ contains
                         if (allowed) then
 
                             call create_excited_det(sys%basis, rdet%f, connection, new_det)
-                            call decoder_ptr(sys, rdet%f, rdet)
                             pgen = pgen + calc_pgen(sys, rdet%f, new_det, connection, rdet)
 
                             ! Sign of the term in the commutator depends on the number of Ts in left_cluster
                             ! also need to account for possible sign change on going from excitor to determinant
-                            ! for each of the determinants
+                            ! for each of the determinants and when collapsing the clusters
+                            ! Need <D_right|right_cluster|D0> and <D_spawn|left_cluster|D>
                             delta_h = get_hmatel(sys, rdet%f, new_det)
+
                             if (mod(left_cluster%nexcitors,2) /= 0) delta_h = -delta_h
+
                             excitor_level = get_excitation_level(f0, rdet%f)
                             call convert_excitor_to_determinant(rdet%f, excitor_level, excitor_sign)
                             if (excitor_sign < 0) delta_h = -delta_h
-                            excitor_level = get_excitation_level(f0, new_det)
-                            call convert_excitor_to_determinant(new_det, excitor_level, excitor_sign)
+
+                            excitor_level = get_excitation_level(fexcit, new_det)
+                            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, new_det)
                             if (excitor_sign < 0) delta_h = -delta_h
+
+                            if (sign_change) delta_h = -delta_h
+
                             hmatel = hmatel + delta_h
                         end if
                     end if
@@ -1832,6 +1843,9 @@ contains
 
                 ! correct hmatel for cluster amplitude 
                 hmatel = hmatel*cluster%amplitude
+                excitor_level = get_excitation_level(fexcit, f0)
+                call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign)
+                if (excitor_sign < 0) hmatel = -hmatel
 
                 nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
@@ -1845,7 +1859,7 @@ contains
 
     end subroutine linked_spawner_ccmc
     
-    subroutine partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet, rdet, allowed, part_number)
+    subroutine partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet, rdet, allowed, sign_change, part_number)
         ! Divides a cluster into two halves such that any excitors that share an
         ! orbital are in different halves
         ! In:
@@ -1862,6 +1876,7 @@ contains
         !    ldet: the determinant formed by applying left_cluster to the reference
         !    rdet: the determinant formed by applying right_cluster to the reference
         !    allowed: are left_cluster and right_cluster both valid clusters
+        !    sign_change: is there a net sign change on collapsing the two clusters
 
         use ccmc_data, only: cluster_t
         use system, only: sys_t
@@ -1873,7 +1888,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: ppart
         integer(i0), intent(inout) :: ldet(sys%basis%string_len), rdet(sys%basis%string_len)
-        logical, intent(out) :: allowed
+        logical, intent(out) :: allowed, sign_change
         integer, intent(in), optional :: part_number
 
         integer :: i, j, in_left, in_right, side
@@ -1931,6 +1946,8 @@ contains
 
         left_cluster%nexcitors = in_left
         right_cluster%nexcitors = in_right
+
+        sign_change = (population < 0)
 
     end subroutine partition_cluster
 
