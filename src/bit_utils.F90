@@ -1,7 +1,9 @@
+#ifdef USE_POPCNT
 module popcnt_intrinsic
     ! Module which can be used along to rename the F2008 popcnt intrinsic.
     intrinsic popcnt
 end module popcnt_intrinsic
+#endif
 
 module bit_utils
 
