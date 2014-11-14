@@ -70,7 +70,6 @@ contains
         ! Includes an uniform external field, if one is added.
 
         use calc, only: ms_in
-        use real_lattice, only: connected_orbs
         use bit_utils, only: count_set_bits
         use system, only: sys_t
 
@@ -88,7 +87,7 @@ contains
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)
-                    g = iand(f_not, connected_orbs(:,basis_find))
+                    g = iand(f_not, sys%real_lattice%connected_orbs(:,basis_find))
                     counter = counter + sum(count_set_bits(g))
                 end if
             end do
@@ -126,7 +125,6 @@ contains
         ! This function is for diagonal elements for the Hamiltonian which includes
         ! a staggered magnetization term.
 
-        use real_lattice, only: connected_orbs
         use bit_utils, only: count_set_bits
         use system, only: sys_t
 
@@ -151,7 +149,7 @@ contains
             do ipos = 0, i0_end
                 if (btest(f(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)
-                    g = iand(f_not, connected_orbs(:,basis_find))
+                    g = iand(f_not, sys%real_lattice%connected_orbs(:,basis_find))
                     counter = counter + sum(count_set_bits(g))
                 end if
             end do
@@ -197,7 +195,6 @@ contains
         ! uniform and staggered external fields applied, since these additions
         ! only alter the diagonal elements.
 
-        use real_lattice, only: connected_orbs
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -209,7 +206,7 @@ contains
         ipos = sys%basis%bit_lookup(1,a)
         iel = sys%basis%bit_lookup(2,a)
 
-        if (btest(connected_orbs(iel,i), ipos)) then
+        if (btest(sys%real_lattice%connected_orbs(iel,i), ipos)) then
             ! If the two sites connected and of opposite spin, matrix element is -J/2.
             ! As get_excitation finds where a 'set bit' has moved from and
             ! to, the latter condition is already met.

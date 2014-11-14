@@ -86,7 +86,7 @@ contains
         !        the Hubbard model in real space.
 
         use determinants, only: decode_det
-        use real_lattice, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
+        use real_lattice, only: get_one_e_int_real, get_coulomb_matel_real
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -103,7 +103,7 @@ contains
         ! which case it has a kinetic interaction with its self-image.
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
-        if (t_self_images) then
+        if (sys%real_lattice%t_self_images) then
             call decode_det(sys%basis, f, root_det)
             do i = 1, sys%nel
                 hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))

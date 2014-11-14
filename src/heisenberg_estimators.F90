@@ -39,7 +39,6 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit, get_excitation
         use system, only: sys_t
-        use real_lattice, only: connected_orbs
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
@@ -64,7 +63,7 @@ contains
             bit_position = sys%basis%bit_lookup(1,excitation%from_orb(1))
             bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
 
-            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
+            if (btest(sys%real_lattice%connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
                  hmatel = -sys%heisenberg%J/2
                  proj_energy_sum = proj_energy_sum + hmatel*pop
              end if
@@ -211,7 +210,6 @@ contains
         !       of 0-1 bonds, where the 1 (the up spin) is on the first sublattice.
 
         use bit_utils, only: count_set_bits
-        use real_lattice, only: connected_orbs
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -231,7 +229,7 @@ contains
             do ipos = 0, i0_end
                 if (btest(f_mask(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)
-                    g = iand(f_not, connected_orbs(:,basis_find))
+                    g = iand(f_not, sys%real_lattice%connected_orbs(:,basis_find))
                     lattice_1_up = lattice_1_up + sum(count_set_bits(g))
                 end if
             end do

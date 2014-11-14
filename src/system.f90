@@ -91,6 +91,66 @@ type sys_real_lattice_t
 
     ! See also specific (i.e. Hubbard and Heisenberg) structures.
 
+    ! The kinetic term is constant in the real space formulation of the Hubbard and Chung--Landau Hamiltonians:
+    ! only the connectivity of the lattice matters.
+    ! tmat(:,i) is a bit string.  The j-th bit corresponding to a basis function
+    ! (as given by bit_lookup) is set if i and j are connected.
+    ! We need to distinguish between connections within the cell and those due to
+    ! periodic boundaries.  We do this by the following strategy:
+    !   a) j>i.
+    !          If the j-th bit is set then i and j are connected within the crystal
+    !          cell.
+    !   b) j<=i.
+    !          If the i-th bit of tmat(:,j) is set, then i and j are connected due
+    !          to periodic boundary conditions.
+    ! This may seem like a somewhat arbitrary choice, but it enables for the
+    ! correct evaluation of the kinetic energy using bit operations.
+    ! Further it enables us to pick up cases such as the 2x2 (non-tilted) system,
+    ! where a site is connected to a different site and that site's periodic image.
+    integer(i0), allocatable :: tmat(:,:) ! (string_len, nbasis)
+
+    ! Orbitals i and j are connected if the j-th bit of connected_orbs(:,i) is
+    ! set.  This is a bit like tmat but without a bit set for a site being its own
+    ! periodic image.
+    integer(i0), allocatable :: connected_orbs(:,:) ! (string_len, nbasis)
+
+    ! connected_sites(0,i) contains the number of unique sites connected to i.
+    ! connected_sites(1:,i) contains the list of sites connected to site i (ie is the
+    ! decoded/non-bit list form of connected_orbs).
+    ! If connected_orbs(j,i) is 0 then it means there are fewer than 2*ndim unique sites
+    ! that are connected to i that are not a periodic image of i (or connected to
+    ! i both directly and via periodic boundary conditions).
+    ! For the triangular lattice, there are 3*ndim bonds, and ndim must equal 2,
+    ! so each site is connected to 6.
+    integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
+
+    ! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
+    ! are next nearest neighbors. For example, on a square lattice in the
+    ! Heisenberg model, if we consider a spin, we can get to a next-nearest
+    ! neighbor spin by going one right then one up, or to the same spin by going
+    ! one up and then one right - there are two different paths, so the correpsonding
+    ! value of next_nearest_orbs would be 2 for these spins. This is an important
+    ! number to know when calculating the thermal energy squared in DMQMC.
+    ! If two spins are not next-nearest neighbors by any path then this quantity is 0.
+    ! By next nearest neighbors, it is meant sites which can be joined by exactly two
+    ! bonds - any notion one may have of where the spins are located spatially is unimportant.
+    integer(i0), allocatable :: next_nearest_orbs(:,:) ! (nbasis, nbasis)
+
+    ! True if any site is its own periodic image.
+    ! This is the case if one dimension (or more) has only one site per crystalisystem
+    ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
+    ! This is the only way that the integral < i | T | i >, where i is a basis
+    ! function centred on a lattice site, can be non-zero.
+    logical :: t_self_images
+
+    ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
+    ! False if we are modelling an infinite lattice
+    ! The code is set up to model inifinite lattices by default, however in order
+    ! to model only a finite "cluster" of sites, all one need do is set the
+    ! connection matrix elements corresponding to connections accross cell
+    ! boundaries (i.e. periodic boundary conditions) to 0
+    logical :: finite_cluster = .false. ! default to infinite crystals
+
 end type sys_real_lattice_t
 
 type sys_hubbard_t
@@ -415,6 +475,18 @@ contains
             end if
         end if
         if (present(sr)) then
+            if (allocated(sr%tmat)) then
+                deallocate(sr%tmat, stat=ierr)
+                call check_deallocate('sr%tmat',ierr)
+            end if
+            if (allocated(sr%connected_orbs)) then
+                deallocate(sr%connected_orbs, stat=ierr)
+                call check_deallocate('sr%connected_orbs',ierr)
+            end if
+            if (allocated(sr%connected_sites)) then
+                deallocate(sr%connected_sites, stat=ierr)
+                call check_deallocate('sr%connected_sites',ierr)
+            end if
         end if
 
     end subroutine end_lattice_system
