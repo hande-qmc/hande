@@ -1755,7 +1755,7 @@ contains
 
         integer :: ierr, i, j, npartitions, orb, bit_pos, bit_element
         real(p) :: ppart, pgen, hmatel, pop, delta_h, cluster_population
-        logical :: allowed, sign_change
+        logical :: allowed, sign_change, linked
         integer(i0) :: new_det(sys%basis%string_len)
         integer(i0) :: excitor(sys%basis%string_len)
 
@@ -1780,7 +1780,11 @@ contains
                 allowed = .false.
             end if
 
-            if (allowed) then
+            ! If the excitation is not linked to the cluster, the matrix element
+            ! is 0 and we can reject the spawning attempt.
+            call linked_excitation(sys%basis, connection, cluster, linked, excitor)
+
+            if (allowed .and. linked) then
                 ! pgen and hmatel need recalculating to account for other permutations
                 npartitions = nint(1.0/ppart)
                 hmatel = 0.0_p
@@ -1933,7 +1937,6 @@ contains
             else
                 ! add to right
                 in_right = in_right + 1
-                right_cluster%excitors(1)%f => null()
                 right_cluster%excitors(in_right)%f => cluster%excitors(i)%f
                 if (in_right == 1) then
                     rdet = cluster%excitors(i)%f
