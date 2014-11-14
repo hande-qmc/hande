@@ -33,7 +33,6 @@ contains
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
-        use folded_spectrum_utils, only: cdet_excit
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
@@ -78,9 +77,6 @@ contains
 
         ! Allocate det_info_t components.
         call alloc_det_info_t(sys, cdet, .false.)
-        ! Folded spectrum *needs* the bit strings to be allocated as it needs
-        ! be able to manipulate the bit string to create excited states.
-        if (doing_calc(folded_spectrum)) call alloc_det_info_t(sys, cdet_excit)
 
         ! Create the semi_stoch_t object, determ.
         ! If the user has asked to use semi-stochastic from the first iteration
@@ -245,7 +241,6 @@ contains
         call dealloc_semi_stoch_t(determ)
 
         call dealloc_det_info_t(cdet, .false.)
-        if (doing_calc(folded_spectrum)) call dealloc_det_info_t(cdet_excit)
 
     end subroutine do_fciqmc
 
