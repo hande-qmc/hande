@@ -152,7 +152,9 @@ type sys_read_in_t
     ! Contribution from frozen core orbitals and nucleii terms to dipole moment
     real(p) :: dipole_core
 
+    ! Single-particle orbitals transform according to Lz symmetry
     logical :: useLz = .false.
+
 end type sys_read_in_t
 
 ! --- System data container structure ---
