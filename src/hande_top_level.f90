@@ -150,6 +150,7 @@ contains
         use parallel, only: parent, end_parallel
         use real_lattice, only: end_real_space
         use momentum_symmetry, only: end_momentum_symmetry
+        use molecular_integrals, only: end_one_body_int_store, end_two_body_int_store
         use report, only: end_report
 
         type(sys_t), intent(inout) :: sys
@@ -163,6 +164,11 @@ contains
         !   end_ routines should surround every deallocate statement with a test
         !   that the array is allocated.
         call end_lattice_system(sys%lattice, sys%k_lattice, sys%real_lattice)
+
+        call end_one_body_int_store(sys%read_in%one_e_h_integrals)
+        call end_one_body_int_store(sys%read_in%one_body_op_integrals)
+        call end_two_body_int_store(sys%read_in%coulomb_integrals)
+
         call dealloc_basis_t(sys%basis)
         call end_momentum_symmetry()
         call end_determinants()

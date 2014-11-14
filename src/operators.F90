@@ -238,7 +238,7 @@ contains
         !    is a one-body operator.
 
         use determinants, only: decode_det
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, one_body_op_integrals
+        use molecular_integrals, only: get_one_body_int_mol_nonzero
         use point_group_symmetry, only: gamma_sym
         use system, only: sys_t
 
@@ -257,10 +257,10 @@ contains
         ! The integrals can only be non-zero if the operator is totally symmetric.
 
         intgrl = sys%read_in%dipole_core
-        if (one_body_op_integrals%op_sym == gamma_sym) then
+        if (sys%read_in%one_body_op_integrals%op_sym == gamma_sym) then
             do iel = 1, sys%nel
                 iorb = occ_list(iel)
-                intgrl = intgrl + get_one_body_int_mol_nonzero(one_body_op_integrals, iorb, iorb, sys%basis%basis_fns)
+                intgrl = intgrl + get_one_body_int_mol_nonzero(sys%read_in%one_body_op_integrals, iorb, iorb, sys%basis%basis_fns)
             end do
         end if
 
@@ -281,7 +281,7 @@ contains
         !        between a determinant and a single excitation of it for systems
         !        defined by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol, one_body_op_integrals
+        use molecular_integrals, only: get_one_body_int_mol
         use system, only: sys_t
 
         use const, only: p
@@ -291,7 +291,7 @@ contains
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 
-        intgrl = get_one_body_int_mol(one_body_op_integrals, i, a, sys%basis%basis_fns)
+        intgrl = get_one_body_int_mol(sys%read_in%one_body_op_integrals, i, a, sys%basis%basis_fns)
 
         if (perm) intgrl = -intgrl
 
@@ -317,7 +317,7 @@ contains
         ! symmetry).  This is less safe that one_body1_mol but much faster as it
         ! allows symmetry checking to be skipped in the integral lookups.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, one_body_op_integrals
+        use molecular_integrals, only: get_one_body_int_mol_nonzero
         use system, only: sys_t
 
         use const, only: p
@@ -327,7 +327,7 @@ contains
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 
-        intgrl = get_one_body_int_mol_nonzero(one_body_op_integrals, i, a, sys%basis%basis_fns)
+        intgrl = get_one_body_int_mol_nonzero(sys%read_in%one_body_op_integrals, i, a, sys%basis%basis_fns)
 
         if (perm) intgrl = -intgrl
 

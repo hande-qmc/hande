@@ -48,7 +48,6 @@ contains
         use excitations, only: excit, find_excitation_permutation1
         use excit_gen_mol, only: choose_ia_mol, calc_pgen_single_mol
         use fciqmc_data, only: pattempt_single
-        use molecular_integrals, only: one_body_op_integrals
         use operators, only: one_body1_mol_excit
         use system, only: sys_t
 
@@ -64,7 +63,7 @@ contains
         integer :: op_sym
         logical :: allowed_excitation
 
-        op_sym = one_body_op_integrals%op_sym
+        op_sym = sys%read_in%one_body_op_integrals%op_sym
 
         ! 1. Select orbital to excite from and orbital to excit into.
         call choose_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
@@ -124,7 +123,6 @@ contains
         use excitations, only: excit, find_excitation_permutation1
         use excit_gen_mol, only: find_ia_mol, calc_pgen_single_mol_no_renorm
         use fciqmc_data, only: pattempt_single
-        use molecular_integrals, only: one_body_op_integrals
         use operators, only: one_body1_mol_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -139,7 +137,7 @@ contains
         integer :: op_sym
         logical :: allowed_excitation
 
-        op_sym = one_body_op_integrals%op_sym
+        op_sym = sys%read_in%one_body_op_integrals%op_sym
 
         ! 1. Select orbital to excite from and orbital to excit into.
         call find_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &

@@ -79,8 +79,7 @@ contains
         !    systems defined by integrals read in from an FCIDUMP file.
 
         use determinants, only: decode_det
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
-                                       one_e_h_integrals, coulomb_integrals
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -93,17 +92,19 @@ contains
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(sys%basis, f, occ_list)
 
-        hmatel = sys%read_in%Ecore
-        do iel = 1, sys%nel
-            i = occ_list(iel)
-            hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_h_integrals, i, i, sys%basis%basis_fns)
-            do jel = iel+1, sys%nel
-                j = occ_list(jel)
-                hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_integrals, i, j, i, j, sys%basis%basis_fns)
-                if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) &
-                              hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, j, i, sys%basis%basis_fns)
+        associate(one_e_ints=>sys%read_in%one_e_h_integrals, coulomb_ints=>sys%read_in%coulomb_integrals)
+            hmatel = sys%read_in%Ecore
+            do iel = 1, sys%nel
+                i = occ_list(iel)
+                hmatel = hmatel + get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
+                do jel = iel+1, sys%nel
+                    j = occ_list(jel)
+                    hmatel = hmatel + get_two_body_int_mol_nonzero(coulomb_ints, i, j, i, j, sys%basis%basis_fns)
+                    if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) &
+                                  hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
+                end do
             end do
-        end do
+        end associate
 
     end function slater_condon0_mol
 
@@ -123,8 +124,7 @@ contains
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol, &
-                                       one_e_h_integrals, coulomb_integrals
+        use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -140,14 +140,16 @@ contains
         else
             ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
-            hmatel = get_one_body_int_mol(one_e_h_integrals, i, a, sys%basis%basis_fns)
+            associate(one_e_ints=>sys%read_in%one_e_h_integrals, coulomb_ints=>sys%read_in%coulomb_integrals)
+                hmatel = get_one_body_int_mol(one_e_ints, i, a, sys%basis%basis_fns)
 
-            do iel = 1, sys%nel
-                if (occ_list(iel) /= i) &
-                    hmatel = hmatel &
-                        + get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), a, occ_list(iel), sys%basis%basis_fns) &
-                        - get_two_body_int_mol(coulomb_integrals, i, occ_list(iel), occ_list(iel), a, sys%basis%basis_fns)
-            end do
+                do iel = 1, sys%nel
+                    if (occ_list(iel) /= i) &
+                        hmatel = hmatel &
+                            + get_two_body_int_mol(coulomb_ints, i, occ_list(iel), a, occ_list(iel), sys%basis%basis_fns) &
+                            - get_two_body_int_mol(coulomb_ints, i, occ_list(iel), occ_list(iel), a, sys%basis%basis_fns)
+                end do
+            end associate
 
             if (perm) hmatel = -hmatel
         end if
@@ -175,8 +177,7 @@ contains
         ! symmetry).  This is less safe that slater_condon1_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero, &
-                                       one_e_h_integrals, coulomb_integrals
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -188,16 +189,18 @@ contains
 
         ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
-        associate(basis_fns=>sys%basis%basis_fns)
-            hmatel = get_one_body_int_mol_nonzero(one_e_h_integrals, i, a, basis_fns)
+        associate(basis_fns=>sys%basis%basis_fns, &
+                  one_e_ints=>sys%read_in%one_e_h_integrals, &
+                  coulomb_ints=>sys%read_in%coulomb_integrals)
+            hmatel = get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns)
 
             do iel = 1, sys%nel
                 if (occ_list(iel) /= i) then
                     hmatel = hmatel &
-                                + get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), a, occ_list(iel), basis_fns)
+                                + get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
                         hmatel = hmatel &
-                                    - get_two_body_int_mol_nonzero(coulomb_integrals, i, occ_list(iel), occ_list(iel), a, basis_fns)
+                                    - get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
                 end if
             end do
         end associate
@@ -227,7 +230,7 @@ contains
         !
         ! Note that we don't actually need to directly refer to |D>.
 
-        use molecular_integrals, only: get_two_body_int_mol, coulomb_integrals
+        use molecular_integrals, only: get_two_body_int_mol
         use system, only: sys_t
         use point_group_symmetry, only: cross_product_pg_sym
 
@@ -239,8 +242,8 @@ contains
          
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = get_two_body_int_mol(coulomb_integrals, i, j, a, b, sys%basis%basis_fns) &
-                 - get_two_body_int_mol(coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
+        hmatel = get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns) &
+                 - get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
 
         if (perm) hmatel = -hmatel
 
@@ -272,7 +275,7 @@ contains
         ! symmetry).  This is less safe that slater_condon2_mol but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
-        use molecular_integrals, only: get_two_body_int_mol_nonzero, coulomb_integrals
+        use molecular_integrals, only: get_two_body_int_mol_nonzero
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -285,9 +288,9 @@ contains
         hmatel = 0.0_p
 
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) &
-            hmatel = get_two_body_int_mol_nonzero(coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
+            hmatel = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(b)%Ms) &
-            hmatel = hmatel - get_two_body_int_mol_nonzero(coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
+            hmatel = hmatel - get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
 
         if (perm) hmatel = -hmatel
 

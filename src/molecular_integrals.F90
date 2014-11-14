@@ -12,19 +12,9 @@ use molecular_integral_types
 implicit none
 
 ! Indexing type for two_body integral stores.
-type int_indx
+type, private :: int_indx
     integer :: spin_channel, indx
-end type
-
-! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
-type(one_body) :: one_e_h_integrals
-
-! Store for <i|o|j>, where o is a one-electron operator.
-type(one_body) :: one_body_op_integrals
-
-! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
-! functions and 1/r_12 is the Coulomb operator.
-type(two_body) :: coulomb_integrals
+end type int_indx
 
 contains
 
@@ -206,42 +196,6 @@ contains
         end if
 
     end subroutine end_two_body_int_store
-
-!--- Allocate standard molecular integral stores ---
-
-    subroutine init_molecular_integrals(uhf, nbasis)
-
-        ! Initialise integral stores for molecular integrals (subsequently read
-        ! in from an FCIDUMP file).
-
-        ! *Must* be called after point group symmetry is initialised.
-
-        ! In:
-        !    uhf: whether integral store is from a UHF calculation or RHF
-        !       calculation.
-        !    nbasis: number of single-particle basis functions.
-
-        use point_group_symmetry, only: gamma_sym
-
-        logical, intent(in) :: uhf
-        integer, intent(in) :: nbasis
-
-        call init_one_body_int_store(uhf, gamma_sym, one_e_h_integrals)
-        call init_two_body_int_store(uhf, nbasis, gamma_sym, coulomb_integrals)
-
-    end subroutine init_molecular_integrals
-
-    subroutine end_molecular_integrals()
-
-        ! Deallocate arrays containing molecular integrals.
-
-        call end_one_body_int_store(one_e_h_integrals)
-        call end_two_body_int_store(coulomb_integrals)
-
-        ! BONUS!
-        call end_one_body_int_store(one_body_op_integrals)
-
-    end subroutine end_molecular_integrals
 
 !--- Zeroing ---
 

@@ -18,6 +18,7 @@ module system
 
 use const
 use basis_types, only: basis_t
+use molecular_integral_types
 
 implicit none
 
@@ -227,6 +228,16 @@ type sys_read_in_t
 
     ! Single-particle orbitals transform according to Lz symmetry
     logical :: useLz = .false.
+
+    ! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
+    type(one_body) :: one_e_h_integrals
+
+    ! Store for <i|o|j>, where o is a one-electron operator.
+    type(one_body) :: one_body_op_integrals
+
+    ! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
+    ! functions and 1/r_12 is the Coulomb operator.
+    type(two_body) :: coulomb_integrals
 
 end type sys_read_in_t
 
