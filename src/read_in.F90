@@ -351,8 +351,8 @@ contains
 
         ! Initialise integral stores.
         if (t_store) then
-            call init_one_body_int_store(sys%read_in%uhf, gamma_sym, sys%read_in%one_e_h_integrals)
-            call init_two_body_int_store(sys%read_in%uhf, sys%basis%nbasis, gamma_sym, sys%read_in%coulomb_integrals)
+            call init_one_body_t(sys%read_in%uhf, gamma_sym, sys%read_in%one_e_h_integrals)
+            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, gamma_sym, sys%read_in%coulomb_integrals)
         end if
 
         if (parent) then
@@ -632,8 +632,8 @@ contains
 #ifdef PARALLEL
         call MPI_BCast(sys%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
-        call broadcast_one_body_int(sys%read_in%one_e_h_integrals, root)
-        call broadcast_two_body_int(sys%read_in%coulomb_integrals, root)
+        call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
+        call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent) then
             ! We froze some orbitals...
@@ -773,9 +773,9 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis
-        use molecular_integrals, only: one_body, init_one_body_int_store,              &
-                                       end_one_body_int_store, store_one_body_int_mol, &
-                                       zero_one_body_int_store, broadcast_one_body_int
+        use molecular_integrals, only: one_body_t, init_one_body_t,              &
+                                       end_one_body_t, store_one_body_int_mol, &
+                                       zero_one_body_int_store, broadcast_one_body_t
 
         use errors, only: stop_all
         use parallel
@@ -788,7 +788,7 @@ contains
         logical, intent(in) :: uhf
         integer, intent(in) :: nbasis, sp_fcidump_rank(0:), active_basis_offset
         type(basis_fn_t), intent(in) :: basis_fns(:)
-        type(one_body), intent(out) :: store
+        type(one_body_t), intent(out) :: store
         real(p), intent(out) :: core_term
 
         integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac, ierr
@@ -837,8 +837,8 @@ contains
         end if
 
         ! Allocate integral store on *all* processors.
-        if (allocated(store%integrals)) call end_one_body_int_store(store)
-        call init_one_body_int_store(uhf, op_sym, store)
+        if (allocated(store%integrals)) call end_one_body_t(store)
+        call init_one_body_t(uhf, op_sym, store)
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
@@ -904,7 +904,7 @@ contains
 #ifdef PARALLEL
         call MPI_BCast(core_term, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
-        call broadcast_one_body_int(store, root)
+        call broadcast_one_body_t(store, root)
 
     end subroutine read_in_one_body
 

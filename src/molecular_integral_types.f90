@@ -14,7 +14,7 @@ implicit none
 
 ! Store for one-body integrals, <i|o|j>, where i,j are spin basis functions and
 ! o is a one-electron operator.
-type one_body
+type one_body_t
     ! integrals(ispin, isym)%v(indx) corresponds to the <i|o|j> integral (assuming
     ! i,j conserve spin and spatial symmetry), where ispin and isym index the spin
     ! and spatial symmetry of i and j and indx is the combined (triangular) index of
@@ -29,11 +29,11 @@ type one_body
     integer :: op_sym
     ! From a UHF calculation?
     logical :: uhf
-end type one_body
+end type one_body_t
 
 ! Store for two-body integrals, <ij|o|ab>, where i,j,a,b are spin basis functions and
 ! o is a two-electron operator.
-type two_body
+type two_body_t
     ! integrals(ispin)%v(indx) gives the integral <ij|o_2|ab>, where ispin depends upon
     ! the spin combination (ie all alpha, all beta, and haf alpha, half beta) and
     ! indx is related to i,j,a,b.  As we deal with real orbitals only (except
