@@ -29,18 +29,17 @@ type(ueg_basis_t) :: ueg_basis
 integer(i0), allocatable :: ueg_ternary_conserve(:,:,:,:)
 
 abstract interface
-
     ! UEG-specific integral procedure pointers.
     ! The integral routines are different for 2D and UEG.  Abstract them using
     ! procedure pointers.
-    pure function i_int_ueg(sys, i, a) result(intgrl)
-        use system, only: sys_t
-        import :: p
+    pure function i_int_ueg(cell_param, b, i, a) result(intgrl)
+        use basis, only: basis_t
+        use const, only: p
         real(p) :: intgrl
-        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: cell_param
+        type(basis_t), intent(in) :: b
         integer, intent(in) :: i, a
     end function i_int_ueg
-
 end interface
 
 procedure(i_int_ueg), pointer :: coulomb_int_ueg => null()
@@ -244,21 +243,22 @@ contains
 
                 ! Coulomb
                 if (bg%basis_fns(i)%ms == bg%basis_fns(a)%ms .and.  bg%basis_fns(j)%ms == bg%basis_fns(b)%ms) &
-                    intgrl = intgrl + coulomb_int_ueg(sys, i, a)
+                    intgrl = intgrl + coulomb_int_ueg(sys%lattice%box_length(1), bg, i, a)
 
                 ! Exchange
                 if (bg%basis_fns(i)%ms == bg%basis_fns(b)%ms .and.  bg%basis_fns(j)%ms == bg%basis_fns(a)%ms) &
-                    intgrl = intgrl - coulomb_int_ueg(sys, i, b)
+                    intgrl = intgrl - coulomb_int_ueg(sys%lattice%box_length(1), bg, i, b)
 
             end if
         end associate
 
     end function get_two_e_int_ueg
 
-    pure function coulomb_int_ueg_2d(sys, i, a) result(intgrl)
+    pure function coulomb_int_ueg_2d(cell_param, basis_set, i, a) result(intgrl)
 
         ! In:
-        !    sys: system being studied.
+        !    cell_param: the length of one side of the simulation cell.
+        !    basis_set: basis set of system being studied.
         !    i: index of spin-orbital basis function.
         !    a: index of spin-orbital basis function.
         !
@@ -269,10 +269,11 @@ contains
         !    symmetry.  We also assume that i,j /= a,b (ie the integral is not
         !    a Hartree integral).
 
-        use system, only: sys_t
+        use basis, only: basis_t
 
         real(p) :: intgrl
-        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: cell_param
+        type(basis_t), intent(in) :: basis_set
         integer, intent(in) :: i, a
         integer :: q(2)
 
@@ -280,15 +281,16 @@ contains
         ! the cell.  As we only deal with cubic simulation cells (i.e. \Omega = L^2),
         ! the integral hence becomes 1/(L|q|), where q = k_i - k_a.
 
-        q = sys%basis%basis_fns(i)%l - sys%basis%basis_fns(a)%l
-        intgrl = 1.0_p/(sys%lattice%box_length(1)*sqrt(real(dot_product(q,q),p)))
+        q = basis_set%basis_fns(i)%l - basis_set%basis_fns(a)%l
+        intgrl = 1.0_p/(cell_param*sqrt(real(dot_product(q,q),p)))
 
     end function coulomb_int_ueg_2d
 
-    pure function coulomb_int_ueg_3d(sys, i, a) result(intgrl)
+    pure function coulomb_int_ueg_3d(cell_param, basis_set, i, a) result(intgrl)
 
         ! In:
-        !    sys: system being studied.
+        !    cell_param: the length of one side of the simulation cell.
+        !    basis_set: basis set of system being studied.
         !    i: index of spin-orbital basis function.
         !    a: index of spin-orbital basis function.
         !
@@ -299,10 +301,11 @@ contains
         !    symmetry.  We also assume that i,j /= a,b (ie the integral is not
         !    a Hartree integral).
 
-        use system, only: sys_t
+        use basis, only: basis_t
 
         real(p) :: intgrl
-        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: cell_param
+        type(basis_t), intent(in) :: basis_set
         integer, intent(in) :: i, a
         integer :: q(3)
 
@@ -310,8 +313,8 @@ contains
         ! the cell.  As we only deal with cubic simulation cells (i.e. \Omega = L^3),
         ! the integral hence becomes 1/(\pi.L.q^2), where q = k_i - k_a.
 
-        q = sys%basis%basis_fns(i)%l - sys%basis%basis_fns(a)%l
-        intgrl = 1.0_p/(pi*sys%lattice%box_length(1)*dot_product(q,q))
+        q = basis_set%basis_fns(i)%l - basis_set%basis_fns(a)%l
+        intgrl = 1.0_p/(pi*cell_param*dot_product(q,q))
 
     end function coulomb_int_ueg_3d
 
