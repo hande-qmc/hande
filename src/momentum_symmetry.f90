@@ -152,7 +152,6 @@ contains
 
         ! Clean up after symmetry.
 
-        use ueg_system, only: end_ueg_indexing
         use checking, only: check_deallocate
 
         integer :: ierr
@@ -165,8 +164,6 @@ contains
             deallocate(inv_sym, stat=ierr)
             call check_deallocate('inv_sym',ierr)
         end if
-
-        call end_ueg_indexing()
 
     end subroutine end_momentum_symmetry
 
@@ -242,7 +239,7 @@ contains
         k(:sys%lattice%ndim) = sys%basis%basis_fns(2*s1)%l + sys%basis%basis_fns(2*s2)%l
         ! Get symmetry index.  Need to convert from basis set index back into
         ! wavevector index.
-        prod = (ueg_basis_index(k(:sys%lattice%ndim),1)+1)/2
+        prod = (ueg_basis_index(sys%ueg%basis, k(:sys%lattice%ndim),1)+1)/2
 
     end function cross_product_ueg
 
@@ -298,7 +295,7 @@ contains
             k = k + sys%basis%basis_fns(orb_list(i))%l
         end do
         ! Convert to symmetry index.
-        isym = (ueg_basis_index(k,1)+1)/2
+        isym = (ueg_basis_index(sys%ueg%basis,k,1)+1)/2
 
     end function symmetry_orb_list_ueg
 

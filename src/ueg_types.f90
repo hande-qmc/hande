@@ -11,7 +11,7 @@ type ueg_basis_t
     ! basis_fns stores the basis functions as a list ordered by the kinetic energy
     ! of the wavefunction.  This is inconvenient for the UEG where we need to find
     ! a given basis function from the sum of two other wavevectors.
-    ! ueg_basis%lookup(ind) returns the index of the alpha spin-orbital with
+    ! sys%ueg%basis%lookup(ind) returns the index of the alpha spin-orbital with
     ! wavevector, k,  in the basis_fns array, where ind is defined by a function
     ! which considers a cube of wavevectors:
     !   ind = (k_x + kmax) + (k_y + kmax)*N_kx + (k_z + kmax)*N_kx^2 + 1
@@ -22,9 +22,9 @@ type ueg_basis_t
     !    N_kx is the number of k-points in each dimension
     integer, allocatable :: lookup(:) ! (N_kx^ndim)
 
-    ! ueg_basis%offset_inds = (1, N_kx, N_kx^2), so that
+    ! sys%ueg%basis%offset_inds = (1, N_kx, N_kx^2), so that
     !    ind = offset_inds.k + offset
-    ! for ueg_basis%lookup.
+    ! for sys%ueg%basis%lookup.
     integer, allocatable :: offset_inds(:) ! (ndim)
 
     ! offset accounts for the fact that lookup is a 1-indexed array.

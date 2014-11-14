@@ -78,7 +78,6 @@ contains
 
         use determinants, only: decode_det
         use system, only: sys_t
-        use ueg_system, only: exchange_int_ueg
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
@@ -105,7 +104,7 @@ contains
                 ! background-background interactions.
                 if (mod(occ_list(i),2) == mod(occ_list(j),2)) then
                     ! Have an exchange term
-                    hmatel = hmatel - exchange_int_ueg(sys%lattice%box_length(1), sys%basis, occ_list(i), occ_list(j))
+                    hmatel = hmatel - sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, occ_list(i), occ_list(j))
                 end if
             end do
         end do
@@ -160,7 +159,6 @@ contains
         ! as it allows symmetry checking to be skipped in the integral
         ! calculation.
 
-        use ueg_system, only: coulomb_int_ueg
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -171,9 +169,9 @@ contains
         hmatel = 0.0_p
 
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) &
-            hmatel = coulomb_int_ueg(sys%lattice%box_length(1), sys%basis, i, a)
+            hmatel = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, a)
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(b)%Ms) &
-            hmatel = hmatel - coulomb_int_ueg(sys%lattice%box_length(1), sys%basis, i, b)
+            hmatel = hmatel - sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, i, b)
 
         if (perm) hmatel = -hmatel
 

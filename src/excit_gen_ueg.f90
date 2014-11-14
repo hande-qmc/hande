@@ -347,8 +347,8 @@ contains
         use const, only: i0_end
         use bit_utils, only: count_set_bits
         use system, only: sys_t
+        use ueg_system, only: ueg_basis_index
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use ueg_system, only: ueg_ternary_conserve, ueg_basis_index
         use utils, only: tri_ind
 
         type(dSFMT_t), intent(inout) :: rng
@@ -366,9 +366,9 @@ contains
         k3(1:sys%lattice%ndim) = ij_k
         k3(sys%lattice%ndim+1:) = 0
         if (ij_spin == -2) then
-            poss_a = iand(not(f), ishft(ueg_ternary_conserve(1:,k3(1),k3(2),k3(3)),1))
+            poss_a = iand(not(f), ishft(sys%ueg%ternary_conserve(1:,k3(1),k3(2),k3(3)),1))
         else
-            poss_a = iand(not(f), ueg_ternary_conserve(1:,k3(1),k3(2),k3(3)))
+            poss_a = iand(not(f), sys%ueg%ternary_conserve(1:,k3(1),k3(2),k3(3)))
         end if
         max_na = sum(count_set_bits(poss_a))
 
@@ -397,11 +397,11 @@ contains
             ! Implementation detail: b must be down spin if possible as a is up spin if possible.
             select case(ij_spin)
             case(2)
-                b = ueg_basis_index(kb, 1)
+                b = ueg_basis_index(sys%ueg%basis, kb, 1)
             case(0)
-                b = ueg_basis_index(kb, -1)
+                b = ueg_basis_index(sys%ueg%basis, kb, -1)
             case(-2)
-                b = ueg_basis_index(kb, -1)
+                b = ueg_basis_index(sys%ueg%basis, kb, -1)
             end select
 
             ! Excitation is forbidden if b is already occupied!

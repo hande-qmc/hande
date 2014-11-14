@@ -82,7 +82,7 @@ contains
         select case(sys%system)
         case(ueg)
             call init_momentum_symmetry(sys)
-            call init_ueg_proc_pointers(sys%lattice%ndim)
+            call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
         case(hub_k)
             call init_momentum_symmetry(sys)
         case(hub_real, heisenberg, chung_landau)
@@ -151,6 +151,7 @@ contains
         use real_lattice, only: end_real_space
         use momentum_symmetry, only: end_momentum_symmetry
         use molecular_integrals, only: end_one_body_t, end_two_body_t
+        use ueg_system, only: end_ueg_indexing
         use report, only: end_report
 
         type(sys_t), intent(inout) :: sys
@@ -172,6 +173,7 @@ contains
         call dealloc_basis_t(sys%basis)
         call end_excitations(sys%basis%excit_mask)
         call end_momentum_symmetry()
+        call end_ueg_indexing(sys%ueg)
         call end_determinants()
         call end_hamil()
         call end_real_space(sys%heisenberg)
