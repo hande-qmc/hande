@@ -70,12 +70,6 @@ type sys_lattice_t
     ! This also defines the cubic simulation cell used in the UEG.
     real(p), allocatable :: box_length(:) ! ndim.
 
-    ! Contains integer lattice lengths. If less than 3 dimensions are used
-    ! then the corresponding unused components are set to 1.
-    ! This is useful for making loops over all dimension general.
-    ! [todo] - move to real_lattice.
-    integer :: lattice_size(3)
-
 end type sys_lattice_t
 
 type sys_k_lattice_t
@@ -344,21 +338,14 @@ contains
                     ! set nvirt in basis once the basis set has been generated.
                 end select
 
-                ! lattice_size is useful for loops over a general number of dimensions. This
-                ! variable is only concerned with simple lattices which could be bipartite,
-                ! as it is used in init_determinants to split a bipartite lattice into its two parts.
-                sl%lattice_size = 1
-                sl%lattice_size(1) = ceiling(sl%box_length(1), 2)
-                if (sl%ndim > 1) sl%lattice_size(2) = ceiling(sl%box_length(2), 2)
-                if (sl%ndim > 2) sl%lattice_size(3) = ceiling(sl%box_length(3), 2)
-
                 if (sys%system /= ueg) then
                     ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
                     ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
                     ! to be calculated.
                     counter = 0
                     do i = 1,sl%ndim
-                        if ( sum(sl%lattice(:,i)) == sl%box_length(i) .and. mod(sl%lattice_size(i), 2) == 0) counter = counter + 1
+                        if ( sum(sl%lattice(:,i)) == sl%box_length(i) .and. &
+                             mod(ceiling(sl%box_length(i)), 2) == 0) counter = counter + 1
                     end do
                     if (counter == sl%ndim) sl%bipartite_lattice = .true.
                 end if

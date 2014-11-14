@@ -92,6 +92,7 @@ contains
         logical :: diag_connection
 
         integer, allocatable :: lvecs(:,:)
+        integer :: lattice_size(3)
 
         sys%nsym = 1
         sys%sym0 = 1
@@ -223,12 +224,20 @@ contains
                 allocate (sys%heisenberg%lattice_mask(sys%basis%string_len), stat=ierr)
                 associate(lattice_mask=>sys%heisenberg%lattice_mask)
                     call check_allocate('lattice_mask',sys%basis%string_len,ierr)
+                    ! lattice_size is such that any loops over higher dimensions
+                    ! than that of the model are single iterations but allows us t not have
+                    ! to handle each dimension separately.
+                    lattice_size = 1
+                    lattice_size(1) = ceiling(sys%lattice%box_length(1))
+                    if (sys%lattice%ndim > 1) lattice_size(2) = ceiling(sys%lattice%box_length(2))
+                    if (sys%lattice%ndim > 2) lattice_size(3) = ceiling(sys%lattice%box_length(3))
+
                     lattice_mask = 0_i0
-                    do k = 1,sys%lattice%lattice_size(3)
-                        do j = 1,sys%lattice%lattice_size(2)
-                            do i = 1,sys%lattice%lattice_size(1),2
-                                site_index = (sys%lattice%lattice_size(2)*sys%lattice%lattice_size(1))*(k-1) + &
-                                              sys%lattice%lattice_size(1)*(j-1) + mod(j+k,2) + i
+                    do k = 1, lattice_size(3)
+                        do j = 1, lattice_size(2)
+                            do i = 1, lattice_size(1),2
+                                site_index = (lattice_size(2)*lattice_size(1))*(k-1) + &
+                                              lattice_size(1)*(j-1) + mod(j+k,2) + i
                                 bit_pos = sys%basis%bit_lookup(1, site_index)
                                 bit_element = sys%basis%bit_lookup(2, site_index)
                                 lattice_mask(bit_element) = ibset(lattice_mask(bit_element), bit_pos)
