@@ -3,35 +3,12 @@ module ueg_system
 ! Core routines for the uniform electron gas system.
 
 use const
+use ueg_types, only: ueg_basis_t
 
 implicit none
 
-! basis_fns stores the basis functions as a list ordered by the kinetic energy
-! of the wavefunction.  This is inconvenient for the UEG where we need to find
-! a given basis function from the sum of two other wavevectors.
-! ueg_basis_lookup(ind) returns the index of the alpha spin-orbital with
-! wavevector, k,  in the basis_fns array, where ind is defined by a function
-! which considers a cube of wavevectors:
-!   ind = (k_x + kmax) + (k_y + kmax)*N_kx + (k_z + kmax)*N_kx^2 + 1
-!       = k_x + k_y*N_kx + k_z*N_kx*N_z + k_max*(1 + N_kx + N_kx^2) + 1
-! (and analogously for the 2D case), where:
-!    kmax is the maximum component of a wavevector in the smallest square/cube
-!    which contains all the wavevectors in the basis.
-!    N_kx is the number of k-points in each dimension
-integer, allocatable :: ueg_basis_lookup(:) ! (N_kx^ndim)
-
-! ueg_basis_dim = (1, N_kx, N_kx^2), so that
-!    ind = ueg_basis_dim.k + ueg_basis_origin
-! for ueg_basis_lookup.
-integer, allocatable :: ueg_basis_dim(:) ! (ndim)
-
-! ueg_basis_origin accounts for the fact that ueg_basis_lookup is a 1-indexed array.
-! ueg_basis_origin = k_max*(1 + N_x + N_x*N_y) + 1
-integer :: ueg_basis_origin
-
-! Max component of a wavevector in the UEG basis set, kmax.
-! Note that N_x = 2*kmax+1
-integer :: ueg_basis_max
+! UEG-specific basis lookup tables, etc.
+type(ueg_basis_t) :: ueg_basis
 
 ! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
 ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and
@@ -118,29 +95,29 @@ contains
         integer :: ierr, i, j, a, ind, N_kx, k_min(sys%lattice%ndim), bit_pos, bit_el, k(3)
         integer :: k1, k2, k3, ktest(sys%lattice%ndim), kija(sys%lattice%ndim)
 
-        ueg_basis_max = ceiling(sqrt(2*sys%ueg%ecutoff))
+        ueg_basis%kmax = ceiling(sqrt(2*sys%ueg%ecutoff))
 
-        N_kx = 2*ueg_basis_max+1
+        N_kx = 2*ueg_basis%kmax+1
 
-        allocate(ueg_basis_dim(sys%lattice%ndim), stat=ierr)
-        call check_allocate('ueg_basis_dim', sys%lattice%ndim, ierr)
-        forall (i=1:sys%lattice%ndim) ueg_basis_dim(i) = N_kx**(i-1)
+        allocate(ueg_basis%offset_inds(sys%lattice%ndim), stat=ierr)
+        call check_allocate('ueg_basis%offset_inds', sys%lattice%ndim, ierr)
+        forall (i=1:sys%lattice%ndim) ueg_basis%offset_inds(i) = N_kx**(i-1)
 
         ! Wish the indexing array to be 1-indexed.
-        k_min = -ueg_basis_max ! Bottom corner of grid.
-        ueg_basis_origin = -dot_product(ueg_basis_dim, k_min) + 1
+        k_min = -ueg_basis%kmax ! Bottom corner of grid.
+        ueg_basis%offset = -dot_product(ueg_basis%offset_inds, k_min) + 1
 
-        allocate(ueg_basis_lookup(N_kx**sys%lattice%ndim), stat=ierr)
-        call check_allocate('ueg_basis_lookup', N_kx**sys%lattice%ndim, ierr)
+        allocate(ueg_basis%lookup(N_kx**sys%lattice%ndim), stat=ierr)
+        call check_allocate('ueg_basis%lookup', N_kx**sys%lattice%ndim, ierr)
 
-        ! ueg_basis_lookup should be -1 for any wavevector that is in the
-        ! square/cubic grid defined by ueg_basis_max but not in the actual basis
+        ! ueg_basis%lookup should be -1 for any wavevector that is in the
+        ! square/cubic grid defined by ueg_basis%kmax but not in the actual basis
         ! set described by ecutoff.
-        ueg_basis_lookup = -1
+        ueg_basis%lookup = -1
 
         ! Now fill in the values for the alpha orbitals which are in the basis.
         forall (i=1:sys%basis%nbasis:2) 
-            ueg_basis_lookup(dot_product(sys%basis%basis_fns(i)%l, ueg_basis_dim) + ueg_basis_origin) = i
+            ueg_basis%lookup(dot_product(sys%basis%basis_fns(i)%l, ueg_basis%offset_inds) + ueg_basis%offset) = i
         end forall
 
         ! Now fill in the values for permitted k_a in an excitation
@@ -148,7 +125,7 @@ contains
         ! the basis.
 
         k = 0
-        k(1:sys%lattice%ndim) = 2*ueg_basis_max
+        k(1:sys%lattice%ndim) = 2*ueg_basis%kmax
         allocate(ueg_ternary_conserve(0:sys%basis%string_len, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
         call check_allocate('ueg_ternary_conserve', size(ueg_ternary_conserve), ierr)
         ueg_ternary_conserve = 0_i0
@@ -162,7 +139,7 @@ contains
                    ktest(1) = k1
                    ! If this is still slow, we can improve matters by
                    ! restricting the range of a such that there must be at least one b
-                   ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! ueg_basis_max,
+                   ! (i.e. all components of k_i+k_j-k_a must lie within +/- ! ueg_basis%kmax,
                    ! thus providing lower and upper bounds for a).
                    do a = 1, sys%basis%nbasis-1, 2 ! only bother with alpha orbitals
                        kija = ktest - sys%basis%basis_fns(a)%l
@@ -196,14 +173,14 @@ contains
         integer :: indx
         integer, intent(in) :: k(:), spin
 
-        if (minval(k) < -ueg_basis_max .or. maxval(k) > ueg_basis_max) then
+        if (minval(k) < -ueg_basis%kmax .or. maxval(k) > ueg_basis%kmax) then
             indx = -1
         else
-            ! ueg_basis_lookup contains the mapping between a wavevector in
+            ! ueg_basis%lookup contains the mapping between a wavevector in
             ! a given basis and its entry in the energy-ordered list of basis
             ! functions.
-            indx = ueg_basis_lookup(dot_product(k,ueg_basis_dim) + ueg_basis_origin)
-            ! ueg_basis_lookup only contains entries for the alpha spin-orbital.
+            indx = ueg_basis%lookup(dot_product(k,ueg_basis%offset_inds) + ueg_basis%offset)
+            ! ueg_basis%lookup only contains entries for the alpha spin-orbital.
             ! The corresponding beta orbital is the next entry in the basis_fns
             ! array.
             if (spin < 0) indx = indx + 1
@@ -219,13 +196,13 @@ contains
 
         integer :: ierr
 
-        if (allocated(ueg_basis_lookup)) then
-            deallocate(ueg_basis_lookup, stat=ierr)
-            call check_deallocate('ueg_basis_lookup', ierr)
+        if (allocated(ueg_basis%lookup)) then
+            deallocate(ueg_basis%lookup, stat=ierr)
+            call check_deallocate('ueg_basis%lookup', ierr)
         end if
-        if (allocated(ueg_basis_dim)) then
-            deallocate(ueg_basis_dim, stat=ierr)
-            call check_deallocate('ueg_basis_dim', ierr)
+        if (allocated(ueg_basis%offset_inds)) then
+            deallocate(ueg_basis%offset_inds, stat=ierr)
+            call check_deallocate('ueg_basis%offset_inds', ierr)
         end if
         if (allocated(ueg_ternary_conserve)) then
             deallocate(ueg_ternary_conserve, stat=ierr)
