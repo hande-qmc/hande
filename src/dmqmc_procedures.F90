@@ -302,7 +302,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use errors
         use fciqmc_data, only: nrdms, rdms, nsym_vec
-        use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell
+        use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell, enumerate_lattice_vectors
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -311,6 +311,7 @@ contains
         integer(i0) :: A_mask(sys%basis%string_len)
         real(p), allocatable :: sym_vecs(:,:)
         integer :: r(sys%lattice%ndim)
+        integer, allocatable :: lvecs(:,:)
 
         ! Return all translational symmetry vectors in sym_vecs.
         call find_translational_symmetry_vecs(sys, sym_vecs, nsym_vec)
@@ -334,6 +335,9 @@ contains
 
         ! Run through every site on every subsystem and add every translational
         ! symmetry vector.
+        allocate(lvecs(sys%lattice%ndim,3**sys%lattice%ndim), stat=ierr)
+        call check_allocate('lvecs', size(lvecs), ierr)
+        call enumerate_lattice_vectors(sys%lattice, lvecs)
         do i = 1, nrdms ! Over every subsystem.
             do j = 1, nsym_vec ! Over every symmetry vector.
                 A_mask = 0_i0
@@ -343,7 +347,7 @@ contains
                     ! If r is outside the cell considered in this simulation,
                     ! shift it by the appropriate lattice vector so that it is
                     ! in this cell.
-                    call map_vec_to_cell(sys%basis%nbasis, sys%basis%basis_fns, sys%lattice%ndim, sys%lattice%lvecs, r)
+                    call map_vec_to_cell(sys%basis%nbasis, sys%basis%basis_fns, sys%lattice%ndim, lvecs, r)
                     ! Now need to find which basis function this site 
                     ! corresponds to. Simply loopover all basis functions and
                     ! check...
@@ -375,6 +379,8 @@ contains
             end do
         end do
 
+        deallocate(lvecs, stat=ierr)
+        call check_deallocate('lvecs', ierr)
         deallocate(sym_vecs,stat=ierr)
         call check_deallocate('sym_vecs',ierr)
 

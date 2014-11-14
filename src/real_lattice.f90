@@ -67,7 +67,6 @@ logical :: t_self_images
 ! boundaries (i.e. periodic boundary conditions) to 0
 logical :: finite_cluster = .false. ! default to infinite crystals
 
-
 contains
 
     subroutine init_real_space(sys)
@@ -83,7 +82,7 @@ contains
         use determinants, only: decode_det
         use system
         use bit_utils
-        use checking, only: check_allocate
+        use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
         use parallel, only: parent
 
@@ -91,6 +90,8 @@ contains
         integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
         integer :: r(sys%lattice%ndim), bit_element, bit_pos, site_index
         logical :: diag_connection
+
+        integer, allocatable :: lvecs(:,:)
 
         sys%nsym = 1
         sys%sym0 = 1
@@ -107,8 +108,8 @@ contains
             call check_allocate('tmat',sys%basis%string_len*sys%basis%nbasis,ierr)
             allocate(connected_orbs(sys%basis%string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('connected_orbs',sys%basis%string_len*sys%basis%nbasis,ierr)
-            allocate(sl%lvecs(sl%ndim,3**sl%ndim))
-            call check_allocate('sl%lvecs',sl%ndim*(3**sl%ndim),ierr)
+            allocate(lvecs(sl%ndim,3**sl%ndim), stat=ierr)
+            call check_allocate('lvecs', size(lvecs), ierr)
             if (sl%triangular_lattice) then
                 allocate(connected_sites(0:3*sl%ndim,sys%basis%nbasis), stat=ierr)
                 call check_allocate('connected_sites', size(connected_sites), ierr)
@@ -137,28 +138,7 @@ contains
                 isystem = 2
             end select
 
-
-            ! Form all sl%lattice vectors
-            select case(sl%ndim)
-            case(1)
-                do i = -1, 1
-                    sl%lvecs(:,i+2) = i*sl%lattice(:,1)
-                end do
-            case(2)
-                do i = -1, 1
-                    do j = -1, 1
-                        sl%lvecs(:,j+2+3*(i+1)) = i*sl%lattice(:,1) + j*sl%lattice(:,2)
-                    end do
-                end do
-            case(3)
-                do i = -1, 1
-                    do j = -1, 1
-                        do k = -1, 1
-                            sl%lvecs(:,k+2+3*(j+1)+9*(i+1)) = i*sl%lattice(:,1) + j*sl%lattice(:,2) + k*sl%lattice(:,3)
-                        end do
-                    end do
-                end do
-            end select
+            call enumerate_lattice_vectors(sl, lvecs)
 
             ! Construct how the sl%lattice is connected.
             diag_connection = .false. ! For sl%ndim /= 2.
@@ -173,13 +153,13 @@ contains
                         ! For the triangular sl%lattice, there are extra diagonal bonds between pairs
                         ! of sites which obey this condition.
                         if (sl%ndim == 2) then
-                            diag_connection = all((r-sl%lvecs(:,ivec)) == (/1,1/)) .or. &
-                                              all((r-sl%lvecs(:,ivec)) == (/-1,-1/))
+                            diag_connection = all((r-lvecs(:,ivec)) == (/1,1/)) .or. &
+                                              all((r-lvecs(:,ivec)) == (/-1,-1/))
                         end if
-                        if (sum(abs(r-sl%lvecs(:,ivec))) == 1 .or. &
+                        if (sum(abs(r-lvecs(:,ivec))) == 1 .or. &
                             (sl%triangular_lattice .and. diag_connection)) then
                             ! i and j are on sites which are nearest neighbours
-                            if (all(sl%lvecs(:,ivec) == 0)) then
+                            if (all(lvecs(:,ivec) == 0)) then
                                 ! Nearest neighbours within unit cell.
                                 call set_orb(sys%basis%bit_lookup,tmat(:,i),j)
                                 if (isystem == 2) call set_orb(sys%basis%bit_lookup,tmat(:,i+1),j+1)
@@ -197,7 +177,7 @@ contains
                             ! actually connected. (If they "connect" across cell
                             ! boundaries then they are not connected for a single
                             ! molecule).
-                            if ( (finite_cluster .and. all(sl%lvecs(:,ivec) == 0)) .or. &
+                            if ( (finite_cluster .and. all(lvecs(:,ivec) == 0)) .or. &
                                  .not. finite_cluster) then
                                 if (i /= j) then
                                     ! connected_orbs does not contain self-connections
@@ -259,6 +239,9 @@ contains
             end if
         end select
 
+        deallocate(lvecs, stat=ierr)
+        call check_deallocate('lvecs', ierr)
+
     end subroutine init_real_space
 
     subroutine end_real_space(sh)
@@ -293,6 +276,48 @@ contains
         end if
 
     end subroutine end_real_space
+
+    subroutine enumerate_lattice_vectors(sl, lvecs)
+
+        ! Enumerate combinations of lattice vectors which define the Wigner--Seitz cell.
+
+        ! In:
+        !    sl: sys_lattice_t object describing the real-space lattice.
+        ! Out:
+        !    lvecs: all possible primitive combinations of the above lattice vectors,
+        !         where the amplitude for each lattice vector can be either -1, 0 or +1.
+        !         lvec(:,i) stores the i'th such combination.  lvecs must have dimension
+        !         (at least) (ndim, 3^ndim).
+
+        use system, only: sys_lattice_t
+
+        type(sys_lattice_t), intent(in) :: sl
+        integer, intent(out) :: lvecs(:,:)
+
+        integer :: i, j, k
+
+        select case(sl%ndim)
+        case(1)
+            do i = -1, 1
+                lvecs(:,i+2) = i*sl%lattice(:,1)
+            end do
+        case(2)
+            do i = -1, 1
+                do j = -1, 1
+                    lvecs(:,j+2+3*(i+1)) = i*sl%lattice(:,1) + j*sl%lattice(:,2)
+                end do
+            end do
+        case(3)
+            do i = -1, 1
+                do j = -1, 1
+                    do k = -1, 1
+                        lvecs(:,k+2+3*(j+1)+9*(i+1)) = i*sl%lattice(:,1) + j*sl%lattice(:,2) + k*sl%lattice(:,3)
+                    end do
+                end do
+            end do
+        end select
+
+    end subroutine enumerate_lattice_vectors
 
     elemental function get_one_e_int_real(sys, i, j) result(one_e_int)
 
