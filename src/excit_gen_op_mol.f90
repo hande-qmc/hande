@@ -75,7 +75,7 @@ contains
             pgen = calc_pgen_single_mol(sys, op_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
             ! 3. Parity of permutation required to line up determinants.
-            call find_excitation_permutation1(cdet%f, connection)
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
             matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
@@ -149,7 +149,7 @@ contains
             pgen = calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
             ! 3. Parity of permutation required to line up determinants.
-            call find_excitation_permutation1(cdet%f, connection)
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
             matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)

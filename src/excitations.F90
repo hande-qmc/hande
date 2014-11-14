@@ -23,29 +23,26 @@ type excit_t
     logical :: perm
 end type excit_t
 
-! excit_mask(:,i) is a bit field with bits corresponding to all orbitals with
-! a higher index than i set.
-integer(i0), allocatable :: excit_mask(:,:) ! (string_len, nbasis)
-
 contains
 
     subroutine init_excitations(basis)
 
         ! Allocate and initialise data in excit_mask.
 
-        ! In:
-        !    basis: information about the single-particle basis.
+        ! In/Out:
+        !    basis: information about the single-particle basis.  On output the
+        !       excit_mask component is also set.
 
         use basis_types, only: basis_t
         use checking, only: check_allocate
 
-        type(basis_t), intent(in) :: basis
+        type(basis_t), intent(inout) :: basis
         integer :: ibasis, jbasis, ipos, iel, jpos, jel, ierr
 
-        allocate(excit_mask(basis%string_len, basis%nbasis), stat=ierr)
-        call check_allocate('excit_mask', size(excit_mask), ierr)
+        allocate(basis%excit_mask(basis%string_len, basis%nbasis), stat=ierr)
+        call check_allocate('basis%excit_mask', size(basis%excit_mask), ierr)
 
-        excit_mask = 0_i0
+        basis%excit_mask = 0_i0
 
         do ibasis = 1, basis%nbasis
             ipos = basis%bit_lookup(1, ibasis)
@@ -59,17 +56,19 @@ contains
                 jpos = basis%bit_lookup(1, jbasis)
                 jel = basis%bit_lookup(2, jbasis)
                 if ( (jel==iel .and. jpos > ipos) .or. jel>iel) &
-                    excit_mask(jel, ibasis) = ibset(excit_mask(jel, ibasis), jpos)
+                    basis%excit_mask(jel, ibasis) = ibset(basis%excit_mask(jel, ibasis), jpos)
             end do
         end do
 
     end subroutine init_excitations
 
-    subroutine end_excitations()
+    subroutine end_excitations(excit_mask)
 
         ! Deallocate excit_mask.
 
         use checking, only: check_deallocate
+
+        integer(i0), intent(inout), allocatable :: excit_mask(:,:)
 
         integer :: ierr
 
@@ -240,7 +239,7 @@ contains
 
     end function get_excitation_level
 
-    pure subroutine find_excitation_permutation1(f, excitation)
+    pure subroutine find_excitation_permutation1(excit_mask, f, excitation)
 
         ! Find the parity of the permutation required to maximally line up
         ! a determinant with an excitation of it, as needed for use with the
@@ -249,6 +248,7 @@ contains
         ! This version is for single excitations of a determinant.
         !
         ! In:
+        !    excit_mask: bit-field mask as created in init_excitations.
         !    f: bit string representation of the determinant.
         !    excitation: excit_t type specifying how the excited determinant is
         !        connected to the determinant given in occ_list.
@@ -258,7 +258,7 @@ contains
 
         use bit_utils, only: count_set_bits
 
-        integer(i0), intent(in) :: f(:)
+        integer(i0), intent(in) :: excit_mask(:,:), f(:)
         type(excit_t), intent(inout) :: excitation
 
         integer :: perm
@@ -274,7 +274,7 @@ contains
 
     end subroutine find_excitation_permutation1
 
-    pure subroutine find_excitation_permutation2(f, excitation)
+    pure subroutine find_excitation_permutation2(excit_mask, f, excitation)
 
         ! Find the parity of the permutation required to maximally line up
         ! a determinant with an excitation of it, as needed for use with the
@@ -283,6 +283,7 @@ contains
         ! This version is for double excitations of a determinant.
         !
         ! In:
+        !    excit_mask: bit-field mask as created in init_excitations.
         !    f: bit string representation of the determinant.
         !    excitation: excit_t type specifying how the excited determinant is
         !        connected to the determinant described by f.
@@ -294,7 +295,7 @@ contains
 
         use bit_utils, only: count_set_bits
 
-        integer(i0), intent(in) :: f(:)
+        integer(i0), intent(in) :: excit_mask(:,:), f(:)
         type(excit_t), intent(inout) :: excitation
 
         integer :: perm

@@ -170,9 +170,9 @@ contains
         call end_two_body_t(sys%read_in%coulomb_integrals)
 
         call dealloc_basis_t(sys%basis)
+        call end_excitations(sys%basis%excit_mask)
         call end_momentum_symmetry()
         call end_determinants()
-        call end_excitations()
         call end_hamil()
         call end_real_space(sys%heisenberg)
         call end_fciqmc()

@@ -1173,7 +1173,6 @@ contains
         ! cluster_population are *not* updated.
 
         use basis_types, only: basis_t
-        use excitations, only: excit_mask
         use fciqmc_data, only: f0
 
         use bit_utils, only: count_set_bits
@@ -1247,7 +1246,7 @@ contains
                             ! annihilation operators and the list of creation
                             ! operators.
                             ! First annihilation operators:
-                            permute_operators = iand(excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
+                            permute_operators = iand(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis)),cluster_annihilation)
                             ! Now add the creation operators:
                             permute_operators = ior(permute_operators,cluster_creation)
                         else
@@ -1255,7 +1254,7 @@ contains
                             cluster_excitor(ibasis) = ibset(cluster_excitor(ibasis),ibit)
                             ! Need to swap it with every creation operator with
                             ! a lower index already in the cluster.
-                            permute_operators = iand(not(excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
+                            permute_operators = iand(not(basis%excit_mask(:,basis%basis_lookup(ibit,ibasis))),cluster_creation)
                             permute_operators(ibasis) = ibclr(permute_operators(ibasis),ibit)
                         end if
                         if (mod(sum(count_set_bits(permute_operators)),2) == 1) &

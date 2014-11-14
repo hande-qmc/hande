@@ -66,7 +66,7 @@ contains
                 pgen = pattempt_single*calc_pgen_single_mol(sys, gamma_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(cdet%f, connection)
+                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
@@ -95,7 +95,7 @@ contains
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
-                call find_excitation_permutation2(cdet%f, connection)
+                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
                 hmatel = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
@@ -173,7 +173,7 @@ contains
                 pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(cdet%f, connection)
+                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
@@ -198,7 +198,7 @@ contains
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
-                call find_excitation_permutation2(cdet%f, connection)
+                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
                 hmatel = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &

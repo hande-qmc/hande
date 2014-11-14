@@ -180,7 +180,7 @@ contains
         real(p), intent(out) :: hmatel
 
         ! a) Find out permutation required to line up determinants.
-        call find_excitation_permutation1(f, connection)
+        call find_excitation_permutation1(sys%basis%excit_mask, f, connection)
 
         ! b) The matrix element connected |D> and |D_i^a> is <i|h|a> = -t.
         if (connection%perm) then

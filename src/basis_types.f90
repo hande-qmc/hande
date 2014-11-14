@@ -132,6 +132,11 @@ module basis_types
         ! basis_lookup(i,j) gives the basis function corresponding to
         ! the i-th bit in the j-th element of a determinant array.
         integer, allocatable :: basis_lookup(:,:) ! (0:i0_end, string_len)
+
+        ! excit_mask(:,i) is a bit field with bits corresponding to all orbitals with
+        ! a higher index than i set.
+        integer(i0), allocatable :: excit_mask(:,:) ! (string_len, nbasis)
+
     end type basis_t
 
     contains
@@ -143,8 +148,8 @@ module basis_types
             ! integer list.
 
             ! In/Out:
-            !   b: basis_t object to be set.  On input b%nbasis and b%separate_strings must be set.  On output the bit string look
-            !      up tables
+            !   b: basis_t object to be set.  On input b%nbasis and b%separate_strings must be set.
+            !      On output the bit string look-up tables are also set.
 
             use calc, only: doing_calc, dmqmc_calc
             use const, only: i0_end, i0_length

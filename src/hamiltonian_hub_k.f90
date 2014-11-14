@@ -212,7 +212,7 @@ contains
 
         ! b) Negative sign from permuting the determinants so that they line
         ! up?
-        call find_excitation_permutation2(f, connection)
+        call find_excitation_permutation2(sys%basis%excit_mask, f, connection)
         if (connection%perm) then
             ! Matrix element gets a -sign from rearranging determinants so
             ! that they maximally line up.
