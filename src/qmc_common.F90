@@ -217,7 +217,7 @@ contains
                         isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j), sys%basis%basis_fns))
                         if (isyma == isymb) then
                             if (ims1 == ims2) then
-                                ! Cannot excit 2 electrons into the same spin-orbital.
+                                ! Cannot excit_t 2 electrons into the same spin-orbital.
                                 ! Need to avoid double counting.
                                 !  => number of unique pairs is identical to
                                 !  number of elements in the strictly lower
@@ -558,7 +558,7 @@ contains
         !    rep_comm: nb_rep_t object containg report loop information.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
-        use excitations, only: excit
+        use excitations, only: excit_t
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         use system, only: sys_t
@@ -574,7 +574,7 @@ contains
         real(dp) :: real_population(sampling_size)
         type(det_info_t) :: cdet
         real(p) :: hmatel
-        type(excit) :: D0_excit
+        type(excit_t) :: D0_excit
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum

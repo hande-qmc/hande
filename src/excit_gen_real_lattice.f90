@@ -38,7 +38,7 @@ contains
         !    formulation of the Hubbard model.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -47,7 +47,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         integer :: nvirt_avail
 
@@ -97,7 +97,7 @@ contains
 
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use spawning, only: attempt_to_spawn
@@ -105,7 +105,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         real(p), intent(out) :: pgen, hmatel
 
         integer :: i, iel, ipos
@@ -167,7 +167,7 @@ contains
         !    formulation of the Hubbard model.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
@@ -175,7 +175,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         integer :: nvirt_avail
 
@@ -227,7 +227,7 @@ contains
         !    formulation of the Hubbard model.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -236,7 +236,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         integer :: i, ipos, iel
 

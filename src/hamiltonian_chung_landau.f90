@@ -29,7 +29,7 @@ contains
 
         ! Used in the Chung--Landau model only.
 
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
 
@@ -37,7 +37,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
-        type(excit) :: excitation
+        type(excit_t) :: excitation
 
         hmatel = 0.0_p
         non_zero = .false.

@@ -183,7 +183,7 @@ contains
 
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
        use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
-       use excitations, only: get_excitation, excit
+       use excitations, only: get_excitation, excit_t
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
        use fciqmc_data, only: calculate_excit_distribution, excit_distribution
@@ -194,7 +194,7 @@ contains
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet, iteration
-       type(excit) :: excitation
+       type(excit_t) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
 
        ! Get excitation.
@@ -259,13 +259,13 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding
        !        to the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
@@ -273,7 +273,7 @@ contains
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer :: bit_element, bit_position
 
@@ -305,13 +305,13 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on the
+       !    excitation: excit_t type variable which stores information on the
        !        excitation between the two bitstring ends, corresponding to the
        !        two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_squared_index
@@ -319,7 +319,7 @@ contains
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        real(p) :: sum_H1_H2, J_coupling_squared
@@ -416,13 +416,13 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding to
        !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
@@ -431,7 +431,7 @@ contains
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        real(p) :: hmatel
 
@@ -461,14 +461,14 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding to
        !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
        use bit_utils, only: count_set_bits
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00, correlation_mask
        use fciqmc_data, only: estimator_numerators, correlation_index
@@ -476,7 +476,7 @@ contains
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer(i0) :: f(sys%basis%string_len)
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
@@ -527,21 +527,21 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding
        !        to the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
        use bit_utils, only: count_set_bits
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: estimator_numerators, staggered_mag_index
        use system, only: sys_t
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer(i0) :: f(sys%basis%string_len)
@@ -627,7 +627,7 @@ contains
        ! In:
        !    basis: information about the single-particle basis.
        !    idet: current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding to
        !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
@@ -639,7 +639,7 @@ contains
 
        use basis_types, only: basis_t
        use dmqmc_procedures, only: decode_dm_bitstring
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
        use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, rdms, nrdms
        use fciqmc_data, only: start_averaging, rdm_spawn, dmqmc_accumulated_probs
@@ -649,7 +649,7 @@ contains
        type(basis_t), intent(in) :: basis
        integer, intent(in) :: idet, iteration
        integer(int_p), intent(in) :: walker_pop(sampling_size)
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
        integer :: irdm, isym, ireplica
        integer(i0) :: f1(basis%string_len), f2(basis%string_len)

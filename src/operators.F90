@@ -62,7 +62,7 @@ contains
         !    operator, where the determinants are formed from momentum space
         !    basis functions.
 
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use system, only: sys_t
 
         use const, only: p, i0
@@ -71,7 +71,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
-        type(excit) :: excitation
+        type(excit_t) :: excitation
 
         excitation = get_excitation(sys%nel, sys%basis, f1,f2)
 
@@ -203,7 +203,7 @@ contains
         !    molecular orbitals read in from an FCIDUMP file and O_1 is
         !    a one-body operator.
 
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use system, only: sys_t
 
         use const, only: p, i0
@@ -212,7 +212,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
-        type(excit) :: excitation
+        type(excit_t) :: excitation
 
         excitation = get_excitation(sys%nel, sys%basis, f1,f2)
 

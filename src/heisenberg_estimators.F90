@@ -37,7 +37,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -45,7 +45,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
+        type(excit_t), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
         integer :: bit_position, bit_element
@@ -106,7 +106,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: sampling_size, neel_singlet_amp
         use system, only: sys_t
         use calc, only: guiding_function, neel_singlet_guiding
@@ -116,13 +116,13 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
+        type(excit_t), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
         integer :: n, lattice_1_up, lattice_2_up
         real(p) :: importance_sampling_factor
 
-        excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
+        excitation = excit_t(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
 
         importance_sampling_factor = 1.0_p
 

@@ -25,7 +25,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
@@ -58,7 +58,7 @@ contains
         integer(i0) :: f_child(sys%basis%string_len)
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det, nspawn_events
-        type(excit) :: connection
+        type(excit_t) :: connection
         real(p) :: hmatel
         real(dp) :: real_population
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
@@ -266,7 +266,7 @@ contains
         use proc_pointers, only: sc0_ptr
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -278,7 +278,7 @@ contains
         ! [todo] - Check types with Nick's real coefficient work (which will probably be
         ! [todo] - merged before this).
         real(p), target :: tmp_data(sampling_size)
-        type(excit) :: connection
+        type(excit_t) :: connection
         real(p) :: hmatel
         integer :: idet, iparticle
         integer(int_p) :: nspawned

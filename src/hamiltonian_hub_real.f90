@@ -22,14 +22,14 @@ contains
 
         ! Used in the real space formulation of the Hubbard model only.
 
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
-        type(excit) :: excitation
+        type(excit_t) :: excitation
 
         hmatel = 0.0_p
         non_zero = .false.
@@ -163,7 +163,7 @@ contains
         !    sys: system to be studied.
         !    f: bit string representation of the Slater determinant, D.
         ! In/Out:
-        !    connection: excit type describing the excitation between |D> and
+        !    connection: excit_t type describing the excitation between |D> and
         !    |D_i^a>.  On entry, only the from_orb and to_orb fields must be
         !    set.  On exit the perm field will also be set.
         ! Out:
@@ -171,12 +171,12 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use excitations, only: excit, find_excitation_permutation1
+        use excitations, only: excit_t, find_excitation_permutation1
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(excit), intent(inout) :: connection
+        type(excit_t), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 
         ! a) Find out permutation required to line up determinants.

@@ -8,7 +8,7 @@ implicit none
 
 ! A handy type for containing the excitation information needed to connect one
 ! determinant to another.
-type excit
+type excit_t
     ! Excitation level.
     integer :: nexcit
     ! Orbitals which are excited from and to.
@@ -21,7 +21,7 @@ type excit
     ! the determinants.  Only used for single and double excitations.
     ! Undefined otherwise.
     logical :: perm
-end type excit
+end type excit_t
 
 ! excit_mask(:,i) is a bit field with bits corresponding to all orbitals with
 ! a higher index than i set.
@@ -88,7 +88,7 @@ contains
         !    f2(string_len): bit string representation of the Slater
         !        determinant.
         ! Returns:
-        !    excitation: excit type containing the following information---
+        !    excitation: excit_t type containing the following information---
         !        excitation%nexcit: excitation level.
         !
         !    If the excitation is a single or double excitation then it also
@@ -104,14 +104,14 @@ contains
         use bit_utils
         use basis_types, only: basis_t
 
-        type(excit) :: excitation
+        type(excit_t) :: excitation
         integer, intent(in) :: nel
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer :: i, j, iexcit1, iexcit2, perm, iel1, iel2, shift, nset_bits
         logical :: test_f1, test_f2
 
-        excitation = excit(0, 0, 0, .false.)
+        excitation = excit_t(0, 0, 0, .false.)
 
         if (any(f1/=f2)) then
 
@@ -250,16 +250,16 @@ contains
         !
         ! In:
         !    f: bit string representation of the determinant.
-        !    excitation: excit type specifying how the excited determinant is
+        !    excitation: excit_t type specifying how the excited determinant is
         !        connected to the determinant given in occ_list.
         ! Out:
-        !    excitation: excit type with the parity of the permutation also
+        !    excitation: excit_t type with the parity of the permutation also
         !        specified.
 
         use bit_utils, only: count_set_bits
 
         integer(i0), intent(in) :: f(:)
-        type(excit), intent(inout) :: excitation
+        type(excit_t), intent(inout) :: excitation
 
         integer :: perm
         integer(i0) :: ia(size(f))
@@ -284,18 +284,18 @@ contains
         !
         ! In:
         !    f: bit string representation of the determinant.
-        !    excitation: excit type specifying how the excited determinant is
+        !    excitation: excit_t type specifying how the excited determinant is
         !        connected to the determinant described by f.
         !        Note that we require the lists of orbitals excited from/into to
         !        be ordered.
         ! Out:
-        !    excitation: excit type with the parity of the permutation also
+        !    excitation: excit_t type with the parity of the permutation also
         !        specified.
 
         use bit_utils, only: count_set_bits
 
         integer(i0), intent(in) :: f(:)
-        type(excit), intent(inout) :: excitation
+        type(excit_t), intent(inout) :: excitation
 
         integer :: perm
         integer(i0) :: ia(size(f)), jb(size(f))
@@ -375,7 +375,7 @@ contains
 
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f_in(basis%string_len)
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         integer(i0), intent(out) :: f_out(basis%string_len)
 
         integer :: i, orb, bit_pos, bit_element

@@ -34,7 +34,7 @@ contains
         !    determinant and a connected determinant in molecular systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
@@ -47,7 +47,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         logical :: allowed_excitation
 
         integer :: ij_sym, ij_spin
@@ -56,7 +56,7 @@ contains
 
         if (get_rand_close_open(rng) < pattempt_single) then
 
-            ! 2a. Select orbital to excite from and orbital to excit into.
+            ! 2a. Select orbital to excite from and orbital to excit_t into.
             call choose_ia_mol(rng, sys, gamma_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
                                connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
@@ -141,7 +141,7 @@ contains
         !    determinant and a connected determinant in molecular systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
@@ -154,7 +154,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         logical :: allowed_excitation
         integer :: ij_sym, ij_spin
@@ -163,7 +163,7 @@ contains
 
         if (get_rand_close_open(rng) < pattempt_single) then
 
-            ! 2a. Select orbital to excite from and orbital to excit into.
+            ! 2a. Select orbital to excite from and orbital to excit_t into.
             call find_ia_mol(rng, sys, gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
                              connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1

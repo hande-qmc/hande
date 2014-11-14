@@ -45,7 +45,7 @@ contains
         !        systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, find_excitation_permutation1
+        use excitations, only: excit_t, find_excitation_permutation1
         use excit_gen_mol, only: choose_ia_mol, calc_pgen_single_mol
         use fciqmc_data, only: pattempt_single
         use operators, only: one_body1_mol_excit
@@ -57,7 +57,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         real(p), intent(out) :: matel
 
         integer :: op_sym
@@ -65,7 +65,7 @@ contains
 
         op_sym = sys%read_in%one_body_op_integrals%op_sym
 
-        ! 1. Select orbital to excite from and orbital to excit into.
+        ! 1. Select orbital to excite from and orbital to excit_t into.
         call choose_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
                            connection%to_orb(1), allowed_excitation)
         connection%nexcit = 1
@@ -120,7 +120,7 @@ contains
         !        systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, find_excitation_permutation1
+        use excitations, only: excit_t, find_excitation_permutation1
         use excit_gen_mol, only: find_ia_mol, calc_pgen_single_mol_no_renorm
         use fciqmc_data, only: pattempt_single
         use operators, only: one_body1_mol_excit
@@ -131,7 +131,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         real(p), intent(out) :: matel
 
         integer :: op_sym
@@ -139,7 +139,7 @@ contains
 
         op_sym = sys%read_in%one_body_op_integrals%op_sym
 
-        ! 1. Select orbital to excite from and orbital to excit into.
+        ! 1. Select orbital to excite from and orbital to excit_t into.
         call find_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
                          connection%to_orb(1), allowed_excitation)
         connection%nexcit = 1

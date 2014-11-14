@@ -22,13 +22,13 @@ contains
 
         ! Used in the UEG only.
 
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
-        type(excit) :: excitation
+        type(excit_t) :: excitation
 
         ! Test to see if Hamiltonian matrix element is non-zero.
 

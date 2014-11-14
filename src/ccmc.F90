@@ -197,7 +197,7 @@ contains
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
-        use excitations, only: excit, get_excitation_level
+        use excitations, only: excit_t, get_excitation_level
         use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
                                walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
                                dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
@@ -222,7 +222,7 @@ contains
 
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events, ierr
-        type(excit) :: connection
+        type(excit_t) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
         type(dSFMT_t), allocatable :: rng(:)
         real(p) :: junk, bloom_threshold
@@ -1016,7 +1016,7 @@ contains
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
-        use excitations, only: excit, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
         use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
@@ -1032,7 +1032,7 @@ contains
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         ! We incorporate the sign of the amplitude into the Hamiltonian matrix
         ! element, so we 'pretend' to attempt_to_spawn that all excips are
@@ -1094,7 +1094,7 @@ contains
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn
-        use excitations, only: excit, get_excitation_level
+        use excitations, only: excit_t, get_excitation_level
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -1107,7 +1107,7 @@ contains
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill
-        type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
+        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         ! Spawning onto the same excitor so no change in sign due to
         ! a difference in the sign of the determinant formed from applying the

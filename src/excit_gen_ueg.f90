@@ -48,7 +48,7 @@ contains
         !    determinant and a connected determinant in molecular systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use excitations, only: find_excitation_permutation2
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
         use system, only: sys_t
@@ -59,7 +59,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         logical :: allowed_excitation
 
         integer :: ij_k(sys%lattice%ndim), ij_spin, max_na
@@ -123,7 +123,7 @@ contains
         !    determinant and a connected determinant in molecular systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use excitations, only: find_excitation_permutation2
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
         use system, only: sys_t
@@ -135,7 +135,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         logical :: allowed_excitation
         integer :: ij_k(sys%lattice%ndim), ij_spin, max_na

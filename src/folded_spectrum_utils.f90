@@ -92,12 +92,12 @@ contains
 
         use determinants, only: det_info_t
         use proc_pointers, only: decoder_ptr
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in)  :: cdet_in
-        type(excit), intent(in)     :: connection
+        type(excit_t), intent(in)     :: connection
         type(det_info_t), intent(inout) :: cdet_out
 
         ! Create the excited determinant bit string representation
@@ -135,7 +135,7 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
         use excitations, only: create_excited_det, get_excitation
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -152,7 +152,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         real(p)          :: choose_double_elt_type
 
@@ -160,7 +160,7 @@ contains
         real(p)          :: pspawn_ki, pspawn_jk
         integer          :: nspawn_ki, nspawn_jk
         real(p)          :: hmatel_ki, hmatel_jk
-        type(excit)      :: connection_ki, connection_jk
+        type(excit_t)      :: connection_ki, connection_jk
 
         ! 0. Choose the type of double element you're going to spawn
         choose_double_elt_type = get_rand_close_open(rng)
