@@ -162,7 +162,7 @@ contains
         ! NOTE:
         !   end_ routines should surround every deallocate statement with a test
         !   that the array is allocated.
-        call end_lattice_system(sys%lattice)
+        call end_lattice_system(sys%lattice, sys%k_lattice, sys%real_lattice)
         call dealloc_basis_t(sys%basis)
         call end_momentum_symmetry()
         call end_determinants()

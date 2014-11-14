@@ -56,29 +56,48 @@ type sys_lattice_t
     ! Number of sites in crystal cell (Hubbard; Heisenberg).
     integer :: nsites
 
-    ! Twist applied to wavevectors (systems in Bloch basis).
-    real(p), allocatable :: ktwist(:)
-
     ! Lattice vectors of crystal cell. (:,i) is the i-th vector.
     ! Not used for the UEG (see box_length).
     integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
     ! As we are working in an orthogonal space, the reciprocal lattice vectors are
     ! easily obtained:
-    ! b_i = 2\pi/|a_i|^2 a_i
+    ! b_i = 2\pi/|a_i|^2 a_i in general,
     !     = 2\pi/ L_i for UEG, where L_i is box_length(i)
     real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
     ! Lengths of lattice vectors.
-    ! This defines the cubic simulation cell used in the UEG.
+    ! This also defines the cubic simulation cell used in the UEG.
     real(p), allocatable :: box_length(:) ! ndim.
 
     ! Contains integer lattice lengths. If less than 3 dimensions are used
     ! then the corresponding unused components are set to 1.
     ! This is useful for making loops over all dimension general.
+    ! [todo] - move to real_lattice.
     integer :: lattice_size(3)
 
 end type sys_lattice_t
+
+type sys_k_lattice_t
+
+    ! Model Hamiltonians in reciprocal space
+    ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    ! See also specific (i.e. Hubbard and UEG) structures.
+
+    ! Twist applied to wavevectors (systems in Bloch basis).
+    real(p), allocatable :: ktwist(:)
+
+end type sys_k_lattice_t
+
+type sys_real_lattice_t
+
+    ! Model Hamiltonians in real space
+    ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    ! See also specific (i.e. Hubbard and Heisenberg) structures.
+
+end type sys_real_lattice_t
 
 type sys_hubbard_t
 
@@ -225,6 +244,8 @@ type sys_t
     ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     type(sys_lattice_t) :: lattice
+    type(sys_k_lattice_t) :: k_lattice
+    type(sys_real_lattice_t) :: real_lattice
     type(sys_hubbard_t) :: hubbard
     type(sys_heisenberg_t) :: heisenberg
     type(sys_ueg_t) :: ueg
@@ -248,7 +269,7 @@ contains
 
         integer :: i, ivec, ierr, counter
 
-        associate(sl=>sys%lattice, su=>sys%ueg, sh=>sys%heisenberg)
+        associate(sl=>sys%lattice, sr=>sys%real_lattice, sk=>sys%k_lattice, su=>sys%ueg, sh=>sys%heisenberg)
 
             if (.not. sys%system == read_in) then
 
@@ -299,10 +320,10 @@ contains
 
                 end select
 
-                if (.not.allocated(sl%ktwist)) then
-                    allocate(sl%ktwist(sl%ndim), stat=ierr)
+                if (.not.allocated(sk%ktwist)) then
+                    allocate(sk%ktwist(sl%ndim), stat=ierr)
                     call check_allocate('sys%lattice%ktwist',sl%ndim,ierr)
-                    sl%ktwist = 0.0_p
+                    sk%ktwist = 0.0_p
                 end if
 
                 ! For the Heisenberg model, we have ms_in and nsites defined, but nel not.
@@ -371,30 +392,42 @@ contains
 
     end subroutine init_system
 
-    subroutine end_lattice_system(sl)
+    subroutine end_lattice_system(sl, sk, sr)
 
         ! Clean up system allocations.
 
+        ! In/Out:
+        !    sl, sk, sr: sys_*lattice_t objects.  On output the components of all provided
+        !       arguments are deallocated.
+
         use checking, only: check_deallocate
 
-        type(sys_lattice_t), intent(inout) :: sl
+        type(sys_lattice_t), intent(inout), optional :: sl
+        type(sys_k_lattice_t), intent(inout), optional :: sk
+        type(sys_real_lattice_t), intent(inout), optional :: sr
         integer :: ierr
 
-        if (allocated(sl%box_length)) then
-            deallocate(sl%box_length, stat=ierr)
-            call check_deallocate('box_length',ierr)
+        if (present(sl)) then
+            if (allocated(sl%box_length)) then
+                deallocate(sl%box_length, stat=ierr)
+                call check_deallocate('box_length',ierr)
+            end if
+            if (allocated(sl%rlattice)) then
+                deallocate(sl%rlattice, stat=ierr)
+                call check_deallocate('rlattice',ierr)
+            end if
+            if (allocated(sl%lattice)) then
+                deallocate(sl%lattice, stat=ierr)
+                call check_deallocate('lattice',ierr)
+            end if
         end if
-        if (allocated(sl%rlattice)) then
-            deallocate(sl%rlattice, stat=ierr)
-            call check_deallocate('rlattice',ierr)
+        if (present(sk)) then
+            if (allocated(sk%ktwist)) then
+                deallocate(sk%ktwist, stat=ierr)
+                call check_deallocate('ktwist',ierr)
+            end if
         end if
-        if (allocated(sl%lattice)) then
-            deallocate(sl%lattice, stat=ierr)
-            call check_deallocate('lattice',ierr)
-        end if
-        if (allocated(sl%ktwist)) then
-            deallocate(sl%ktwist, stat=ierr)
-            call check_deallocate('ktwist',ierr)
+        if (present(sr)) then
         end if
 
     end subroutine end_lattice_system

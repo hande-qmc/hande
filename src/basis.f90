@@ -121,11 +121,11 @@ contains
             write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
         case(hub_k,ueg)
             write (6,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
-            if (any(abs(sys%lattice%ktwist) > 0.0_p)) then
+            if (any(abs(sys%k_lattice%ktwist) > 0.0_p)) then
                 write (6,'(1X,a26)', advance='no') 'Applying a twist angle of:'
-                write (6,'(1X,"(",f6.4)', advance='no') sys%lattice%ktwist(1)
+                write (6,'(1X,"(",f6.4)', advance='no') sys%k_lattice%ktwist(1)
                 do i = 2, sys%lattice%ndim
-                    write (6,'(",",f6.4)', advance='no') sys%lattice%ktwist(i)
+                    write (6,'(",",f6.4)', advance='no') sys%k_lattice%ktwist(i)
                 end do
                 write (6,'(").")')
             end if

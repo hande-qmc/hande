@@ -176,10 +176,10 @@ contains
                 end do
                 call readi(ras3_max)
             case('TWIST')
-                allocate(sys%lattice%ktwist(nitems-item), stat=ierr)
-                call check_allocate('sys%lattice%ktwist',nitems-item,ierr)
+                allocate(sys%k_lattice%ktwist(nitems-item), stat=ierr)
+                call check_allocate('sys%k_lattice%ktwist',nitems-item,ierr)
                 do i = 1, nitems-item
-                    call readf(sys%lattice%ktwist(i))
+                    call readf(sys%k_lattice%ktwist(i))
                 end do
 
             ! Calculation type.
@@ -795,14 +795,14 @@ contains
         call mpi_bcast(sys%heisenberg%J, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%heisenberg%magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%heisenberg%staggered_magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        if (parent) option_set = allocated(sys%lattice%ktwist)
+        if (parent) option_set = allocated(sys%k_lattice%ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             if (.not.parent) then
-                allocate(sys%lattice%ktwist(sys%lattice%ndim), stat=ierr)
-                call check_allocate('sys%lattice%ktwist',sys%lattice%ndim,ierr)
+                allocate(sys%k_lattice%ktwist(sys%lattice%ndim), stat=ierr)
+                call check_allocate('sys%k_lattice%ktwist',sys%lattice%ndim,ierr)
             end if
-            call mpi_bcast(sys%lattice%ktwist, sys%lattice%ndim, mpi_preal, 0, mpi_comm_world, ierr)
+            call mpi_bcast(sys%k_lattice%ktwist, sys%lattice%ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(sys%ueg%r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
