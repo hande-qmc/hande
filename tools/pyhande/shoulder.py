@@ -9,6 +9,7 @@ The shoulder esitmator is deffined to be the ten points with the smallest
 proportion of the poulation on the reference (excluding points when the 
 population drops bellow 10 excips (psips). The shoulder height is the total
 population at this point.
+Credit to AJWT for original implementation.
 
 Parameters
 ----------
