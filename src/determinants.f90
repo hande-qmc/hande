@@ -323,58 +323,6 @@ contains
 
     end subroutine decode_det_occ
 
-    pure subroutine decode_det_occ_spinunocc(sys, f, d)
-
-        ! Decode determinant bit string into integer lists containing the
-        ! occupied and unoccupied orbitals.  The unoccupied alpha and beta
-        ! orbitals are given separately, as this is convenient for FCIQMC.
-        ! In:
-        !    f(string_len): bit string representation of the Slater
-        !        determinant.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        unocc_list_alpha: integer list of unoccupied alpha
-        !            spin-orbitals in the Slater determinant.
-        !        unocc_list_beta: integer list of unoccupied beta
-        !            spin-orbitals in the Slater determinant.
-
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(det_info_t), intent(inout) :: d
-        integer :: i, j, iocc, iunocc_a, iunocc_b
-
-        iocc = 0
-        iunocc_a = 0
-        iunocc_b = 0
-
-        do i = 1, sys%basis%string_len
-            do j = 0, i0_end
-                if (btest(f(i), j)) then
-                    iocc = iocc + 1
-                    d%occ_list(iocc) = sys%basis%basis_lookup(j, i)
-                else
-                    if (mod(j,2)==0) then
-                        ! alpha state (even bit index, odd basis function index)
-                        iunocc_a = iunocc_a + 1
-                        d%unocc_list_alpha(iunocc_a) = sys%basis%basis_lookup(j, i)
-                    else
-                        ! beta state (odd bit index, even basis function index)
-                        iunocc_b = iunocc_b + 1
-                        d%unocc_list_beta(iunocc_b) = sys%basis%basis_lookup(j, i)
-                    end if
-                end if
-                ! Have we covered all basis functions?
-                ! This avoids examining any "padding" at the end of f.
-                if (iocc+iunocc_a+iunocc_b==sys%basis%nbasis) exit
-            end do
-        end do
-
-    end subroutine decode_det_occ_spinunocc
-
     pure subroutine decode_det_spinocc_spinunocc(sys, f, d)
 
         ! Decode determinant bit string into integer lists containing the
