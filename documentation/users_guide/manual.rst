@@ -255,10 +255,16 @@ USE_POPCNT
     standard compilation flags, we expect the HANDE version to be competitive or more
     performant, based upon some simple tests.  The key difference is on modern
     processors containing the popcnt instruction: the popcnt intrinsic can then
-    make use of this instruction and will be faster than the implmentation in HANDE.
-    Using the popcnt instruction often involves a compiler-specific flag to tell the
-    compiler to use that instruction set.  The use of the popcnt instruction can be tested
-    using objdump.  For example:
+    make use of this instruction and will be much faster than the implmentation
+    in HANDE.  The existence of the popcnt instruction can be found, on Unix
+    and Linux platforms, by inspecting the flags field in ``/proc/cpuinfo``: if
+    it contains ``popcnt``, then the processor contains the popcnt instruction.
+
+    Using the popcnt instruction often involves a compiler-specific flag to
+    tell the compiler to use that instruction set; often compilers include the
+    popcnt instruction with the flag that specifies the use of the SSE4.2
+    instruction set.  The use of the popcnt instruction can be tested using
+    objdump.  For example:
 
     .. code-block:: bash
 
