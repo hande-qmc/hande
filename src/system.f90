@@ -154,7 +154,7 @@ type sys_real_lattice_t
     integer(i0), allocatable :: next_nearest_orbs(:,:) ! (nbasis, nbasis)
 
     ! True if any site is its own periodic image.
-    ! This is the case if one dimension (or more) has only one site per crystalisystem
+    ! This is the case if one dimension (or more) has only one site per simulation
     ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
     ! This is the only way that the integral < i | T | i >, where i is a basis
     ! function centred on a lattice site, can be non-zero.
