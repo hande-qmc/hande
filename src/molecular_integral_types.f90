@@ -35,7 +35,7 @@ end type one_body_t
 ! o is a two-electron operator.
 type two_body_t
     ! integrals(ispin)%v(indx) gives the integral <ij|o_2|ab>, where ispin depends upon
-    ! the spin combination (ie all alpha, all beta, and haf alpha, half beta) and
+    ! the spin combination (ie all alpha, all beta, and half alpha, half beta) and
     ! indx is related to i,j,a,b.  As we deal with real orbitals only (except
     ! see below), we can use permutation symmetry to reduce the number of
     ! integrals by a factor of 8.  See access procedures for this in action.

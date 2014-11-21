@@ -164,7 +164,7 @@ contains
                 associate(lattice_mask=>sys%heisenberg%lattice_mask)
                     call check_allocate('lattice_mask',sys%basis%string_len,ierr)
                     ! lattice_size is such that any loops over higher dimensions
-                    ! than that of the model are single iterations but allows us t not have
+                    ! than that of the model are single iterations but allows us to not have
                     ! to handle each dimension separately.
                     lattice_size = 1
                     lattice_size(1) = ceiling(sys%lattice%box_length(1))
@@ -341,7 +341,7 @@ contains
         ! In/Out:
         !    sr: sys_real_lattice_t.  On input sr%connected_orbs must be set and
         !        sr%next_nearest_orbs must be allocated.  On output
-        !        sr%next_nearest_orbsis filled in.
+        !        sr%next_nearest_orbs is filled in.
 
         use basis_types, only: basis_t
         use parallel

@@ -65,7 +65,7 @@ contains
 
         op_sym = sys%read_in%one_body_op_integrals%op_sym
 
-        ! 1. Select orbital to excite from and orbital to excit_t into.
+        ! 1. Select orbital to excite from and orbital to excite into.
         call choose_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
                            connection%to_orb(1), allowed_excitation)
         connection%nexcit = 1
@@ -139,7 +139,7 @@ contains
 
         op_sym = sys%read_in%one_body_op_integrals%op_sym
 
-        ! 1. Select orbital to excite from and orbital to excit_t into.
+        ! 1. Select orbital to excite from and orbital to excite into.
         call find_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
                          connection%to_orb(1), allowed_excitation)
         connection%nexcit = 1

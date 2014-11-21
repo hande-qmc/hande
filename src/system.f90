@@ -137,8 +137,8 @@ type sys_real_lattice_t
     ! If connected_orbs(j,i) is 0 then it means there are fewer than 2*ndim unique sites
     ! that are connected to i that are not a periodic image of i (or connected to
     ! i both directly and via periodic boundary conditions).
-    ! For the triangular lattice, there are 3*ndim bonds, and ndim must equal 2,
-    ! so each site is connected to 6.
+    ! For the triangular lattice there are 3*ndim bonds and ndim must equal 2,
+    ! so each site is connected to 6 other sites.
     integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
 
     ! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
@@ -164,7 +164,7 @@ type sys_real_lattice_t
     ! False if we are modelling an infinite lattice
     ! The code is set up to model inifinite lattices by default, however in order
     ! to model only a finite "cluster" of sites, all one need do is set the
-    ! connection matrix elements corresponding to connections accross cell
+    ! connection matrix elements corresponding to connections across cell
     ! boundaries (i.e. periodic boundary conditions) to 0
     logical :: finite_cluster = .false. ! default to infinite crystals
 
