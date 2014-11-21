@@ -356,8 +356,19 @@ contains
 
         do ibasis = 1, basis%nbasis
             do jbasis = 1, basis%nbasis
-                sr%next_nearest_orbs(ibasis,ibasis) = 0_i0
+                bit_position = basis%bit_lookup(1,jbasis)
+                bit_element = basis%bit_lookup(2,jbasis)
+                if (btest(sr%connected_orbs(bit_element,ibasis),bit_position)) then
+                    do kbasis = 1, basis%nbasis
+                        bit_position = basis%bit_lookup(1,kbasis)
+                        bit_element = basis%bit_lookup(2,kbasis)
+                        if (btest(sr%connected_orbs(bit_element,jbasis),bit_position)) then
+                            sr%next_nearest_orbs(ibasis,kbasis) = sr%next_nearest_orbs(ibasis,kbasis)+1
+                        end if
+                    end do
+                end if
             end do
+            sr%next_nearest_orbs(ibasis,ibasis) = 0_i0
         end do
 
     end subroutine create_next_nearest_orbs
