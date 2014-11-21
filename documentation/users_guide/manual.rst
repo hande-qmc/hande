@@ -243,6 +243,45 @@ SINGLE_PRECISION
     Set the precision (where possible) to be single precision.  The default is
     double precision.  This is faster, but (of course) can change results
     significantly.  Use with care.
+USE_POPCNT
+    Default: not defined.
+
+    Use the intrinsic popcnt function instead of the version implemented in HANDE.
+
+    An important procedure involves counting the number of set bits in an integer.  HANDE
+    includes a very efficient, branchless procedure to do this.  However, the Fortran
+    2008 standard includes an intrinsic function, popcnt, for this exact operation.
+    The performance of this intrinsic will be implementation-dependent and, with
+    standard compilation flags, we expect the HANDE version to be competitive or more
+    performant, based upon some simple tests.  The key difference is on modern
+    processors containing the popcnt instruction: the popcnt intrinsic can then
+    make use of this instruction and will be much faster than the implmentation
+    in HANDE.  The existence of the popcnt instruction can be found, on Unix
+    and Linux platforms, by inspecting the flags field in ``/proc/cpuinfo``: if
+    it contains ``popcnt``, then the processor contains the popcnt instruction.
+
+    Using the popcnt instruction often involves a compiler-specific flag to
+    tell the compiler to use that instruction set; often compilers include the
+    popcnt instruction with the flag that specifies the use of the SSE4.2
+    instruction set.  The use of the popcnt instruction can be tested using
+    objdump.  For example:
+
+    .. code-block:: bash
+
+        $ objdump -d bin/hande.x | grep popc
+        0000000000400790 <__popcountdi2@plt>:
+          400931:e8 5a fe ff ff         callq  400790 <__popcountdi2@plt>
+
+    indicates that HANDE is using a compiler-supplied function for popcnt.  Exact output
+    (especially the function name) is compiler dependent.  In contrast:
+
+    .. code-block:: bash
+
+        $ objdump -d bin/hande.x | grep popc
+          4008ac:f3 0f b8 c0            popcnt %eax,%eax
+
+    indicates HANDE is using the popcnt instruction.  If the above command does not give
+    any output, then USE_POPCNT has most likely not been defined.
 
 Usage
 -----
