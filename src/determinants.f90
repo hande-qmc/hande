@@ -268,21 +268,43 @@ contains
         !        determinant. (min size: number of electrons.)
 
         use basis_types, only: basis_t
+        use bit_table_256_m, only: bit_table_256
 
         type(basis_t), intent(in) :: basis_set
         integer(i0), intent(in) :: f(basis_set%string_len)
         integer, intent(out) :: occ_list(:)
-        integer :: i, j, iorb
 
-        iorb = 1
-        outer: do i = 1, basis_set%string_len
-            do j = 0, i0_end
-                if (btest(f(i), j)) then
-                    occ_list(iorb) = basis_set%basis_lookup(j, i)
-                    if (iorb == size(occ_list)) exit outer
-                    iorb = iorb + 1
-                end if
+        ! The lookup table contains the list of bits set for all possible integers contained in a given number of bits.
+        ! Number of bits in integers in the lookup table (assume a power of 2!).
+        integer, parameter :: field_size = ubound(bit_table_256, dim=1)
+        ! Number of such bit chunks in integers of kind i0.
+        integer, parameter :: nfields = i0_length/field_size
+        ! Bit mask to extract a chunk containing field_size bits.
+        integer, parameter :: mask = 2**field_size - 1
+
+        integer :: iel, ifield, nfound, offset, nbits_seen
+        integer(i0) :: field
+
+        ! WARNING: we assume that the basis functions 1,2,..., correspond to bits 0,1,...
+        ! in the first integer of f and so on (i.e. basis_set%separate_strings is false).
+
+        nfound = 0
+        nbits_seen = 0
+        outer: do iel = 1, basis_set%string_len
+            offset = 0
+            do ifield = 1, nfields
+                ! Inspect one byte at a time.
+                field = iand(mask, ishft(f(iel), -offset))
+                associate(in_field=>bit_table_256(0,field))
+                    ! 1-based index in lookup table, which matches the orbitals indexing scheme.
+                    occ_list(nfound+1:nfound+in_field) = bit_table_256(1:in_field, field) + nbits_seen
+                    nfound = nfound + in_field
+                end associate
+                if (nfound == size(occ_list)) exit outer
+                offset = offset + field_size
+                nbits_seen = nbits_seen + field_size
             end do
+            nbits_seen = iel*i0_length
         end do outer
 
     end subroutine decode_det
@@ -291,6 +313,7 @@ contains
 
         ! Decode determinant bit string into integer list containing the
         ! occupied orbitals.
+        !
         ! In:
         !    sys: system being studied (contains required basis information).
         !    f(string_len): bit string representation of the Slater
@@ -305,21 +328,8 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info_t), intent(inout) :: d
-        integer :: i, j, iocc, iunocc_a, iunocc_b
 
-        iocc = 0
-        iunocc_a = 0
-        iunocc_b = 0
-
-        do i = 1, sys%basis%string_len
-            do j = 0, i0_end
-                if (btest(f(i), j)) then
-                    iocc = iocc + 1
-                    d%occ_list(iocc) = sys%basis%basis_lookup(j, i)
-                end if
-                if (iocc == sys%nel) exit
-            end do
-        end do
+        call decode_det(sys%basis, f, d%occ_list)
 
     end subroutine decode_det_occ
 
@@ -352,6 +362,10 @@ contains
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info_t), intent(inout) :: d
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
+
+        ! A bit too much to do the chunk-based decoding of the occupied list and then fill
+        ! in the remaining information.  We only use this in Hubbard model calculations in
+        ! k-space, so for now just do a (slow) bit-wise inspection.
 
         iocc = 0
         iocc_a = 0
@@ -425,7 +439,7 @@ contains
 
     pure subroutine decode_det_occ_symunocc(sys, f, d)
 
-        !0 Decode determinant bit string into integer list containing the
+        ! Decode determinant bit string into integer list containing the
         ! occupied orbitals.
         ! In:
         !    f(string_len): bit string representation of the Slater
@@ -444,26 +458,17 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info_t), intent(inout) :: d
-        integer :: i, j, iocc, iunocc_a, iunocc_b, orb, ims, isym
+        integer :: i, ims, isym
 
-        iocc = 0
-        iunocc_a = 0
-        iunocc_b = 0
+        call decode_det(sys%basis, f, d%occ_list)
 
         d%symunocc = nbasis_sym_spin
-
-        do i = 1, sys%basis%string_len
-            do j = 0, i0_end
-                if (btest(f(i), j)) then
-                    orb = sys%basis%basis_lookup(j, i)
-                    ims = (sys%basis%basis_fns(orb)%ms+3)/2
-                    isym = sys%basis%basis_fns(orb)%sym
-                    iocc = iocc + 1
-                    d%occ_list(iocc) = orb
-                    d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
-                end if
-                if (iocc == sys%nel) exit
-            end do
+        do i = 1, sys%nel
+            associate(orb=>d%occ_list(i))
+                ims = (sys%basis%basis_fns(orb)%ms+3)/2
+                isym = sys%basis%basis_fns(orb)%sym
+            end associate
+            d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
         end do
 
     end subroutine decode_det_occ_symunocc
