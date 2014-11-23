@@ -27,7 +27,7 @@ contains
         real(p) :: kc(sys%lattice%ndim)
 
         ! Note sys%lattice%rlattice is stored in units of 2pi.
-        forall (i=1:sys%lattice%ndim) kc(i) = sum(k*sys%lattice%rlattice(i,:)) + sys%lattice%ktwist(i)
+        forall (i=1:sys%lattice%ndim) kc(i) = sum(k*sys%lattice%rlattice(i,:)) + sys%k_lattice%ktwist(i)
 
         select case(sys%system)
         case(hub_k)

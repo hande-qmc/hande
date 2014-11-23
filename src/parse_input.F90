@@ -12,7 +12,6 @@ use determinants
 use determinant_enumeration, only: write_determinants, determinant_file
 use fciqmc_data
 use restart_hdf5, only: restart_info_global, restart_info_global_shift
-use real_lattice, only: finite_cluster
 use hfs_data
 use semi_stoch
 
@@ -176,10 +175,10 @@ contains
                 end do
                 call readi(ras3_max)
             case('TWIST')
-                allocate(sys%lattice%ktwist(nitems-item), stat=ierr)
-                call check_allocate('sys%lattice%ktwist',nitems-item,ierr)
+                allocate(sys%k_lattice%ktwist(nitems-item), stat=ierr)
+                call check_allocate('sys%k_lattice%ktwist',nitems-item,ierr)
                 do i = 1, nitems-item
-                    call readf(sys%lattice%ktwist(i))
+                    call readf(sys%k_lattice%ktwist(i))
                 end do
 
             ! Calculation type.
@@ -515,7 +514,7 @@ contains
                 ! this will be checked in check_input to ensure that it
                 ! is only used when we are formulating the calculation
                 ! in real-space
-                finite_cluster = .true.
+                sys%real_lattice%finite_cluster = .true.
             case('TRIANGULAR_LATTICE')
                 sys%lattice%triangular_lattice = .true.
 
@@ -688,11 +687,11 @@ contains
         ! we are doing a calculation in real-space. If we're not then
         ! unset finite cluster,tell the user and carry on
         if(sys%momentum_space) then
-            if (finite_cluster .and. parent) call warning(this,'FINITE_CLUSTER keyword only valid for hubbard&
+            if (sys%real_lattice%finite_cluster .and. parent) call warning(this,'FINITE_CLUSTER keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
             if (sys%basis%separate_strings .and. parent) call warning(this,'SEPARATE_STRINGS keyword only valid for hubbard&
                                       & calculations in real-space: ignoring keyword')
-            finite_cluster = .false.
+            sys%real_lattice%finite_cluster = .false.
             sys%basis%separate_strings = .false.
         end if
 
@@ -785,7 +784,7 @@ contains
         call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%real_lattice%finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(guiding_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -795,14 +794,14 @@ contains
         call mpi_bcast(sys%heisenberg%J, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%heisenberg%magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%heisenberg%staggered_magnetic_field, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        if (parent) option_set = allocated(sys%lattice%ktwist)
+        if (parent) option_set = allocated(sys%k_lattice%ktwist)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             if (.not.parent) then
-                allocate(sys%lattice%ktwist(sys%lattice%ndim), stat=ierr)
-                call check_allocate('sys%lattice%ktwist',sys%lattice%ndim,ierr)
+                allocate(sys%k_lattice%ktwist(sys%lattice%ndim), stat=ierr)
+                call check_allocate('sys%k_lattice%ktwist',sys%lattice%ndim,ierr)
             end if
-            call mpi_bcast(sys%lattice%ktwist, sys%lattice%ndim, mpi_preal, 0, mpi_comm_world, ierr)
+            call mpi_bcast(sys%k_lattice%ktwist, sys%lattice%ndim, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(sys%ueg%r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)

@@ -27,7 +27,7 @@ contains
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use dmqmc_estimators
         use dmqmc_procedures
-        use excitations, only: excit
+        use excitations, only: excit_t
         use qmc_common
         use interact, only: fciqmc_interact
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
@@ -46,7 +46,7 @@ contains
         integer :: nel_temp, nattempts_current_det
         type(det_info_t) :: cdet1, cdet2
         integer(int_p) :: nspawned, ndeath
-        type(excit) :: connection
+        type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
         logical :: soft_exit
         real :: t1, t2

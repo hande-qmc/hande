@@ -290,7 +290,7 @@ contains
                                 k = k + sys%basis%basis_fns(occ(iel))%l
                             end do
                             ! Symmetry label (convert from basis index).
-                            sym = (ueg_basis_index(k,1)+1)/2
+                            sym = (ueg_basis_index(sys%ueg%basis,k,1)+1)/2
                         else
                             sym = cross_product(sys, sym_beta, symmetry_orb_list(sys, occ(sys%nbeta+1:sys%nel)))
                         end if

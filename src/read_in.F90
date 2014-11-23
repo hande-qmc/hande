@@ -33,7 +33,7 @@ contains
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
-                                        is_gamma_irrep_pg_sym, pg_sym_conj
+                                        is_gamma_irrep_pg_sym, pg_sym_conj, gamma_sym
         use system, only: sys_t
 
         use checking, only: check_allocate, check_deallocate
@@ -350,7 +350,10 @@ contains
         if (t_store) call init_pg_symmetry(sys)
 
         ! Initialise integral stores.
-        if (t_store) call init_molecular_integrals(sys%read_in%uhf, sys%basis%nbasis)
+        if (t_store) then
+            call init_one_body_t(sys%read_in%uhf, gamma_sym, sys%read_in%one_e_h_integrals)
+            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, gamma_sym, sys%read_in%coulomb_integrals)
+        end if
 
         if (parent) then
             ! Now, read in FCIDUMP again to get the integrals.
@@ -386,8 +389,8 @@ contains
 
         sys%read_in%Ecore = 0.0_p
         if (t_store) then
-            call zero_one_body_int_store(one_e_h_integrals)
-            call zero_two_body_int_store(coulomb_integrals)
+            call zero_one_body_int_store(sys%read_in%one_e_h_integrals)
+            call zero_two_body_int_store(sys%read_in%coulomb_integrals)
         end if
 
         ! Now, there is no guarantee that FCIDUMP files will include all
@@ -484,9 +487,9 @@ contains
                                 sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
-                                    x = x + get_one_body_int_mol(one_e_h_integrals, ii, aa, sys%basis%basis_fns)
+                                    x = x + get_one_body_int_mol(sys%read_in%one_e_h_integrals, ii, aa, sys%basis%basis_fns)
                                     call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, &
-                                                                int_err > max_err_msg, one_e_h_integrals, ierr)
+                                                                int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
                                     int_err = int_err + ierr
                                     seen_iha(tri_ind_reorder(ii,aa)) = .true.
                                 end if
@@ -564,10 +567,11 @@ contains
                                         ! < i a | i b >
                                         if (mod(seen_iaib(core(1), tri_ind_reorder(active(1),active(2))),2) == 0) then
                                             ! Update <a|h|b> with contribution <ia|ib>.
-                                            x = get_one_body_int_mol(one_e_h_integrals, active(1), active(2), sys%basis%basis_fns) &
-                                                    + x*rhf_fac
+                                            x = x*rhf_fac + &
+                                                get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), &
+                                                                     active(2), sys%basis%basis_fns)
                                             call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        int_err > max_err_msg, one_e_h_integrals, ierr)
+                                                                        int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 1
@@ -579,13 +583,13 @@ contains
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
                                             is_gamma_irrep_pg_sym(                                          &
                                                 cross_product_pg_sym(pg_sym_conj(sys%basis%basis_fns(active(1))%sym), &
-                                                                     sys%basis%basis_fns(active(2))%sym)))            then
+                                                                     sys%basis%basis_fns(active(2))%sym))) then
 
                                             ! Update <j|h|a> with contribution <ij|ai>.
-                                            x = get_one_body_int_mol(one_e_h_integrals, active(1), active(2), sys%basis%basis_fns) &
-                                                    - x
+                                            x = get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), active(2), &
+                                                                     sys%basis%basis_fns) - x
                                             call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        int_err > max_err_msg, one_e_h_integrals, ierr)
+                                                                        int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
@@ -595,7 +599,7 @@ contains
                             case(4)
                                 ! Have <ij|ab> involving active orbitals.
                                 call store_two_body_int_mol(ii, jj, aa, bb, x, sys%basis%basis_fns, &
-                                                            int_err > max_err_msg, coulomb_integrals, ierr)
+                                                            int_err > max_err_msg, sys%read_in%coulomb_integrals, ierr)
                                 int_err = int_err + ierr
                             end select
                         end if
@@ -628,8 +632,8 @@ contains
 #ifdef PARALLEL
         call MPI_BCast(sys%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
-        call broadcast_one_body_int(one_e_h_integrals, root)
-        call broadcast_two_body_int(coulomb_integrals, root)
+        call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
+        call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent) then
             ! We froze some orbitals...
@@ -654,7 +658,7 @@ contains
 
         if (t_store .and. sys%read_in%dipole_int_file /= '') then
             call read_in_one_body(sys%read_in%dipole_int_file, sys%basis%nbasis, sys%basis%basis_fns, sys%read_in%uhf, &
-                                  sp_fcidump_rank, active_basis_offset, one_body_op_integrals, &
+                                  sp_fcidump_rank, active_basis_offset, sys%read_in%one_body_op_integrals, &
                                   sys%read_in%dipole_core)
         end if
 
@@ -769,9 +773,9 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis
-        use molecular_integrals, only: one_body, init_one_body_int_store,              &
-                                       end_one_body_int_store, store_one_body_int_mol, &
-                                       zero_one_body_int_store, broadcast_one_body_int
+        use molecular_integrals, only: one_body_t, init_one_body_t,              &
+                                       end_one_body_t, store_one_body_int_mol, &
+                                       zero_one_body_int_store, broadcast_one_body_t
 
         use errors, only: stop_all
         use parallel
@@ -784,7 +788,7 @@ contains
         logical, intent(in) :: uhf
         integer, intent(in) :: nbasis, sp_fcidump_rank(0:), active_basis_offset
         type(basis_fn_t), intent(in) :: basis_fns(:)
-        type(one_body), intent(out) :: store
+        type(one_body_t), intent(out) :: store
         real(p), intent(out) :: core_term
 
         integer :: ir, op_sym, ios, i, a, ii, aa, rhf_fac, ierr
@@ -833,8 +837,8 @@ contains
         end if
 
         ! Allocate integral store on *all* processors.
-        if (allocated(store%integrals)) call end_one_body_int_store(store)
-        call init_one_body_int_store(uhf, op_sym, store)
+        if (allocated(store%integrals)) call end_one_body_t(store)
+        call init_one_body_t(uhf, op_sym, store)
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
@@ -900,7 +904,7 @@ contains
 #ifdef PARALLEL
         call MPI_BCast(core_term, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
-        call broadcast_one_body_int(store, root)
+        call broadcast_one_body_t(store, root)
 
     end subroutine read_in_one_body
 

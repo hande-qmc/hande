@@ -22,7 +22,7 @@ contains
         use bloom_handler, only: bloom_stats_t
         use calc, only: seed, initiator_approximation
         use determinants, only: det_info_t, alloc_det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use qmc_common
         use proc_pointers
         use system, only: sys_t, hub_real, hub_k
@@ -48,11 +48,11 @@ contains
         real(p) :: time, t_barrier, K_ii, R, sum_off_diag
         real :: t1, t2
         type(det_info_t) :: cdet
-        type(excit) :: connection
-        type(excit), allocatable :: connection_list(:)
+        type(excit_t) :: connection
+        type(excit_t), allocatable :: connection_list(:)
         logical :: soft_exit
         real(p):: hmatel
-        type(excit) :: D0_excit
+        type(excit_t) :: D0_excit
         type(dSFMT_t) :: rng
         integer, parameter :: thread_id = 0
         integer :: spawned_pop
@@ -279,7 +279,7 @@ contains
         !    connection: the excitation connection between the parent and child
         !        determinants
 
-        use excitations, only: excit
+        use excitations, only: excit_t
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t, hub_real, hub_k
@@ -293,7 +293,7 @@ contains
         integer(int_p), intent(in) :: parent_sgn
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(out) :: nspawned
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         real(p) :: rand, K_ij
         logical :: allowed_excitation
@@ -366,12 +366,12 @@ contains
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use fciqmc_data, only: qmc_spawn
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         real(p), intent(in) :: spawn_time

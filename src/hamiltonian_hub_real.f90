@@ -22,14 +22,14 @@ contains
 
         ! Used in the real space formulation of the Hubbard model only.
 
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use system, only: sys_t
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
-        type(excit) :: excitation
+        type(excit_t) :: excitation
 
         hmatel = 0.0_p
         non_zero = .false.
@@ -86,7 +86,7 @@ contains
         !        the Hubbard model in real space.
 
         use determinants, only: decode_det
-        use real_lattice, only: t_self_images, get_one_e_int_real, get_coulomb_matel_real
+        use real_lattice, only: get_one_e_int_real, get_coulomb_matel_real
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -103,7 +103,7 @@ contains
         ! which case it has a kinetic interaction with its self-image.
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
-        if (t_self_images) then
+        if (sys%real_lattice%t_self_images) then
             call decode_det(sys%basis, f, root_det)
             do i = 1, sys%nel
                 hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))
@@ -163,7 +163,7 @@ contains
         !    sys: system to be studied.
         !    f: bit string representation of the Slater determinant, D.
         ! In/Out:
-        !    connection: excit type describing the excitation between |D> and
+        !    connection: excit_t type describing the excitation between |D> and
         !    |D_i^a>.  On entry, only the from_orb and to_orb fields must be
         !    set.  On exit the perm field will also be set.
         ! Out:
@@ -171,16 +171,16 @@ contains
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
 
-        use excitations, only: excit, find_excitation_permutation1
+        use excitations, only: excit_t, find_excitation_permutation1
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(excit), intent(inout) :: connection
+        type(excit_t), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 
         ! a) Find out permutation required to line up determinants.
-        call find_excitation_permutation1(f, connection)
+        call find_excitation_permutation1(sys%basis%excit_mask, f, connection)
 
         ! b) The matrix element connected |D> and |D_i^a> is <i|h|a> = -t.
         if (connection%perm) then

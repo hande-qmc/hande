@@ -43,11 +43,8 @@ module folded_spectrum_utils
 use const
 
 use fciqmc_data, only: fold_line
-use determinants, only: det_info_t
 
 implicit none
-
-type(det_info_t), save :: cdet_excit
 
 contains
 
@@ -92,12 +89,12 @@ contains
 
         use determinants, only: det_info_t
         use proc_pointers, only: decoder_ptr
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in)  :: cdet_in
-        type(excit), intent(in)     :: connection
+        type(excit_t), intent(in)     :: connection
         type(det_info_t), intent(inout) :: cdet_out
 
         ! Create the excited determinant bit string representation
@@ -135,9 +132,9 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
-        use excitations, only: excit
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use fciqmc_data, only: tau, H00, X__, X_o, Xo_, P__, Po_, P_o
-        use excitations, only: create_excited_det, get_excitation
+        use excitations, only: excit_t, create_excited_det, get_excitation
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t, sc0_ptr
@@ -152,7 +149,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         real(p)          :: choose_double_elt_type
 
@@ -160,7 +157,9 @@ contains
         real(p)          :: pspawn_ki, pspawn_jk
         integer          :: nspawn_ki, nspawn_jk
         real(p)          :: hmatel_ki, hmatel_jk
-        type(excit)      :: connection_ki, connection_jk
+        type(excit_t)      :: connection_ki, connection_jk
+        type(det_info_t) :: cdet_excit
+        integer(i0) :: fexcit(sys%basis%string_len)
 
         ! 0. Choose the type of double element you're going to spawn
         choose_double_elt_type = get_rand_close_open(rng)
@@ -240,7 +239,7 @@ contains
                 ! Generate the second random excitation
                 !    (in this case we stay on the same place)
                 ! (i)  generate the first excited determinant
-                call create_cdet_excit(sys, cdet, connection_ki, cdet_excit) !could optimise this with create_excited det - we only need %f
+                call create_excited_det(sys%basis, cdet%f, connection, fexcit)
                 ! (ii) calculate Pgen and hmatel on this site
                 Pgen_jk = 1
                 hmatel_jk = sc0_ptr(sys, cdet_excit%f) - H00 - fold_line !***optimise this with stored/calculated values
@@ -302,6 +301,10 @@ contains
 
                 ! Generate the second random excitation
                 ! (i)  generate the first excited determinant
+                !       As this only happens a very small fraction of the time, we'll take
+                !       the hit to avoid global data and allocate the excited det_info_t
+                !       object each time.
+                call alloc_det_info_t(sys, cdet_excit)
                 call create_cdet_excit(sys, cdet, connection_ki, cdet_excit)
                 ! (ii) excite again
                 call gen_excit_ptr%full(rng, sys, cdet_excit, Pgen_jk, connection_jk, hmatel_jk)
@@ -347,6 +350,8 @@ contains
                     ! Unsuccessful spawning on jk, set nspawn = 0
                     nspawn = 0
                 end if
+
+                call dealloc_det_info_t(cdet_excit)
 
             else
                 ! Unsuccessful spawning  on ki, set nspawn = 0

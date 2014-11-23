@@ -387,7 +387,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use hamiltonian_hub_k, only: slater_condon2_hub_k
         use system, only: sys_t
 
@@ -396,7 +396,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
+        type(excit_t), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
         excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
@@ -445,7 +445,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
 
@@ -454,7 +454,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
+        type(excit_t), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
         excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
@@ -503,7 +503,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
         use system, only: sys_t
@@ -513,7 +513,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
+        type(excit_t), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
         integer :: ij_sym, ab_sym
@@ -584,7 +584,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use hamiltonian_ueg, only: slater_condon2_ueg
         use system, only: sys_t
 
@@ -593,7 +593,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
+        type(excit_t), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
         excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
@@ -646,14 +646,14 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
-        type(excit), intent(in) :: excitation
+        type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
         if (excitation%nexcit == 0) then
@@ -701,14 +701,14 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
-        type(excit), intent(in) :: excitation
+        type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
         if (excitation%nexcit == 0) then
@@ -756,14 +756,14 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
-        type(excit), intent(in) :: excitation
+        type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
         ! Note: two-electron operator.
@@ -815,7 +815,7 @@ contains
         !       <D_i|H|D_0> \tilde{N}_i, where \tilde{N}_i is the
         !       Hellmann-Feynman population on D_i.
 
-        use excitations, only: excit
+        use excitations, only: excit_t
         use operators, only: one_body1_mol
         use system, only: sys_t
 
@@ -823,7 +823,7 @@ contains
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: fpop, f_hfpop
         real(p), intent(in) :: fdata(:), hmatel
-        type(excit), intent(in) :: excitation
+        type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
 
         real(p) :: matel

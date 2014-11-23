@@ -37,16 +37,15 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use system, only: sys_t
-        use real_lattice, only: connected_orbs
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
+        type(excit_t), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
         integer :: bit_position, bit_element
@@ -64,7 +63,7 @@ contains
             bit_position = sys%basis%bit_lookup(1,excitation%from_orb(1))
             bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
 
-            if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
+            if (btest(sys%real_lattice%connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
                  hmatel = -sys%heisenberg%J/2
                  proj_energy_sum = proj_energy_sum + hmatel*pop
              end if
@@ -107,7 +106,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: sampling_size, neel_singlet_amp
         use system, only: sys_t
         use calc, only: guiding_function, neel_singlet_guiding
@@ -117,13 +116,13 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit), intent(out) :: excitation
+        type(excit_t), intent(out) :: excitation
         real(p), intent(out) :: hmatel
 
         integer :: n, lattice_1_up, lattice_2_up
         real(p) :: importance_sampling_factor
 
-        excitation = excit(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
+        excitation = excit_t(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
 
         importance_sampling_factor = 1.0_p
 
@@ -211,7 +210,6 @@ contains
         !       of 0-1 bonds, where the 1 (the up spin) is on the first sublattice.
 
         use bit_utils, only: count_set_bits
-        use real_lattice, only: connected_orbs
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -231,7 +229,7 @@ contains
             do ipos = 0, i0_end
                 if (btest(f_mask(i), ipos)) then
                     basis_find = sys%basis%basis_lookup(ipos, i)
-                    g = iand(f_not, connected_orbs(:,basis_find))
+                    g = iand(f_not, sys%real_lattice%connected_orbs(:,basis_find))
                     lattice_1_up = lattice_1_up + sum(count_set_bits(g))
                 end if
             end do

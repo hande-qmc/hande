@@ -359,7 +359,7 @@ contains
                 ! In:
                 !    nspin: number of electrons of the given spin.
                 !    nvirt_spin: number of virtual orbitals of the given spin.
-                !    nexcit: number of electrons to excit.
+                !    nexcit: number of electrons to excit_t.
                 ! In/Out:
                 !    rng: as above.
                 !    occ_spin: on input, list of occupied orbitals of the given

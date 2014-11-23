@@ -48,14 +48,14 @@ contains
         !        the Hubbard model in a Bloch basis.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         real(p), intent(out) :: pgen, abs_hmatel
 
         integer :: ij_sym
@@ -118,7 +118,7 @@ contains
         !        model in a Bloch basis.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use momentum_symmetry, only: sym_table
         use system, only: sys_t
@@ -127,7 +127,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        type(excit), intent(inout) :: connection
+        type(excit_t), intent(inout) :: connection
         real(p), intent(out) :: hmatel
 
         integer :: ij_sym
@@ -179,7 +179,7 @@ contains
 
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use excitations, only: excit
+        use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use fciqmc_data, only: tau
         use system, only: sys_t
@@ -187,7 +187,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         real(p), intent(out) :: pgen, abs_hmatel
 
         integer :: ij_sym
@@ -271,7 +271,7 @@ contains
         !        model in a Bloch basis.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -279,7 +279,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        type(excit), intent(inout) :: connection ! inout for interface compatibility
+        type(excit_t), intent(inout) :: connection ! inout for interface compatibility
         real(p), intent(out) :: hmatel
 
         ! Continuing on from gen_excit_init_hub_k_no_renorm now the spawning
@@ -313,7 +313,7 @@ contains
         !        a Bloch basis.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: tau
         use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
@@ -323,7 +323,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         integer :: ij_sym
 
@@ -384,7 +384,7 @@ contains
         !        a Bloch basis.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: tau
         use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
@@ -394,7 +394,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         integer :: ij_sym
         logical :: allowed_excitation

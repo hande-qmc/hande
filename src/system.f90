@@ -18,8 +18,25 @@ module system
 
 use const
 use basis_types, only: basis_t
+use molecular_integral_types
+use ueg_types, only: ueg_basis_t
 
 implicit none
+
+! --- Interfaces to system-specific procedure pointers ---
+
+abstract interface
+    ! UEG-specific integral procedure pointers.
+    ! The integral routines are different for 2D and UEG.  Abstract them using
+    ! procedure pointers.
+    pure function i_int_ueg(cell_param, b, i, a) result(intgrl)
+        import :: p, basis_t
+        real(p) :: intgrl
+        real(p), intent(in) :: cell_param
+        type(basis_t), intent(in) :: b
+        integer, intent(in) :: i, a
+    end function i_int_ueg
+end interface
 
 ! --- System type constants ---
 
@@ -56,35 +73,102 @@ type sys_lattice_t
     ! Number of sites in crystal cell (Hubbard; Heisenberg).
     integer :: nsites
 
-    ! Twist applied to wavevectors (systems in Bloch basis).
-    real(p), allocatable :: ktwist(:)
-
     ! Lattice vectors of crystal cell. (:,i) is the i-th vector.
     ! Not used for the UEG (see box_length).
     integer, allocatable :: lattice(:,:)  ! ndim, ndim.
 
     ! As we are working in an orthogonal space, the reciprocal lattice vectors are
     ! easily obtained:
-    ! b_i = 2\pi/|a_i|^2 a_i
+    ! b_i = 2\pi/|a_i|^2 a_i in general,
     !     = 2\pi/ L_i for UEG, where L_i is box_length(i)
     real(p), allocatable :: rlattice(:,:) ! ndim, ndim. (:,i) is 1/(2pi)*b_i.
 
     ! Lengths of lattice vectors.
-    ! This defines the cubic simulation cell used in the UEG.
+    ! This also defines the cubic simulation cell used in the UEG.
     real(p), allocatable :: box_length(:) ! ndim.
 
-    ! lvecs contains all combinations of the above lattice vectors, where the
-    ! amplitude for each lattice vector can be either -1, 0 or +1. lvec(:,i)
-    ! stores the i'th such combination.
-    ! TODO: move to real_lattice (ie sole place where it is actually used).
-    integer, allocatable :: lvecs(:,:) ! ndim, 3**ndim
-
-    ! Contains integer lattice lengths. If less than 3 dimensions are used
-    ! then the corresponding unused components are set to 1.
-    ! This is useful for making loops over all dimension general.
-    integer :: lattice_size(3)
-
 end type sys_lattice_t
+
+type sys_k_lattice_t
+
+    ! Model Hamiltonians in reciprocal space
+    ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    ! See also specific (i.e. Hubbard and UEG) structures.
+
+    ! Twist applied to wavevectors (systems in Bloch basis).
+    real(p), allocatable :: ktwist(:)
+
+end type sys_k_lattice_t
+
+type sys_real_lattice_t
+
+    ! Model Hamiltonians in real space
+    ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    ! See also specific (i.e. Hubbard and Heisenberg) structures.
+
+    ! The kinetic term is constant in the real space formulation of the Hubbard and Chung--Landau Hamiltonians:
+    ! only the connectivity of the lattice matters.
+    ! tmat(:,i) is a bit string.  The j-th bit corresponding to a basis function
+    ! (as given by bit_lookup) is set if i and j are connected.
+    ! We need to distinguish between connections within the cell and those due to
+    ! periodic boundaries.  We do this by the following strategy:
+    !   a) j>i.
+    !          If the j-th bit is set then i and j are connected within the crystal
+    !          cell.
+    !   b) j<=i.
+    !          If the i-th bit of tmat(:,j) is set, then i and j are connected due
+    !          to periodic boundary conditions.
+    ! This may seem like a somewhat arbitrary choice, but it enables for the
+    ! correct evaluation of the kinetic energy using bit operations.
+    ! Further it enables us to pick up cases such as the 2x2 (non-tilted) system,
+    ! where a site is connected to a different site and that site's periodic image.
+    integer(i0), allocatable :: tmat(:,:) ! (string_len, nbasis)
+
+    ! Orbitals i and j are connected if the j-th bit of connected_orbs(:,i) is
+    ! set.  This is a bit like tmat but without a bit set for a site being its own
+    ! periodic image.
+    integer(i0), allocatable :: connected_orbs(:,:) ! (string_len, nbasis)
+
+    ! connected_sites(0,i) contains the number of unique sites connected to i.
+    ! connected_sites(1:,i) contains the list of sites connected to site i (ie is the
+    ! decoded/non-bit list form of connected_orbs).
+    ! If connected_orbs(j,i) is 0 then it means there are fewer than 2*ndim unique sites
+    ! that are connected to i that are not a periodic image of i (or connected to
+    ! i both directly and via periodic boundary conditions).
+    ! For the triangular lattice there are 3*ndim bonds and ndim must equal 2,
+    ! so each site is connected to 6 other sites.
+    integer, allocatable :: connected_sites(:,:) ! (0:2ndim, nbasis) or (0:3dim, nbasis)
+
+    ! next_nearest_orbs(i,j) gives the number of paths by which sites i and j are
+    ! are next nearest neighbors. For example, on a square lattice in the
+    ! Heisenberg model, if we consider a spin, we can get to a next-nearest
+    ! neighbor spin by going one right then one up, or to the same spin by going
+    ! one up and then one right - there are two different paths, so the correpsonding
+    ! value of next_nearest_orbs would be 2 for these spins. This is an important
+    ! number to know when calculating the thermal energy squared in DMQMC.
+    ! If two spins are not next-nearest neighbors by any path then this quantity is 0.
+    ! By next nearest neighbors, it is meant sites which can be joined by exactly two
+    ! bonds - any notion one may have of where the spins are located spatially is unimportant.
+    integer(i0), allocatable :: next_nearest_orbs(:,:) ! (nbasis, nbasis)
+
+    ! True if any site is its own periodic image.
+    ! This is the case if one dimension (or more) has only one site per simulation
+    ! cell.  If so then the an orbital can incur a kinetic interaction with itself.
+    ! This is the only way that the integral < i | T | i >, where i is a basis
+    ! function centred on a lattice site, can be non-zero.
+    logical :: t_self_images
+
+    ! True if we are actually only modelling a finite system (e.g. a H_2 molecule)
+    ! False if we are modelling an infinite lattice
+    ! The code is set up to model inifinite lattices by default, however in order
+    ! to model only a finite "cluster" of sites, all one need do is set the
+    ! connection matrix elements corresponding to connections across cell
+    ! boundaries (i.e. periodic boundary conditions) to 0
+    logical :: finite_cluster = .false. ! default to infinite crystals
+
+end type sys_real_lattice_t
 
 type sys_hubbard_t
 
@@ -140,6 +224,31 @@ type sys_ueg_t
     ! This is in provided in scaled units of (2*pi/L)^2.
     real(p) :: ecutoff = 3.0_p
 
+    ! UEG-specific basis lookup tables, etc.
+    type(ueg_basis_t) :: basis
+
+    ! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
+    ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and
+    ! k_a, k_b is uniquely defined.  Further, once we've chosen k_i and k_j and if
+    ! we require k_b to exist in the basis, then only certain values of k_a are
+    ! permitted.  sys%ueg%ternary_conserve(0,k1,k2,k3) gives how many k_a are permitted
+    ! for k_i+k_j = (k1,k2,k3) and sys%ueg%ternary_conserve(1:,k1,k2,k3) gives a bit
+    ! string with only bytes set corresponding to permitted k_a values.  Note only
+    ! basis functions corresponding to *alpha* orbitals are set.
+    ! For systems with dimensionality lower than 3, the higher ki values are set to
+    ! 0, i.e. dimensions:
+    ! (0:string_len,-N:N,0,0) (1D)
+    ! (0:string_len,-N:N,-N:N,0) (2D)
+    ! (0:string_len,-N:N,-N:N,-N:N) (3D)
+    ! NOTE: this contains values of k_i+k_j which cannot be formed by the basis with
+    ! the energy cutoff.  Memory can be saved by not using a cubic array for
+    ! k_i+k_j...
+    integer(i0), allocatable :: ternary_conserve(:,:,:,:)
+
+    ! System-specific (e.g. dimensionality, potential, etc) integral procedures.
+    procedure(i_int_ueg), pointer, nopass :: coulomb_int
+    procedure(i_int_ueg), pointer, nopass :: exchange_int
+
 end type sys_ueg_t
 
 type sys_read_in_t
@@ -158,7 +267,19 @@ type sys_read_in_t
     ! Contribution from frozen core orbitals and nucleii terms to dipole moment
     real(p) :: dipole_core
 
+    ! Single-particle orbitals transform according to Lz symmetry
     logical :: useLz = .false.
+
+    ! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
+    type(one_body_t) :: one_e_h_integrals
+
+    ! Store for <i|o|j>, where o is a one-electron operator.
+    type(one_body_t) :: one_body_op_integrals
+
+    ! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
+    ! functions and 1/r_12 is the Coulomb operator.
+    type(two_body_t) :: coulomb_integrals
+
 end type sys_read_in_t
 
 ! --- System data container structure ---
@@ -229,6 +350,8 @@ type sys_t
     ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     type(sys_lattice_t) :: lattice
+    type(sys_k_lattice_t) :: k_lattice
+    type(sys_real_lattice_t) :: real_lattice
     type(sys_hubbard_t) :: hubbard
     type(sys_heisenberg_t) :: heisenberg
     type(sys_ueg_t) :: ueg
@@ -252,7 +375,7 @@ contains
 
         integer :: i, ivec, ierr, counter
 
-        associate(sl=>sys%lattice, su=>sys%ueg, sh=>sys%heisenberg)
+        associate(sl=>sys%lattice, sr=>sys%real_lattice, sk=>sys%k_lattice, su=>sys%ueg, sh=>sys%heisenberg)
 
             if (.not. sys%system == read_in) then
 
@@ -303,10 +426,10 @@ contains
 
                 end select
 
-                if (.not.allocated(sl%ktwist)) then
-                    allocate(sl%ktwist(sl%ndim), stat=ierr)
+                if (.not.allocated(sk%ktwist)) then
+                    allocate(sk%ktwist(sl%ndim), stat=ierr)
                     call check_allocate('sys%lattice%ktwist',sl%ndim,ierr)
-                    sl%ktwist = 0.0_p
+                    sk%ktwist = 0.0_p
                 end if
 
                 ! For the Heisenberg model, we have ms_in and nsites defined, but nel not.
@@ -327,21 +450,14 @@ contains
                     ! set nvirt in basis once the basis set has been generated.
                 end select
 
-                ! lattice_size is useful for loops over a general number of dimensions. This
-                ! variable is only concerned with simple lattices which could be bipartite,
-                ! as it is used in init_determinants to split a bipartite lattice into its two parts.
-                sl%lattice_size = 1
-                sl%lattice_size(1) = ceiling(sl%box_length(1), 2)
-                if (sl%ndim > 1) sl%lattice_size(2) = ceiling(sl%box_length(2), 2)
-                if (sl%ndim > 2) sl%lattice_size(3) = ceiling(sl%box_length(3), 2)
-
                 if (sys%system /= ueg) then
                     ! This checks if the lattice is the correct shape and correct size to be bipartite. If so it
                     ! sets the logical variable bipartite_lattice to be true, which allows staggered magnetizations
                     ! to be calculated.
                     counter = 0
                     do i = 1,sl%ndim
-                        if ( sum(sl%lattice(:,i)) == sl%box_length(i) .and. mod(sl%lattice_size(i), 2) == 0) counter = counter + 1
+                        if ( sum(sl%lattice(:,i)) == sl%box_length(i) .and. &
+                             mod(ceiling(sl%box_length(i)), 2) == 0) counter = counter + 1
                     end do
                     if (counter == sl%ndim) sl%bipartite_lattice = .true.
                 end if
@@ -375,30 +491,54 @@ contains
 
     end subroutine init_system
 
-    subroutine end_lattice_system(sl)
+    subroutine end_lattice_system(sl, sk, sr)
 
         ! Clean up system allocations.
 
+        ! In/Out:
+        !    sl, sk, sr: sys_*lattice_t objects.  On output the components of all provided
+        !       arguments are deallocated.
+
         use checking, only: check_deallocate
 
-        type(sys_lattice_t), intent(inout) :: sl
+        type(sys_lattice_t), intent(inout), optional :: sl
+        type(sys_k_lattice_t), intent(inout), optional :: sk
+        type(sys_real_lattice_t), intent(inout), optional :: sr
         integer :: ierr
 
-        if (allocated(sl%box_length)) then
-            deallocate(sl%box_length, stat=ierr)
-            call check_deallocate('box_length',ierr)
+        if (present(sl)) then
+            if (allocated(sl%box_length)) then
+                deallocate(sl%box_length, stat=ierr)
+                call check_deallocate('box_length',ierr)
+            end if
+            if (allocated(sl%rlattice)) then
+                deallocate(sl%rlattice, stat=ierr)
+                call check_deallocate('rlattice',ierr)
+            end if
+            if (allocated(sl%lattice)) then
+                deallocate(sl%lattice, stat=ierr)
+                call check_deallocate('lattice',ierr)
+            end if
         end if
-        if (allocated(sl%rlattice)) then
-            deallocate(sl%rlattice, stat=ierr)
-            call check_deallocate('rlattice',ierr)
+        if (present(sk)) then
+            if (allocated(sk%ktwist)) then
+                deallocate(sk%ktwist, stat=ierr)
+                call check_deallocate('ktwist',ierr)
+            end if
         end if
-        if (allocated(sl%lattice)) then
-            deallocate(sl%lattice, stat=ierr)
-            call check_deallocate('lattice',ierr)
-        end if
-        if (allocated(sl%ktwist)) then
-            deallocate(sl%ktwist, stat=ierr)
-            call check_deallocate('ktwist',ierr)
+        if (present(sr)) then
+            if (allocated(sr%tmat)) then
+                deallocate(sr%tmat, stat=ierr)
+                call check_deallocate('sr%tmat',ierr)
+            end if
+            if (allocated(sr%connected_orbs)) then
+                deallocate(sr%connected_orbs, stat=ierr)
+                call check_deallocate('sr%connected_orbs',ierr)
+            end if
+            if (allocated(sr%connected_sites)) then
+                deallocate(sr%connected_sites, stat=ierr)
+                call check_deallocate('sr%connected_sites',ierr)
+            end if
         end if
 
     end subroutine end_lattice_system

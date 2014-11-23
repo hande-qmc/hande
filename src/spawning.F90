@@ -61,7 +61,7 @@ contains
         !        and the child determinant, on which progeny are spawned.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
@@ -74,7 +74,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
 
@@ -121,7 +121,7 @@ contains
 
         use determinants, only: det_info_t
         use system, only: sys_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
@@ -133,7 +133,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
 
@@ -193,7 +193,7 @@ contains
 
         use determinants, only: det_info_t
         use system, only: sys_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
@@ -206,7 +206,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, abs_hmatel, hmatel
 
@@ -272,7 +272,7 @@ contains
 
         use determinants, only: det_info_t
         use system, only: sys_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
@@ -285,7 +285,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, tilde_hmatel, hmatel
 
@@ -343,7 +343,7 @@ contains
 
         use determinants, only: det_info_t
         use system, only: sys_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
@@ -355,7 +355,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         ! Just some null operations to avoid -Wall -Werror causing errors.
         connection%nexcit = huge(0)
@@ -744,12 +744,12 @@ contains
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
@@ -796,12 +796,12 @@ contains
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
@@ -851,13 +851,13 @@ contains
         use basis_types, only: basis_t
         use calc, only: truncation_level
         use determinants, only: det_info_t
-        use excitations, only: excit, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
         use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
@@ -912,13 +912,13 @@ contains
         use basis_types, only: basis_t
         use calc, only: truncation_level
         use determinants, only: det_info_t
-        use excitations, only: excit, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
         use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
@@ -974,12 +974,12 @@ contains
         use bit_utils, only: count_set_bits
         use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info_t
-        use excitations, only: excit, create_excited_det, get_excitation_level, in_ras
+        use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
@@ -1035,12 +1035,12 @@ contains
         use bit_utils, only: count_set_bits
         use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info_t
-        use excitations, only: excit, create_excited_det, get_excitation_level, in_ras
+        use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
@@ -1093,7 +1093,7 @@ contains
 
         use basis_types, only: basis_t
         use errors, only: stop_all
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
         use spawn_data, only: spawn_t
 
@@ -1103,7 +1103,7 @@ contains
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1165,7 +1165,7 @@ contains
         use basis_types, only: basis_t
         use calc, only: truncation_level
         use errors, only: stop_all
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
         use spawn_data, only: spawn_t
 
@@ -1175,7 +1175,7 @@ contains
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1250,7 +1250,7 @@ contains
         use basis_types, only: basis_t
         use calc, only: truncation_level
         use errors, only: stop_all
-        use excitations, only: excit, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
         use spawn_data, only: spawn_t
 
@@ -1260,7 +1260,7 @@ contains
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1333,7 +1333,7 @@ contains
         use basis_types, only: basis_t
         use calc, only: truncation_level
         use errors, only: stop_all
-        use excitations, only: excit, create_excited_det, get_excitation_level
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
         use spawn_data, only: spawn_t
 
@@ -1343,7 +1343,7 @@ contains
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)

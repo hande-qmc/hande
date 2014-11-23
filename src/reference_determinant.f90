@@ -44,7 +44,6 @@ contains
         use errors, only: stop_all
 
         use determinants, only: encode_det
-        use real_lattice, only: connected_orbs
         use symmetry, only: symmetry_orb_list
         use system
 
@@ -215,7 +214,7 @@ contains
                         connections = 0
                         ! Loop over all chosen sites to see if they neighbour this site.
                         do j=1,spins_set
-                            if (btest(connected_orbs(bit_element, occ_list(j)), bit_pos)) then
+                            if (btest(sys%real_lattice%connected_orbs(bit_element, occ_list(j)), bit_pos)) then
                                   connections = connections + 1
                             end if
                         end do

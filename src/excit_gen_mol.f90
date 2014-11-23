@@ -34,7 +34,7 @@ contains
         !    determinant and a connected determinant in molecular systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
@@ -47,7 +47,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         logical :: allowed_excitation
 
         integer :: ij_sym, ij_spin
@@ -56,7 +56,7 @@ contains
 
         if (get_rand_close_open(rng) < pattempt_single) then
 
-            ! 2a. Select orbital to excite from and orbital to excit into.
+            ! 2a. Select orbital to excite from and orbital to excite into.
             call choose_ia_mol(rng, sys, gamma_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
                                connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
@@ -66,7 +66,7 @@ contains
                 pgen = pattempt_single*calc_pgen_single_mol(sys, gamma_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(cdet%f, connection)
+                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
@@ -95,7 +95,7 @@ contains
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
-                call find_excitation_permutation2(cdet%f, connection)
+                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
                 hmatel = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
@@ -141,7 +141,7 @@ contains
         !    determinant and a connected determinant in molecular systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
@@ -154,7 +154,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         logical :: allowed_excitation
         integer :: ij_sym, ij_spin
@@ -163,7 +163,7 @@ contains
 
         if (get_rand_close_open(rng) < pattempt_single) then
 
-            ! 2a. Select orbital to excite from and orbital to excit into.
+            ! 2a. Select orbital to excite from and orbital to excite into.
             call find_ia_mol(rng, sys, gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
                              connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
@@ -173,7 +173,7 @@ contains
                 pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
-                call find_excitation_permutation1(cdet%f, connection)
+                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
                 hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
@@ -198,7 +198,7 @@ contains
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
-                call find_excitation_permutation2(cdet%f, connection)
+                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
                 hmatel = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &

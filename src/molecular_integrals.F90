@@ -2,100 +2,25 @@ module molecular_integrals
 
 ! Module for storing and accessing integrals for molecular systems.
 ! These integrals are previously calculated using a quantum chemistry package
-! (e.g. MOLPRO or QChem).
+! (e.g. PSI4, MOLPRO or QChem).
 
-! TODO:
-! * (compile-time option) allocate arrays using shmem.
+! [todo] - (compile-time option) allocate arrays using shmem.
 
 use const, only: p
-use base_types, only: alloc_rp1d
+use molecular_integral_types
 
 implicit none
 
-! Indexing type for two_body integral stores.
-type int_indx
+! Indexing type for two_body_t integral stores.
+type, private :: int_indx
     integer :: spin_channel, indx
-end type
-
-! Interaction with integral stores is best done using the store_* and get_*
-! procedures provided below rather than directly accessing them.
-
-! Store for one-body integrals, <i|o|j>, where i,j are spin basis functions and
-! o is a one-electron operator.
-type one_body
-    ! integrals(ispin, isym)%v(indx) corresponds to the <i|o|j> integral (assuming
-    ! i,j conserve spin and spatial symmetry), where ispin and isym index the spin
-    ! and spatial symmetry of i and j and indx is the combined (triangular) index of
-    ! i and j within that spin and symmetry block.
-    ! See access procedures for this in practice.
-    ! This data structure makes it possible and relative easy to only store the
-    ! integrals which are non-zero by symmetry (ie a small fraction of the possible
-    ! integrals).
-    ! Note that only one spin channel is needed (and stored) in RHF calculations.
-    type(alloc_rp1d), allocatable :: integrals(:,:)
-    ! bit string representations of irreducible representations
-    integer :: op_sym
-    ! From a UHF calculation?
-    logical :: uhf
-end type
-
-! Store for two-body integrals, <ij|o|ab>, where i,j,a,b are spin basis functions and
-! o is a two-electron operator.
-type two_body
-    ! integrals(ispin)%v(indx) gives the integral <ij|o_2|ab>, where ispin depends upon
-    ! the spin combination (ie all alpha, all beta, and haf alpha, half beta) and
-    ! indx is related to i,j,a,b.  As we deal with real orbitals only (except
-    ! see below), we can use permutation symmetry to reduce the number of
-    ! integrals by a factor of 8.  See access procedures for this in action.
-    ! Note that only one spin channel is needed (and stored) in RHF calculations.
-
-    ! L_z symmetry:
-    ! The use of L_z symmetry complicates matters as, whilst the integrals remain
-    ! real, the orbitals are complex and so we lose 8-fold permutation symmetry
-    ! and are left with 4-fold permutation symmetry.  However, consider the
-    ! integrals < i j | k l > and < k j | i l >, where the orbitals are labelled
-    ! by their L_z value.  In order to conserve angular momentum, i+j=k+l and
-    ! k+j=i+l => i-j=k-l.  There are two options: either (at most) one integral
-    ! is non-zero, in which case we can simply test for whether the integral is
-    ! non-zero by symmetry and then look it up using the same scheme as above
-    ! (using 8-fold permuation symmetry) or both integrals are non-zero, in
-    ! which case i=k and j=l.  This means we have an integral like < i j | i' j' >,
-    ! where i and i' are different orbitals with the same L_z.  Due to the
-    ! integral transformation, the complex phase factor comes solely from L_z.
-    ! Since i and i' have the same L_z, the product (i^* i') is real and hence
-    ! (i^* i') = (i'^* i).
-    ! In summary < i j | k l> = < k j | i l > if i.Lz=k.Lz and j.Lz=l.Lz,
-    ! otherwise only one of < i j | k l> and < k j | i l > is non-zero by
-    ! symmetry.  Hence by testing whether an integral is non-zero by symmetry
-    ! first, we can continue to use the same lookup scheme for integrals
-    ! involving orbitals which have L_z symmetry as we do for the standard
-    ! (real) orbitals.
-
-    ! TODO:
-    ! * can compress coulomb integral store by ensuring integrand is totally
-    !   symmetric, as is done for the one-body integrals.
-    type(alloc_rp1d), allocatable :: integrals(:)
-    ! bit string representations of irreducible representations
-    integer :: op_sym
-    ! From a UHF calculation?
-    logical :: uhf
-end type
-
-! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
-type(one_body) :: one_e_h_integrals
-
-! Store for <i|o|j>, where o is a one-electron operator.
-type(one_body) :: one_body_op_integrals
-
-! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
-! functions and 1/r_12 is the Coulomb operator.
-type(two_body) :: coulomb_integrals
+end type int_indx
 
 contains
 
 !--- Memory allocation and deallocation ---
 
-    subroutine init_one_body_int_store(uhf, op_sym, store)
+    subroutine init_one_body_t(uhf, op_sym, store)
 
         ! Allocate memory required for the integrals involving a one-body
         ! operator.
@@ -115,7 +40,7 @@ contains
 
         logical, intent(in) :: uhf
         integer, intent(in) :: op_sym
-        type(one_body), intent(out) :: store
+        type(one_body_t), intent(out) :: store
 
         integer :: ierr, i, s, ispin, nspin
 
@@ -159,9 +84,9 @@ contains
             end do
         end do
 
-    end subroutine init_one_body_int_store
+    end subroutine init_one_body_t
 
-    subroutine end_one_body_int_store(store)
+    subroutine end_one_body_t(store)
 
         ! Deallocate components of a store of integrals involving a one-body operator.
 
@@ -171,7 +96,7 @@ contains
 
         use checking, only: check_deallocate
 
-        type(one_body), intent(inout) :: store
+        type(one_body_t), intent(inout) :: store
         integer :: i, ierr, ispin
 
         if (allocated(store%integrals)) then
@@ -185,9 +110,9 @@ contains
             call check_deallocate('one_body_store', ierr)
         end if
 
-    end subroutine end_one_body_int_store
+    end subroutine end_one_body_t
 
-    subroutine init_two_body_int_store(uhf, nbasis, op_sym, store)
+    subroutine init_two_body_t(uhf, nbasis, op_sym, store)
 
         ! Allocate memory required for the integrals involving a two-body
         ! operator.
@@ -208,7 +133,7 @@ contains
 
         logical, intent(in) :: uhf
         integer, intent(in) :: nbasis, op_sym
-        type(two_body), intent(out) :: store
+        type(two_body_t), intent(out) :: store
 
         integer :: ierr, ispin
         integer :: nspin, npairs, nintgrls
@@ -246,9 +171,9 @@ contains
             call check_allocate('two_body_store_component', nintgrls, ierr)
         end do
 
-    end subroutine init_two_body_int_store
+    end subroutine init_two_body_t
 
-    subroutine end_two_body_int_store(store)
+    subroutine end_two_body_t(store)
 
         ! Deallocate comptwonts of a store of integrals involving a two-body operator.
 
@@ -258,7 +183,7 @@ contains
 
         use checking, only: check_deallocate
 
-        type(two_body), intent(inout) :: store
+        type(two_body_t), intent(inout) :: store
         integer :: ierr, ispin
 
         if (allocated(store%integrals)) then
@@ -270,43 +195,7 @@ contains
             call check_deallocate('two_body_store', ierr)
         end if
 
-    end subroutine end_two_body_int_store
-
-!--- Allocate standard molecular integral stores ---
-
-    subroutine init_molecular_integrals(uhf, nbasis)
-
-        ! Initialise integral stores for molecular integrals (subsequently read
-        ! in from an FCIDUMP file).
-
-        ! *Must* be called after point group symmetry is initialised.
-
-        ! In:
-        !    uhf: whether integral store is from a UHF calculation or RHF
-        !       calculation.
-        !    nbasis: number of single-particle basis functions.
-
-        use point_group_symmetry, only: gamma_sym
-
-        logical, intent(in) :: uhf
-        integer, intent(in) :: nbasis
-
-        call init_one_body_int_store(uhf, gamma_sym, one_e_h_integrals)
-        call init_two_body_int_store(uhf, nbasis, gamma_sym, coulomb_integrals)
-
-    end subroutine init_molecular_integrals
-
-    subroutine end_molecular_integrals()
-
-        ! Deallocate arrays containing molecular integrals.
-
-        call end_one_body_int_store(one_e_h_integrals)
-        call end_two_body_int_store(coulomb_integrals)
-
-        ! BONUS!
-        call end_one_body_int_store(one_body_op_integrals)
-
-    end subroutine end_molecular_integrals
+    end subroutine end_two_body_t
 
 !--- Zeroing ---
 
@@ -320,7 +209,7 @@ contains
         ! Out:
         !    store: one-body integral store with integral array now set to zero.
 
-        type(one_body), intent(inout) :: store
+        type(one_body_t), intent(inout) :: store
 
         integer :: i, ispin
 
@@ -342,7 +231,7 @@ contains
         ! Out:
         !    store: two-body integral store with integral array now set to zero.
 
-        type(two_body), intent(inout) :: store
+        type(two_body_t), intent(inout) :: store
 
         integer :: ispin
 
@@ -354,8 +243,7 @@ contains
 
 !--- Integral access ---
 
-! TODO:
-! fast and specific 'get' functions for UHF and RHF cases
+! [todo] - fast and specific 'get' functions for UHF and RHF cases
 
 ! 1. < i | o_1 | j >
 
@@ -388,7 +276,7 @@ contains
         integer, intent(in) :: i, j
         real(p), intent(in) :: intgrl
         logical, intent(in) :: suppress_err_msg
-        type(one_body) :: store
+        type(one_body_t) :: store
         integer, intent(out) :: ierr
 
         integer :: ii, jj, spin
@@ -416,7 +304,7 @@ contains
             jj = basis_fns(j)%sym_spin_index
             if (ii == jj) then
                 ! See note about how operators which are no symmetric are
-                ! handled in init_one_body_int_store.
+                ! handled in init_one_body_t.
                 store%integrals(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
             else if (ii > jj) then
@@ -455,7 +343,7 @@ contains
 
         real(p) :: intgrl
         type(basis_fn_t), intent(in) :: basis_fns(:)
-        type(one_body), intent(in) :: store
+        type(one_body_t), intent(in) :: store
         integer, intent(in) :: i, j
 
         integer :: sym
@@ -494,7 +382,7 @@ contains
 
         real(p) :: intgrl
         type(basis_fn_t), intent(in) :: basis_fns(:)
-        type(one_body), intent(in) :: store
+        type(one_body_t), intent(in) :: store
         integer, intent(in) :: i, j
 
         integer :: ii, jj, spin
@@ -529,7 +417,7 @@ contains
         !    i,j,a,b: (indices of) spin-orbitals.
         !    basis_fns: list of single-particle basis functions.
         ! Returns:
-        !    indx: spin-channel and index of a two_body integral store which contains the
+        !    indx: spin-channel and index of a two_body_t integral store which contains the
         !        <ij|o_2|ab> integral, assuming the integral is non-zero by spin
         !        and spatial symmetry.
 
@@ -660,7 +548,7 @@ contains
         real(p), intent(in) :: intgrl
         type(basis_fn_t), intent(in) :: basis_fns(:)
         logical, intent(in) :: suppress_err_msg
-        type(two_body), intent(inout) :: store
+        type(two_body_t), intent(inout) :: store
         integer, intent(out) :: ierr
 
         integer :: sym_ij, sym_ab, sym
@@ -711,7 +599,7 @@ contains
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
 
         real(p) :: intgrl
-        type(two_body), intent(in) :: store
+        type(two_body_t), intent(in) :: store
         type(basis_fn_t), intent(in) :: basis_fns(:)
         integer, intent(in) :: i, j, a, b
 
@@ -752,7 +640,7 @@ contains
         use basis_types, only: basis_fn_t
 
         real(p) :: intgrl
-        type(two_body), intent(in) :: store
+        type(two_body_t), intent(in) :: store
         integer, intent(in) :: i, j, a, b
         type(basis_fn_t), intent(in) :: basis_fns(:)
 
@@ -765,7 +653,7 @@ contains
 
 !--- Parallel broadcasting ---
 
-    subroutine broadcast_one_body_int(store, data_proc)
+    subroutine broadcast_one_body_t(store, data_proc)
 
         ! Broadcast the integral store from data_proc to all processors.
         ! In/Out:
@@ -777,7 +665,7 @@ contains
 
         use parallel
 
-        type(one_body), intent(inout) :: store
+        type(one_body_t), intent(inout) :: store
         integer, intent(in) :: data_proc
 #ifdef PARALLEL
         integer :: i, j, ierr
@@ -798,9 +686,9 @@ contains
         i = size(store%integrals)
 #endif
 
-    end subroutine broadcast_one_body_int
+    end subroutine broadcast_one_body_t
 
-    subroutine broadcast_two_body_int(store, data_proc)
+    subroutine broadcast_two_body_t(store, data_proc)
 
         ! Broadcast the integral store from data_proc to all processors.
         ! In/Out:
@@ -812,7 +700,7 @@ contains
 
         use parallel
 
-        type(two_body), intent(inout) :: store
+        type(two_body_t), intent(inout) :: store
         integer, intent(in) :: data_proc
 #ifdef PARALLEL
         integer :: i, ierr
@@ -830,6 +718,6 @@ contains
         i = size(store%integrals)
 #endif
 
-    end subroutine broadcast_two_body_int
+    end subroutine broadcast_two_body_t
 
 end module molecular_integrals

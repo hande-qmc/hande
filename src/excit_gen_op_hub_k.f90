@@ -54,12 +54,12 @@ contains
         !        On output, the operator matrix element, < D | \hat{D} | D' >.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
-        type(excit), intent(in) :: connection
+        type(excit_t), intent(in) :: connection
         real(p), intent(inout) :: hmatel
 
         hmatel = hmatel / (sys%hubbard%u * sys%lattice%nsites)

@@ -45,10 +45,9 @@ contains
         !        systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, find_excitation_permutation1
+        use excitations, only: excit_t, find_excitation_permutation1
         use excit_gen_mol, only: choose_ia_mol, calc_pgen_single_mol
         use fciqmc_data, only: pattempt_single
-        use molecular_integrals, only: one_body_op_integrals
         use operators, only: one_body1_mol_excit
         use system, only: sys_t
 
@@ -58,15 +57,15 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         real(p), intent(out) :: matel
 
         integer :: op_sym
         logical :: allowed_excitation
 
-        op_sym = one_body_op_integrals%op_sym
+        op_sym = sys%read_in%one_body_op_integrals%op_sym
 
-        ! 1. Select orbital to excite from and orbital to excit into.
+        ! 1. Select orbital to excite from and orbital to excite into.
         call choose_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
                            connection%to_orb(1), allowed_excitation)
         connection%nexcit = 1
@@ -76,7 +75,7 @@ contains
             pgen = calc_pgen_single_mol(sys, op_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
 
             ! 3. Parity of permutation required to line up determinants.
-            call find_excitation_permutation1(cdet%f, connection)
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
             matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)
@@ -121,10 +120,9 @@ contains
         !        systems.
 
         use determinants, only: det_info_t
-        use excitations, only: excit, find_excitation_permutation1
+        use excitations, only: excit_t, find_excitation_permutation1
         use excit_gen_mol, only: find_ia_mol, calc_pgen_single_mol_no_renorm
         use fciqmc_data, only: pattempt_single
-        use molecular_integrals, only: one_body_op_integrals
         use operators, only: one_body1_mol_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -133,15 +131,15 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         real(p), intent(out) :: matel
 
         integer :: op_sym
         logical :: allowed_excitation
 
-        op_sym = one_body_op_integrals%op_sym
+        op_sym = sys%read_in%one_body_op_integrals%op_sym
 
-        ! 1. Select orbital to excite from and orbital to excit into.
+        ! 1. Select orbital to excite from and orbital to excite into.
         call find_ia_mol(rng, sys, op_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
                          connection%to_orb(1), allowed_excitation)
         connection%nexcit = 1
@@ -151,7 +149,7 @@ contains
             pgen = calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
             ! 3. Parity of permutation required to line up determinants.
-            call find_excitation_permutation1(cdet%f, connection)
+            call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. Find the connecting matrix element.
             matel = one_body1_mol_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%perm)

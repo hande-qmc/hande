@@ -38,7 +38,7 @@ contains
         !    formulation of the Hubbard model.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -47,7 +47,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         integer :: nvirt_avail
 
@@ -97,16 +97,15 @@ contains
 
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
-        use real_lattice, only: connected_sites
         use spawning, only: attempt_to_spawn
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
         real(p), intent(out) :: pgen, hmatel
 
         integer :: i, iel, ipos
@@ -117,8 +116,8 @@ contains
         i = int(get_rand_close_open(rng)*sys%nel) + 1
         connection%from_orb(1) = cdet%occ_list(i)
         ! Select a at random from one of the connected orbitals.
-        i = int(get_rand_close_open(rng)*connected_sites(0,connection%from_orb(1)) + 1)
-        connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
+        i = int(get_rand_close_open(rng)*sys%real_lattice%connected_sites(0,connection%from_orb(1)) + 1)
+        connection%to_orb(1) = sys%real_lattice%connected_sites(i,connection%from_orb(1))
 
         ipos = sys%basis%bit_lookup(1, connection%to_orb(1))
         iel = sys%basis%bit_lookup(2, connection%to_orb(1))
@@ -140,7 +139,7 @@ contains
             ! For single excitations
             !   pgen = p(i) p(a|i)
             !        = 1/(nel*nconnected_sites)
-            pgen = 1.0_dp/(sys%nel*connected_sites(0,i))
+            pgen = 1.0_dp/(sys%nel*sys%real_lattice%connected_sites(0,i))
 
         end if
 
@@ -168,7 +167,7 @@ contains
         !    formulation of the Hubbard model.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
@@ -176,7 +175,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         integer :: nvirt_avail
 
@@ -228,8 +227,7 @@ contains
         !    formulation of the Hubbard model.
 
         use determinants, only: det_info_t
-        use excitations, only: excit
-        use real_lattice, only: connected_sites
+        use excitations, only: excit_t
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -238,7 +236,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
-        type(excit), intent(out) :: connection
+        type(excit_t), intent(out) :: connection
 
         integer :: i, ipos, iel
 
@@ -248,8 +246,8 @@ contains
         connection%from_orb(1) = cdet%occ_list(i)
         ! Select a at random from one of the connected sites.
         ! nb: a might already be up.
-        i = int(get_rand_close_open(rng)*connected_sites(0,connection%from_orb(1)) + 1)
-        connection%to_orb(1) = connected_sites(i,connection%from_orb(1))
+        i = int(get_rand_close_open(rng)*sys%real_lattice%connected_sites(0,connection%from_orb(1)) + 1)
+        connection%to_orb(1) = sys%real_lattice%connected_sites(i,connection%from_orb(1))
 
         ! Is a already up?  If so, not an allowed excitation: return a null
         ! event.
@@ -272,7 +270,7 @@ contains
             ! For single excitations
             !   pgen = p(i) p(a|i)
             !        = 1/(sys%nel*nconnected_sites)
-            pgen = 1.0_dp/(sys%nel*connected_sites(0,i))
+            pgen = 1.0_dp/(sys%nel*sys%real_lattice%connected_sites(0,i))
 
             ! 3. find the connecting matrix element.
             ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
@@ -306,7 +304,6 @@ contains
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
 
         use bit_utils, only: count_set_bits
-        use real_lattice, only: connected_orbs, connected_sites
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -326,14 +323,14 @@ contains
             i = occ_list(i)
 
             ! Does this have at least one allowed excitation?
-            ! connected_orbs(:,i) is a bit string with the bits corresponding to
+            ! sys%real_lattice%connected_orbs(:,i) is a bit string with the bits corresponding to
             ! orbials connected to i set.
             ! The complement of the determinant bit string gives the bit string
             ! containing the virtual orbitals and thus taking the and of this
-            ! with the relevant connected_orbs element gives the bit string
+            ! with the relevant sys%real_lattice%connected_orbs element gives the bit string
             ! containing the virtual orbitals which are connected to i.
             ! Neat, huh?
-            virt_avail = iand(not(f), connected_orbs(:,i))
+            virt_avail = iand(not(f), sys%real_lattice%connected_orbs(:,i))
 
             if (any(virt_avail /= 0_i0)) then
                 ! Have found an i with at least one available orbital we can
@@ -346,12 +343,12 @@ contains
         ! Find a.
         nvirt_avail = 0
         ! Now need to find out what orbital this corresponds to...
-        do ivirt = 1, connected_sites(0,i)
-            ipos = sys%basis%bit_lookup(1, connected_sites(ivirt,i))
-            iel = sys%basis%bit_lookup(2, connected_sites(ivirt,i))
+        do ivirt = 1, sys%real_lattice%connected_sites(0,i)
+            ipos = sys%basis%bit_lookup(1, sys%real_lattice%connected_sites(ivirt,i))
+            iel = sys%basis%bit_lookup(2, sys%real_lattice%connected_sites(ivirt,i))
             if (btest(virt_avail(iel), ipos)) then
                 nvirt_avail = nvirt_avail + 1
-                virt(nvirt_avail) = connected_sites(ivirt,i)
+                virt(nvirt_avail) = sys%real_lattice%connected_sites(ivirt,i)
             end if
         end do
         a = virt(int(get_rand_close_open(rng)*nvirt_avail) + 1)
@@ -392,7 +389,6 @@ contains
         !        spawning.
 
         use system, only: sys_t
-        use real_lattice, only: connected_orbs
 
         use errors
 
@@ -432,7 +428,7 @@ contains
             ! See if there are any allowed excitations from this electron
             ! (Or excitations from this spin up for Hesienberg)
             ! (see notes in choose_ia_real for how this works)
-            if (all(iand(not(f), connected_orbs(:,occ_list(i))) == 0_i0)) then
+            if (all(iand(not(f), sys%real_lattice%connected_orbs(:,occ_list(i))) == 0_i0)) then
                 ! none allowed from this orbial
                 no_excit = no_excit + 1
             end if

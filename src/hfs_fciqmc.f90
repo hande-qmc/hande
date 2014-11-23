@@ -41,7 +41,7 @@ contains
         use death, only: stochastic_hf_cloning
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
-        use excitations, only: excit
+        use excitations, only: excit_t
         use fciqmc_data, only: tau, real_factor
         use hfs_data
         use interact, only: fciqmc_interact
@@ -62,10 +62,10 @@ contains
 
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events
-        type(excit) :: connection
+        type(excit_t) :: connection
         type(dSFMT_t) :: rng
         real(p) :: hmatel
-        type(excit), parameter :: null_excit = excit( 0, [0,0,0,0], [0,0,0,0], .false.)
+        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         logical :: soft_exit
 

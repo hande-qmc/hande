@@ -8,7 +8,7 @@ module hamiltonian_chung_landau
 ! matrix elements.
 
 ! Note: to achieve equivalence with the Chung--Landau results, the
-! finite_cluster option must be set.
+! sys%real_lattice%finite_cluster option must be set.
 
 use const
 
@@ -29,7 +29,7 @@ contains
 
         ! Used in the Chung--Landau model only.
 
-        use excitations, only: excit, get_excitation
+        use excitations, only: excit_t, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
 
@@ -37,7 +37,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
-        type(excit) :: excitation
+        type(excit_t) :: excitation
 
         hmatel = 0.0_p
         non_zero = .false.
@@ -87,7 +87,7 @@ contains
         !        the Chung--Landau model.
 
         use determinants, only: decode_det
-        use real_lattice, only: t_self_images, tmat, get_one_e_int_real
+        use real_lattice, only: get_one_e_int_real
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -103,7 +103,7 @@ contains
         ! which case it has a kinetic interaction with its self-image.
         ! This only arises if there is at least one crystal cell vector
         ! which is a unit cell vector.
-        if (t_self_images) then
+        if (sys%real_lattice%t_self_images) then
             do i = 1, sys%nel
                 hmatel = hmatel + get_one_e_int_real(sys, root_det(i), root_det(i))
             end do
@@ -118,18 +118,18 @@ contains
             indi = sys%basis%bit_lookup(2,root_det(i))
             ! Diagonal term is non-zero if i is connected to its own periodic
             ! image.
-            if (btest(tmat(indi, root_det(i)), posi)) then
+            if (btest(sys%real_lattice%tmat(indi, root_det(i)), posi)) then
                 hmatel = hmatel + sys%hubbard%u
             end if
             do j = i+1, sys%nel
                 ! i <-> j via periodic boundary conditions.
-                if (btest(tmat(indi, root_det(j)), posi)) then
+                if (btest(sys%real_lattice%tmat(indi, root_det(j)), posi)) then
                     hmatel = hmatel + sys%hubbard%u
                 end if
                 ! i <-> j directly.
                 posj = sys%basis%bit_lookup(1,root_det(j))
                 indj = sys%basis%bit_lookup(2,root_det(j))
-                if (btest(tmat(indj, root_det(i)), posj)) then
+                if (btest(sys%real_lattice%tmat(indj, root_det(i)), posj)) then
                     hmatel = hmatel + sys%hubbard%u
                 end if
             end do

@@ -183,7 +183,7 @@ contains
 
        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
        use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
-       use excitations, only: get_excitation, excit
+       use excitations, only: get_excitation, excit_t
        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
        use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
        use fciqmc_data, only: calculate_excit_distribution, excit_distribution
@@ -194,7 +194,7 @@ contains
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet, iteration
-       type(excit) :: excitation
+       type(excit_t) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
 
        ! Get excitation.
@@ -259,22 +259,21 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding
        !        to the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
-       use real_lattice, only: connected_orbs
        use system, only: sys_t
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer :: bit_element, bit_position
 
@@ -290,7 +289,7 @@ contains
        ! contribution from this site.
            bit_position = sys%basis%bit_lookup(1,excitation%from_orb(1))
            bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
-           if (btest(connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
+           if (btest(sys%real_lattice%connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
                  estimator_numerators(energy_index) = estimator_numerators(energy_index) - &
                                    (sys%heisenberg%J*walker_pop/2)
        end if
@@ -306,22 +305,21 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on the
+       !    excitation: excit_t type variable which stores information on the
        !        excitation between the two bitstring ends, corresponding to the
        !        two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_squared_index
-       use real_lattice, only: connected_orbs, next_nearest_orbs
        use system, only: sys_t
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        real(p) :: sum_H1_H2, J_coupling_squared
@@ -360,9 +358,9 @@ contains
            ! for each path, no matter which way up they are, so we only need to
            ! check if there are two possible paths.
 
-           if (next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0_i0) then
+           if (sys%real_lattice%next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1)) /= 0_i0) then
                ! Contribution for next-nearest neighbors.
-               sum_H1_H2 = 4.0_p*J_coupling_squared*next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
+               sum_H1_H2 = 4.0_p*J_coupling_squared*sys%real_lattice%next_nearest_orbs(excitation%from_orb(1),excitation%to_orb(1))
            end if
            ! Contributions for nearest neighbors.
            ! Note, for certain lattices, such as the triangular lattice, two
@@ -370,7 +368,7 @@ contains
            ! Therefore, it is necessary in general to check for both situations.
            bit_position1 = sys%basis%bit_lookup(1,excitation%from_orb(1))
            bit_element1 = sys%basis%bit_lookup(2,excitation%from_orb(1))
-           if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
+           if (btest(sys%real_lattice%connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
                    sum_H1_H2 = sum_H1_H2 - sys%heisenberg%J*(walker_data(1,idet)+H00)
 
        else if (excitation%nexcit == 2) then
@@ -396,11 +394,11 @@ contains
            bit_element1 = sys%basis%bit_lookup(2,excitation%from_orb(1))
            bit_position2 = sys%basis%bit_lookup(1,excitation%from_orb(2))
            bit_element2 = sys%basis%bit_lookup(2,excitation%from_orb(2))
-           if (btest(connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1) .and. &
-           btest(connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2)) &
+           if (btest(sys%real_lattice%connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1) .and. &
+           btest(sys%real_lattice%connected_orbs(bit_element2, excitation%to_orb(2)), bit_position2)) &
                sum_H1_H2 = 8.0*J_coupling_squared
-           if (btest(connected_orbs(bit_element1, excitation%to_orb(2)), bit_position1) .and. &
-           btest(connected_orbs(bit_element2, excitation%to_orb(1)), bit_position2)) &
+           if (btest(sys%real_lattice%connected_orbs(bit_element1, excitation%to_orb(2)), bit_position1) .and. &
+           btest(sys%real_lattice%connected_orbs(bit_element2, excitation%to_orb(1)), bit_position2)) &
                sum_H1_H2 = sum_H1_H2 + 8.0*J_coupling_squared
 
        end if
@@ -418,13 +416,13 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding to
        !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00
        use fciqmc_data, only: estimator_numerators, energy_index
@@ -433,7 +431,7 @@ contains
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        real(p) :: hmatel
 
@@ -463,23 +461,22 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding to
        !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
        use bit_utils, only: count_set_bits
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: walker_data, H00, correlation_mask
        use fciqmc_data, only: estimator_numerators, correlation_index
-       use real_lattice, only: connected_orbs
        use system, only: sys_t
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer(i0) :: f(sys%basis%string_len)
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
@@ -530,21 +527,21 @@ contains
        ! In:
        !    sys: system being studied.
        !    idet: Current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding
        !        to the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
        !        element.
 
        use bit_utils, only: count_set_bits
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: walker_dets
        use fciqmc_data, only: estimator_numerators, staggered_mag_index
        use system, only: sys_t
 
        type(sys_t), intent(in) :: sys
        integer, intent(in) :: idet
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p), intent(in) :: walker_pop
        integer :: bit_element1, bit_position1, bit_element2, bit_position2
        integer(i0) :: f(sys%basis%string_len)
@@ -630,7 +627,7 @@ contains
        ! In:
        !    basis: information about the single-particle basis.
        !    idet: current position in the main bitstring (density matrix) list.
-       !    excitation: excit type variable which stores information on
+       !    excitation: excit_t type variable which stores information on
        !        the excitation between the two bitstring ends, corresponding to
        !        the two labels for the density matrix element.
        !    walker_pop: number of particles on the current density matrix
@@ -642,7 +639,7 @@ contains
 
        use basis_types, only: basis_t
        use dmqmc_procedures, only: decode_dm_bitstring
-       use excitations, only: excit
+       use excitations, only: excit_t
        use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
        use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, rdms, nrdms
        use fciqmc_data, only: start_averaging, rdm_spawn, dmqmc_accumulated_probs
@@ -652,7 +649,7 @@ contains
        type(basis_t), intent(in) :: basis
        integer, intent(in) :: idet, iteration
        integer(int_p), intent(in) :: walker_pop(sampling_size)
-       type(excit), intent(in) :: excitation
+       type(excit_t), intent(in) :: excitation
        real(p) :: unweighted_walker_pop(sampling_size)
        integer :: irdm, isym, ireplica
        integer(i0) :: f1(basis%string_len), f2(basis%string_len)

@@ -25,7 +25,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
-        use excitations, only: excit, create_excited_det
+        use excitations, only: excit_t, create_excited_det
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
@@ -33,7 +33,6 @@ contains
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
-        use folded_spectrum_utils, only: cdet_excit
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
@@ -58,7 +57,7 @@ contains
         integer(i0) :: f_child(sys%basis%string_len)
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det, nspawn_events
-        type(excit) :: connection
+        type(excit_t) :: connection
         real(p) :: hmatel
         real(dp) :: real_population
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
@@ -78,9 +77,6 @@ contains
 
         ! Allocate det_info_t components.
         call alloc_det_info_t(sys, cdet, .false.)
-        ! Folded spectrum *needs* the bit strings to be allocated as it needs
-        ! be able to manipulate the bit string to create excited states.
-        if (doing_calc(folded_spectrum)) call alloc_det_info_t(sys, cdet_excit)
 
         ! Create the semi_stoch_t object, determ.
         ! If the user has asked to use semi-stochastic from the first iteration
@@ -245,7 +241,6 @@ contains
         call dealloc_semi_stoch_t(determ)
 
         call dealloc_det_info_t(cdet, .false.)
-        if (doing_calc(folded_spectrum)) call dealloc_det_info_t(cdet_excit)
 
     end subroutine do_fciqmc
 
@@ -266,7 +261,7 @@ contains
         use proc_pointers, only: sc0_ptr
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
-        use excitations, only: excit
+        use excitations, only: excit_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -278,7 +273,7 @@ contains
         ! [todo] - Check types with Nick's real coefficient work (which will probably be
         ! [todo] - merged before this).
         real(p), target :: tmp_data(sampling_size)
-        type(excit) :: connection
+        type(excit_t) :: connection
         real(p) :: hmatel
         integer :: idet, iparticle
         integer(int_p) :: nspawned
