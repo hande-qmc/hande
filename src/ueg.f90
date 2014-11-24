@@ -79,9 +79,11 @@ contains
         sys%ueg%basis%lookup = -1
 
         ! Now fill in the values for the alpha orbitals which are in the basis.
-        forall (i=1:sys%basis%nbasis:2) 
-            sys%ueg%basis%lookup(dot_product(sys%basis%basis_fns(i)%l, sys%ueg%basis%offset_inds) + sys%ueg%basis%offset) = i
-        end forall
+        associate(bfns=>sys%basis%basis_fns, ueg_basis=>sys%ueg%basis)
+            forall (i=1:sys%basis%nbasis:2)
+                ueg_basis%lookup(dot_product(bfns(i)%l, ueg_basis%offset_inds) + ueg_basis%offset) = i
+            end forall
+        end associate
 
         ! Now fill in the values for permitted k_a in an excitation
         ! k_i,k_j->k_a,k_b, given a choice of k_i ad k_j and requiring k_b is in
