@@ -94,7 +94,7 @@ contains
         allocate(sys%ueg%ternary_conserve(0:sys%basis%string_len, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
         call check_allocate('sys%ueg%ternary_conserve', size(sys%ueg%ternary_conserve), ierr)
         sys%ueg%ternary_conserve = 0_i0
-        !$omp parallel do default(none) shared(k,sys,sys%ueg%ternary_conserve) &
+        !$omp parallel do default(none) shared(k,sys) &
         !$omp private(k1,k2,k3,a,kija,ktest,bit_pos,bit_el)
         do k3 = -k(3), k(3)
             if (sys%lattice%ndim == 3) ktest(3) = k3
