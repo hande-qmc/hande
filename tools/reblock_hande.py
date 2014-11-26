@@ -89,7 +89,7 @@ opt_block: :class:`pandas.DataFrame`
         print('Insufficient statistics collected for the following variables: '
               '%s.' % (', '.join(info.no_opt_block)))
     if reblock_plot:
-        pyblock.pd_utils.plot_reblocking(reblock, reblock_plot)
+        pyblock.pd_utils.plot_reblocking(info.reblock, reblock_plot)
 
     return info
 
