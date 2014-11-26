@@ -159,7 +159,10 @@ fig : :class:`matplotlib.figure.Figure`
 
         block = block_info.index.values
         std_err = block_info.ix[:,(col, 'standard error')].values
-        std_err_err = block_info.ix[:,(col, 'standard error error')].values
+        if 'standard error error' in block_info[col]:
+            std_err_err = block_info.ix[:,(col, 'standard error error')].values
+        else:
+            std_err_err = 0*std_err
         line = ax.errorbar(block, std_err, std_err_err, marker='o', label=col)
 
         # There should only be (at most) one non-null value for optimal block.
