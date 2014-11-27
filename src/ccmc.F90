@@ -171,6 +171,7 @@ implicit none
 
 contains
 
+! [review] - AJWT: This routine is becoming rather monoligthic - perhaps we could consider splitting it up?
     subroutine do_ccmc(sys)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
@@ -272,6 +273,7 @@ contains
         call check_allocate('cdet', size(cdet), ierr)
         allocate(cluster(0:nthreads-1), stat=ierr)
         call check_allocate('cluster', size(cluster), ierr)
+! [review] - AJWT: Again, the if (linked_cluster) makes me wonder if these should be split out to make the code easier to read.
         if (linked_cluster) then
             allocate(ldet(0:nthreads-1), stat=ierr)
             call check_allocate('ldet', size(ldet), ierr)
@@ -544,11 +546,13 @@ contains
                             call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it))
                         end if
 
+! [review] - AJWT: huge(0) signifies that this cluster is in fact linked.
                     else if (cluster(it)%excitation_level == huge(0) .and. linked_cluster) then
 
-                        ! When samplin e^-T H e^T, the cluster operators in e^-T
+                        ! When sampling e^-T H e^T, the cluster operators in e^-T
                         ! and e^T can excite to/from the same orbital, requiring
                         ! a different spawning routine
+! [review] - AJWT:  This is mostly a copy of the code above - can this be merged somehow to avoid them going out of sync?
                         nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
                                                          cluster_multispawn_threshold))
 
@@ -674,6 +678,8 @@ contains
         !        output all fields in cluster have been set.
 
         use basis_types, only: basis_t
+! [review] - AJWT: I think an explicit reference to linked_cluster here is rather unmodular.
+! [review] - AJWT: Is there a way it could be passed as some sort of parameter.
         use calc, only: truncation_level, linked_cluster
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
@@ -1075,6 +1081,7 @@ contains
         ! This routine will only attempt one spawning event, but needs to know
         ! the total number attempted for this cluster which is passed into
         ! nspawnings_total.
+! [review] - AJWT:  This needs modifying to say what it's doing for linked CC.
 
         ! In:
         !    sys: system being studied.
@@ -1142,9 +1149,10 @@ contains
         if (linked_cluster .and. hmatel /= 0.0_p) then
             ! For Linked Coupled Cluster we reject any spawning where the
             ! Hamiltonian is not linked to every cluster operator
-            ! The matrix element to be evaluated is not <D_i|H a_i|D0> but <D_i|[H,a_i]|D0>
+            ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
             ! (and similarly for composite clusters)
             if (cluster%nexcitors > 0) then
+! [review] - AJWT: Perhaps comment on what this does.
                 call linked_excitation(sys%basis, connection, cluster, linked, funlinked)
                 if (.not. linked) then
                     hmatel = 0.0_p
@@ -1188,6 +1196,8 @@ contains
         ! where |D_s> is the determinant formed by applying the excitor to the
         ! reference determinant and A_s is the amplitude.  See comments in
         ! select_cluster about the probabilities.
+
+! [review] - AJWT: Say what changes when doing Linked CC.
 
         ! In:
         !    sys: system being studied.
@@ -1237,6 +1247,7 @@ contains
             ! reference determinant 
             select case (cluster%nexcitors)
             case(0)
+! [review] - AJWT: I realise this is copying what's above, but you might comment on what (1) means.
                 ! Death on the reference is unchanged
                 KiiAi = (-shift(1))*cluster%amplitude
             case(1)
@@ -1794,6 +1805,7 @@ contains
                     ! hmatel and pgen
                     call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change, i)
                     if (allowed) then
+! [review] - AJWT: I've seen this code before - can it be in a function?
                         ! need to check that the excitation is valid!
                         do j = 1, connection%nexcit
                             ! i/j orbital should be occupied
@@ -1955,6 +1967,9 @@ contains
     end subroutine partition_cluster
 
     pure function calc_pgen(sys, f1, f2, connection, parent_det) result(pgen)
+
+! [review] - AJWT: Mention that this is based on gen_excit_mol.  Is it too specific?  
+! [review] - AJWT: Presumably it should go in excit_gen_mol.f90?
         ! calculate the probability of an excitation being selected
         ! wrapper round system specific functions
         ! In:

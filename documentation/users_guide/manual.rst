@@ -1268,6 +1268,9 @@ Calculation options: CCMC options
     the exitation sampled from the Hamiltonian has an orbital in common with each excitor 
     in the cluster operator. Using this option can give substantial reductions in the 
     plateau height.
+
+.. [review] - AJWT: Perhaps refer to some in-/ex-ternal documentation (which probably doesn't exist)
+.. [review] - AJWT: about the meaning of substantial         
     
 Calculation options: DMQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

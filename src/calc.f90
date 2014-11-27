@@ -34,6 +34,7 @@ integer, parameter :: ccmc_calc = 2**9
 ! Using the initiator approximation in FCIQMC or CCMC?
 logical :: initiator_approximation = .false.
 
+! [review] - AJWT: Both these options only refer to CCMC, so should they be in calc?
 ! Use the full non-composite algorithm in CCMC?
 logical :: ccmc_full_nc = .false.
 
