@@ -1258,7 +1258,10 @@ Calculation options: CCMC options
 
     The original CCMC algorithm solves the equations
 
+    .. [review] - JSS: enclose maths in math blocks so the HTML and LaTeX compilations look nice.
+
     <D_m|H - E|\psi_CC> = 0.
+
     It is possible to instead sample the equivalent equations
 
     <D_m|e^-T (H - E)|\psi_CC> = 0.
@@ -1271,6 +1274,9 @@ Calculation options: CCMC options
 
 .. [review] - AJWT: Perhaps refer to some in-/ex-ternal documentation (which probably doesn't exist)
 .. [review] - AJWT: about the meaning of substantial         
+.. [review] - JSS: some comparison with the original algorithm (where the expansion
+.. [review] - JSS: does not terminate) would be welcome, especially as this must get substantially
+.. [review] - JSS: more efficient as truncation level increases.
     
 Calculation options: DMQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

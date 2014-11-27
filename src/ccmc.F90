@@ -1,5 +1,9 @@
 module ccmc
 
+! [review] - JSS: the module-level comments exclusively refer to unlinked CCMC.  This will
+! [review] - JSS: It would be good to have something similar for linked CCMC (referring heavily
+! [review] - JSS: to the notes below, where appropriate, of course).
+
 ! Module  for performing coupled cluster Monte Carlo (CCMC) calculations).
 
 ! Due to the similarities with FCIQMC, we can re-use lots of the same routines
@@ -269,12 +273,24 @@ contains
         allocate(rng(0:nthreads-1), stat=ierr)
         call check_allocate('rng', size(rng), ierr)
         if (parent) call rng_init_info(seed+iproc)
+
+! [review] - AJWT: Again, the if (linked_cluster) makes me wonder if these should be split out to make the code easier to read.
+! [reply] - RSTF: Split out into what?
+! [review] - JSS: An init_cluster(cdet, cluster) subroutine would be appropriate.
+! [review] - JSS: It woulc allocate cdet and cluster plus their components.
+! [review] - JSS: The code below could then be simplified to
+!    call init_cluster(cdet, cluster)
+!    if (linked_cluster) then
+!        call init_cluster(ldet, lcluster)
+!        call init_cluster(rdet, rcluster)
+!    end if
+!    do i = 0, nthreads-1
+!       call dSFMT_init(...)
+!    end do
         allocate(cdet(0:nthreads-1), stat=ierr)
         call check_allocate('cdet', size(cdet), ierr)
         allocate(cluster(0:nthreads-1), stat=ierr)
         call check_allocate('cluster', size(cluster), ierr)
-! [review] - AJWT: Again, the if (linked_cluster) makes me wonder if these should be split out to make the code easier to read.
-! [reply] - RSTF: Split out into what?
         if (linked_cluster) then
             allocate(ldet(0:nthreads-1), stat=ierr)
             call check_allocate('ldet', size(ldet), ierr)
@@ -307,9 +323,6 @@ contains
                 call check_allocate('cluster%excitors', truncation_level+2, ierr)
             end if
         end do
-        ! ...and scratch space for calculative cumulative probabilities.
-        allocate(cumulative_abs_pops(walker_length), stat=ierr)
-        call check_allocate('cumulative_abs_pops', walker_length, ierr)
 
         ! Whilst cluster data can be accessed from cdet, I recommend explicitly
         ! passing it as an argument rather than accessing cdet%cluster both for
@@ -319,6 +332,11 @@ contains
         do i = 0, nthreads-1
             cdet(i)%cluster => cluster(i)
         end do
+! [review] - JSS: end refactoring
+
+        ! ...and scratch space for calculative cumulative probabilities.
+        allocate(cumulative_abs_pops(walker_length), stat=ierr)
+        call check_allocate('cumulative_abs_pops', walker_length, ierr)
 
         nparticles_old = tot_nparticles
 
@@ -349,6 +367,7 @@ contains
                 ! current iteration.
                 qmc_spawn%hash_shift = qmc_spawn%hash_shift + 1
 
+                ! [review] - JSS: not really the scope of linked-CC but finding the reference really should go in its own procedure.
                 if (iproc == D0_proc) then
 
                     ! Population on reference determinant.
@@ -377,6 +396,19 @@ contains
                     ! [note] - D0_normalisation will need to be real for CCMC with real excips.
                     D0_normalisation = int(walker_population(1,D0_pos))
 
+                    ! [review] - JSS: negating logicals is slightly more convoluted to parse.
+                    !     if (boolean) then
+                    !       ...
+                    !     else
+                    !       ...
+                    !     end if
+                    ! [review] - JSS: is a better style than
+                    !     if (.not. boolean) then
+                    !       ...
+                    !     else
+                    !       ...
+                    !     end if
+                    ! [review] - JSS: given both branches are used.
                     if (.not.linked_cluster) then
                         ! Maximum possible cluster size that we can generate.
                         ! Usually this is either the number of electrons or the
@@ -394,6 +426,9 @@ contains
 
                 else
 
+                    ! [review] - JSS: ditto.
+                    ! [review] - JSS: actually, we should probably move both blocks setting max_cluster_size
+                    ! [review] - JSS: outside of the if (D0_proc) block and simply handle the case of D0_proc separately.
                     if (.not.linked_cluster) then
                         max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers)
                     else
@@ -405,7 +440,6 @@ contains
                     D0_pos = -1
 
                 end if
-
 
 #ifdef PARALLEL
                 call mpi_bcast(D0_normalisation, 1, mpi_integer, D0_proc, MPI_COMM_WORLD, ierr)
@@ -422,6 +456,7 @@ contains
                 ! Find cumulative population...
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, cumulative_abs_pops, tot_abs_pop)
                 ! The number of excitors to select cannot be more than the total population
+                ! [review] - JSS: it would be cleaner if all max_cluster_size settings were in the same part of the code.
                 if (linked_cluster .and. max_cluster_size > tot_abs_pop) max_cluster_size = tot_abs_pop
 
                 bloom_threshold = ceiling(max(nattempts, tot_walkers)*bloom_stats%prop*real(bloom_stats%encoding_factor,p))
@@ -539,6 +574,8 @@ contains
                                 ! a different spawning routine
 ! [review] - AJWT:  This is mostly a copy of the code above - can this be merged somehow to avoid them going out of sync?
 ! [reply] - RSTF: This is probably a better arrangement now
+! [reply] - JSS: Will the compiler do loop hoisting?  Probably given cluster is intent(in) in both spawning routines.
+! [reply] - JSS: Might want to do it by hand but nspawnings_total should be small (at least for now).
                                 call linked_spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
@@ -702,6 +739,9 @@ contains
 ! [review] - AJWT: I think an explicit reference to linked_cluster here is rather unmodular.
 ! [review] - AJWT: Is there a way it could be passed as some sort of parameter.
 ! [reply] - RSTF: Done, but I'm not quite sure what you mean by unmodular
+! [reply] - JSS: Maybe we should have a ccmc_flags_t type?  I think Alex really refers to global data accesses.
+! [reply] - JSS: Whilst this exists, it was not a good design decision at the time and we are (slowly) fixing them.
+! [reply] - JSS: At some point we might want to generated linked and unlinked clusters within the same program.
         use calc, only: truncation_level, linked_cluster
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
@@ -841,6 +881,9 @@ contains
                     call collapse_cluster(basis, walker_dets(:,pos), int(walker_population(1,pos)), &
                                           cdet%f, cluster_population, allowed)
                     if (.not.allowed) then
+                        ! [review] - JSS: can be shortened to
+                        !     if (.not. linked_cluster) exit
+                        !     all_allowed = .false.
                         if (.not.linked_cluster) then
                             exit
                         else
@@ -889,8 +932,10 @@ contains
                 cluster%excitation_level = huge(0)
             end if
 
+            ! [review] - JSS: if (.not.all_allowed) is sufficient.
             if (linked_cluster.and. .not.all_allowed) then
                 cluster%excitation_level = huge(0)
+                ! [review] - JSS: allowed must be false to reach here and isn't used after this anyway.
                 allowed = .false.
             end if
 
@@ -1103,10 +1148,11 @@ contains
         ! This routine will only attempt one spawning event, but needs to know
         ! the total number attempted for this cluster which is passed into
         ! nspawnings_total.
+
 ! [review] - AJWT:  This needs modifying to say what it's doing for linked CC.
         ! In linked CCMC, the probability of spawning is modified by changing
         ! the matrix elements <D'|H|D_s> so that only linked diagrams are used
-        ! for spawning
+        ! for spawning.
 
         ! In:
         !    sys: system being studied.
@@ -1171,10 +1217,13 @@ contains
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
+        ! [review] - JSS: danger in comparing floating point numbers using equality.
+        ! [review] - JSS: replace with abs(hmatel) > depsilon, where depsilon is in const.
         if (linked_cluster .and. hmatel /= 0.0_p) then
             ! For Linked Coupled Cluster we reject any spawning where the
             ! Hamiltonian is not linked to every cluster operator
             ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
+            ! [review] - JSS: terminology issue: composite clusters.
             ! (and similarly for composite clusters)
             if (cluster%nexcitors > 0) then
 ! [review] - AJWT: Perhaps comment on what this does.
@@ -1184,6 +1233,9 @@ contains
                 call linked_excitation(sys%basis, connection, cluster, linked, funlinked)
                 if (.not. linked) then
                     hmatel = 0.0_p
+                ! [review] - JSS: care with comparing integers of different kinds.  Should be 0_i0.
+                ! [review] - JSS: however, we already know it it's a linked single excitation (detected in linked_excitation), so
+                ! [review] - JSS it would be faster to re-use that information than test a (potentailly long) bit string.
                 else if (any(funlinked /= 0)) then
                     ! Single excitation: need to modify the matrix element
                     ! Subtract off the matrix element from the cluster without
@@ -1283,6 +1335,9 @@ contains
             case(0)
 ! [review] - AJWT: I realise this is copying what's above, but you might comment on what (1) means.
 ! [reply] - RSTF: I'm not entirely sure what the (1) means.
+! [reply] - JSS: it refers to the shift of the first set of particles.  If you are using
+! [reply] - JSS: replica tricks (currently DMQMC only), then you have multiple populations
+! [reply] - JSS: at the same time, each with their own shift.  It's commented in fciqmc_data!
                 ! Death on the reference is unchanged
                 KiiAi = (-shift(1))*cluster%amplitude
             case(1)
@@ -1299,6 +1354,8 @@ contains
             case default
                 ! At most two cluster operators can be linked to the diagonal
                 ! part of H so this must be an unlinked cluster
+                ! [review] - JSS: an optimisation opportunity?  clusters above size
+                ! [review] - JSS: 2 can't die/contribute to the projected estimator.
                 KiiAi = 0.0_p
             end select
         end if
@@ -1347,6 +1404,7 @@ contains
         !    and e2 do not involve exciting from/to the any identical
         !    spin-orbitals).
 
+        ! [review] - JSS: comment on change in behaviour.
         ! On input, cluster excitor refers to an existing excitor, e2.  On output,
         ! cluster excitor refers to the excitor formed from applying the excitor
         ! e1 to the cluster e2.
@@ -1397,6 +1455,8 @@ contains
             ! => not valid
             allowed = .false.
 
+            ! [review] - JSS: no need to use linked_cluster here: just return the product always.
+            ! [review] - JSS: unlinked CC uses the allowed return value rather than the population.
             if (linked_cluster) then
                 ! We still use the cluster so need its amplitude
                 cluster_population = cluster_population*excitor_population
@@ -1506,6 +1566,10 @@ contains
         !    excitor_level: excitation level, relative to the reference
         !        determinant, of the excitor.  Equal to the number of
         !        annihilation (or indeed creation) operators in the excitor.
+        ! [review] - JSS: it is not clear from comments why this needs to be changed.
+        ! [review] - JSS: we use reference to really mean the HF determinant.
+        ! [review] - JSS: perhaps a better/more general phrase would refer to the determinant
+        ! [review] - JSS: to which the cluster is applied.
         !   reference (optional): bit string of reference determinant
         ! Out:
         !    excitor_sign: sign due to applying the excitor to the reference
@@ -1526,6 +1590,9 @@ contains
         integer(i0) :: excitation(size(excitor))
         integer :: ibasis, ibit, ncreation, nannihilation
 
+        ! [review] - JSS: this is a needless copy in an expensive routine (due to the number
+        ! [review] - JSS: of times it's called).  Perhaps we should just pass in f always?
+        ! [review] - JSS: It's not a massive change given we don't call this from many places.
         if (present(reference)) then
             f = reference
         else
@@ -1580,6 +1647,8 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
+    ! [review] - JSS: can we guarantee this through smarter excitation generators (probably
+    ! [review] - JSS: not but we can make the change of picked a linked cluster more likely...)
     pure subroutine linked_excitation(basis, connection, cluster, linked, excitor)
         ! For Linked Coupled Cluster, the only terms of H that need to
         ! be sampled are those which are connected to (ie have a
@@ -1661,10 +1730,12 @@ contains
     pure function unlinked_commutator(sys, connection, cluster, cdet, funlinked) result(hmatel)
         ! Evaluates <Dj|[H,a]|Di> for the case when H is a single excitation
         ! not involving the same orbitals as a
+        ! [review] - JSS: 'as a'...?
         ! In:
         !    sys: the system being studied
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
+        ! [review] - JSS: the following line doesn't make sense/have context.
         !    element of H is being evaluated between
         !    cluster: the cluster of excitors
         !    cdet: the determinant formed by the cluster
@@ -1696,11 +1767,14 @@ contains
         population = 0.0_p ! The population doesn't matter as the commutator does not change the amplitude
         found = 0
         if (cluster%nexcitors > 1) then
+            ! [review] - JSS: why is this branch needed?  The interface comments (and where it's called from) indicate
+            ! [review] - JSS: that nexcitors should always be 1...
             do i = 1, cluster%nexcitors
                 if (any(cluster%excitors(i)%f /= funlinked)) then
                     ! Linked excitor, needed in cluster
                     found = found + 1
                     if (found == 1) then
+                        ! review] - JSS: ...%f is a pointer so can be pointed at rather than copied.
                         deti = cluster%excitors(i)%f
                     else
                         call collapse_cluster(sys%basis, cluster%excitors(i)%f, 1, &
@@ -1715,15 +1789,18 @@ contains
 
         ! Now we want to evaluate <D_i^a|H_i^a|D> ...
         call create_excited_det(sys%basis, deti, connection, detj)
+        ! [review] - JSS: this call is slow as it's the general case.  Not sure if anything can be done about this.
         hmatel = get_hmatel(sys, deti, detj)
 
         ! Possible sign changes from <D_k|a_unlinked|D_i^a> and <D|a|D_0>
         hmatel = hmatel*cluster%cluster_to_det_sign
         excitor_level = get_excitation_level(f0, deti)
+        ! [review] - JSS: if nclusters==1, isn't this just cluster_to_det_sign?
         call convert_excitor_to_determinant(deti, excitor_level, excitor_sign)
         if (excitor_sign < 0) hmatel = -hmatel
 
         call create_excited_det(sys%basis, cdet, connection, deti)
+        ! [review] - JSS: excitor_level == connection%nexcit?
         excitor_level = get_excitation_level(deti, detj)
         call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, detj)
         if (excitor_sign < 0) hmatel = -hmatel
@@ -1738,6 +1815,9 @@ contains
         ! for e^-T and one in the "right cluster" for e^T). This makes the
         ! selection of an excitation more complicated as all possible
         ! partitionings of the cluster need to be accounted for.
+        ! [review] - JSS: both clusters can contain more than one excitor though, so long as all excitors in each side
+        ! [review] - JSS: don't involve the same orbitals, right?  This then calculates the only terms in the anti-commutator
+        ! [review] - JSS: which meet this condition?
 
         ! See comments in spawner_ccmc for more details about spawning
 
@@ -1806,6 +1886,7 @@ contains
         integer(i0) :: new_det(sys%basis%string_len)
         integer(i0) :: excitor(sys%basis%string_len)
 
+        ! [review] - JSS: it would aid comprehension if the relevant parts of the code were accordingly marked 1,2,3,4.
         ! 1) Choose an order for the excitors 
         ! 2) Choose excitation from right_cluster|D_0>
         ! 3) Evaluate commutator and pgen
@@ -1831,6 +1912,15 @@ contains
             ! is 0 and we can reject the spawning attempt.
             call linked_excitation(sys%basis, connection, cluster, linked, excitor)
 
+            ! [review] - JSS: a few too many nested if (allowed) here.
+            ! [review] - JSS: doing
+            !    if (allowed) then
+            !        ...
+            !    end if
+            !    if (allowed) then
+            !        ...
+            !    end if
+            ! [review] - JSS: etc should generate just as efficient code but be easier (for humans) to parse.
             if (allowed .and. linked) then
                 ! pgen and hmatel need recalculating to account for other permutations
                 npartitions = nint(1.0/ppart)
@@ -1868,6 +1958,7 @@ contains
                         if (allowed) then
 
                             call create_excited_det(sys%basis, rdet%f, connection, new_det)
+                            ! [review] - JSS: Don't understand the additional pgen immediately.
                             pgen = pgen + calc_pgen(sys, rdet%f, new_det, connection, rdet)
 
                             ! Sign of the term in the commutator depends on the number of Ts in left_cluster
@@ -1956,6 +2047,7 @@ contains
         population = 1.0
 
         do i = 1, cluster%nexcitors
+            ! [review] - JSS: a bit branchy.  I'll think.
             if (present(part_number)) then
                 ! Use integers 1 to 2^n as bitstrings to consider all
                 ! partititions in turn
@@ -1969,6 +2061,7 @@ contains
                 ! randomly to left or right
                 ppart = ppart * 0.5
                 rand = get_rand_close_open(rng)
+                ! [review] - JSS: danger in comparing floating numbers of different kinds.
                 if (rand < 0.5) then
                     side = -1
                 else
@@ -2005,11 +2098,13 @@ contains
 
     end subroutine partition_cluster
 
+    ! [review] - JSS: Given that there are several other calc_pgen* procedures, the name
+    ! [review] - JSS: implies this is a generic function.  Do we really want this implication?
     pure function calc_pgen(sys, f1, f2, connection, parent_det) result(pgen)
 
 ! [review] - AJWT: Mention that this is based on gen_excit_mol.  Is it too specific?  
 ! [review] - AJWT: Presumably it should go in excit_gen_mol.f90?
-! [reply] - RSTF: This function is to deal with the fact that we want a p_gen inot returned by the excitation generators, so if I'm
+! [reply] - RSTF: This function is to deal with the fact that we want a p_gen not returned by the excitation generators, so if I'm
 ! [reply] - RSTF: writing a linked CCMC-specific excitation generator then it won't be needed any more
         ! calculate the probability of an excitation being selected
         ! wrapper round system specific functions
@@ -2045,8 +2140,10 @@ contains
         case(read_in)
             if (no_renorm) then
                 if (connection%nexcit == 1) then
+                    ! [review] - JSS: I would put pattempt_single at the front, so it's easier to spot the multiplication. (ditto below)
                     pgen = calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))*pattempt_single
                 else
+                    ! [review] - JSS: associate rather than copy is your friend here (should be optimised away though).
                     a = connection%to_orb(1)
                     b = connection%to_orb(2)
                     spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
