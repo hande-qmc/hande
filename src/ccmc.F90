@@ -274,6 +274,7 @@ contains
         allocate(cluster(0:nthreads-1), stat=ierr)
         call check_allocate('cluster', size(cluster), ierr)
 ! [review] - AJWT: Again, the if (linked_cluster) makes me wonder if these should be split out to make the code easier to read.
+! [reply] - RSTF: Split out into what?
         if (linked_cluster) then
             allocate(ldet(0:nthreads-1), stat=ierr)
             call check_allocate('ldet', size(ldet), ierr)
@@ -498,22 +499,27 @@ contains
                                                           tot_abs_pop, cdet(it), cluster(it))
                     end if
 
-                    if (cluster(it)%excitation_level <= truncation_level+2) then
+                    if (cluster(it)%excitation_level <= truncation_level+2 .or. &
+                            (linked_cluster .and. cluster(it)%excitation_level == huge(0))) then
+                        ! cluster%excitation_level == huge(0) indicates a cluster 
+                        ! where two excitors share an elementary operator
 
-                        call decoder_ptr(sys, cdet(it)%f, cdet(it))
+                        if (cluster(it)%excitation_level /= huge(0)) then
+                            call decoder_ptr(sys, cdet(it)%f, cdet(it))
 
-                        ! FCIQMC calculates the projected energy exactly.  To do
-                        ! so in CCMC would involve enumerating over all pairs of
-                        ! single excitors, which is rather painful and slow.
-                        ! Instead, as we are randomly sampling clusters in order
-                        ! to evolve the excip population anyway, we can just use
-                        ! the random clusters to *sample* the projected
-                        ! estimator.  See comments in spawning.F90 for why we
-                        ! must divide through by the probability of selecting
-                        ! the cluster.
-                        call update_proj_energy_ptr(sys, f0, cdet(it), &
-                                 cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
-                                 D0_population_cycle, proj_energy, connection, junk)
+                            ! FCIQMC calculates the projected energy exactly.  To do
+                            ! so in CCMC would involve enumerating over all pairs of
+                            ! single excitors, which is rather painful and slow.
+                            ! Instead, as we are randomly sampling clusters in order
+                            ! to evolve the excip population anyway, we can just use
+                            ! the random clusters to *sample* the projected
+                            ! estimator.  See comments in spawning.F90 for why we
+                            ! must divide through by the probability of selecting
+                            ! the cluster.
+                            call update_proj_energy_ptr(sys, f0, cdet(it), &
+                                     cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
+                                     D0_population_cycle, proj_energy, connection, junk)
+                        end if
 
                         ! Spawning
                         ! This has the potential to create blooms, so we allow for multiple
@@ -527,11 +533,26 @@ contains
 
                         nattempts_spawn = nattempts_spawn + nspawnings_total
                         do i = 1, nspawnings_total
-                           call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
+                            if (cluster(it)%excitation_level == huge(0)) then
+                                ! When sampling e^-T H e^T, the cluster operators in e^-T
+                                ! and e^T can excite to/from the same orbital, requiring
+                                ! a different spawning routine
+! [review] - AJWT:  This is mostly a copy of the code above - can this be merged somehow to avoid them going out of sync?
+! [reply] - RSTF: This is probably a better arrangement now
+                                call linked_spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cluster(it), &
+                                          gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
+                                          rdet(it), left_cluster(it), right_cluster(it))
+                            else
+                                call spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total)
+                            end if
 
                            if (nspawned /= 0_int_p) then
-                               call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn)
+                               if (cluster(it)%excitation_level == huge(0)) then
+                                   call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn, fexcit)
+                               else
+                                   call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn)
+                               end if
                                if (abs(nspawned) > bloom_threshold) then
                                    ! [todo] - adapt bloom_handler to handle real psips/excips.
                                    call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -558,7 +579,7 @@ contains
 
                         nattempts_spawn = nattempts_spawn + nspawnings_total
                         do i = 1, nspawnings_total
-                           call linked_spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
+                           call linked_spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
 
@@ -680,6 +701,7 @@ contains
         use basis_types, only: basis_t
 ! [review] - AJWT: I think an explicit reference to linked_cluster here is rather unmodular.
 ! [review] - AJWT: Is there a way it could be passed as some sort of parameter.
+! [reply] - RSTF: Done, but I'm not quite sure what you mean by unmodular
         use calc, only: truncation_level, linked_cluster
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
@@ -1082,6 +1104,9 @@ contains
         ! the total number attempted for this cluster which is passed into
         ! nspawnings_total.
 ! [review] - AJWT:  This needs modifying to say what it's doing for linked CC.
+        ! In linked CCMC, the probability of spawning is modified by changing
+        ! the matrix elements <D'|H|D_s> so that only linked diagrams are used
+        ! for spawning
 
         ! In:
         !    sys: system being studied.
@@ -1153,6 +1178,9 @@ contains
             ! (and similarly for composite clusters)
             if (cluster%nexcitors > 0) then
 ! [review] - AJWT: Perhaps comment on what this does.
+! [reply] - RSTF: This also really belongs in the excitation generator
+                ! Check whether this is an unlinked diagram - if so, the matrix element is 0 and
+                ! no spawning is attempted
                 call linked_excitation(sys%basis, connection, cluster, linked, funlinked)
                 if (.not. linked) then
                     hmatel = 0.0_p
@@ -1198,6 +1226,12 @@ contains
         ! select_cluster about the probabilities.
 
 ! [review] - AJWT: Say what changes when doing Linked CC.
+        ! When doing linked CCMC, the matrix elements 
+        !   <D_s|H|D_s> = <D_s|H T^n|D_0>
+        ! are replaced by
+        !   <D_s|[..[H,T],..T]|D_0>
+        ! which changes the death probabilities, and also means the shift only
+        ! applies on the reference determinant.
 
         ! In:
         !    sys: system being studied.
@@ -1248,6 +1282,7 @@ contains
             select case (cluster%nexcitors)
             case(0)
 ! [review] - AJWT: I realise this is copying what's above, but you might comment on what (1) means.
+! [reply] - RSTF: I'm not entirely sure what the (1) means.
                 ! Death on the reference is unchanged
                 KiiAi = (-shift(1))*cluster%amplitude
             case(1)
@@ -1695,7 +1730,7 @@ contains
 
     end function unlinked_commutator
 
-    subroutine linked_spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
+    subroutine linked_spawner_ccmc(rng, sys, spawn_cutoff, real_factor, cluster, gen_excit_ptr, nspawn, connection, &
                             nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
@@ -1704,6 +1739,8 @@ contains
         ! selection of an excitation more complicated as all possible
         ! partitionings of the cluster need to be accounted for.
 
+        ! See comments in spawner_ccmc for more details about spawning
+
         ! In:
         !    sys: system being studied.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
@@ -1711,8 +1748,6 @@ contains
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    cdet: info on the current excitor (cdet) that we will spawn
-        !        from.
         !    cluster: information about the cluster which forms the excitor.  In
         !        particular, we use the amplitude, cluster_to_det_sign and pselect
         !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
@@ -1720,10 +1755,12 @@ contains
         !    gen_excit_ptr: procedure pointer to excitation generators.
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
-        ! In/Out:
-        !    rng: random number generator.
         !    nspawnings_total: The total number of spawnings attemped by the current cluster
         !        in the current timestep.
+        ! In/Out:
+        !    rng: random number generator.
+        !    ldet, rdet, left_cluster, right_cluster: used to store temporary information for 
+        !        selecting an excitor
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -1747,14 +1784,13 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
-        type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: nspawnings_total
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
-        integer(i0) :: fexcit(sys%basis%string_len)
+        integer(i0), intent(out) :: fexcit(sys%basis%string_len)
         type(det_info_t), intent(inout) :: ldet, rdet
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
 
@@ -1806,6 +1842,9 @@ contains
                     call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change, i)
                     if (allowed) then
 ! [review] - AJWT: I've seen this code before - can it be in a function?
+! [reply] - RSTF: I don't think that this code is anywhere else. There is similar code that checks if an excitor (as a bitstring) can be applied to a determinant
+! [reply] - RSTF: and code that actually applies an excitation (as an excit_t variable), but this is the only place where you have an excit_t variable for an 
+! [reply] - RSTF: excitation that may or may not be valid. 
                         ! need to check that the excitation is valid!
                         do j = 1, connection%nexcit
                             ! i/j orbital should be occupied
@@ -1970,6 +2009,8 @@ contains
 
 ! [review] - AJWT: Mention that this is based on gen_excit_mol.  Is it too specific?  
 ! [review] - AJWT: Presumably it should go in excit_gen_mol.f90?
+! [reply] - RSTF: This function is to deal with the fact that we want a p_gen inot returned by the excitation generators, so if I'm
+! [reply] - RSTF: writing a linked CCMC-specific excitation generator then it won't be needed any more
         ! calculate the probability of an excitation being selected
         ! wrapper round system specific functions
         ! In:
