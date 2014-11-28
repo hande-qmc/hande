@@ -187,7 +187,6 @@ contains
         ! In:
         !    sys: system being studied.
 
-        use bit_utils, only: bit_str_cmp
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
@@ -213,7 +212,6 @@ contains
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles
         use proc_pointers
-        use search, only: binary_search
         use spawning, only: assign_particle_processor
         use system, only: sys_t
 
@@ -240,7 +238,6 @@ contains
         integer :: D0_proc, D0_pos, min_cluster_size, max_cluster_size, iexcip_pos, slot
         integer(int_p) :: tot_abs_pop
         integer :: D0_normalisation
-        logical :: hit
         type(bloom_stats_t) :: bloom_stats
 
         real :: t1, t2
@@ -350,25 +347,7 @@ contains
                     ! As we might select the reference determinant multiple times in
                     ! a cycle, the running total of D0_population is incorrect (by
                     ! a factor of the number of times it was selected).
-                    if (D0_pos == -1) then
-                        ! D0 was just moved to this processor.  No idea where it might be...
-                        call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
-                    else
-                        select case(bit_str_cmp(f0, walker_dets(:,D0_pos)))
-                        case(0)
-                            ! D0 hasn't moved.
-                            hit = .true.
-                        case(1)
-                            ! D0 < walker_dets(:,D0_pos) -- it has moved to earlier in
-                            ! the list and the old D0_pos is an upper bound.
-                            call binary_search(walker_dets, f0, 1, D0_pos, hit, D0_pos)
-                        case(-1)
-                            ! D0 > walker_dets(:,D0_pos) -- it has moved to later in
-                            ! the list and the old D0_pos is a lower bound.
-                            call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
-                        end select
-                    end if
-                    if (.not.hit) call stop_all('do_ccmc', 'Cannot find reference!')
+                    call find_D0(D0_pos)
                     ! [note] - D0_normalisation will need to be real for CCMC with real excips.
                     D0_normalisation = int(walker_population(1,D0_pos))
 
@@ -709,6 +688,46 @@ contains
         end do
 
     end subroutine init_cluster
+
+    subroutine find_D0(D0_pos)
+
+        ! Find the reference determinant in the list of walkers
+
+        ! In/Out:
+        !    D0_pos: on input, the position of the reference in walker_dets in 
+        !       the previous iteration (or -1 if it was not on this processor).
+        !       On output, the current position.
+
+        use bit_utils, only: bit_str_cmp
+        use search, only: binary_search
+        use fciqmc_data, only: walker_dets, tot_walkers, f0
+        use errors, only: stop_all
+
+        integer, intent(inout) :: D0_pos
+
+        logical :: hit
+
+        if (D0_pos == -1) then
+            ! D0 was just moved to this processor.  No idea where it might be...
+            call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
+        else
+            select case(bit_str_cmp(f0, walker_dets(:,D0_pos)))
+            case(0)
+                ! D0 hasn't moved.
+                hit = .true.
+            case(1)
+                ! D0 < walker_dets(:,D0_pos) -- it has moved to earlier in
+                ! the list and the old D0_pos is an upper bound.
+                call binary_search(walker_dets, f0, 1, D0_pos, hit, D0_pos)
+            case(-1)
+                ! D0 > walker_dets(:,D0_pos) -- it has moved to later in
+                ! the list and the old D0_pos is a lower bound.
+                call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
+            end select
+        end if
+        if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
+
+    end subroutine find_D0
 
     subroutine select_cluster(rng, basis, nattempts, normalisation, D0_pos, cumulative_excip_pop, tot_excip_pop, &
                               min_size, max_size, cdet, cluster)
