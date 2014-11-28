@@ -1259,12 +1259,15 @@ Calculation options: CCMC options
     The original CCMC algorithm solves the equations
 
     .. [review] - JSS: enclose maths in math blocks so the HTML and LaTeX compilations look nice.
+    .. math::
 
-    <D_m|H - E|\psi_CC> = 0.
+        \langle D_m | \hat{H} - E | \psi_{CC} \rangle = 0.
 
     It is possible to instead sample the equivalent equations
 
-    <D_m|e^-T (H - E)|\psi_CC> = 0.
+    .. math::
+
+        \langle D_m | e^{-\hat{T}} (\hat{H} - E) | \psi_{CC} \rangle = 0.
 
     Using the Hausdorff expansion of the Hamiltonian and the linked cluster theorem means 
     that the only clusters which contribute are those with at most four excitors and where 

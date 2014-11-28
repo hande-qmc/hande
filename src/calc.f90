@@ -42,7 +42,7 @@ logical :: initiator_approximation = .false.
 logical :: ccmc_full_nc = .false.
 
 ! Sample only linked clusters in CCMC?
-logical :: linked_cluster = .false.
+logical :: linked_ccmc = .false.
 
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
