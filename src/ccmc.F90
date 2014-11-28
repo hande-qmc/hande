@@ -1687,6 +1687,7 @@ contains
         integer(i0) :: excitor_excitation(basis%string_len)
         integer(i0) :: h_excitation(basis%string_len)
 
+        single_unlinked = .false.
         unconnected = 0
         excitor = 0
 
@@ -2029,7 +2030,6 @@ contains
         else
             nspawn = 0
         end if
-
 
     end subroutine linked_spawner_ccmc
 
