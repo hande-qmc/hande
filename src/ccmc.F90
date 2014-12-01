@@ -271,19 +271,6 @@ contains
         call check_allocate('rng', size(rng), ierr)
         if (parent) call rng_init_info(seed+iproc)
 
-! [review] - AJWT: Again, the if (linked_ccmc) makes me wonder if these should be split out to make the code easier to read.
-! [reply] - RSTF: Split out into what?
-! [review] - JSS: An init_cluster(cdet, cluster) subroutine would be appropriate.
-! [review] - JSS: It woulc allocate cdet and cluster plus their components.
-! [review] - JSS: The code below could then be simplified to
-!    call init_cluster(cdet, cluster)
-!    if (linked_ccmc) then
-!        call init_cluster(ldet, lcluster)
-!        call init_cluster(rdet, rcluster)
-!    end if
-!    do i = 0, nthreads-1
-!       call dSFMT_init(...)
-!    end do
         if (linked_ccmc) then
             call init_cluster(sys, 4, cdet, cluster)
             call init_cluster(sys, 4, ldet, left_cluster)
@@ -305,7 +292,6 @@ contains
         do i = 0, nthreads-1
             cdet(i)%cluster => cluster(i)
         end do
-! [review] - JSS: end refactoring
 
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_pops(walker_length), stat=ierr)
@@ -340,7 +326,6 @@ contains
                 ! current iteration.
                 qmc_spawn%hash_shift = qmc_spawn%hash_shift + 1
 
-                ! [review] - JSS: not really the scope of linked-CC but finding the reference really should go in its own procedure.
                 if (iproc == D0_proc) then
 
                     ! Population on reference determinant.
@@ -524,10 +509,6 @@ contains
                                 ! When sampling e^-T H e^T, the cluster operators in e^-T
                                 ! and e^T can excite to/from the same orbital, requiring
                                 ! a different spawning routine
-! [review] - AJWT:  This is mostly a copy of the code above - can this be merged somehow to avoid them going out of sync?
-! [reply] - RSTF: This is probably a better arrangement now
-! [reply] - JSS: Will the compiler do loop hoisting?  Probably given cluster is intent(in) in both spawning routines.
-! [reply] - JSS: Might want to do it by hand but nspawnings_total should be small (at least for now).
                                 call linked_spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
@@ -1257,9 +1238,6 @@ contains
                 call linked_excitation(sys%basis, connection, cluster, linked, single_unlinked, funlinked)
                 if (.not. linked) then
                     hmatel = 0.0_p
-                ! [review] - JSS: care with comparing integers of different kinds.  Should be 0_i0.
-                ! [review] - JSS: however, we already know it it's a linked single excitation (detected in linked_excitation), so
-                ! [review] - JSS it would be faster to re-use that information than test a (potentailly long) bit string.
                 else if (single_unlinked) then
                     ! Single excitation: need to modify the matrix element
                     ! Subtract off the matrix element from the cluster without
@@ -1357,11 +1335,6 @@ contains
             ! reference determinant
             select case (cluster%nexcitors)
             case(0)
-! [review] - AJWT: I realise this is copying what's above, but you might comment on what (1) means.
-! [reply] - RSTF: I'm not entirely sure what the (1) means.
-! [reply] - JSS: it refers to the shift of the first set of particles.  If you are using
-! [reply] - JSS: replica tricks (currently DMQMC only), then you have multiple populations
-! [reply] - JSS: at the same time, each with their own shift.  It's commented in fciqmc_data!
                 ! Death on the reference is unchanged
                 KiiAi = (-shift(1))*cluster%amplitude
             case(1)
@@ -1378,9 +1351,6 @@ contains
             case default
                 ! At most two cluster operators can be linked to the diagonal
                 ! part of H so this must be an unlinked cluster
-                ! [review] - JSS: an optimisation opportunity?  clusters above size
-                ! [review] - JSS: 2 can't die/contribute to the projected estimator.
-                ! [reply] - RSTF: Added in to where death is called from
                 KiiAi = 0.0_p
             end select
         end if
@@ -1429,8 +1399,6 @@ contains
         !       and e2 do not involve exciting from/to the any identical
         !       spin-orbitals).
 
-        ! [review] - JSS: comment on change in behaviour.
-        ! [reply] - RSTF: It's not different in linked cc
         ! On input, cluster excitor refers to an existing excitor, e2.  On output,
         ! cluster excitor refers to the excitor formed from applying the excitor
         ! e1 to the cluster e2.
@@ -1479,8 +1447,6 @@ contains
             ! => not valid
             allowed = .false.
 
-            ! [review] - JSS: no need to use linked_ccmc here: just return the product always.
-            ! [review] - JSS: unlinked CC uses the allowed return value rather than the population.
             ! We still use the cluster in linked ccmc so need its amplitude
             cluster_population = cluster_population*excitor_population
         else
@@ -1588,11 +1554,6 @@ contains
         !    excitor_level: excitation level, relative to the determinant f,
         !        of the excitor.  Equal to the number of
         !        annihilation (or indeed creation) operators in the excitor.
-        ! [review] - JSS: it is not clear from comments why this needs to be changed.
-        ! [review] - JSS: we use reference to really mean the HF determinant.
-        ! [review] - JSS: perhaps a better/more general phrase would refer to the determinant
-        ! [review] - JSS: to which the cluster is applied.
-        ! [reply] - RSTF: Are the comments better now?
         !    f: bit string of determinant to which excitor is
         !       applied to generate a new determinant.
         ! Out:
@@ -1610,11 +1571,6 @@ contains
 
         integer(i0) :: excitation(size(excitor))
         integer :: ibasis, ibit, ncreation, nannihilation
-
-        ! [review] - JSS: this is a needless copy in an expensive routine (due to the number
-        ! [review] - JSS: of times it's called).  Perhaps we should just pass in f always?
-        ! [review] - JSS: It's not a massive change given we don't call this from many places.
-        ! [reply] - RSTF: Changed.
 
         ! Bits involved in the excitation from the reference determinant.
         excitation = ieor(f, excitor)
@@ -1664,10 +1620,6 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    ! [review] - JSS: can we guarantee this through smarter excitation generators (probably
-    ! [review] - JSS: not but we can make the change of picked a linked cluster more likely...)
-    ! [reply] - RSTF: That's what I'm trying to write at the moment. Having a linked-specific
-    ! [reply] - RSTF: excitation generator would make much of this code redundant.
     pure subroutine linked_excitation(basis, connection, cluster, linked, single_unlinked, excitor)
 
         ! For Linked Coupled Cluster, the only terms of H that need to
@@ -1799,19 +1751,11 @@ contains
         population = 0.0_p ! The population doesn't matter as the commutator does not change the amplitude
         found = 0
         if (cluster%nexcitors > 1) then
-            ! [review] - JSS: why is this branch needed?  The interface comments (and where it's called from) indicate
-            ! [review] - JSS: that nexcitors should always be 1...
-            ! [reply] - RSTF: That's bad commenting on my part then. The cluster can only have one excitor that doesn't share
-            ! [reply] - RSTF: an orbital with connection, but it can have (up to 2) other excitors that do. I've fixed the comments
-            ! [reply] - RSTF: so hopefully they're clearer now.
             do i = 1, cluster%nexcitors
                 if (any(cluster%excitors(i)%f /= funlinked)) then
                     ! Linked excitor, needed in cluster
                     found = found + 1
                     if (found == 1) then
-                        ! [review] - JSS: ...%f is a pointer so can be pointed at rather than copied.
-                        ! [reply] - RSTF: But then won't calling collapse cluster with deti as the intent(inout)
-                        ! [reply] - RSTF: argument change the value of cluster%excitors?
                         deti = cluster%excitors(i)%f
                     else
                         call collapse_cluster(sys%basis, cluster%excitors(i)%f, 1, &
@@ -1833,15 +1777,11 @@ contains
         hmatel = hmatel*cluster%cluster_to_det_sign
         if (cluster%nexcitors > 1) then
             excitor_level = get_excitation_level(f0, deti)
-            ! [review] - JSS: if nclusters==1, isn't this just cluster_to_det_sign?
-            ! [reply] - RSTF: no, this is the cluster less one excitor (but it is just 1 in the case nexcitors == 1)
             call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, f0)
             if (excitor_sign < 0) hmatel = -hmatel
         end if
 
         call create_excited_det(sys%basis, cdet, connection, deti)
-        ! [review] - JSS: excitor_level == connection%nexcit?
-        ! [reply] - RSTF: no, D_i = a_unlinked D_j
         excitor_level = get_excitation_level(deti, detj)
         call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, detj)
         if (excitor_sign < 0) hmatel = -hmatel
@@ -1929,7 +1869,6 @@ contains
         integer(i0) :: new_det(sys%basis%string_len)
         integer(i0) :: excitor(sys%basis%string_len)
 
-        ! [review] - JSS: it would aid comprehension if the relevant parts of the code were accordingly marked 1,2,3,4.
 
         ! 1) Choose an order for the excitors
         call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change)
@@ -1958,16 +1897,6 @@ contains
             linked = .false.
         end if
 
-        ! [review] - JSS: a few too many nested if (allowed) here.
-        ! [review] - JSS: doing
-        !    if (allowed) then
-        !        ...
-        !    end if
-        !    if (allowed) then
-        !        ...
-        !    end if
-        ! [review] - JSS: etc should generate just as efficient code but be easier (for humans) to parse.
-        ! [reply] - RSTF: is this better?
         if (linked) then
             ! 3) Evaluate commutator and pgen
             ! pgen and hmatel need recalculating to account for other permutations
@@ -2006,10 +1935,9 @@ contains
 
                 if (allowed) then
 
+                    ! It's possible to get the same excitation from different partitionings
+                    ! of the cluster so they all need to be accounted for in pgen
                     call create_excited_det(sys%basis, rdet%f, connection, new_det)
-                    ! [review] - JSS: Don't understand the additional pgen immediately.
-                    ! [reply] - RSTF: It's possible to get the same excitation from different partitionings
-                    ! [reply] - RSTF: of the cluster so they all need to be accounted for in pgen
                     pgen = pgen + calc_pgen(sys, rdet%f, new_det, connection, rdet)
 
                     ! Sign of the term in the commutator depends on the number of Ts in left_cluster
@@ -2096,7 +2024,6 @@ contains
         population = 1.0
 
         do i = 1, cluster%nexcitors
-            ! [review] - JSS: a bit branchy.  I'll think.
             if (present(part_number)) then
                 ! Use integers 1 to 2^n as bitstrings to consider all
                 ! partititions in turn
@@ -2146,13 +2073,6 @@ contains
 
     end subroutine partition_cluster
 
-    ! [review] - JSS: Given that there are several other calc_pgen* procedures, the name
-    ! [review] - JSS: implies this is a generic function.  Do we really want this implication?
-    ! [reply] - RSTF: It's not generic at the moment but the point is to have one function that
-    ! [reply] - RSTF: can be called for any system, because at the moment linked CCMC only works
-    ! [reply] - RSTF: for molecular systems - because of this procedure only working for molecular
-    ! [reply] - RSTF: systems. However, this function would be made redundant by the linked
-    ! [reply] - RSTF: excitation generators you want.
     pure function calc_pgen(sys, f1, f2, connection, parent_det) result(pgen)
 
 ! [review] - AJWT: Mention that this is based on gen_excit_mol.  Is it too specific?
@@ -2194,10 +2114,8 @@ contains
         case(read_in)
             if (no_renorm) then
                 if (connection%nexcit == 1) then
-                    ! [review] - JSS: I would put pattempt_single at the front, so it's easier to spot the multiplication. (ditto below)
                     pgen = pattempt_single * calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
                 else
-                    ! [review] - JSS: associate rather than copy is your friend here (should be optimised away though).
                     spin = sys%basis%basis_fns(connection%to_orb(1))%ms + sys%basis%basis_fns(connection%to_orb(2))%ms
                     pgen = pattempt_double * calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), connection%to_orb(2), spin)
                 end if

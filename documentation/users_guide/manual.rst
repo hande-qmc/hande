@@ -1258,7 +1258,6 @@ Calculation options: CCMC options
 
     The original CCMC algorithm solves the equations
 
-    .. [review] - JSS: enclose maths in math blocks so the HTML and LaTeX compilations look nice.
     .. math::
 
         \langle D_m | \hat{H} - E | \psi_{CC} \rangle = 0.
