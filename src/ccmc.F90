@@ -235,7 +235,7 @@ contains
         logical :: soft_exit
 
         integer(int_p), allocatable :: cumulative_abs_pops(:)
-        integer :: D0_proc, D0_pos, min_cluster_size, max_cluster_size, iexcip_pos, slot
+        integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
         integer(int_p) :: tot_abs_pop
         integer :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
@@ -336,49 +336,36 @@ contains
                     ! [note] - D0_normalisation will need to be real for CCMC with real excips.
                     D0_normalisation = int(walker_population(1,D0_pos))
 
-                    if (linked_ccmc) then
-                        ! The BCH expansion of the Hamiltonian terminates at fourth
-                        ! order in T so at most four excitors needed in the cluster
-                        ! [review] - JSS: it would be cleaner if all max_cluster_size settings were in the same part of the code.
-                        ! [reply] - RSTF: I think where it was being set to tot_abs_pop was wrong anyway, as there is no reason
-                        ! [reply] - RSTF: we can't use the same excip twice in a cluster, the only important thing is that if
-                        ! [reply] - RSTF: all the excips are on the reference max_cluster_size is 0
-                        if (tot_walkers == 1) then
-                            ! All excips are on the reference, so no possible clusters
-                            max_cluster_size = 0
-                        else
-                            max_cluster_size = 4
-                        end if
-                    else
-                        ! Maximum possible cluster size that we can generate.
-                        ! Usually this is either the number of electrons or the
-                        ! truncation level + 2 but we must handle the case where we are
-                        ! growing the initial population from a single/small number of
-                        ! excitors.
-                        ! Can't include the reference in the cluster, so -1 from the
-                        ! total number of excitors.
-                        max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers-1)
-                    end if
+                    nD0_proc = 1
 
                 else
-
-                    ! [review] - JSS: ditto.
-                    ! [review] - JSS: actually, we should probably move both blocks setting max_cluster_size
-                    ! [review] - JSS: outside of the if (D0_proc) block and simply handle the case of D0_proc separately.
-                    if (linked_ccmc) then
-                        if (tot_walkers == 0) then
-                            max_cluster_size = 0
-                        else
-                            max_cluster_size = 4
-                        end if
-                    else
-                        max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers)
-                    end if
 
                     ! Can't find D0 on this processor.  (See how D0_pos is used
                     ! in select_cluster.)
                     D0_pos = -1
+                    nD0_proc = 0 ! No reference excitor on the processor.
 
+                end if
+
+                if (linked_ccmc) then
+                    ! The BCH expansion of the Hamiltonian terminates at fourth
+                    ! order in T so at most four excitors needed in the cluster
+                    if (tot_walkers == nD0_proc) then
+                        ! All excips are on the reference, so no possible clusters
+                        ! In linked CCMC we can select the same excip multiple times.
+                        max_cluster_size = 0
+                    else
+                        max_cluster_size = 4
+                    end if
+                else
+                    ! Maximum possible cluster size that we can generate.
+                    ! Usually this is either the number of electrons or the
+                    ! truncation level + 2 but we must handle the case where we are
+                    ! growing the initial population from a single/small number of
+                    ! excitors.
+                    ! Can't include the reference in the cluster, so -1 from the
+                    ! total number of excitors.
+                    max_cluster_size = min(sys%nel, truncation_level+2, tot_walkers-nD0_proc)
                 end if
 
 #ifdef PARALLEL
