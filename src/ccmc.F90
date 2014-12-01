@@ -1906,7 +1906,8 @@ contains
             do i = 1, npartitions
                 ! Iterate over all allowed partitions and get contribution to
                 ! hmatel and pgen
-                call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change, i)
+                call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, &
+                                       ldet%f, rdet%f, allowed, sign_change, i)
                 if (allowed) then
                     ! [review] - AJWT: I've seen this code before - can it be in a function?
                     ! [reply] - RSTF: I don't think that this code is anywhere else. There is similar code that checks if an excitor (as a bitstring) can be applied to a determinant
@@ -1980,7 +1981,8 @@ contains
 
     end subroutine linked_spawner_ccmc
 
-    subroutine partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet, rdet, allowed, sign_change, part_number)
+    subroutine partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, &
+                                 ldet, rdet, allowed, sign_change, part_number)
 
         ! Divides a cluster into two halves such that any excitors that share an
         ! orbital are in different halves
