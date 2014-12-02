@@ -111,6 +111,38 @@ contains
 
     end function slater_condon0_ueg
 
+    pure function kinetic_energy_ueg(sys, f) result(hmatel)
+
+        ! Calculate the kinetic energy of a given determinant.
+
+        ! In:
+        !    sys: system to be studied.
+        !    f: bit string representation of the Slater determinant.
+        ! Returns:
+        !    < D_i | T | D_i >, the kinetic energy for the ueg.
+
+        use determinants, only: decode_det
+        use system, only: sys_t
+
+        real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(sys%basis%string_len)
+        integer :: occ_list(sys%nel)
+
+        integer :: i
+
+        call decode_det(sys%basis, f, occ_list)
+
+        ! < D | T | D > = \sum_i < i | h(i) | i >
+        hmatel = 0.0_p
+
+        ! One electron operator: kinetic term
+        do i = 1, sys%nel
+            hmatel = hmatel + sys%basis%basis_fns(occ_list(i))%sp_eigv
+        end do
+
+    end function kinetic_energy_ueg
+
     pure function slater_condon2_ueg(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
