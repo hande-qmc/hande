@@ -4,4 +4,3 @@
 import pyhande.analysis
 import pyhande.extract
 import pyhande.lazy
-import pyhande.shoulder

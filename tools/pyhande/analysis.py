@@ -94,3 +94,54 @@ no_opt : list of strings
             opt_data.append(summary)
     opt_data = pd.concat(opt_data)
     return (opt_data, no_opt)
+
+
+def shoulder_estimator(data, total_key='# H psips', ref_key='N_0',\
+ shift_key='Shift', min_pop=10):
+    ''' Estimate the shoulder (plateau) from a (CCMC) FCIQMC calculation.
+The shoulder estimator is defined to be the ten points with the smallest
+proportion of the population on the reference (excluding points when the 
+population drops bellow 10 excips (psips). The shoulder height is the total
+population at this point.
+Credit to AJWT for original implementation.
+
+Parameters
+----------
+data : :class:`pandas.DataFrame`
+    HANDE QMC data. The function pyhande.extract.extract_data_sets can 
+    be used to extract this from a HANDE output file.
+total_key : string
+    column name in reblock_data containing the total number of psips.
+ref_key : string
+    column name in reblock_data containing the number of psips on the
+    reference determinant.
+shift_key : string
+    column name in reblock_data containing the shift.
+min_pop : int
+    exclude points with less than min_pop on the reference.
+
+Returns
+-------
+platue_data : :class:`pandas.DataFrame`
+    An estimate of the shoulder (plateau) from a FCIQMC (CCMC) calculation,
+    along with the associated standard error.
+'''
+    plateau_data = []
+    shift_first = data[shift_key][0][0]
+    data['Shoulder'] = data[total_key]/data[ref_key]
+
+    # Select data which both the reference is greater than the min_pop and 
+    # shift updating hasn't started. Annoyingly data[data[ref_key] < min_pop &&
+    # data[shift_key] == shift_first] doesn't work as the && operation on a 
+    # series of booleans is undefined.
+    sorted_data =  data[data[ref_key] > min_pop]\
+                   [data[shift_key][data[ref_key]>min_pop] == shift_first ]\
+                   .sort('Shoulder')
+    plateau_data.append([sorted_data[-10:]['Shoulder'].mean(),\
+                       sorted_data[-10:]['Shoulder'].sem()])
+    plateau_data.append([sorted_data[-10:][total_key].mean(),\
+                       sorted_data[-10:][total_key].sem()])
+    plateau_data = pd.DataFrame(data=plateau_data, \
+                               columns=['mean', 'standard error'],\
+                               index=['shoulder estimator', 'shoulder height'])
+    return plateau_data

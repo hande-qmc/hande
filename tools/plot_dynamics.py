@@ -14,7 +14,7 @@ def main(f):
 ''' 
     out = pyhande.extract.extract_data(f)
     data = out[1]
-    shoulder = pyhande.shoulder.shoulder_estimator(data)
+    shoulder = pyhande.analysis.shoulder_estimator(data)
 
     # Plot the Total poulation over the entire range
     pyplot.subplot(3,1,1)
