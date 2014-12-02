@@ -1783,11 +1783,6 @@ contains
         ! for e^-T and one in the "right cluster" for e^T). This makes the
         ! selection of an excitation more complicated as all possible
         ! partitionings of the cluster need to be accounted for.
-        ! [review] - JSS: both clusters can contain more than one excitor though, so long as all excitors in each side
-        ! [review] - JSS: don't involve the same orbitals, right?  This then calculates the only terms in the anti-commutator
-        ! [review] - JSS: which meet this condition?
-        ! [reply] - RSTF: I'm not entirely sure what you're asking. Currently partition_cluster enumerates all the terms in
-        ! [reply] - RSTF: the commutator, even the ones which are zero because they excite twice from the same orbital.
 
         ! See comments in spawner_ccmc for more details about spawning
 
@@ -1857,6 +1852,12 @@ contains
         integer(i0) :: excitor(sys%basis%string_len)
 
 
+        ! [review] - JSS: I think I understand what is going on here now.
+        ! [review] - JSS: Rather than deciding if there is a partition which is allowed,
+        ! [review] - JSS: you choose a partition at random and see if that partition is allowed.
+        ! [review] - JSS: If it is, you enumerate the list of all allowed partitions and
+        ! [review] - JSS: evaluate the contribution from each to the commutator.  The 1/npartitions
+        ! [review] - JSS: factor in pgen takes this random selection into account, right?
         ! 1) Choose an order for the excitors
         call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change)
         pop = 1
