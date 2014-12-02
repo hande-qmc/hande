@@ -80,17 +80,22 @@ contains
              shift_profile = 0.0_p
          end if
 
-         ! In DMQMC we want the spawning probabilities to have an extra factor
-         ! of a half, because we spawn from two different ends with half
-         ! probability. To avoid having to multiply by an extra variable in
-         ! every spawning routine to account for this, we multiply the time
-         ! step by 0.5 instead, then correct this in the death step (see below).
-         tau = tau*0.5_p
-         ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
-         ! multiplied by this factor it cancels the factor of 0.5 introduced
-         ! into the timestep in DMQMC.cThis factor is also used in updated the
-         ! shift, where the true tau is needed.
-         dmqmc_factor = 2.0_p
+         ! When using an importance sampled initial density matrix we use then
+         ! unsymmetrised version of Bloch's equation. This means we don't have
+         ! to worry about these factors of 1/2.
+         if (.not. propagate_to_beta) then
+             ! In DMQMC we want the spawning probabilities to have an extra factor
+             ! of a half, because we spawn from two different ends with half
+             ! probability. To avoid having to multiply by an extra variable in
+             ! every spawning routine to account for this, we multiply the time
+             ! step by 0.5 instead, then correct this in the death step (see below).
+             tau = tau*0.5_p
+             ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
+             ! multiplied by this factor it cancels the factor of 0.5 introduced
+             ! into the timestep in DMQMC.cThis factor is also used in updated the
+             ! shift, where the true tau is needed.
+             dmqmc_factor = 2.0_p
+         end if
 
          if (dmqmc_weighted_sampling) then
              ! dmqmc_sampling_probs stores the factors by which probabilities
@@ -406,10 +411,13 @@ contains
         use calc, only: initiator_approximation, sym_in
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_sym_sectors
+        use fciqmc_data, only: sampling_size, all_sym_sectors, f0, propagate_to_beta, &
+                               init_beta, walker_dets, nparticles, real_factor, &
+                               walker_population, tot_walkers, qmc_spawn
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
+        use qmc_common, only: redistribute_particles
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -457,7 +465,13 @@ contains
                     ! of psips.
                     call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica)
                 end if
-            case(hub_k, hub_real, ueg)
+            case(ueg)
+                if (propagate_to_beta) then
+                    call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, sym_in, ireplica)
+                else
+                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
+                end if
+            case(hub_k, hub_real)
                 call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
@@ -476,7 +490,20 @@ contains
             nparticles_tot = target_nparticles_tot
         end if
 
+
         call direct_annihilation(sys, rng, initiator_approximation)
+
+        if (propagate_to_beta) then
+            ! Reset the position of the first spawned particle in the spawning array
+            qmc_spawn%head = qmc_spawn%head_start
+            ! During the metropolis steps determinants originally in the correct
+            ! portions of the spawned walker array are no longer there due to
+            ! new determinants being accepted. So we need to reorganise the
+            ! determinants appropriately.
+            call redistribute_particles(walker_dets, real_factor, walker_population, &
+                                                               tot_walkers, nparticles, qmc_spawn)
+            call direct_annihilation(sys, rng, initiator_approximation)
+        end if
 
     end subroutine create_initial_density_matrix
 
@@ -600,6 +627,168 @@ contains
         end do
 
     end subroutine random_distribution_electronic
+
+    subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica)
+
+        ! Attempt to initialise the temperature dependent trial density matrix
+        ! using the metropolis alogorithm.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use system
+        use determinants, only: decode_det, alloc_det_info_t, det_info_t, &
+                                dealloc_det_info_t
+        use excitations, only: excit_t, create_excited_det
+        use fciqmc_data, only: real_factor, metropolis_attempts
+        use fciqmc_data, only: f0, qmc_spawn, sampling_size
+        use parallel, only: nprocs, nthreads, parent
+        use proc_pointers, only: sc0_ptr, gen_excit_ptr, decoder_ptr
+        use utils, only: int_fmt
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        real(dp) :: beta
+        integer, intent(in) :: sym
+        integer(int_64), intent(in) :: npsips
+        integer, intent(in) :: ireplica
+
+        integer(int_p) :: ref_pop
+        integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
+        integer :: occ_list(sys%nel), naccept, rand_level
+        integer :: idet, weight, iattempt, nsuccess
+        real(dp) :: r, E_new, E_old, prob
+        real(p) :: pgen, hmatel
+        integer :: thread_id = 0, proc
+        integer(i0), target :: ftmp(sys%basis%string_len)
+        real(p), target :: tmp_data(sampling_size)
+        type(det_info_t) :: cdet
+        type(excit_t) :: connection
+
+        ref_pop = 0
+        naccept = 0
+        nsuccess = 0
+        idet = 0
+
+        call alloc_det_info_t(sys, cdet, .false.)
+
+        ! Initially uniformly distribute psips along each excitation level.
+        ! This probably won't be good at high/low temperatures.
+        ! [todo] - Initialise according to the temperature.
+        do
+            rand_level = int(get_rand_close_open(rng)*(sys%max_number_excitations+1))
+            ! Forbidden in K = 0 subspace.
+            if (rand_level == 1) cycle
+            call create_nfold_excitation(sys, rng, rand_level, sym, weight, f0, f_new, cdet)
+            idet = idet + 1
+            call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
+                                                        sys%basis%tensor_label_len, real_factor, ireplica)
+            if (idet == npsips) exit
+        end do
+
+        cdet%f => ftmp
+        ! Visit every walker metropolis_attempts times.
+        do iattempt = 1, metropolis_attempts
+            ! Allow every psip to attempt a proposal move.
+            do proc = 0, nprocs-1
+                do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
+                    f_old = qmc_spawn%sdata(:sys%basis%string_len,idet)
+                    ! [todo] - This information should be saved in sdata perhaps.
+                    E_old = sc0_ptr(sys, f_old)
+                    ftmp = f_old
+                    tmp_data(1) = E_old
+                    cdet%data => tmp_data
+                    call decoder_ptr(sys, cdet%f, cdet)
+                    ! Metropolis move is to create a double excitation of
+                    ! the current determinant.
+                    call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+                    ! Check that we didn't generate a null excitation.
+                    ! [todo] - Modify accordingly if pgen is ever calculated for the ueg.
+                    if (hmatel == 0) cycle
+                    nsuccess = nsuccess + 1
+                    call create_excited_det(sys%basis, cdet%f, connection, f_new)
+                    ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
+                    E_new = sc0_ptr(sys, f_new)
+                    prob = exp(-1.0_dp*beta*(E_new-E_old))
+                    r = get_rand_close_open(rng)
+                    if (prob > r) then
+                        ! Accept the new determinant by modifying the entry
+                        ! in spawned walker list.
+                        qmc_spawn%sdata(:sys%basis%string_len,idet) = f_new
+                        qmc_spawn%sdata(sys%basis%string_len+1:sys%basis%tensor_label_len,idet) = f_new
+                    end if
+                end do
+            end do
+        end do
+
+        if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", &
+                           '//int_fmt(metropolis_attempts,1)//')') real(naccept)/nsuccess, &
+                           (metropolis_attempts*npsips-nsuccess)/npsips
+
+        call dealloc_det_info_t(cdet, .false.)
+
+    end subroutine initialise_dm_metropolis
+
+    subroutine create_nfold_excitation(sys, rng, nexcit, sym, weight, f_old, f_new, det)
+
+        use determinants, only: decode_det_occ_spinunocc, decode_det, det_info_t
+        use symmetry, only: symmetry_orb_list
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use system, only: sys_t
+        use utils, only: binom_r
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: sym
+        integer, intent(in) :: nexcit
+        integer, intent(out) :: weight
+        integer, intent(in) :: f_old(:)
+        integer(i0), intent(out) :: f_new(:)
+        type(det_info_t), intent(inout) :: det
+
+        integer :: occ_list(sys%nel)
+        integer :: a_el, a_pos, a, b, b_pos, b_el
+        integer :: nremove, nadd
+
+        if (nexcit == 0) then
+            f_new = f_old
+            return
+        else
+            call decode_det_occ_spinunocc(sys, f_old, det)
+            do
+                f_new = f_old
+                nadd = 0
+                nremove = 0
+                do
+                    ! Annihilate nexcit electrons.
+                    a = det%occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
+                    a_pos = sys%basis%bit_lookup(1,a)
+                    a_el = sys%basis%bit_lookup(2,a)
+                    if (btest(f_new(a_el),a_pos)) then
+                        f_new(a_el) = ibclr(f_new(a_el),a_pos)
+                        nremove = nremove + 1
+                    end if
+                    if (nremove == nexcit) exit
+                end do
+                do
+                    ! Add nadd electrons.
+                    b = det%unocc_list_alpha(int(get_rand_close_open(rng)*size(det%unocc_list_alpha))+1)
+                    b_pos = sys%basis%bit_lookup(1,b)
+                    b_el = sys%basis%bit_lookup(2,b)
+                    if (.not. btest(f_new(b_el),b_pos)) then
+                        f_new(b_el) = ibset(f_new(b_el),b_pos)
+                        nadd = nadd + 1
+                    end if
+                    if (nadd == nexcit) exit
+                end do
+
+                call decode_det(sys%basis, f_new, occ_list)
+                if (symmetry_orb_list(sys,occ_list) == sym) then
+                    weight = binom_r(nexcit, nremove)
+                    exit
+                end if
+            end do
+        end if
+
+    end subroutine create_nfold_excitation
 
     subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type)
 

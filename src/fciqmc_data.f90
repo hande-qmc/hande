@@ -587,6 +587,14 @@ integer :: select_ref_det_every_nreports = huge(1)
 ! determinant.
 real(p) :: ref_det_factor = 1.50_p
 
+! Propagate a trial density matrix to a specific temeperature.
+logical :: propagate_to_beta
+! Value of beta which we propagate the density matrix to.
+real(dp) :: init_beta
+! Number of metropolis attempts (per psip) we use when generating
+! the trial density matrix.
+integer :: metropolis_attempts = 1000
+
 !--- Calculation modes ---
 
 ! The shift is updated at the end of each report loop when vary_shift is true.

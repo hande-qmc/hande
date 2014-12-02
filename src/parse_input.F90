@@ -211,6 +211,12 @@ contains
 
             case('REPLICA_TRICKS')
                 replica_tricks = .true.
+            case('PROPAGATE_TO_BETA')
+                propagate_to_beta = .true.
+            case('INIT_BETA')
+                call readf(init_beta)
+            case('METROPOLIS_ATTEMPTS')
+                call readi(metropolis_attempts)
 
             case('CCMC_FULL_NC')
                 ccmc_full_nc = .true.
@@ -850,8 +856,11 @@ contains
         call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         option_set = .false.
         if (parent) option_set = allocated(dmqmc_sampling_probs)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)

@@ -351,7 +351,52 @@ contains
                                        & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)*walker_pop
         end if
 
-    end subroutine dmqmc_energy_ueg
+   end subroutine dmqmc_energy_ueg
+
+   subroutine dmqmc_energy_ueg_propagate(sys, idet, excitation, walker_pop)
+
+       ! For the UEG model only.
+       ! Add the contribution from the current density matrix element to the
+       ! thermal energy estimate.
+       ! When propagating to specific beta value / using importance sampling we
+       ! need to recalculate the diagonal contributions due to the change in
+       ! definition of walker_data.
+
+       ! In:
+       !    sys: system being studied.
+       !    idet: Current position in the main bitstring (density matrix) list.
+       !    excitation: excit type variable which stores information on
+       !        the excitation between the two bitstring ends, corresponding
+       !        to the two labels for the density matrix element.
+       !    walker_pop: number of particles on the current density matrix
+       !        element.
+
+       use excitations, only: excit_t
+       use fciqmc_data, only: walker_dets, f0
+       use fciqmc_data, only: walker_data, H00
+       use fciqmc_data, only: estimator_numerators, energy_index
+       use hamiltonian_ueg, only: slater_condon2_ueg, slater_condon0_ueg
+       use system, only: sys_t
+
+       type(sys_t), intent(in) :: sys
+       integer, intent(in) :: idet
+       type(excit_t), intent(in) :: excitation
+       real(p), intent(in) :: walker_pop
+
+       ! If no excitation, we have a diagonal element, so add elements which
+       ! involve the diagonal element of the Hamiltonian.
+       if (excitation%nexcit == 0) then
+           estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+                slater_condon0_ueg(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
+       else if (excitation%nexcit == 2) then
+           ! Have a determinant connected to the reference determinant: add to
+           ! projected energy.
+           estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+               slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
+               & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)*walker_pop
+       end if
+
+   end subroutine dmqmc_energy_ueg_propagate
 
     subroutine dmqmc_energy_hub_k(sys, idet, excitation, walker_pop)
 

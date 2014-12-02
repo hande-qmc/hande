@@ -146,18 +146,23 @@ contains
                             if (.not. ((sys%nel == 0) .or. (sys%nel == sys%basis%nbasis))) then
                                 nattempts_current_det = decide_nattempts(rng, real_population(ireplica))
                                 do iparticle = 1, nattempts_current_det
-                                    ! Spawn from the first end.
-                                    spawning_end = 1
-                                    ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet1, &
-                                                     walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
-                                    ! Spawn if attempt was successful.
-                                    if (nspawned /= 0_int_p) then
-                                        call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
-                                                                            spawning_end, ireplica, qmc_spawn)
+                                    ! When using importance sampling in DMQMC we
+                                    ! only spawn from one end of a density
+                                    ! matrix element.
+                                    if (.not. propagate_to_beta) then
+                                        ! Spawn from the first end.
+                                        spawning_end = 1
+                                        ! Attempt to spawn.
+                                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet1, &
+                                                         walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                        ! Spawn if attempt was successful.
+                                        if (nspawned /= 0_int_p) then
+                                            call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
+                                                                                spawning_end, ireplica, qmc_spawn)
 
-                                        if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
-                                            call accumulate_bloom_stats(bloom_stats, nspawned)
+                                            if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
+                                                call accumulate_bloom_stats(bloom_stats, nspawned)
+                                        end if
                                     end if
 
                                     ! Now attempt to spawn from the second end.

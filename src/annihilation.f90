@@ -712,12 +712,21 @@ contains
             ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
             walker_data(2,pos) = op0_ptr(sys, det) - O00
         else if (doing_calc(dmqmc_calc)) then
-            ! Set the energy to be the average of the two induvidual energies.
-            associate(bl=>sys%basis%string_len)
-                walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - H00)/2
-            end associate
-            if (replica_tricks) then
-                walker_data(2:sampling_size,pos) = walker_data(1,pos)
+            if (propagate_to_beta) then
+                ! Store the HF energy of the Slater determinant for so we can
+                ! propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj), where H^T is
+                ! the "trial" Hamiltonian.
+                associate(bl=>sys%basis%string_len)
+                    walker_data(1,pos) = sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - (walker_data(1,pos)+H00)
+                end associate
+            else
+                ! Set the energy to be the average of the two induvidual energies.
+                associate(bl=>sys%basis%string_len)
+                    walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - H00)/2
+                end associate
+                if (replica_tricks) then
+                    walker_data(2:sampling_size,pos) = walker_data(1,pos)
+                end if
             end if
         end if
 

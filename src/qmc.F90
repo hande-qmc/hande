@@ -254,6 +254,12 @@ contains
         allocate(hs_f0(sys%basis%string_len), stat=ierr)
         call check_allocate('hs_f0', size(hs_f0), ierr)
 
+        ! --- Number of reports ---
+        ! When using the propagate_to_beta option the number of iterations in imaginary
+        ! time we want to do depends on what value of beta we are seeking. It's
+        ! annoying to have to modify this in the input file, so just do it here.
+        if (propagate_to_beta) nreport = int(floor(init_beta/(ncycles*tau)))
+
         ! --- Initial walker distributions ---
         ! Note occ_list could be set and allocated in the input.
 
@@ -780,7 +786,13 @@ contains
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
-                if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_ueg
+                if (doing_dmqmc_calc(dmqmc_energy)) then
+                    if (propagate_to_beta) then
+                        update_dmqmc_energy_ptr => dmqmc_energy_ueg_propagate
+                    else
+                        update_dmqmc_energy_ptr => dmqmc_energy_ueg
+                    end if
+                end if
             case(hub_k)
                 if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_hub_k
             case(hub_real)
