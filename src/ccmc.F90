@@ -1858,6 +1858,11 @@ contains
         ! [review] - JSS: If it is, you enumerate the list of all allowed partitions and
         ! [review] - JSS: evaluate the contribution from each to the commutator.  The 1/npartitions
         ! [review] - JSS: factor in pgen takes this random selection into account, right?
+        ! [reply] - RSTF: Precisely. This means that at least half the time, the partition chosen
+        ! [reply] - RSTF: is not allowed so no excitation is generated. It could potentially improve the spawning
+        ! [reply] - RSTF: if I improved the partition_cluster routine pick an allowed partition, but they are 
+        ! [reply] - RSTF: a relatively small proportion of cluster (20% in Ne pVDZ CCSTDQ and should decrease
+        ! [reply] - RSTF: with increasing number of electrons or basis fns).
         ! 1) Choose an order for the excitors
         call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change)
         pop = 1
@@ -1898,8 +1903,10 @@ contains
                                        ldet%f, rdet%f, allowed, sign_change, i)
                 if (allowed) then
                     ! [review] - AJWT: I've seen this code before - can it be in a function?
-                    ! [reply] - RSTF: I don't think that this code is anywhere else. There is similar code that checks if an excitor (as a bitstring) can be applied to a determinant
-                    ! [reply] - RSTF: and code that actually applies an excitation (as an excit_t variable), but this is the only place where you have an excit_t variable for an
+                    ! [reply] - RSTF: I don't think that this code is anywhere else. There is similar code that 
+                    ! [reply] - RSTF: checks if an excitor (as a bitstring) can be applied to a determinant
+                    ! [reply] - RSTF: and code that actually applies an excitation (as an excit_t variable), but 
+                    ! [reply] - RSTF: this is the only place where you have an excit_t variable for an
                     ! [reply] - RSTF: excitation that may or may not be valid.
                     ! need to check that the excitation is valid!
                     do j = 1, connection%nexcit
