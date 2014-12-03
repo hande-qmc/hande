@@ -96,13 +96,26 @@ no_opt : list of strings
     return (opt_data, no_opt)
 
 
+# [review] - JSS: no need for \ to mark a continuation inside a pair of ().
+# [review] - JSS: the plateau is a more general feature than the shoulder--bad name?
 def shoulder_estimator(data, total_key='# H psips', ref_key='N_0',\
+# [review] - JSS: indent this to be in line with the first argument.
  shift_key='Shift', min_pop=10):
+    # [review] - JSS: note additional blank line for PEP-8 compliant docstring.
+    # [review] - JSS: check rewording of the description.
     ''' Estimate the shoulder (plateau) from a (CCMC) FCIQMC calculation.
-The shoulder estimator is defined to be the ten points with the smallest
+
+The population on the reference starts to grow exponentially during the plateau,
+whilst the total population grows exponentially from the start of the
+calculation before stabilising (perhaps only briefly) during the plateau phase.
+As a result, the ratio of the total population to the population on the
+reference is at a maximum at the start of the plateau.
+
+The shoulder estimator is defined to be mean of the ten points with the smallest
 proportion of the population on the reference (excluding points when the 
-population drops bellow 10 excips (psips). The shoulder height is the total
+population drops below min_pop excips (psips). The shoulder height is the total
 population at this point.
+
 Credit to AJWT for original implementation.
 
 Parameters
@@ -122,21 +135,26 @@ min_pop : int
 
 Returns
 -------
-platue_data : :class:`pandas.DataFrame`
+plateau_data : :class:`pandas.DataFrame`
     An estimate of the shoulder (plateau) from a FCIQMC (CCMC) calculation,
     along with the associated standard error.
 '''
     plateau_data = []
     shift_first = data[shift_key][0][0]
+    # [review] - JSS: select pre-variable-shift data before doing the division.
+    # [review] - JSS: what if the population on the reference is negative?
     data['Shoulder'] = data[total_key]/data[ref_key]
 
     # Select data which both the reference is greater than the min_pop and 
     # shift updating hasn't started. Annoyingly data[data[ref_key] < min_pop &&
     # data[shift_key] == shift_first] doesn't work as the && operation on a 
     # series of booleans is undefined.
+    # [review] - JSS: use & rather than &&.
+    # [review] - JSS: comments say the population must be < min_pop to be discarded but you discard it if it's <=.
     sorted_data =  data[data[ref_key] > min_pop]\
                    [data[shift_key][data[ref_key]>min_pop] == shift_first ]\
                    .sort('Shoulder')
+    # [review] - JSS: no need for \.
     plateau_data.append([sorted_data[-10:]['Shoulder'].mean(),\
                        sorted_data[-10:]['Shoulder'].sem()])
     plateau_data.append([sorted_data[-10:][total_key].mean(),\
