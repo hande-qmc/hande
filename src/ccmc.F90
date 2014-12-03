@@ -662,7 +662,7 @@ contains
         ! Find the reference determinant in the list of walkers
 
         ! In/Out:
-        !    D0_pos: on input, the position of the reference in walker_dets in 
+        !    D0_pos: on input, the position of the reference in walker_dets in
         !       the previous iteration (or -1 if it was not on this processor).
         !       On output, the current position.
 
@@ -1308,16 +1308,7 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
-        if (.not. linked_ccmc) then
-            select case (cluster%nexcitors)
-            case(0)
-                KiiAi = (-shift(1))*cluster%amplitude
-            case(1)
-                KiiAi = (cdet%data(1) - shift(1))*cluster%amplitude
-            case default
-                KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
-            end select
-        else
+        if (linked_ccmc) then
             ! For linked coupled cluster we only apply the shift to the
             ! reference determinant
             select case (cluster%nexcitors)
@@ -1339,6 +1330,15 @@ contains
                 ! At most two cluster operators can be linked to the diagonal
                 ! part of H so this must be an unlinked cluster
                 KiiAi = 0.0_p
+            end select
+        else
+            select case (cluster%nexcitors)
+            case(0)
+                KiiAi = (-shift(1))*cluster%amplitude
+            case(1)
+                KiiAi = (cdet%data(1) - shift(1))*cluster%amplitude
+            case default
+                KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
             end select
         end if
 
