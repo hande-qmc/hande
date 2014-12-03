@@ -215,7 +215,7 @@ contains
         type(sys_t), intent(in) :: sys
 
         integer :: i, ireport, icycle, it
-        integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters
+        integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors
         integer(int_64) :: nattempts_spawn
         real(dp) :: nparticles_old(sampling_size)
         type(det_info_t), allocatable :: cdet(:)
@@ -398,9 +398,14 @@ contains
                 !         nattempts = # excitors not on the reference (i.e. the number of
                 !         excitors which can actually be involved in a composite cluster).
                 if (ccmc_full_nc) then
+                    ! Note that nattempts /= tot_abs_pop+D0_normalisation if the
+                    ! reference is not on the current processor.  Instead work
+                    ! out how many clusters of each type we will sample
+                    ! explicitly.
                     min_cluster_size = 2
-                    nclusters = 2*nattempts - D0_normalisation
-                    nstochastic_clusters = nattempts - D0_normalisation
+                    nclusters = 2*tot_abs_pop + D0_normalisation
+                    nstochastic_clusters = tot_abs_pop
+                    nsingle_excitors = tot_abs_pop
                 else
                     min_cluster_size = 0
                     nclusters = nattempts
@@ -423,7 +428,7 @@ contains
                 !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
                 !$omp        proj_energy, real_factor, min_cluster_size,        &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
-                !$omp        cluster_multispawn_threshold)
+                !$omp        nsingle_excitors, cluster_multispawn_threshold)
                 it = get_thread_id()
                 iexcip_pos = 1
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
@@ -435,7 +440,7 @@ contains
                         call select_cluster(rng(it), sys%basis, nstochastic_clusters, D0_normalisation, D0_pos,   &
                                             cumulative_abs_pops, tot_abs_pop, min_cluster_size, max_cluster_size, &
                                             cdet(it), cluster(it))
-                    else if (iattempt <= nattempts) then
+                    else if (iattempt <= nstochastic_clusters+D0_normalisation) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
                         ! each processor and hence scale the selection
@@ -443,11 +448,10 @@ contains
                         ! for more details.
                         call create_null_cluster(real(nprocs*D0_normalisation,p),D0_normalisation,cdet(it),cluster(it))
                     else
-                        ! From nattempts..2*nattempts-D0_normalisation, we just
-                        ! select a non-composite cluster with a single excitor.
-                        call select_cluster_non_composite(iattempt-nattempts, iexcip_pos, nattempts-D0_normalisation, &
-                                                          D0_normalisation, D0_pos, cumulative_abs_pops, tot_abs_pop, &
-                                                          cdet(it), cluster(it))
+                        ! Deterministically select each excip as a non-composite cluster.
+                        call select_cluster_non_composite(iattempt-nstochastic_clusters-D0_normalisation, iexcip_pos, &
+                                                          nsingle_excitors, D0_normalisation, D0_pos, cumulative_abs_pops, &
+                                                          tot_abs_pop, cdet(it), cluster(it))
                     end if
 
                     if (cluster(it)%excitation_level <= truncation_level+2) then
