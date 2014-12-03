@@ -95,6 +95,37 @@ no_opt : list of strings
     opt_data = pd.concat(opt_data)
     return (opt_data, no_opt)
 
+def extract_pop_growth(data, ref_key='N_0', shift_key='Shift', min_ref_pop=10):
+    '''Select QMC data during which the population was allowed to grow.
+
+We define the region of population growth as the period in which the shift is
+held constant.
+
+Parameters
+----------
+data : :class:`pandas.DataFrame`
+    HANDE QMC data. The function pyhande.extract.extract_data_sets can be used
+    to extract this from a HANDE output file.
+ref_key : string
+    column name in reblock_data containing the number of psips on the reference
+    determinant.
+shift_key : string
+    column name in reblock_data containing the shift.
+min_pop : int
+    discard data entries with fewer than min_pop on the reference.
+
+Returns
+-------
+pop_data: :class:`pandas.DataFrame`
+    The subset of data prior to the shift being varied.
+'''
+    pop_data = data[data[shift_key] == data[shift_key].iloc[0]]
+    # Now discard any data with a smaller absolute population on reference.
+    # Don't combine this with the above as the total number of iterations might
+    # be much larger than the number before the shift started to vary.
+    pop_data = pop_data[pop_data[ref_key] >= min_ref_pop]
+
+    return pop_data
 
 # [review] - JSS: no need for \ to mark a continuation inside a pair of ().
 # [review] - JSS: the plateau is a more general feature than the shoulder--bad name?
