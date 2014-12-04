@@ -143,7 +143,7 @@ end type semi_stoch_t
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size)
+    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, write_core)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -158,6 +158,8 @@ contains
         !        deterministic space to use.
         !    target_size: A size of deterministic space to aim for. This
         !        is only necessary for particular deterministic spaces.
+        !    write_core: If true then write out the core determinants to a
+        !        file.
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: walker_length
@@ -172,6 +174,7 @@ contains
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: space_type
         integer, intent(in) :: target_size
+        logical, intent(in) :: write_core
 
         integer :: i, ierr, determ_dets_mem
         integer :: displs(0:nprocs-1)
@@ -274,6 +277,8 @@ contains
         ! from all processors are stored in determ%dets.
         deallocate(dets_this_proc, stat=ierr)
         call check_deallocate('dets_this_proc', ierr)
+
+        if (write_core .and. parent) call write_core_to_file(determ, print_info)
 
         if (print_info) write(6,'(1X,a42)') '# Semi-stochastic initialisation complete.'
 
@@ -985,5 +990,50 @@ contains
         end do
 
     end subroutine find_indices_of_most_populated_dets
+
+    subroutine write_core_to_file(determ, print_info)
+
+        ! Write determinants stored in determ to a file.
+
+        ! In:
+        !    determ: Deterministic space being used.
+        !    print_info: Should we print information to the screen?
+
+#ifndef DISABLE_HDF5
+        use hdf5
+        use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_kinds_init
+        use utils, only: get_unique_filename
+
+        type(semi_stoch_t), intent(in) :: determ
+        logical, intent(in) :: print_info
+
+        type(hdf5_kinds_t) :: kinds
+        integer(hid_t) :: file_id
+        character(255) :: filename
+        integer :: ierr
+
+        call get_unique_filename("CORE.DETS", "", .true., 0, filename)
+        if (print_info) write(6,'(1X,"# Writing core space determinants to",1X,a,".")') trim(filename)
+
+        ! Create HDF5 kinds.
+        call hdf5_kinds_init(kinds)
+
+        ! Open HDF5 file.
+        call h5open_f(ierr)
+        call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, ierr)
+
+        ! Write core determinants to file.
+        call hdf5_write(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
+
+        ! Close HDF5 file.
+        call h5fclose_f(file_id, ierr)
+        call h5close_f(ierr)
+#else
+        use errors, only: warning
+
+        call warning('write_core_to_file', '# Not compiled with HDF5 support.  Cannot write out core space file.')
+#endif
+
+    end subroutine write_core_to_file
 
 end module semi_stoch

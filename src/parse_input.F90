@@ -232,6 +232,8 @@ contains
             case('SEMI_STOCH_HIGH_POP')
                 determ_space_type = high_pop_determ_space
                 call readi(determ_target_size)
+            case('WRITE_CORE_SPACE')
+                write_core_space = .true.
 
             ! DMQMC expectation values to be calculated.
             case('DMQMC_FULL_RENYI_2')
@@ -782,6 +784,7 @@ contains
         call mpi_bcast(semi_stoch_start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(write_core_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%real_lattice%finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)

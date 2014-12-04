@@ -1141,6 +1141,11 @@ The following options are valid for FCIQMC calculations.
          Furthermore, writing to (for instance) a network disk will degrade performance
          substantially.
 
+**write_core_space**
+    Default: off.
+
+    Write the determinants in any semi-stochastic core space to a file. This is
+    done for each core space used, to a separate file each time.
 **ascii_format_out**
     The default format for restart files is binary, as for the most part the files
     are meant purely for reading by Hubbard, and having the file in human-readable
