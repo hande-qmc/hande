@@ -129,7 +129,7 @@ pop_data : :class:`pandas.DataFrame`
     return pop_data
 
 def plateau_estimator(data, total_key='# H psips', ref_key='N_0',
-                       shift_key='Shift', min_ref_pop=10):
+                      shift_key='Shift', min_ref_pop=10, pop_data=None):
     ''' Estimate the (plateau) shoulder from a FCIQMC/CCMC calculation.
 
 The population on the reference starts to grow exponentially during the plateau,
@@ -159,6 +159,9 @@ shift_key : string
     column name in reblock_data containing the shift.
 min_ref_pop : int
     exclude points with less than min_ref_pop on the reference.
+pop_data: :class:`pandas.DataFrame`
+    The subset of data prior to the shift being varied.  Calculated if not
+    supplied from extract_pop_growth.
 
 Returns
 -------
@@ -167,11 +170,11 @@ plateau_data : :class:`pandas.DataFrame`
     along with the associated standard error.
 '''
     plateau_data = []
-    shift_first = data[shift_key][0][0]
-    data = extract_pop_growth(data, ref_key, shift_key, min_ref_pop) 
+    if pop_data is None:
+        pop_data = extract_pop_growth(data, ref_key, shift_key, min_ref_pop)
 
-    data['Shoulder'] = data[total_key]/abs(data[ref_key])
-    sorted_data = data.sort('Shoulder')
+    pop_data['Shoulder'] = pop_data[total_key]/abs(pop_data[ref_key])
+    sorted_data = pop_data.sort('Shoulder')
     plateau_data.append([sorted_data[-10:]['Shoulder'].mean(),
                          sorted_data[-10:]['Shoulder'].sem()])
     plateau_data.append([sorted_data[-10:][total_key].mean(),
