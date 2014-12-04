@@ -19,7 +19,6 @@ def main(f):
     # Plot the total population over the entire range
     pyplot.subplot(3,1,1)
     pyplot.plot(data['iterations'], data['# H psips'])
-    # [review] - JSS: spelling
     pyplot.xlabel('iteration')
     pyplot.ylabel('Total Population')
 
@@ -27,7 +26,6 @@ def main(f):
     pyplot.subplot(3,1,2)
     pyplot.plot(data['iterations'], data['\sum H_0j N_j']/data['N_0'], label='Proj. Energy')
     pyplot.plot(data['iterations'], data['Shift'], label='Shift')
-    # [review] - JSS: spelling
     pyplot.xlabel('iteration')
     pyplot.ylabel('Energy / $E_{h}$')
     pyplot.legend()
