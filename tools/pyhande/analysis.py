@@ -181,7 +181,7 @@ plateau_data : :class:`pandas.DataFrame`
                                index=['shoulder estimator', 'shoulder height'])
     return plateau_data
 
-def plateau_estimate_hist(data, total_key='# H psips', shift_key='Shift',
+def plateau_estimator_hist(data, total_key='# H psips', shift_key='Shift',
                           pop_data=None, bin_width_fn=None):
     '''Estimate the plateau height via a histogram of the population.
 
