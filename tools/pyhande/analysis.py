@@ -128,14 +128,9 @@ pop_data : :class:`pandas.DataFrame`
 
     return pop_data
 
-# [review] - JSS: no need for \ to mark a continuation inside a pair of ().
-# [review] - JSS: the plateau is a more general feature than the shoulder--bad name?
-def shoulder_estimator(data, total_key='# H psips', ref_key='N_0',\
-# [review] - JSS: indent this to be in line with the first argument.
- shift_key='Shift', min_pop=10):
-    # [review] - JSS: note additional blank line for PEP-8 compliant docstring.
-    # [review] - JSS: check rewording of the description.
-    ''' Estimate the shoulder (plateau) from a (CCMC) FCIQMC calculation.
+def plateau_estimator(data, total_key='# H psips', ref_key='N_0',
+                       shift_key='Shift', min_ref_pop=10):
+    ''' Estimate the (plateau) shoulder from a FCIQMC/CCMC calculation.
 
 The population on the reference starts to grow exponentially during the plateau,
 whilst the total population grows exponentially from the start of the
@@ -162,8 +157,8 @@ ref_key : string
     reference determinant.
 shift_key : string
     column name in reblock_data containing the shift.
-min_pop : int
-    exclude points with less than min_pop on the reference.
+min_ref_pop : int
+    exclude points with less than min_ref_pop on the reference.
 
 Returns
 -------
@@ -173,25 +168,15 @@ plateau_data : :class:`pandas.DataFrame`
 '''
     plateau_data = []
     shift_first = data[shift_key][0][0]
-    # [review] - JSS: select pre-variable-shift data before doing the division.
-    # [review] - JSS: what if the population on the reference is negative?
-    data['Shoulder'] = data[total_key]/data[ref_key]
+    data = extract_pop_growth(data, ref_key, shift_key, min_ref_pop) 
 
-    # Select data which both the reference is greater than the min_pop and 
-    # shift updating hasn't started. Annoyingly data[data[ref_key] < min_pop &&
-    # data[shift_key] == shift_first] doesn't work as the && operation on a 
-    # series of booleans is undefined.
-    # [review] - JSS: use & rather than &&.
-    # [review] - JSS: comments say the population must be < min_pop to be discarded but you discard it if it's <=.
-    sorted_data =  data[data[ref_key] > min_pop]\
-                   [data[shift_key][data[ref_key]>min_pop] == shift_first ]\
-                   .sort('Shoulder')
-    # [review] - JSS: no need for \.
-    plateau_data.append([sorted_data[-10:]['Shoulder'].mean(),\
-                       sorted_data[-10:]['Shoulder'].sem()])
-    plateau_data.append([sorted_data[-10:][total_key].mean(),\
-                       sorted_data[-10:][total_key].sem()])
-    plateau_data = pd.DataFrame(data=plateau_data, \
+    data['Shoulder'] = data[total_key]/abs(data[ref_key])
+    sorted_data = data.sort('Shoulder')
+    plateau_data.append([sorted_data[-10:]['Shoulder'].mean(),
+                         sorted_data[-10:]['Shoulder'].sem()])
+    plateau_data.append([sorted_data[-10:][total_key].mean(),
+                         sorted_data[-10:][total_key].sem()])
+    plateau_data = pd.DataFrame(data=plateau_data, 
                                columns=['mean', 'standard error'],\
                                index=['shoulder estimator', 'shoulder height'])
     return plateau_data

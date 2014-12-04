@@ -8,20 +8,19 @@ import pandas as pd
 import numpy as np
 import pyhande
 import matplotlib.pyplot as pyplot
+import argparse
 
 def main(f):
-    # [review] - JSS: either have or don't have a docstring---don't just add a null one!
-    '''
-''' 
+
     out = pyhande.extract.extract_data(f)
     data = out[1]
-    shoulder = pyhande.analysis.shoulder_estimator(data)
+    shoulder = pyhande.analysis.plateau_estimator(data)
 
-    # Plot the total poulation over the entire range
+    # Plot the total population over the entire range
     pyplot.subplot(3,1,1)
     pyplot.plot(data['iterations'], data['# H psips'])
     # [review] - JSS: spelling
-    pyplot.xlabel('itteration')
+    pyplot.xlabel('iteration')
     pyplot.ylabel('Total Population')
 
     # Plot the energy estimators over the entire range
@@ -29,7 +28,7 @@ def main(f):
     pyplot.plot(data['iterations'], data['\sum H_0j N_j']/data['N_0'], label='Proj. Energy')
     pyplot.plot(data['iterations'], data['Shift'], label='Shift')
     # [review] - JSS: spelling
-    pyplot.xlabel('itteration')
+    pyplot.xlabel('iteration')
     pyplot.ylabel('Energy / $E_{h}$')
     pyplot.legend()
 
@@ -43,14 +42,13 @@ def main(f):
     x_points = [min(data_around_shoulder['iterations']), 
                 max(data_around_shoulder['iterations'])]
     pyplot.plot(x_points, [height, height], label='Shoulder Height') 
-    # [review] - JSS: spelling
-    pyplot.xlabel('itteration')
+    pyplot.xlabel('iteration')
     pyplot.ylabel('Population')
     pyplot.legend(loc=2)
     pyplot.draw()
     pyplot.show()
 
-    # Also print out the infomation about the shoulder
+    # Also print out the information about the shoulder
     # Stealing from reblock_hande.py
     try:
         float_fmt = '{0:-#.8e}'.format
@@ -61,9 +59,18 @@ def main(f):
         float_fmt = '{0:-.8e}'.format
     print(shoulder.to_string(float_format=float_fmt, line_width=80))
 
+def parse_args(args):
+
+    parser = argparse.ArgumentParser(description='Plots the population and energy estimators of an FCIQMC/CCMC calulation')
+    parser.add_argument('-f', '--file', action='store', type=str, help='File to plot.')
+    opts = parser.parse_args(args)
+    if not opts.file:
+        parser.print_usage()
+        print('Must supply a file to plot')
+        sys.exit()
+    return opts.file
+
 if __name__ == '__main__':
 
-    # [review] - JSS: At the very least handle the case where a filename is not supplied or the
-    # [review] - JSS: first argument is --help or -h.  I would use argparse for this (see
-    # [review] - JSS: tests/extract_test_data.py).
-    main(sys.argv[1])
+    file = parse_args(sys.argv[1:])
+    main(file)
