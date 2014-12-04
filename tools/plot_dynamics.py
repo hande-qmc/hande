@@ -10,10 +10,9 @@ import pyhande
 import matplotlib.pyplot as pyplot
 import argparse
 
-def main(f):
+def main(datafile):
 
-    out = pyhande.extract.extract_data(f)
-    data = out[1]
+    data = pyhande.extract.extract_data(datafile)[1]
     shoulder = pyhande.analysis.plateau_estimator(data)
 
     # Plot the total population over the entire range
@@ -59,16 +58,12 @@ def main(f):
 
 def parse_args(args):
 
-    parser = argparse.ArgumentParser(description='Plots the population and energy estimators of an FCIQMC/CCMC calulation')
-    parser.add_argument('-f', '--file', action='store', type=str, help='File to plot.')
+    parser = argparse.ArgumentParser(description='Plot the population and energy estimators of an FCIQMC/CCMC calulation')
+    parser.add_argument('file', help='File to plot.')
     opts = parser.parse_args(args)
-    if not opts.file:
-        parser.print_usage()
-        print('Must supply a file to plot')
-        sys.exit()
     return opts.file
 
 if __name__ == '__main__':
 
-    file = parse_args(sys.argv[1:])
-    main(file)
+    datafile = parse_args(sys.argv[1:])
+    main(datafile)
