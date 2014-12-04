@@ -10,7 +10,7 @@ import pyhande
 import matplotlib.pyplot as pyplot
 import argparse
 
-def main(datafile):
+def main(datafile, plotfile):
 
     data = pyhande.extract.extract_data(datafile)[1]
     shoulder = pyhande.analysis.plateau_estimator(data)
@@ -43,7 +43,10 @@ def main(datafile):
     pyplot.ylabel('Population')
     pyplot.legend(loc=2)
     pyplot.draw()
-    pyplot.show()
+    if plotfile == '-':
+        pyplot.show()
+    else:
+        pyplot.savefig(plotfile)
 
     # Also print out the information about the shoulder
     # Stealing from reblock_hande.py
@@ -59,11 +62,13 @@ def main(datafile):
 def parse_args(args):
 
     parser = argparse.ArgumentParser(description='Plot the population and energy estimators of an FCIQMC/CCMC calulation')
+    parser.add_argument('-p', '--plotfile', default='-', help='File to save the graphs to.  '
+                        'The graphs are shown interactively if "-".  Default: %(default)s')
     parser.add_argument('file', help='File to plot.')
     opts = parser.parse_args(args)
-    return opts.file
+    return (opts.file, opts.plotfile)
 
 if __name__ == '__main__':
 
-    datafile = parse_args(sys.argv[1:])
-    main(datafile)
+    (datafile, plotfile) = parse_args(sys.argv[1:])
+    main(datafile, plotfile)
