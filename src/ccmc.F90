@@ -1171,7 +1171,6 @@ contains
         ! the total number attempted for this cluster which is passed into
         ! nspawnings_total.
 
-! [review] - AJWT:  This needs modifying to say what it's doing for linked CC.
         ! In linked CCMC, the probability of spawning is modified by changing
         ! the matrix elements <D'|H|D_s> so that only linked diagrams are used
         ! for spawning.
@@ -1295,7 +1294,6 @@ contains
         ! reference determinant and A_s is the amplitude.  See comments in
         ! select_cluster about the probabilities.
 
-! [review] - AJWT: Say what changes when doing Linked CC.
         ! When doing linked CCMC, the matrix elements
         !   <D_s|H|D_s> = <D_s|H T^n|D_0>
         ! are replaced by
