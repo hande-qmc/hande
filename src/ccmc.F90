@@ -168,6 +168,35 @@ module ccmc
 ! In order for the correct dynamics to be performed, we must carefully
 ! accumulate all negative signs and take them into account when
 ! determining the sign of the child excips.
+!
+! Linked CCMC
+! ===========
+!
+! Instead of sampling the amplitude equations (3), the equivalent equations::
+!
+!   t_I(t+dt) = t_I(t) - dt (< D_I | e^{-T(t)} H e^{T(t)} | D_0 > - < D_I | S | D_0 >)  (12)
+!
+! may be used. Using the identity::
+!
+!   e^T H e^{-T} = H + [H,T]_c + 1/2 [[H,T],T]_c + 1/3! [[[H,T],T],T]_c + 1/4! [[[[H,T],T],T],T]_c,  (13)
+!
+! where the subscript c indicates that only terms in the commutators coming from
+! linked diagrams need to be included, gives a very similar form to the original
+! equations. These equations, however, only include terms of at most fourth order
+! in T regardless of the truncation level. The equations (12) can be sampled in
+! very much the same way as (3), but require some modifications due to the
+! presence of the commutators instead of a simple product of operators:
+!
+! #. Clusters that include two excitors that excite from (to) the same orbital
+!    give a contribution to the equations, in contrast to the original form
+!    where they do not as the product of the excitors is 0. This corresponds to
+!    one excitor coming from the e^T and the other from the e^{-T} in (12). See
+!    comments in select_cluster and linked_spawner_ccmc for details.
+! #. Excitations not linked to the cluster being spawned from can be rejected.
+!    See linked_excitation.
+! #. Matrix elements used for spawning and death probabilities can have more than
+!    one term from the commutator contributing. See stochastic_ccmc_death and 
+!    unlinked_commutator.
 
 use const, only: i0, int_p, int_64, p
 
