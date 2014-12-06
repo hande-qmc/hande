@@ -3,6 +3,18 @@ module hdf5_helper
     ! Helper routines (primarily for reading and writing) around the HDF5
     ! Fortran 2003 API.
 
+    !!! WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING !!!
+    !!! The HDF5 library *must* be opened (using h5open_f) before any HDF5      !!!
+    !!! procedures (including procedures below) are called.                     !!!
+    !!! WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING !!!
+
+    ! In general, you should do something like:
+
+    ! call h5open_f(ierr)
+    ! call hdf5_kinds_init(hdf5_kinds)
+    ! <HDF5 calls to read/write/etc>
+    ! call h5close_f(ierr)
+
     ! We are willing to do things repeatedly (e.g. opening and closing datasets)
     ! as the speed loss should be minimal and the gain in ease of coding quite
     ! nice...
@@ -53,6 +65,13 @@ module hdf5_helper
         ! === Helper procedures: initialisation, properties ===
 
         subroutine hdf5_kinds_init(kinds)
+
+            ! Out:
+            !    kinds: HDF5 kinds corresponding to integer and real kinds used in the QMC algorithms.
+
+            ! WARNING: Take care.  If called before h5open_f is called, then it will return garbage.
+            !          Further, the kind values are *not* constant between closing and then re-opening
+            !          the HDF5 library.  Learn from my (painful) experiences...
 
             use const, only: int_32, int_64, p
             use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
