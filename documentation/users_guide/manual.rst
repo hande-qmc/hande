@@ -1498,6 +1498,36 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 
     The **use_all_sym_sectors** option is not implemented with **exact** calculations, and so cannot be used
     here.
+**propagate_to_beta**
+    Propagate a particular trial density matrix to a specific value of beta so that in the last step we are sampling the actual density matrix at this beta.
+    To see this consider the function
+
+    .. math::
+
+        f(\tau) = \rho^{T}(\beta-tau)\rho(\tau),
+
+    where :math:`\rho^{T}` is a "trial" density matrix and :math:`\rho(\tau)` is our usual density matrix.
+    Note that
+
+    .. math::
+
+        f(0) = \rho^{T}(\beta) \rho(0) = \rho^{T}(\beta)
+
+    and
+
+    ..math::
+
+        f(\tau) = \rho(\tau) = \rho(\beta).
+
+     Thus by propagating :math:`f` using the (appropriately modified) DMQMC algorithm we can sample the density matrix at a particular beta. This removes the difficulty of sampling the infinite temperature density matrix for systems with strong reference components, as typically the reference will be highly populated in the trial density matrix at any non-zero beta.
+**init_beta**
+    Beta value the density matrix will be sampled at.
+**metropolis_attempts**
+    Number of metropolis iterations per psips to be carried out when attempting to sample a trial density matrix.
+**reuse_initial_config**
+    Use the previous beta loop's trial density matrix as a starting point on top of which a reduced number of metropolis attempts can be performed. This is much quicker than starting from scratch each beta loop.
+**free_electron_trial**
+    Use the non-interacting Hamiltonian in our trial density matrix. This is not as efficient as the default "Hartree-Fock" density matrix.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

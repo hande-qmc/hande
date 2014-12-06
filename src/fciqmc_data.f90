@@ -603,6 +603,7 @@ integer :: metropolis_attempts = 1000
 ! Default: false i.e. generate a new density matrix from scratch each beta loop.
 logical :: reuse_initial_config = .false.
 ! Use the free electron Hamiltonian as the trial density matrix.
+! Default: Use the "Hartree-Fock" trial density matrix.
 logical :: free_electron_trial = .false.
 
 !--- Calculation modes ---
