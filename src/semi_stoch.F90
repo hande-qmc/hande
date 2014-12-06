@@ -212,7 +212,7 @@ contains
         if (space_type == high_pop_determ_space) then
             call create_high_pop_space(dets_this_proc, spawn, target_size, determ%sizes(iproc))
         else if (space_type == read_determ_space) then
-            call read_core_from_file(dets_this_proc, determ, spawn, sys)
+            call read_core_from_file(dets_this_proc, determ, spawn, sys, print_info)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -994,7 +994,7 @@ contains
 
     end subroutine find_indices_of_most_populated_dets
 
-    subroutine read_core_from_file(dets_this_proc, determ, spawn, sys)
+    subroutine read_core_from_file(dets_this_proc, determ, spawn, sys, print_info)
 
         ! Use determinants read in from a HDF5 file to form the core space.
 
@@ -1005,6 +1005,7 @@ contains
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    sys: system being studied
+        !    print_info: Should we print information to the screen?
 
 #ifndef DISABLE_HDF5
         use checking, only: check_allocate, check_deallocate
@@ -1019,7 +1020,8 @@ contains
         integer(i0), intent(inout) :: dets_this_proc(:,:)
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
-        type(sys_t) :: sys
+        type(sys_t), intent(in) :: sys
+        logical, intent(in) :: print_info
 
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
@@ -1031,6 +1033,7 @@ contains
         ! Read the core determinants in on just the parent processor.
         if (parent) then
             call get_unique_filename("CORE.DETS", "", .false., 0, filename)
+            if (print_info) write(6,'(1X,"# Reading core space determinants from",1X,a,".")') trim(filename)
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
