@@ -555,11 +555,7 @@ contains
         iend = tot_walkers
         do i = 1, determ%sizes(iproc)
             call binary_search(walker_dets, dets_this_proc(:,i), istart, iend, hit, pos)
-            if (hit) then
-                ! This deterministic state is already in walker_dets. We simply
-                ! need to set the deterministic flag.
-                determ%flags(pos) = 0
-            else
+            if (.not. hit) then
                 ! This deterministic state is not in walker_dets. Move all
                 ! determinants with index pos or greater down one and insert
                 ! this determinant with an initial sign of zero.
@@ -572,6 +568,10 @@ contains
 
                 tot_walkers = tot_walkers + 1
             end if
+
+            ! Set this flag to specify a core state.
+            determ%flags(pos) = 0
+
             istart = pos + 1
             iend = tot_walkers
         end do
