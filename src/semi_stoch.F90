@@ -541,7 +541,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: dets_this_proc(:,:)
 
-        integer :: i, j, k, istart, iend, pos
+        integer :: i, istart, iend, pos
         integer(int_p) :: zero_population(sampling_size)
         logical :: hit
 
@@ -560,9 +560,9 @@ contains
                 ! This deterministic state is not in walker_dets. Move all
                 ! determinants with index pos or greater down one and insert
                 ! this determinant with an initial sign of zero.
-                walker_dets(:,pos:tot_walkers) = walker_dets(:,pos+1:tot_walkers+1)
-                walker_population(:,pos:tot_walkers) = walker_population(:,pos+1:tot_walkers+1)
-                walker_data(:,pos:tot_walkers) = walker_data(:,pos+1:tot_walkers+1)
+                walker_dets(:,pos+1:tot_walkers+1) = walker_dets(:,pos:tot_walkers)
+                walker_population(:,pos+1:tot_walkers+1) = walker_population(:,pos:tot_walkers)
+                walker_data(:,pos+1:tot_walkers+1) = walker_data(:,pos:tot_walkers)
 
                 ! Insert a determinant with population zero into the walker arrays.
                 call insert_new_walker(sys, pos, dets_this_proc(:,i), zero_population)
