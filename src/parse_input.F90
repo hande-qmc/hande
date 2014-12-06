@@ -232,6 +232,10 @@ contains
             case('SEMI_STOCH_HIGH_POP')
                 determ_space_type = high_pop_determ_space
                 call readi(determ_target_size)
+            case('SEMI_STOCH_READ')
+                determ_space_type = read_determ_space
+                ! Not needed.
+                determ_target_size = -1
             case('WRITE_CORE_SPACE')
                 write_core_space = .true.
 

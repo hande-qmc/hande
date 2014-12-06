@@ -90,6 +90,7 @@ implicit none
 enum, bind(c)
     enumerator :: empty_determ_space
     enumerator :: high_pop_determ_space
+    enumerator :: read_determ_space
 end enum
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
@@ -210,6 +211,8 @@ contains
         ! (space_type = empty_determ_space).
         if (space_type == high_pop_determ_space) then
             call create_high_pop_space(dets_this_proc, spawn, target_size, determ%sizes(iproc))
+        else if (space_type == read_determ_space) then
+            call read_core_from_file(dets_this_proc, determ, spawn, sys)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -990,6 +993,111 @@ contains
         end do
 
     end subroutine find_indices_of_most_populated_dets
+
+    subroutine read_core_from_file(dets_this_proc, determ, spawn, sys)
+
+        ! Use determinants read in from a HDF5 file to form the core space.
+
+        ! In/Out:
+        !    dets_this_proc: The deterministic states belonging to this
+        !        processor.
+        !    determ: Deterministic space being used.
+        ! In:
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    sys: system being studied
+
+#ifndef DISABLE_HDF5
+        use checking, only: check_allocate, check_deallocate
+        use hashing, only: murmurhash_bit_string
+        use hdf5
+        use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init
+        use parallel
+        use spawn_data, only: spawn_t
+        use system, only: sys_t
+        use utils, only: get_unique_filename
+
+        integer(i0), intent(inout) :: dets_this_proc(:,:)
+        type(semi_stoch_t), intent(inout) :: determ
+        type(spawn_t), intent(in) :: spawn
+        type(sys_t) :: sys
+
+        type(hdf5_kinds_t) :: kinds
+        integer(hid_t) :: file_id, dset_id, dspace_id
+        character(255) :: filename
+        integer :: i, proc, ncore_dets, ncore_dets_this_proc, ierr
+        integer :: displs(0:nprocs-1)
+        integer(HSIZE_T) :: dims(2), maxdims(2)
+
+        ! Read the core determinants in on just the parent processor.
+        if (parent) then
+            call get_unique_filename("CORE.DETS", "", .false., 0, filename)
+
+            ! Initialise HDF5 and open file.
+            call h5open_f(ierr)
+            call hdf5_kinds_init(kinds)
+            call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
+
+            ! Find how many determinants are in the file.
+            call h5dopen_f(file_id, 'dets', dset_id, ierr)
+            call h5dget_space_f(dset_id, dspace_id, ierr)
+            call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
+            call h5dclose_f(dset_id, ierr)
+            ! Number of determinants is the last index...
+            ncore_dets = dims(2)
+
+            allocate(determ%dets(sys%basis%tensor_label_len, ncore_dets), stat=ierr)
+            call check_allocate('determ%dets', ncore_dets*sys%basis%tensor_label_len, ierr)
+
+            ! Perform the reading in of determinants to determ%dets.
+            call hdf5_read(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
+
+            ! Close HDF5 file and HDF5.
+            call h5fclose_f(file_id, ierr)
+            call h5close_f(ierr)
+
+            ! Find how many determinants belong to each process.
+            determ%sizes = 0
+            do i = 1, ncore_dets
+                proc = modulo(murmurhash_bit_string(determ%dets(:,i), size(determ%dets(:,i)), &
+                              spawn%hash_seed), nprocs)
+                determ%sizes(proc) = determ%sizes(proc) + 1
+            end do
+
+            ! Displacements used for MPI communication.
+            displs(0) = 0
+            do i = 1, nprocs-1
+                displs(i) = displs(i-1) + determ%sizes(i-1)
+            end do
+        end if
+
+        ! Send the number of determinants on a process to that process, from
+        ! the root process.
+        call mpi_scatter(determ%sizes, 1, mpi_integer, ncore_dets_this_proc, 1, mpi_integer, root, &
+                         MPI_COMM_WORLD, ierr)
+        determ%sizes(iproc) = ncore_dets_this_proc
+
+        ! Send the determinants to their process.
+        associate(tbl=>sys%basis%tensor_label_len)
+            call mpi_scatterv(determ%dets, tbl*determ%sizes, tbl*displs, mpi_det_integer, &
+                             dets_this_proc(:,1:ncore_dets_this_proc), determ%sizes(iproc), &
+                             mpi_det_integer, root, MPI_COMM_WORLD, ierr)
+        end associate
+
+        ! determ%dets is used to store the list of all core determinants, but
+        ! this is done again later for all processes, not just the parent. So
+        ! for now deallocate determ%dets on the parent process.
+        if (parent) then
+            deallocate(determ%dets, stat=ierr)
+            call check_deallocate('dets_this_proc', ierr)
+        end if
+
+#else
+        use errors, only: stop_all
+
+        call stop_all('read_core_from_file', '# Not compiled with HDF5 support.  Cannot read core space file.')
+#endif
+
+    end subroutine read_core_from_file
 
     subroutine write_core_to_file(determ, print_info)
 
