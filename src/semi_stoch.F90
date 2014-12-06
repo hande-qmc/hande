@@ -1015,17 +1015,17 @@ contains
         call get_unique_filename("CORE.DETS", "", .true., 0, filename)
         if (print_info) write(6,'(1X,"# Writing core space determinants to",1X,a,".")') trim(filename)
 
-        ! Create HDF5 kinds.
+        ! Open HDF5 and create HDF5 kinds.
+        call h5open_f(ierr)
         call hdf5_kinds_init(kinds)
 
         ! Open HDF5 file.
-        call h5open_f(ierr)
         call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, ierr)
 
         ! Write core determinants to file.
         call hdf5_write(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
 
-        ! Close HDF5 file.
+        ! Close HDF5 file and HDF5.
         call h5fclose_f(file_id, ierr)
         call h5close_f(ierr)
 #else
