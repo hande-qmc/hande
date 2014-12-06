@@ -1032,7 +1032,7 @@ contains
 
         ! Read the core determinants in on just the parent processor.
         if (parent) then
-            call get_unique_filename("CORE.DETS", "", .false., 0, filename)
+            call get_unique_filename("CORE.DETS", ".H5", .false., 0, filename)
             if (print_info) write(6,'(1X,"# Reading core space determinants from",1X,a,".")') trim(filename)
 
             ! Initialise HDF5 and open file.
@@ -1123,7 +1123,7 @@ contains
         character(255) :: filename
         integer :: ierr
 
-        call get_unique_filename("CORE.DETS", "", .true., 0, filename)
+        call get_unique_filename("CORE.DETS", ".H5", .true., 0, filename)
         if (print_info) write(6,'(1X,"# Writing core space determinants to",1X,a,".")') trim(filename)
 
         ! Open HDF5 and create HDF5 kinds.
