@@ -1,0 +1,22 @@
+read INTDUMP
+nel 10
+
+sym 0
+ms 0
+
+truncation_level 4
+
+ccmc
+ccmc_linked
+seed 5691
+
+walker_length 100 mb
+spawned_walker_length 50 mb
+
+init_pop 50
+tau 0.003
+
+nreports 600
+mc_cycles 10
+
+varyshift_target 2000
