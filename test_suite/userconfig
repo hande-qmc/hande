@@ -8,5 +8,5 @@ ignore_fields = time R_spawn
 
 [user]
 diff = vimdiff
-benchmark = 0dc363f a331116 7ccbd38 611ecb6 45eedbf c27f9ed 62cb9ac 11a9d6b ce3dfde debf5bb a590225 6d904b0 6c9c111 484eac7 9bdd382 1461a8d 4369f83
+benchmark = 0dc363f a331116 7ccbd38 611ecb6 45eedbf c27f9ed 62cb9ac 11a9d6b ce3dfde debf5bb a590225 6d904b0 6c9c111 484eac7 9bdd382 1461a8d 4369f83 5ee500b
 
