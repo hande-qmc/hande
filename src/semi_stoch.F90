@@ -144,7 +144,7 @@ end type semi_stoch_t
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, write_core)
+    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, write_determ)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -159,7 +159,7 @@ contains
         !        deterministic space to use.
         !    target_size: A size of deterministic space to aim for. This
         !        is only necessary for particular deterministic spaces.
-        !    write_core: If true then write out the core determinants to a
+        !    write_determ: If true then write out the deterministic states to a
         !        file.
 
         use checking, only: check_allocate, check_deallocate
@@ -175,7 +175,7 @@ contains
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: space_type
         integer, intent(in) :: target_size
-        logical, intent(in) :: write_core
+        logical, intent(in) :: write_determ
 
         integer :: i, ierr, determ_dets_mem
         integer :: displs(0:nprocs-1)
@@ -212,7 +212,7 @@ contains
         if (space_type == high_pop_determ_space) then
             call create_high_pop_space(dets_this_proc, spawn, target_size, determ%sizes(iproc))
         else if (space_type == read_determ_space) then
-            call read_core_from_file(dets_this_proc, determ, spawn, sys, print_info)
+            call read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -281,7 +281,7 @@ contains
         deallocate(dets_this_proc, stat=ierr)
         call check_deallocate('dets_this_proc', ierr)
 
-        if (write_core .and. parent) call write_core_to_file(determ, print_info)
+        if (write_determ .and. parent) call write_determ_to_file(determ, print_info)
 
         if (print_info) write(6,'(1X,a42)') '# Semi-stochastic initialisation complete.'
 
@@ -569,7 +569,7 @@ contains
                 tot_walkers = tot_walkers + 1
             end if
 
-            ! Set this flag to specify a core state.
+            ! Set this flag to specify a deterministic state.
             determ%flags(pos) = 0
 
             istart = pos + 1
@@ -994,9 +994,9 @@ contains
 
     end subroutine find_indices_of_most_populated_dets
 
-    subroutine read_core_from_file(dets_this_proc, determ, spawn, sys, print_info)
+    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
 
-        ! Use determinants read in from a HDF5 file to form the core space.
+        ! Use states read in from a HDF5 file to form the deterministic space.
 
         ! In/Out:
         !    dets_this_proc: The deterministic states belonging to this
@@ -1026,14 +1026,14 @@ contains
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
         character(255) :: filename
-        integer :: i, proc, ncore_dets, ncore_dets_this_proc, ierr
+        integer :: i, proc, ndeterm, ndeterm_this_proc, ierr
         integer :: displs(0:nprocs-1)
         integer(HSIZE_T) :: dims(2), maxdims(2)
 
-        ! Read the core determinants in on just the parent processor.
+        ! Read the deterministic states in on just the parent processor.
         if (parent) then
-            call get_unique_filename("CORE.DETS", ".H5", .false., 0, filename)
-            if (print_info) write(6,'(1X,"# Reading core space determinants from",1X,a,".")') trim(filename)
+            call get_unique_filename("SEMI.STOCH", ".H5", .false., 0, filename)
+            if (print_info) write(6,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -1046,10 +1046,10 @@ contains
             call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
             call h5dclose_f(dset_id, ierr)
             ! Number of determinants is the last index...
-            ncore_dets = dims(2)
+            ndeterm = dims(2)
 
-            allocate(determ%dets(sys%basis%tensor_label_len, ncore_dets), stat=ierr)
-            call check_allocate('determ%dets', ncore_dets*sys%basis%tensor_label_len, ierr)
+            allocate(determ%dets(sys%basis%tensor_label_len, ndeterm), stat=ierr)
+            call check_allocate('determ%dets', ndeterm*sys%basis%tensor_label_len, ierr)
 
             ! Perform the reading in of determinants to determ%dets.
             call hdf5_read(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
@@ -1060,7 +1060,7 @@ contains
 
             ! Find how many determinants belong to each process.
             determ%sizes = 0
-            do i = 1, ncore_dets
+            do i = 1, ndeterm
                 proc = modulo(murmurhash_bit_string(determ%dets(:,i), size(determ%dets(:,i)), &
                               spawn%hash_seed), nprocs)
                 determ%sizes(proc) = determ%sizes(proc) + 1
@@ -1075,18 +1075,18 @@ contains
 
         ! Send the number of determinants on a process to that process, from
         ! the root process.
-        call mpi_scatter(determ%sizes, 1, mpi_integer, ncore_dets_this_proc, 1, mpi_integer, root, &
+        call mpi_scatter(determ%sizes, 1, mpi_integer, ndeterm_this_proc, 1, mpi_integer, root, &
                          MPI_COMM_WORLD, ierr)
-        determ%sizes(iproc) = ncore_dets_this_proc
+        determ%sizes(iproc) = ndeterm_this_proc
 
         ! Send the determinants to their process.
         associate(tbl=>sys%basis%tensor_label_len)
             call mpi_scatterv(determ%dets, tbl*determ%sizes, tbl*displs, mpi_det_integer, &
-                             dets_this_proc(:,1:ncore_dets_this_proc), determ%sizes(iproc), &
+                             dets_this_proc(:,1:ndeterm_this_proc), determ%sizes(iproc), &
                              mpi_det_integer, root, MPI_COMM_WORLD, ierr)
         end associate
 
-        ! determ%dets is used to store the list of all core determinants, but
+        ! determ%dets is used to store the list of all deterministic states, but
         ! this is done again later for all processes, not just the parent. So
         ! for now deallocate determ%dets on the parent process.
         if (parent) then
@@ -1097,12 +1097,12 @@ contains
 #else
         use errors, only: stop_all
 
-        call stop_all('read_core_from_file', '# Not compiled with HDF5 support.  Cannot read core space file.')
+        call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
 #endif
 
-    end subroutine read_core_from_file
+    end subroutine read_determ_from_file
 
-    subroutine write_core_to_file(determ, print_info)
+    subroutine write_determ_to_file(determ, print_info)
 
         ! Write determinants stored in determ to a file.
 
@@ -1123,8 +1123,8 @@ contains
         character(255) :: filename
         integer :: ierr
 
-        call get_unique_filename("CORE.DETS", ".H5", .true., 0, filename)
-        if (print_info) write(6,'(1X,"# Writing core space determinants to",1X,a,".")') trim(filename)
+        call get_unique_filename("SEMI.STOCH", ".H5", .true., 0, filename)
+        if (print_info) write(6,'(1X,"# Writing deterministic space states to",1X,a,".")') trim(filename)
 
         ! Open HDF5 and create HDF5 kinds.
         call h5open_f(ierr)
@@ -1133,7 +1133,7 @@ contains
         ! Open HDF5 file.
         call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, ierr)
 
-        ! Write core determinants to file.
+        ! Write deterministic states to file.
         call hdf5_write(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
 
         ! Close HDF5 file and HDF5.
@@ -1142,9 +1142,9 @@ contains
 #else
         use errors, only: warning
 
-        call warning('write_core_to_file', '# Not compiled with HDF5 support.  Cannot write out core space file.')
+        call warning('write_determ_to_file', '# Not compiled with HDF5 support.  Cannot write out semi-stochastic file.')
 #endif
 
-    end subroutine write_core_to_file
+    end subroutine write_determ_to_file
 
 end module semi_stoch

@@ -82,7 +82,7 @@ contains
         ! If the user has asked to use semi-stochastic from the first iteration
         ! then turn it on now. Otherwise, use an empty deterministic space.
         if (semi_stoch_start_iter == 0) then
-            call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, write_core_space)
+            call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, write_determ_space)
         else
             call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false.)
         end if
@@ -117,7 +117,7 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_start_iter) then
                     call dealloc_semi_stoch_t(determ)
-                    call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, write_core_space)
+                    call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, write_determ_space)
                     semi_stochastic = .true.
                 end if
 
