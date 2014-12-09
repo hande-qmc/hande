@@ -3,6 +3,21 @@ HANDE Developers' Guide
 
 Compiled from various email threads on (and before) the nascent hande-dev list.
 
+git repository
+--------------
+
+The git repository is currently located at
+hande@tycpc15.cmth.ph.ic.ac.uk:hande.git and can be cloned using:
+
+.. code-block:: bash
+
+    $ git clone hande@tycpc15.cmth.ph.ic.ac.uk:hande.git
+
+If you would like access, please speak to one of the developers.  The rest of
+this guide assumes you used the default remote name during the clone (i.e.
+``origin``).  If this is not the case, we assume you are capable of
+appropriately adjusting the commands given in the rest of the guide.
+
 Precepts
 --------
 
