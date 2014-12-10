@@ -998,6 +998,8 @@ contains
 
         ! Use states read in from a HDF5 file to form the deterministic space.
 
+        ! [review] - JSS: unclear what state dets_this_proc and determ should be in on entry and
+        ! [review] - JSS: what they will be in on exit.
         ! In/Out:
         !    dets_this_proc: The deterministic states belonging to this
         !        processor.
@@ -1017,6 +1019,7 @@ contains
         use system, only: sys_t
         use utils, only: get_unique_filename
 
+        ! [review] - JSS: why is dets_this_proc inout when it is only the recvbuf in mpi_scatterv?
         integer(i0), intent(inout) :: dets_this_proc(:,:)
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
@@ -1061,6 +1064,9 @@ contains
             ! Find how many determinants belong to each process.
             determ%sizes = 0
             do i = 1, ndeterm
+                ! [review] - JSS: by not using assign_particle_processor, I suspect this
+                ! [review] - JSS: will break if load balancing is enabled...
+                ! [review] - JSS: similar problem in add_det_to_determ_space?
                 proc = modulo(murmurhash_bit_string(determ%dets(:,i), size(determ%dets(:,i)), &
                               spawn%hash_seed), nprocs)
                 determ%sizes(proc) = determ%sizes(proc) + 1
@@ -1073,6 +1079,7 @@ contains
             end do
         end if
 
+        ! [review] - JSS: this doesn't handle serial compilation.
         ! Send the number of determinants on a process to that process, from
         ! the root process.
         call mpi_scatter(determ%sizes, 1, mpi_integer, ndeterm_this_proc, 1, mpi_integer, root, &
@@ -1091,6 +1098,7 @@ contains
         ! for now deallocate determ%dets on the parent process.
         if (parent) then
             deallocate(determ%dets, stat=ierr)
+            ! [review] - JSS: incorrect variable name?
             call check_deallocate('dets_this_proc', ierr)
         end if
 
