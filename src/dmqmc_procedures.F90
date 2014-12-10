@@ -632,7 +632,7 @@ contains
     subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica, beta_cycle)
 
         ! Attempt to initialise the temperature dependent trial density matrix
-        ! using the metropolis alogorithm.
+        ! using the metropolis algorithm.
         ! We first uniformly distribute psips on all excitation levels then
         ! perform the metropolis algorithm. The Metropolis algorithm works by generating
         ! a new determinant which is accepted/rejected based on the value of the
@@ -657,9 +657,8 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
-        use determinants, only: decode_det, alloc_det_info_t, det_info_t, &
-                                dealloc_det_info_t
-        use excitations, only: excit_t, create_excited_det
+        use determinants, only: decode_det, alloc_det_info_t, det_info_t, dealloc_det_info_t
+        use excitations, only: excit_t, create_excited_det, get_excitation
         use fciqmc_data, only: real_factor, metropolis_attempts, reuse_initial_config
         use fciqmc_data, only: f0, qmc_spawn, sampling_size, initial_config
         use parallel, only: nprocs, nthreads, parent
@@ -674,15 +673,15 @@ contains
         integer, intent(in) :: ireplica
         integer, intent(in) :: beta_cycle
 
-        integer :: occ_list(sys%nel), naccept, rand_level
-        integer :: idet, weight, iattempt, nsuccess
+        integer :: occ_list(sys%nel), naccept
+        integer :: idet, iattempt, nsuccess
         integer :: thread_id = 0, proc
         integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
         integer(i0), target :: ftmp(sys%basis%string_len)
         real(p), target :: tmp_data(sampling_size)
         real(p) :: pgen, hmatel
         real(dp) :: r, E_new, E_old, prob
-        type(det_info_t) :: cdet
+        type(det_info_t) :: cdet, det0
         type(excit_t) :: connection
 
         naccept = 0 ! Number of metropolis moves which are accepted.
@@ -691,35 +690,9 @@ contains
 
         call alloc_det_info_t(sys, cdet, .false.)
 
-        if (.not. reuse_initial_config .or. beta_cycle == 1) then
-            ! Initially we distribute psips so that there are an equal
-            ! number at each excitation level.
-            ! [todo] - Temperature Dependent intitialisation: the above method
-            !    the advantage that the reference will always be significantly
-            !    occupied, which helps at mid to low temperatures, but not at
-            !    high temperatures. There are potentially much better ways of
-            !    initialising the density matrix which should increase
-            !    efficiency, but they haven't been implemented yet.
-            do
-                ! Pick an excitation level to spawn a particle onto.
-                rand_level = int(get_rand_close_open(rng)*(sys%max_number_excitations+1))
-                ! Forbidden in K = 0 subspace.
-                if (rand_level == 1) cycle
-                call create_nfold_excitation(sys, rng, rand_level, sym, weight, f0, f_new, cdet)
-                idet = idet + 1
-                call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
-                                                            sys%basis%tensor_label_len, real_factor, ireplica)
-                if (idet == npsips) exit
-            end do
-        else if (reuse_initial_config .and. beta_cycle > 1) then
-            ! Use the previous beta loop's initial configuration as the new guess for the distribution.
-            ! We can then perform metropolis on top of this.
-            qmc_spawn%sdata = initial_config%sdata
-            qmc_spawn%head = initial_config%head
-            ! [todo] - Check what a good reduction factor is when doing error
-            !     analysis properly.
-            metropolis_attempts = 100
-        end if
+        ! Set up the initial distribution of psips which we'll perform
+        ! metropolis on.
+        call initial_metropolis_config(sys, npsips, sym, beta_cycle, ireplica, rng, qmc_spawn)
 
         cdet%f => ftmp
         ! Visit every walker metropolis_attempts times.
@@ -764,7 +737,7 @@ contains
         ! Copy the starting configuration so that it can be reused at the next
         ! beta loop.
         ! [todo] - There is probably a better way of doing this than just
-        !     copying it.
+        ! copying it.
         if (reuse_initial_config) then
             initial_config%sdata = qmc_spawn%sdata
             initial_config%head = qmc_spawn%head
@@ -774,68 +747,159 @@ contains
 
     end subroutine initialise_dm_metropolis
 
-    subroutine create_nfold_excitation(sys, rng, nexcit, sym, weight, f_old, f_new, det)
+    subroutine initial_metropolis_config(sys, npsips, sym, beta_cycle, ireplica, rng, qmc_spawn)
 
-        use determinants, only: decode_det_occ_spinunocc, decode_det, det_info_t
+        ! Create an initital distribution of psips along the diagonal.
+        ! This subroutine will return a list of occupied determinants in
+        ! qmc_spawn which can then be used for the metropolis initialisation.
+        ! The list is either completely regenerated from scratch by distributing
+        ! psips in equal numbers among all (bar single) excitation levels of the
+        ! reference or the list from the previous beta_cycle is reused (see
+        ! option reuse_initial_config). The latter is much faster but
+        ! potentially correlates measurements across beta loops while the former
+        ! is far slower due to the increased burn in time required for the
+        ! metropolis algorithm.
+        ! 
+        ! [todo] - Temperature Dependent initialisation: The current method
+        ! had the advantage that the reference will always be significantly
+        ! occupied, which helps at mid to low temperatures, but not at
+        ! high temperatures. There are potentially much better ways of
+        ! initialising the density matrix which should increase
+        ! efficiency, but they haven't been implemented yet.
+        !
+        ! In:
+        !    sys: system being studied.
+        !    npsips: number of psips to distribute on the diagonal.
+        !    sym: symmetry of determinants being occupied.
+        !    beta_cycle: beta loop iteration index.
+        !    ireplica: replica index.
+        ! In/Out:
+        !    rng: random number generator.
+        !    qmc_spawn: spawn_t object containing list of occupied determinants.
+
+        use spawn_data, only: spawn_t
+        use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
+                                det_info_t, alloc_det_info_t
+        use fciqmc_data, only: f0, real_factor, initial_config, metropolis_attempts, &
+                               reuse_initial_config
+        use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
+        use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        integer(int_64), intent(in) :: npsips
+        integer, intent(in) :: sym
+        integer, intent(in) :: beta_cycle
+        integer, intent(in) :: ireplica
+        type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: qmc_spawn
+
+        integer :: occ_list(sys%nel), idet, ilevel
+        integer(i0) :: f_new(sys%basis%string_len)
+        type(det_info_t) :: det0
+        integer(int_64) :: psips_per_level
+        real(p) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
+
+        if (.not. reuse_initial_config .or. beta_cycle == 1) then
+            psips_per_level = int(npsips/sys%max_number_excitations)
+            call alloc_det_info_t(sys, det0)
+            call decode_det_spinocc_spinunocc(sys, f0, det0)
+            det0%f = f0
+            ! Pick an excitation level to spawn a particle onto.
+            ! gen_random_det_truncate_space does not produce
+            ! determinants at excitation level zero, so take care of
+            ! this explicitly.
+            ! [todo]- Take care of rounding.
+            do idet = 1, psips_per_level
+                call create_diagonal_density_matrix_particle(f0, sys%basis%string_len, &
+                                                             sys%basis%tensor_label_len, real_factor, ireplica)
+            end do
+            do ilevel = 2, sys%max_number_excitations
+                ! Calculate the probabilites of generating the possible spin
+                ! excitations.
+                call set_level_probabilities(sys, ptrunc_level, ilevel)
+                ! Create a determinant of the correct excitation level.
+                do idet = 1, psips_per_level
+                    ! Repeatedly attempt to generate a determinant of the
+                    ! correct symmetry so that there are an equal number of
+                    ! psips on all levels.
+                    do
+                        call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
+                        if (symmetry_orb_list(sys, occ_list) == sym) then
+                            call encode_det(sys%basis, occ_list, f_new)
+                            call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
+                                                                        sys%basis%tensor_label_len, real_factor, ireplica)
+                            exit
+                        end if
+                    end do
+                end do
+            end do
+            call dealloc_det_info_t(det0, .false.)
+        else if (reuse_initial_config .and. beta_cycle > 1) then
+            ! Use the previous beta loop's initial configuration as the new guess for the distribution.
+            ! We can then perform metropolis on top of this.
+            qmc_spawn%sdata = initial_config%sdata
+            qmc_spawn%head = initial_config%head
+            ! [todo] - Check what a good reduction factor is when doing error
+            ! analysis properly.
+            metropolis_attempts = 100
+        end if
+
+    end subroutine initial_metropolis_config
+
+    subroutine set_level_probabilities(sys, ptrunc_level, ilevel)
+
+        ! Set the probabilities for creating a determinant on a given
+        ! excitation level so that get_random_det_truncate_space can be used.
+        !
+        ! In:
+        !    sys: system being studied.
+        !    ilevel: excitation level for which we want to calculate the
+        !        excitation probabilities.
+        ! In/Out:
+        !    ptrunc_level: array containing probabilities for spawning at a
+        !        particular (ialpha, ilevel) excitation level.
+
         use system, only: sys_t
         use utils, only: binom_r
 
-        type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: sym
-        integer, intent(in) :: nexcit
-        integer, intent(out) :: weight
-        integer, intent(in) :: f_old(:)
-        integer(i0), intent(out) :: f_new(:)
-        type(det_info_t), intent(inout) :: det
+        integer, intent(in) :: ilevel
+        real(p), intent(inout) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
 
-        integer :: occ_list(sys%nel)
-        integer :: a_el, a_pos, a, b, b_pos, b_el
-        integer :: nremove, nadd
+        integer :: nallowed, iallowed, norm, istart, ialpha
+        real(p) :: offset
 
-        if (nexcit == 0) then
-            f_new = f_old
-            return
-        else
-            call decode_det_occ_spinunocc(sys, f_old, det)
-            do
-                f_new = f_old
-                nadd = 0
-                nremove = 0
-                do
-                    ! Annihilate nexcit electrons.
-                    a = det%occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
-                    a_pos = sys%basis%bit_lookup(1,a)
-                    a_el = sys%basis%bit_lookup(2,a)
-                    if (btest(f_new(a_el),a_pos)) then
-                        f_new(a_el) = ibclr(f_new(a_el),a_pos)
-                        nremove = nremove + 1
-                    end if
-                    if (nremove == nexcit) exit
-                end do
-                do
-                    ! Add nadd electrons.
-                    b = det%unocc_list_alpha(int(get_rand_close_open(rng)*size(det%unocc_list_alpha))+1)
-                    b_pos = sys%basis%bit_lookup(1,b)
-                    b_el = sys%basis%bit_lookup(2,b)
-                    if (.not. btest(f_new(b_el),b_pos)) then
-                        f_new(b_el) = ibset(f_new(b_el),b_pos)
-                        nadd = nadd + 1
-                    end if
-                    if (nadd == nexcit) exit
-                end do
+        ! Set up the probabilities for creating a determinant on a given
+        ! excitation level.
+        ! ptunc_level(ialpha, ilevel) gives the probability of creating a
+        ! determinant with excitation level ilevel by exciting ialpha
+        ! alpha spins (and (ilevel-ialpha) beta spins). We want to
+        ! distribute the psips equally at each excitation level so set the
+        ! probability to be 1, where excitation level 1 is explicitly excluded,
+        ! and then uniformly choose the number of alpha(beta) spin orbitals to excite.
+        ptrunc_level = 0.0_p
+        nallowed = 0
+        do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
+            ! Number of ways of exciting ialpha electrons such that
+            ! ialpha + nbeta = ilevel.
+            ptrunc_level(ialpha, ilevel) = binom_r(ilevel,ialpha)
+            ! Number of unique combinations.
+            nallowed = nallowed + 1
+        end do
+        ! Normalisation for the distribution at this excitation level.
+        norm = sum(ptrunc_level(:,ilevel))
+        ! Index of first allowed alpha excitation.
+        istart = ialpha - nallowed
+        ! Need offset to allow for ialpha = 0 case in the loop below.
+        offset = 0
+        do iallowed = istart, istart+nallowed-1
+            ptrunc_level(iallowed, ilevel) = offset + ptrunc_level(iallowed, ilevel)/norm
+            offset = ptrunc_level(iallowed,ilevel)
+        end do
 
-                call decode_det(sys%basis, f_new, occ_list)
-                if (symmetry_orb_list(sys,occ_list) == sym) then
-                    weight = binom_r(nexcit, nremove)
-                    exit
-                end if
-            end do
-        end if
-
-    end subroutine create_nfold_excitation
+    end subroutine set_level_probabilities
 
     subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type)
 
