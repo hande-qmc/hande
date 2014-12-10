@@ -1,9 +1,5 @@
 module ccmc
 
-! [review] - JSS: the module-level comments exclusively refer to unlinked CCMC.  This will
-! [review] - JSS: It would be good to have something similar for linked CCMC (referring heavily
-! [review] - JSS: to the notes below, where appropriate, of course).
-
 ! Module  for performing coupled cluster Monte Carlo (CCMC) calculations).
 
 ! Due to the similarities with FCIQMC, we can re-use lots of the same routines
@@ -204,7 +200,6 @@ implicit none
 
 contains
 
-! [review] - AJWT: This routine is becoming rather monoligthic - perhaps we could consider splitting it up?
     subroutine do_ccmc(sys)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
@@ -769,12 +764,6 @@ contains
         !        output all fields in cluster have been set.
 
         use basis_types, only: basis_t
-! [review] - AJWT: I think an explicit reference to linked_ccmc here is rather unmodular.
-! [review] - AJWT: Is there a way it could be passed as some sort of parameter.
-! [reply] - RSTF: Done, but I'm not quite sure what you mean by unmodular
-! [reply] - JSS: Maybe we should have a ccmc_flags_t type?  I think Alex really refers to global data accesses.
-! [reply] - JSS: Whilst this exists, it was not a good design decision at the time and we are (slowly) fixing them.
-! [reply] - JSS: At some point we might want to generated linked and unlinked clusters within the same program.
         use calc, only: truncation_level, linked_ccmc
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
@@ -1243,11 +1232,8 @@ contains
             ! For Linked Coupled Cluster we reject any spawning where the
             ! Hamiltonian is not linked to every cluster operator
             ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
-            ! [review] - JSS: terminology issue: composite clusters.
             ! (and similarly for composite clusters)
             if (cluster%nexcitors > 0) then
-! [review] - AJWT: Perhaps comment on what this does.
-! [reply] - RSTF: This also really belongs in the excitation generator
                 ! Check whether this is an unlinked diagram - if so, the matrix element is 0 and
                 ! no spawning is attempted
                 call linked_excitation(sys%basis, connection, cluster, linked, single_unlinked, funlinked)
@@ -1784,7 +1770,8 @@ contains
 
         ! Now we want to evaluate <D_i^a|H_i^a|D> ...
         call create_excited_det(sys%basis, deti, connection, detj)
-        ! [review] - JSS: this call is slow as it's the general case.  Not sure if anything can be done about this.
+        ! [todo] - general case call is slow.  Improvements: Slater--Condon procedure for
+        ! [todo] - the relevant excitation level and system-specific procedures.
         hmatel = get_hmatel(sys, deti, detj)
 
         ! Possible sign changes from <D_k|a_unlinked|D_i^a> and <D|a|D_0>
@@ -1929,12 +1916,6 @@ contains
                 call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, &
                                        ldet%f, rdet%f, allowed, sign_change, i)
                 if (allowed) then
-                    ! [review] - AJWT: I've seen this code before - can it be in a function?
-                    ! [reply] - RSTF: I don't think that this code is anywhere else. There is similar code that 
-                    ! [reply] - RSTF: checks if an excitor (as a bitstring) can be applied to a determinant
-                    ! [reply] - RSTF: and code that actually applies an excitation (as an excit_t variable), but 
-                    ! [reply] - RSTF: this is the only place where you have an excit_t variable for an
-                    ! [reply] - RSTF: excitation that may or may not be valid.
                     ! need to check that the excitation is valid!
                     do j = 1, connection%nexcit
                         ! i/j orbital should be occupied
@@ -2099,12 +2080,8 @@ contains
 
     pure function calc_pgen(sys, f1, f2, connection, parent_det) result(pgen)
 
-! [review] - AJWT: Mention that this is based on gen_excit_mol.  Is it too specific?
-! [review] - AJWT: Presumably it should go in excit_gen_mol.f90?
-! [reply] - RSTF: This function is to deal with the fact that we want a p_gen not returned by the excitation generators, so if I'm
-! [reply] - RSTF: writing a linked CCMC-specific excitation generator then it won't be needed any more
-        ! calculate the probability of an excitation being selected
-        ! wrapper round system specific functions
+        ! Calculate the probability of an excitation being selected.
+        ! Wrapper round system specific functions.
 
         ! In:
         !    sys: the system being studied
@@ -2155,7 +2132,7 @@ contains
                     pgen = pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
                 end if
             end if
-            ! TODO: model hamiltonians
+            ! [todo] - model hamiltonians
 !        case(hub_k)
 !            calc_pgen_hub_k_(_no_renorm?)
 !        case(hub_real, chung_landau, heisenberg)
