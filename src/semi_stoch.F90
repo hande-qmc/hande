@@ -725,6 +725,7 @@ contains
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor
 
         integer, intent(inout) :: determ_size_this_proc
         integer(i0), intent(inout) :: dets_this_proc(:,:)
@@ -732,12 +733,13 @@ contains
         integer(i0), intent(in) :: f(:)
         logical, intent(in) :: check_proc
 
-        integer :: proc
+        integer :: proc, slot
 
         ! If check_proc is true then make sure that the determinant does belong
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
-            proc = modulo(murmurhash_bit_string(f, size(f), spawn%hash_seed), nprocs)
+            call assign_particle_processor(f, size(f), spawn%hash_seed, spawn%hash_shift, &
+                                            spawn%move_freq, nprocs, proc, slot)
         else
             proc = iproc
         end if
@@ -771,7 +773,7 @@ contains
         use parallel
         use spawn_data, only: spawn_t
 
-        integer(i0), intent(inout) :: dets_this_proc(:,:)
+        integer(i0), intent(out) :: dets_this_proc(:,:)
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: target_size
         integer, intent(out) :: determ_size_this_proc
@@ -836,6 +838,9 @@ contains
         ! In the array indices return a list of indices of the determ_size
         ! populations in all_determ_pops which are largest.
         call find_indices_of_most_populated_dets(ndets_tot, determ_size, all_determ_pops, indices)
+
+        ! Zero before we fill in below.
+        determ_size_this_proc = 0
 
         do i = 1, determ_size
             ! In determ_pops populations corresponding to determinants on
@@ -998,15 +1003,17 @@ contains
 
         ! Use states read in from a HDF5 file to form the deterministic space.
 
-        ! [review] - JSS: unclear what state dets_this_proc and determ should be in on entry and
-        ! [review] - JSS: what they will be in on exit.
         ! In/Out:
         !    dets_this_proc: The deterministic states belonging to this
-        !        processor.
-        !    determ: Deterministic space being used.
+        !        process. On entry it should be large enough to hold all states
+        !        on this process.
+        !    determ: Deterministic space being used. On input determ%dets should
+        !        not be allocated. On output determ%dets is deallocated.
+        !        determ%sizes should be allocated on input, and on output
+        !        contains the number of deterministic states on each process.
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
-        !    sys: system being studied
+        !    sys: system being studied.
         !    print_info: Should we print information to the screen?
 
 #ifndef DISABLE_HDF5
@@ -1016,11 +1023,11 @@ contains
         use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init
         use parallel
         use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor
         use system, only: sys_t
         use utils, only: get_unique_filename
 
-        ! [review] - JSS: why is dets_this_proc inout when it is only the recvbuf in mpi_scatterv?
-        integer(i0), intent(inout) :: dets_this_proc(:,:)
+        integer(i0), intent(out) :: dets_this_proc(:,:)
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
         type(sys_t), intent(in) :: sys
@@ -1029,7 +1036,7 @@ contains
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
         character(255) :: filename
-        integer :: i, proc, ndeterm, ndeterm_this_proc, ierr
+        integer :: i, proc, slot, ndeterm, ndeterm_this_proc, ierr
         integer :: displs(0:nprocs-1)
         integer(HSIZE_T) :: dims(2), maxdims(2)
 
@@ -1060,15 +1067,18 @@ contains
             ! Close HDF5 file and HDF5.
             call h5fclose_f(file_id, ierr)
             call h5close_f(ierr)
+        end if
 
+#ifndef PARALLEL
+        determ%sizes = ndeterm
+        dets_this_proc(:,1:ndeterm) = determ%dets
+#else
+        if (parent) then
             ! Find how many determinants belong to each process.
             determ%sizes = 0
             do i = 1, ndeterm
-                ! [review] - JSS: by not using assign_particle_processor, I suspect this
-                ! [review] - JSS: will break if load balancing is enabled...
-                ! [review] - JSS: similar problem in add_det_to_determ_space?
-                proc = modulo(murmurhash_bit_string(determ%dets(:,i), size(determ%dets(:,i)), &
-                              spawn%hash_seed), nprocs)
+                call assign_particle_processor(determ%dets(:,i), size(determ%dets,1), spawn%hash_seed, &
+                                                spawn%hash_shift, spawn%move_freq, nprocs, proc, slot)
                 determ%sizes(proc) = determ%sizes(proc) + 1
             end do
 
@@ -1079,7 +1089,6 @@ contains
             end do
         end if
 
-        ! [review] - JSS: this doesn't handle serial compilation.
         ! Send the number of determinants on a process to that process, from
         ! the root process.
         call mpi_scatter(determ%sizes, 1, mpi_integer, ndeterm_this_proc, 1, mpi_integer, root, &
@@ -1092,14 +1101,14 @@ contains
                              dets_this_proc(:,1:ndeterm_this_proc), determ%sizes(iproc), &
                              mpi_det_integer, root, MPI_COMM_WORLD, ierr)
         end associate
+#endif
 
         ! determ%dets is used to store the list of all deterministic states, but
         ! this is done again later for all processes, not just the parent. So
         ! for now deallocate determ%dets on the parent process.
         if (parent) then
             deallocate(determ%dets, stat=ierr)
-            ! [review] - JSS: incorrect variable name?
-            call check_deallocate('dets_this_proc', ierr)
+            call check_deallocate('determ%dets', ierr)
         end if
 
 #else
