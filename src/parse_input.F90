@@ -455,6 +455,10 @@ contains
                 else
                 dump_restart_file = .true.
                 end if
+                
+                ! If semi-stochastic is being used then a semi-stoch file will
+                ! automatically be dumped when using this option.
+                write_determ_space = .true.
             case('DUMP_RESTART_FREQUENCY')
                 call readi(restart_info_global%write_restart_freq)
             case('SEED')

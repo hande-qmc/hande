@@ -144,7 +144,7 @@ end type semi_stoch_t
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, write_determ)
+    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, write_determ_in)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -159,8 +159,8 @@ contains
         !        deterministic space to use.
         !    target_size: A size of deterministic space to aim for. This
         !        is only necessary for particular deterministic spaces.
-        !    write_determ: If true then write out the deterministic states to a
-        !        file.
+        !    write_determ_in: If true then write out the deterministic states to
+        !        a file.
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: walker_length
@@ -175,18 +175,21 @@ contains
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: space_type
         integer, intent(in) :: target_size
-        logical, intent(in) :: write_determ
+        logical, intent(in) :: write_determ_in
 
         integer :: i, ierr, determ_dets_mem
         integer :: displs(0:nprocs-1)
         ! dtes_this_proc will hold deterministic states on this processor only.
         ! This is only needed during initialisation.
         integer(i0), allocatable :: dets_this_proc(:,:)
-        logical :: print_info
+        logical :: print_info, write_determ
 
         ! Only print information if the parent processor and if we are using a
         ! non-trivial deterministic space.
         print_info = parent .and. space_type /= empty_determ_space
+
+        ! If an empty space is being used then don't dump a semi-stoch file.
+        write_determ = write_determ_in .and. space_type /= empty_determ_space
 
         if (print_info) write(6,'(1X,a43)') '# Beginning semi-stochastic initialisation.'
 
