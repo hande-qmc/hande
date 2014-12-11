@@ -193,6 +193,30 @@ module ccmc
 ! #. Matrix elements used for spawning and death probabilities can have more than
 !    one term from the commutator contributing. See stochastic_ccmc_death and 
 !    unlinked_commutator.
+!
+! Clusters
+! ========
+!
+! We use clusters in two slightly different but related senses.  In both cases the cluster
+! contains a set of excitors in a specific order.  The difference really only arises when we
+! come to evaluate them.
+!
+! unlinked CC
+!   A cluster is the product of the excitors and arises from sampling (8).
+! linked CC
+!   A cluster is the set of excitors and arises from sampling (13).  As the selected set
+!   of excitors arise from the sampling of a sum of commutators, we must evaluate the
+!   commutator by considering all possible partitions, where a partition is a defined by
+!   a subset of excitors before the Hamiltonian and the remaining subset after the
+!   Hamiltonian.  As a concrete example, the cluster {t_i, t_j} has partitions H t_i t_j,
+!   t_i H t_j, t_j H t_i and t_j t_i H (with appropriate signs).
+!
+!   Helpfully, we also refer to the product of excitors either side of the Hamiltonian as
+!   clusters in procedures which act upon products (ie in the same sense as unlinked CC)
+!   but do not require (subsequent) application of the Hamiltonian.
+!
+! Note that we cannot separate the sampling the action of the Hamiltonian and the sampling
+! of the wavefunction in linked CC in the same way that we can in unlinked CC.
 
 use const, only: i0, int_p, int_64, p
 
