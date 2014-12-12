@@ -1006,10 +1006,11 @@ contains
 
         ! Use states read in from a HDF5 file to form the deterministic space.
 
-        ! In/Out:
+        ! Out:
         !    dets_this_proc: The deterministic states belonging to this
         !        process. On entry it should be large enough to hold all states
         !        on this process.
+        ! In/Out:
         !    determ: Deterministic space being used. On input determ%dets should
         !        not be allocated. On output determ%dets is deallocated.
         !        determ%sizes should be allocated on input, and on output
