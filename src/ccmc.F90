@@ -1892,12 +1892,12 @@ contains
 
 
         ! 1) Choose an order for the excitors
-        ! The number of allowed partitions is relatively small (20% in Ne pVDZ CCSDTQ) and
-        ! should decrease with increasing number of electrons and/or basis functions.
-        ! Rather than attempt to find an allowed partition (expensive) we select one at
-        ! random and only evaluate the full contribution (from all partitions) if the
-        ! randomly-selected partition has a non-zero contribution, with an appropriately
-        ! rescaled pgen.
+        ! The number of clusters with disallowed partitions is relatively small (20% in
+        ! Ne pVDZ CCSDTQ) and should decrease with increasing number of electrons and/or
+        ! basis functions. Rather than attempt to find an allowed partition (expensive)
+        ! we select one at random  to excite from and only evaluate the full contribution
+        ! (from all partitions) if the randomly-selected partition has a non-zero contribution,
+        ! with an appropriately rescaled pgen.
         call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change)
         pop = 1
 
