@@ -1252,6 +1252,33 @@ Calculation options: CCMC options
     more excitors) are randomly selected to make spawning attempts.  This has been shown
     to give substantially more stable dynamics and reduce the plateau height in
     several systems.
+
+**ccmc_linked**
+    Default: off
+
+    The original CCMC algorithm solves the equations
+
+    .. math::
+
+        \langle D_m | \hat{H} - E | \psi_{CC} \rangle = 0.
+
+    It is possible to instead sample the equivalent equations
+
+    .. math::
+
+        \langle D_m | e^{-\hat{T}} (\hat{H} - E) | \psi_{CC} \rangle = 0.
+
+    Using the Hausdorff expansion of the Hamiltonian and the linked cluster theorem means 
+    that the only clusters which contribute are those with at most four excitors and where 
+    the exitation sampled from the Hamiltonian has an orbital in common with each excitor 
+    in the cluster operator. Using this option can give substantial reductions in the 
+    plateau height.
+
+.. [review] - AJWT: Perhaps refer to some in-/ex-ternal documentation (which probably doesn't exist)
+.. [review] - AJWT: about the meaning of substantial         
+.. [review] - JSS: some comparison with the original algorithm (where the expansion
+.. [review] - JSS: does not terminate) would be welcome, especially as this must get substantially
+.. [review] - JSS: more efficient as truncation level increases.
     
 Calculation options: DMQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1312,7 +1339,7 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     named 'Trace' and 'Trace 2'. The finite_temp_analysis.py script in the tools
     directory can then be used to obtain a final temperature-dependent estimate of
     the Renyi-2 entropy from these quantities.
-**truncate_space** *truncation_level*
+**truncation_level** *truncation_level*
     Integer.
 
     Consider only elements of the density matrix where the determinants differ
