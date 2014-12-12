@@ -90,6 +90,7 @@ implicit none
 enum, bind(c)
     enumerator :: empty_determ_space
     enumerator :: high_pop_determ_space
+    enumerator :: read_determ_space
 end enum
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
@@ -143,7 +144,7 @@ end type semi_stoch_t
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size)
+    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, write_determ_in)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -158,6 +159,8 @@ contains
         !        deterministic space to use.
         !    target_size: A size of deterministic space to aim for. This
         !        is only necessary for particular deterministic spaces.
+        !    write_determ_in: If true then write out the deterministic states to
+        !        a file.
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: walker_length
@@ -172,17 +175,21 @@ contains
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: space_type
         integer, intent(in) :: target_size
+        logical, intent(in) :: write_determ_in
 
         integer :: i, ierr, determ_dets_mem
         integer :: displs(0:nprocs-1)
         ! dtes_this_proc will hold deterministic states on this processor only.
         ! This is only needed during initialisation.
         integer(i0), allocatable :: dets_this_proc(:,:)
-        logical :: print_info
+        logical :: print_info, write_determ
 
         ! Only print information if the parent processor and if we are using a
         ! non-trivial deterministic space.
         print_info = parent .and. space_type /= empty_determ_space
+
+        ! If an empty space is being used then don't dump a semi-stoch file.
+        write_determ = write_determ_in .and. space_type /= empty_determ_space
 
         if (print_info) write(6,'(1X,a43)') '# Beginning semi-stochastic initialisation.'
 
@@ -207,6 +214,8 @@ contains
         ! (space_type = empty_determ_space).
         if (space_type == high_pop_determ_space) then
             call create_high_pop_space(dets_this_proc, spawn, target_size, determ%sizes(iproc))
+        else if (space_type == read_determ_space) then
+            call read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -274,6 +283,8 @@ contains
         ! from all processors are stored in determ%dets.
         deallocate(dets_this_proc, stat=ierr)
         call check_deallocate('dets_this_proc', ierr)
+
+        if (write_determ .and. parent) call write_determ_to_file(determ, print_info)
 
         if (print_info) write(6,'(1X,a42)') '# Semi-stochastic initialisation complete.'
 
@@ -536,7 +547,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: dets_this_proc(:,:)
 
-        integer :: i, j, k, istart, iend, pos
+        integer :: i, istart, iend, pos
         integer(int_p) :: zero_population(sampling_size)
         logical :: hit
 
@@ -547,23 +558,23 @@ contains
         iend = tot_walkers
         do i = 1, determ%sizes(iproc)
             call binary_search(walker_dets, dets_this_proc(:,i), istart, iend, hit, pos)
-            if (hit) then
-                ! This deterministic state is already in walker_dets. We simply
-                ! need to set the deterministic flag.
-                determ%flags(pos) = 0
-            else
+            if (.not. hit) then
                 ! This deterministic state is not in walker_dets. Move all
                 ! determinants with index pos or greater down one and insert
                 ! this determinant with an initial sign of zero.
-                walker_dets(:,pos:tot_walkers) = walker_dets(:,pos+1:tot_walkers+1)
-                walker_population(:,pos:tot_walkers) = walker_population(:,pos+1:tot_walkers+1)
-                walker_data(:,pos:tot_walkers) = walker_data(:,pos+1:tot_walkers+1)
+                walker_dets(:,pos+1:tot_walkers+1) = walker_dets(:,pos:tot_walkers)
+                walker_population(:,pos+1:tot_walkers+1) = walker_population(:,pos:tot_walkers)
+                walker_data(:,pos+1:tot_walkers+1) = walker_data(:,pos:tot_walkers)
 
                 ! Insert a determinant with population zero into the walker arrays.
                 call insert_new_walker(sys, pos, dets_this_proc(:,i), zero_population)
 
                 tot_walkers = tot_walkers + 1
             end if
+
+            ! Set this flag to specify a deterministic state.
+            determ%flags(pos) = 0
+
             istart = pos + 1
             iend = tot_walkers
         end do
@@ -717,6 +728,7 @@ contains
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor
 
         integer, intent(inout) :: determ_size_this_proc
         integer(i0), intent(inout) :: dets_this_proc(:,:)
@@ -724,12 +736,13 @@ contains
         integer(i0), intent(in) :: f(:)
         logical, intent(in) :: check_proc
 
-        integer :: proc
+        integer :: proc, slot
 
         ! If check_proc is true then make sure that the determinant does belong
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
-            proc = modulo(murmurhash_bit_string(f, size(f), spawn%hash_seed), nprocs)
+            call assign_particle_processor(f, size(f), spawn%hash_seed, spawn%hash_shift, &
+                                            spawn%move_freq, nprocs, proc, slot)
         else
             proc = iproc
         end if
@@ -763,7 +776,7 @@ contains
         use parallel
         use spawn_data, only: spawn_t
 
-        integer(i0), intent(inout) :: dets_this_proc(:,:)
+        integer(i0), intent(out) :: dets_this_proc(:,:)
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: target_size
         integer, intent(out) :: determ_size_this_proc
@@ -828,6 +841,9 @@ contains
         ! In the array indices return a list of indices of the determ_size
         ! populations in all_determ_pops which are largest.
         call find_indices_of_most_populated_dets(ndets_tot, determ_size, all_determ_pops, indices)
+
+        ! Zero before we fill in below.
+        determ_size_this_proc = 0
 
         do i = 1, determ_size
             ! In determ_pops populations corresponding to determinants on
@@ -985,5 +1001,175 @@ contains
         end do
 
     end subroutine find_indices_of_most_populated_dets
+
+    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
+
+        ! Use states read in from a HDF5 file to form the deterministic space.
+
+        ! Out:
+        !    dets_this_proc: The deterministic states belonging to this
+        !        process. On entry it should be large enough to hold all states
+        !        on this process.
+        ! In/Out:
+        !    determ: Deterministic space being used. On input determ%dets should
+        !        not be allocated. On output determ%dets is deallocated.
+        !        determ%sizes should be allocated on input, and on output
+        !        contains the number of deterministic states on each process.
+        ! In:
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    sys: system being studied.
+        !    print_info: Should we print information to the screen?
+
+#ifndef DISABLE_HDF5
+        use checking, only: check_allocate, check_deallocate
+        use hashing, only: murmurhash_bit_string
+        use hdf5
+        use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init
+        use parallel
+        use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor
+        use system, only: sys_t
+        use utils, only: get_unique_filename
+
+        integer(i0), intent(out) :: dets_this_proc(:,:)
+        type(semi_stoch_t), intent(inout) :: determ
+        type(spawn_t), intent(in) :: spawn
+        type(sys_t), intent(in) :: sys
+        logical, intent(in) :: print_info
+
+        type(hdf5_kinds_t) :: kinds
+        integer(hid_t) :: file_id, dset_id, dspace_id
+        character(255) :: filename
+        integer :: i, proc, slot, ndeterm, ndeterm_this_proc, ierr
+        integer :: displs(0:nprocs-1)
+        integer(HSIZE_T) :: dims(2), maxdims(2)
+
+        ! Read the deterministic states in on just the parent processor.
+        if (parent) then
+            call get_unique_filename("SEMI.STOCH", ".H5", .false., 0, filename)
+            if (print_info) write(6,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
+
+            ! Initialise HDF5 and open file.
+            call h5open_f(ierr)
+            call hdf5_kinds_init(kinds)
+            call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
+
+            ! Find how many determinants are in the file.
+            call h5dopen_f(file_id, 'dets', dset_id, ierr)
+            call h5dget_space_f(dset_id, dspace_id, ierr)
+            call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
+            call h5dclose_f(dset_id, ierr)
+            ! Number of determinants is the last index...
+            ndeterm = dims(2)
+
+            allocate(determ%dets(sys%basis%tensor_label_len, ndeterm), stat=ierr)
+            call check_allocate('determ%dets', ndeterm*sys%basis%tensor_label_len, ierr)
+
+            ! Perform the reading in of determinants to determ%dets.
+            call hdf5_read(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
+
+            ! Close HDF5 file and HDF5.
+            call h5fclose_f(file_id, ierr)
+            call h5close_f(ierr)
+        end if
+
+#ifndef PARALLEL
+        determ%sizes = ndeterm
+        dets_this_proc(:,1:ndeterm) = determ%dets
+#else
+        if (parent) then
+            ! Find how many determinants belong to each process.
+            determ%sizes = 0
+            do i = 1, ndeterm
+                call assign_particle_processor(determ%dets(:,i), size(determ%dets,1), spawn%hash_seed, &
+                                                spawn%hash_shift, spawn%move_freq, nprocs, proc, slot)
+                determ%sizes(proc) = determ%sizes(proc) + 1
+            end do
+
+            ! Displacements used for MPI communication.
+            displs(0) = 0
+            do i = 1, nprocs-1
+                displs(i) = displs(i-1) + determ%sizes(i-1)
+            end do
+        end if
+
+        ! Send the number of determinants on a process to that process, from
+        ! the root process.
+        call mpi_scatter(determ%sizes, 1, mpi_integer, ndeterm_this_proc, 1, mpi_integer, root, &
+                         MPI_COMM_WORLD, ierr)
+        determ%sizes(iproc) = ndeterm_this_proc
+
+        ! Send the determinants to their process.
+        associate(tbl=>sys%basis%tensor_label_len)
+            call mpi_scatterv(determ%dets, tbl*determ%sizes, tbl*displs, mpi_det_integer, &
+                             dets_this_proc(:,1:ndeterm_this_proc), determ%sizes(iproc), &
+                             mpi_det_integer, root, MPI_COMM_WORLD, ierr)
+        end associate
+#endif
+
+        ! determ%dets is used to store the list of all deterministic states, but
+        ! this is done again later for all processes, not just the parent. So
+        ! for now deallocate determ%dets on the parent process.
+        if (parent) then
+            deallocate(determ%dets, stat=ierr)
+            call check_deallocate('determ%dets', ierr)
+        end if
+
+#else
+        use errors, only: stop_all
+
+        call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
+#endif
+
+    end subroutine read_determ_from_file
+
+    subroutine write_determ_to_file(determ, print_info)
+
+        ! Write determinants stored in determ to a file.
+
+        ! In:
+        !    determ: Deterministic space being used.
+        !    print_info: Should we print information to the screen?
+
+#ifndef DISABLE_HDF5
+        use hdf5
+        use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_kinds_init
+        use report, only: GLOBAL_UUID
+        use utils, only: get_unique_filename
+
+        type(semi_stoch_t), intent(in) :: determ
+        logical, intent(in) :: print_info
+
+        type(hdf5_kinds_t) :: kinds
+        integer(hid_t) :: file_id
+        character(255) :: filename
+        integer :: ierr
+
+        call get_unique_filename("SEMI.STOCH", ".H5", .true., 0, filename)
+        if (print_info) write(6,'(1X,"# Writing deterministic space states to",1X,a,".")') trim(filename)
+
+        ! Open HDF5 and create HDF5 kinds.
+        call h5open_f(ierr)
+        call hdf5_kinds_init(kinds)
+
+        ! Open HDF5 file.
+        call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, ierr)
+
+        ! Write UUID so this can be linked to the main output, restart files, etc.
+        call hdf5_write(file_id, 'uuid', GLOBAL_UUID)
+
+        ! Write deterministic states to file.
+        call hdf5_write(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
+
+        ! Close HDF5 file and HDF5.
+        call h5fclose_f(file_id, ierr)
+        call h5close_f(ierr)
+#else
+        use errors, only: warning
+
+        call warning('write_determ_to_file', '# Not compiled with HDF5 support.  Cannot write out semi-stochastic file.')
+#endif
+
+    end subroutine write_determ_to_file
 
 end module semi_stoch

@@ -85,6 +85,8 @@ integer :: determ_space_type = 0
 ! semi-stochastic initialisation routine how many states to try and include. In
 ! such cases this variable should be set on input.
 integer :: determ_target_size = 0
+! If true then the deterministic states will be written to a file.
+logical :: write_determ_space = .false.
 
 !--- Input data: CCMC ---
 

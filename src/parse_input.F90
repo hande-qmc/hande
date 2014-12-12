@@ -232,6 +232,12 @@ contains
             case('SEMI_STOCH_HIGH_POP')
                 determ_space_type = high_pop_determ_space
                 call readi(determ_target_size)
+            case('SEMI_STOCH_READ')
+                determ_space_type = read_determ_space
+                ! Not needed.
+                determ_target_size = -1
+            case('WRITE_DETERM_SPACE')
+                write_determ_space = .true.
 
             ! DMQMC expectation values to be calculated.
             case('DMQMC_FULL_RENYI_2')
@@ -449,6 +455,10 @@ contains
                 else
                 dump_restart_file = .true.
                 end if
+                
+                ! If semi-stochastic is being used then a semi-stoch file will
+                ! automatically be dumped when using this option.
+                write_determ_space = .true.
             case('DUMP_RESTART_FREQUENCY')
                 call readi(restart_info_global%write_restart_freq)
             case('SEED')
@@ -782,6 +792,7 @@ contains
         call mpi_bcast(semi_stoch_start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%real_lattice%finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)

@@ -714,6 +714,10 @@ types below. They are turned off by default.
 
     If this option is used then the **real_amplitudes** option will be turned on
     automatically.
+**semi_stoch_read**
+    Perform a semi-stochastic calculation. The deterministic space is created
+    by reading in determinants from an HDF5 file produced using the
+    **write_determ_space** option.
 **semi_stoch_iteration** *iter*
     Turn the semi-stochastic algorithm on at iteration number *iter*.
 
@@ -1141,6 +1145,12 @@ The following options are valid for FCIQMC calculations.
          Furthermore, writing to (for instance) a network disk will degrade performance
          substantially.
 
+**write_determ_space**
+    Default: off.
+
+    Write the determinants in any used semi-stochastic deterministic space to a
+    file. This is done for each deterministic space used, to a separate file
+    each time.
 **ascii_format_out**
     The default format for restart files is binary, as for the most part the files
     are meant purely for reading by Hubbard, and having the file in human-readable
