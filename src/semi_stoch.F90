@@ -1116,7 +1116,16 @@ contains
         end if
 
 #else
+        use parallel
+        use spawn_data, only: spawn_t
+        use system, only: sys_t
         use errors, only: stop_all
+
+        integer(i0), intent(out) :: dets_this_proc(:,:)
+        type(semi_stoch_t), intent(inout) :: determ
+        type(spawn_t), intent(in) :: spawn
+        type(sys_t), intent(in) :: sys
+        logical, intent(in) :: print_info
 
         call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
 #endif
@@ -1166,6 +1175,9 @@ contains
         call h5close_f(ierr)
 #else
         use errors, only: warning
+
+        type(semi_stoch_t), intent(in) :: determ
+        logical, intent(in) :: print_info
 
         call warning('write_determ_to_file', '# Not compiled with HDF5 support.  Cannot write out semi-stochastic file.')
 #endif
