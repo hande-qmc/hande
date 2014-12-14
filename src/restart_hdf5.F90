@@ -202,7 +202,7 @@ module restart_hdf5
                 if (nprocs > 1) then
                     write (6,'(1X, "family.")')
                 else
-                    write (6,'(1X, ".")')
+                    write (6,'(".")')
                 end if
             end if
 
