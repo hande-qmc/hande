@@ -429,6 +429,29 @@ Note that reblock_hande.py can accept multiple output files for the case when
 a calculation is restarted.  More complicated analysis can be performed in python by
 using the pyhande library (which reblock_hande is a simple wrapper around).
 
+Plotting Calculation Output
+---------------------------
+
+The first section of the output file contains information about the basis functions
+used in the calculations. This gives spurious data points when the contents of the file
+is plotted using gnuplot. They can be removed by creating an executable file gphande
+in the path, containing:
+
+.. code-block:: bash
+
+    #!/bin/sed -f
+    1,/iterations/d
+
+When plotting in gnuplot, using the command
+
+    plot '<gphande file'
+
+instead of
+
+    plot 'file'
+
+will then remove the extra points.
+
 Input options
 -------------
 
