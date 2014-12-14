@@ -172,7 +172,7 @@ module restart_hdf5
                 id = ri%read_id
             end if
 
-            ! Figure out filename: restart_stem.Y.pX, where Y is related to id and X is the processor rank.
+            ! Figure out filename: restart_stem.Y.pX.H5, where Y is related to id and X is the processor rank.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//',".H5")') iproc
             if (id < 0) then
                 call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, id, filename)
