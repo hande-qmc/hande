@@ -575,31 +575,6 @@ contains
                             end if
                         end if
 
-! [review] - AJWT: huge(0) signifies that this cluster is in fact linked.
-                    else if (cluster(it)%excitation_level == huge(0) .and. linked_ccmc) then
-
-                        ! When sampling e^-T H e^T, the cluster operators in e^-T
-                        ! and e^T can excite to/from the same orbital, requiring
-                        ! a different spawning routine
-! [review] - AJWT:  This is mostly a copy of the code above - can this be merged somehow to avoid them going out of sync?
-                        nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
-                                                         cluster_multispawn_threshold))
-
-                        nattempts_spawn = nattempts_spawn + nspawnings_total
-                        do i = 1, nspawnings_total
-                           call linked_spawner_ccmc(rng(it), sys, qmc_spawn%cutoff, real_factor, cluster(it), &
-                                          gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
-                                          rdet(it), left_cluster(it), right_cluster(it))
-
-                           if (nspawned /= 0_int_p) then
-                               call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn, fexcit)
-                               if (abs(nspawned) > bloom_threshold) then
-                                   ! [todo] - adapt bloom_handler to handle real psips/excips.
-                                   call accumulate_bloom_stats(bloom_stats, nspawned)
-                               end if
-                           end if
-                        end do
-
                     end if
 
                 end do
