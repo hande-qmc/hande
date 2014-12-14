@@ -174,11 +174,7 @@ module restart_hdf5
 
             ! Figure out filename: restart_stem.Y.pX.H5, where Y is related to id and X is the processor rank.
             write (proc_suf,'(".p",'//int_fmt(iproc,0)//',".H5")') iproc
-            if (id < 0) then
-                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, id, filename)
-            else
-                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, 0, filename)
-            end if
+            call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
 
             ! New HDF5 files have a '.H5' suffix. However, older HANDE restart
             ! files do not have this. Therefore, if the above file does not
@@ -186,11 +182,7 @@ module restart_hdf5
             inquire(file=filename, exist=exists)
             if ((.not. write_mode) .and. (.not. exists)) then
                 write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
-                if (id < 0) then
-                    call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, id, filename)
-                else
-                    call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, 0, filename)
-                end if
+                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
             end if
 
             if (parent) then
