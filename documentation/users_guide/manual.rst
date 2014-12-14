@@ -700,8 +700,8 @@ types below. They are turned off by default.
     POP_SIZE=64 when using this option as this allows a greater range of
     amplitudes to be encoded.
 
-    This option is only implemented with the **fciqmc** and **dmqmc** options
-    currently.
+    This option is only implemented with the **fciqmc**, **ccmc** and **dmqmc**
+    options currently.
 **spawn_cutoff** *cutoff*
     Real.
 
