@@ -80,7 +80,7 @@ module restart_hdf5
         integer :: read_id  ! ID number to write to.
         ! Number of QMC iterations between writing out a restart file.
         integer :: write_restart_freq
-        ! Stem to use for creating restart filenames (of the format restart_stem.Y.pX,
+        ! Stem to use for creating restart filenames (of the format restart_stem.Y.pX.H5,
         ! where X is the processor rank and Y is a common positive integer related to
         ! write_id/read_id.
         character(8), private :: restart_stem = 'HANDE.RS'
@@ -164,6 +164,7 @@ module restart_hdf5
 
             character(10) :: proc_suf
             integer :: id, ierr
+            logical :: exists
 
             if (write_mode) then
                 id = ri%write_id
@@ -171,12 +172,17 @@ module restart_hdf5
                 id = ri%read_id
             end if
 
-            ! Figure out filename: restart_stem.Y.pX, where Y is related to id and X is the processor rank.
-            write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
-            if (id < 0) then
-                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, id, filename)
-            else
-                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, 0, filename)
+            ! Figure out filename: restart_stem.Y.pX.H5, where Y is related to id and X is the processor rank.
+            write (proc_suf,'(".p",'//int_fmt(iproc,0)//',".H5")') iproc
+            call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
+
+            ! New HDF5 files have a '.H5' suffix. However, older HANDE restart
+            ! files do not have this. Therefore, if the above file does not
+            ! exist, try without '.H5'.
+            inquire(file=filename, exist=exists)
+            if ((.not. write_mode) .and. (.not. exists)) then
+                write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
+                call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
             end if
 
             if (parent) then
@@ -188,7 +194,7 @@ module restart_hdf5
                 if (nprocs > 1) then
                     write (6,'(1X, "family.")')
                 else
-                    write (6,'(1X, ".")')
+                    write (6,'(".")')
                 end if
             end if
 
