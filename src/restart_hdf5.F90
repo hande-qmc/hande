@@ -80,7 +80,7 @@ module restart_hdf5
         integer :: read_id  ! ID number to write to.
         ! Number of QMC iterations between writing out a restart file.
         integer :: write_restart_freq
-        ! Stem to use for creating restart filenames (of the format restart_stem.Y.pX,
+        ! Stem to use for creating restart filenames (of the format restart_stem.Y.pX.H5,
         ! where X is the processor rank and Y is a common positive integer related to
         ! write_id/read_id.
         character(8), private :: restart_stem = 'HANDE.RS'
