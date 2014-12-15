@@ -287,7 +287,9 @@ contains
         integer :: nevents
         type(spawn_t), intent(in) :: spawn
 
-        nevents = sum(spawn%head - (spawn%head_start + nthreads - 1))
+        ! Each event in a given thread is nthreads elements away from the
+        ! previous event.
+        nevents = sum(spawn%head - spawn%head_start) / nthreads
 
     end function calc_events_spawn_t
     
