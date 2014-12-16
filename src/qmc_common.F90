@@ -287,6 +287,7 @@ contains
 
         integer :: i
 
+! [review] - AJWT: This type of operation is almost certainly faster with a shift (or add and shift to get nint)
         cumulative_pops(1) = nint(real(abs(pops(1,1)),p)/real_factor)
         if (D0_proc == iproc) then
             ! Let's be a bit faster: unroll loops and skip over the reference

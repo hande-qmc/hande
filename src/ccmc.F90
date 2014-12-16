@@ -442,6 +442,9 @@ contains
                 ! solely upon the nearest integer of the population.  This decouples (slightly) the selection probability and the
                 ! amplitude, which uses the exact population (including fractional part) but is fine as we can choose any
                 ! (normalised) selection scheme we want...
+! [review] - AJWT: I see the need for this.  What effect does it have on the projected energy?  Because we know what the actual
+! [review] - AJWT: weight should be and we divide our contribution by the generation probability, this has absolutely no effect
+! [review] - AJWT: on the projected energy (non-composite contribution), which is excellent.
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, real_factor, &
                                            cumulative_abs_nint_pops, tot_abs_nint_pop)
 
@@ -474,7 +477,7 @@ contains
                 else
                     min_cluster_size = 0
                     nclusters = nattempts
-                    nD0_select = 0 ! chosen randomly
+                    nD0_select = 0 ! instead of this number of deterministic selections, these are chosen stochastically
                     nstochastic_clusters = nattempts
                 end if
 
@@ -506,6 +509,12 @@ contains
 
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
+! [review] - AJWT: While not probably the best place to consider this globally, the following code makes me slightly uneasy.
+! [review] - AJWT: real_factor is very much a variable telling us about the representation of the data in the population lists
+! [review] - AJWT: as such I don't think it's entirely helpful to have it passed around daisy-chain-like.
+! [review] - AJWT: I think it would be more appropriate to be either global (yuck!) or perhaps somehow encoded with the data
+! [review] - AJWT: itself - it makes no sense without the data, and the data make no sense without it.
+! [review] - AJWT: Also, speedwise wouldn't real_bit_shift be more appropriate to use?
                     if (iattempt <= nstochastic_clusters) then
                         call select_cluster(rng(it), sys%basis, real_factor, nstochastic_clusters, D0_normalisation, &
                                             D0_pos,   cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
@@ -943,6 +952,11 @@ contains
                 ! Correcting for this accident is much easier than producing an
                 ! array explicitly without D0...
                 if (pos == D0_pos) pos = pos - 1
+! [review] - AJWT:  One of the joys of fixed precision arithmetic is that c=(a*b)>>real_bit_shift
+! [review] - AJWT:  is (or used to be) a lot faster than c=(real(a)/real_factor)*(real(b)/real_factor)
+! [review] - AJWT:  It is however a little more obfuscated though, but carrying fixed-precision all the
+! [review] - AJWT:  through the code might give a benefit.  Of course the best implementation would
+! [review] - AJWT:  be to hide the details in a class, and have the compiled optimize away the overloaded operations.
                 excitor_pop = real(walker_population(1,pos),p)/real_factor
                 if (i == 1) then
                     ! First excitor 'seeds' the cluster:
