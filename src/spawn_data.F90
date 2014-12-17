@@ -780,7 +780,7 @@ contains
         integer, allocatable :: events(:)
         integer(int_s), allocatable :: initiator_pop(:)
         integer, parameter :: thread_id = 0
-        logical :: new_slot
+        logical :: same_slot
 
         allocate(events(spawn%ntypes))
         allocate(initiator_pop(spawn%ntypes))
@@ -829,14 +829,35 @@ contains
                 end do
                 compress: do
                     k = k + 1
-! [review] - AJWT: We set new_slot if we've passed the upper bound?
-                    new_slot = k > spawn%head(thread_id,0)
-! [review] - AJWT: or we've found a particle which isn't the same as those we're compressing to islot
-                    if (.not. new_slot) new_slot = any(spawn_dets(:,k) /= spawn_dets(:,islot))
-! [review] - AJWT: new_slot is set if we've reached the end or need to finalize the data we've been compressing as next time round
-! [review] - AJWT: we'll encounter a particle at a new location.  Perhaps this should logically go after the accumlation?
-                    if (new_slot) then
+                    ! Are we still on the same determinant?  2 conditions:
+                    ! 1. Have not yet reached the end of the list.
+                    same_slot = k <= spawn%head(thread_id,0)
+                    ! 2. We've found a particle on a different determinant to the particles we're compressing to islot.
+                    if (same_slot) same_slot = all(spawn_dets(:,k) == spawn_dets(:,islot))
+
+                    if (same_slot) then
+                        ! Accumulate the population on this determinant
+                        if (spawn_flag(k) == 0_int_s) then
+                            ! This slot (k) was spawned from an initiator, so we accumate
+                            ! the population from each type (separately).
+                            initiator_pop = initiator_pop + spawn_parts(:,k)
+                        else
+                            do ipart = 1, spawn%ntypes
+                                ! Not an initiator, so depending on the sign of the spawning
+                                ! we accumulate (signed) events.  Take care not to accumulate
+                                ! events if no ipart particle was spawned.
+                                if (spawn_parts(ipart,k) < 0_int_s) then
+                                    events(ipart) = events(ipart) - 1
+                                else if (spawn_parts(ipart,k) > 0_int_s) then
+                                    events(ipart) = events(ipart) + 1
+                                end if
+                            end do
+                        end if
+                        ! For each type of particle, add the spawned particles into this slot.
+                        spawn_parts(:,islot) = spawn_parts(:,islot) + spawn_parts(:,k)
+                    else
                         ! Found the next unique spawned location.
+                        ! Finalise the data we've been compressing to islot.
                         ! Set the overall parent flag of the population on the
                         ! current determinant and move on.
                         ! Rules:
@@ -861,12 +882,15 @@ contains
                         spawn_flag(islot) = 0_int_s
                         do ipart = 1, spawn%ntypes
                             ! For each type of particle:
-!     check if there are any spawned.  If so, then if the accumulated value
-!     of all spawns from initiators has the same sign as the accumulated sum of all spawns to here,
                             if (initiator_pop(ipart) /= 0_int_s .and.  &
                                     sign(1_int_s,spawn_parts(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
-                                ! Keep all.  We should still annihilate psips of
-                                ! opposite sign from non-initiator events.
+                                ! There were some particles spawned from initiators.  If any
+                                ! particles were spawned from non-initiators, they (in total) are
+                                ! either of the same sign as the total from initiators (i.e. multiple
+                                ! coherent events) or do not entirely annihilate the particles
+                                ! from initiators (i.e. the remaining particles are regarded
+                                ! as coming from initiators).
+                                ! Keep.
                             else if (abs(events(ipart)) > 1) then
                                 ! If the net number of events is over 1 at this particle type,
                                 ! then there are multiple coherent spawning events remaining
@@ -878,27 +902,8 @@ contains
                                 spawn_flag(islot) = spawn_flag(islot) + 2**(ipart-1)
                             end if
                         end do
+                        ! Now move onto the next determinant (which we just found!).
                         exit compress
-                    else
-                        ! Accumulate the population on this determinant
-                        if (spawn_flag(k) == 0_int_s) then
-                            ! This slot (k) was spawned from an initiator, so we accumate
-                            ! the population from each type (separately).
-                            initiator_pop = initiator_pop + spawn_parts(:,k)
-                        else
-                            do ipart = 1, spawn%ntypes
-                                ! Not an initiator, so depending on the sign of the spawning
-                                ! we accumulate (signed) events.  Take care not to accumulate
-                                ! events if no ipart particle was spawned.
-                                if (spawn_parts(ipart,k) < 0_int_s) then
-                                    events(ipart) = events(ipart) - 1
-                                else if (spawn_parts(ipart,k) > 0_int_s) then
-                                    events(ipart) = events(ipart) + 1
-                                end if
-                            end do
-                        end if
-                        ! For each type of particle, add the spawned particles into this slot.
-                        spawn_parts(:,islot) = spawn_parts(:,islot) + spawn_parts(:,k)
                     end if
                 end do compress
                 ! All done?
