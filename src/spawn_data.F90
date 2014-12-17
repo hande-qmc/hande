@@ -795,18 +795,23 @@ contains
             islot = 1
             k = 1
         end if
-
         if (present(endp)) then
             upper_bound = endp
         else
+! [review] - AJWT: spawn%head(thread_id,0) starts off being the next free slot in the spawned array?
+! [review] - AJWT: I'm somewhat confused as to the meaning of thread_id if it's always 0 here.
+! [reply] - JSS: thread_id is a bit of a (perhaps useless)convention from when OpenMP
+! [reply] - JSS: threading support was added to spawn_t.  The first step in annihilation is to
+! [reply] - JSS: compress spawn%sdata so there are no gaps (which arise from lock-free spawning).
+! [reply] - JSS: After that, all entries in head apart from head(0,0) are meaningless.
+            ! After compression and communication, spawn%sdata is contiguous and sorted
+            ! and spawn%head(0,0) contains the last index in spawn%sdata which has
+            ! a particle spawned in it from this iteration.
             upper_bound = spawn%head(thread_id,0)
         end if
 
-! [review] - AJWT: spawn%head(thread_id,0) starts off being the next free slot in the spawned array?
-! [review] - AJWT: I'm somewhat confused as to the meaning of thread_id if it's always 0 here.
-
-! [review] - AJWT: initiator_pop(:) and events(:) is used to store the data (for all ntypes of particle) at location 
-! [review] - AJWT: which is being compressed into islot.
+        ! initiator_pop(:) and events(:) is used to store the data (for all ntypes of
+        ! particle) at location which is being compressed into islot.
         associate(spawn_parts => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,:), &
                   spawn_flag => spawn%sdata(spawn%flag_indx,:), spawn_dets => spawn%sdata(:spawn%bit_str_len,:))
             self_annihilate: do
@@ -852,33 +857,33 @@ contains
                         !   initiators and the two sets have opposite sign, the flag
                         !   is determined by number of coherent events from
                         !   non-initiator parents.
-! [review] - AJWT: Assume an initiator to start with
+                        ! Assume an initiator to start with.
                         spawn_flag(islot) = 0_int_s
                         do ipart = 1, spawn%ntypes
-! [review] - AJWT: For each type of particle:
-! [review] - AJWT:  check if there are any spawned.  If so, then if the accumulated value
-! [review] - AJWT:  of all spawns from initiators has the same sign as the accumulated sum of all spawns to here,
+                            ! For each type of particle:
+!     check if there are any spawned.  If so, then if the accumulated value
+!     of all spawns from initiators has the same sign as the accumulated sum of all spawns to here,
                             if (initiator_pop(ipart) /= 0_int_s .and.  &
                                     sign(1_int_s,spawn_parts(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
                                 ! Keep all.  We should still annihilate psips of
-                                ! opposite sign from non-initiator events(spawn%bit_str_len+1).
+                                ! opposite sign from non-initiator events.
                             else if (abs(events(ipart)) > 1) then
                                 ! If the net number of events is over 1 at this particle type,
                                 ! then there are multiple coherent spawning events remaining
                                 ! after removing pairs of spawning events of the opposite sign.
                                 ! Keep.
                             else
-! [review] - AJWT: Otherwise flag only to keep this type of particle if there is one already.
-                                ! Should only keep if determinant is already occupied.
+                                ! Set flag to only keep if determinant is already occupied
+                                ! with particles of this type.
                                 spawn_flag(islot) = spawn_flag(islot) + 2**(ipart-1)
                             end if
                         end do
                         exit compress
                     else
-                        ! Accumulate the population on this determinant, how much of the population came
-                        ! from an initiator and the sign of the event.
+                        ! Accumulate the population on this determinant
                         if (spawn_flag(k) == 0_int_s) then
-! [review] - AJWT: This slot (k) was spawned from an initiator, so we accumate the pops from each type (separately)
+                            ! This slot (k) was spawned from an initiator, so we accumate
+                            ! the population from each type (separately).
                             initiator_pop = initiator_pop + spawn_parts(:,k)
                         else
                             do ipart = 1, spawn%ntypes
@@ -892,7 +897,7 @@ contains
                                 end if
                             end do
                         end if
-! [review] - AJWT: For each type of particle, add the spawned ones into this slot.
+                        ! For each type of particle, add the spawned particles into this slot.
                         spawn_parts(:,islot) = spawn_parts(:,islot) + spawn_parts(:,k)
                     end if
                 end do compress
