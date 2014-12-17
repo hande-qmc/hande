@@ -112,8 +112,11 @@ contains
         !    spawn: initialised object for storing, communicating and
         !       annihilation spawned particles.
 
+        use const, only: int_s_length
+
         use parallel, only: nthreads, nprocs
         use checking, only: check_allocate
+        use errors, only: stop_all
 
         integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift
         real(p) :: cutoff
@@ -128,6 +131,10 @@ contains
         if (flag) then
             spawn%element_len = spawn%element_len + 1
             spawn%flag_indx = spawn%element_len
+            if (spawn%ntypes > int_s_length) then
+                ! A single int_s integer cannot hold the flags for all spaces.
+                call stop_all('alloc_spawn_t', 'Cannot support more than int_s_length particle types.')
+            end if
         else
             spawn%flag_indx = -1
         end if
