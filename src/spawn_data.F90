@@ -862,10 +862,10 @@ contains
                                     sign(1_int_s,spawn_parts(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
                                 ! Keep all.  We should still annihilate psips of
                                 ! opposite sign from non-initiator events(spawn%bit_str_len+1).
-                            else if (abs(events(1)) > 1) then ! [todo] - check why events(1)?
-! [review] - AJWT: If the net number of events is over 1 at particle type 0, 
-                                ! Multiple coherent spawning events(spawn%bit_str_len+1) after removing pairs
-                                ! of spawning events(spawn%bit_str_len+1) of the opposite sign.
+                            else if (abs(events(ipart)) > 1) then
+                                ! If the net number of events is over 1 at this particle type,
+                                ! then there are multiple coherent spawning events remaining
+                                ! after removing pairs of spawning events of the opposite sign.
                                 ! Keep.
                             else
 ! [review] - AJWT: Otherwise flag only to keep this type of particle if there is one already.
@@ -881,12 +881,13 @@ contains
 ! [review] - AJWT: This slot (k) was spawned from an initiator, so we accumate the pops from each type (separately)
                             initiator_pop = initiator_pop + spawn_parts(:,k)
                         else
-! [review] - AJWT: Not an initiator, so depending on the sign of the spawning, we accumulate (signed) events
                             do ipart = 1, spawn%ntypes
+                                ! Not an initiator, so depending on the sign of the spawning
+                                ! we accumulate (signed) events.  Take care not to accumulate
+                                ! events if no ipart particle was spawned.
                                 if (spawn_parts(ipart,k) < 0_int_s) then
                                     events(ipart) = events(ipart) - 1
-! [review] - AJWT: It looks like this else will actuate for #particles=0.  Is this really what's needed?
-                                else
+                                else if (spawn_parts(ipart,k) > 0_int_s) then
                                     events(ipart) = events(ipart) + 1
                                 end if
                             end do
