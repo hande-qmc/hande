@@ -344,13 +344,13 @@ contains
                         ! Annihilate!
                         walker_population(ipart,pos) = walker_population(ipart,pos) + &
                                                         int(spawn%sdata(ipart+spawn%bit_str_len,i), int_p)
-                    else if (.not.btest(spawn%sdata(spawn%flag_indx,i),ipart+spawn%bit_str_len)) then
+                    else if (.not.btest(spawn%sdata(spawn%flag_indx,i),ipart-1)) then
                         ! Keep only if from a multiple spawning event or an
                         ! initiator.
                         ! If this is the case, then sdata(flag_indx,i)
-                        ! does not have a bit set in corresponding to 2**pop_indx,
-                        ! where pop_indx is the index of this walker type in the
-                        ! spawn%sdata array (i.e. ipart+bit_str_len).
+                        ! does not have a bit set in corresponding to 2**(ipart-1)
+                        ! where ipart+bit_str_len is the index of this walker type
+                        ! in the spawn%sdata array.
                         walker_population(ipart,pos) = int(spawn%sdata(ipart+spawn%bit_str_len,i), int_p)
                     end if
                 end do
@@ -370,19 +370,19 @@ contains
                 ! Compress spawned list.
                 ! Keep only progeny spawned by initiator determinants
                 ! or multiple sign-coherent events.  If neither of these
-                ! conditions are met then the j-th bit of sdata(flag_indx,i) is set,
-                ! where j is the particle index in spawn%sdata.
+                ! conditions are met then the (j-1)-th bit of sdata(flag_indx,i) is set,
+                ! where j is the particle index in spawn%sdata(bit_str_len+1:,:).
                 discard = .true.
-                do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                    if (btest(spawn%sdata(spawn%flag_indx,i),ipart)) then
+                do ipart = 1, spawn%ntypes
+                    if (btest(spawn%sdata(spawn%flag_indx,i),ipart-1)) then
                         ! discard attempting spawnings from non-initiator walkers
                         ! onto unoccupied determinants.
                         ! note that the number of particles (nparticles) was not
                         ! updated at the time of spawning, so doesn't change.
-                        spawn%sdata(ipart,i-nannihilate) = 0_int_s
+                        spawn%sdata(spawn%bit_str_len+ipart,i-nannihilate) = 0_int_s
                     else
                         ! keep!
-                        spawn%sdata(ipart,i-nannihilate) = spawn%sdata(ipart,i)
+                        spawn%sdata(spawn%bit_str_len+ipart,i-nannihilate) = spawn%sdata(spawn%bit_str_len+ipart,i)
                         discard = .false.
                     end if
                 end do
