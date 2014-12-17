@@ -795,6 +795,11 @@ contains
             upper_bound = spawn%head(thread_id,0)
         end if
 
+! [review] - AJWT: spawn%head(thread_id,0) starts off being the next free slot in the spawned array?
+! [review] - AJWT: I'm somewhat confused as to the meaning of thread_id if it's always 0 here.
+
+! [review] - AJWT: initiator_pop(:) and events(:) is used to store the data (for all ntypes of particle) at location 
+! [review] - AJWT: which is being compressed into islot.
         self_annihilate: do
             ! Set the current free slot to be the next unique spawned location.
             spawn%sdata(:,islot) = spawn%sdata(:,k)
@@ -810,8 +815,12 @@ contains
             end do
             compress: do
                 k = k + 1
+! [review] - AJWT: We set new_slot if we've passed the upper bound?
                 new_slot = k > spawn%head(thread_id,0)
+! [review] - AJWT: or we've found a particle which isn't the same as those we're compressing to islot
                 if (.not. new_slot) new_slot = any(spawn%sdata(:spawn%bit_str_len,k) /= spawn%sdata(:spawn%bit_str_len,islot))
+! [review] - AJWT: new_slot is set if we've reached the end or need to finalize the data we've been compressing as next time round
+! [review] - AJWT: we'll encounter a particle at a new location.  Perhaps this should logically go after the accumlation?
                 if (new_slot) then
                     ! Found the next unique spawned location.
                     ! Set the overall parent flag of the population on the
@@ -834,17 +843,25 @@ contains
                     !   initiators and the two sets have opposite sign, the flag
                     !   is determined by number of coherent events from
                     !   non-initiator parents.
+! [review] - AJWT: Assume an initiator to start with
                     spawn%sdata(spawn%flag_indx,islot) = 0_int_s
                     do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
+! [review] - AJWT: For each type of particle:
+! [review] - AJWT:  check if there are any spawned.  If so, then if the accumulated value
+! [review] - AJWT:  of all spawns from initiators has the same sign as the accumulated sum of all spawns to here,
                         if (initiator_pop(ipart) /= 0_int_s .and.  &
                                 sign(1_int_s,spawn%sdata(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
                             ! Keep all.  We should still annihilate psips of
                             ! opposite sign from non-initiator events(spawn%bit_str_len+1).
                         else if (abs(events(spawn%bit_str_len+1)) > 1) then
+! [review] - AJWT: If the net number of events is over 1 at particle type 0, 
                             ! Multiple coherent spawning events(spawn%bit_str_len+1) after removing pairs
                             ! of spawning events(spawn%bit_str_len+1) of the opposite sign.
                             ! Keep.
                         else
+! [review] - AJWT: Otherwise flag only to keep this type of particle if there is one already.
+! [review] - AJWT: One hopes that spawn%bit_str_len+spawn%ntypes is < DET_SIZE otherwise this will result in integer overflow.
+! [review] - AJWT: This will happen if (# basis functions)>DET_SIZE**2 (1024 for 32-bit and 4096 for 64-bit).
                             ! Should only keep if determinant is already occupied.
                             spawn%sdata(spawn%flag_indx,islot) = spawn%sdata(spawn%flag_indx,islot) + 2**ipart
                         end if
@@ -853,17 +870,21 @@ contains
                 else
                     ! Accumulate the population on this determinant, how much of the population came
                     ! from an initiator and the sign of the event.
-                    if (spawn%sdata(spawn%flag_indx,k) == 0_int_s) then
+                    if (spawn%sdata(spawn%flag_indx,k) == 0_int_s) then 
+! [review] - AJWT: This slot (k) was spawned from an initiator, so we accumate the pops from each type (separately)
                         initiator_pop = initiator_pop + spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,k)
                     else
+! [review] - AJWT: Not an initiator, so depending on the sign of the spawning, we accumulate (signed) events
                         do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
                             if (spawn%sdata(ipart,k) < 0_int_s) then
                                 events(ipart) = events(ipart) - 1
+! [review] - AJWT: It looks like this else will actuate for #particles=0.  Is this really what's needed?
                             else
                                 events(ipart) = events(ipart) + 1
                             end if
                         end do
                     end if
+! [review] - AJWT: For each type of particle, add the spawned ones into this slot.
                     spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,islot) = &
                          spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,islot) + &
                          spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,k)
