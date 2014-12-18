@@ -805,8 +805,8 @@ contains
         !   amounts to a processor-dependent timestep scaling), we need to multiply the
         !   probability the reference is selected by nprocs.
         ! * assuming each excitor spends (on average) the same amount of time on each
-        !   processor, the probability that X excitors are on the same processor at
-        !   a given timestep is 1/nprocs^{X-1).
+        !   processor, the probability that X different excitors are on the same processor
+        !   at a given timestep is 1/nprocs^{X-1).
         ! The easiest way to handle both of these is to multiply the number of attempts by
         ! the number of processors here and then deal with additional factors of 1/nprocs
         ! when creating composite clusters.
@@ -898,6 +898,8 @@ contains
                     cdet%f = walker_dets(:,pos)
                     cdet%data => walker_data(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = int(walker_population(1,pos))
+                    ! Counter the additional *nprocs above.
+                    cluster%pselect = cluster%pselect/nprocs
                 else
                     call collapse_cluster(basis, walker_dets(:,pos), int(walker_population(1,pos)), &
                                           cdet%f, cluster_population, allowed)
@@ -905,16 +907,18 @@ contains
                         if (.not.linked_ccmc) exit
                         all_allowed = .false.
                     end if
+                    ! Each excitor spends the same amount of time on each processor on
+                    ! average.  If this excitor is different from the previous excitor,
+                    ! then the probability this excitor is on the same processor as the
+                    ! previous excitor is 1/nprocs.  (Note choosing the same excitor
+                    ! multiple times is valid in linked CC.)
+                    if (pos /= prev_pos) cluster%pselect = cluster%pselect/nprocs
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
                 if (abs(walker_population(1,pos)) <= initiator_population) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = pop/tot_pop.
-                ! Each excitor spends the same amount of time on each processor.  Given
-                ! the selection of the first excitor, the probability this excitor is also
-                ! on this processor is 1/nprocs.  (Note additional factor of nprocs
-                ! already included in pselect to handle the case of the first excitor.)
-                cluster%pselect = (cluster%pselect*abs(walker_population(1,pos))/nprocs)/tot_excip_pop
+                cluster%pselect = (cluster%pselect*abs(walker_population(1,pos)))/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
                 prev_pos = pos
             end do
