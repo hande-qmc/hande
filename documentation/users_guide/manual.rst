@@ -297,7 +297,34 @@ multiple processors.
 Running tests
 -------------
 
-The tests are run using the ``testcode`` package (https://github.com/jsspencer/testcode).  testcode can be run from the test_suite subdirectory:
+The tests are run using the ``testcode`` package (https://github.com/jsspencer/testcode).
+The data extraction scripts for HANDE require the ``pandas`` python library (http://pandas.pydata.org/),
+which could for example be installed by
+
+.. code-block:: bash
+    
+    pip install pandas
+
+or alternatively where pip is not available, one can install it locally:
+
+.. code-block:: bash
+
+    wget https://github.com/pydata/pandas/archive/v0.15.2.tar.gz
+    tar -xzvf v0.15.2.tar.gz
+    cd pandas-0.15.2
+    python setup.py build
+    python setup.py install
+    
+If you do not have root access, you can install the library locally with:
+
+.. code-block:: bash
+
+    python setup.py install --user
+    echo 'export PYTHONPATH=$HOME/.local/lib/python2.7/site-packages:$PYTHONPATH' >>.bashrc
+
+
+
+testcode can be run from the test_suite subdirectory:
 
 .. code-block:: bash
 
