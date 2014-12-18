@@ -779,6 +779,8 @@ contains
         integer :: islot, ipart, k, pop_sign, upper_bound
         integer, allocatable :: events(:)
         integer(int_s), allocatable :: initiator_pop(:)
+        ! thread_id is a convention from when OpenMP threading support was added to spawn_t.
+        ! Here we're single-threaded, so just use the first element, thread_id=0
         integer, parameter :: thread_id = 0
         logical :: same_slot
 
@@ -798,12 +800,6 @@ contains
         if (present(endp)) then
             upper_bound = endp
         else
-! [review] - AJWT: spawn%head(thread_id,0) starts off being the next free slot in the spawned array?
-! [review] - AJWT: I'm somewhat confused as to the meaning of thread_id if it's always 0 here.
-! [reply] - JSS: thread_id is a bit of a (perhaps useless)convention from when OpenMP
-! [reply] - JSS: threading support was added to spawn_t.  The first step in annihilation is to
-! [reply] - JSS: compress spawn%sdata so there are no gaps (which arise from lock-free spawning).
-! [reply] - JSS: After that, all entries in head apart from head(0,0) are meaningless.
             ! After compression and communication, spawn%sdata is contiguous and sorted
             ! and spawn%head(0,0) contains the last index in spawn%sdata which has
             ! a particle spawned in it from this iteration.
@@ -838,7 +834,7 @@ contains
                     if (same_slot) then
                         ! Accumulate the population on this determinant
                         if (spawn_flag(k) == 0_int_s) then
-                            ! This slot (k) was spawned from an initiator, so we accumate
+                            ! This slot (k) was spawned from an initiator, so we accumulate
                             ! the population from each type (separately).
                             initiator_pop = initiator_pop + spawn_parts(:,k)
                         else
