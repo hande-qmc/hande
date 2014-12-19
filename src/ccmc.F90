@@ -442,9 +442,8 @@ contains
                 ! solely upon the nearest integer of the population.  This decouples (slightly) the selection probability and the
                 ! amplitude, which uses the exact population (including fractional part) but is fine as we can choose any
                 ! (normalised) selection scheme we want...
-! [review] - AJWT: I see the need for this.  What effect does it have on the projected energy?  Because we know what the actual
-! [review] - AJWT: weight should be and we divide our contribution by the generation probability, this has absolutely no effect
-! [review] - AJWT: on the projected energy (non-composite contribution), which is excellent.
+                ! Given the contribution to the projected energy is divided by the cluster generation probability and
+                ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
                 call cumulative_population(walker_population, tot_walkers, D0_proc, D0_pos, real_factor, &
                                            cumulative_abs_nint_pops, tot_abs_nint_pop)
 
