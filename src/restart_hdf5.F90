@@ -383,6 +383,8 @@ module restart_hdf5
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
             integer(hid_t) :: file_id, group_id, subgroup_id, dset_id, dspace_id
+            integer(hid_t) :: dtype_stored
+            logical :: dtype_equal
 
             character(255) :: restart_file
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
@@ -392,12 +394,16 @@ module restart_hdf5
             real(p), target :: tmp(1)
 
             integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
+            integer(i0) :: tot_nparticlesi(1) !
 
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
             call init_restart_hdf5(ri, .false., restart_file, kinds)
             call h5fopen_f(restart_file, H5F_ACC_RDONLY_F, file_id, ierr)
+            if (ierr/=0) then
+               call stop_all('read_restart_hdf5', "Unable to open restart file.")
+            endif
 
             ! --- metadata group ---
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
@@ -423,6 +429,7 @@ module restart_hdf5
                 ! particle types).
                 ! Clear the flags for non-QMC calculations (which aren't
                 ! restarted anyway and don't affect the QMC calculation).
+                write(6,*) calc_type_restart,calc_type
                 calc_type_restart = ieor(calc_type, calc_type_restart)
                 calc_type_restart = iand(calc_type_restart, not(exact_diag))
                 calc_type_restart = iand(calc_type_restart, not(lanczos_diag))
@@ -468,8 +475,19 @@ module restart_hdf5
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
 
-                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
+                !AJWT has hacked this in to attempt compatibility with old data
+                !versions - it's ugly and probably horribly future incompatible
+                call h5dopen_f(subgroup_id, dtot_pop, dset_id, ierr)
+                call h5dget_type_f(dset_id, dtype_stored, ierr)
+                call h5tequal_f(kinds%i64, dtype_stored, dtype_equal, ierr)
+                call h5dclose_f(dset_id, ierr)
 
+                if(dtype_equal) then !need to convert from integer to real
+                  call hdf5_read(subgroup_id, dtot_pop, kinds,shape(tot_nparticlesi), tot_nparticlesi)
+                  tot_nparticles=tot_nparticlesi
+                else
+                  call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
+                endif
                 if (non_blocking_comm) then
 
                     call hdf5_read(subgroup_id, dspawn, kinds, shape(received_list%sdata), received_list%sdata)
@@ -478,8 +496,11 @@ module restart_hdf5
 
                 end if
 
-                call hdf5_read(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
-
+                !it appears that if integers were stored for dtot_pop, then this
+                !needs to be disabled
+                if(.not.dtype_equal) then
+                  call hdf5_read(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
+                endif
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/state group ---
