@@ -41,7 +41,7 @@ contains
         !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
         !        Default: use entire slice.
 
-        use bit_utils, only: operator(.bitstrgt.)
+        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
 
         integer(int_32), intent(inout) :: list(:,:)
         integer, intent(in), optional :: head, nsort
@@ -79,7 +79,7 @@ contains
                 do j = lo + 1, hi
                     tmp = list(:,j)
                     do i = j - 1, 1, -1
-                        if (tmp(1:ns) .bitstrgt. list(1:ns,i)) exit
+                        if (tmp(1:ns) .bitstrge. list(1:ns,i)) exit
                         list(:,i+1) = list(:,i)
                     end do
                     list(:,i+1) = tmp
@@ -194,7 +194,7 @@ contains
         !        list(:nsort,j), so list is sorted according to list(:nsort,:)).
         !        Default: use entire slice.
 
-        use bit_utils, only: operator(.bitstrgt.)
+        use bit_utils, only: operator(.bitstrge.), operator(.bitstrgt.)
 
         integer(int_64), intent(inout) :: list(:,:)
         integer, intent(in), optional :: head, nsort
@@ -232,7 +232,7 @@ contains
                 do j = lo + 1, hi
                     tmp = list(:,j)
                     do i = j - 1, 1, -1
-                        if (tmp(1:ns) .bitstrgt. list(1:ns,i)) exit
+                        if (tmp(1:ns) .bitstrge. list(1:ns,i)) exit
                         list(:,i+1) = list(:,i)
                     end do
                     list(:,i+1) = tmp
