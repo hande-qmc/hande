@@ -6,6 +6,19 @@ use parallel, only: blacs_info
 
 implicit none
 
+!--- Calculation metadata ---
+
+! This is a copy, initialised in init_calc_defaults, of settings in
+! environment_report.  By storing them here we avoid a cascade compilation on
+! every compilation when the git hash is updated at compile-time.
+
+type metadata_t
+    character(40) :: git_sha1
+    character(36) :: uuid
+end type metadata_t
+
+type(metadata_t) :: GLOBAL_META
+
 !--- Calculation info ---
 
 ! A calculation type is performed if the relevant bit (defined by the subsequent
@@ -250,22 +263,29 @@ end type parallel_t
 
 contains
 
-    subroutine init_calc_defaults()
+    subroutine init_calc_defaults(git_sha1, uuid)
 
         ! Initialise calculation defaults which cannot be set at compile-time.
 
+        ! In:
+        !    git_sha1: git SHA1 hash of the calculation.
+        !    uuid: UUID of the calculation.
+
         use iso_c_binding, only: c_loc, c_ptr, c_char, c_int
-        use report, only: GLOBAL_UUID
         use hashing, only: MurmurHash2
         use utils, only: fstring_to_carray
 
-        character(len=len(GLOBAL_UUID)+10) :: seed_data
+        character(40), intent(in) :: git_sha1
+        character(36), intent(in) :: uuid
+        character(len=len(uuid)+10) :: seed_data
         character(kind=c_char), target :: cseed_data(len(seed_data)+1)
         type(c_ptr) :: cseed_data_ptr
         integer(c_int) :: n
 
+        GLOBAL_META = metadata_t(git_sha1, uuid)
+
         call date_and_time(time=seed_data(:10))
-        seed_data(11:) = GLOBAL_UUID
+        seed_data(11:) = uuid
 
         cseed_data = fstring_to_carray(seed_data)
         cseed_data_ptr = c_loc(cseed_data)

@@ -21,7 +21,7 @@ contains
         !     start_cpu_time: cpu_time at the start of the calculation.
         !     start_wall_time: system_clock at the start of the calculation.
 
-        use report, only: environment_report, comm_global_uuid
+        use report, only: environment_report, comm_global_uuid, VCS_VERSION, GLOBAL_UUID
         use parse_input, only: read_input, check_input, distribute_input
         use system
         use basis, only: init_model_basis_fns
@@ -52,7 +52,7 @@ contains
         end if
         call comm_global_uuid()
 
-        call init_calc_defaults()
+        call init_calc_defaults(VCS_VERSION, GLOBAL_UUID)
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
