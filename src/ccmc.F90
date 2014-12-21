@@ -568,6 +568,7 @@ contains
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
+                        ! [todo] - optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_full_nc.
                         if (cluster(it)%excitation_level <= truncation_level) then
                             if ((.not. linked_ccmc) .or. cluster(it)%nexcitors <= 2) then
                                 ! Clusters above size 2 can't die in linked ccmc.
@@ -1379,6 +1380,7 @@ contains
         ! care of the rest.
         ! Pass through a null excitation so that we create a spawned particle on
         ! the current excitor.
+        ! [todo] - optimisation: kill directly for clusters of size 0 and 1 (taking care with threading!)
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
