@@ -270,9 +270,9 @@ contains
         ! In:
         !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if the first element of b1 which is not equal to the
-        !    corresponding element of b2 is greater than the corresponding
-        !    element in b2.
+        !    True if all(b1 == b2) or the first element of b1 which is not equal
+        !    to the corresponding element of b2 is greater than the
+        !    corresponding element in b2.
 
         logical :: ge
         integer(int_32), intent(in) :: b1(:), b2(:)
