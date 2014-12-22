@@ -22,6 +22,11 @@ use popcnt_intrinsic, only: count_set_bits=>popcnt
 
 implicit none
 
+interface operator(.bitstrge.)
+    module procedure bit_str_32_ge
+    module procedure bit_str_64_ge
+end interface
+
 interface operator(.bitstrgt.)
     module procedure bit_str_32_gt
     module procedure bit_str_64_gt
@@ -260,6 +265,60 @@ contains
 
 !--- Comparison of bit strings---
 
+    pure function bit_str_32_ge(b1, b2) result(ge)
+
+        ! In:
+        !    b1(:), b2(:) bit string.
+        ! Returns:
+        !    True if all(b1 == b2) or the first element of b1 which is not equal
+        !    to the corresponding element of b2 is greater than the
+        !    corresponding element in b2.
+
+        logical :: ge
+        integer(int_32), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        ge = .true.
+        do i = 1, ubound(b1,dim=1)
+            if (b1(i) > b2(i)) then
+                ge = .true.
+                exit
+            else if (b1(i) < b2(i)) then
+                ge = .false.
+                exit
+            end if
+        end do
+
+    end function bit_str_32_ge
+
+    pure function bit_str_64_ge(b1, b2) result(ge)
+
+        ! In:
+        !    b1(:), b2(:) bit string.
+        ! Returns:
+        !    True if all(b1 == b2) or the first element of b1 which is not equal
+        !    to the corresponding element of b2 is greater than the
+        !    corresponding element in b2.
+
+        logical :: ge
+        integer(int_64), intent(in) :: b1(:), b2(:)
+
+        integer :: i
+
+        ge = .true.
+        do i = 1, ubound(b1,dim=1)
+            if (b1(i) > b2(i)) then
+                ge = .true.
+                exit
+            else if (b1(i) < b2(i)) then
+                ge = .false.
+                exit
+            end if
+        end do
+
+    end function bit_str_64_ge
+
     pure function bit_str_32_gt(b1, b2) result(gt)
 
         ! In:
@@ -313,6 +372,7 @@ contains
         end do
 
     end function bit_str_64_gt
+
 
     pure function bit_str_32_cmp(b1, b2) result(cmp)
 
