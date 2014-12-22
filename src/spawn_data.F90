@@ -112,8 +112,11 @@ contains
         !    spawn: initialised object for storing, communicating and
         !       annihilation spawned particles.
 
+        use const, only: int_s_length
+
         use parallel, only: nthreads, nprocs
         use checking, only: check_allocate
+        use errors, only: stop_all
 
         integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift
         real(p) :: cutoff
@@ -128,6 +131,10 @@ contains
         if (flag) then
             spawn%element_len = spawn%element_len + 1
             spawn%flag_indx = spawn%element_len
+            if (spawn%ntypes > int_s_length) then
+                ! A single int_s integer cannot hold the flags for all spaces.
+                call stop_all('alloc_spawn_t', 'Cannot support more than int_s_length particle types.')
+            end if
         else
             spawn%flag_indx = -1
         end if
@@ -772,11 +779,13 @@ contains
         integer :: islot, ipart, k, pop_sign, upper_bound
         integer, allocatable :: events(:)
         integer(int_s), allocatable :: initiator_pop(:)
+        ! thread_id is a convention from when OpenMP threading support was added to spawn_t.
+        ! Here we're single-threaded, so just use the first element, thread_id=0
         integer, parameter :: thread_id = 0
-        logical :: new_slot
+        logical :: same_slot
 
-        allocate(events(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes))
-        allocate(initiator_pop(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes))
+        allocate(events(spawn%ntypes))
+        allocate(initiator_pop(spawn%ntypes))
 
         ! islot is the current element in the spawned list.
         ! k is the current element which is being compressed into islot (if
@@ -788,97 +797,122 @@ contains
             islot = 1
             k = 1
         end if
-
         if (present(endp)) then
             upper_bound = endp
         else
+            ! After compression and communication, spawn%sdata is contiguous and sorted
+            ! and spawn%head(0,0) contains the last index in spawn%sdata which has
+            ! a particle spawned in it from this iteration.
             upper_bound = spawn%head(thread_id,0)
         end if
 
-        self_annihilate: do
-            ! Set the current free slot to be the next unique spawned location.
-            spawn%sdata(:,islot) = spawn%sdata(:,k)
-            do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                if (spawn%sdata(spawn%flag_indx,k) == 0_int_s) then
-                    ! from an initiator
-                    initiator_pop(ipart) = spawn%sdata(ipart,k)
-                    events(ipart) = 0
-                else
-                    initiator_pop(ipart) = 0
-                    events(ipart) = sign(1_int_s,spawn%sdata(ipart,k))
-                end if
-            end do
-            compress: do
-                k = k + 1
-                new_slot = k > spawn%head(thread_id,0)
-                if (.not. new_slot) new_slot = any(spawn%sdata(:spawn%bit_str_len,k) /= spawn%sdata(:spawn%bit_str_len,islot))
-                if (new_slot) then
-                    ! Found the next unique spawned location.
-                    ! Set the overall parent flag of the population on the
-                    ! current determinant and move on.
-                    ! Rules:
-                    !   * keep psips from initiator determinants
-                    !   * keep psips from multiple coherent events
-                    ! These are indicated by a 0 flag.
-                    !   * keep other psips only if determinant is already
-                    !     occupied.
-                    ! We also want the outcome to be independent of the order
-                    ! the spawning events occured in, hence accumulating the
-                    ! signed number of events and number of initiator particles
-                    ! separately.
-                    ! Corner cases are tricky!
-                    ! * If multiple initiator events exactly cancel out, then the
-                    !   flag is determined by the number of coherent events from
-                    !   non-initiator parent determinants.
-                    ! * If more psips from non-initiators are spawned than
-                    !   initiators and the two sets have opposite sign, the flag
-                    !   is determined by number of coherent events from
-                    !   non-initiator parents.
-                    spawn%sdata(spawn%flag_indx,islot) = 0_int_s
-                    do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                        if (initiator_pop(ipart) /= 0_int_s .and.  &
-                                sign(1_int_s,spawn%sdata(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
-                            ! Keep all.  We should still annihilate psips of
-                            ! opposite sign from non-initiator events(spawn%bit_str_len+1).
-                        else if (abs(events(spawn%bit_str_len+1)) > 1) then
-                            ! Multiple coherent spawning events(spawn%bit_str_len+1) after removing pairs
-                            ! of spawning events(spawn%bit_str_len+1) of the opposite sign.
-                            ! Keep.
-                        else
-                            ! Should only keep if determinant is already occupied.
-                            spawn%sdata(spawn%flag_indx,islot) = spawn%sdata(spawn%flag_indx,islot) + 2**ipart
-                        end if
-                    end do
-                    exit compress
-                else
-                    ! Accumulate the population on this determinant, how much of the population came
-                    ! from an initiator and the sign of the event.
-                    if (spawn%sdata(spawn%flag_indx,k) == 0_int_s) then
-                        initiator_pop = initiator_pop + spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,k)
+        ! initiator_pop(:) and events(:) is used to store the data (for all ntypes of
+        ! particle) at location which is being compressed into islot.
+        associate(spawn_parts => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,:), &
+                  spawn_flag => spawn%sdata(spawn%flag_indx,:), spawn_dets => spawn%sdata(:spawn%bit_str_len,:))
+            self_annihilate: do
+                ! Set the current free slot to be the next unique spawned location.
+                spawn%sdata(:,islot) = spawn%sdata(:,k)
+                do ipart = 1, spawn%ntypes
+                    if (spawn_flag(k) == 0_int_s) then
+                        ! from an initiator
+                        initiator_pop(ipart) = spawn_parts(ipart,k)
+                        events(ipart) = 0
                     else
-                        do ipart = spawn%bit_str_len+1, spawn%bit_str_len+spawn%ntypes
-                            if (spawn%sdata(ipart,k) < 0_int_s) then
-                                events(ipart) = events(ipart) - 1
+                        initiator_pop(ipart) = 0
+                        events(ipart) = sign(1_int_s,spawn_parts(ipart,k))
+                    end if
+                end do
+                compress: do
+                    k = k + 1
+                    ! Are we still on the same determinant?  2 conditions:
+                    ! 1. Have not yet reached the end of the list.
+                    same_slot = k <= spawn%head(thread_id,0)
+                    ! 2. We've found a particle on a different determinant to the particles we're compressing to islot.
+                    if (same_slot) same_slot = all(spawn_dets(:,k) == spawn_dets(:,islot))
+
+                    if (same_slot) then
+                        ! Accumulate the population on this determinant
+                        if (spawn_flag(k) == 0_int_s) then
+                            ! This slot (k) was spawned from an initiator, so we accumulate
+                            ! the population from each type (separately).
+                            initiator_pop = initiator_pop + spawn_parts(:,k)
+                        else
+                            do ipart = 1, spawn%ntypes
+                                ! Not an initiator, so depending on the sign of the spawning
+                                ! we accumulate (signed) events.  Take care not to accumulate
+                                ! events if no ipart particle was spawned.
+                                if (spawn_parts(ipart,k) < 0_int_s) then
+                                    events(ipart) = events(ipart) - 1
+                                else if (spawn_parts(ipart,k) > 0_int_s) then
+                                    events(ipart) = events(ipart) + 1
+                                end if
+                            end do
+                        end if
+                        ! For each type of particle, add the spawned particles into this slot.
+                        spawn_parts(:,islot) = spawn_parts(:,islot) + spawn_parts(:,k)
+                    else
+                        ! Found the next unique spawned location.
+                        ! Finalise the data we've been compressing to islot.
+                        ! Set the overall parent flag of the population on the
+                        ! current determinant and move on.
+                        ! Rules:
+                        !   * keep psips from initiator determinants
+                        !   * keep psips from multiple coherent events
+                        ! These are indicated by a 0 flag.
+                        !   * keep other psips only if determinant is already
+                        !     occupied.
+                        ! We also want the outcome to be independent of the order
+                        ! the spawning events occured in, hence accumulating the
+                        ! signed number of events and number of initiator particles
+                        ! separately.
+                        ! Corner cases are tricky!
+                        ! * If multiple initiator events exactly cancel out, then the
+                        !   flag is determined by the number of coherent events from
+                        !   non-initiator parent determinants.
+                        ! * If more psips from non-initiators are spawned than
+                        !   initiators and the two sets have opposite sign, the flag
+                        !   is determined by number of coherent events from
+                        !   non-initiator parents.
+                        ! Assume an initiator to start with.
+                        spawn_flag(islot) = 0_int_s
+                        do ipart = 1, spawn%ntypes
+                            ! For each type of particle:
+                            if (initiator_pop(ipart) /= 0_int_s .and.  &
+                                    sign(1_int_s,spawn_parts(ipart,islot)) == sign(1_int_s,initiator_pop(ipart)) ) then
+                                ! There were some particles spawned from initiators.  If any
+                                ! particles were spawned from non-initiators, they (in total) are
+                                ! either of the same sign as the total from initiators (i.e. multiple
+                                ! coherent events) or do not entirely annihilate the particles
+                                ! from initiators (i.e. the remaining particles are regarded
+                                ! as coming from initiators).
+                                ! Keep.
+                            else if (abs(events(ipart)) > 1) then
+                                ! If the net number of events is over 1 at this particle type,
+                                ! then there are multiple coherent spawning events remaining
+                                ! after removing pairs of spawning events of the opposite sign.
+                                ! Keep.
                             else
-                                events(ipart) = events(ipart) + 1
+                                ! Set flag to only keep if determinant is already occupied
+                                ! with particles of this type.
+                                spawn_flag(islot) = spawn_flag(islot) + 2**(ipart-1)
                             end if
                         end do
+                        ! Now move onto the next determinant (which we just found!).
+                        exit compress
                     end if
-                    spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,islot) = &
-                         spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,islot) + &
-                         spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,k)
-                end if
-            end do compress
-            ! All done?
-            if (islot == upper_bound .or. k > upper_bound) exit self_annihilate
-            ! go to the next slot if the current determinant wasn't completed
-            ! annihilated.
-            if (any(spawn%sdata(spawn%bit_str_len+1:,islot) /= 0_int_s)) islot = islot + 1
-        end do self_annihilate
+                end do compress
+                ! All done?
+                if (islot == upper_bound .or. k > upper_bound) exit self_annihilate
+                ! go to the next slot if the current determinant wasn't completed
+                ! annihilated.
+                if (any(spawn_parts(:,islot) /= 0_int_s)) islot = islot + 1
+            end do self_annihilate
 
-        ! We didn't check if the population on the last determinant is
-        ! completely annihilated or not.
-        if (all(spawn%sdata(spawn%bit_str_len+1:,islot) == 0_int_s)) islot = islot - 1
+            ! We didn't check if the population on the last determinant is
+            ! completely annihilated or not.
+            if (all(spawn_parts(:,islot) == 0_int_s)) islot = islot - 1
+        end associate
 
         ! update spawn%head(thread_id,0)
         spawn%head(thread_id,0) = islot
