@@ -1439,14 +1439,27 @@ contains
             pdeath = tau*abs(KiiAi)/cluster%pselect
         end if
 
-        ! Number that will definitely die
-        nkill = int(pdeath,int_p)
-
-        ! Stochastic death...
-        pdeath = pdeath - nkill
-        if (pdeath > get_rand_close_open(rng)) then
-            ! Increase magnitude of nkill...
-            nkill = nkill + 1
+        if (pdeath < qmc_spawn%cutoff) then
+            ! Calling death once per excip (and hence with a low pselect) without any
+            ! stochastic rounding leads to a large number of excips being spawned with low
+            ! weight (with the death then performed during annihilation).  This is not
+            ! good for performance of the communication and an annihilation algorithms, so
+            ! stochastically round here to overcome this.  Unlike in FCIQMC, death in CCMC
+            ! can spawn new particles on basis functions that are not yet occupied so
+            ! treating it on the same footing as death is not the worst idea...
+            ! Note if death is called once per cluster of size 0 and 1, then this branch
+            ! is unlikely to be triggered and death will be performed exactly, as in FCIQMC.
+            if (pdeath > get_rand_close_open(rng)*qmc_spawn%cutoff) then
+                nkill = qmc_spawn%cutoff
+            else
+                nkill = 0_int_p
+            end if
+        else
+            ! Number that will definitely die
+            nkill = int(pdeath,int_p)
+            ! Stochastic death...
+            pdeath = pdeath - nkill
+            if (pdeath > get_rand_close_open(rng)) nkill = nkill + 1
         end if
 
         if (nkill /= 0) then
