@@ -136,6 +136,32 @@ module hdf5_helper
 
         end subroutine dataset_array_plist
 
+        function dtype_equal(id, dset, dtype)
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    dtype: HDF5 data type of array.
+            ! Returns:
+            !    True if dtype matches the data type of the dataset dset and false otherwise.
+
+            use hdf5, only: hid_t, h5dopen_f, h5dget_type_f, h5tequal_f, h5dclose_f
+
+            logical :: dtype_equal
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            integer(hid_t), intent(in) :: dtype
+
+            integer :: ierr
+            integer(hid_t) :: dset_id, dtype_stored
+
+            call h5dopen_f(id, dset, dset_id, ierr)
+            call h5dget_type_f(dset_id, dtype_stored, ierr)
+            call h5tequal_f(dtype, dtype_stored, dtype_equal, ierr)
+            call h5dclose_f(dset_id, ierr)
+
+        end function dtype_equal
+
         ! === Helper procedures: writing ===
 
         subroutine write_string(id, dset, string)
@@ -593,7 +619,9 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: p
+            use const, only: p, int_32, int_64
+            use checking
+            use errors
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -602,9 +630,34 @@ module hdf5_helper
             real(p), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
+            integer(int_32), allocatable :: arr_32(:)
+            integer(int_64), allocatable :: arr_64(:)
+            integer :: ierr
+            character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
 
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            if (dtype_equal(id, dset, kinds%p)) then
+                ptr = c_loc(arr)
+                call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else
+                call warning('read_array_1d_real_p', msg//dset//'.')
+                if (dtype_equal(id, dset, kinds%i32)) then
+                    allocate(arr_32(arr_shape(1)), stat=ierr)
+                    call check_allocate('arr_32', size(arr_32), ierr)
+                    call hdf5_read(id, dset, kinds, arr_shape, arr_32)
+                    arr = arr_32
+                    deallocate(arr_32, stat=ierr)
+                    call check_deallocate('arr_32', ierr)
+                else if (dtype_equal(id, dset, kinds%i64)) then
+                    allocate(arr_64(arr_shape(1)), stat=ierr)
+                    call check_allocate('arr_64', size(arr_64), ierr)
+                    call hdf5_read(id, dset, kinds, arr_shape, arr_64)
+                    arr = arr_64
+                    deallocate(arr_64, stat=ierr)
+                    call check_deallocate('arr_64', ierr)
+                else
+                    call stop_all('read_array_1d_real_p', 'Reading mismatched data type and cannot convert.')
+                end if
+            end if
 
         end subroutine read_array_1d_real_p
 
@@ -623,7 +676,9 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: p
+            use const, only: p, int_32, int_64
+            use checking
+            use errors
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -632,9 +687,34 @@ module hdf5_helper
             real(p), intent(out), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr
+            integer(int_32), allocatable :: arr_32(:,:)
+            integer(int_64), allocatable :: arr_64(:,:)
+            integer :: ierr
+            character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
 
-            ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            if (dtype_equal(id, dset, kinds%p)) then
+                ptr = c_loc(arr)
+                call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else
+                call warning('read_array_2d_real_p', msg//dset//'.')
+                if (dtype_equal(id, dset, kinds%i32)) then
+                    allocate(arr_32(arr_shape(1),arr_shape(2)), stat=ierr)
+                    call check_allocate('arr_32', size(arr_32), ierr)
+                    call hdf5_read(id, dset, kinds, arr_shape, arr_32)
+                    arr = arr_32
+                    deallocate(arr_32, stat=ierr)
+                    call check_deallocate('arr_32', ierr)
+                else if (dtype_equal(id, dset, kinds%i64)) then
+                    allocate(arr_64(arr_shape(1),arr_shape(2)), stat=ierr)
+                    call check_allocate('arr_64', size(arr_64), ierr)
+                    call hdf5_read(id, dset, kinds, arr_shape, arr_64)
+                    arr = arr_64
+                    deallocate(arr_64, stat=ierr)
+                    call check_deallocate('arr_64', ierr)
+                else
+                    call stop_all('read_array_1d_real_p', 'Reading mismatched data type and cannot convert.')
+                end if
+            end if
 
         end subroutine read_array_2d_real_p
 
@@ -670,14 +750,12 @@ module hdf5_helper
 
             integer :: ierr, arr_rank_stored
             integer(hsize_t) :: arr_dim_stored(size(arr_dim)), arr_max_dim_stored(size(arr_dim))
-            integer(hid_t) :: dspace_id, dset_id, dtype_stored
-            logical :: dtype_equal
+            integer(hid_t) :: dspace_id, dset_id
+
+            if (.not.dtype_equal(id, dset, dtype)) &
+                call stop_all('read_ptr', 'Reading mismatched data type.')
 
             call h5dopen_f(id, dset, dset_id, ierr)
-
-            call h5dget_type_f(dset_id, dtype_stored, ierr)
-            call h5tequal_f(dtype, dtype_stored, dtype_equal, ierr)
-            if (.not.dtype_equal) call stop_all('read_ptr', 'Reading mismatched data type.')
 
             call h5dget_space_f(dset_id, dspace_id, ierr)
 

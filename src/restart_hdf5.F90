@@ -383,8 +383,6 @@ module restart_hdf5
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
             integer(hid_t) :: file_id, group_id, subgroup_id, dset_id, dspace_id
-            integer(hid_t) :: dtype_stored
-            logical :: dtype_equal
 
             character(255) :: restart_file
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
@@ -395,7 +393,6 @@ module restart_hdf5
             logical :: exists
 
             integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
-            integer(i0) :: tot_nparticlesi(1) !
 
 
             ! Initialise HDF5 and open file.
@@ -475,19 +472,8 @@ module restart_hdf5
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
 
-                !AJWT has hacked this in to attempt compatibility with old data
-                !versions - it's ugly and probably horribly future incompatible
-                call h5dopen_f(subgroup_id, dtot_pop, dset_id, ierr)
-                call h5dget_type_f(dset_id, dtype_stored, ierr)
-                call h5tequal_f(kinds%i64, dtype_stored, dtype_equal, ierr)
-                call h5dclose_f(dset_id, ierr)
+                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
 
-                if(dtype_equal) then !need to convert from integer to real
-                  call hdf5_read(subgroup_id, dtot_pop, kinds,shape(tot_nparticlesi), tot_nparticlesi)
-                  tot_nparticles=tot_nparticlesi
-                else
-                  call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
-                endif
                 if (non_blocking_comm) then
 
                     call hdf5_read(subgroup_id, dspawn, kinds, shape(received_list%sdata), received_list%sdata)
