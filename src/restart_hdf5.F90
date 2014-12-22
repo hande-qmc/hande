@@ -392,6 +392,7 @@ module restart_hdf5
             type(c_ptr) :: ptr
             integer :: ierr
             real(p), target :: tmp(1)
+            logical :: exists
 
             integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
             integer(i0) :: tot_nparticlesi(1) !
@@ -429,7 +430,6 @@ module restart_hdf5
                 ! particle types).
                 ! Clear the flags for non-QMC calculations (which aren't
                 ! restarted anyway and don't affect the QMC calculation).
-                write(6,*) calc_type_restart,calc_type
                 calc_type_restart = ieor(calc_type, calc_type_restart)
                 calc_type_restart = iand(calc_type_restart, not(exact_diag))
                 calc_type_restart = iand(calc_type_restart, not(lanczos_diag))
@@ -496,11 +496,9 @@ module restart_hdf5
 
                 end if
 
-                !it appears that if integers were stored for dtot_pop, then this
-                !needs to be disabled
-                if(.not.dtype_equal) then
-                  call hdf5_read(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
-                endif
+                call h5lexists_f(subgroup_id, dproc_map, exists, ierr)
+                if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
+
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/state group ---
