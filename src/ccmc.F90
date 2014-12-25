@@ -290,7 +290,7 @@ contains
 
         real :: t1, t2
 
-        logical :: update_tau
+        logical :: update_tau, nc_death
 
         integer :: nspawnings_left, nspawnings_total
 
@@ -471,7 +471,7 @@ contains
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
                 !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
-                !$omp         nspawnings_left, nspawnings_total, fexcit       ) &
+                !$omp         nspawnings_left, nspawnings_total, fexcit, nc_death) &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level, &
                 !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
@@ -492,6 +492,8 @@ contains
                         call select_cluster(rng(it), sys%basis, nstochastic_clusters, D0_normalisation, D0_pos,   &
                                             cumulative_abs_pops, tot_abs_pop, min_cluster_size, max_cluster_size, &
                                             cdet(it), cluster(it))
+                        ! In non-composite algorithm, always attempt death from composite clusters
+                        nc_death = .true.
                     else if (iattempt <= nstochastic_clusters+D0_normalisation) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
@@ -499,11 +501,13 @@ contains
                         ! probability by nprocs.  See comments in select_cluster
                         ! for more details.
                         call create_null_cluster(real(nprocs*D0_normalisation,p),D0_normalisation,cdet(it),cluster(it))
+                        ! In non-composite algorithm, only attempt death once.
+                        nc_death = (iattempt == nstochastic_clusters+D0_normalisation)
                     else
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(iattempt-nstochastic_clusters-D0_normalisation, iexcip_pos, &
                                                           nsingle_excitors, D0_normalisation, D0_pos, cumulative_abs_pops, &
-                                                          tot_abs_pop, cdet(it), cluster(it))
+                                                          tot_abs_pop, cdet(it), cluster(it), nc_death)
                     end if
 
                     if (cluster(it)%excitation_level <= truncation_level+2 .or. &
@@ -569,7 +573,7 @@ contains
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
                         ! [todo] - optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_full_nc.
-                        if (cluster(it)%excitation_level <= truncation_level) then
+                        if (cluster(it)%excitation_level <= truncation_level .and. nc_death) then
                             if ((.not. linked_ccmc) .or. cluster(it)%nexcitors <= 2) then
                                 ! Clusters above size 2 can't die in linked ccmc.
                                 call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it))
@@ -788,7 +792,7 @@ contains
         real(p) :: rand, psize, cluster_population
         integer :: i, pos, prev_pos, excitor_sgn
         integer(int_p) :: pop(max_size)
-        logical :: hit, allowed, all_allowed
+        logical :: hit, allowed, all_allowed, death
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -1022,7 +1026,7 @@ contains
     end subroutine create_null_cluster
 
     subroutine select_cluster_non_composite(iexcip, iexcip_pos, nattempts, normalisation, D0_pos, &
-                                            cumulative_excip_pop, tot_excip_pop, cdet, cluster)
+                                            cumulative_excip_pop, tot_excip_pop, cdet, cluster, death)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
@@ -1061,6 +1065,11 @@ contains
         !        input this is a bare cluster_t variable with the excitors array
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
+        ! Out:
+        !    death:
+        !        Each excip is selected the same number of times as its population,
+        !        but death only needs to be attempted once, on the last time it is
+        !        selected so this is true if it is the last time this excip is chosen.
 
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
@@ -1074,6 +1083,7 @@ contains
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
+        logical, intent(out) :: death
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -1128,6 +1138,9 @@ contains
         end if
         ! Adjust for reference---cumulative_excip_pop(D0_pos) = cumulative_excip_pop(D0_pos-1).
         if (iexcip_pos == D0_pos) iexcip_pos = iexcip_pos - 1
+
+        ! Only want to do death on the final time this excip is selected.
+        death = (cumulative_excip_pop(iexcip_pos) == iexcip)
 
         cdet%f = walker_dets(:,iexcip_pos)
         cdet%data => walker_data(:,iexcip_pos)
@@ -1314,7 +1327,7 @@ contains
         use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
-        use calc, only: linked_ccmc
+        use calc, only: linked_ccmc, ccmc_full_nc
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
@@ -1363,7 +1376,12 @@ contains
             end select
         end if
 
-        pdeath = tau*abs(KiiAi)/cluster%pselect
+        if (ccmc_full_nc .and. cluster%nexcitors <=1) then
+            ! Death is attempted exactly once on this cluster regardless of pselect
+            pdeath = tau*abs(KiiAi)
+        else
+            pdeath = tau*abs(KiiAi)/cluster%pselect
+        end if
 
         ! Number that will definitely die
         nkill = int(pdeath,int_p)
