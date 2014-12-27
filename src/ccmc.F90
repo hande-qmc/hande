@@ -501,8 +501,9 @@ contains
                         ! probability by nprocs.  See comments in select_cluster
                         ! for more details.
                         call create_null_cluster(real(nprocs*D0_normalisation,p),D0_normalisation,cdet(it),cluster(it))
-                        ! In non-composite algorithm, only attempt death once.
-                        nc_death = (iattempt == nstochastic_clusters+D0_normalisation)
+                        ! In non-composite algorithm, only attempt death once, and only on one
+                        ! processor
+                        nc_death = (iattempt == nstochastic_clusters+D0_normalisation .and. iproc == D0_proc)
                     else
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(iattempt-nstochastic_clusters-D0_normalisation, iexcip_pos, &
