@@ -423,21 +423,24 @@ How to add a new test
 #.  Rebuild HANDE so that the HANDE binary prints out the SHA1 hash of the current
     commit.  Make sure that there are no uncommitted changes to the source directory so
     that the benchmarks can be reproduced at a later date using the same binary.
-#.  Inside test_suite create a new directory with a sensible name describing your test
-    and change to it.
+#.  Inside test_suite find the appropriate directory in which to add your test, or
+    create a new directory, appropriately named, if necessary.
+#.  Inside this directory create a new directory with a sensible name describing your
+    test, and change to it.
 #.  Place the input files for your test in the directory.  You can have multiple input
     files in a single directory.
 #.  git add your directory (this avoids having to separate out files generated during
     the tests).
-#.  Add your directory name in [ ] to the jobconfig file.  This specifies that your tests
-    should be included in the test suite.
-#.  Pick some appropriate categories to also add your test to.
+#.  If you created a directory for a new category of tests then you will probably
+    need to add the directory name in [ ] to the jobconfig file. If not, then the
+    test should already be included through the globbing in jobconfig.
+#.  If required, pick some appropriate categories to add your test to in jobconfig.
 #.  Run testcode.py make-benchmarks to create new benchmarks e.g.
 
     .. code-block:: bash
 
         $ ../../testcode2/bin/testcode.py make-benchmarks
-        Using executable: /home/Alex/code/HANDE/master/test_suite/../bin/hubbard.x.
+        Using executable: /home/Alex/code/HANDE/master/test_suite/../bin/hande.x.
         Test id: 09042014-2.
         Benchmark: 288ad50.
 
@@ -451,31 +454,29 @@ How to add a new test
 
     Hopefully the only failed tests are your new tests (which you've checked).
 
-    Alternatively if you can't run all the tests, you can just make a benchmark for your new test:
+    Alternatively, a better method is to make a benchmark for the new test only:
 
     .. code-block:: bash
 
-        $ ../../testcode2/bin/testcode.py make-benchmarks -c H2-RHF-cc-pVTZ-Lz
+        $ ../../testcode2/bin/testcode.py make-benchmarks -ic fciqmc/H2-RHF-cc-pVTZ-Lz
 
         ...
 
-        Setting new benchmark in userconfig to be 6d161d0.
+        Setting new benchmark in userconfig to be: 6d161d0 288ad50.
 
-    Now revert userconfig to the old version
+    The use of the 'i' flag tells testcode2 to insert the new benchmark at the
+    start of the existing list of benchmarks, as can be seen in this example.
 
-    .. code-block:: bash
-
-        $ git checkout userconfig
-
-    and append the hash (6d161d0, in this case) to the benchmark = line in userconfig.
+    If you leave the 'i' flag out then it will remove all old benchmarks, which
+    we do not want.
 #.  Now remember to add the benchmark files and the jobconfig and userconfig files
     to the repository.
 
     .. code-block:: bash
 
-        $ git add userconfig jobconfig */benchmark.out.6d161d0.inp*
+        $ git add userconfig jobconfig fciqmc/*/benchmark.out.6d161d0.inp*
 
-    where 6d161d0 is the hash printed out at the end of the make-benchmarks
+    where 6d161d0 is the hash of the newly-created benchmark.
 
 #.  Do a quick git status to make sure you haven't missed anything important out, and
     then you're ready to commit the tests:
