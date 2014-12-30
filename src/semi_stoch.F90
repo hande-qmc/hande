@@ -1143,7 +1143,7 @@ contains
 #ifndef DISABLE_HDF5
         use hdf5
         use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_kinds_init
-        use report, only: GLOBAL_UUID
+        use calc, only: GLOBAL_META
         use utils, only: get_unique_filename
 
         type(semi_stoch_t), intent(in) :: determ
@@ -1165,7 +1165,7 @@ contains
         call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, ierr)
 
         ! Write UUID so this can be linked to the main output, restart files, etc.
-        call hdf5_write(file_id, 'uuid', GLOBAL_UUID)
+        call hdf5_write(file_id, 'uuid', GLOBAL_META%uuid)
 
         ! Write deterministic states to file.
         call hdf5_write(file_id, 'dets', kinds, shape(determ%dets), determ%dets)

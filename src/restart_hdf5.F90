@@ -218,14 +218,13 @@ module restart_hdf5
 #endif
             use const
             use, intrinsic :: iso_c_binding
-            use report, only: VCS_VERSION, GLOBAL_UUID
             use parallel, only: nprocs, iproc, parent, nthreads
             use utils, only: get_unique_filename, int_fmt
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data, &
                                    shift, f0, hs_f0, tot_walkers,               &
                                    D0_population_cycle, par_info, received_list
-            use calc, only: calc_type, non_blocking_comm
+            use calc, only: calc_type, non_blocking_comm, GLOBAL_META
             use errors, only: warning
 
             type(restart_info_t), intent(in) :: ri
@@ -263,9 +262,9 @@ module restart_hdf5
             call h5gcreate_f(file_id, gmetadata, group_id, ierr)
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
-                call hdf5_write(group_id, dhande, VCS_VERSION)
+                call hdf5_write(group_id, dhande, GLOBAL_META%git_sha1)
 
-                call hdf5_write(group_id, duuid, GLOBAL_UUID)
+                call hdf5_write(group_id, duuid, GLOBAL_META%uuid)
 
                 call date_and_time(values=date_time)
                 ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
