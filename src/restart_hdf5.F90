@@ -389,6 +389,7 @@ module restart_hdf5
             type(c_ptr) :: ptr
             integer :: ierr
             real(p), target :: tmp(1)
+            logical :: exists
 
             integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
 
@@ -397,6 +398,9 @@ module restart_hdf5
             call h5open_f(ierr)
             call init_restart_hdf5(ri, .false., restart_file, kinds)
             call h5fopen_f(restart_file, H5F_ACC_RDONLY_F, file_id, ierr)
+            if (ierr/=0) then
+               call stop_all('read_restart_hdf5', "Unable to open restart file.")
+            endif
 
             ! --- metadata group ---
             call h5gopen_f(file_id, gmetadata, group_id, ierr)
@@ -477,7 +481,8 @@ module restart_hdf5
 
                 end if
 
-                call hdf5_read(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
+                call h5lexists_f(subgroup_id, dproc_map, exists, ierr)
+                if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
 
                 call h5gclose_f(subgroup_id, ierr)
 
