@@ -29,7 +29,7 @@ type spawn_t
     ! sdata(flag_indx,i) is the element containing flags (ie additional info)
     ! for the i-th element.
     integer :: flag_indx
-    ! Total number of elements in each spawned object/element (ie len(sdata(:,1)).
+    ! Total number of elements in each spawned object/element (ie len(sdata(:,1))).
     integer :: element_len
     ! The minimum allowed population of a spawning event. Any events with
     ! with populations below this threshold should be stochastically rounded
@@ -38,19 +38,37 @@ type spawn_t
     ! 2^(real_bit_shift) and rounded up to nearest integer, and then stored in
     ! this format.
     integer(int_p) :: cutoff
-    ! Not actually allocated but actually points to an internal store for
-    ! efficient communication.
-    integer(int_s), pointer :: sdata(:,:)
-    ! When creating spawned particles, a particle residing on one processor can
-    ! create a particle which needs to reside on any other processor.  To make
-    ! the communication easy, we assign different sections of sdata to particles
-    ! which should be sent to a given processor.  For thread-safety without
-    ! requiring critical/atomic blocks, we assign different indices (using
-    ! modulo arithmetic) of each block to a given thread of the processor
-    ! producing the child particles.  This is merely for convenience.
-    ! NOTE: this assumes that each thread will produce a roughly equal number of
+
+    ! sdata holds the spawned particles and associated information.
+    ! The structure of sdata is:
+    !   sdata(1:bit_str_len,i)
+    !       the bit string of the location (ie determinant) of the i-th spawned particle(s).
+    !   sdata(bit_str_len+j,i), 1<=j<=ntypes
+    !       population of a particle of type j on the location above.
+    !   sdata(flag_indx,i)
+    !       any flags (by setting bits) associated with the spawned particles.
+    ! element_len = bit_str_len + ntypes + 1.
+
+    ! With MPI parallelisation, a particle on one processor can create a spawned
+    ! particle on any other processor.  To make communication simple, we assign
+    ! the first block_size entries to particles being sent to processor 0, the next
+    ! block_size entries to those being sent to processor 1 and so on.
+
+    ! OpenMP parallelisation complicates matters slightly as we wish to avoid
+    ! critical/atomic blocks when spawning.  sdata is therefore an *interleaved* array.
+    ! If sdata(:,i) is created by thread 0, then sdata(:,i+1) is created by thread 1,
+    ! sdata(:,i+2) by thread 2, ..., sdata(:,i+nthreads-1) by thread nthreads-1 and
+    ! sdata(:,i+nthreads) by thread 0 again.  The location to use in sdata is controlled
+    ! by head.
+
+    ! NOTE: the above assumes that each thread will produce a roughly equal number of
     ! spawned particles and each processor will be sent a roughly equal number
-    ! of spawned particles.
+    ! of spawned particles from a given processor.
+
+    ! Note sdata is actually allocated but actually points to an internal store (store1 or
+    ! store2) for efficient communication and simpler code.
+    integer(int_s), pointer :: sdata(:,:) ! (element_len,array_len)
+
     ! block_size is the size of each block of sdata (in terms of the outer-most index)
     ! which is associated with a single processor.
     integer :: block_size
@@ -64,7 +82,7 @@ type spawn_t
     ! (Note:
     !       1) the first thing the particle creation routines do is add nthread to
     !          the appropriate element of head to find the next empty slot to spawn
-    !          into.)
+    !          into.
     !       2) head_start(nthreads-1,i) gives the index before the first element of
     !          a particle to be sent to processor i.
     ! )
@@ -83,7 +101,14 @@ type spawn_t
     ! Time spent doing MPI communication.
     real(dp) :: comm_time = 0.0_dp
     ! Private storage arrays for communication.
-    integer(int_s), pointer, private :: sdata_recvd(:,:)
+    ! Array for receiving spawned particles from other processes (like sdata points to
+    ! store1/store2).
+    integer(int_s), pointer, private :: sdata_recvd(:,:) ! (element_len,array_len)
+    ! Memory stores for spawned particles.
+    ! In order to avoid an additional copy, we receive the spawned particles from sdata
+    ! to sdata_recvd and then point sdata to the memory previously associated with
+    ! sdata_recvd and vice versa.  This allows for the spawning and annihilation
+    ! procedures to be identical with and without MPI parallelisation.
     integer(int_s), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
 end type spawn_t
 
