@@ -660,7 +660,7 @@ contains
         use determinants, only: decode_det, alloc_det_info_t, det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation
         use fciqmc_data, only: real_factor, metropolis_attempts, reuse_initial_config
-        use fciqmc_data, only: f0, qmc_spawn, sampling_size, initial_config
+        use fciqmc_data, only: f0, qmc_spawn, sampling_size, initial_config, grand_canonical_ensemble
         use parallel, only: nprocs, nthreads, parent
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
         use utils, only: int_fmt
@@ -690,10 +690,19 @@ contains
 
         call alloc_det_info_t(sys, cdet, .false.)
 
-        ! Set up the initial distribution of psips which we'll perform
-        ! metropolis on.
-        call initial_metropolis_config(sys, npsips, sym, beta_cycle, ireplica, rng, qmc_spawn)
+        if (grand_canonical_ensemble) then
+            call init_grand_canonical_ensemble(sys, sym, npsips, qmc_spawn, rng)
+        else
+            ! Set up the initial distribution of psips which we'll perform
+            ! metropolis on.
+            call initial_metropolis_config(sys, npsips, sym, beta_cycle, ireplica, rng, qmc_spawn)
+        end if
 
+        do proc = 0, nprocs - 1
+            do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
+                print*, idet, trial_dm_ptr(sys, qmc_spawn%sdata(:sys%basis%string_len,idet))
+            end do
+        end do
         cdet%f => ftmp
         ! Visit every walker metropolis_attempts times.
         do iattempt = 1, metropolis_attempts
@@ -847,6 +856,104 @@ contains
         end if
 
     end subroutine initial_metropolis_config
+
+    subroutine init_grand_canonical_ensemble(sys, sym, npsips, spawn, rng)
+
+        ! Initially distribute psips according to the grand canonical
+        ! distribution function. The level probabilities won't, in general, be
+        ! the same as those of the canonical ensemble, but the distribution
+        ! should serve as a good starting point for the metropolis algorithm.
+
+        ! In:
+        !    sys: system being studied.
+        !    sym: symmetry sector under consideration.
+        ! In/Out:
+        !    spawn: spawned list.
+        !    rng: random number generator.
+
+        use system, only: sys_t
+        use spawn_data, only: spawn_t
+        use fciqmc_data, only: chem_pot, init_beta, real_factor
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use determinants, only: encode_det
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: sym
+        integer(int_64), intent(in) :: npsips
+        type(spawn_t), intent(inout) :: spawn
+        type(dSFMT_t), intent(inout) :: rng
+
+        real(p) :: p_single(sys%basis%nbasis/2), box_length(sys%basis%nbasis/2)
+        real(p) :: r
+        integer, allocatable :: selected_orbs(:)
+        integer :: tmp_orbs(sys%basis%nbasis/2)
+        integer :: iorb, ipsip, iel, iattempt, iaccept, tmp, a, a_pos, orbs_selected, isel
+        integer(i0) :: f(sys%basis%string_len)
+        integer :: ireplica
+
+        ireplica = 1
+
+        allocate(selected_orbs(sys%nel))
+        selected_orbs = 0
+        ! Calculate single orbital occupancies.
+        ! [todo] - spin polarisation correctly.
+        forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
+                                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-chem_pot)))
+
+        ! [todo] - spin polarisation ..
+        p_single = p_single / sys%nel
+        ! Subdivide the interval [0,1] into nbasis/2 boxes whose width is equal
+        ! to 1/N p_single(i).
+        box_length(1) = p_single(1)
+        do iorb = 2, sys%basis%nbasis/2
+            box_length(iorb) = box_length(iorb-1) + p_single(iorb)
+        end do
+
+        print *, p_single
+        print *, box_length
+        ! Distribute psips along the diagonal of the density matrix.
+        iattempt = 0
+        tmp_orbs = 0
+
+        ! Occupy the diagonal.
+        do ipsip = 1, npsips
+            ! Create a determinant.
+            !print *, ipsip
+            selected_orbs = 0
+            isel = 0
+            do
+                ! Select and orbital to occupy uniformly
+                iorb = int(get_rand_close_open(rng)*sys%basis%nbasis/2) + 1
+                ! print *, iorb
+                if (any(selected_orbs == iorb)) then
+                    ! Already occopied so discard.
+                    ! [todo] - fix this
+                    selected_orbs = 0
+                    isel = 0
+                    cycle
+                else
+                    ! Accept with probabilty given by single particle occupancy.
+                    r = get_rand_close_open(rng)
+                    if (box_length(iorb) > r) then
+                        selected_orbs(isel+1) = iorb
+                        isel = isel + 1
+                    else
+                        ! Reject.
+                        cycle
+                    end if
+                end if
+                if (isel == sys%nel) then
+                    !print *, selected_orbs
+                    call encode_det(sys%basis, selected_orbs, f)
+                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                                                                    sys%basis%tensor_label_len, real_factor, ireplica)
+                    exit
+                end if
+            end do
+            !call insert_sort(selected)
+        end do
+
+    end subroutine init_grand_canonical_ensemble
 
     subroutine set_level_probabilities(sys, ptrunc_level, ilevel)
 

@@ -605,6 +605,10 @@ logical :: reuse_initial_config = .false.
 ! Use the free electron Hamiltonian as the trial density matrix.
 ! Default: Use the "Hartree-Fock" trial density matrix.
 logical :: free_electron_trial = .false.
+! Use the grand canonical partition function to inititally distribute the psips.
+logical :: grand_canonical_ensemble = .false.
+! Chemical potential.
+real(p) :: chem_pot
 
 !--- Calculation modes ---
 

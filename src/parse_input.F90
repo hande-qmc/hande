@@ -221,6 +221,10 @@ contains
                 reuse_initial_config = .true.
             case('FREE_ELECTRON_TRIAL')
                 free_electron_trial = .true.
+            case('CHEM_POT')
+                call readf(chem_pot)
+            case('GRAND_CANONICAL_ENSEMBLE')
+                grand_canonical_ensemble = .true.
 
             case('CCMC_FULL_NC')
                 ccmc_full_nc = .true.
@@ -867,6 +871,8 @@ contains
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(grand_canonical_ensemble, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.
         if (parent) option_set = allocated(dmqmc_sampling_probs)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
