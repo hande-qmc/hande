@@ -25,7 +25,7 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.pngmath', 'sphinx.ext.ifconfig']
+extensions = ['sphinx.ext.mathjax', 'sphinx.ext.ifconfig']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
@@ -88,10 +88,13 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
-# -- pngmath configuration -----------------------------------------------------
+# -- mathjax configuration -----------------------------------------------------
 
-pngmath_use_preview = True
-
+# Use a local copy of mathjax if we can find one...
+if 'MATHJAX_PATH' in os.environ:
+    mathjax_path = os.environ['MATHJAX_PATH']
+elif os.path.exists('../MathJax'):
+    mathjax_path = os.path.join(os.path.abspath('..'), 'MathJax')
 
 # -- Options for HTML output ---------------------------------------------------
 
