@@ -42,8 +42,7 @@ master_doc = 'index'
 # General information about the project.
 project = u'HANDE QMC'
 
-# [todo] - AJWT: This copyright notice needs changing
-copyright = u'2014, James Spencer'
+copyright = u'2014, HANDE developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -188,7 +187,7 @@ htmlhelp_basename = 'handedoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'hande.tex', u'HANDE Documentation',
-   u'James Spencer', 'manual'),
+   u'HANDE developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -221,5 +220,5 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'hande', u'HANDE Documentation',
-     [u'James Spencer'], 1)
+     [u'HANDE developers'], 1)
 ]
