@@ -58,7 +58,7 @@ opt_block: :class:`pandas.DataFrame`
         # python 2.6..
         float_fmt = '{0:-.8e}'.format
 
-    info = pyhande.lazy.std_analysis(files, start_iteration)
+    info = pyhande.lazy.std_analysis(files, start_iteration, extract_psips=True)
 
     if verbose >= 2:
 
