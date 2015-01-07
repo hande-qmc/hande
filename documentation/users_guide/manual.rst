@@ -819,7 +819,7 @@ of the determinant is currently hard-coded.
 **symmetry** *isym*
     Integer.
     
-    This does not apply to the Heisenberg model
+    This does not apply to the Heisenberg model.
 
     For the momentum space formulation:  Diagonalise only blocks
     containing determinants of the same symmetry as the specified symmetry
@@ -829,19 +829,18 @@ of the determinant is currently hard-coded.
     wavevector is always given by *isym*:math:`=1` if *t* is positive and by
     the number of sites in the cell if *t* is negative.
 
-    For point group symmetries in molecular systems:
-        This specifies the symmetry of the wavefunction, and is zero-based,
-    with 0 being the totally symmetric irrep.  The other symmetries correspond
-    to those from the FCIDUMP (after subtracting 1 from the index).
+    For point group symmetries in molecular systems: This specifies the symmetry of the
+    wavefunction, and is zero-based, with 0 being the totally symmetric irrep.  The other
+    symmetries correspond to those from the FCIDUMP (after subtracting 1 from the index).
 
     If the FCIDUMP contains Lz symmetry, this is also used, but cannot currently
     be specified, so the Lz=0 sector is chosen by default.
 **sym** *isym*
     Synonym for **symmetry**.
-
 **lz**
     Specify if Lz symmetry is to be used.  Currently can only look at the Lz=0 block.
     For more information see the **Lz Symmetry** section.
+
 Calculation options: diagonalisation options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1298,12 +1297,6 @@ Calculation options: CCMC options
     in the cluster operator. Using this option can give substantial reductions in the 
     plateau height.
 
-.. [review] - AJWT: Perhaps refer to some in-/ex-ternal documentation (which probably doesn't exist)
-.. [review] - AJWT: about the meaning of substantial         
-.. [review] - JSS: some comparison with the original algorithm (where the expansion
-.. [review] - JSS: does not terminate) would be welcome, especially as this must get substantially
-.. [review] - JSS: more efficient as truncation level increases.
-    
 Calculation options: DMQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
