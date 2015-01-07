@@ -25,7 +25,7 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.pngmath', 'sphinx.ext.ifconfig','breathe']
+extensions = ['sphinx.ext.mathjax', 'sphinx.ext.ifconfig']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
@@ -42,8 +42,7 @@ master_doc = 'index'
 # General information about the project.
 project = u'HANDE QMC'
 
-# [todo] - AJWT: This copyright notice needs changing
-copyright = u'2014, James Spencer'
+copyright = u'2014, HANDE developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -88,14 +87,13 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
-# -- pngmath configuration -----------------------------------------------------
+# -- mathjax configuration -----------------------------------------------------
 
-pngmath_use_preview = True
-
-# -- breathe configuration -----------------------------------------------------
-
-breathe_projects = { 'HANDE QMC': 'developers_guide/xml' }
-breathe_default_project = 'HANDE QMC'
+# Use a local copy of mathjax if we can find one...
+if 'MATHJAX_PATH' in os.environ:
+    mathjax_path = os.environ['MATHJAX_PATH']
+elif os.path.exists('../MathJax'):
+    mathjax_path = os.path.join(os.path.abspath('..'), 'MathJax')
 
 # -- Options for HTML output ---------------------------------------------------
 
@@ -189,7 +187,7 @@ htmlhelp_basename = 'handedoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'hande.tex', u'HANDE Documentation',
-   u'James Spencer', 'manual'),
+   u'HANDE developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -222,5 +220,5 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'hande', u'HANDE Documentation',
-     [u'James Spencer'], 1)
+     [u'HANDE developers'], 1)
 ]

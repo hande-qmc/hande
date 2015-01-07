@@ -1,12 +1,33 @@
 HANDE QMC: High Accuracy N-DEterminant Quantum Monte Carlo.
 ===========================================================
 
-User-level documentation detailing the HANDE program is in the documentation/users_guide directory, written in reStructuredText (http://docutils.sourceforge.net/rst.html) and can be compiled in HTML/PDF/etc using sphinx (http://sphinx.pocoo.org).  
-Developer-level documentation extracted from directly from the code is also included.
+User-level documentation detailing the HANDE program is in the `documentation/users_guide`
+directory, written in reStructuredText (http://docutils.sourceforge.net/rst.html) and can
+be compiled into HTML/LaTeX/PDF/etc using sphinx (http://sphinx.pocoo.org).
 
-A makefile (documentation/Makefile) is provided for running sphinx on the documentation source files; the output is placed in documentation/build.  
-The prerequisites for building the documentation are: sphinx, LaTeX, dvipng.
-Built documentation is placed in the appropriate subdirectory of documentation/build.
+A makefile (`documentation/Makefile`) is provided for running sphinx on the documentation
+source files; the output is placed in the appropriate subdirectory of `documentation/build`
+(e.g. `documentation/build/html` for the HTML version).  Run
 
-Documentation detailing the theory behind the program as well as current and potential future research directions is contained in the documentation/theory directory.
+    make help
+
+to see the full list of available formats sphinx can produce.  Of course, the
+reStructuredText is very readable in its own right.
+
+Documentation detailing the theory behind the program as well as current and potential
+future research directions is contained in the documentation/theory directory.
 Theory documentation is written in LaTeX.
+
+NOTE:
+
+The HTML documentation uses MathJax (http://www.mathjax.org) to display maths.  By default
+we use the javascript files from the MathJax CDN, which requires a working network connection.
+If you wish to have the HTML documentation available offline
+
+    git clone https://github.com/mathjax/MathJax
+    make clean html
+
+The location of MathJax can be customised by altering the `mathjax_path` variable in the
+sphinx config file (`documentation/.sphinx/conf.py`) or by setting the MATHJAX_PATH
+environment variable.  MathJax is not included by default as it and the necessary fonts
+are rather large.
