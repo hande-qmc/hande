@@ -268,14 +268,15 @@ contains
         ! Initialise calculation defaults which cannot be set at compile-time.
 
         ! In:
-        !    git_sha1: git SHA1 hash of the calculation.
+        !    git_sha1: git SHA1 hash of the calculation.  Note that only the first 40
+        !       characters (the length of the SHA1 hash) are actually used.
         !    uuid: UUID of the calculation.
 
         use iso_c_binding, only: c_loc, c_ptr, c_char, c_int
         use hashing, only: MurmurHash2
         use utils, only: fstring_to_carray
 
-        character(40), intent(in) :: git_sha1
+        character(*), intent(in) :: git_sha1
         character(36), intent(in) :: uuid
         character(len=len(uuid)+10) :: seed_data
         character(kind=c_char), target :: cseed_data(len(seed_data)+1)

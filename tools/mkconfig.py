@@ -145,7 +145,7 @@ VCS_VERSION = $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 
 # Test to see if the working directory contains changes.  Git only.  If the
 # working directory contains changes (or is not under version control) then
 # the _VCS_LOCAL_CHANGES flag is set.
-VCS_LOCAL_CHANGES = $(shell git diff --quiet --cached -- $(SRCDIRS) && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_VCS_LOCAL_CHANGES")
+VCS_LOCAL_CHANGES = $(shell git diff --quiet --cached -- $(SRCDIRS) 2> /dev/null && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_VCS_LOCAL_CHANGES")
 CPPFLAGS = $(VCS_LOCAL_CHANGES) -D_VCS_VERSION='${VCS_VERSION}' -D_CONFIG='"$(CONFIG).($(OPT))"'
 
 #-----
