@@ -191,7 +191,7 @@ module ccmc
 ! #. Excitations not linked to the cluster being spawned from can be rejected.
 !    See linked_excitation.
 ! #. Matrix elements used for spawning and death probabilities can have more than
-!    one term from the commutator contributing. See stochastic_ccmc_death and 
+!    one term from the commutator contributing. See stochastic_ccmc_death and
 !    unlinked_commutator.
 !
 ! Clusters
@@ -573,7 +573,7 @@ contains
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
-                        ! [todo] - optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_full_nc.
+                        ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_full_nc.
                         if (cluster(it)%excitation_level <= truncation_level .and. nc_death) then
                             if ((.not. linked_ccmc) .or. cluster(it)%nexcitors <= 2) then
                                 ! Clusters above size 2 can't die in linked ccmc.
@@ -793,7 +793,7 @@ contains
         real(p) :: rand, psize, cluster_population
         integer :: i, pos, prev_pos, excitor_sgn
         integer(int_p) :: pop(max_size)
-        logical :: hit, allowed, all_allowed, death
+        logical :: hit, allowed, all_allowed
 
         ! We shall accumulate the factors which comprise cluster%pselect as we go.
         !   cluster%pselect = n_sel p_size p_clust
@@ -903,6 +903,7 @@ contains
                     ! First excitor 'seeds' the cluster:
                     cdet%f = walker_dets(:,pos)
                     cdet%data => walker_data(:,pos) ! Only use if cluster is non-composite!
+                    cluster%population => walker_population(1,pos) ! Only use if cluster is non-composite
                     cluster_population = int(walker_population(1,pos))
                     ! Counter the additional *nprocs above.
                     cluster%pselect = cluster%pselect/nprocs
@@ -1146,6 +1147,7 @@ contains
         cdet%f = walker_dets(:,iexcip_pos)
         cdet%data => walker_data(:,iexcip_pos)
         cluster%excitors(1)%f => walker_dets(:,iexcip_pos)
+        cluster%population => walker_population(1,iexcip_pos)
         if (abs(walker_population(1,iexcip_pos)) <= initiator_population) cdet%initiator_flag = 1
         ! pclust = |population|/total_population, as just a single excitor in the cluster..
         cluster%pselect = (cluster%pselect*abs(walker_population(1,iexcip_pos)))/tot_excip_pop
@@ -1320,9 +1322,10 @@ contains
         ! In/Out:
         !    rng: random number generator.
 
+        use const, only: dp
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
-        use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn
+        use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn, nparticles
         use excitations, only: excit_t, get_excitation_level
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use spawning, only: create_spawned_particle_truncated
@@ -1332,11 +1335,11 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
-        type(cluster_t), intent(in) :: cluster
+        type(cluster_t), intent(inout) :: cluster
         type(dSFMT_t), intent(inout) :: rng
 
         real(p) :: pdeath, KiiAi
-        integer(int_p) :: nkill
+        integer(int_p) :: nkill, old_pop
         type(excit_t), parameter :: null_excit = excit_t( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         ! Spawning onto the same excitor so no change in sign due to
@@ -1394,17 +1397,30 @@ contains
             nkill = nkill + 1
         end if
 
-        ! The excitor might be a composite cluster so we'll just create
-        ! excips in the spawned list and allow the annihilation process to take
-        ! care of the rest.
-        ! Pass through a null excitation so that we create a spawned particle on
-        ! the current excitor.
         ! [todo] - optimisation: kill directly for clusters of size 0 and 1 (taking care with threading!)
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
 !            cdet%initiator_flag=0  !All death is allowed
-            call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nkill, 1, qmc_spawn)
+            if (ccmc_full_nc .and. cluster%nexcitors == 1) then
+                ! Need to fix for OpenMP and do direct death for the reference
+                ! Kill directly for single excips
+                ! This only works in the full non composite algorithm as otherwise the
+                ! population on an excip can still be needed if it as selected as (prt of)
+                ! another cluster. It is also necessary that death is not done until after
+                ! all spawning attempts from the excip
+                old_pop = cluster%population
+                cluster%population = cluster%population + nkill
+                ! Also need to update total population
+                nparticles = nparticles + real(abs(cluster%population)-abs(old_pop),dp)
+            else
+                ! The excitor might be a composite cluster so we'll just create
+                ! excips in the spawned list and allow the annihilation process to take
+                ! care of the rest.
+                ! Pass through a null excitation so that we create a spawned particle on
+                ! the current excitor.
+                call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nkill, 1, qmc_spawn)
+            end if
         end if
 
     end subroutine stochastic_ccmc_death
@@ -1898,8 +1914,8 @@ contains
         integer(int_p), parameter :: parent_sign = 1_int_p
         integer :: excitor_sign, excitor_level
 
-        integer :: ierr, i, j, npartitions, orb, bit_pos, bit_element
-        real(p) :: ppart, pgen, hmatel, pop, delta_h, cluster_population
+        integer :: i, j, npartitions, orb, bit_pos, bit_element
+        real(p) :: ppart, pgen, hmatel, pop, delta_h
         logical :: allowed, sign_change, linked, single_unlinked
         integer(i0) :: new_det(sys%basis%string_len)
         integer(i0) :: excitor(sys%basis%string_len)
@@ -2053,7 +2069,7 @@ contains
         logical, intent(out) :: allowed, sign_change
         integer, intent(in), optional :: part_number
 
-        integer :: i, j, in_left, in_right, side
+        integer :: i, in_left, in_right, side
         real(p) :: rand, population
 
         in_left = 0
