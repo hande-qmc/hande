@@ -316,7 +316,7 @@ real(dp), allocatable :: weight_altering_factors(:)
 ! are output so that they can be used when doing importance sampling
 ! for DMQMC, so that each level will have roughly equal numbers of psips.
 ! The resulting new weights are used in the next beta loop.
-logical :: dmqmc_find_weights
+logical :: dmqmc_find_weights = .false.
 
 ! If half_density_matrix is true then half the density matrix will be 
 ! calculated by reflecting spawning onto the lower triangle into the
