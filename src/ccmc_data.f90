@@ -1,6 +1,6 @@
 module ccmc_data
 
-use const, only: i0, p, int_p
+use const, only: i0, p
 
 implicit none
 
@@ -27,8 +27,6 @@ type cluster_t
     integer :: cluster_to_det_sign
     ! probability of selecting this cluster at random
     real(p) :: pselect
-    ! pointer to population if cluster is not composite (for direct death)
-    integer(int_p), pointer :: population => null()
 end type cluster_t
 
 end module ccmc_data

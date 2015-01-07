@@ -500,7 +500,7 @@ contains
                         ! each processor and hence scale the selection
                         ! probability by nprocs.  See comments in select_cluster
                         ! for more details.
-                        call create_null_cluster(real(nprocs*D0_normalisation,p),D0_normalisation,D0_pos,cdet(it),cluster(it))
+                        call create_null_cluster(real(nprocs*D0_normalisation,p), D0_normalisation, cdet(it), cluster(it))
                         ! In non-composite algorithm, only attempt death once, and only on one
                         ! processor
                         nc_death = (iattempt == nstochastic_clusters+D0_normalisation .and. iproc == D0_proc)
@@ -577,7 +577,13 @@ contains
                         if (cluster(it)%excitation_level <= truncation_level .and. nc_death) then
                             if ((.not. linked_ccmc) .or. cluster(it)%nexcitors <= 2) then
                                 ! Clusters above size 2 can't die in linked ccmc.
-                                call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it), ndeath)
+                                if (cluster(it)%nexcitors == 0) then
+                                    call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it), &
+                                            walker_population(1,D0_pos), nparticles(1), ndeath)
+                                else
+                                    call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it), &
+                                            walker_population(1,iexcip_pos), nparticles(1), ndeath)
+                                end if
                             end if
                         end if
 
@@ -869,7 +875,7 @@ contains
 
         select case(cluster%nexcitors)
         case(0)
-            call create_null_cluster(cluster%pselect, normalisation, -1, cdet, cluster)
+            call create_null_cluster(cluster%pselect, normalisation, cdet, cluster)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -903,7 +909,6 @@ contains
                     ! First excitor 'seeds' the cluster:
                     cdet%f = walker_dets(:,pos)
                     cdet%data => walker_data(:,pos) ! Only use if cluster is non-composite!
-                    cluster%population => walker_population(1,pos) ! Only use if cluster is non-composite
                     cluster_population = int(walker_population(1,pos))
                     ! Counter the additional *nprocs above.
                     cluster%pselect = cluster%pselect/nprocs
@@ -968,7 +973,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine create_null_cluster(prob, D0_normalisation, D0_pos, cdet, cluster)
+    subroutine create_null_cluster(prob, D0_normalisation, cdet, cluster)
 
         ! Create a cluster with no excitors in it, and set it to have
         ! probability of generation prob.
@@ -977,7 +982,6 @@ contains
         !    prob: The probability we set in it of having been generated
         !    D0_normalisation:  The number of excips at the reference (which
         !        will become the amplitude of this cluster)
-        !    D0_pos: The position of D0 in the walker list
 
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
@@ -994,13 +998,12 @@ contains
 
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-        use fciqmc_data, only: f0, initiator_population, walker_population
+        use fciqmc_data, only: f0, initiator_population
 
         integer, intent(in) :: D0_normalisation
         type(cluster_t), intent(inout) :: cluster
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: prob
-        integer, intent(in) :: D0_pos
 
         ! Note only one null cluster to choose => p_clust = 1.
         cluster%pselect = prob
@@ -1026,8 +1029,6 @@ contains
              ! Let the user be an idiot if they want to be...
              cdet%initiator_flag = 1
         end if
-
-        if (D0_pos /= -1) cluster%population => walker_population(1,D0_pos)
 
     end subroutine create_null_cluster
 
@@ -1151,7 +1152,6 @@ contains
         cdet%f = walker_dets(:,iexcip_pos)
         cdet%data => walker_data(:,iexcip_pos)
         cluster%excitors(1)%f => walker_dets(:,iexcip_pos)
-        cluster%population => walker_population(1,iexcip_pos)
         if (abs(walker_population(1,iexcip_pos)) <= initiator_population) cdet%initiator_flag = 1
         ! pclust = |population|/total_population, as just a single excitor in the cluster..
         cluster%pselect = (cluster%pselect*abs(walker_population(1,iexcip_pos)))/tot_excip_pop
@@ -1297,7 +1297,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, sys, cdet, cluster, ndeath)
+    subroutine stochastic_ccmc_death(rng, sys, cdet, cluster, population, tot_population, ndeath)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1320,17 +1320,16 @@ contains
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.
-        !    amplitude: amplitude of cluster.
-        !    pcluster: Overall probabilites of selecting this cluster, ie
-        !        n_sel.p_s.p_clust.
         ! In/Out:
         !    rng: random number generator.
         !    ndeath: running total of number of particles died
+        !    population: If a non-composite cluster, the population on it
+        !    tot_population: total number of particles
 
         use const, only: dp
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
-        use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn, nparticles
+        use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn
         use excitations, only: excit_t, get_excitation_level
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use spawning, only: create_spawned_particle_truncated
@@ -1342,7 +1341,8 @@ contains
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(inout) :: cluster
         type(dSFMT_t), intent(inout) :: rng
-        integer(int_p), intent(inout) :: ndeath
+        integer(int_p), intent(inout) :: population, ndeath
+        real(dp), intent(inout) :: tot_population
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill, old_pop
@@ -1414,10 +1414,10 @@ contains
                 ! population on an excip can still be needed if it as selected as (part of)
                 ! another cluster. It is also necessary that death is not done until after
                 ! all spawning attempts from the excip
-                old_pop = cluster%population
-                cluster%population = cluster%population + nkill
+                old_pop = population
+                population = population + nkill
                 ! Also need to update total population
-                nparticles = nparticles + real(abs(cluster%population)-abs(old_pop),dp)
+                tot_population = tot_population + real(abs(population)-abs(old_pop),dp)
                 ndeath = ndeath + abs(nkill)
             else
                 ! The excitor might be a composite cluster so we'll just create
