@@ -25,7 +25,7 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.pngmath', 'sphinx.ext.ifconfig','breathe']
+extensions = ['sphinx.ext.pngmath', 'sphinx.ext.ifconfig']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
@@ -92,10 +92,6 @@ pygments_style = 'sphinx'
 
 pngmath_use_preview = True
 
-# -- breathe configuration -----------------------------------------------------
-
-breathe_projects = { 'HANDE QMC': 'developers_guide/xml' }
-breathe_default_project = 'HANDE QMC'
 
 # -- Options for HTML output ---------------------------------------------------
 
