@@ -286,6 +286,11 @@ contains
 
         if (write_determ .and. parent) call write_determ_to_file(determ, print_info)
 
+        ! Wait for all processes to finish initialisation before we tell
+        ! the user that we are done.
+#ifdef PARALLEL
+            call mpi_barrier(MPI_COMM_WORLD, ierr)
+#endif
         if (print_info) write(6,'(1X,a42)') '# Semi-stochastic initialisation complete.'
 
     end subroutine init_semi_stoch_t
@@ -490,6 +495,9 @@ contains
 
                 ! Allocate the CSR type components and print information.
                 if (imode == 1) then
+#ifdef PARALLEL
+                    call mpi_barrier(MPI_COMM_WORLD, ierr)
+#endif
                     call cpu_time(t2)
                     if (print_info) then 
                         write(6,'(1X,a41,1X,f10.2,a1)') '# Time taken to generate the Hamiltonian:', t2-t1, "s"
