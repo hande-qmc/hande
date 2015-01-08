@@ -235,12 +235,16 @@ contains
 
 !--- Helper procedures ---
 
-    subroutine annihilate_wrapper_spawn_t_single(spawn, tinitiator)
+    subroutine annihilate_wrapper_spawn_t_single(spawn, tinitiator, determ_size)
 
         ! Helper procedure for performing annihilation within a spawn_t object.
 
         ! In:
         !    tinitiator: true if the initiator approximation is being used.
+        !    determ_size (optional): The size of the deterministic space in
+        !       use, on this process. If input then the deterministic states
+        !       received from the various processes will be combined in a
+        !       separate call to compress_determ_repeats.
         ! In/Out:
         !    spawn: spawn_t object containing spawned particles.  On output, the
         !        spawned particles are sent to the processor which 'owns' the
@@ -248,21 +252,30 @@ contains
         !        internally, so each determinant appears (at most) once in the
         !        spawn%sdata array.
 
+
         use parallel, only: nthreads, nprocs
         use sort, only: qsort
 
         type(spawn_t), intent(inout) :: spawn
         logical, intent(in) :: tinitiator
+        integer, intent(in), optional :: determ_size
 
+        integer :: nstates_received(0:nprocs-1)
         integer, parameter :: thread_id = 0
 
         ! Compress the successful spawning events from each thread so the
         ! spawned list being sent to each processor contains no gaps.
         if (nthreads > 1) call compress_threaded_spawn_t(spawn)
 
-        ! Send spawned walkers to the processor which "owns" them and receive
-        ! the walkers "owned" by this processor.
-        if (nprocs > 1) call comm_spawn_t(spawn)
+        if (nprocs > 1) then
+            ! Send spawned walkers to the processor which "owns" them and
+            ! receive the walkers "owned" by this processor.
+            call comm_spawn_t(spawn, nstates_received)
+
+            ! Compress the repeats of the various deterministic states, each of
+            ! which is received once from each process.
+            if (present(determ_size)) call compress_determ_repeats(spawn, nstates_received, determ_size)
+        end if
 
         if (spawn%head(thread_id,0) > 0) then
 
@@ -480,7 +493,7 @@ contains
 
     end subroutine compress_threaded_spawn_t
 
-    subroutine comm_spawn_t(spawn)
+    subroutine comm_spawn_t(spawn, nstates_received)
 
         ! Send spawned particles to the pre-designated processor which hosts the
         ! determinant upon which the particle has been spawned.
@@ -498,12 +511,16 @@ contains
         !       processor and spawn%head(0,0) contains the number of such
         !       spawned objects (all other elements of spawn%head are
         !       meaningless).
+        ! Out:
+        !    nstates_received: Array holding the number of spawned states
+        !       received from each process.
 
 #ifdef PARALLEL
 
         use parallel
 
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(out) :: nstates_received(0:nprocs-1)
 
         integer :: send_counts(0:nprocs-1), send_displacements(0:nprocs-1)
         integer :: receive_counts(0:nprocs-1), receive_displacements(0:nprocs-1)
@@ -538,6 +555,8 @@ contains
         end forall
 
         call MPI_AlltoAll(send_counts, 1, MPI_INTEGER, receive_counts, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+
+        nstates_received = receive_counts
 
         ! Want spawning data to be continuous after move, hence need to find the
         ! receive displacements.
@@ -576,6 +595,7 @@ contains
 
 #else
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(out) :: receive_counts(0:nprocs-1)
 #endif
 
     end subroutine comm_spawn_t
@@ -945,5 +965,85 @@ contains
         spawn%head(thread_id,0) = islot
 
     end subroutine annihilate_spawn_t_initiator
+
+    subroutine compress_determ_repeats(spawn, nstates_received, determ_size)
+
+        ! In/Out:
+        !    spawn: spawn_t object containing spawned particles.  On output,
+        !        this is compressed so that each deterministic state appears in
+        !        the spawned list only once.
+        ! In:
+        !    nstates_received: Array holding the number of spawned states
+        !       received from each process.
+        !    determ_size: The number of deterministic states belonging to this
+        !       process.
+
+#ifdef PARALLEL
+
+        use parallel, only: nprocs
+
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: nstates_received(0:nprocs-1)
+        integer, intent(in) :: determ_size
+
+        integer :: i, j, displacement, ierr
+        integer :: min_ind_0, max_ind_0, min_ind_i, max_ind_i
+        integer :: nstates_left(0:nprocs-1)
+        integer, parameter :: thread_id = 0
+
+        ! The minimum and maximum indices of deterministic states received from
+        ! process 0 in the spawned list.
+        min_ind_0 = nstates_received(0) - determ_size + 1
+        max_ind_0 = nstates_received(0)
+
+        do i = 1, nprocs-1
+            displacement = sum(nstates_received(0:i-1))
+            ! The minimum and maximum indices of deterministic states received
+            ! from process i in the spawned list.
+            min_ind_i = displacement + nstates_received(i) - determ_size + 1
+            max_ind_i = displacement + nstates_received(i)
+            associate(bsl => spawn%bit_str_len)
+                ! Add the deterministic spawned amplitudes from process i to
+                ! those on process 0, to combine them.
+                ! The sign of the spawned state is held indices from bsl+1 to
+                ! bsl+spawn%ntypes.
+                spawn%sdata(bsl+1:bsl+spawn%ntypes, min_ind_0:max_ind_0) = &
+                    spawn%sdata(bsl+1:bsl+spawn%ntypes, min_ind_0:max_ind_0) + &
+                    spawn%sdata(bsl+1:bsl+spawn%ntypes, min_ind_i:max_ind_i)
+            end associate
+        end do
+
+        ! The number of states left in the spawning array, for each process'
+        ! section. Process 0 still holds all its states, whilst all other
+        ! processes no longer hold a determinstic state.
+        nstates_left(0) = nstates_received(0)
+        nstates_left(1:nprocs-1) = nstates_received(1:nprocs-1) - determ_size
+
+        ! Now shuffle all non-deterministic states down to fill the gaps.
+        ! No need to the move the states from the process numbers 0 and 1.
+        do i = 2, nprocs-1
+            ! The minimum and maximum indices to move the states to.
+            displacement = sum(nstates_left(0:i-1))
+            min_ind_0 = displacement + 1
+            max_ind_0 = displacement + nstates_left(i)
+            ! The minimum and maximum indices to move the states from.
+            displacement = sum(nstates_received(0:i-1))
+            min_ind_i = displacement + 1
+            max_ind_i = displacement + nstates_left(i)
+
+            ! Perform the shuffle.
+            spawn%sdata(:, min_ind_0:max_ind_0) = spawn%sdata(:, min_ind_i:max_ind_i)
+        end do
+
+        ! Update the number of states in the spawning list.
+        spawn%head(thread_id,0) = sum(nstates_left)
+
+#else
+        type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: nstates_received(0:nprocs-1)
+        integer, intent(in) :: determ_size
+#endif
+
+    end subroutine compress_determ_repeats
 
 end module spawn_data

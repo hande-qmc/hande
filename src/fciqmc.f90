@@ -203,7 +203,8 @@ contains
                                                                         tot_walkers, nparticles, qmc_spawn, par_info%load%needed)
                     if (semi_stochastic) then
                         call determ_projection(rng, qmc_spawn, determ)
-                        call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ%flags)
+                        call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, &
+                                                                 determ%sizes(iproc), determ%flags)
                     else
                         call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
                     end if
