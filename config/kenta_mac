@@ -1,0 +1,22 @@
+[DEFAULT]
+include_f = -I /usr/local/include
+
+[main]
+fc = gfortran
+cc = gcc
+cxx = g++
+cppflags = -DDISABLE_LANCZOS
+ld = gfortran
+ldflags = -L ${HOME}/lib -L /usr/local/lib
+libs = -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -lz -luuid
+f90_module_flag = -J
+
+[opt]
+fflags = %(include_f)s -O3
+cflags = -O3
+cxxflags = -O3
+
+[dbg]
+fflags = %(include_f)s -g -fbounds-check -Wall -Wextra -fbacktrace
+cflags = -g -Wall -Wextra -fbacktrace
+cxxflags = -g -Wall -Wextra -fbacktrace
