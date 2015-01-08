@@ -494,13 +494,13 @@ These options select the type of system to use.
     on a lattice site.  Periodic boundary conditions are imposed through the
     kinetic 'hopping' term in the Hamiltonian.
 **heisenberg**
-    Run the Heisenberg model.
+    Perform calculation on the Heisenberg model.
     This is for a lattice of spin 1/2 particles with or without periodic
     boundary conditions imposed. The model definition in HANDE is
 
     .. math::
 
-        \hat{H} = -J \sum_{\langle i,j \rangle} \hat{\boldsymbol{S}}_i \cdot \hat{\boldsymbol{S}}_j
+        \hat{H} = -J \sum_{\langle i,j \rangle} \hat{\boldsymbol{S}}_i \cdot \hat{\boldsymbol{S}}_j.
 
     It is also possible to add a magnetic field term,
 
@@ -524,11 +524,6 @@ These options select the type of system to use.
     lattice vector is greater than 2 if periodic boundary conditions are used.
 **ueg**
     Perform calculation on the uniform electron gas.
-
-    .. note::
-
-        Currently only exact diagonalisation methods are implemented for the UEG.
-        QMC methods require excitation generators to be written.
 
 System
 ^^^^^^
@@ -564,7 +559,7 @@ These options describe the system which is to be investigated.
 
     .. math::
 
-        \hat{T} = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dag} a_{j\sigma}.
+        \hat{T} = -t \sum_{i,j,\sigma} a_{i\sigma}^{\dagger} a_{j\sigma}.
 
 **U** *U*
     Real.
@@ -1217,15 +1212,15 @@ The following options are valid for FCIQMC calculations.
 
     .. math::
 
-    	|psi> = \sum_{i} |D_i>
+    	|\psi \rangle = \sum_{i} |D_i \rangle
 
     hence the estimator used is
 
 
     .. math::
 
-        E_0 = \frac{ <\psi|H|\psi_0> }{ <\psi|\psi_0> }
-            = \frac{ \sum_{i,j} <D_i|H|D_j> c_j } { sum_{i} c_i }
+        E_0 = \frac{ \langle \psi|H|\psi_0 \rangle }{ \langle \psi|\psi_0 \rangle }
+            = \frac{ \sum_{i,j} \langle D_i|H|D_j \rangle c_j } { \sum_{i} c_i }
                   
     A unitary transformation will be applied to the Hamiltonian so that all the
     off-diagonal elements are multiplied by -1. This has the effect of making
@@ -1234,25 +1229,30 @@ The following options are valid for FCIQMC calculations.
     
     This can only be used for bipartite lattices.
 **neel_singlet_estimator**
-    For the Heisenberg model only. If this keyword is specified then instead of using a single
-    reference detereminant to calculate the projected energy, the Neel singlet state is used.
-    This is a state :math:`|NS> = \sum_{i} a_i * |D_i>` where the amplitudes a_i are defined in the
-    K. Runge, Phys. Rev. B 45, 7229 (1992).
-    For further details, see the comments in the subroutine update_proj_energy_heisenberg_neel_singlet
-    in heisenberg_estimator.F90.
+    For the Heisenberg model only. If this keyword is specified then instead of
+    using a single reference detereminant to calculate the projected energy,
+    the Neel singlet state is used. This is a state,
+    :math:`|NS \rangle = \sum_{i} a_i |D_i \rangle`, where the amplitudes
+    :math:`a_i` are defined in K. Runge, Phys. Rev. B 45, 7229 (1992). For
+    further details, see the comments in the subroutine
+    update_proj_energy_heisenberg_neel_singlet in heisenberg_estimator.F90.
     
     This can only be used for bipartite lattices.
 **neel_singlet_guiding**
-    For the Heisenberg model only. If this keyword is specified then the Neel singlet state is used
-    as a guiding state for importance sampling. This means that the the matrix elements of the
-    Hamiltonian, H_ij are replaced by new components
+    For the Heisenberg model only. If this keyword is specified then the Neel
+    singlet state is used as a guiding state for importance sampling. This
+    means that the the matrix elements of the Hamiltonian, :math:`H_{ij}`, are
+    replaced by new components
+
+    .. math::
     
-    H_ij^{new} = (a_i*H_ij)/a_j
+        H_{ij} \leftarrow (a_i H_{ij})/a_j
     
-    where a_i is a component of the Neel state, as specified above.
+    where :math:`a_i` is a component of the Neel state, as specified above.
     
-    When this guiding function is used, the Neel singlet must be used in the projected energy, so
-    the neel_singlet_estimator option is automatically applied.
+    When this guiding function is used, the Neel singlet must be used in the
+    projected energy, so the neel_singlet_estimator option is automatically
+    applied.
 
 Calculation options: CCMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1374,10 +1374,10 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 
     This option will allow a form of importance sampling to be applied to the DMQMC calculation.
 
-    The values of w_{01}...w_{n-1,n} will define weights which alter the spawning probabilities
+    The values of :math:`w_{01}, \ldots, w_{n-1,n}` will define weights which alter the spawning probabilities
     between the various excitation levels. When attempting to spawn from an excitation level
     i to a different excitation level j, the spawning probability will be altered by a factor
-    1/w_{ij}. Also, w_{ji} = 1/w_{ij}. This can be used to help keep psips near the diagonal elements
+    :math:`1/w_{ij}`. Also, :math:`w_{ji} = 1/w_{ij}`. This can be used to help keep psips near the diagonal elements
     and hence improve the quality of sampling when calculating estimators, which typically depend upon
     psips on the diagonal and first one or two excitation levels. This is particularly useful for larger
     lattices where typically no psips will reside on the diagonal elements when the ground state is
@@ -1388,15 +1388,15 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     improved quality of sampling.
 
     The value *number_weights* must equal the number of weights which have been specified.
-    The weights w_{01}-w_{n-1,n} should be input on the lines directly after **dmqmc_weighted_sampling**,
-    and can be input over as many lines as required.
+    The weights :math:`w_{01}, \ldots, w_{n-1,n}` should be input on the lines directly after
+    **dmqmc_weighted_sampling**, and can be input over as many lines as required.
 **dmqmc_vary_weights** *N*
     Integer.
 
     If this option is specified then the importance sampling procedure used with the
     dmqmc_weighted_sampling is applied with weights which are introduced gradually. The weights
-    w_{01}...w_{n-1,n} are altered, from 1 initially, by a factor of w^{1/N} at the end of each
-    Monte Carlo cycle, so that after N cycles the weights will have reached the values
+    :math:`w_{01}, \ldots, w_{n-1,n}` are altered, from 1 initially, by a factor of :math:`w^{1/N}` at
+    the end of each Monte Carlo cycle, so that after N cycles the weights will have reached the values
     specified. They are then held constant until the end of the beta loop, at which point they are
     reset to 1.
 
@@ -1609,7 +1609,7 @@ These options are valid when performing a folded spectrum calculation
     settle on a stochastic representation of the eigenstate(s) with energy
     closest to :math:`\varepsilon`.
 
-**P__** *P_*
+**P__** *P_{doub}*
     Real.
 
     Default: 0.05
@@ -1617,22 +1617,22 @@ These options are valid when performing a folded spectrum calculation
     Manually choose the split generation probabilities. Best to choose them such that 
     the ratio of: 
 
-    ,, math::
+    .. math::
 
-        \frac{*P__*}{*P_o*} = \frac{*P__*}{*Po_*} \approx frac{H_{off_diag}}{H_{on_diag}},
+        \frac{P_{doub}}{P_{sing1}} = \frac{P_{doub}}{P_{sing2}} \approx \frac{H_{off diag}}{H_{on diag}},
 
-    where :math:`H_{on(off)_diag}` are the rough magnitudes of the on(off)
+    where :math:`H_{on(off) diag}` are the rough magnitudes of the on(off)
     diagonal elements of the Hamiltonian. Code automatically renormalises the
     probabilities.
 
-**Po_** *Po_*
+**Po_** *P_{sing1}*
     Real.
 
     Default: 0.475
 
     See above.
 
-**P_o** *P_o*
+**P_o** *P_{sing2}*
     Real.
 
     Default: 0.475
