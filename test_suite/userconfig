@@ -6,7 +6,7 @@ extract_program = ../tools/tests/extract_test_data.py
 extract_args = --socket --
 ignore_fields = time R_spawn
 skip_program = grep
-skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support'
+skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support\|Restarting with a different (i0) bit string'
 
 [user]
 diff = vimdiff
