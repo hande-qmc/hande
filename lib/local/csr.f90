@@ -145,23 +145,29 @@ contains
 
     end subroutine csrpsymv
 
-    subroutine csrpgemv(spm, x, y)
+    subroutine csrpgemv(apply_transpose, spm, x, y)
 
         ! Calculate y = m*x, where m is a sparse matrix and x and y are dense
         ! vectors.
 
         ! In:
+        !   apply_transpose: If true then perform the matrix multiplication
+        !      using the transpose of the matrix stored in spm.
         !   spm: sparse matrix (real(p) in csr format. See module-level notes
-        !        about storage format.
-        !   x: dense vector.  Number of elements must be at least the number of
-        !      columns in spm.
+        !      about storage format.
+        !   x: dense vector.  If apply_transpose is false then the number of
+        !      elements must be at least the number of columns in spm, else it
+        !      must be at least the number of rows in spm.
         ! Out:
-        !   y: dense vector.  Holds m*x on exit..  Number of elements must be at
-        !      least the number of rows in spm, with all additional elements set to
-        !      0.
+        !   y: dense vector.  Holds m*x on exit. If apply_transpose if false
+        !      then the number of elements must be at least the number of rows
+        !      in spm, with all additional elements set to 0, else it must be
+        !      at least the number of columns in spm, with all additional
+        !      elements set to 0.
 
         use errors, only: stop_all
 
+        logical, intent(in) :: apply_transpose
         type(csrp_t), intent(in) :: spm
         real(p), intent(in) :: x(:)
         real(p), intent(out) :: y(:)
@@ -173,12 +179,22 @@ contains
         if (spm%symmetric) call stop_all('csrpgemv', 'Sparse matrix is symmetric.')
         
         y = 0.0_p
-        do irow = 1, size(spm%row_ptr)-1
-            do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
-                icol = spm%col_ind(iz)
-                y(irow) = y(irow) + spm%mat(iz)*x(icol)
+
+        if (apply_transpose) then
+            do irow = 1, size(spm%row_ptr)-1
+                do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
+                    icol = spm%col_ind(iz)
+                    y(icol) = y(icol) + spm%mat(iz)*x(irow)
+                end do
             end do
-        end do
+        else
+            do irow = 1, size(spm%row_ptr)-1
+                do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
+                    icol = spm%col_ind(iz)
+                    y(irow) = y(irow) + spm%mat(iz)*x(icol)
+                end do
+            end do
+        end if
 
     end subroutine csrpgemv
 
