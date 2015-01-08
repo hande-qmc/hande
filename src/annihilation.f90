@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, tinitiator, nspawn_events, determ_flags)
+    subroutine direct_annihilation(sys, rng, tinitiator, nspawn_events, determ)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -22,8 +22,8 @@ contains
         !    tinitiator: true if the initiator approximation is being used.
         ! In/Out:
         !    rng: random number generator.
-        !    determ_flags (optional): A list of flags specifying whether determinants in
-        !        walker_dets are deterministic or not.
+        !    determ (optional): Derived type containing information on the
+        !       semi-stochastic part of the simulation.
         ! Out:
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
@@ -37,7 +37,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         logical, intent(in) :: tinitiator
         integer, optional :: nspawn_events
-        integer, intent(inout), optional :: determ_flags(:)
+        type(semi_stoch_t), intent(inout), optional :: determ
 
         integer, parameter :: thread_id = 0
 
@@ -45,7 +45,12 @@ contains
 
         call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
 
-        call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn, determ_flags=determ_flags)
+        if (present(determ)) then
+            if (determ%separate_annihilation) call deterministic_annihilation(sys, rng, determ)
+            call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn, determ_flags=determ%flags)
+        else
+            call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn)
+        end if
 
     end subroutine direct_annihilation
 
@@ -400,6 +405,48 @@ contains
         spawn%head(thread_id,0) = spawn%head(thread_id,0) - nannihilate
 
     end subroutine annihilate_main_list_initiator
+
+    subroutine deterministic_annihilation(sys, rng, determ)
+
+        ! Add in the deterministic spawnings to the main list.
+
+        ! In:
+        !    sys: system being studied.
+        !    determ: Derived type containing information on the semi-stochastic
+        !       part of the simulation.
+        ! In/Out:
+        !    rng: random number generator.
+
+        use system, only: sys_t
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        type(dSFMT_t), intent(inout) :: rng
+        type(semi_stoch_t), intent(in), optional :: determ
+
+        integer :: i, ind
+        integer(int_p) :: nspawn, old_pop(sampling_size)
+        real(p) :: scaled_amp, spawn_sign
+
+        do i = 1, size(determ%vector)
+            ind = determ%indices(i)
+
+            scaled_amp = determ%vector(i)*real_factor
+            spawn_sign = sign(1.0_p, scaled_amp)
+            ! Stochastically round the scaled amplitude to the nearest integer
+            ! in order to encode it.
+            scaled_amp = abs(scaled_amp)
+            nspawn = int(scaled_amp, int_p)
+            scaled_amp = scaled_amp - nspawn
+            if (scaled_amp > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+
+            ! Add in the now-encoded deterministic spawning amplitude.
+            old_pop = walker_population(:,ind)
+            walker_population(1,ind) = walker_population(1,ind) + spawn_sign*nspawn
+            nparticles = nparticles + real(abs(walker_population(:,ind)) - abs(old_pop),dp)/real_factor
+        end do
+
+    end subroutine deterministic_annihilation
 
     subroutine remove_unoccupied_dets(rng, determ_flags)
 

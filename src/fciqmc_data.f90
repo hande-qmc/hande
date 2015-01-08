@@ -4,6 +4,7 @@ module fciqmc_data
 ! fciqmc data.
 
 use const
+use csr, only: csrp_t
 use spawn_data, only: spawn_t
 use hash_table, only: hash_table_t
 use calc, only: parallel_t
@@ -74,6 +75,80 @@ real(p) :: spawn_cutoff = 0.01_p
 
 !--- Semi-stochastic ---
 
+enum, bind(c)
+    enumerator :: empty_determ_space
+    enumerator :: high_pop_determ_space
+    enumerator :: read_determ_space
+end enum
+
+! Array to hold the indices of deterministic states in the dets array, accessed
+! by calculating a hash value. This type is used by the semi_stoch_t type and
+! is intended only to be used by this object.
+type determ_hash_t
+    ! For an example of how to use this type to see if a determinant is in the
+    ! deterministic space or not, see the routine check_if_determ.
+
+    ! Seed used in the MurmurHash function to calculate hash values.
+    integer :: seed
+    ! The size of the hash table (ignoring collisions).
+    integer :: nhash
+    ! The indicies of the determinants in the semi_stoch_t%dets array.
+    ! Note that element nhash+1 should be set equal to determ%tot_size+1.
+    ! This helps with avoiding out-of-bounds errors when using this object.
+    integer, allocatable :: ind(:) ! (semi_stoch_t%tot_size)
+    ! hash_ptr(i) stores the index of the first index in the array ind which
+    ! corresponds to a determinant with hash value i.
+    ! This is similar to what is done in the CSR sparse matrix type (see
+    ! csr.f90).
+    integer, allocatable :: hash_ptr(:) ! (nhash+1)
+end type determ_hash_t
+
+type semi_stoch_t
+    ! If true, then the deterministic 'spawning' will be performed in a routine
+    ! with an extra MPI call. This routine handles all of the annihilation of
+    ! deterministic spawnings with a simple summing of vectors.
+    ! If false, then the deterministic spawnings are added to the spawned list
+    ! and treated with the standard annihilation routine.
+    logical :: separate_annihilation
+    ! Integer to specify which type of deterministic space is being used.
+    ! See the various determ_space parameters defined above.
+    integer :: space_type = empty_determ_space
+    ! The total number of deterministic states on all processes.
+    integer :: tot_size
+    ! sizes(i) holds the number of deterministic states belonging to process i.
+    integer, allocatable :: sizes(:) ! (0:nproc-1)
+    ! The Hamiltonian in the deterministic space, stored in a sparse CSR form.
+    ! An Hamiltonian element, H_{ij}, is stored in hamil if and only if both
+    ! i and j are in the deterministic space.
+    type(csrp_t) :: hamil
+    ! This array is used to store the values of amplitudes of deterministic
+    ! states throughout a QMC calculation.
+    real(p), allocatable :: vector(:) ! sizes(iproc)
+    ! If separate_annihilation is true, then an extra MPI call is used to join
+    ! together the the deterministic vector arrays from each process. This
+    ! array is used to hold the results, which will be the list of all
+    ! deterministic amplitudes.
+    ! If separate_annihilation is not true then this array will remain
+    ! deallocated.
+    real(p), allocatable :: full_vector(:) ! tot_size
+    ! If separate_annihilation is true then this array will hold the indices
+    ! of the deterministic states in the main list. This prevents having to
+    ! search the whole of the main list for the deterministic states.
+    ! If separate_annihilation is not true then this array will remain
+    ! deallocated.
+    integer, allocatable :: indices(:) ! sizes(iproc)
+    ! dets stores the deterministic states across all processes.
+    ! All states on process 0 are stored first, then process 1, etc...
+    integer(i0), allocatable :: dets(:,:) ! (string_len, tot_size)
+    ! A hash table which allows the index of a determinant in dets to be found.
+    ! This is done by calculating the hash value of the given determinant.
+    type(determ_hash_t) :: hash_table
+    ! Deterministic flags of states in the main list. If determ_flags(i) is
+    ! equal to 0 then the corresponding state in position i of the main list is
+    ! a deterministic state, else it is not.
+    integer, allocatable :: flags(:)
+end type semi_stoch_t
+
 ! The iteration on which to turn on the semi-stochastic algorithm using the
 ! parameters deterministic space specified by determ_space_type.
 integer :: semi_stoch_start_iter = 0
@@ -87,6 +162,9 @@ integer :: determ_space_type = 0
 integer :: determ_target_size = 0
 ! If true then the deterministic states will be written to a file.
 logical :: write_determ_space = .false.
+! If true then deterministic spawnings will not be added to the spawning list
+! but rather treated separately via an extra MPI call.
+logical :: separate_determ_annihil = .false.
 
 !--- Input data: CCMC ---
 

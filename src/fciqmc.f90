@@ -35,7 +35,7 @@ contains
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
-        use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
+        use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection, determ_projection_separate_annihil
         use semi_stoch, only: empty_determ_space, dealloc_semi_stoch_t, init_semi_stoch_t
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
@@ -82,9 +82,10 @@ contains
         ! If the user has asked to use semi-stochastic from the first iteration
         ! then turn it on now. Otherwise, use an empty deterministic space.
         if (semi_stoch_start_iter == 0) then
-            call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, write_determ_space)
+            call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
+                                    separate_determ_annihil, write_determ_space)
         else
-            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false.)
+            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false., .false.)
         end if
 
         ! Are we using a non-empty semi-stochastic space?
@@ -117,7 +118,8 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_start_iter) then
                     call dealloc_semi_stoch_t(determ)
-                    call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, write_determ_space)
+                    call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
+                                            separate_determ_annihil, write_determ_space)
                     semi_stochastic = .true.
                 end if
 
@@ -139,6 +141,7 @@ contains
                     if (determ%flags(idet) == 0) then
                         ideterm = ideterm + 1
                         determ%vector(ideterm) = real_population
+                        if (determ%separate_annihilation) determ%indices(ideterm) = idet
                         determ_parent = .true.
                     else
                         determ_parent = .false.
@@ -202,8 +205,12 @@ contains
                     if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, real_factor, walker_population, &
                                                                         tot_walkers, nparticles, qmc_spawn, par_info%load%needed)
                     if (semi_stochastic) then
-                        call determ_projection(rng, qmc_spawn, determ)
-                        call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ%flags)
+                        if (determ%separate_annihilation) then
+                            call determ_projection_separate_annihil(determ)
+                        else
+                            call determ_projection(rng, qmc_spawn, determ)
+                        end if
+                        call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ)
                     else
                         call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
                     end if

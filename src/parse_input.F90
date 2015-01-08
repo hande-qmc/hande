@@ -240,6 +240,8 @@ contains
                 determ_target_size = -1
             case('WRITE_DETERM_SPACE')
                 write_determ_space = .true.
+            case('SEMI_STOCH_SEP_ANNIHIL')
+                separate_determ_annihil = .true.
 
             ! DMQMC expectation values to be calculated.
             case('DMQMC_FULL_RENYI_2')
@@ -795,6 +797,7 @@ contains
         call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(separate_determ_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(linked_ccmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
