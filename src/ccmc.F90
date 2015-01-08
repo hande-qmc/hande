@@ -937,6 +937,10 @@ contains
                 ! formed.  (One can view this factorial contribution as the
                 ! factorial prefactors in the series expansion of e^T---see Eq (8)
                 ! in the module-level comments.)
+                ! If two excitors in the cluster are the same, the factorial
+                ! overcounts the number of ways the cluster could have been formed
+                ! but the extra factor(s) of 2 are cancelled by a similar
+                ! overcounting in the calculation of hmatel.
                 cluster%pselect = cluster%pselect*factorial(cluster%nexcitors)
 
                 ! Sign change due to difference between determinant
@@ -1745,6 +1749,7 @@ contains
         real(p) :: hmatel
 
         integer(i0) :: deti(sys%basis%string_len), detj(sys%basis%string_len)
+        integer(i0) :: temp(sys%basis%string_len)
         integer :: i, found, excitor_level, excitor_sign
         logical :: allowed
         real(p) :: population
@@ -1777,14 +1782,23 @@ contains
         ! [todo] - the relevant excitation level and system-specific procedures.
         hmatel = get_hmatel(sys, deti, detj)
 
-        ! Possible sign changes from <D_k|a_unlinked|D_i^a> and <D|a|D_0>
+        ! hmatel will be multiplied by cluster%amplitude and cluster%cluster_to_det_sign which
+        ! potentially introduce unwanted sign changes, so we deal with them here
         hmatel = hmatel*cluster%cluster_to_det_sign
+        ! Multiplying excitors can give a sign change, which is absorbed into cluster%amplitude
+        population = 1.0_p
+        temp = deti
+        call collapse_cluster(sys%basis, funlinked, 1, temp, population, allowed)
+        hmatel = population*hmatel
+
+        ! Possible sign changes from <D|a|D_0> ...
         if (cluster%nexcitors > 1) then
             excitor_level = get_excitation_level(f0, deti)
             call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, f0)
             if (excitor_sign < 0) hmatel = -hmatel
         end if
 
+        ! ... and <D_k|a_unlinked|D_i^a>
         call create_excited_det(sys%basis, cdet, connection, deti)
         excitor_level = get_excitation_level(deti, detj)
         call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, detj)
