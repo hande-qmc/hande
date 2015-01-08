@@ -3,6 +3,21 @@ HANDE Developers' Guide
 
 Compiled from various email threads on (and before) the nascent hande-dev list.
 
+git repository
+--------------
+
+The git repository is currently located at
+hande@tycpc15.cmth.ph.ic.ac.uk:hande.git and can be cloned using:
+
+.. code-block:: bash
+
+    $ git clone hande@tycpc15.cmth.ph.ic.ac.uk:hande.git
+
+If you would like access, please speak to one of the developers.  The rest of
+this guide assumes you used the default remote name during the clone (i.e.
+``origin``).  If this is not the case, we assume you are capable of
+appropriately adjusting the commands given in the rest of the guide.
+
 Precepts
 --------
 
@@ -118,6 +133,223 @@ properly (naturally the CMTH ones are) then
     $ git request-pull master origin | mail -s "Pull request" hande-dev@imperial.ac.uk
 
 works as one would expect.
+
+Merging to master
+-----------------
+
+Here's a workflow to make merging to master simple.  Remember that
+with git it's extremely difficult to make permanently destructive changes
+so if it goes wrong it can be fixed.
+
+Before you start make sure your code compiles and passes the test suite.
+Do not merge broken code into master.
+
+Now make sure your master branch is up to date.  Here I do this in a fetch
+then a pull just to see what else has changed.  I do a diff to be sure
+I'm the same as the origin master.
+
+.. code-block:: bash
+
+    [master]$ git fetch
+        remote: Counting objects: 340, done.
+        remote: Compressing objects: 100% (182/182), done.
+        remote: Total 200 (delta 137), reused 47 (delta 16)
+        Receiving objects: 100% (200/200), 96.89 KiB, done.
+        Resolving deltas: 100% (137/137), completed with 58 local objects.
+        From tyc-svn.cmth.ph.ic.ac.uk:hubbard_fciqmc
+           c17ef9e..2d8e130  master     -> origin/master
+            ...
+
+    [master]$ git pull
+        Updating c17ef9e..2d8e130
+        Fast-forward
+         lib/local/parallel.F90       |    9 ++-------
+         src/full_diagonalisation.F90 |   30 ++++++++++++------------------
+         2 files changed, 14 insertions(+), 25 deletions(-)
+
+    [master]$ git diff origin/master
+
+The blank output from this indicates we're at origin/master.
+
+I'm going to merge the branch bug_fix/rdm_init.  Crucially we use the --no-ff
+flag to ensure that the merge creates a commit on master; this keeps the
+history clean (by keeping development work in logical chunks after merging)
+and also makes it very easy to roll-back and revert an entire feature if problems
+are encounted.
+
+.. code-block:: bash
+
+    [master]$ git merge --no-ff bug_fix/rdm_init
+        Merge made by the 'recursive' strategy.
+         src/fciqmc_data.f90 |    2 +-
+         1 file changed, 1 insertion(+), 1 deletion(-)
+
+    [master]$ git log --graph --oneline --decorate | head
+        *   647b7dd (HEAD, master) Merge branch 'bug_fix/rdm_init'
+        |\
+        | * 3c67d81 (bug_fix/rdm_init) Fix uninitialised doing_exact_rdm_eigv breaking fci
+        * |   2d8e130 (origin/master, origin/HEAD) Merge branch 'bug_fix/small_fci_mpi'
+        |\ \
+
+This shows that a new commit has been created on master.
+
+At this point it's possible that the merge needed some manual intervention.  It's fine
+to make these changes directly and commit them in the merge to your local master.  If the merge
+is starting to get messy it might be best to rebase first to make it easier.
+
+Very importantly, you should now compile the code and run the tests, even if the merge
+completed without any problems --- there might be unintented effects.  Only continue if the code
+compiles and the tests pass.
+If you need to make changes at this point, you can modify your local existing merge commit with
+
+.. code-block:: bash
+
+    [master]$ git commit --amend
+
+Now we've made sure that the code works, all we do is push to the main repo
+
+.. code-block:: bash
+
+    [master]$ git push origin master
+        Counting objects: 12, done.
+        Delta compression using up to 12 threads.
+        Compressing objects: 100% (7/7), done.
+        Writing objects: 100% (7/7), 705 bytes, done.
+        Total 7 (delta 5), reused 0 (delta 0)
+        To git@tyc-svn.cmth.ph.ic.ac.uk:hubbard_fciqmc.git
+           2d8e130..647b7dd  master -> master
+
+    [master]$ git log --graph --oneline --decorate | head
+        *   647b7dd (HEAD, origin/master, origin/HEAD, master) Merge branch 'bug_fix/rdm_init'
+        |\
+        | * 3c67d81 (bug_fix/rdm_init) Fix uninitialised doing_exact_rdm_eigv breaking fci
+        * |   2d8e130 Merge branch 'bug_fix/small_fci_mpi'
+        |\ \
+
+Almost there.  We now ought to clean up the namespace to avoid old branch names hanging around
+(the code of course will always stay).
+
+.. code-block:: bash
+
+     [master]$ git branch --delete bug_fix/rdm_init
+     [master]$ git push origin --delete bug_fix/rdm_init
+
+The list of branches merged into HEAD can be found by doing
+
+.. code-block:: bash
+
+     [master]$ git branch --all --merged
+
+All done!
+
+How to add a new test
+---------------------
+
+#.  Ensure the test suite passes with the master on your system.
+#.  Now checkout the branch you're working on where you'd like to add the test.
+#.  Rebuild HANDE so that the HANDE binary prints out the SHA1 hash of the current
+    commit.  Make sure that there are no uncommitted changes to the source directory so
+    that the benchmarks can be reproduced at a later date using the same binary.
+#.  Inside test_suite find the appropriate directory in which to add your test, or
+    create a new directory, appropriately named, if necessary.
+#.  Inside this directory create a new directory with a sensible name describing your
+    test, and change to it.
+#.  Place the input files for your test in the directory.  You can have multiple input
+    files in a single directory.
+#.  git add your directory (this avoids having to separate out files generated during
+    the tests).
+#.  If you created a directory for a new category of tests then you will probably
+    need to add the directory name in [ ] to the jobconfig file. If not, then the
+    test should already be included through the globbing in jobconfig.
+#.  If required, pick some appropriate categories to add your test to in jobconfig.
+#.  Run testcode.py make-benchmarks to create new benchmarks e.g.
+
+    .. code-block:: bash
+
+        $ ../../testcode2/bin/testcode.py make-benchmarks
+        Using executable: /home/Alex/code/HANDE/master/test_suite/../bin/hande.x.
+        Test id: 09042014-2.
+        Benchmark: 288ad50.
+
+        ...
+
+        Failed tests in:
+            /home/Alex/code/HANDE/master/test_suite/H2-RHF-cc-pVTZ-Lz
+        Not all tests passed.
+        Create new benchmarks? [y/n] y
+        Setting new benchmark in userconfig to be 6d161d0.
+
+    Hopefully the only failed tests are your new tests (which you've checked).
+
+    Alternatively, a better method is to make a benchmark for the new test only:
+
+    .. code-block:: bash
+
+        $ ../../testcode2/bin/testcode.py make-benchmarks -ic fciqmc/H2-RHF-cc-pVTZ-Lz
+
+        ...
+
+        Setting new benchmark in userconfig to be: 6d161d0 288ad50.
+
+    The use of the 'i' flag tells testcode2 to insert the new benchmark at the
+    start of the existing list of benchmarks, as can be seen in this example.
+
+    If you leave the 'i' flag out then it will remove all old benchmarks, which
+    we do not want.
+#.  Now remember to add the benchmark files and the jobconfig and userconfig files
+    to the repository.
+
+    .. code-block:: bash
+
+        $ git add userconfig jobconfig fciqmc/*/benchmark.out.6d161d0.inp*
+
+    where 6d161d0 is the hash of the newly-created benchmark.
+
+#.  Do a quick git status to make sure you haven't missed anything important out, and
+    then you're ready to commit the tests:
+
+    .. code-block:: bash
+
+        $ git commit -m "Added new test H2-RHF-cc-pVTZ-Lz and benchmark 6d161d0."
+
+    Remember you're committing to a branch not the master.
+#.  Push this to the main repository and send round a pull request for review before its
+    to be merged with master.
+
+Unwanted experimental branches
+------------------------------
+
+Occasionally (frequently?!) we have tried something which didn't work out.  If
+we don't want to keep any of the history, we can simply delete the local (and
+if necessary) remote branches:
+
+.. code-block:: bash
+
+    $ git branch --delete unwanted_branch
+    $ git push origin --delete unwanted_branch
+
+But what about branches that we don't intend to continue working on in the near
+future, would like to keep around but without cluttering up the main
+repository, making it unclear which branches need some TLC before merging?  We
+have a separate repository where such branches can be sent, to be resurrected
+if desired later.  The repository is at
+hande@tycpc15.cmth.ph.ic.ac.uk:hande_graveyard.git.  To push a local branch there:
+
+.. code-block:: bash
+
+    $ git remote add graveyard hande@tycpc15:hande_graveyard.git
+    $ git push remote graveyard unwanted_branch
+
+and then delete the branch (both local and remote) from the main repository
+using the same commands as before.  If the branch is not local, then you can
+either check it out and then do the push and delete (easier) or use a refspec:
+
+.. code-block:: bash
+
+    $ git push graveyard refs/remotes/origin/unwanted_branch:refs/head/unwanted_branch
+
+where origin/unwanted_branch is the remote branch to be moved to the graveyard
+repository.  The branch on origin can then be deleted as before.
 
 FAQ
 ---
@@ -304,187 +536,3 @@ FAQ
   We suggest a pull request to the email list followed immediately by an email
   announcing that the requester had also merged into master (or perhaps just the
   latter email).
-
-
-Merging to master
------------------
-
-Here's a workflow to make merging to master simple.  Remember that
-with git it's extremely difficult to make permanently destructive changes
-so if it goes wrong it can be fixed.
-
-Before you start make sure your code compiles and passes the test suite.
-Do not merge broken code into master.
-
-Now make sure your master branch is up to date.  Here I do this in a fetch
-then a pull just to see what else has changed.  I do a diff to be sure
-I'm the same as the origin master.
-
-.. code-block:: bash
-
-    [master]$ git fetch
-        remote: Counting objects: 340, done.
-        remote: Compressing objects: 100% (182/182), done.
-        remote: Total 200 (delta 137), reused 47 (delta 16)
-        Receiving objects: 100% (200/200), 96.89 KiB, done.
-        Resolving deltas: 100% (137/137), completed with 58 local objects.
-        From tyc-svn.cmth.ph.ic.ac.uk:hubbard_fciqmc
-           c17ef9e..2d8e130  master     -> origin/master
-            ...
-
-    [master]$ git pull
-        Updating c17ef9e..2d8e130
-        Fast-forward
-         lib/local/parallel.F90       |    9 ++-------
-         src/full_diagonalisation.F90 |   30 ++++++++++++------------------
-         2 files changed, 14 insertions(+), 25 deletions(-)
-
-    [master]$ git diff origin/master
-
-The blank output from this indicates we're at origin/master.
-
-I'm going to merge the branch bug_fix/rdm_init.  Crucially we use the --no-ff
-flag to ensure that the merge creates a commit on master; this keeps the
-history clean (by keeping development work in logical chunks after merging)
-and also makes it very easy to roll-back and revert an entire feature if problems
-are encounted.
-
-.. code-block:: bash
-
-    [master]$ git merge --no-ff bug_fix/rdm_init
-        Merge made by the 'recursive' strategy.
-         src/fciqmc_data.f90 |    2 +-
-         1 file changed, 1 insertion(+), 1 deletion(-)
-
-    [master]$ git log --graph --oneline --decorate | head
-        *   647b7dd (HEAD, master) Merge branch 'bug_fix/rdm_init'
-        |\
-        | * 3c67d81 (bug_fix/rdm_init) Fix uninitialised doing_exact_rdm_eigv breaking fci
-        * |   2d8e130 (origin/master, origin/HEAD) Merge branch 'bug_fix/small_fci_mpi'
-        |\ \
-
-This shows that a new commit has been created on master.
-
-At this point it's possible that the merge needed some manual intervention.  It's fine
-to make these changes directly and commit them in the merge to your local master.  If the merge
-is starting to get messy it might be best to rebase first to make it easier.
-
-Very importantly, you should now compile the code and run the tests, even if the merge
-completed without any problems --- there might be unintented effects.  Only continue if the code
-compiles and the tests pass.
-If you need to make changes at this point, you can modify your local existing merge commit with
-
-.. code-block:: bash
-
-    [master]$ git commit --amend
-
-Now we've made sure that the code works, all we do is push to the main repo
-
-.. code-block:: bash
-
-    [master]$ git push origin master
-        Counting objects: 12, done.
-        Delta compression using up to 12 threads.
-        Compressing objects: 100% (7/7), done.
-        Writing objects: 100% (7/7), 705 bytes, done.
-        Total 7 (delta 5), reused 0 (delta 0)
-        To git@tyc-svn.cmth.ph.ic.ac.uk:hubbard_fciqmc.git
-           2d8e130..647b7dd  master -> master
-
-    [master]$ git log --graph --oneline --decorate | head
-        *   647b7dd (HEAD, origin/master, origin/HEAD, master) Merge branch 'bug_fix/rdm_init'
-        |\
-        | * 3c67d81 (bug_fix/rdm_init) Fix uninitialised doing_exact_rdm_eigv breaking fci
-        * |   2d8e130 Merge branch 'bug_fix/small_fci_mpi'
-        |\ \
-
-Almost there.  We now ought to clean up the namespace to avoid old branch names hanging around
-(the code of course will always stay).
-
-.. code-block:: bash
-
-     [master]$ git branch --delete bug_fix/rdm_init
-     [master]$ git push origin --delete bug_fix/rdm_init
-
-The list of branches merged into HEAD can be found by doing
-
-.. code-block:: bash
-
-     [master]$ git branch --all --merged
-
-All done!
-
-
-How to add a new test
----------------------
-
-#.  Ensure the test suite passes with the master on your system.
-#.  Now checkout the branch you're working on where you'd like to add the test.
-#.  Rebuild HANDE so that the HANDE binary prints out the SHA1 hash of the current
-    commit.  Make sure that there are no uncommitted changes to the source directory so
-    that the benchmarks can be reproduced at a later date using the same binary.
-#.  Inside test_suite find the appropriate directory in which to add your test, or
-    create a new directory, appropriately named, if necessary.
-#.  Inside this directory create a new directory with a sensible name describing your
-    test, and change to it.
-#.  Place the input files for your test in the directory.  You can have multiple input
-    files in a single directory.
-#.  git add your directory (this avoids having to separate out files generated during
-    the tests).
-#.  If you created a directory for a new category of tests then you will probably
-    need to add the directory name in [ ] to the jobconfig file. If not, then the
-    test should already be included through the globbing in jobconfig.
-#.  If required, pick some appropriate categories to add your test to in jobconfig.
-#.  Run testcode.py make-benchmarks to create new benchmarks e.g.
-
-    .. code-block:: bash
-
-        $ ../../testcode2/bin/testcode.py make-benchmarks
-        Using executable: /home/Alex/code/HANDE/master/test_suite/../bin/hande.x.
-        Test id: 09042014-2.
-        Benchmark: 288ad50.
-
-        ...
-
-        Failed tests in:
-            /home/Alex/code/HANDE/master/test_suite/H2-RHF-cc-pVTZ-Lz
-        Not all tests passed.
-        Create new benchmarks? [y/n] y
-        Setting new benchmark in userconfig to be 6d161d0.
-
-    Hopefully the only failed tests are your new tests (which you've checked).
-
-    Alternatively, a better method is to make a benchmark for the new test only:
-
-    .. code-block:: bash
-
-        $ ../../testcode2/bin/testcode.py make-benchmarks -ic fciqmc/H2-RHF-cc-pVTZ-Lz
-
-        ...
-
-        Setting new benchmark in userconfig to be: 6d161d0 288ad50.
-
-    The use of the 'i' flag tells testcode2 to insert the new benchmark at the
-    start of the existing list of benchmarks, as can be seen in this example.
-
-    If you leave the 'i' flag out then it will remove all old benchmarks, which
-    we do not want.
-#.  Now remember to add the benchmark files and the jobconfig and userconfig files
-    to the repository.
-
-    .. code-block:: bash
-
-        $ git add userconfig jobconfig fciqmc/*/benchmark.out.6d161d0.inp*
-
-    where 6d161d0 is the hash of the newly-created benchmark.
-
-#.  Do a quick git status to make sure you haven't missed anything important out, and
-    then you're ready to commit the tests:
-
-    .. code-block:: bash
-
-        $ git commit -m "Added new test H2-RHF-cc-pVTZ-Lz and benchmark 6d161d0."
-
-    Remember you're committing to a branch not the master.
-#.  Push this to the main repository and send round a pull request for review before its
-    to be merged with master.
