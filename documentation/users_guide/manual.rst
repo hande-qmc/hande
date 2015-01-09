@@ -738,6 +738,14 @@ types below. They are turned off by default.
     **write_determ_space** option.
 **semi_stoch_iteration** *iter*
     Turn the semi-stochastic algorithm on at iteration number *iter*.
+**semi_stoch_combine_annihil**
+    Default: false.
+
+    This option will allow the semi-stochastic method to be used without an
+    extra MPI call per iteration. Instead, deterministic spawnings are added to
+    the spawned list and communicated with all other spawnings. One may find
+    large variations in the time to perform each iteration, depending on
+    whether this option is used or not.
 
 Calculation type
 ^^^^^^^^^^^^^^^^
