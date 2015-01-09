@@ -29,7 +29,8 @@ module hdf5_helper
     implicit none
 
     private
-    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read
+    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal
+
 
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
     ! hdf5_init_kinds.
