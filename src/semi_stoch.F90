@@ -73,14 +73,24 @@ module semi_stoch
 !
 ! As we run through all states in the main algorithm, the populations on
 ! deterministic states are copied across to a vector (semi_stoch_t%vector).
-! This vector is what is multiplied in the deterministic projection itself
-! (performed in determ_projection). The resulting 'spawns' of this deterministic
-! projection (which will create a 'spawning' on every state in the entire
-! deterministic space) will be added to the spawning array and enter the
-! annihilation routine just like any other spawning. The only difference is
-! that we don't want to stochastically round any deterministic spawnings to
-! zero, so we check that a spawn isn't in the deterministic space before this
-! rounding is performed.
+! This vector is what is multiplied in the deterministic projection itself.
+!
+! There are two possible methods for adding deterministic spawnings back into
+! the main psip array. If determ%separate_annihilation is true, then each
+! processor will receive the full list of deterministic amplitudes from all
+! processors via an extra MPI call per iteration. Using this complete list, the
+! deterministic spawning amplitudes for each processor can be calculated by
+! a single matrix multiplication without any further communication. These
+! deterministic spawnings are then added back into the main psip array in
+! the annihilation routines in deterministic_annihilation, which treats these
+! spawnings separately.
+!
+! If determ%separate_annihilation is false then the deterministic spawning
+! amplitudes from a given processor will be calculated by performing the exact
+! projection, and the resulting 'spawnings' will then be added to the spawned
+! list, just like non-deterministic spawnings. This prevents the need for an
+! extra MPI call each iteration, but the spawned list which is communicated
+! becomes larger.
 
 use const
 use fciqmc_data, only: semi_stoch_t, determ_hash_t
