@@ -164,7 +164,7 @@ integer :: determ_target_size = 0
 logical :: write_determ_space = .false.
 ! If true then deterministic spawnings will not be added to the spawning list
 ! but rather treated separately via an extra MPI call.
-logical :: separate_determ_annihil = .false.
+logical :: separate_determ_annihil = .true.
 
 !--- Input data: CCMC ---
 

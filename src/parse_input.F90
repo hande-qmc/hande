@@ -240,8 +240,8 @@ contains
                 determ_target_size = -1
             case('WRITE_DETERM_SPACE')
                 write_determ_space = .true.
-            case('SEMI_STOCH_SEP_ANNIHIL')
-                separate_determ_annihil = .true.
+            case('SEMI_STOCH_COMBINE_ANNIHIL')
+                separate_determ_annihil = .false.
 
             ! DMQMC expectation values to be calculated.
             case('DMQMC_FULL_RENYI_2')
