@@ -10,6 +10,7 @@ spawn_cutoff 0.01
 
 semi_stoch_iteration 4000
 semi_stoch_read
+semi_stoch_combine_annihil
 
 J -0.0625
 
