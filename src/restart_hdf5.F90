@@ -362,7 +362,7 @@ module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal
 #endif
             use errors, only: stop_all
             use const
@@ -447,7 +447,7 @@ module restart_hdf5
 
                 if (i0_length /= i0_length_restart) &
                     call stop_all('read_restart_hdf5', &
-                                  'Restarting with a different (i0) bit string length not supported.  Please implement.')
+                                  'Restarting with a different DET_SIZE is not supported.  Please implement.')
             call h5gclose_f(group_id, ierr)
 
             ! --- qmc group ---
@@ -467,6 +467,9 @@ module restart_hdf5
 
                 call hdf5_read(subgroup_id, ddets, kinds, shape(walker_dets), walker_dets)
 
+                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p)) &
+                    call stop_all('read_restart_hdf5', &
+                                  'Restarting with a different POP_SIZE is not supported.  Please implement.')
                 call hdf5_read(subgroup_id, dpops, kinds, shape(walker_population), walker_population)
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(walker_data), walker_data)

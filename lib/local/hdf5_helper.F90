@@ -29,13 +29,15 @@ module hdf5_helper
     implicit none
 
     private
-    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read
+    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal
+
 
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
     ! hdf5_init_kinds.
     type hdf5_kinds_t
         integer(hid_t) :: i32
         integer(hid_t) :: i64
+        integer(hid_t) :: int_p
         integer(hid_t) :: p
     end type hdf5_kinds_t
 
@@ -73,7 +75,7 @@ module hdf5_helper
             !          Further, the kind values are *not* constant between closing and then re-opening
             !          the HDF5 library.  Learn from my (painful) experiences...
 
-            use const, only: int_32, int_64, p
+            use const, only: int_32, int_64, int_p, p
             use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
 
             type(hdf5_kinds_t), intent(out) :: kinds
@@ -81,6 +83,7 @@ module hdf5_helper
             ! Convert our non-standard kinds to something HDF5 understands.
             kinds%i32 = h5kind_to_type(int_32, H5_INTEGER_KIND)
             kinds%i64 = h5kind_to_type(int_64, H5_INTEGER_KIND)
+            kinds%int_p = h5kind_to_type(int_p, H5_INTEGER_KIND)
             kinds%p = h5kind_to_type(p, H5_REAL_KIND)
 
         end subroutine hdf5_kinds_init
