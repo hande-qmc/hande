@@ -657,11 +657,13 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
-        use determinants, only: decode_det, alloc_det_info_t, det_info_t, dealloc_det_info_t
+        use determinants, only: decode_det, alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
+                                encode_det
         use excitations, only: excit_t, create_excited_det, get_excitation
         use fciqmc_data, only: real_factor, metropolis_attempts, reuse_initial_config
         use fciqmc_data, only: f0, qmc_spawn, sampling_size, initial_config, grand_canonical_ensemble
         use parallel, only: nprocs, nthreads, parent
+        use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
         use utils, only: int_fmt
 
@@ -683,6 +685,7 @@ contains
         real(dp) :: r, E_new, E_old, prob
         type(det_info_t) :: cdet, det0
         type(excit_t) :: connection
+        real(p) :: move_prob(0:sys%nalpha, sys%max_number_excitations)
 
         naccept = 0 ! Number of metropolis moves which are accepted.
         nsuccess = 0 ! Number of successful proposal steps i.e. excluding null excitations.
@@ -692,6 +695,9 @@ contains
 
         if (grand_canonical_ensemble) then
             call init_grand_canonical_ensemble(sys, sym, npsips, qmc_spawn, rng)
+            move_prob = 0
+            ! Spin polarisation check.
+            move_prob(sys%nalpha, 2) = 1.0_p
         else
             ! Set up the initial distribution of psips which we'll perform
             ! metropolis on.
@@ -700,7 +706,8 @@ contains
 
         do proc = 0, nprocs - 1
             do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
-                print*, idet, trial_dm_ptr(sys, qmc_spawn%sdata(:sys%basis%string_len,idet))
+                call decode_det(sys%basis, qmc_spawn%sdata(:sys%basis%string_len, idet), occ_list)
+                !print*, idet, trial_dm_ptr(sys, qmc_spawn%sdata(:sys%basis%string_len,idet)), occ_list
             end do
         end do
         cdet%f => ftmp
@@ -715,17 +722,29 @@ contains
                     ftmp = f_old
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
-                    call decoder_ptr(sys, cdet%f, cdet)
+                    !call decoder_ptr(sys, cdet%f, cdet)
+                    !call decode_det(sys%basis, f_old, occ_list)
+                    !print *, occ_list, f_old
+                    call decode_det_spinocc_spinunocc(sys, f_old, cdet)
                     ! Metropolis move is to create a double excitation of
                     ! the current determinant.
-                    call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
-                    ! Check that we didn't generate a null excitation.
-                    ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
-                    if (hmatel == 0) cycle
-                    nsuccess = nsuccess + 1
-                    call create_excited_det(sys%basis, cdet%f, connection, f_new)
+                    if (grand_canonical_ensemble) then
+                        ! Metropolis move is a double excitation of the current
+                        ! determinant.
+                        call gen_random_det_truncate_space(rng, sys, 2, cdet, move_prob, occ_list)
+                        nsuccess = nsuccess + 1
+                        call encode_det(sys%basis, occ_list, f_new)
+                    else
+                        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+                        ! Check that we didn't generate a null excitation.
+                        ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
+                        if (hmatel == 0) cycle
+                        nsuccess = nsuccess + 1
+                        call create_excited_det(sys%basis, cdet%f, connection, f_new)
+                    end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
                     E_new = trial_dm_ptr(sys, f_new)
+                    !print *, E_new, E_old
                     prob = exp(-1.0_dp*beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
@@ -909,8 +928,8 @@ contains
             box_length(iorb) = box_length(iorb-1) + p_single(iorb)
         end do
 
-        print *, p_single
-        print *, box_length
+        !print *, p_single
+        !print *, box_length
         ! Distribute psips along the diagonal of the density matrix.
         iattempt = 0
         tmp_orbs = 0
@@ -925,7 +944,7 @@ contains
                 ! Select and orbital to occupy uniformly
                 iorb = int(get_rand_close_open(rng)*sys%basis%nbasis/2) + 1
                 ! print *, iorb
-                if (any(selected_orbs == iorb)) then
+                if (any(selected_orbs == 2*iorb-1)) then
                     ! Already occopied so discard.
                     ! [todo] - fix this
                     selected_orbs = 0
@@ -935,7 +954,7 @@ contains
                     ! Accept with probabilty given by single particle occupancy.
                     r = get_rand_close_open(rng)
                     if (box_length(iorb) > r) then
-                        selected_orbs(isel+1) = iorb
+                        selected_orbs(isel+1) = 2*iorb - 1
                         isel = isel + 1
                     else
                         ! Reject.
