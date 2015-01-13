@@ -268,11 +268,11 @@ contains
         integer :: i, ireport, icycle, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors
         integer(int_64) :: nattempts_spawn
-        real(dp) :: nparticles_old(sampling_size), nparticles_change(sampling_size)
+        real(dp) :: nparticles_old(sampling_size), nparticles_change(sampling_size), junk2
         type(det_info_t), allocatable :: cdet(:)
         type(det_info_t), allocatable :: ldet(:), rdet(:)
 
-        integer(int_p) :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath, junk3
         integer :: nspawn_events, ierr
         type(excit_t) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
@@ -578,7 +578,7 @@ contains
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_full_nc) then
                                     call stochastic_ccmc_death(rng(it), sys, cdet(it), cluster(it), &
-                                            walker_population(1,D0_pos), nparticles_change(1), ndeath)
+                                            junk3, junk2, junk3)
                                 end if
                             end if
                         end if
@@ -588,7 +588,7 @@ contains
                 end do
                 !$omp end do
 
-                if (ccmc_full_nc) then
+                if (ccmc_full_nc .and. tot_walkers > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) reduction(+:ndeath,nparticles_change)
                     do iattempt = 1, tot_walkers

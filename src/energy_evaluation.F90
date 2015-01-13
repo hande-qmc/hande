@@ -227,7 +227,7 @@ contains
             end if
         end if
         ntot_particles_old = ntot_particles
-        hf_signed_pop = new_hf_signed_pop
+        if (doing_calc(hfs_fciqmc_calc)) hf_signed_pop = new_hf_signed_pop
         if (ntot_particles(1) > target_particles .and. .not.vary_shift(1)) then
             vary_shift(1) = .true.
             if (vary_shift_from_proje) then
