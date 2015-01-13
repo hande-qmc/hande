@@ -730,10 +730,12 @@ contains
             disps(i) = disps(i-1) + determ%sizes(i-1)
         end do
 
+#ifdef PARALLEL
         ! 'Stick together' the deterministic vectors from each process, on
         ! each process.
         call mpi_allgatherv(determ%vector, determ%sizes(iproc), mpi_preal, determ%full_vector, &
                              determ%sizes, disps, mpi_preal, MPI_COMM_WORLD, ierr)
+#endif
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
         ! deterministic vector.
