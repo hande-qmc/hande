@@ -141,16 +141,17 @@ contains
         real(dp), intent(out) :: rep_loop_loc(:)
         integer, optional, intent(in) :: spawn_elsewhere
 
-        integer :: sample_shift
+        integer :: sample_shift, offset
 
         ! Need to sum the number of particles and the projected energy over
         ! all processors.
         sample_shift = nprocs*sampling_size
         rep_loop_loc(1:sample_shift) = 0
+        offset = iproc*sampling_size
         if (present(spawn_elsewhere)) then
-            rep_loop_loc(iproc+1:iproc+sampling_size) = nparticles + spawn_elsewhere
+            rep_loop_loc(offset+1:offset+sampling_size) = nparticles + spawn_elsewhere
         else
-            rep_loop_loc(iproc+1:iproc+sampling_size) = nparticles
+            rep_loop_loc(offset+1:offset+sampling_size) = nparticles
         end if
         rep_loop_loc(sample_shift+1) = proj_energy
         rep_loop_loc(sample_shift+2) = D0_population
