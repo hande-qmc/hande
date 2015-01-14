@@ -740,7 +740,8 @@ contains
         !        estimators.
 
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
-                                     update_energy_estimators_recv, update_energy_estimators_send
+                                     update_energy_estimators_recv, update_energy_estimators_send, &
+                                     nparticles_start_ind
         use interact, only: fciqmc_interact
         use parallel, only: parent, nprocs
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
@@ -758,7 +759,7 @@ contains
 
         real :: curr_time
         logical :: update
-        real(dp) :: rep_info_copy(nprocs*sampling_size+7)
+        real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.

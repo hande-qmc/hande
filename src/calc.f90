@@ -332,12 +332,14 @@ contains
 
     end function doing_dmqmc_calc
 
-    subroutine init_parallel_t(ntypes, non_blocking_comm, par_calc)
+    subroutine init_parallel_t(ntypes, ndata, non_blocking_comm, par_calc)
 
         ! Allocate parallel_t object.
 
         ! In:
         !    ntypes: number of types of walkers sampled (see sampling_size).
+        !    ndata: the number of additional data elements accumulated over all
+        !        processors (nparticles_start_ind-1).
         !    non_blocking_comm: true if using non-blocking communications
         !    load_balancing: true if attempting load balancing.
         ! In/Out:
@@ -347,7 +349,7 @@ contains
         use parallel, only: nprocs
         use checking, only: check_allocate
 
-        integer, intent(in) :: ntypes
+        integer, intent(in) :: ntypes, ndata
         logical, intent(in) :: non_blocking_comm
         type(parallel_t), intent(inout) :: par_calc
 
@@ -355,7 +357,7 @@ contains
 
         associate(nb=>par_calc%report_comm)
             if (non_blocking_comm) then
-                allocate(nb%rep_info(ntypes*nprocs+7), stat=ierr)
+                allocate(nb%rep_info(ntypes*nprocs+ndata), stat=ierr)
                 call check_allocate('nb%rep_info', size(nb%rep_info), ierr)
                 allocate(nb%request(0:nprocs-1), stat=ierr)
                 call check_allocate('nb%request', size(nb%request), ierr)

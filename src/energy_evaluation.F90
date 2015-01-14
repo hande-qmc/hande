@@ -7,10 +7,35 @@ use const
 
 implicit none
 
+! indices for corresponding data items  in estimator/population/etc buffers (see
+! comments below).
+enum, bind(c)
+    enumerator :: proj_energy_ind = 1
+    enumerator :: D0_pop_ind
+    enumerator :: rspawn_ind
+    enumerator :: hf_signed_pop_ind
+    enumerator :: hf_proj_O_ind
+    enumerator :: hf_proj_H_ind
+    enumerator :: hf_D0_pop_ind
+    enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
+end enum
+
 contains
 
-    ! [todo] - Update the types in the update energy procedures (especially in the MPI calls)
-    ! [todo] - when merging with the real coefficients work.  Sorry, this is going to be a horrible conflict.
+! --- Estimator/population/etc communication ---
+
+    ! In order to avoid doing repeated MPI calls, we place information that must be
+    ! summed over processors into one buffer and sum that buffer in one call.
+    ! The buffer (typically with a name begging with rep_loop) contains:
+
+    ! buffer(1:nparticles_start_ind-1)
+    !   single-valued data given by the (descriptive) name in the enumerator
+    !   above.
+    ! buffer(nparticles_start_ind+iproc*sampling_size:nparticles_start_ind-1+(iproc+1)*sampling_size)
+    !   the total population of each particle type on processor iproc.  Prior to
+    !   communication, each processor only sets its only value.
+
+    ! All other elements are set to zero.
 
     subroutine update_energy_estimators(ntot_particles_old)
 
@@ -31,7 +56,8 @@ contains
 
         real(dp), intent(inout) :: ntot_particles_old(sampling_size)
 
-        real(dp) :: rep_loop_loc(sampling_size*nprocs+7), rep_loop_sum(sampling_size*nprocs+7)
+        real(dp) :: rep_loop_loc(sampling_size*nprocs+nparticles_start_ind-1)
+        real(dp) :: rep_loop_sum(sampling_size*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
         call local_energy_estimators(rep_loop_loc)
@@ -90,31 +116,32 @@ contains
         integer, intent(inout) :: rep_request_s(:)
         real(dp), intent(inout) :: ntot_particles_old(:)
 
-        real(dp) :: rep_info_sum(nprocs*sampling_size+7), rep_loop_reduce(nprocs*(nprocs*sampling_size+7))
+        real(dp) :: rep_info_sum(nprocs*sampling_size+nparticles_start_ind-1)
+        real(dp) :: rep_loop_reduce(nprocs*(nprocs*sampling_size+nparticles_start_ind-1))
         integer :: rep_request_r(0:nprocs-1)
 #ifdef PARALLEL
-        integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs)
+        integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
-        integer :: i, j, ierr, sample_shift
+        integer :: i, j, data_size
 
-        sample_shift = nprocs*sampling_size
+        data_size = nprocs*sampling_size + nparticles_start_ind-1
 #ifdef PARALLEL
         do i = 0, nprocs-1
-            call MPI_IRecv(rep_loop_reduce(i*(sample_shift+7)+1:(i+1)*(sample_shift+7)), sample_shift+7, MPI_REAL8, &
+            call MPI_IRecv(rep_loop_reduce(i*data_size+1:(i+1)*data_size), data_size, MPI_REAL8, &
                            i, 789, MPI_COMM_WORLD, rep_request_r(i), ierr)
         end do
         call MPI_Waitall(nprocs, rep_request_r, stat_ir_r, ierr)
         call MPI_Waitall(nprocs, rep_request_s, stat_ir_s, ierr)
 #endif
         ! Reduce quantities across processors.
-        forall (i=1:sampling_size,j=0:nprocs-1) rep_info_sum(i+j) = sum(rep_loop_reduce(i+j:size(rep_loop_reduce):sample_shift+7))
-        rep_info_sum(sample_shift+1) = sum(rep_loop_reduce(sample_shift+1:size(rep_loop_reduce):sample_shift+7))
-        rep_info_sum(sample_shift+2) = sum(rep_loop_reduce(sample_shift+2:size(rep_loop_reduce):sample_shift+7))
-        rep_info_sum(sample_shift+3) = sum(rep_loop_reduce(sample_shift+3:size(rep_loop_reduce):sample_shift+7))
-        rep_info_sum(sample_shift+4) = sum(rep_loop_reduce(sample_shift+4:size(rep_loop_reduce):sample_shift+7))
-        rep_info_sum(sample_shift+5) = sum(rep_loop_reduce(sample_shift+5:size(rep_loop_reduce):sample_shift+7))
-        rep_info_sum(sample_shift+6) = sum(rep_loop_reduce(sample_shift+6:size(rep_loop_reduce):sample_shift+7))
-        rep_info_sum(sample_shift+7) = sum(rep_loop_reduce(sample_shift+7:size(rep_loop_reduce):sample_shift+7))
+        ! Each processor sent its buffer (see comments at top of this section of
+        ! procedures for format), which are now concatenated together in
+        ! rep_loop_reduce.
+        do i = 1, nparticles_start_ind-1
+            rep_info_sum(i) = sum(rep_loop_reduce(i::data_size))
+        end do
+        forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
+                rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
         call communicated_energy_estimators(rep_info_sum, ntot_particles_old)
 
@@ -141,30 +168,23 @@ contains
         real(dp), intent(out) :: rep_loop_loc(:)
         integer, optional, intent(in) :: spawn_elsewhere
 
-        integer :: sample_shift, offset
+        integer :: offset
 
-        ! Need to sum the number of particles and the projected energy over
-        ! all processors.
-        sample_shift = nprocs*sampling_size
-        rep_loop_loc(1:sample_shift) = 0
-        offset = iproc*sampling_size
+        rep_loop_loc = 0.0_dp
+
+        rep_loop_loc(proj_energy_ind) = proj_energy
+        rep_loop_loc(D0_pop_ind) = D0_population
+        rep_loop_loc(rspawn_ind) = rspawn
+        if (doing_calc(hfs_fciqmc_calc)) rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop()
+        rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
+        rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
+        rep_loop_loc(hf_D0_pop_ind) = D0_hf_population
+
+        offset = nparticles_start_ind-1 + iproc*sampling_size
         if (present(spawn_elsewhere)) then
             rep_loop_loc(offset+1:offset+sampling_size) = nparticles + spawn_elsewhere
         else
             rep_loop_loc(offset+1:offset+sampling_size) = nparticles
-        end if
-        rep_loop_loc(sample_shift+1) = proj_energy
-        rep_loop_loc(sample_shift+2) = D0_population
-        rep_loop_loc(sample_shift+3) = rspawn
-
-        if (doing_calc(hfs_fciqmc_calc)) then
-            ! HFS calculations also need to know \tilde{N} = \sum_i sign(N_j^(H)) N_j^(HF),
-            ! where N_j^(H) is the population of Hamiltonian walkers on j and
-            ! N_j^(HF) the population of Hellmann-Feynman walkers on j.
-            rep_loop_loc(sample_shift+4) = calculate_hf_signed_pop()
-            rep_loop_loc(sample_shift+5) = proj_hf_O_hpsip
-            rep_loop_loc(sample_shift+6) = proj_hf_H_hfpsip
-            rep_loop_loc(sample_shift+7) = D0_hf_population
         end if
 
     end subroutine local_energy_estimators
@@ -196,21 +216,18 @@ contains
         real(dp), intent(inout) :: ntot_particles_old(sampling_size)
 
         real(dp) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
-        integer :: i, sample_shift
+        integer :: i
 
-        sample_shift = sampling_size*nprocs
+        proj_energy = rep_loop_sum(proj_energy_ind)
+        D0_population = rep_loop_sum(D0_pop_ind)
+        rspawn = rep_loop_sum(rspawn_ind)
+        new_hf_signed_pop = rep_loop_sum(hf_signed_pop_ind)
+        proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
+        proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
+        D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
 
-        forall(i=1:sampling_size) nparticles_proc(i,:nprocs) = rep_loop_sum(i:sample_shift:sampling_size)
+        forall(i=1:sampling_size) nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)
         forall(i=1:sampling_size) ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
-        proj_energy = rep_loop_sum(sample_shift+1)
-        D0_population = rep_loop_sum(sample_shift+2)
-        rspawn = rep_loop_sum(sample_shift+3)
-        if (doing_calc(hfs_fciqmc_calc)) then
-            new_hf_signed_pop = rep_loop_sum(sample_shift+4)
-            proj_hf_O_hpsip = rep_loop_sum(sample_shift+5)
-            proj_hf_H_hfpsip = rep_loop_sum(sample_shift+6)
-            D0_hf_population = rep_loop_sum(sample_shift+7)
-        end if
 
         associate(lb=>par_info%load)
             if(doing_load_balancing .and. ntot_particles(1) > lb%pop .and. lb%nattempts < lb%max_attempts) then
@@ -258,6 +275,8 @@ contains
         rspawn = rspawn/(ncycles*nprocs)
 
     end subroutine communicated_energy_estimators
+
+!--- Shift updates ---
 
     subroutine update_shift(loc_shift, nparticles_old, nparticles, nupdate_steps)
 
@@ -356,6 +375,8 @@ contains
         end do
 
     end function calculate_hf_signed_pop
+
+!--- Projected estimator updates ---
 
     pure subroutine update_proj_energy_hub_k(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
