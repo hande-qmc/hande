@@ -252,7 +252,6 @@ contains
         !        internally, so each determinant appears (at most) once in the
         !        spawn%sdata array.
 
-
         use parallel, only: nthreads, nprocs
         use sort, only: qsort
 
@@ -978,8 +977,6 @@ contains
         !    determ_size: The number of deterministic states belonging to this
         !       process.
 
-#ifdef PARALLEL
-
         use parallel, only: nprocs
 
         type(spawn_t), intent(inout) :: spawn
@@ -1037,12 +1034,6 @@ contains
 
         ! Update the number of states in the spawning list.
         spawn%head(thread_id,0) = sum(nstates_left)
-
-#else
-        type(spawn_t), intent(inout) :: spawn
-        integer, intent(in) :: nstates_received(0:nprocs-1)
-        integer, intent(in) :: determ_size
-#endif
 
     end subroutine compress_determ_repeats
 
