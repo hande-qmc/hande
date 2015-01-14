@@ -36,7 +36,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection, determ_projection_separate_annihil
-        use semi_stoch, only: empty_determ_space, dealloc_semi_stoch_t, init_semi_stoch_t
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
