@@ -739,6 +739,7 @@ contains
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
         ! deterministic vector.
+        ! [review] - JSS: how is determ%full_vector set in serial?  I suspect ! it's not...
         call csrpgemv(.true., determ%hamil, determ%full_vector, determ%vector)
 
         ! We want the final vector to hold -tau*(Hv-Sv), where tau is the
@@ -750,6 +751,10 @@ contains
         ! determ%vector has been overwritten by the matrix multiplication.
         ! Explicitly do the full loop, to avoid creating a potentially large
         ! array on the stack.
+
+        ! [review] - JSS: as an optimisation, why not do determ%vector = tau*shift(1)*determ%vector
+        ! [review] - JSS: after the MPI_AllGatherV and beforethe csrpgemv call and add an
+        ! [review] - JSS: optional argument to csrpgemv to avoid zeroing the input array?
         do i = 1, determ%sizes(iproc)
             determ%vector(i) = tau*(shift(1)*determ%full_vector(i+disps(iproc)) - determ%vector(i))
         end do

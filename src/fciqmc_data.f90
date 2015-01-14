@@ -75,6 +75,8 @@ real(p) :: spawn_cutoff = 0.01_p
 
 !--- Semi-stochastic ---
 
+! [review] - JSS: I suspect that it would not be entirely clear to someone not
+! [review] - JSS: familiar with the semi-stochastic code to immediately understand these.
 enum, bind(c)
     enumerator :: empty_determ_space
     enumerator :: high_pop_determ_space
