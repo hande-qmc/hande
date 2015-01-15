@@ -695,21 +695,19 @@ contains
 
         if (grand_canonical_ensemble) then
             call init_grand_canonical_ensemble(sys, sym, npsips, qmc_spawn, rng)
-            move_prob = 0
-            ! Spin polarisation check.
-            move_prob(sys%nalpha, 2) = 1.0_p
+            ! The metropolis move is to excite two electrons. This is achieved
+            ! either by using the excitation generators when working in a
+            ! symmetry contrained system or by uniformly exciting the electrons
+            ! among the available levels. In the latter case we need to set the
+            ! probabilities of a particular move (e.g. move two alpha spins),
+            ! so do this here.
+            call set_level_probabilities(sys, move_prob, 2)
         else
             ! Set up the initial distribution of psips which we'll perform
             ! metropolis on.
             call initial_metropolis_config(sys, npsips, sym, beta_cycle, ireplica, rng, qmc_spawn)
         end if
 
-        do proc = 0, nprocs - 1
-            do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
-                call decode_det(sys%basis, qmc_spawn%sdata(:sys%basis%string_len, idet), occ_list)
-                !print*, idet, trial_dm_ptr(sys, qmc_spawn%sdata(:sys%basis%string_len,idet)), occ_list
-            end do
-        end do
         cdet%f => ftmp
         ! Visit every walker metropolis_attempts times.
         do iattempt = 1, metropolis_attempts
@@ -722,15 +720,10 @@ contains
                     ftmp = f_old
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
-                    !call decoder_ptr(sys, cdet%f, cdet)
-                    !call decode_det(sys%basis, f_old, occ_list)
-                    !print *, occ_list, f_old
                     call decode_det_spinocc_spinunocc(sys, f_old, cdet)
                     ! Metropolis move is to create a double excitation of
                     ! the current determinant.
                     if (grand_canonical_ensemble) then
-                        ! Metropolis move is a double excitation of the current
-                        ! determinant.
                         call gen_random_det_truncate_space(rng, sys, 2, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
@@ -744,7 +737,6 @@ contains
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
                     E_new = trial_dm_ptr(sys, f_new)
-                    !print *, E_new, E_old
                     prob = exp(-1.0_dp*beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
@@ -984,7 +976,7 @@ contains
 
         contains
 
-            pure function find_orbital(r, partition) result (iorb)
+            function find_orbital(r, partition) result (iorb)
 
                 ! Find orbital corresponding to random number r.
 
