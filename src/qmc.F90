@@ -94,7 +94,7 @@ contains
         use calc
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: decode_det, encode_det, write_det
-        use energy_evaluation, only: calculate_hf_signed_pop
+        use energy_evaluation, only: calculate_hf_signed_pop, nparticles_start_ind
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det
         use hfs_data, only: O00, hf_signed_pop
@@ -252,7 +252,7 @@ contains
         end if
 
         if (nprocs == 1 .or. .not. doing_load_balancing) par_info%load%nslots = 1
-        call init_parallel_t(sampling_size, non_blocking_comm, par_info)
+        call init_parallel_t(sampling_size, nparticles_start_ind-1, non_blocking_comm, par_info)
 
         allocate(f0(sys%basis%string_len), stat=ierr)
         call check_allocate('f0',sys%basis%string_len,ierr)
