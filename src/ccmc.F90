@@ -1346,6 +1346,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
+        ! [review] - JSS: should still be intent(in)?  Not clear why changed.
         type(cluster_t), intent(inout) :: cluster
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(inout) :: population, ndeath
@@ -1410,6 +1411,7 @@ contains
             nkill = nkill + 1
         end if
 
+        ! [review] - JSS: can remove [todo] note.
         ! [todo] - optimisation: kill directly for clusters of size 0 and 1 (taking care with threading!)
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
