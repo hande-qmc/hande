@@ -878,10 +878,21 @@ contains
 
     subroutine init_grand_canonical_ensemble(sys, sym, npsips, spawn, rng)
 
-        ! Initially distribute psips according to the grand canonical
+        ! Initially distribute psips according to the Grand-Canonical
         ! distribution function. The level probabilities won't, in general, be
         ! the same as those of the canonical ensemble, but the distribution
         ! should serve as a good starting point for the metropolis algorithm.
+
+        ! We know the value of < n_i >_GC exactly, so in turn know in principle
+        ! how to occupy the single particle levels. Uniformly selecting orbitals
+        ! becomes increasingly inefficient with basis set size so instead we
+        ! subdivide the interval [0,1) according to the single particle
+        ! occupancies. As an example consider the case when p_0 = 1/ne < n_0 > = 0.5,
+        ! with this method we will then select the 0th orbital 50% of the time
+        ! when trying to generate a determinant, compared to 1 / nbasis if
+        ! selecting orbitals uniformly. Of course, we now need to discard any
+        ! determinants where we select any given orbital twice, but the pay-off
+        ! is substantial.
 
         ! In:
         !    sys: system being studied.
@@ -908,69 +919,92 @@ contains
         integer :: tmp_orbs(sys%basis%nbasis/2)
         integer :: iorb, ipsip, iel, iattempt, iaccept, tmp, a, a_pos, orbs_selected, isel
         integer(i0) :: f(sys%basis%string_len)
-        integer :: ireplica
+        integer :: ireplica, orb, ialpha, ibeta
 
         ireplica = 1
 
         allocate(selected_orbs(sys%nel))
         selected_orbs = 0
-        ! Calculate single orbital occupancies.
-        ! [todo] - spin polarisation correctly.
+        ! Calculate orbital occupancies.
+        ! * Warning *: We assume that we are dealing with the UEG with no
+        ! magnetic fields or other funny stuff, so the probabilty of occupying
+        ! an alpha spin orbital is equal to that of occupying a beta spin
+        ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
                                                           (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-chem_pot)))
 
-        ! [todo] - spin polarisation ..
-        p_single = p_single / sys%nel
         ! Subdivide the interval [0,1] into nbasis/2 boxes whose width is equal
-        ! to 1/N p_single(i).
-        box_length(1) = p_single(1)
+        ! to 1/N_e p_single(i).
+        box_length(1) = p_single(1) / sys%nalpha
         do iorb = 2, sys%basis%nbasis/2
-            box_length(iorb) = box_length(iorb-1) + p_single(iorb)
+            box_length(iorb) = box_length(iorb-1) + p_single(iorb)/sys%nalpha
         end do
-
-        !print *, p_single
-        !print *, box_length
-        ! Distribute psips along the diagonal of the density matrix.
-        iattempt = 0
-        tmp_orbs = 0
 
         ! Occupy the diagonal.
         do ipsip = 1, npsips
             ! Create a determinant.
-            !print *, ipsip
             selected_orbs = 0
-            isel = 0
-            do
-                ! Select and orbital to occupy uniformly
-                iorb = int(get_rand_close_open(rng)*sys%basis%nbasis/2) + 1
-                ! print *, iorb
-                if (any(selected_orbs == 2*iorb-1)) then
-                    ! Already occopied so discard.
-                    ! [todo] - fix this
-                    selected_orbs = 0
-                    isel = 0
-                    cycle
-                else
-                    ! Accept with probabilty given by single particle occupancy.
+            ialpha = 0
+            ibeta = 0
+            ! Select the alpha spin orbitals.
+            if (sys%nalpha > 0) then
+                do
                     r = get_rand_close_open(rng)
-                    if (box_length(iorb) > r) then
-                        selected_orbs(isel+1) = 2*iorb - 1
-                        isel = isel + 1
-                    else
-                        ! Reject.
+                    orb = 2*find_orbital(r, box_length) - 1
+                    if (any(selected_orbs == orb)) then
+                        ialpha = 0
+                        selected_orbs = 0
                         cycle
                     end if
-                end if
-                if (isel == sys%nel) then
-                    !print *, selected_orbs
-                    call encode_det(sys%basis, selected_orbs, f)
-                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                                                    sys%basis%tensor_label_len, real_factor, ireplica)
-                    exit
-                end if
-            end do
-            !call insert_sort(selected)
+                    ialpha = ialpha + 1
+                    selected_orbs(ialpha) = orb
+                    if (ialpha == sys%nalpha) exit
+                end do
+            end if
+            ! Select the beta spin orbitals.
+            if (sys%nbeta > 0) then
+                do
+                    r = get_rand_close_open(rng)
+                    orb = 2*find_orbital(r, box_length)
+                    if (any(selected_orbs == orb)) then
+                        ibeta = 0
+                        selected_orbs = 0
+                        cycle
+                    end if
+                    ibeta = ibeta + 1
+                    selected_orbs(sys%nalpha+ibeta) = orb
+                    if (ibeta == sys%nbeta) exit
+                end do
+            end if
+            ! Create there determinant.
+            call encode_det(sys%basis, selected_orbs, f)
+            call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                                                            sys%basis%tensor_label_len, real_factor, ireplica)
         end do
+
+        contains
+
+            pure function find_orbital(r, partition) result (iorb)
+
+                ! Find orbital corresponding to random number r.
+
+                ! In:
+                !    r: uniformly generated random number in interval [0, 1)
+                !    partition: partition of unity according to Grand-Canonical
+                !        partition function.
+                ! Returns:
+                !    iorb: index of orbital we have selected.
+
+                real(dp), intent(in) :: r
+                real(dp), intent(in) :: partition(:)
+
+                integer :: iorb
+
+                do iorb = 1, size(partition)
+                    if (partition(iorb) > r) exit
+                end do
+
+            end function find_orbital
 
     end subroutine init_grand_canonical_ensemble
 
