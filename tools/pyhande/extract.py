@@ -82,7 +82,7 @@ calc_data : list of `:class:`pandas.Series`
 
     # ... output header
     md_header = dict(
-        UUID = '^ Calculation UUID:',
+        UUID = 'Calculation UUID:',
         git_hash = 'VCS BASE repository version:',
     )
 
@@ -121,8 +121,8 @@ calc_data : list of `:class:`pandas.Series`
         min_communication_time = 'Min time taken by walker communication:',
         max_communication_time = 'Max time taken by walker communication:',
         mean_communication_time = 'Mean time taken by walker communication:',
-        wall_time = 'Wall time:',
-        cpu_time = 'CPU time (per processor):'
+        wall_time = 'Wall time (seconds):',
+        cpu_time = 'CPU time (per processor, seconds):'
     )
     md_keys = [x for v in (md_header, md_input, md_body, md_footer)
             for x in v.keys()]
@@ -174,7 +174,7 @@ calc_data : list of `:class:`pandas.Series`
             if input_pattern in line or \
                     (have_input > 0 and underline_regex.search(line)):
                 have_input += 1
-        if have_input == 0:
+        if have_input < 2:
             # header
             if have_git_hash_next:
                 metadata['git_hash'] = line.split()[0]
@@ -185,13 +185,14 @@ calc_data : list of `:class:`pandas.Series`
                         have_git_hash_next = True
                     elif k :
                         metadata[k] = extract_last_field(line, k, md_int, md_float)
-        else:
+        elif have_input > 3:
             # body
+            hit = False
             for (k,v) in md_body.items():
                 if v in line:
                     # Special cases for unusual formats...
                     if k == 'ref':
-                        metadata[k] = v.split(line)[-1].strip()
+                        metadata[k] = ' '.join(line.split(v)).strip()
                     elif k == 'seed':
                         metadata[k] = int(float(line.split()[-1]))
                     else:
