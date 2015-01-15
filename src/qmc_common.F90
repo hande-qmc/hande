@@ -600,7 +600,7 @@ contains
 #ifdef PARALLEL
         if (present(rep_comm)) then
             D0_population = D0_population_cycle*ncycles
-            call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere)
+            call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
             call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -758,24 +758,29 @@ contains
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
-        logical :: update
+        logical :: update, update_tau_now
         real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
+
+        ! Only update the timestep if not in vary shift mode.
+        update_tau_now = update_tau .and. .not. vary_shift(1)
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. non_blocking_comm) then
-            if (update) call update_energy_estimators(ntot_particles)
+            if (update) call update_energy_estimators(ntot_particles, update_tau_now)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(rep_info_copy, rep_comm%nb_spawn(2))
+            call local_energy_estimators(rep_info_copy, update_tau_now, rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(rep_comm%request, ntot_particles)
+            call update_energy_estimators_recv(rep_comm%request, ntot_particles, update_tau_now)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(rep_comm)
+        else
+            update_tau_now = .false.
         end if
 
         call cpu_time(curr_time)
@@ -797,7 +802,7 @@ contains
         call fciqmc_interact(soft_exit)
         if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
 
-        if (tau_search .and. .not. vary_shift(1)) call send_tau(update_tau)
+        if (update_tau_now) call rescale_tau()
 
     end subroutine end_report_loop
 
@@ -824,38 +829,29 @@ contains
 
     end subroutine end_mc_cycle
 
-    subroutine send_tau(update_tau, factor)
+    subroutine rescale_tau(factor)
 
         ! Scale the timestep by across all the processors.  This is performed if at least
         ! one processor thinks it should be.
 
         ! In:
-        !    update_tau: true if the current processor thinks the timestep should be scaled.
         !    factor: factor to scale the timestep by (default: 0.95).
 
         use parallel
 
         integer :: ierr
-        logical, intent(in) :: update_tau
         real(p), intent(in), optional :: factor
 
         logical :: update_tau_global
 
-#ifdef PARALLEL
-       call mpi_allreduce(update_tau, update_tau_global, 1, mpi_logical, MPI_LOR, MPI_COMM_WORLD, ierr)
-#else
-        update_tau_global = update_tau
-#endif
-        if(update_tau_global) then
-            if (present(factor)) then
-                tau = factor*tau
-            else
-                tau = 0.950_p*tau
-            end if
-            if (parent) write(6, '(1X, "# Warning timestep changed to: ",f7.5)') tau
+        if (present(factor)) then
+            tau = factor*tau
+        else
+            tau = 0.950_p*tau
         end if
+        if (parent) write(6, '(1X, "# Warning timestep changed to: ",f7.5)') tau
 
-    end subroutine send_tau
+    end subroutine rescale_tau
 
     subroutine redistribute_load_balancing_dets(walker_dets, real_factor,        &
                                                 walker_populations, tot_walkers, &
