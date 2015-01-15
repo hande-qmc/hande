@@ -763,19 +763,19 @@ contains
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
-        if (.not. non_blocking_comm) then
-            if (present(update_estimators)) update = update_estimators
+        if (present(update_estimators)) update = update_estimators
+        if (update .and. .not. non_blocking_comm) then
             if (update) call update_energy_estimators(ntot_particles)
-        else
-           ! Save current report loop quantitites.
-           ! Can't overwrite the send buffer before message completion
-           ! so copy information somewhere else.
-           call local_energy_estimators(rep_info_copy, rep_comm%nb_spawn(2))
-           ! Receive previous iterations report loop quantities.
-           call update_energy_estimators_recv(rep_comm%request, ntot_particles)
-           ! Send current report loop quantities.
-           rep_comm%rep_info = rep_info_copy
-           call update_energy_estimators_send(rep_comm)
+        else if (update) then
+            ! Save current report loop quantitites.
+            ! Can't overwrite the send buffer before message completion
+            ! so copy information somewhere else.
+            call local_energy_estimators(rep_info_copy, rep_comm%nb_spawn(2))
+            ! Receive previous iterations report loop quantities.
+            call update_energy_estimators_recv(rep_comm%request, ntot_particles)
+            ! Send current report loop quantities.
+            rep_comm%rep_info = rep_info_copy
+            call update_energy_estimators_send(rep_comm)
         end if
 
         call cpu_time(curr_time)
