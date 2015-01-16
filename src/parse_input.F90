@@ -217,8 +217,6 @@ contains
                 call readf(init_beta)
             case('METROPOLIS_ATTEMPTS')
                 call readi(metropolis_attempts)
-            case('REUSE_INITIAL_CONFIG')
-                reuse_initial_config = .true.
             case('FREE_ELECTRON_TRIAL')
                 free_electron_trial = .true.
             case('CHEM_POT')
@@ -865,7 +863,6 @@ contains
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(reuse_initial_config, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
