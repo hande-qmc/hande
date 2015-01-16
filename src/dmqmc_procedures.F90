@@ -690,6 +690,7 @@ contains
 
         call alloc_det_info_t(sys, cdet, .false.)
 
+        ! [todo] - Separate subroutine?
         if (grand_canonical_ensemble) then
             call init_grand_canonical_ensemble(sys, sym, npsips, qmc_spawn, rng)
             ! The metropolis move is to excite two electrons. This is achieved
@@ -720,6 +721,7 @@ contains
                     call decode_det_spinocc_spinunocc(sys, f_old, cdet)
                     ! Metropolis move is to create a double excitation of
                     ! the current determinant.
+                    ! [todo] - function pointers or separate procedures?
                     if (grand_canonical_ensemble) then
                         call gen_random_det_truncate_space(rng, sys, 2, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
@@ -829,6 +831,7 @@ contains
             ! psips on all levels.
             do
                 call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
+                ! [todo] - All symmetry sector case.
                 if (symmetry_orb_list(sys, occ_list) == sym) then
                     call encode_det(sys%basis, occ_list, f_new)
                     call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
@@ -912,6 +915,8 @@ contains
             selected_orbs = 0
             ialpha = 0
             ibeta = 0
+            ! [todo] - Clean this, shouldn't need two effectively identitical
+            ! sets of loops / conditionals.
             ! Select the alpha spin orbitals.
             if (sys%nalpha > 0) then
                 do
@@ -943,6 +948,7 @@ contains
                 end do
             end if
             ! Create there determinant.
+            ! [todo] - K = 0 sector only?
             call encode_det(sys%basis, selected_orbs, f)
             call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                             sys%basis%tensor_label_len, real_factor, ireplica)
