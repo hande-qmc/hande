@@ -995,6 +995,11 @@ contains
                 do iorb = 1, size(partition)
                     if (partition(iorb) > r) exit
                 end do
+                ! Case when condition is not met, should only happen when the
+                ! last orbital is the correct orbital to occupy.
+                ! [todo] - Maybe renormalise the probability so that the last
+                ! entry is 1.
+                if (iorb == size(partition)+1) iorb = iorb - 1
 
             end function find_orbital
 
