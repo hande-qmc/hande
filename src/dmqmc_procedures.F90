@@ -835,24 +835,19 @@ contains
                 call create_diagonal_density_matrix_particle(f0, sys%basis%string_len, &
                                                              sys%basis%tensor_label_len, real_factor, ireplica)
             end do
-            do ilevel = 2, sys%max_number_excitations
-                ! Calculate the probabilites of generating the possible spin
-                ! excitations.
-                call set_level_probabilities(sys, ptrunc_level, ilevel)
-                ! Create a determinant of the correct excitation level.
-                do idet = 1, psips_per_level
-                    ! Repeatedly attempt to generate a determinant of the
-                    ! correct symmetry so that there are an equal number of
-                    ! psips on all levels.
-                    do
-                        call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
-                        if (symmetry_orb_list(sys, occ_list) == sym) then
-                            call encode_det(sys%basis, occ_list, f_new)
-                            call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
-                                                                        sys%basis%tensor_label_len, real_factor, ireplica)
-                            exit
-                        end if
-                    end do
+            call set_level_probabilities(sys, ptrunc_level, sys%max_number_excitations)
+            do idet = 1, npsips-psips_per_level
+                ! Repeatedly attempt to generate a determinant of the
+                ! correct symmetry so that there are an equal number of
+                ! psips on all levels.
+                do
+                    call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
+                    if (symmetry_orb_list(sys, occ_list) == sym) then
+                        call encode_det(sys%basis, occ_list, f_new)
+                        call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
+                                                                    sys%basis%tensor_label_len, real_factor, ireplica)
+                        exit
+                    end if
                 end do
             end do
             call dealloc_det_info_t(det0, .false.)
