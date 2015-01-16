@@ -1005,14 +1005,14 @@ contains
 
     end subroutine init_grand_canonical_ensemble
 
-    subroutine set_level_probabilities(sys, ptrunc_level, ilevel)
+    subroutine set_level_probabilities(sys, ptrunc_level, max_excit)
 
         ! Set the probabilities for creating a determinant on a given
         ! excitation level so that get_random_det_truncate_space can be used.
         !
         ! In:
         !    sys: system being studied.
-        !    ilevel: excitation level for which we want to calculate the
+        !    max_excit: excitation level for which we want to calculate the
         !        excitation probabilities.
         ! In/Out:
         !    ptrunc_level: array containing probabilities for spawning at a
@@ -1022,38 +1022,35 @@ contains
         use utils, only: binom_r
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: ilevel
+        integer, intent(in) :: max_excit
         real(p), intent(inout) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
 
-        integer :: nallowed, iallowed, norm, istart, ialpha
+        integer :: ialpha, ilevel
         real(p) :: offset
 
         ! Set up the probabilities for creating a determinant on a given
         ! excitation level.
         ! ptunc_level(ialpha, ilevel) gives the probability of creating a
         ! determinant with excitation level ilevel by exciting ialpha
-        ! alpha spins (and (ilevel-ialpha) beta spins). We want to
-        ! distribute the psips equally at each excitation level so set the
-        ! probability to be 1, where excitation level 1 is explicitly excluded,
-        ! and then uniformly choose the number of alpha(beta) spin orbitals to excite.
+        ! alpha spins (and (ilevel-ialpha) beta spins). We give each possible
+        ! realisation of an excitation equal probability and allow each
+        ! excitation to occur with equal probability.
         ptrunc_level = 0.0_p
-        nallowed = 0
-        do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
-            ! Number of ways of exciting ialpha electrons such that
-            ! ialpha + nbeta = ilevel.
-            ptrunc_level(ialpha, ilevel) = binom_r(ilevel,ialpha)
-            ! Number of unique combinations.
-            nallowed = nallowed + 1
+        do ilevel = 1, max_excit
+            do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
+                ! Number of ways of exciting ialpha electrons such that
+                ! ialpha + nbeta = ilevel.
+                ptrunc_level(ialpha, ilevel) = binom_r(ilevel,ialpha)
+            end do
         end do
         ! Normalisation for the distribution at this excitation level.
-        norm = sum(ptrunc_level(:,ilevel))
-        ! Index of first allowed alpha excitation.
-        istart = ialpha - nallowed
-        ! Need offset to allow for ialpha = 0 case in the loop below.
-        offset = 0
-        do iallowed = istart, istart+nallowed-1
-            ptrunc_level(iallowed, ilevel) = offset + ptrunc_level(iallowed, ilevel)/norm
-            offset = ptrunc_level(iallowed,ilevel)
+        forall(ilevel=1:max_excit) ptrunc_level(:,ilevel) = ptrunc_level(:,ilevel) / (max_excit*sum(ptrunc_level(:,ilevel)))
+        offset = 0.0_p
+        do ilevel = 1, max_excit
+            do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
+                ptrunc_level(ialpha, ilevel) = offset + ptrunc_level(ialpha, ilevel)
+                offset = ptrunc_level(ialpha, ilevel)
+            end do
         end do
 
     end subroutine set_level_probabilities
