@@ -722,6 +722,7 @@ contains
 
         integer :: i, ierr
         integer :: send_counts(0:nprocs-1), receive_counts(0:nprocs-1)
+#ifdef PARALLEL
         integer :: disps(0:nprocs-1)
 
         ! Create displacements used for MPI communication.
@@ -730,34 +731,26 @@ contains
             disps(i) = disps(i-1) + determ%sizes(i-1)
         end do
 
-#ifdef PARALLEL
         ! 'Stick together' the deterministic vectors from each process, on
         ! each process.
         call mpi_allgatherv(determ%vector, determ%sizes(iproc), mpi_preal, determ%full_vector, &
                              determ%sizes, disps, mpi_preal, MPI_COMM_WORLD, ierr)
+#else
+        determ%full_vector = determ%vector
 #endif
-
-        ! Perform the multiplication of the deterministic Hamiltonian on the
-        ! deterministic vector.
-        ! [review] - JSS: how is determ%full_vector set in serial?  I suspect ! it's not...
-        call csrpgemv(.true., determ%hamil, determ%full_vector, determ%vector)
 
         ! We want the final vector to hold -tau*(Hv-Sv), where tau is the
         ! timestep, H is the determinstic Hamiltonian, v is the vector of
-        ! deterministic amplitudes and S is the shift. We therefore need to
-        ! apply a minus sign to the result of the above matrix multiplication,
-        ! add the shift on and then multiply by tau.
-        ! The vector v is still stored in determ%full_vector, even though
-        ! determ%vector has been overwritten by the matrix multiplication.
-        ! Explicitly do the full loop, to avoid creating a potentially large
-        ! array on the stack.
+        ! deterministic amplitudes and S is the shift. We therefore begin by
+        ! setting the vector used to store the output to tau*S*v.
+        determ%vector = tau*shift(1)*determ%vector
 
-        ! [review] - JSS: as an optimisation, why not do determ%vector = tau*shift(1)*determ%vector
-        ! [review] - JSS: after the MPI_AllGatherV and beforethe csrpgemv call and add an
-        ! [review] - JSS: optional argument to csrpgemv to avoid zeroing the input array?
-        do i = 1, determ%sizes(iproc)
-            determ%vector(i) = tau*(shift(1)*determ%full_vector(i+disps(iproc)) - determ%vector(i))
-        end do
+        ! Perform the multiplication of the deterministic Hamiltonian on the
+        ! full deterministic vector. A factor of minus one is applied to the
+        ! Hamiltonian, as required, and the result is added to the input
+        ! vector, determ%vector, which is used to hold the final result of the
+        ! deterministic projection.
+        call csrpgemv(.true., .false., -1.0_p*tau, determ%hamil, determ%full_vector, determ%vector)
 
     end subroutine determ_projection_separate_annihil
 
