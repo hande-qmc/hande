@@ -227,9 +227,7 @@ contains
             end if
         end if
         ntot_particles_old = ntot_particles
-        ! [review] - JSS: unclear why this was necessary.  new_hf_signed_pop should be 0 if not doing hfs...
-        ! [reply] - RSTF: new_hf_signed_pop is uninitialised if not doing hfs, so this allows using the check uninit compiler option for debugging
-        if (doing_calc(hfs_fciqmc_calc)) hf_signed_pop = new_hf_signed_pop
+        hf_signed_pop = new_hf_signed_pop
         if (ntot_particles(1) > target_particles .and. .not.vary_shift(1)) then
             vary_shift(1) = .true.
             if (vary_shift_from_proje) then
