@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, tinitiator, nspawn_events, determ_flags)
+    subroutine direct_annihilation(sys, rng, tinitiator, nspawn_events, determ_size, determ_flags)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -20,6 +20,8 @@ contains
         ! In:
         !    sys: system being studied.
         !    tinitiator: true if the initiator approximation is being used.
+        !    determ_size (optional): The number of deterministic states
+        !       belonging to this process.
         ! In/Out:
         !    rng: random number generator.
         !    determ_flags (optional): A list of flags specifying whether determinants in
@@ -37,13 +39,18 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         logical, intent(in) :: tinitiator
         integer, optional :: nspawn_events
+        integer, intent(in), optional :: determ_size
         integer, intent(inout), optional :: determ_flags(:)
 
         integer, parameter :: thread_id = 0
 
         if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(qmc_spawn)
 
-        call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
+        if (present(determ_size)) then
+            call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator, determ_size)
+        else
+            call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
+        end if
 
         call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn, determ_flags=determ_flags)
 
