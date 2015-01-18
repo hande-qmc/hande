@@ -593,8 +593,10 @@ contains
         spawn%sdata_recvd => tmp_data
 
 #else
+        use parallel, only: nprocs
+
         type(spawn_t), intent(inout) :: spawn
-        integer, intent(out) :: receive_counts(0:nprocs-1)
+        integer, intent(out) :: nstates_received(0:nprocs-1)
 #endif
 
     end subroutine comm_spawn_t
