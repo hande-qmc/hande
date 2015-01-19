@@ -240,7 +240,7 @@ contains
        end if
 
        ! Full Renyi entropy (S_2).
-       if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop)
+       if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit)
 
        ! Reduced density matrices.
        if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
@@ -593,7 +593,7 @@ contains
 
    end subroutine dmqmc_stag_mag_heisenberg
 
-   subroutine update_full_renyi_2(walker_pop)
+   subroutine update_full_renyi_2(walker_pop, excit_level)
 
        ! Add the contribution from the current density matrix element to the
        ! Renyi entropy (S_2) of the full density matrix.
@@ -601,13 +601,26 @@ contains
        ! In:
        !    walker_pop: number of particles on the current density matrix
        !        element, for both replicas.
+       !    excit_level: The excitation level between the two bitstrings
+       !        contributing to the full density matrix bitstring.
 
-       use fciqmc_data, only: estimator_numerators, full_r2_index
+       use fciqmc_data, only: estimator_numerators, full_r2_index, half_density_matrix
 
        real(p), intent(in) :: walker_pop(:)
+       integer, intent(in) :: excit_level
 
-       estimator_numerators(full_r2_index) = estimator_numerators(full_r2_index) + &
-                                  walker_pop(1)*walker_pop(2)
+       if (half_density_matrix .and. excit_level /= 0) then
+           ! With the half-density matrix option, only the upper-half of the
+           ! density matrix is stored, but the off-diagonal elements are twice
+           ! as large instead. Thus, a product of off-diagonal elements is four
+           ! times as large. We want two 'correct size' contributions, so we
+           ! need to divide these contirbutions by two to get this.
+           estimator_numerators(full_r2_index) = estimator_numerators(full_r2_index) + &
+                                      walker_pop(1)*walker_pop(2)/2.0_p
+       else
+           estimator_numerators(full_r2_index) = estimator_numerators(full_r2_index) + &
+                                      walker_pop(1)*walker_pop(2)
+       end if
 
    end subroutine update_full_renyi_2
 
