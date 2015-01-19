@@ -246,15 +246,14 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation, &
-                                linked_ccmc, ccmc_full_nc
+                              linked_ccmc, ccmc_full_nc
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level
         use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
-                               walker_data, proj_energy, proj_energy_cycle, f0, D0_population_cycle, &
-                               dump_restart_file, tot_nparticles, mc_cycles_done, qmc_spawn,         &
-                               tot_walkers, walker_length, write_fciqmc_report_header,               &
-                               nparticles, ccmc_move_freq, real_factor,          &
+                               walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
+                               tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
+                               write_fciqmc_report_header, nparticles, ccmc_move_freq, real_factor,  &
                                cluster_multispawn_threshold, real_factor
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
@@ -475,7 +474,7 @@ contains
                 !$omp         nspawnings_left, nspawnings_total, fexcit)        &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level, &
-                !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
+                !$omp        D0_normalisation, D0_pos,                          &
                 !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
                 !$omp        proj_energy, real_factor, min_cluster_size,        &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
@@ -486,7 +485,7 @@ contains
                 !$omp        walker_dets, nparticles_change, ndeath)
                 it = get_thread_id()
                 iexcip_pos = 1
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
+                !$omp do schedule(dynamic,200) reduction(+:D0_population,proj_energy)
                 do iattempt = 1, nclusters
 
                     ! For OpenMP scalability, have this test inside a single loop rather
@@ -528,7 +527,7 @@ contains
                             ! the cluster.
                             call update_proj_energy_ptr(sys, f0, cdet(it), &
                                      cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
-                                     D0_population_cycle, proj_energy, connection, junk)
+                                     D0_population, proj_energy, connection, junk)
                         end if
 
                         ! Spawning
@@ -617,20 +616,6 @@ contains
                                                              tot_walkers, nparticles, qmc_spawn)
 
                 call direct_annihilation(sys, rng(0), initiator_approximation, nspawn_events)
-
-                ! Ok, this is fairly non-obvious.
-                ! Because we sample the projected estimator (and normalisation
-                ! <D_0| \Psi_CC>) N times, where N is the number of excips, we
-                ! must divide through be N in order to avoid introducing a bias.
-                ! Not doing so means that the quality of the sampling of the sum
-                ! (the space of which is constant) varies with population.  The
-                ! bias is small but noticeable in some systems.
-                if (nattempts > 0) then
-! JSS TODO: Need to discuss with AJWT, but it looks like we should *not* normalise D0
-! as well as proj_energy_cycle.  Inconsistency between proj_energy and D0 accumulation?!
-!                    D0_population_cycle = D0_population_cycle/nattempts
-                    proj_energy_cycle = proj_energy_cycle/nattempts
-                end if
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 
