@@ -283,7 +283,7 @@ contains
         logical :: soft_exit
 
         integer(int_p), allocatable :: cumulative_abs_pops(:)
-        integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
+        integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot, iexcip_last
         integer(int_p) :: tot_abs_pop
         integer :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
@@ -295,6 +295,8 @@ contains
         integer :: nspawnings_left, nspawnings_total
 
         integer(i0) :: fexcit(sys%basis%string_len)
+        logical :: seen_D0
+
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=real_factor)
 
@@ -472,7 +474,8 @@ contains
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
                 !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
-                !$omp         nspawnings_left, nspawnings_total, fexcit)        &
+                !$omp         nspawnings_left, nspawnings_total, fexcit,        &
+                !$omp         iexcip_last, seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_pops, tot_abs_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level, &
                 !$omp        D0_normalisation, D0_population_cycle, D0_pos,     &
@@ -486,6 +489,8 @@ contains
                 !$omp        walker_dets, nparticles_change, ndeath)
                 it = get_thread_id()
                 iexcip_pos = 1
+                iexcip_last = 0
+                seen_D0 = .false.
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy)
                 do iattempt = 1, nclusters
 
@@ -515,7 +520,13 @@ contains
                         ! where two excitors share an elementary operator
 
                         if (cluster(it)%excitation_level /= huge(0)) then
-                            call decoder_ptr(sys, cdet(it)%f, cdet(it))
+                            ! When using the full non-composite algorithm, each non-composite
+                            ! cluster only needs to be decoded once, as cdet does not need to change
+                            ! between different spawning attempts from the same cluster
+                            if ((iattempt <= nstochastic_clusters+D0_normalisation .and. .not. seen_D0) .or. &
+                                (iattempt > nstochastic_clusters+D0_normalisation .and. iexcip_pos /= iexcip_last)) then 
+                                call decoder_ptr(sys, cdet(it)%f, cdet(it))
+                            end if
 
                             ! FCIQMC calculates the projected energy exactly.  To do
                             ! so in CCMC would involve enumerating over all pairs of
@@ -584,6 +595,14 @@ contains
                         end if
 
                     end if
+
+                    if (ccmc_full_nc) then
+                        if (cluster(it)%nexcitors == 1) then
+                            iexcip_last = iexcip_pos
+                        else if (cluster(it)%nexcitors == 0) then
+                            seen_D0 = .true.
+                        end if
+                    end if                        
 
                 end do
                 !$omp end do
