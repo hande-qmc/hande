@@ -749,9 +749,8 @@ contains
             end do
         end do
 
-        if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", &
-                           '//int_fmt(metropolis_attempts,1)//')') real(naccept)/nsuccess, &
-                           (metropolis_attempts*npsips-nsuccess)/npsips
+        if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", f8.7)') &
+                          real(naccept)/nsuccess, real(metropolis_attempts*npsips-nsuccess)/(metropolis_attempts*npsips)
 
         call dealloc_det_info_t(cdet, .false.)
 
