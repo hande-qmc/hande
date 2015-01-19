@@ -808,6 +808,7 @@ contains
         integer(int_64) :: psips_per_level
         real(p) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
 
+        ! [todo] - Include all psips.
         psips_per_level = int(npsips/sys%max_number_excitations)
         call alloc_det_info_t(sys, det0)
         call decode_det_spinocc_spinunocc(sys, f0, det0)
@@ -914,9 +915,9 @@ contains
             do
                 occ_list = 0
                 ! Select the alpha spin orbitals.
-                call generate_allowed_orbital_list(rng, box_length, sys%nalpha, occ_list)
+                call generate_allowed_orbital_list(rng, box_length, sys%nalpha, 1, occ_list)
                 ! Select beta spin orbitals.
-                call generate_allowed_orbital_list(rng, box_length, sys%nbeta, occ_list)
+                call generate_allowed_orbital_list(rng, box_length, sys%nbeta, 0, occ_list)
                 ! Create there determinant.
                 ! [todo] - K = 0 sector only?
                 if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
@@ -932,7 +933,7 @@ contains
 
         contains
 
-            subroutine generate_allowed_orbital_list(rng, partition, nselect, occ_list)
+            subroutine generate_allowed_orbital_list(rng, partition, nselect, spin_factor, occ_list)
 
                 ! Generate an list of orbitals according to their single
                 ! particle GC orbital occupancy probabilities.
@@ -941,6 +942,8 @@ contains
                 !    partition: partition of unity according to single particle
                 !       GC orbital occupancies.
                 !    nselect: number of orbitals to select.
+                !    spin_factor: integer to account for odd/even ordering of alpha/beta spin orbitals. Set to
+                !        1 for alpha spins, 0 for beta spins.
                 ! In/Out:
                 !    rng: random number generator.
                 !    occ_list: array containing occupied orbitals.
@@ -949,6 +952,7 @@ contains
 
                 real(p), intent(in) :: partition(:)
                 integer, intent(in) :: nselect
+                integer, intent(in) :: spin_factor
                 type(dSFMT_t), intent(inout) :: rng
                 integer, intent(inout) :: occ_list(:)
 
@@ -959,7 +963,7 @@ contains
                 do
                     if (iselect == nselect) exit
                     r = get_rand_close_open(rng)
-                    orb = 2*find_orbital(r, box_length) - 1
+                    orb = 2*find_orbital(r, box_length) - spin_factor
                     if (any(occ_list == orb)) then
                         iselect = 0
                         occ_list = 0
