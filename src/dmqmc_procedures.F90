@@ -885,18 +885,14 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
-        real(p) :: p_single(sys%basis%nbasis/2), box_length(sys%basis%nbasis/2)
-        real(p) :: r
-        integer, allocatable :: selected_orbs(:)
-        integer :: tmp_orbs(sys%basis%nbasis/2)
-        integer :: iorb, ipsip, iel, iattempt, iaccept, tmp, a, a_pos, orbs_selected, isel
+        real(dp) :: p_single(sys%basis%nbasis/2), box_length(sys%basis%nbasis/2)
+        real(dp) :: r
+        integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%string_len)
-        integer :: ireplica, orb, ialpha, ibeta
+        integer :: ireplica, iorb, ipsip
 
         ireplica = 1
 
-        allocate(selected_orbs(sys%nel))
-        selected_orbs = 0
         ! Calculate orbital occupancies.
         ! * Warning *: We assume that we are dealing with the UEG with no
         ! magnetic fields or other funny stuff, so the probabilty of occupying
@@ -916,45 +912,15 @@ contains
         do ipsip = 1, npsips
             ! Create a determinant.
             do
-                selected_orbs = 0
-                ialpha = 0
-                ibeta = 0
-                ! [todo] - Clean this, shouldn't need two effectively identitical
-                ! sets of loops / conditionals.
+                occ_list = 0
                 ! Select the alpha spin orbitals.
-                if (sys%nalpha > 0) then
-                    do
-                        r = get_rand_close_open(rng)
-                        orb = 2*find_orbital(r, box_length) - 1
-                        if (any(selected_orbs == orb)) then
-                            ialpha = 0
-                            selected_orbs = 0
-                            cycle
-                        end if
-                        ialpha = ialpha + 1
-                        selected_orbs(ialpha) = orb
-                        if (ialpha == sys%nalpha) exit
-                    end do
-                end if
-                ! Select the beta spin orbitals.
-                if (sys%nbeta > 0) then
-                    do
-                        r = get_rand_close_open(rng)
-                        orb = 2*find_orbital(r, box_length)
-                        if (any(selected_orbs == orb)) then
-                            ibeta = 0
-                            selected_orbs = 0
-                            cycle
-                        end if
-                        ibeta = ibeta + 1
-                        selected_orbs(sys%nalpha+ibeta) = orb
-                        if (ibeta == sys%nbeta) exit
-                    end do
-                end if
+                call generate_allowed_orbital_list(rng, box_length, sys%nalpha, occ_list)
+                ! Select beta spin orbitals.
+                call generate_allowed_orbital_list(rng, box_length, sys%nbeta, occ_list)
                 ! Create there determinant.
                 ! [todo] - K = 0 sector only?
-                if (all_mom_sectors .or. symmetry_orb_list(sys, selected_orbs) == sym) then
-                    call encode_det(sys%basis, selected_orbs, f)
+                if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                    call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                                 sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
@@ -965,6 +931,45 @@ contains
         end do
 
         contains
+
+            subroutine generate_allowed_orbital_list(rng, partition, nselect, occ_list)
+
+                ! Generate an list of orbitals according to their single
+                ! particle GC orbital occupancy probabilities.
+
+                ! In:
+                !    partition: partition of unity according to single particle
+                !       GC orbital occupancies.
+                !    nselect: number of orbitals to select.
+                ! In/Out:
+                !    rng: random number generator.
+                !    occ_list: array containing occupied orbitals.
+
+                use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+                real(p), intent(in) :: partition(:)
+                integer, intent(in) :: nselect
+                type(dSFMT_t), intent(inout) :: rng
+                integer, intent(inout) :: occ_list(:)
+
+                integer :: orb, iselect
+                real(dp) :: r
+
+                iselect = 0
+                do
+                    if (iselect == nselect) exit
+                    r = get_rand_close_open(rng)
+                    orb = 2*find_orbital(r, box_length) - 1
+                    if (any(occ_list == orb)) then
+                        iselect = 0
+                        occ_list = 0
+                        cycle
+                    end if
+                    iselect = iselect + 1
+                    occ_list(iselect) = orb
+                end do
+
+            end subroutine generate_allowed_orbital_list
 
             function find_orbital(r, partition) result (iorb)
 
