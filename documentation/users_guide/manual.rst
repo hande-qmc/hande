@@ -638,16 +638,7 @@ These options describe the system which is to be investigated.
     Applicable only in the real-space formulation of the Hubbard model and
     Heisenberg model, otherwise the user is notified and the keyword is
     ignored.
-**separate_strings**
-    Use separate bit strings to represent the alpha and beta spin-orbitals in
-    a given Slater determinant.  The default behaviour is for the alpha and beta
-    orbitals to be interleaved in the bit string.  This option should not
-    change the FCI result, but might improve the efficiency of the FCIQMC
-    algorithm.
 
-    Applicable only in the real-space formulation of the Hubbard model,
-    otherwise the user is notified and the keyword is ignored.
-    
 **triangular_lattice**
     When using a rectangular lattice, this option will add extra bonds to the
     lattice so that, in terms of the connectivity of the various sites, the

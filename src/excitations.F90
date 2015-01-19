@@ -50,8 +50,6 @@ contains
             ! Set bits corresponding to all orbitals above ibasis.
             ! Sure, there are quicker (and probably more elegant) ways of doing
             ! this, but it's a one-off...
-            ! Loop from jbasis=1 as separate_strings means that even if
-            ! jbasis<ibasis, it can still come after ibasis in the bit string.
             do jbasis = 1, basis%nbasis
                 jpos = basis%bit_lookup(1, jbasis)
                 jel = basis%bit_lookup(2, jbasis)
