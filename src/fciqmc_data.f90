@@ -450,6 +450,9 @@ real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
 ! along the diagonal of the entire density matrix, including all symmetry
 ! sectors.
 logical :: all_sym_sectors = .false.
+! If true then the simulation will start with walkers distributed in all
+! momentum symmetry sectors of the Hamiltonian.
+logical :: all_mom_sectors = .false.
 
 ! If true then the reduced density matricies will be calulated for the 'A'
 ! subsystems specified by the user.

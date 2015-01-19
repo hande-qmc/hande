@@ -658,7 +658,7 @@ contains
         use determinants, only: decode_det, alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det, get_excitation
-        use fciqmc_data, only: real_factor, metropolis_attempts
+        use fciqmc_data, only: real_factor, metropolis_attempts, all_mom_sectors
         use fciqmc_data, only: f0, qmc_spawn, sampling_size, grand_canonical_ensemble
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
@@ -722,7 +722,7 @@ contains
                     ! Metropolis move is to create a double excitation of
                     ! the current determinant.
                     ! [todo] - function pointers or separate procedures?
-                    if (grand_canonical_ensemble) then
+                    if (all_mom_sectors) then
                         call gen_random_det_truncate_space(rng, sys, 2, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
@@ -789,7 +789,7 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: f0, real_factor, initial_config, metropolis_attempts
+        use fciqmc_data, only: f0, real_factor, initial_config, metropolis_attempts, all_mom_sectors
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
@@ -832,11 +832,13 @@ contains
             do
                 call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
                 ! [todo] - All symmetry sector case.
-                if (symmetry_orb_list(sys, occ_list) == sym) then
-                    call encode_det(sys%basis, occ_list, f_new)
-                    call create_diagonal_density_matrix_particle(f_new, sys%basis%string_len, &
+                if (all_mom_sectors .or. symmetry_orb_list(sys, selected_orbs) == sym) then
+                    call encode_det(sys%basis, selected_orbs, f)
+                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                                 sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
+                else
+                    cycle
                 end if
             end do
         end do
@@ -872,7 +874,8 @@ contains
 
         use system, only: sys_t
         use spawn_data, only: spawn_t
-        use fciqmc_data, only: chem_pot, init_beta, real_factor
+        use fciqmc_data, only: chem_pot, init_beta, real_factor, all_mom_sectors
+        use symmetry, only: symmetry_orb_list
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
 
@@ -912,46 +915,53 @@ contains
         ! Occupy the diagonal.
         do ipsip = 1, npsips
             ! Create a determinant.
-            selected_orbs = 0
-            ialpha = 0
-            ibeta = 0
-            ! [todo] - Clean this, shouldn't need two effectively identitical
-            ! sets of loops / conditionals.
-            ! Select the alpha spin orbitals.
-            if (sys%nalpha > 0) then
-                do
-                    r = get_rand_close_open(rng)
-                    orb = 2*find_orbital(r, box_length) - 1
-                    if (any(selected_orbs == orb)) then
-                        ialpha = 0
-                        selected_orbs = 0
-                        cycle
-                    end if
-                    ialpha = ialpha + 1
-                    selected_orbs(ialpha) = orb
-                    if (ialpha == sys%nalpha) exit
-                end do
-            end if
-            ! Select the beta spin orbitals.
-            if (sys%nbeta > 0) then
-                do
-                    r = get_rand_close_open(rng)
-                    orb = 2*find_orbital(r, box_length)
-                    if (any(selected_orbs == orb)) then
-                        ibeta = 0
-                        selected_orbs = 0
-                        cycle
-                    end if
-                    ibeta = ibeta + 1
-                    selected_orbs(sys%nalpha+ibeta) = orb
-                    if (ibeta == sys%nbeta) exit
-                end do
-            end if
-            ! Create there determinant.
-            ! [todo] - K = 0 sector only?
-            call encode_det(sys%basis, selected_orbs, f)
-            call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                                            sys%basis%tensor_label_len, real_factor, ireplica)
+            do
+                selected_orbs = 0
+                ialpha = 0
+                ibeta = 0
+                ! [todo] - Clean this, shouldn't need two effectively identitical
+                ! sets of loops / conditionals.
+                ! Select the alpha spin orbitals.
+                if (sys%nalpha > 0) then
+                    do
+                        r = get_rand_close_open(rng)
+                        orb = 2*find_orbital(r, box_length) - 1
+                        if (any(selected_orbs == orb)) then
+                            ialpha = 0
+                            selected_orbs = 0
+                            cycle
+                        end if
+                        ialpha = ialpha + 1
+                        selected_orbs(ialpha) = orb
+                        if (ialpha == sys%nalpha) exit
+                    end do
+                end if
+                ! Select the beta spin orbitals.
+                if (sys%nbeta > 0) then
+                    do
+                        r = get_rand_close_open(rng)
+                        orb = 2*find_orbital(r, box_length)
+                        if (any(selected_orbs == orb)) then
+                            ibeta = 0
+                            selected_orbs = 0
+                            cycle
+                        end if
+                        ibeta = ibeta + 1
+                        selected_orbs(sys%nalpha+ibeta) = orb
+                        if (ibeta == sys%nbeta) exit
+                    end do
+                end if
+                ! Create there determinant.
+                ! [todo] - K = 0 sector only?
+                if (all_mom_sectors .or. symmetry_orb_list(sys, selected_orbs) == sym) then
+                    call encode_det(sys%basis, selected_orbs, f)
+                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                                                                sys%basis%tensor_label_len, real_factor, ireplica)
+                    exit
+                else
+                    cycle
+                end if
+            end do
         end do
 
         contains

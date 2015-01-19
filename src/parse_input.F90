@@ -291,6 +291,8 @@ contains
                 calculate_excit_distribution = .true.
             case('USE_ALL_SYM_SECTORS')
                 all_sym_sectors = .true.
+            case('USE_ALL_MOM_SECTORS')
+                all_mom_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
                 call readi(nrdms)
                 allocate(rdms(nrdms), stat=ierr)
@@ -861,6 +863,7 @@ contains
         call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(all_mom_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
