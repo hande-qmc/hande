@@ -601,6 +601,12 @@ real(dp) :: init_beta
 ! Number of metropolis attempts (per psip) we use when generating
 ! the trial density matrix.
 integer :: metropolis_attempts = 1000
+! For the metropolis move we generate an excitation of the current determinant
+! up to the max_metropolis_move'th excitation level (excluding zero-fold
+! excitations). Only applicable if all_mom_sym = .true., otherwise the
+! excitation generators are used which conserve momentum symmetry.
+! Default: Single and double excitations (if applicable).
+integer :: max_metropolis_move = 2
 ! Use the free electron Hamiltonian as the trial density matrix.
 ! Default: Use the "Hartree-Fock" trial density matrix.
 logical :: free_electron_trial = .false.

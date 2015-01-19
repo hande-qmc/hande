@@ -658,8 +658,8 @@ contains
         use determinants, only: decode_det, alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det, get_excitation
-        use fciqmc_data, only: real_factor, metropolis_attempts, all_mom_sectors
-        use fciqmc_data, only: f0, qmc_spawn, sampling_size, grand_canonical_ensemble
+        use fciqmc_data, only: real_factor, metropolis_attempts, all_mom_sectors, f0, qmc_spawn, &
+                               sampling_size, grand_canonical_ensemble, max_metropolis_move
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
@@ -699,7 +699,7 @@ contains
             ! among the available levels. In the latter case we need to set the
             ! probabilities of a particular move (e.g. move two alpha spins),
             ! so do this here.
-            call set_level_probabilities(sys, move_prob, 2)
+            call set_level_probabilities(sys, move_prob, max_metropolis_move)
         else
             ! Set up the initial distribution of psips which we'll perform
             ! metropolis on.
@@ -723,7 +723,7 @@ contains
                     ! the current determinant.
                     ! [todo] - function pointers or separate procedures?
                     if (all_mom_sectors) then
-                        call gen_random_det_truncate_space(rng, sys, 2, cdet, move_prob, occ_list)
+                        call gen_random_det_truncate_space(rng, sys, max_metropolis_move, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
                     else
