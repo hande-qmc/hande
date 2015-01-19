@@ -11,6 +11,7 @@ spawn_cutoff 0.01
 
 semi_stoch_high_pop 100
 semi_stoch_iteration 1000
+semi_stoch_combine_annihil
 
 walker_length 5 mb
 spawned_walker_length 1 mb

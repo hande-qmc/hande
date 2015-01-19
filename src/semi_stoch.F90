@@ -73,78 +73,33 @@ module semi_stoch
 !
 ! As we run through all states in the main algorithm, the populations on
 ! deterministic states are copied across to a vector (semi_stoch_t%vector).
-! This vector is what is multiplied in the deterministic projection itself
-! (performed in determ_projection). The resulting 'spawns' of this deterministic
-! projection (which will create a 'spawning' on every state in the entire
-! deterministic space) will be added to the spawning array and enter the
-! annihilation routine just like any other spawning. The only difference is
-! that we don't want to stochastically round any deterministic spawnings to
-! zero, so we check that a spawn isn't in the deterministic space before this
-! rounding is performed.
+! This vector is what is multiplied in the deterministic projection itself.
+!
+! There are two possible methods for adding deterministic spawnings back into
+! the main psip array. If determ%separate_annihilation is true, then each
+! processor will receive the full list of deterministic amplitudes from all
+! processors via an extra MPI call per iteration. Using this complete list, the
+! deterministic spawning amplitudes for each processor can be calculated by
+! a single matrix multiplication without any further communication. These
+! deterministic spawnings are then added back into the main psip array in
+! the annihilation routines in deterministic_annihilation, which treats these
+! spawnings separately.
+!
+! If determ%separate_annihilation is false then the deterministic spawning
+! amplitudes from a given processor will be calculated by performing the exact
+! projection, and the resulting 'spawnings' will then be added to the spawned
+! list, just like non-deterministic spawnings. This prevents the need for an
+! extra MPI call each iteration, but the spawned list which is communicated
+! becomes larger.
 
 use const
-use csr, only: csrp_t
+use fciqmc_data, only: semi_stoch_t, determ_hash_t
 
 implicit none
 
-enum, bind(c)
-    enumerator :: empty_determ_space
-    enumerator :: high_pop_determ_space
-    enumerator :: read_determ_space
-end enum
-
-! Array to hold the indices of deterministic states in the dets array, accessed
-! by calculating a hash value. This type is used by the semi_stoch_t type and
-! is intended only to be used by this object.
-type determ_hash_t
-    ! For an example of how to use this type to see if a determinant is in the
-    ! deterministic space or not, see the routine check_if_determ.
-
-    ! Seed used in the MurmurHash function to calculate hash values.
-    integer :: seed
-    ! The size of the hash table (ignoring collisions).
-    integer :: nhash
-    ! The indicies of the determinants in the semi_stoch_t%dets array.
-    ! Note that element nhash+1 should be set equal to determ%tot_size+1.
-    ! This helps with avoiding out-of-bounds errors when using this object.
-    integer, allocatable :: ind(:) ! (semi_stoch_t%tot_size)
-    ! hash_ptr(i) stores the index of the first index in the array ind which
-    ! corresponds to a determinant with hash value i.
-    ! This is similar to what is done in the CSR sparse matrix type (see
-    ! csr.f90).
-    integer, allocatable :: hash_ptr(:) ! (nhash+1)
-end type determ_hash_t
-
-type semi_stoch_t
-    ! Integer to specify which type of deterministic space is being used.
-    ! See the various determ_space parameters defined above.
-    integer :: space_type = empty_determ_space
-    ! The total number of deterministic states on all processes.
-    integer :: tot_size
-    ! sizes(i) holds the number of deterministic states belonging to process i.
-    integer, allocatable :: sizes(:) ! (0:nproc-1)
-    ! The Hamiltonian in the deterministic space, stored in a sparse CSR form.
-    ! An Hamiltonian element, H_{ij}, is stored in hamil if and only if both
-    ! i and j are in the deterministic space.
-    type(csrp_t) :: hamil
-    ! This array is used to store the values of amplitudes of deterministic
-    ! states throughout a QMC calculation.
-    real(p), allocatable :: vector(:) ! determ_sizes(iproc)
-    ! dets stores the deterministic states across all processes.
-    ! All states on process 0 are stored first, then process 1, etc...
-    integer(i0), allocatable :: dets(:,:) ! (string_len, tot_size)
-    ! A hash table which allows the index of a determinant in dets to be found.
-    ! This is done by calculating the hash value of the given determinant.
-    type(determ_hash_t) :: hash_table
-    ! Deterministic flags of states in the main list. If determ_flags(i) is
-    ! equal to 0 then the corresponding state in position i of the main list is
-    ! a deterministic state, else it is not.
-    integer, allocatable :: flags(:)
-end type semi_stoch_t
-
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, write_determ_in)
+    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, separate_annihilation, write_determ_in)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -159,11 +114,16 @@ contains
         !        deterministic space to use.
         !    target_size: A size of deterministic space to aim for. This
         !        is only necessary for particular deterministic spaces.
+        !    separate_annihilation: If true then routines which use the created
+        !        determ object will not use the standard annihilation routine
+        !        to treat deterministic spawnings, but will handle them
+        !        separately.
         !    write_determ_in: If true then write out the deterministic states to
         !        a file.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: walker_length
+        use fciqmc_data, only: walker_length, empty_determ_space, high_pop_determ_space
+        use fciqmc_data, only: read_determ_space
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -175,6 +135,7 @@ contains
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: space_type
         integer, intent(in) :: target_size
+        logical, intent(in) :: separate_annihilation
         logical, intent(in) :: write_determ_in
 
         integer :: i, ierr, determ_dets_mem
@@ -187,6 +148,9 @@ contains
         ! Only print information if the parent processor and if we are using a
         ! non-trivial deterministic space.
         print_info = parent .and. space_type /= empty_determ_space
+
+        ! Copy across this input option to the derived type instance.
+        determ%separate_annihilation = separate_annihilation
 
         ! If an empty space is being used then don't dump a semi-stoch file.
         write_determ = write_determ_in .and. space_type /= empty_determ_space
@@ -244,10 +208,21 @@ contains
             displs(i) = displs(i-1) + determ%sizes(i-1)
         end do
 
-        ! Vector to hold deterministic amplitudes.
+        ! Vector to hold deterministic amplitudes from this process.
         allocate(determ%vector(determ%sizes(iproc)), stat=ierr)
         call check_allocate('determ%vector', determ%sizes(iproc), ierr)
         determ%vector = 0.0_p
+
+        ! Vector to hold deterministic amplitudes from all processes.
+        if (determ%separate_annihilation) then
+            allocate(determ%full_vector(determ%tot_size), stat=ierr)
+            call check_allocate('determ%full_vector', determ%tot_size, ierr)
+            determ%full_vector = 0.0_p
+
+            allocate(determ%indices(determ%sizes(iproc)), stat=ierr)
+            call check_allocate('determ%indices', determ%sizes(iproc), ierr)
+            determ%indices = 0
+        end if
 
         call qsort(dets_this_proc, determ%sizes(iproc)) 
 
@@ -302,6 +277,7 @@ contains
 
         use checking, only: check_deallocate
         use csr, only: end_csrp
+        use fciqmc_data, only: empty_determ_space
 
         type(semi_stoch_t), intent(inout) :: determ
         integer :: ierr
@@ -317,6 +293,14 @@ contains
         if (allocated(determ%vector)) then
             deallocate(determ%vector, stat=ierr)
             call check_deallocate('determ%vector', ierr)
+        end if
+        if (allocated(determ%full_vector)) then
+            deallocate(determ%full_vector, stat=ierr)
+            call check_deallocate('determ%full_vector', ierr)
+        end if
+        if (allocated(determ%indices)) then
+            deallocate(determ%indices, stat=ierr)
+            call check_deallocate('determ%indices', ierr)
         end if
         if (allocated(determ%dets)) then
             deallocate(determ%dets, stat=ierr)
@@ -719,6 +703,64 @@ contains
             end subroutine create_spawned_particle_determ
 
     end subroutine determ_projection
+
+    subroutine determ_projection_separate_annihil(determ)
+
+        ! Perform the deterministic part of the projection. This is done here
+        ! without adding deterministic spawnings to the spawned list, but
+        ! rather by using an extra MPI call to perform the annihilation of
+        ! these spawnings among themselves directly.
+
+        ! In/Out:
+        !    determ: Deterministic space being used. On input determ%vector
+        !       should hold the amplitudes of deterministic states on this
+        !       process. On output this will be overwritten by -tau*(Hv-Sv),
+        !       where H is the Hamiltonian matrix, v is the vector of all
+        !       deterministic amplitudes across all processes, tau is the
+        !       timestep and S is the shift. It will hold the components of
+        !       this vector belonging to this process only.
+        !       determ%full_vector will hold v, the vector of all deterministic
+        !       amplitudes across all processes, on output.
+
+        use csr, only: csrpgemv
+        use fciqmc_data, only: shift, tau
+        use parallel
+
+        type(semi_stoch_t), intent(inout) :: determ
+
+        integer :: i, ierr
+        integer :: send_counts(0:nprocs-1), receive_counts(0:nprocs-1)
+#ifdef PARALLEL
+        integer :: disps(0:nprocs-1)
+
+        ! Create displacements used for MPI communication.
+        disps(0) = 0
+        do i = 1, nprocs-1
+            disps(i) = disps(i-1) + determ%sizes(i-1)
+        end do
+
+        ! 'Stick together' the deterministic vectors from each process, on
+        ! each process.
+        call mpi_allgatherv(determ%vector, determ%sizes(iproc), mpi_preal, determ%full_vector, &
+                             determ%sizes, disps, mpi_preal, MPI_COMM_WORLD, ierr)
+#else
+        determ%full_vector = determ%vector
+#endif
+
+        ! We want the final vector to hold -tau*(Hv-Sv), where tau is the
+        ! timestep, H is the determinstic Hamiltonian, v is the vector of
+        ! deterministic amplitudes and S is the shift. We therefore begin by
+        ! setting the vector used to store the output to tau*S*v.
+        determ%vector = tau*shift(1)*determ%vector
+
+        ! Perform the multiplication of the deterministic Hamiltonian on the
+        ! full deterministic vector. A factor of minus one is applied to the
+        ! Hamiltonian, as required, and the result is added to the input
+        ! vector, determ%vector, which is used to hold the final result of the
+        ! deterministic projection.
+        call csrpgemv(.true., .false., -1.0_p*tau, determ%hamil, determ%full_vector, determ%vector)
+
+    end subroutine determ_projection_separate_annihil
 
     subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc)
 

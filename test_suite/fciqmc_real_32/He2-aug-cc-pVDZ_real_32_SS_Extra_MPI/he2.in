@@ -10,18 +10,16 @@ real_amplitudes
 spawn_cutoff 0.01
 
 semi_stoch_high_pop 100
-semi_stoch_combine_annihil
+semi_stoch_iteration 1000
 
 walker_length 5 mb
 spawned_walker_length 1 mb
 
-nreports 100
+nreports 200
 mc_cycles 10
 tau 0.01
 varyshift_target 1000
 
 init_pop 1000
 
-restart 0
-
-seed 8
+seed 7

@@ -145,26 +145,37 @@ contains
 
     end subroutine csrpsymv
 
-    subroutine csrpgemv(spm, x, y)
+    subroutine csrpgemv(apply_transpose, zero_input_vector, a, spm, x, y)
 
-        ! Calculate y = m*x, where m is a sparse matrix and x and y are dense
-        ! vectors.
+        ! Perform y <- a*m*x + y or y <- a*m*x, where a is a constant, m is a
+        ! sparse matrix and x and y are dense vectors.
 
         ! In:
+        !   apply_transpose: If true then perform the matrix multiplication
+        !      using the transpose of the matrix stored in spm.
+        !   zero_input_vector: If true then y <- a*m*x is performed. Otherwise,
+        !      y <- a*m*x + y is performed.
+        !   a: constant factor which is included in the matrix multiplication.
         !   spm: sparse matrix (real(p) in csr format. See module-level notes
-        !        about storage format.
-        !   x: dense vector.  Number of elements must be at least the number of
-        !      columns in spm.
-        ! Out:
-        !   y: dense vector.  Holds m*x on exit..  Number of elements must be at
-        !      least the number of rows in spm, with all additional elements set to
-        !      0.
+        !      about storage format.
+        !   x: dense vector.  If apply_transpose is false then the number of
+        !      elements must be at least the number of columns in spm, else it
+        !      must be at least the number of rows in spm.
+        ! In/Out:
+        !   y: dense vector.  Holds a*m*x or a*m*x + y on exit, depending on
+        !      the input value of zero_input_vector. If apply_transpose is false
+        !      then the number of elements must be at least the number of rows
+        !      in spm, with all additional elements set to 0, else it must be
+        !      at least the number of columns in spm, with all additional
+        !      elements set to 0.
 
         use errors, only: stop_all
 
+        logical, intent(in) :: apply_transpose, zero_input_vector
+        real(p), intent(in) :: a
         type(csrp_t), intent(in) :: spm
         real(p), intent(in) :: x(:)
-        real(p), intent(out) :: y(:)
+        real(p), intent(inout) :: y(:)
 
         integer :: irow, icol, iz
 
@@ -172,13 +183,23 @@ contains
         ! upper or lower halves of the matrix are stored.
         if (spm%symmetric) call stop_all('csrpgemv', 'Sparse matrix is symmetric.')
         
-        y = 0.0_p
-        do irow = 1, size(spm%row_ptr)-1
-            do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
-                icol = spm%col_ind(iz)
-                y(irow) = y(irow) + spm%mat(iz)*x(icol)
+        if (zero_input_vector) y = 0.0_p
+
+        if (apply_transpose) then
+            do irow = 1, size(spm%row_ptr)-1
+                do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
+                    icol = spm%col_ind(iz)
+                    y(icol) = y(icol) + a*spm%mat(iz)*x(irow)
+                end do
             end do
-        end do
+        else
+            do irow = 1, size(spm%row_ptr)-1
+                do iz = spm%row_ptr(irow), spm%row_ptr(irow+1)-1
+                    icol = spm%col_ind(iz)
+                    y(irow) = y(irow) + a*spm%mat(iz)*x(icol)
+                end do
+            end do
+        end if
 
     end subroutine csrpgemv
 
