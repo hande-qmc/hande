@@ -943,6 +943,8 @@ contains
                     r = get_rand_close_open(rng)
                     orb = 2*find_orbital(r, porb) - spin_factor
                     if (any(occ_list == orb)) then
+                        ! Accidentally selected the same orbital twice -
+                        ! discard.
                         iselect = 0
                         occ_list = 0
                         cycle
