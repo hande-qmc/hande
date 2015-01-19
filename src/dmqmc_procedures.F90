@@ -803,7 +803,7 @@ contains
         type(spawn_t), intent(inout) :: qmc_spawn
 
         integer :: occ_list(sys%nel), idet, ilevel
-        integer(i0) :: f_new(sys%basis%string_len)
+        integer(i0) :: f(sys%basis%string_len)
         type(det_info_t) :: det0
         integer(int_64) :: psips_per_level
         real(p) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
@@ -832,8 +832,8 @@ contains
             do
                 call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
                 ! [todo] - All symmetry sector case.
-                if (all_mom_sectors .or. symmetry_orb_list(sys, selected_orbs) == sym) then
-                    call encode_det(sys%basis, selected_orbs, f)
+                if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                    call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                                 sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
