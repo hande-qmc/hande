@@ -892,9 +892,9 @@ contains
             do
                 occ_list = 0
                 ! Select the alpha spin orbitals.
-                call generate_allowed_orbital_list(rng, p_bin, sys%nalpha, 1, occ_list)
+                call generate_allowed_orbital_list(rng, p_bin, sys%nalpha, 1, occ_list(:sys%nalpha))
                 ! Select beta spin orbitals.
-                call generate_allowed_orbital_list(rng, p_bin, sys%nbeta, 0, occ_list)
+                call generate_allowed_orbital_list(rng, p_bin, sys%nbeta, 0, occ_list(sys%nalpha+1:))
                 ! Create the determinant.
                 if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call encode_det(sys%basis, occ_list, f)
