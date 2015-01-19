@@ -585,9 +585,6 @@ contains
         ! Determinants are generated uniformly in the Hilbert space associated
         ! to selected symmetry sector and spin polarisation.
 
-        ! [todo]: Allow for arbitrary spin-polarisations by modifying sys (in
-        ! the correct way).
-
         ! In/Out:
         !    rng: random number generator.
         ! In:
@@ -631,13 +628,14 @@ contains
     subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica)
 
         ! Attempt to initialise the temperature dependent trial density matrix
-        ! using the metropolis algorithm.
-        ! We first uniformly distribute psips on all excitation levels then
-        ! perform the metropolis algorithm. The Metropolis algorithm works by generating
-        ! a new determinant which is accepted/rejected based on the value of the
-        ! total energy of the Slater determinant. The total energy is determined
-        ! by the form of single particle Hamiltonian we are using in our trial
-        ! density matrix.
+        ! using the metropolis algorithm. We either uniformly distribute psips
+        ! on all excitation levels or use the grand canonical partition function
+        ! as first guess and then use the Metropolis algorithm to distribute
+        ! psips according to desired trial density matrix.
+        ! The Metropolis algorithm works by generating a new determinant which
+        ! is accepted / rejected based on the value of the total energy of the
+        ! Slater determinant i.e. E_i = <D_i | H_T | D_i>, where H_T is the
+        ! "trial" Hamiltonian.
 
         ! *** Warning ***: It is up to the user to decide whether enough
         !     metropolis steps have been carried out and that the trial density
@@ -657,7 +655,7 @@ contains
         use system, only: sys_t
         use determinants, only: decode_det, alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
-        use excitations, only: excit_t, create_excited_det, get_excitation
+        use excitations, only: excit_t, create_excited_det
         use fciqmc_data, only: real_factor, metropolis_attempts, all_mom_sectors, f0, qmc_spawn, &
                                sampling_size, grand_canonical_ensemble, max_metropolis_move
         use parallel, only: nprocs, nthreads, parent
@@ -665,12 +663,12 @@ contains
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
         use utils, only: int_fmt
 
-        type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         real(dp), intent(in) :: beta
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
+        type(dSFMT_t), intent(inout) :: rng
 
         integer :: occ_list(sys%nel), naccept
         integer :: idet, iattempt, nsuccess
@@ -690,7 +688,7 @@ contains
 
         call alloc_det_info_t(sys, cdet, .false.)
 
-        ! [todo] - Separate subroutine?
+        ! Initially distribute psips along the diagonal.
         if (grand_canonical_ensemble) then
             call init_grand_canonical_ensemble(sys, sym, npsips, qmc_spawn, rng)
             ! The metropolis move is to excite two electrons. This is achieved
@@ -701,19 +699,15 @@ contains
             ! so do this here.
             call set_level_probabilities(sys, move_prob, max_metropolis_move)
         else
-            ! Set up the initial distribution of psips which we'll perform
-            ! metropolis on.
-            call initial_metropolis_config(sys, npsips, sym, ireplica, rng, qmc_spawn)
+            call init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
         end if
 
         cdet%f => ftmp
-        ! Visit every walker metropolis_attempts times.
+        ! Visit every psip metropolis_attempts times.
         do iattempt = 1, metropolis_attempts
-            ! Allow every psip to attempt a proposal move.
             do proc = 0, nprocs-1
                 do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
                     f_old = qmc_spawn%sdata(:sys%basis%string_len,idet)
-                    ! [todo] - This information should be saved in sdata perhaps.
                     E_old = trial_dm_ptr(sys, f_old)
                     ftmp = f_old
                     tmp_data(1) = E_old
@@ -721,7 +715,6 @@ contains
                     call decode_det_spinocc_spinunocc(sys, f_old, cdet)
                     ! Metropolis move is to create a double excitation of
                     ! the current determinant.
-                    ! [todo] - function pointers or separate procedures?
                     if (all_mom_sectors) then
                         call gen_random_det_truncate_space(rng, sys, max_metropolis_move, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
@@ -756,26 +749,13 @@ contains
 
     end subroutine initialise_dm_metropolis
 
-    subroutine initial_metropolis_config(sys, npsips, sym, ireplica, rng, qmc_spawn)
+    subroutine init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
 
         ! Create an initital distribution of psips along the diagonal.
         ! This subroutine will return a list of occupied determinants in
         ! qmc_spawn which can then be used for the metropolis initialisation.
-        ! The list is either completely regenerated from scratch by distributing
-        ! psips in equal numbers among all (bar single) excitation levels of the
-        ! reference or the list from the previous beta_cycle is reused (see
-        ! option reuse_initial_config). The latter is much faster but
-        ! potentially correlates measurements across beta loops while the former
-        ! is far slower due to the increased burn in time required for the
-        ! metropolis algorithm.
-        ! 
-        ! [todo] - Temperature Dependent initialisation: The current method
-        ! had the advantage that the reference will always be significantly
-        ! occupied, which helps at mid to low temperatures, but not at
-        ! high temperatures. There are potentially much better ways of
-        ! initialising the density matrix which should increase
-        ! efficiency, but they haven't been implemented yet.
-        !
+        ! Psips are distributed equally among all excitation levels.
+
         ! In:
         !    sys: system being studied.
         !    npsips: number of psips to distribute on the diagonal.
@@ -788,7 +768,7 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: f0, real_factor, initial_config, metropolis_attempts, all_mom_sectors
+        use fciqmc_data, only: f0, real_factor, metropolis_attempts, all_mom_sectors
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
@@ -813,10 +793,8 @@ contains
         call decode_det_spinocc_spinunocc(sys, f0, det0)
         det0%f = f0
         ! Pick an excitation level to spawn a particle onto.
-        ! gen_random_det_truncate_space does not produce
-        ! determinants at excitation level zero, so take care of
-        ! this explicitly.
-        ! [todo]- Take care of rounding.
+        ! gen_random_det_truncate_space does not produce determinants at
+        ! excitation level zero, so take care of this explicitly.
         do idet = 1, psips_per_level
             call create_diagonal_density_matrix_particle(f0, sys%basis%string_len, &
                                                          sys%basis%tensor_label_len, real_factor, ireplica)
@@ -826,18 +804,18 @@ contains
         call set_level_probabilities(sys, ptrunc_level, sys%max_number_excitations)
 
         do idet = 1, npsips-psips_per_level
-            ! Repeatedly attempt to generate a determinant of the
-            ! correct symmetry so that there are an equal number of
-            ! psips on all levels.
+            ! Repeatedly attempt to create determinants on every other
+            ! excitation level.
             do
                 call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
-                ! [todo] - All symmetry sector case.
                 if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                                 sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
                 else
+                    ! Determinant was not generated in the correct symmetry
+                    ! sector, reject.
                     cycle
                 end if
             end do
@@ -845,19 +823,19 @@ contains
 
         call dealloc_det_info_t(det0, .false.)
 
-    end subroutine initial_metropolis_config
+    end subroutine init_uniform_ensemble
 
     subroutine init_grand_canonical_ensemble(sys, sym, npsips, spawn, rng)
 
-        ! Initially distribute psips according to the Grand-Canonical
+        ! Initially distribute psips according to the grand canonical
         ! distribution function. The level probabilities won't, in general, be
         ! the same as those of the canonical ensemble, but the distribution
-        ! should serve as a good starting point for the metropolis algorithm.
+        ! should serve as a good starting point for the Metropolis algorithm.
 
-        ! We know the value of < n_i >_GC exactly, so in turn know in principle
+        ! We know the value of < n_i >_0 exactly, so in turn know in principle
         ! how to occupy the single particle levels. Uniformly selecting orbitals
         ! becomes increasingly inefficient with basis set size so instead we
-        ! subdivide the interval [0,1) according to the single particle
+        ! subdivide the interval [0,1] according to the single particle
         ! occupancies. As an example consider the case when p_0 = 1/ne < n_0 > = 0.5,
         ! with this method we will then select the 0th orbital 50% of the time
         ! when trying to generate a determinant, compared to 1 / nbasis if
@@ -868,6 +846,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    sym: symmetry sector under consideration.
+        !    npsips: number of psips to create on the diagonal.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
@@ -885,7 +864,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
-        real(dp) :: p_single(sys%basis%nbasis/2), box_length(sys%basis%nbasis/2)
+        real(dp) :: p_single(sys%basis%nbasis/2), p_bin(sys%basis%nbasis/2)
         real(dp) :: r
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%string_len)
@@ -902,29 +881,29 @@ contains
                                                           (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-chem_pot)))
 
         ! Subdivide the interval [0,1] into nbasis/2 boxes whose width is equal
-        ! to 1/N_e p_single(i).
-        box_length(1) = p_single(1) / sys%nalpha
+        ! to 1/N_e p_single(i). So, p_bin(iorb)-p_bin(iorb-1) = p_single(iorb)
+        p_bin(1) = p_single(1) / sys%nalpha
         do iorb = 2, sys%basis%nbasis/2
-            box_length(iorb) = box_length(iorb-1) + p_single(iorb)/sys%nalpha
+            p_bin(iorb) = p_bin(iorb-1) + p_single(iorb)/sys%nalpha
         end do
 
         ! Occupy the diagonal.
         do ipsip = 1, npsips
-            ! Create a determinant.
             do
                 occ_list = 0
                 ! Select the alpha spin orbitals.
-                call generate_allowed_orbital_list(rng, box_length, sys%nalpha, 1, occ_list)
+                call generate_allowed_orbital_list(rng, p_bin, sys%nalpha, 1, occ_list)
                 ! Select beta spin orbitals.
-                call generate_allowed_orbital_list(rng, box_length, sys%nbeta, 0, occ_list)
-                ! Create there determinant.
-                ! [todo] - K = 0 sector only?
+                call generate_allowed_orbital_list(rng, p_bin, sys%nbeta, 0, occ_list)
+                ! Create the determinant.
                 if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                                 sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
                 else
+                    ! Determinant was not generated in the correct symmetry
+                    ! sector, reject.
                     cycle
                 end if
             end do
@@ -932,24 +911,24 @@ contains
 
         contains
 
-            subroutine generate_allowed_orbital_list(rng, partition, nselect, spin_factor, occ_list)
+            subroutine generate_allowed_orbital_list(rng, porb, nselect, spin_factor, occ_list)
 
-                ! Generate an list of orbitals according to their single
+                ! Generate a list of orbitals according to their single
                 ! particle GC orbital occupancy probabilities.
 
                 ! In:
-                !    partition: partition of unity according to single particle
-                !       GC orbital occupancies.
+                !    porb: porb(i)-porb(i-1) gives the probabilty of selecting
+                !        the orbital i.
                 !    nselect: number of orbitals to select.
-                !    spin_factor: integer to account for odd/even ordering of alpha/beta spin orbitals. Set to
-                !        1 for alpha spins, 0 for beta spins.
+                !    spin_factor: integer to account for odd/even ordering of
+                !        alpha/beta spin orbitals. Set to 1 for alpha spins, 0 for beta spins.
                 ! In/Out:
                 !    rng: random number generator.
                 !    occ_list: array containing occupied orbitals.
 
                 use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-                real(p), intent(in) :: partition(:)
+                real(dp), intent(in) :: porb(:)
                 integer, intent(in) :: nselect
                 integer, intent(in) :: spin_factor
                 type(dSFMT_t), intent(inout) :: rng
@@ -962,7 +941,7 @@ contains
                 do
                     if (iselect == nselect) exit
                     r = get_rand_close_open(rng)
-                    orb = 2*find_orbital(r, box_length) - spin_factor
+                    orb = 2*find_orbital(r, porb) - spin_factor
                     if (any(occ_list == orb)) then
                         iselect = 0
                         occ_list = 0
@@ -974,30 +953,30 @@ contains
 
             end subroutine generate_allowed_orbital_list
 
-            function find_orbital(r, partition) result (iorb)
+            function find_orbital(r, porb) result (iorb)
 
                 ! Find orbital corresponding to random number r.
 
                 ! In:
                 !    r: uniformly generated random number in interval [0, 1)
-                !    partition: partition of unity according to Grand-Canonical
-                !        partition function.
+                !    porb: porb(i)-porb(i-1) gives the probabilty of selecting
+                !        the orbital i.
                 ! Returns:
                 !    iorb: index of orbital we have selected.
 
                 real(dp), intent(in) :: r
-                real(dp), intent(in) :: partition(:)
+                real(dp), intent(in) :: porb(:)
 
                 integer :: iorb
 
-                do iorb = 1, size(partition)
-                    if (partition(iorb) > r) exit
+                do iorb = 1, size(porb)
+                    if (porb(iorb) > r) exit
                 end do
                 ! Case when condition is not met, should only happen when the
                 ! last orbital is the correct orbital to occupy.
                 ! [todo] - Maybe renormalise the probability so that the last
                 ! entry is 1.
-                if (iorb == size(partition)+1) iorb = iorb - 1
+                if (iorb == size(porb)+1) iorb = iorb - 1
 
             end function find_orbital
 
@@ -1010,8 +989,8 @@ contains
         !
         ! In:
         !    sys: system being studied.
-        !    max_excit: excitation level for which we want to calculate the
-        !        excitation probabilities.
+        !    max_excit: maximum excitation of a reference determinant we wish to
+        !        consider.
         ! In/Out:
         !    ptrunc_level: array containing probabilities for spawning at a
         !        particular (ialpha, ilevel) excitation level.
@@ -1029,7 +1008,7 @@ contains
         ! Set up the probabilities for creating a determinant on a given
         ! excitation level.
         ! ptunc_level(ialpha, ilevel) gives the probability of creating a
-        ! determinant with excitation level ilevel by exciting ialpha
+        ! determinant with excitation level by exciting ialpha
         ! alpha spins (and (ilevel-ialpha) beta spins). We give each possible
         ! realisation of an excitation equal probability and allow each
         ! excitation to occur with equal probability.
@@ -1041,8 +1020,10 @@ contains
                 ptrunc_level(ialpha, ilevel) = binom_r(ilevel,ialpha)
             end do
         end do
+
         ! Normalisation for the distribution at this excitation level.
         forall(ilevel=1:max_excit) ptrunc_level(:,ilevel) = ptrunc_level(:,ilevel) / (max_excit*sum(ptrunc_level(:,ilevel)))
+
         offset = 0.0_p
         do ilevel = 1, max_excit
             do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
