@@ -1372,6 +1372,9 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 **use_all_sym_sectors**
     Run a DMQMC calculation in all symmetry sectors simultaneously. Psips will be
     distributed across all symmetry sectors for the initial density matrix.
+**use_all_mom_sectors**
+    Run a DMQMC calculation in all momentum symmetry sectors simultaneously. Psips will be
+    distributed across all symmetry sectors for the initial density matrix.
 **dmqmc_weighted_sampling** *number_weights* Integer.
                             *w_{01} w_{12} ... w_{n-1,n}* Real list.
 
@@ -1499,14 +1502,17 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     The **use_all_sym_sectors** option is not implemented with **exact** calculations, and so cannot be used
     here.
 **propagate_to_beta**
-    Propagate a particular trial density matrix to a specific value of beta so that in the last step we are sampling the actual density matrix at this beta.
+    Default False.
+
+    Propagate a particular trial density matrix to a specific value of :math:`\beta` so that in the last step we are sampling the
+    actual density matrix at this :math:`\beta`.
     To see this consider the function
 
     .. math::
 
-        f(\tau) = \rho^{T}(\beta-tau)\rho(\tau),
+        f(\tau) = \rho^{T}(\beta-\tau)\rho(\tau),
 
-    where :math:`\rho^{T}` is a "trial" density matrix and :math:`\rho(\tau)` is our usual density matrix.
+    where :math:`\rho^{T}` is a "trial" density matrix and :math:`\rho` is our usual density matrix.
     Note that
 
     .. math::
@@ -1515,19 +1521,43 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 
     and
 
-    ..math::
+    .. math::
 
-        f(\tau) = \rho(\tau) = \rho(\beta).
+        f(\tau=\beta) = \rho(\beta).
 
-     Thus by propagating :math:`f` using the (appropriately modified) DMQMC algorithm we can sample the density matrix at a particular beta. This removes the difficulty of sampling the infinite temperature density matrix for systems with strong reference components, as typically the reference will be highly populated in the trial density matrix at any non-zero beta.
+    Thus by propagating :math:`f` using the (appropriately modified) DMQMC algorithm we can sample the density matrix at a particular beta.
+    This removes the difficulty of sampling the infinite temperature density matrix for systems with strong reference components, as typically
+    the reference will be highly populated in the trial density matrix at any :math:`\beta > 0`.
 **init_beta**
-    Beta value the density matrix will be sampled at.
+    Real.
+
+    Beta value the (trial) density matrix will initially be sampled at.
 **metropolis_attempts**
-    Number of metropolis iterations per psips to be carried out when attempting to sample a trial density matrix.
-**reuse_initial_config**
-    Use the previous beta loop's trial density matrix as a starting point on top of which a reduced number of metropolis attempts can be performed. This is much quicker than starting from scratch each beta loop.
+    Integer.
+
+    Default 1000.
+
+    Number of metropolis iterations per psip to be carried out when attempting to sample a trial density matrix.
+**max_metropolis_moves**
+    Integer.
+
+    Default: 2.
+
+    A metropolis move is defined as a nfold excitation of the determiant under consideration.
+    max_metropolis_move gives the maximum n considered in that nfold excitation.
 **free_electron_trial**
+    Default False.
+
     Use the non-interacting Hamiltonian in our trial density matrix. This is not as efficient as the default "Hartree-Fock" density matrix.
+**grand_canonical_ensemble**
+    Default False.
+
+    Use the grand canonical partition function (for the free electron gas) to guide the initialisation of the trial density matrix.
+    This is usually a good starting point for the Metropolis algorithm.
+**chem_pot** *chemical potential*
+    Real.
+
+    Chemical potential to be used to initialise the density matrix in the grand canonical ensemble. This can be calculated using chem_pot.py in tools/dmqmc/
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
