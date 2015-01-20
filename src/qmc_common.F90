@@ -584,6 +584,7 @@ contains
         ! distribution.  proj_energy and D0_population are both accumulated in
         ! update_proj_energy.
         proj_energy = 0.0_p
+        D0_population = 0.0_p
         call alloc_det_info_t(sys, cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
