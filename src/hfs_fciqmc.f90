@@ -129,7 +129,7 @@ contains
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     call update_proj_energy_ptr(sys, f0, cdet, real_population(1),  &
-                                                D0_population_cycle, proj_energy, connection, hmatel)
+                                                D0_population, proj_energy, connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(walker_population(1,idet)),&
                                              int(walker_population(2,idet)), cdet%data,  &

@@ -150,7 +150,7 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    call update_proj_energy_ptr(sys, f0, cdet, real_population, D0_population_cycle, &
+                    call update_proj_energy_ptr(sys, f0, cdet, real_population, D0_population, &
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
@@ -305,7 +305,7 @@ contains
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
-            call update_proj_energy_ptr(sys, f0, cdet, real(pop(1),p), D0_population_cycle, &
+            call update_proj_energy_ptr(sys, f0, cdet, real(pop(1),p), D0_population, &
                                         proj_energy, connection, hmatel)
 
             ! Is this determinant an initiator?

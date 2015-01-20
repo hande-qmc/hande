@@ -577,13 +577,14 @@ contains
         type(excit_t) :: D0_excit
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: proj_energy_sum
+        real(p) :: proj_energy_sum, D0_population_sum
 #endif
 
         ! Calculate the projected energy based upon the initial walker
-        ! distribution.  proj_energy and D0_population_cycle are both accumulated in
+        ! distribution.  proj_energy and D0_population are both accumulated in
         ! update_proj_energy.
         proj_energy = 0.0_p
+        D0_population = 0.0_p
         call alloc_det_info_t(sys, cdet)
         do idet = 1, tot_walkers
             cdet%f = walker_dets(:,idet)
@@ -593,25 +594,30 @@ contains
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &
-                                        D0_population_cycle, proj_energy, D0_excit, hmatel)
+                                        D0_population, proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info_t(cdet)
 
 #ifdef PARALLEL
         if (present(rep_comm)) then
-            D0_population = D0_population_cycle*ncycles
+            ! The output in non-blocking comms is delayed one report loop, so initialise
+            ! the send here.
+            ! For simplicity, hook into the normal estimator communications, which normalises
+            ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
+            D0_population = D0_population*ncycles
+            proj_energy = proj_energy*ncycles
             call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
             call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            proj_energy = proj_energy_sum
             call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(D0_population_cycle, D0_population, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            proj_energy = proj_energy_sum
+            D0_population = D0_population_sum
             ! TODO: HFS, DMQMC quantities
         end if
 #else
         ntot_particles = nparticles
-        D0_population = D0_population_cycle
 #endif
 
         if (.not. non_blocking_comm .and. parent) then
@@ -676,14 +682,6 @@ contains
 
         ! Reset death counter
         ndeath = 0_int_p
-
-        ! Reset accumulation of the reference population over the MC cycle.
-        ! Reset accumulation of the projected estimator over MC cycle.
-        ! This is only relevant in CCMC, where the estimators must be weighted
-        ! by the number of times they're sampled.  (In contrast, these are
-        ! currently calculated exactly in FCIQMC.)
-        proj_energy_cycle = 0.0_p
-        D0_population_cycle = 0.0_p
 
         ! Number of spawning attempts that will be made.
         ! For FCIQMC, this is used for accounting later, not for controlling the
@@ -817,10 +815,6 @@ contains
         ! Add the spawning rate (for the processor) to the running
         ! total.
         rspawn = rspawn + spawning_rate(nspawn_events, ndeath, nattempts)
-
-        ! Accumulate population on reference and projected estimator.
-        D0_population = D0_population + D0_population_cycle
-        proj_energy = proj_energy + proj_energy_cycle
 
     end subroutine end_mc_cycle
 

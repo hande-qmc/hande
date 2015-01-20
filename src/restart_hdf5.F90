@@ -223,7 +223,7 @@ module restart_hdf5
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data, &
                                    shift, f0, hs_f0, tot_walkers,               &
-                                   D0_population_cycle, par_info, received_list
+                                   D0_population, par_info, received_list
             use calc, only: calc_type, non_blocking_comm, GLOBAL_META
             use errors, only: warning
 
@@ -332,7 +332,7 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
 
-                    tmp = D0_population_cycle
+                    tmp = D0_population
                     call hdf5_write(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
 
                 call h5gclose_f(subgroup_id, ierr)

@@ -212,10 +212,7 @@ real(p) :: shift_damping = 0.050_dp
 !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
 ! and so proj_energy must be 'normalised' and averaged over the report loops
 ! accordingly.
-! For convenience (especially in CCMC), where the numerator and denominator in
-! the above equation are sampled and hence have to be weighted, we accumulate
-! over each MC cycle and then over each report loop.
-real(p) :: proj_energy, proj_energy_cycle
+real(p) :: proj_energy
 
 !--- Walker data ---
 
@@ -306,12 +303,6 @@ integer, allocatable :: hs_occ_list0(:)
 ! For DMQMC, this variable stores the initial number of psips to be
 ! randomly distributed along the diagonal elements of the density matrix.
 real(p) :: D0_population = 10.0_p
-
-! Store value population of reference over a Monte Carlo cycle rather than
-! accumulating it as we go.  This makes it easier to have multiple spawning
-! events from the same determinant (as required in CCMC).
-! D0_population is accumulated when updating the energy estimators.
-real(p) :: D0_population_cycle
 
 ! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
 ! operator.  This is only done if no restart file is used *and* |D_0> is not
