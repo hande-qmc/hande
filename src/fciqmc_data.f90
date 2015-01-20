@@ -574,7 +574,7 @@ contains
         write (6,'()')
 
         if (doing_calc(dmqmc_calc)) then
-           write (6,'(1X,a12,3X,a13,15X,a5)', advance = 'no') &
+           write (6,'(1X,a12,3X,a13,17X,a5)', advance = 'no') &
            '# iterations','Instant shift','Trace'
 
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
@@ -663,7 +663,7 @@ contains
 
         ! See also the format used in inital_fciqmc_status if this is changed.
         if (doing_calc(dmqmc_calc)) then
-            write (6,'(i10,2X,es17.10,es17.10)',advance = 'no') &
+            write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
                 (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
             ! Perform a loop which outputs the numerators for each of the different
             ! estimators, as stored in total_estimator_numerators.
