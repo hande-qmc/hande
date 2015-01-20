@@ -109,7 +109,6 @@ contains
                  call check_allocate('dmqmc_sampling_probs',sys%max_number_excitations,ierr)
                  dmqmc_sampling_probs = 1.0_p
              end if
-             if (half_density_matrix) dmqmc_sampling_probs(1) = dmqmc_sampling_probs(1)*2.0_p
              allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
              call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
              allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
@@ -140,7 +139,6 @@ contains
              call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
              dmqmc_accumulated_probs = 1.0_p
              dmqmc_accumulated_probs_old = 1.0_p
-             if (half_density_matrix) dmqmc_accumulated_probs(1:sys%max_number_excitations) = 2.0_p
          end if
 
          ! If doing a reduced density matrix calculation, allocate and define

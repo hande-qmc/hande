@@ -320,7 +320,7 @@ logical :: dmqmc_find_weights = .false.
 
 ! If half_density_matrix is true then half the density matrix will be 
 ! calculated by reflecting spawning onto the lower triangle into the
-! upper triangle. This is allowed because the density matrix is 
+! upper triangle. This is allowed because the exact density matrix is 
 ! symmetric.
 logical :: half_density_matrix = .false.
 

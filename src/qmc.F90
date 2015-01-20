@@ -767,19 +767,19 @@ contains
                     create_spawned_particle_dm_ptr => create_spawned_particle_truncated_half_density_matrix
                 else
                     create_spawned_particle_dm_ptr => create_spawned_particle_half_density_matrix
-                    spawner_ptr => spawn_importance_sampling
-                    gen_excit_ptr%trial_fn => dmqmc_weighting_fn
                 end if
             else
                 if (truncate_space) then
                     create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix
-                else if (dmqmc_weighted_sampling) then
-                    spawner_ptr => spawn_importance_sampling
-                    gen_excit_ptr%trial_fn => dmqmc_weighting_fn
-                    create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
                 else
                     create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
                 end if
+            end if
+
+            ! Weighted importance sampling routines.
+            if (dmqmc_weighted_sampling) then
+                spawner_ptr => spawn_importance_sampling
+                gen_excit_ptr%trial_fn => dmqmc_weighting_fn
             end if
 
             ! Expectation values.
