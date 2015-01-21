@@ -39,7 +39,7 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
+        use system, only: sys_t, copy_sys_spin_info
 
         type(sys_t), intent(inout) :: sys
         integer, intent(out) :: ref_det
@@ -56,7 +56,6 @@ contains
 
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
         if (allocated(occ_list0)) then
             call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=occ_list0)
         else

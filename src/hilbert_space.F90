@@ -66,7 +66,6 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         select case(sys%system)
 

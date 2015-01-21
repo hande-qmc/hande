@@ -302,7 +302,7 @@ type sys_t
     ! the number of 0's in the basis functions
     integer :: nvirt
 
-    ! Spin polarisation is set in set_spin_polarisation in the determinants module.
+    ! Spin polarisation is set in set_spin_polarisation in the system module.
     ! Only used in Fermionic systems; see note for nel and nvirt for how the spin
     ! polarisation is handled in the Heisenberg system.
     ! Note: Chung-Landau Hamiltonian is for spinless fermions; hence nalpha is

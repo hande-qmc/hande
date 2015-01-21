@@ -27,7 +27,7 @@ contains
         use fciqmc, only: do_fciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
-        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+        use system, only: sys_t, copy_sys_spin_info
         use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
@@ -38,9 +38,7 @@ contains
         ! Initialise procedure pointers
         call init_proc_pointers(sys)
 
-        ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         ! Initialise data
         call init_qmc(sys)
