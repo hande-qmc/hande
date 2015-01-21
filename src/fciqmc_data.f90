@@ -614,6 +614,8 @@ logical :: free_electron_trial = .false.
 logical :: grand_canonical_ensemble = .false.
 ! Chemical potential.
 real(p) :: chem_pot
+! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
+logical :: fermi_temperature
 
 !--- Calculation modes ---
 

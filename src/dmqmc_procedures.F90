@@ -96,6 +96,15 @@ contains
              ! shift, where the true tau is needed.
              dmqmc_factor = 2.0_p
          end if
+         ! Set the timestep to be the appropriate factor of ef so that results
+         ! are at temperatures commensurate(ish) with the reduced (inverse) temperature
+         ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
+         ! to set the appropriate beta = Beta / T_F.
+         if (fermi_temperature) then
+             tau = tau / sys%ueg%ef
+             init_beta = init_beta / sys%ueg%ef
+         end if
+
 
          if (dmqmc_weighted_sampling) then
              ! dmqmc_sampling_probs stores the factors by which probabilities
