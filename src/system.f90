@@ -227,6 +227,11 @@ type sys_ueg_t
     ! UEG-specific basis lookup tables, etc.
     type(ueg_basis_t) :: basis
 
+    ! Fermi-wavevector (Infinite system).
+    real(p) :: kf
+    ! Fermi-Energy (Infinite system).
+    real(p) :: ef
+
     ! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
     ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and
     ! k_a, k_b is uniquely defined.  Further, once we've chosen k_i and k_j and if

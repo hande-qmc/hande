@@ -292,4 +292,32 @@ contains
 
     end function coulomb_int_ueg_3d
 
+    subroutine set_derived_ueg_properties(sys)
+
+        ! Set derived UEG properties e.g. the Fermi energy, and wavevector.
+
+        ! In/Out:
+        !    sys: sys_t object, on output all derived UEG quantities are
+        !       set.
+
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
+
+        integer :: pol_factor
+
+        ! Polarisation factor = 2 for polarised system, 1 for unpolarised.
+        pol_factor = 1 + abs((sys%nalpha-sys%nbeta)/sys%nel)
+
+        ! Only deal with fully spin (un)polarised system, so that kf^{up} =
+        ! kf^{down}.
+        ! Fermi wavevector.
+        sys%ueg%kf = (9.0_dp*pol_factor*pi/(4.0_dp*sys%ueg%r_s**3))**(1.0_dp/3.0_dp)
+        ! Fermi Energy.
+        sys%ueg%ef = 0.5 * sys%ueg%kf**2
+
+        write (6, '(1X,a14, f13.10)') "Fermi Energy: ", sys%ueg%ef
+
+    end subroutine set_derived_ueg_properties
+
 end module ueg_system
