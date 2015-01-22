@@ -336,7 +336,7 @@ $(BIN_DIR) $(LIB_DIR) $(DEST) $(DEPEND_DIR):
 
 # Remove compiled objects and executable.
 clean:
-	rm -f $(DEST)/*
+	rm -rf $(DEST)/*
 ifneq ($(filter-out library, $(MODE)),)
 	rm -f $(BIN_DIR)/$(PROG_VERSION) $(BIN_DIR)/$(PROG)
 endif
