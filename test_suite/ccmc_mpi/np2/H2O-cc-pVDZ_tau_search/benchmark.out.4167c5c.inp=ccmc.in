@@ -1,0 +1,312 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Jan 15 2015 at 17:25:22
+ Compiled using gfortran.lapack.mpi.(optimised)
+ VCS BASE repository version:
+     4167c5c8e1cb931f3405f552cb2c25f64e4d4c1d
+ Hostname:
+     localhost
+ Working directory: 
+     /home/james/projects/hande/test_suite/ccmc_mpi/np2/H2O-cc-pVDZ_tau_search
+ Started running on 15/01/2015 at 17:29:22
+ Calculation UUID: c1cc16ca-0b3c-4e24-8ab8-17c22507545d.
+ ================================================================
+
+ Number of MPI processes running on: 2
+ Running with 1 thread per MPI process.
+
+ Input options
+ -------------
+
+read INTDUMP
+nel 10
+
+sym 0
+ms 0
+
+truncation_level 2
+
+ccmc
+
+seed 1660032958
+
+walker_length 100 mb
+spawned_walker_length 50 mb
+
+tau 0.01
+tau_search
+
+nreports 75
+mc_cycles 10
+
+varyshift_target 50000
+
+init_pop 500
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms     <i|h|i>
+     1      1       0       1       0       1    -20.54997714
+     2      1       0       2       0      -1    -20.54997714
+     3      2       0       3       0       1     -1.32297442
+     4      2       0       4       0      -1     -1.32297442
+     5      3       3       1       0       1     -0.70016177
+     6      3       3       2       0      -1     -0.70016177
+     7      4       0       5       0       1     -0.55096164
+     8      4       0       6       0      -1     -0.55096164
+     9      5       2       1       0       1     -0.48950861
+    10      5       2       2       0      -1     -0.48950861
+    11      6       0       7       0       1      0.18319955
+    12      6       0       8       0      -1      0.18319955
+    13      7       3       3       0       1      0.25296960
+    14      7       3       4       0      -1      0.25296960
+    15      8       3       5       0       1      0.79831913
+    16      8       3       6       0      -1      0.79831913
+    17      9       0       9       0       1      0.80977739
+    18      9       0      10       0      -1      0.80977739
+    19     10       0      11       0       1      1.16258207
+    20     10       0      12       0      -1      1.16258207
+    21     11       2       3       0       1      1.20177004
+    22     11       2       4       0      -1      1.20177004
+    23     12       3       7       0       1      1.24793827
+    24     12       3       8       0      -1      1.24793827
+    25     13       1       1       0       1      1.45390928
+    26     13       1       2       0      -1      1.45390928
+    27     14       0      13       0       1      1.49806197
+    28     14       0      14       0      -1      1.49806197
+    29     15       2       5       0       1      1.70216556
+    30     15       2       6       0      -1      1.70216556
+    31     16       3       9       0       1      1.88257398
+    32     16       3      10       0      -1      1.88257398
+    33     17       0      15       0       1      1.88522016
+    34     17       0      16       0      -1      1.88522016
+    35     18       3      11       0       1      2.42977634
+    36     18       3      12       0      -1      2.42977634
+    37     19       0      17       0       1      2.43667074
+    38     19       0      18       0      -1      2.43667074
+    39     20       2       7       0       1      3.23811746
+    40     20       2       8       0      -1      3.23811746
+    41     21       1       3       0       1      3.34381465
+    42     21       1       4       0      -1      3.34381465
+    43     22       0      19       0       1      3.44292465
+    44     22       0      20       0      -1      3.44292465
+    45     23       0      21       0       1      3.90461682
+    46     23       0      22       0      -1      3.90461682
+    47     24       3      13       0       1      4.08952418
+    48     24       3      14       0      -1      4.08952418
+
+ E_core =    9.009354229663
+ Number of electrons: 10
+ Number of basis functions: 48
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 2
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 4
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3
+  1  0  3  2
+  2  3  0  1
+  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     22      11         11
+   1     0    1      4       2          2
+   2     0    2      8       4          4
+   3     0    3     14       7          7
+
+ FCIQMC
+ ------
+
+ Memory allocated per core for main walker list (MB):  100.00
+ Memory allocated per core for spawned walker lists (MB):   50.00
+ Number of elements per core in main walker list: 4166666
+ Number of elements per core in spawned walker list: 2083333
+
+ spawned_walker_length is not a multiple of the number of processors.
+ Increasing spawned_walker_length to 2083334.
+
+ Reference determinant, |D0> = |  1  2  3  4  5  6  7  8  9 10 >
+ E0 = <D0|H|D0> =    -76.024038511513
+ Symmetry of reference determinant: 0
+ Probability of attempting a single excitation:   0.0193
+ Probability of attempting a double excitation:   0.9807
+ Initial population on reference determinant:    500.0000
+
+ Note that the correlation energy is relative to |D0>.
+
+ Information printed out every QMC report loop:
+
+ Note that all particle populations are averaged over the report loop.
+ Shift: the shift calculated at the end of the report loop.
+
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ R_spawn: average rate of spawning across all processors.
+
+ time: average time per Monte Carlo cycle.
+
+ RNG
+ ^^^
+
+ Initialised random number generator with a seed of: 1660032958.
+
+
+ # iterations   Shift              \sum H_0j N_j      N_0                  # H psips         R_spawn   time
+ #          0   0.0000000000E+00   0.0000000000E+00   5.0000000000E+02     5.0000000000E+02   0.0000   0.000
+ # WARNING more than  5 % of the total number of particles spawned in a single event.  # spawned:    -43.0
+ # This warning only prints  1 time(s). You may wish to reduce the time step.
+           10   0.0000000000E+00  -1.8011572426E+01   5.0010831989E+02     2.1330000000E+03   0.2230   0.003
+ # Warning timestep changed to: 0.00950
+ # WARNING more than  5 % of the total number of particles spawned in a single event.  # spawned:   -146.0
+ # This warning only prints  1 time(s). You may wish to reduce the time step.
+           20   0.0000000000E+00  -4.9965643780E+01   5.1393380462E+02     3.3280000000E+03   0.1688   0.006
+ # Warning timestep changed to: 0.00903
+           30   0.0000000000E+00  -6.8906878608E+01   5.0891937162E+02     3.9560000000E+03   0.1339   0.007
+ # Warning timestep changed to: 0.00857
+           40   0.0000000000E+00  -8.3543722392E+01   5.1301864648E+02     4.5620000000E+03   0.1228   0.008
+ # Warning timestep changed to: 0.00815
+           50   0.0000000000E+00  -9.2760742788E+01   5.3001409353E+02     5.2380000000E+03   0.1095   0.010
+ # Warning timestep changed to: 0.00774
+           60   0.0000000000E+00  -1.0334987489E+02   5.3483261400E+02     5.8300000000E+03   0.0959   0.010
+ # Warning timestep changed to: 0.00735
+           70   0.0000000000E+00  -1.1161934463E+02   5.4764955602E+02     6.0740000000E+03   0.0884   0.010
+ # Warning timestep changed to: 0.00698
+           80   0.0000000000E+00  -1.1061149908E+02   5.5288580234E+02     6.1510000000E+03   0.0844   0.010
+ # Warning timestep changed to: 0.00663
+           90   0.0000000000E+00  -1.1435806076E+02   5.6290855726E+02     6.4060000000E+03   0.0822   0.013
+ # Warning timestep changed to: 0.00630
+          100   0.0000000000E+00  -1.1018454655E+02   5.7482097161E+02     6.5680000000E+03   0.0764   0.011
+ # Warning timestep changed to: 0.00599
+          110   0.0000000000E+00  -1.1770220420E+02   5.8295082109E+02     6.6590000000E+03   0.0729   0.011
+ # Warning timestep changed to: 0.00569
+          120   0.0000000000E+00  -1.1730919047E+02   6.0261341610E+02     6.7900000000E+03   0.0720   0.011
+ # Warning timestep changed to: 0.00540
+          130   0.0000000000E+00  -1.2321215538E+02   5.9416815681E+02     6.8100000000E+03   0.0692   0.012
+ # Warning timestep changed to: 0.00513
+          140   0.0000000000E+00  -1.2419756115E+02   5.9802347261E+02     6.9610000000E+03   0.0640   0.014
+ # Warning timestep changed to: 0.00488
+          150   0.0000000000E+00  -1.2275837665E+02   5.9739544414E+02     7.0570000000E+03   0.0627   0.012
+ # Warning timestep changed to: 0.00463
+          160   0.0000000000E+00  -1.2677897311E+02   6.0200848002E+02     7.0360000000E+03   0.0593   0.012
+ # Warning timestep changed to: 0.00440
+          170   0.0000000000E+00  -1.2209572402E+02   6.0341610849E+02     7.0470000000E+03   0.0548   0.012
+ # Warning timestep changed to: 0.00418
+          180   0.0000000000E+00  -1.2571501805E+02   6.1215440396E+02     7.0810000000E+03   0.0525   0.014
+ # Warning timestep changed to: 0.00397
+          190   0.0000000000E+00  -1.3418795835E+02   6.1636252791E+02     7.0930000000E+03   0.0533   0.012
+ # Warning timestep changed to: 0.00377
+          200   0.0000000000E+00  -1.2928885615E+02   6.2449625946E+02     7.0970000000E+03   0.0500   0.012
+ # Warning timestep changed to: 0.00358
+          210   0.0000000000E+00  -1.2832251958E+02   6.3258372490E+02     7.1790000000E+03   0.0475   0.012
+          220   0.0000000000E+00  -1.3559205502E+02   6.4007568303E+02     7.3110000000E+03   0.0479   0.014
+ # Warning timestep changed to: 0.00341
+          230   0.0000000000E+00  -1.3305031324E+02   6.4075322842E+02     7.3400000000E+03   0.0461   0.012
+ # Warning timestep changed to: 0.00324
+          240   0.0000000000E+00  -1.3757349433E+02   6.4670831608E+02     7.2610000000E+03   0.0449   0.012
+          250   0.0000000000E+00  -1.3887555692E+02   6.5776793493E+02     7.2810000000E+03   0.0441   0.013
+          260   0.0000000000E+00  -1.3879334434E+02   6.5296676437E+02     7.1240000000E+03   0.0451   0.013
+ # Warning timestep changed to: 0.00307
+          270   0.0000000000E+00  -1.3537070799E+02   6.5371294518E+02     7.1520000000E+03   0.0432   0.012
+ # Warning timestep changed to: 0.00292
+          280   0.0000000000E+00  -1.3684979339E+02   6.5830396461E+02     7.0570000000E+03   0.0400   0.012
+ # Warning timestep changed to: 0.00277
+          290   0.0000000000E+00  -1.4091559228E+02   6.5903154970E+02     7.0500000000E+03   0.0410   0.013
+ # Warning timestep changed to: 0.00264
+          300   0.0000000000E+00  -1.3891995741E+02   6.6896618943E+02     7.0750000000E+03   0.0413   0.013
+          310   0.0000000000E+00  -1.4156697589E+02   6.7630912391E+02     7.0730000000E+03   0.0390   0.012
+ # Warning timestep changed to: 0.00250
+          320   0.0000000000E+00  -1.4020848093E+02   6.8053202888E+02     7.0110000000E+03   0.0375   0.011
+          330   0.0000000000E+00  -1.3955984159E+02   6.7830789352E+02     7.0920000000E+03   0.0371   0.012
+          340   0.0000000000E+00  -1.4395578294E+02   6.8166334622E+02     7.0830000000E+03   0.0374   0.013
+          350   0.0000000000E+00  -1.4073715224E+02   6.8834225358E+02     7.1200000000E+03   0.0367   0.012
+          360   0.0000000000E+00  -1.4320089702E+02   6.8927303756E+02     7.2020000000E+03   0.0385   0.012
+ # Warning timestep changed to: 0.00238
+          370   0.0000000000E+00  -1.4601296168E+02   6.9191045786E+02     7.1910000000E+03   0.0348   0.012
+ # Warning timestep changed to: 0.00226
+          380   0.0000000000E+00  -1.4627352772E+02   6.9416152632E+02     7.2130000000E+03   0.0337   0.013
+          390   0.0000000000E+00  -1.4799926695E+02   6.9429821718E+02     7.2170000000E+03   0.0337   0.012
+          400   0.0000000000E+00  -1.4766305707E+02   7.0037517849E+02     7.2770000000E+03   0.0332   0.013
+          410   0.0000000000E+00  -1.4944021295E+02   7.0589838226E+02     7.2900000000E+03   0.0339   0.013
+          420   0.0000000000E+00  -1.4800515258E+02   7.1386081928E+02     7.3160000000E+03   0.0338   0.013
+          430   0.0000000000E+00  -1.4859020349E+02   7.2356593772E+02     7.2820000000E+03   0.0342   0.012
+          440   0.0000000000E+00  -1.4872951942E+02   7.3104382759E+02     7.2960000000E+03   0.0328   0.012
+          450   0.0000000000E+00  -1.5187141539E+02   7.3568981505E+02     7.3610000000E+03   0.0326   0.013
+          460   0.0000000000E+00  -1.5296022093E+02   7.3424169331E+02     7.2750000000E+03   0.0340   0.012
+          470   0.0000000000E+00  -1.5547642352E+02   7.3345093374E+02     7.4140000000E+03   0.0354   0.012
+          480   0.0000000000E+00  -1.5137967142E+02   7.3692577297E+02     7.3620000000E+03   0.0351   0.013
+          490   0.0000000000E+00  -1.5632467371E+02   7.4002390847E+02     7.4860000000E+03   0.0336   0.013
+          500   0.0000000000E+00  -1.5900355356E+02   7.4802787644E+02     7.6220000000E+03   0.0344   0.013
+          510   0.0000000000E+00  -1.6404173357E+02   7.4547003272E+02     7.6160000000E+03   0.0330   0.013
+          520   0.0000000000E+00  -1.6792286434E+02   7.4770865310E+02     7.6500000000E+03   0.0347   0.014
+          530   0.0000000000E+00  -1.6710658044E+02   7.4746946504E+02     7.6770000000E+03   0.0343   0.013
+          540   0.0000000000E+00  -1.6470761865E+02   7.5045427816E+02     7.6620000000E+03   0.0341   0.012
+          550   0.0000000000E+00  -1.6480357683E+02   7.5446600115E+02     7.6710000000E+03   0.0343   0.012
+ # Warning timestep changed to: 0.00215
+          560   0.0000000000E+00  -1.7033910490E+02   7.5615722784E+02     7.6880000000E+03   0.0333   0.014
+          570   0.0000000000E+00  -1.6679529417E+02   7.6324202235E+02     7.6370000000E+03   0.0320   0.013
+          580   0.0000000000E+00  -1.6481489140E+02   7.6238306197E+02     7.5010000000E+03   0.0341   0.013
+          590   0.0000000000E+00  -1.6618658461E+02   7.6522110501E+02     7.4980000000E+03   0.0316   0.013
+          600   0.0000000000E+00  -1.6357861749E+02   7.7097200758E+02     7.5060000000E+03   0.0331   0.014
+          610   0.0000000000E+00  -1.6061417561E+02   7.7920452662E+02     7.4890000000E+03   0.0320   0.012
+          620   0.0000000000E+00  -1.6480410563E+02   7.7800617222E+02     7.5760000000E+03   0.0342   0.012
+          630   0.0000000000E+00  -1.6169865021E+02   7.7876017520E+02     7.5480000000E+03   0.0335   0.012
+          640   0.0000000000E+00  -1.6468321659E+02   7.8497928332E+02     7.6200000000E+03   0.0333   0.014
+ # Warning timestep changed to: 0.00204
+          650   0.0000000000E+00  -1.6663231507E+02   7.8142658865E+02     7.5220000000E+03   0.0326   0.012
+ # Warning timestep changed to: 0.00194
+          660   0.0000000000E+00  -1.6414980456E+02   7.8427869981E+02     7.5070000000E+03   0.0307   0.012
+          670   0.0000000000E+00  -1.6070885549E+02   7.9236996491E+02     7.5330000000E+03   0.0319   0.012
+          680   0.0000000000E+00  -1.6650717851E+02   7.8760417371E+02     7.5490000000E+03   0.0319   0.014
+          690   0.0000000000E+00  -1.6653835878E+02   7.8931506710E+02     7.6370000000E+03   0.0315   0.013
+          700   0.0000000000E+00  -1.6386396059E+02   7.9663826559E+02     7.6140000000E+03   0.0316   0.013
+          710   0.0000000000E+00  -1.6455417094E+02   7.9036843421E+02     7.6280000000E+03   0.0311   0.015
+          720   0.0000000000E+00  -1.6575488677E+02   7.9396103566E+02     7.6920000000E+03   0.0325   0.012
+          730   0.0000000000E+00  -1.6593609313E+02   7.9512723349E+02     7.6760000000E+03   0.0314   0.013
+          740   0.0000000000E+00  -1.6601589694E+02   8.0724089338E+02     7.7250000000E+03   0.0313   0.013
+          750   0.0000000000E+00  -1.6966604075E+02   8.1328489000E+02     7.6380000000E+03   0.0307   0.015
+
+ Blooming events occured: a more efficent calulation may be possible with a smaller timestep.
+ Total number of blooming events: 78
+ Maxium number of excips spawned in a blooming event:     393.00
+ Mean number of excips spawned in a blooming event:       201.79
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Min # of particles on a processor:      3.284000E+03
+ Max # of particles on a processor:      4.354000E+03
+ Mean # of particles on a processor:     3.819000E+03
+
+ Min # of determinants on a processor:    922
+ Max # of determinants on a processor:   1022
+ Mean # of determinants on a processor:  9.720000E+02
+
+ Min time taken by walker communication:         0.00s.
+ Max time taken by walker communication:         0.00s.
+ Mean time taken by walker communication:        0.00s.
+
+ ================================================================
+ Finished running on 15/01/2015 at 17:29:32
+ Wall time (seconds):                           9.61
+ CPU time (per processor, seconds):             9.31
+ ================================================================
+

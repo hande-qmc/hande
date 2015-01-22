@@ -13,6 +13,7 @@ enum, bind(c)
     enumerator :: proj_energy_ind = 1
     enumerator :: D0_pop_ind
     enumerator :: rspawn_ind
+    enumerator :: update_tau_ind
     enumerator :: hf_signed_pop_ind
     enumerator :: hf_proj_O_ind
     enumerator :: hf_proj_H_ind
@@ -35,32 +36,42 @@ contains
     !   the total population of each particle type on processor iproc.  Prior to
     !   communication, each processor only sets its only value.
 
+    ! To add a data item to the buffer:
+    ! 1. add it (before nparticles_start_ind) to the enum above.
+    ! 2. set the buffer (with appropriate index) in local_energy_estimators.
+    ! 3. set the variable to the summed version after the comm call (i.e. in
+    !    communicated_energy_estimators).
+
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(ntot_particles_old)
+    subroutine update_energy_estimators(ntot_particles_old, update_tau)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
 
         ! Should be called every report loop in an FCIQMC/iFCIQMC calculation.
 
-        ! Inout:
+        ! In/Out:
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        !    update_tau (optional): On input, true if the processor wants to automatically rescale
+        !       tau.  On output the logical or of this across all processors (i.e. true if
+        !       any one processor wants to rescale tau).
 
         use fciqmc_data, only: sampling_size
 
         use parallel
 
         real(dp), intent(inout) :: ntot_particles_old(sampling_size)
+        logical, intent(inout), optional :: update_tau
 
         real(dp) :: rep_loop_loc(sampling_size*nprocs+nparticles_start_ind-1)
         real(dp) :: rep_loop_sum(sampling_size*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
-        call local_energy_estimators(rep_loop_loc)
+        call local_energy_estimators(rep_loop_loc, update_tau)
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
 
@@ -71,7 +82,7 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old)
+        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old, update_tau)
 
     end subroutine update_energy_estimators
 
@@ -98,7 +109,7 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old)
+    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old, update_tau)
 
         ! Receive report loop quantities from all other processors and reduce.
 
@@ -109,12 +120,15 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        ! Out (optional):
+        !     update_tau: if true, tau should be automatically rescaled.
 
         use fciqmc_data, only: sampling_size
         use parallel
 
         integer, intent(inout) :: rep_request_s(:)
         real(dp), intent(inout) :: ntot_particles_old(:)
+        logical, intent(out), optional :: update_tau
 
         real(dp) :: rep_info_sum(nprocs*sampling_size+nparticles_start_ind-1)
         real(dp) :: rep_loop_reduce(nprocs*(nprocs*sampling_size+nparticles_start_ind-1))
@@ -143,21 +157,22 @@ contains
         forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
-        call communicated_energy_estimators(rep_info_sum, ntot_particles_old)
+        call communicated_energy_estimators(rep_info_sum, ntot_particles_old, update_tau)
 
     end subroutine update_energy_estimators_recv
 
-    subroutine local_energy_estimators(rep_loop_loc, spawn_elsewhere)
+    subroutine local_energy_estimators(rep_loop_loc, update_tau, spawn_elsewhere)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
 
+        ! In (optional):
+        !    update_tau: if true, then the current processor wants to automatically rescale tau.
+        !    spawn_elsewhere: number of walkers spawned from current processor
+        !        not including those spawned to current processor.
         ! Out:
         !    rep_loop_loc: array containing local quantities required for energy
         !       evaluation.
-        ! In (optional):
-        !    spawn_elsewhere: number of walkers spawned from current processor
-        !        not including those spawned to current processor.
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, D0_population
@@ -166,7 +181,8 @@ contains
         use parallel, only: nprocs, iproc
 
         real(dp), intent(out) :: rep_loop_loc(:)
-        integer, optional, intent(in) :: spawn_elsewhere
+        logical, intent(in), optional :: update_tau
+        integer, intent(in) , optional :: spawn_elsewhere
 
         integer :: offset
 
@@ -175,6 +191,9 @@ contains
         rep_loop_loc(proj_energy_ind) = proj_energy
         rep_loop_loc(D0_pop_ind) = D0_population
         rep_loop_loc(rspawn_ind) = rspawn
+        if (present(update_tau)) then
+            if (update_tau) rep_loop_loc(update_tau_ind) = 1.0_p
+        end if
         if (doing_calc(hfs_fciqmc_calc)) rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop()
         rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
         rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
@@ -189,7 +208,7 @@ contains
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old)
+    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old, update_tau)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -202,6 +221,8 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        ! Out (optional):
+        !     update_tau: if true, tau should be automatically rescaled.
 
         use fciqmc_data, only: sampling_size, target_particles, ncycles, rspawn,               &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
@@ -214,6 +235,7 @@ contains
 
         real(dp), intent(in) :: rep_loop_sum(:)
         real(dp), intent(inout) :: ntot_particles_old(sampling_size)
+        logical, intent(out), optional :: update_tau
 
         real(dp) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
         integer :: i
@@ -221,6 +243,9 @@ contains
         proj_energy = rep_loop_sum(proj_energy_ind)
         D0_population = rep_loop_sum(D0_pop_ind)
         rspawn = rep_loop_sum(rspawn_ind)
+        if (present(update_tau)) then
+            if (abs(rep_loop_sum(update_tau_ind)) > depsilon) update_tau = .true.
+        end if
         new_hf_signed_pop = rep_loop_sum(hf_signed_pop_ind)
         proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
         proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
