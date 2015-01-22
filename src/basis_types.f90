@@ -70,33 +70,12 @@ module basis_types
         ! read in (e.g. molecular) systems the number of single-particle states read in.
         integer :: nbasis
 
-        ! If true the determinant bit string is formed from concatenating the strings
-        ! for the alpha and beta orbitals rather than interleaving them.
-        ! Note that this in general uses more memory due to padding at the end of the
-        ! alpha and beta strings.
-        ! Whilst some memory could be saved by having no padding between the end of the
-        ! alpha string and the start of the beta string (ie not have the beta string
-        ! start on a new integer) this would make certain operations (eg finding
-        ! <D|U|D> in the real space Hubbard model) much harder and slower.
-        ! *** WARNING WARNING WARNING ***
-        ! * The vast majority of procedures assume this to be false.  It is the developer's
-        !   responsibility to ensure required procedures can handle the case when it is true.
-        ! * Decoding the bit string does not produce an ordered list of orbitals but
-        !   several procedures assume that the list *is* ordered.  It is therefore not
-        !   sufficient to only check the procedures which operate directly upon bit strings.
-        ! *** WARNING WARNING WARNING ***
-        logical :: separate_strings = .false.
-
         ! We commonly store the many-particle basis functions (e.g. spin
         ! products for the Heisenberg model, determinants for fermions) as a bit
         ! string.  The bit string is stored in an array of i0 integers.
         ! string_len gives the size of this array.
-        !
-        ! If separate_strings is true and the system is fermionic, then the
-        ! strings for alpha and beta orbitals are kept separate and string_len
-        ! is 2*ceiling(nbasis/(2*i0_length)).
-        ! If separate_strings is false (default), then the alpha and beta
-        ! orbitals are interleaved and string_len is ceiling(nbasis/i0_length).
+        ! The alpha and beta orbitals are interleaved and string_len is
+        ! ceiling(nbasis/i0_length).
         !
         ! Note it's much more efficient to do operations on 32-bit or 64-bit
         ! integers than individual bits (or, indeed smaller integers) on modern
@@ -114,9 +93,7 @@ module basis_types
         integer :: tensor_label_len
 
         ! Bit masks to reveal the list of alpha basis functions and beta functions occupied
-        ! in a Slater determinant, assuming separate_strings is false (if
-        ! separate_strings is true, this operation is trivial: simply take
-        ! alternating integers in the bit array).
+        ! in a Slater determinant.
         integer(i0) :: alpha_mask, beta_mask
 
         ! A determinant is stored in the array f(nbasis).  A basis function is occupied
@@ -148,7 +125,7 @@ module basis_types
             ! integer list.
 
             ! In/Out:
-            !   b: basis_t object to be set.  On input b%nbasis and b%separate_strings must be set.
+            !   b: basis_t object to be set.  On input b%nbasis must be set.
             !      On output the bit string look-up tables are also set.
 
             use calc, only: doing_calc, dmqmc_calc
@@ -159,11 +136,7 @@ module basis_types
 
             integer :: i, bit_element, bit_pos, ierr
 
-            if (b%separate_strings) then
-                b%string_len = 2*ceiling(real(b%nbasis)/(2*i0_length))
-            else
-                b%string_len = ceiling(real(b%nbasis)/i0_length)
-            end if
+            b%string_len = ceiling(real(b%nbasis)/i0_length)
 
             if(doing_calc(dmqmc_calc)) then
                 b%tensor_label_len = 2*b%string_len
@@ -178,32 +151,15 @@ module basis_types
             call check_allocate('b%basis_lookup',i0_length*b%string_len,ierr)
             b%basis_lookup = 0
 
-            if (b%separate_strings) then
-                do i = 1, b%nbasis-1, 2
-                    ! find position of alpha orbital
-                    bit_pos = mod((i+1)/2, i0_length) - 1
-                    if (bit_pos == -1) bit_pos = i0_end
-                    bit_element = ((i+1)/2+i0_end)/i0_length
-                    b%bit_lookup(:,i) = (/ bit_pos, bit_element /)
-                    b%basis_lookup(bit_pos, bit_element) = i
-                    ! corresponding beta orbital is in the same position in the
-                    ! second half of the string.
-                    bit_element = bit_element + b%string_len/2
-                    b%bit_lookup(:,i+1) = (/ bit_pos, bit_element /)
-                    b%basis_lookup(bit_pos, bit_element) = i+1
-                end do
-            else
-                do i = 1, b%nbasis
-                    bit_pos = mod(i, i0_length) - 1
-                    if (bit_pos == -1) bit_pos = i0_end
-                    bit_element = (i+i0_end)/i0_length
-                    b%bit_lookup(:,i) = (/ bit_pos, bit_element /)
-                    b%basis_lookup(bit_pos, bit_element) = i
-                end do
-            end if
+            do i = 1, b%nbasis
+                bit_pos = mod(i, i0_length) - 1
+                if (bit_pos == -1) bit_pos = i0_end
+                bit_element = (i+i0_end)/i0_length
+                b%bit_lookup(:,i) = (/ bit_pos, bit_element /)
+                b%basis_lookup(bit_pos, bit_element) = i
+            end do
 
             ! Bit masks...
-            ! ASSUMING separate_strings is false:
             ! Alpha basis functions are in the even bits.  alpha_mask = 01010101...
             ! Beta basis functions are in the odd bits.    beta_mask  = 10101010...
             b%alpha_mask = 0_i0

@@ -257,9 +257,6 @@ contains
 
 !--- Decode determinant bit strings ---
 
-! WARNING: decode_* procedures which involve occupied and/or unoccupied lists are not safe
-! when separate_strings is true...
-
     pure subroutine decode_det(basis_set, f, occ_list)
 
         ! In:
