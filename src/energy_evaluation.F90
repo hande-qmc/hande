@@ -251,8 +251,10 @@ contains
         proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
         D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
 
-        forall(i=1:sampling_size) nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)
-        forall(i=1:sampling_size) ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
+        do i = 1, sampling_size
+            nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)
+            ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
+        end do 
 
         associate(lb=>par_info%load)
             if(doing_load_balancing .and. ntot_particles(1) > lb%pop .and. lb%nattempts < lb%max_attempts) then
