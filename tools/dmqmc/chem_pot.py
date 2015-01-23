@@ -5,6 +5,7 @@ import scipy as sc
 import scipy.optimize
 import math
 import numpy as np
+import argparse
 
 class System:
     '''
@@ -50,14 +51,12 @@ class System:
         self.ecut = float(args[2])
         # Spin polarisation.
         self.pol = int(args[3])
-        # Inverse temperature.
-        self.beta = float(args[4])
         # Box Length.
         self.L = self.rs*(4*self.ne*sc.pi/3.)**(1/3.)
         # k-space grid spacing.
         self.kfac = 2*sc.pi/self.L
         # Fermi energy (inifinite systems).
-        self.ef = 0.5*(9.0*sc.pi*self.pol/4)**(2./3.)
+        self.ef = 0.5*(9.0*sc.pi*self.pol/(4.0*self.rs**3.0))**(2./3.)
         # Single particle eigenvalues and corresponding kvectors
         self.spval = self.sp_energies(self.kfac, self.ecut)
         # Compress single particle eigenvalues by degeneracy.
@@ -79,7 +78,7 @@ class System:
         Returns
         -------
         spval: numpy array.
-            list containing single particle eigenvalues
+            list containing single particle eigenvalues.
         '''
 
         # Scaled Units to match with HANDE.
@@ -112,12 +111,12 @@ class System:
         Params
         ------
         spval: list
-            list containing single particle eigenvalues
+            list containing single particle eigenvalues.
 
         Returns
         -------
         spval: numpy array.
-            list containing single particle eigenvalues
+            list containing single particle eigenvalues.
         '''
 
         # Work out the degeneracy of each eigenvalue.
@@ -150,11 +149,11 @@ Parameters
 mu : float
     chemical potential.
 ne : int
-    number of electrons
+    number of electrons.
 spval : list of floats
     single particle energies and their degeneracies.
 beta : float
-    inverse temperature
+    inverse temperature.
 pol : int
     spin polarisation.
 
@@ -181,11 +180,11 @@ Parameters
 mu : float
     chemical potential.
 ne : int
-    number of electrons
+    number of electrons.
 spval : list of floats
     single particle energies and their degeneracies.
 beta : float
-    inverse temperature
+    inverse temperature.
 pol : int
     spin polarisation.
 
@@ -197,13 +196,15 @@ diff : float
 
     return nav_sum(mu, ne, spval, beta, pol) - ne
 
-def chem_pot_sum(system):
+def chem_pot_sum(system, beta):
     '''Find the correct value of the chemical potential which results in a system of ne particles at temperature beta.
 
 Parameters
 ----------
 system : class
-    system parameters
+    system parameters.
+beta : float
+    inverse temperature being considered.
 
 Returns
 -------
@@ -211,24 +212,33 @@ chemical potential: float
     the chemical potential.
 '''
 
-    return sc.optimize.fsolve(nav_diff, system.ef, args=(system.ne, system.deg_e, system.beta, system.pol))[0]
+    return sc.optimize.fsolve(nav_diff, system.ef, args=(system.ne, system.deg_e, beta, system.pol))[0]
 
-def usage(args):
-    '''Usage: chem_pot.py args
+def parse_args(args):
+    '''Parse command-line arguments.
 
-where args should contains
+Parameters
+----------
+args : list of strings
+    command-line arguments.
 
-rs: float
-    Seitz radius.
-ne : int
-    number of electrons.
-ecutoff : float
-    plane wave cutoff. Measured in units of 0.5*(\pi/L)**2 as in HANDE.
-pol : int
-    spin polarisation: equals 1 for unpolarised and 2 for fully polarised.
-beta : float
-    inverse temperature, must be greater than zero.
+Returns
+-------
+args : :class:`ArgumentParser`
+    Arguments read in from command line.
 '''
+
+    parser = argparse.ArgumentParser(usage = __doc__)
+    parser.add_argument('rs', type=float, help='Wigner-Seitz radius.')
+    parser.add_argument('ne', type=int, help='Number of electrons.')
+    parser.add_argument('ecutoff', type=float, help='Plane wave cutoff in units of 0.5*(2\pi/L)**2.')
+    parser.add_argument('pol', type=int, help='Polarisation, = 1 for unpolarised system and 2 for polarised system.')
+    parser.add_argument('beta', type=float, help='Inverse temperature.')
+    parser.add_argument('-t','--use--fermi', action='store_true', dest='fermi_temperature',
+                      default=False, help='Interpret input beta as Beta = T_F/T')
+    args = parser.parse_args(args)
+
+    return args
 
 def main(args):
     '''Calculate the chemical potential for the UEG.
@@ -242,15 +252,15 @@ Returns
 -------
 None.
 '''
-    if len(args) != 5:
-        print usage.__doc__
-        sys.exit(1)
-    elif args[3] == 0:
+    args = parse_args(args)
+    if args.beta == 0:
         print "beta must be greater than zero."
         sys.exit(1)
     else:
-        system = System(args)
-        chem_pot = chem_pot_sum(system)
+        sys_pars = [args.rs, args.ne, args.ecutoff, args.pol]
+        system = System(sys_pars)
+        if args.fermi_temperature: args.beta = args.beta / system.ef
+        chem_pot = chem_pot_sum(system, args.beta)
 
     print chem_pot
 
