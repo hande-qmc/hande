@@ -760,7 +760,7 @@ contains
         real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
-        update_tau_now = update_tau .and. .not. vary_shift(1)
+        update_tau_now = update_tau .and. .not. vary_shift(1) .and. tau_search
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
