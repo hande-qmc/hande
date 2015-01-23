@@ -505,6 +505,7 @@ contains
                         ! each processor and hence scale the selection
                         ! probability by nprocs.  See comments in select_cluster
                         ! for more details.
+                        ! [review] - JSS: would it be cleaner to do 'if (.not.seen_D0) then ...' rather than pass through seen_D0'?
                         call create_null_cluster(sys, real(nprocs*D0_normalisation,p), D0_normalisation, cdet(it), &
                                                  cluster(it), seen_D0)
                     else
@@ -1058,6 +1059,7 @@ contains
              cdet%initiator_flag = 1
         end if
 
+        ! [review] - JSS: this could also be applied to the preceding code as ! well (not required if seen_D0 is moved out of create_null_cluster).
         if (.not. seen_D0) then
             ! This is the first time this thread is spawning from D0, so it
             ! needs to be converted into a det_info_t object for the excitation
