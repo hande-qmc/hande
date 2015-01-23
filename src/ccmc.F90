@@ -505,9 +505,13 @@ contains
                         ! each processor and hence scale the selection
                         ! probability by nprocs.  See comments in select_cluster
                         ! for more details.
-                        ! [review] - JSS: would it be cleaner to do 'if (.not.seen_D0) then ...' rather than pass through seen_D0'?
-                        call create_null_cluster(sys, real(nprocs*D0_normalisation,p), D0_normalisation, cdet(it), &
-                                                 cluster(it), seen_D0)
+                        if (.not. seen_D0) then
+                            ! This is the first time this thread is spawning from D0, so it
+                            ! needs to be converted into a det_info_t object for the excitation
+                            ! generators. On subsequent calls, cdet does not need to change.
+                            seen_D0 = .true.
+                            call create_null_cluster(sys, real(nprocs*D0_normalisation,p), D0_normalisation, cdet(it), cluster(it))
+                        end if
                     else
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(sys, iattempt-nstochastic_clusters-D0_normalisation, iexcip_pos, &
@@ -895,8 +899,7 @@ contains
 
         select case(cluster%nexcitors)
         case(0)
-            hit = .false.
-            call create_null_cluster(sys, cluster%pselect, normalisation, cdet, cluster, hit)
+            call create_null_cluster(sys, cluster%pselect, normalisation, cdet, cluster)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -995,7 +998,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine create_null_cluster(sys, prob, D0_normalisation, cdet, cluster, seen_D0)
+    subroutine create_null_cluster(sys, prob, D0_normalisation, cdet, cluster)
 
         ! Create a cluster with no excitors in it, and set it to have
         ! probability of generation prob.
@@ -1018,8 +1021,6 @@ contains
         !        input this is a bare cluster_t variable with the excitors array
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
-        !    seen_D0: should be false on entry on the first call, and true
-        !        subequently. Used to avoid unnecessary calls to decode_det_*.
 
         use system, only: sys_t
         use determinants, only: det_info_t
@@ -1032,7 +1033,6 @@ contains
         type(cluster_t), intent(inout) :: cluster
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: prob
-        logical, intent(inout) :: seen_D0
 
         ! Note only one null cluster to choose => p_clust = 1.
         cluster%pselect = prob
@@ -1059,14 +1059,7 @@ contains
              cdet%initiator_flag = 1
         end if
 
-        ! [review] - JSS: this could also be applied to the preceding code as ! well (not required if seen_D0 is moved out of create_null_cluster).
-        if (.not. seen_D0) then
-            ! This is the first time this thread is spawning from D0, so it
-            ! needs to be converted into a det_info_t object for the excitation
-            ! generators. On subsequent calls, cdet does not need to change.
-            seen_D0 = .true.
-            call decoder_ptr(sys, cdet%f, cdet)
-        end if
+        call decoder_ptr(sys, cdet%f, cdet)
 
     end subroutine create_null_cluster
 
