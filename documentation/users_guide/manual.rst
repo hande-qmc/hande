@@ -784,9 +784,12 @@ Note that multiple calculations can be specified within a single input, but are 
 
     Estimate the size of the Hilbert space within the desired symmetry block of
     the Hamiltonian by performing *ncycles* cycles of a Monte Carlo algorithm.
-    The overall spin must be set using **ms**.  Currently symmetry is only
-    available for the momentum formulation of the Hubbard model.  The symmetry block
-    can be selected by specifying a reference determinant.
+    The overall spin must be set using **ms**.
+    Appropriate spatial and momentum symmetries are taken into account.
+    The symmetry block can be selected by specifying a reference determinant.
+    When run on multiple processors, an estimate of the error in the size is produced.
+    This is not available on a single processor, and the user is warned to test the
+    value by changing seeds or number of cycles, as not all printed figures may be significant.
 **folded_spectrum**
     Perform a folded spectrum (FSFCIQMC) calculation. This involves mapping the
     Hamiltonian :math:`H \rightarrow (H-\varepsilon)^2`. This will compute the excited
