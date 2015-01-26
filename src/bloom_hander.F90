@@ -16,7 +16,7 @@ module bloom_handler
     end enum
 
     ! Stats about QMC blooming events.
-    ! A bloom is defined to have occured if a population of excips larger than 5% of
+    ! A bloom is defined to have occured if a population of particles larger than 5% of
     ! the total population is spawned by any one cluster.
     type bloom_stats_t
         ! Note the mode is for information only; the QMC routine is responsible for
@@ -45,14 +45,14 @@ module bloom_handler
 
         ! -- Report loop quantities (summed using energy_estimator comms) --
         ! Data is for the current processor before and all processors after energy_estimator comms.
-        ! The total number of excips spawned by all blooms.
+        ! The total number of particles spawned by all blooms.
         real(p) :: tot_bloom_curr = 0.0_p
         ! The number of blooms in the current iteration (should be zeroed at the start of
         ! each iteration).
         integer :: nblooms_curr = 0
 
         ! -- Current processor quantities --
-        ! The maximum number of excips spawned by a single bloom on the current processor.
+        ! The maximum number of particles spawned by a single bloom on the current processor.
         real(p) :: max_bloom_proc = 0.0_p
         ! The number of warnings printed out on the current processor.
         integer :: nwarnings = 0
@@ -60,7 +60,7 @@ module bloom_handler
         ! -- All processor quantities (updated in write_bloom_report) --
         ! The total number of blooms.
        integer :: nblooms = 0
-        ! The total number of excips spawned by all blooms on the current processor.
+        ! The total number of particles spawned by all blooms on the current processor.
         real(p) :: tot_bloom = 0.0_p
         ! Largest bloom
         real(p) :: max_bloom = 0.0_p
@@ -223,9 +223,9 @@ module bloom_handler
                     &with a smaller timestep.")')
                 write (6, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nblooms,1)//')') &
                     bloom_stats%nblooms
-                write (6, '(1X, "Maxium number of excips spawned in a blooming event:",f11.2)') &
+                write (6, '(1X, "Maxium number of particles spawned in a blooming event:",f11.2)') &
                     bloom_stats%max_bloom
-                write (6, '(1X, "Mean number of excips spawned in a blooming event:", 2X, f11.2, /)') &
+                write (6, '(1X, "Mean number of particles spawned in a blooming event:", 2X, f11.2, /)') &
                     bloom_stats%tot_bloom/bloom_stats%nblooms
             end if
 
