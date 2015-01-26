@@ -301,6 +301,7 @@ contains
         !       set.
 
         use system, only: sys_t
+        use parallel, only: parent
 
         type(sys_t), intent(inout) :: sys
 
@@ -316,7 +317,7 @@ contains
         ! Fermi Energy.
         sys%ueg%ef = 0.5 * sys%ueg%kf**2
 
-        write (6, '(1X,a14, f13.10)') "Fermi Energy: ", sys%ueg%ef
+        if (parent) write (6, '(1X,a14, f13.10)') "Fermi Energy: ", sys%ueg%ef
 
     end subroutine set_derived_ueg_properties
 
