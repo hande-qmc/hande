@@ -218,7 +218,7 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, ireport, .false., tot_nparticles_old, t1, soft_exit, .false.)
+                call end_report_loop(sys, ireport, .false., tot_nparticles_old, t1, soft_exit, .false., bloom_stats=bloom_stats)
 
                 if (soft_exit) exit
 

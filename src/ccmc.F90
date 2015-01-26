@@ -621,9 +621,9 @@ contains
 
             end do
 
-            update_tau = bloom_stats%nwarnings_curr > 0
+            update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit)
+            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit, bloom_stats=bloom_stats)
 
             if (soft_exit) exit
 
