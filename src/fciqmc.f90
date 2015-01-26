@@ -179,7 +179,7 @@ contains
                             else
                                 call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
                             end if
-                            if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
+                            if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
                         end if
 

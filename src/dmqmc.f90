@@ -154,7 +154,7 @@ contains
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
                                                                             spawning_end, ireplica, qmc_spawn)
 
-                                        if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
+                                        if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
 
@@ -166,7 +166,7 @@ contains
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
                                                                             spawning_end, ireplica, qmc_spawn)
 
-                                        if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
+                                        if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
                                 end do
