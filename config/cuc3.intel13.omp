@@ -8,8 +8,9 @@ libs = -mkl -lmkl_scalapack_lp64 -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequen
 f90_module_flag = -module
 
 [opt]
-fflags = -O3
-cxxflags = -O3
+fflags = -O3 -openmp
+cxxflags = -O3 -openmp
+ldflags = -openmp
 
 [dbg]
 fflags = -g -traceback -CB
