@@ -683,11 +683,10 @@ contains
         integer :: idet, iattempt, nsuccess
         integer :: thread_id = 0, proc
         integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
-        integer(i0), target :: ftmp(sys%basis%string_len)
         real(p), target :: tmp_data(sampling_size)
         real(p) :: pgen, hmatel
         real(dp) :: r, E_new, E_old, prob
-        type(det_info_t) :: cdet, det0
+        type(det_info_t) :: cdet
         type(excit_t) :: connection
         real(p) :: move_prob(0:sys%nalpha, sys%max_number_excitations)
 
@@ -695,7 +694,7 @@ contains
         nsuccess = 0 ! Number of successful proposal steps i.e. excluding null excitations.
         idet = 0
 
-        call alloc_det_info_t(sys, cdet, .false.)
+        call alloc_det_info_t(sys, cdet)
 
         ! Initially distribute psips along the diagonal.
         if (grand_canonical_ensemble) then
@@ -711,17 +710,15 @@ contains
             call init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
         end if
 
-        cdet%f => ftmp
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, metropolis_attempts
             do proc = 0, nprocs-1
                 do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
-                    f_old = qmc_spawn%sdata(:sys%basis%string_len,idet)
-                    E_old = trial_dm_ptr(sys, f_old)
-                    ftmp = f_old
+                    cdet%f = qmc_spawn%sdata(:sys%basis%string_len,idet)
+                    E_old = trial_dm_ptr(sys, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
-                    call decode_det_spinocc_spinunocc(sys, f_old, cdet)
+                    call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
                     ! Metropolis move is to create a double excitation of
                     ! the current determinant.
                     if (all_mom_sectors) then
@@ -754,7 +751,7 @@ contains
         if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", f8.7)') &
                           real(naccept)/nsuccess, real(metropolis_attempts*npsips-nsuccess)/(metropolis_attempts*npsips)
 
-        call dealloc_det_info_t(cdet, .false.)
+        call dealloc_det_info_t(cdet)
 
     end subroutine initialise_dm_metropolis
 
@@ -830,7 +827,7 @@ contains
             end do
         end do
 
-        call dealloc_det_info_t(det0, .false.)
+        call dealloc_det_info_t(det0)
 
     end subroutine init_uniform_ensemble
 
