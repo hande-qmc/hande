@@ -699,16 +699,16 @@ contains
         ! Initially distribute psips along the diagonal.
         if (grand_canonical_ensemble) then
             call init_grand_canonical_ensemble(sys, sym, npsips, qmc_spawn, rng)
-            ! The metropolis move is to excite two electrons. This is achieved
-            ! either by using the excitation generators when working in a
-            ! symmetry contrained system or by uniformly exciting the electrons
-            ! among the available levels. In the latter case we need to set the
-            ! probabilities of a particular move (e.g. move two alpha spins),
-            ! so do this here.
-            call set_level_probabilities(sys, move_prob, max_metropolis_move)
         else
             call init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
         end if
+        ! The metropolis move is to excite two electrons. This is achieved
+        ! either by using the excitation generators when working in a
+        ! symmetry contrained system or by uniformly exciting the electrons
+        ! among the available levels. In the latter case we need to set the
+        ! probabilities of a particular move (e.g. move two alpha spins),
+        ! so do this here.
+        if (all_mom_sectors) call set_level_probabilities(sys, move_prob, max_metropolis_move)
 
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, metropolis_attempts
