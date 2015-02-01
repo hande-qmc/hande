@@ -154,7 +154,7 @@ contains
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
                                                                             spawning_end, ireplica, qmc_spawn)
 
-                                        if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
+                                        if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
 
@@ -166,7 +166,7 @@ contains
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
                                                                             spawning_end, ireplica, qmc_spawn)
 
-                                        if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
+                                        if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
                                 end do
@@ -218,7 +218,7 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, ireport, .false., tot_nparticles_old, t1, soft_exit, .false.)
+                call end_report_loop(sys, ireport, .false., tot_nparticles_old, t1, soft_exit, .false., bloom_stats=bloom_stats)
 
                 if (soft_exit) exit
 

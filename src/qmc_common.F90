@@ -636,11 +636,11 @@ contains
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
 
-        use bloom_handler, only: bloom_stats_t
+        use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
 
         type(bloom_stats_t), intent(inout) :: bloom_stats
 
-        bloom_stats%nwarnings_curr = 0
+        call bloom_stats_init_report_loop(bloom_stats)
 
         proj_energy = 0.0_p
         rspawn = 0.0_p
@@ -711,7 +711,8 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators, rep_comm)
+    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators, &
+                               bloom_stats, rep_comm)
 
         ! In:
         !    sys: system being studied.
@@ -732,6 +733,7 @@ contains
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
         ! In/Out (optional):
+        !    bloom_stats: particle blooming statistics to accumulate.
         !    rep_comm: nb_rep_t object containing report loop info. Used for
         !        non-blocking communications where we receive report information
         !        from previous iteration and communicate the current iterations
@@ -745,11 +747,13 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
         use system, only: sys_t
         use calc, only: non_blocking_comm, nb_rep_t
+        use bloom_handler, only: bloom_stats_t, bloom_stats_warning
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ireport
         logical, intent(in) :: update_tau
         logical, optional, intent(in) :: update_estimators
+        type(bloom_stats_t), optional, intent(inout) :: bloom_stats
         real(dp), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
@@ -766,14 +770,14 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. non_blocking_comm) then
-            if (update) call update_energy_estimators(ntot_particles, update_tau_now)
+            call update_energy_estimators(ntot_particles, update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(rep_info_copy, update_tau_now, rep_comm%nb_spawn(2))
+            call local_energy_estimators(rep_info_copy, update_tau_now, bloom_stats, rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(rep_comm%request, ntot_particles, update_tau_now)
+            call update_energy_estimators_recv(rep_comm%request, ntot_particles, update_tau_now, bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(rep_comm)
@@ -785,7 +789,10 @@ contains
 
         ! report_time was the time at the previous iteration.
         ! curr_time - report_time is thus the time taken by this report loop.
-        if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
+        if (parent) then
+            if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
+            call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
+        end if
 
         ! Write restart file if required.
         if (dump_restart_file_shift .and. any(vary_shift)) then

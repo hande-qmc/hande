@@ -14,6 +14,8 @@ enum, bind(c)
     enumerator :: D0_pop_ind
     enumerator :: rspawn_ind
     enumerator :: update_tau_ind
+    enumerator :: bloom_tot_ind
+    enumerator :: bloom_num_ind
     enumerator :: hf_signed_pop_ind
     enumerator :: hf_proj_O_ind
     enumerator :: hf_proj_H_ind
@@ -44,7 +46,7 @@ contains
 
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(ntot_particles_old, update_tau)
+    subroutine update_energy_estimators(ntot_particles_old, update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -59,19 +61,23 @@ contains
         !    update_tau (optional): On input, true if the processor wants to automatically rescale
         !       tau.  On output the logical or of this across all processors (i.e. true if
         !       any one processor wants to rescale tau).
+        !    bloom_stats (optional): Bloom stats.  The report loop quantities are accumulated into
+        !       their respective components.
 
+        use bloom_handler, only: bloom_stats_t
         use fciqmc_data, only: sampling_size
 
         use parallel
 
         real(dp), intent(inout) :: ntot_particles_old(sampling_size)
+        type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
 
         real(dp) :: rep_loop_loc(sampling_size*nprocs+nparticles_start_ind-1)
         real(dp) :: rep_loop_sum(sampling_size*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
-        call local_energy_estimators(rep_loop_loc, update_tau)
+        call local_energy_estimators(rep_loop_loc, update_tau, bloom_stats)
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
 
@@ -82,7 +88,7 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old, update_tau)
+        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators
 
@@ -109,7 +115,7 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old, update_tau)
+    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old, update_tau, bloom_stats)
 
         ! Receive report loop quantities from all other processors and reduce.
 
@@ -120,14 +126,19 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        ! In/Out (optional):
+        !    bloom_stats: Bloom stats.  The report loop quantities are accumulated into
+        !       their respective components.
         ! Out (optional):
-        !     update_tau: if true, tau should be automatically rescaled.
+        !    update_tau: if true, tau should be automatically rescaled.
 
         use fciqmc_data, only: sampling_size
+        use bloom_handler, only: bloom_stats_t
         use parallel
 
         integer, intent(inout) :: rep_request_s(:)
         real(dp), intent(inout) :: ntot_particles_old(:)
+        type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: update_tau
 
         real(dp) :: rep_info_sum(nprocs*sampling_size+nparticles_start_ind-1)
@@ -157,17 +168,18 @@ contains
         forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
-        call communicated_energy_estimators(rep_info_sum, ntot_particles_old, update_tau)
+        call communicated_energy_estimators(rep_info_sum, ntot_particles_old, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators_recv
 
-    subroutine local_energy_estimators(rep_loop_loc, update_tau, spawn_elsewhere)
+    subroutine local_energy_estimators(rep_loop_loc, update_tau, bloom_stats, spawn_elsewhere)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
 
         ! In (optional):
         !    update_tau: if true, then the current processor wants to automatically rescale tau.
+        !    bloom_stats: Bloom stats.  The report loop quantities must be set.
         !    spawn_elsewhere: number of walkers spawned from current processor
         !        not including those spawned to current processor.
         ! Out:
@@ -177,10 +189,12 @@ contains
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
                                proj_energy, D0_population
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
+        use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs, iproc
 
         real(dp), intent(out) :: rep_loop_loc(:)
+        type(bloom_stats_t), intent(in), optional :: bloom_stats
         logical, intent(in), optional :: update_tau
         integer, intent(in) , optional :: spawn_elsewhere
 
@@ -193,6 +207,10 @@ contains
         rep_loop_loc(rspawn_ind) = rspawn
         if (present(update_tau)) then
             if (update_tau) rep_loop_loc(update_tau_ind) = 1.0_p
+        end if
+        if (present(bloom_stats)) then
+            rep_loop_loc(bloom_tot_ind) = bloom_stats%tot_bloom_curr
+            rep_loop_loc(bloom_num_ind) = bloom_stats%nblooms_curr
         end if
         if (doing_calc(hfs_fciqmc_calc)) rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop()
         rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
@@ -208,7 +226,7 @@ contains
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old, update_tau)
+    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old, update_tau, bloom_stats)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -230,11 +248,13 @@ contains
                                nparticles_proc, par_info
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
+        use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum, doing_load_balancing
         use parallel, only: nprocs
 
         real(dp), intent(in) :: rep_loop_sum(:)
         real(dp), intent(inout) :: ntot_particles_old(sampling_size)
+        type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: update_tau
 
         real(dp) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
@@ -245,6 +265,13 @@ contains
         rspawn = rep_loop_sum(rspawn_ind)
         if (present(update_tau)) then
             if (abs(rep_loop_sum(update_tau_ind)) > depsilon) update_tau = .true.
+        end if
+        if (present(bloom_stats)) then
+            bloom_stats%tot_bloom_curr = rep_loop_sum(bloom_tot_ind)
+            bloom_stats%nblooms_curr = rep_loop_sum(bloom_num_ind)
+            ! Also add to running totals.
+            bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr 
+            bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
         end if
         new_hf_signed_pop = rep_loop_sum(hf_signed_pop_ind)
         proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)

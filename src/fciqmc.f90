@@ -179,7 +179,7 @@ contains
                             else
                                 call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
                             end if
-                            if (abs(nspawned) >= bloom_stats%n_bloom_encoded) &
+                            if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
                         end if
 
@@ -219,9 +219,10 @@ contains
 
             end do
 
-            update_tau = bloom_stats%nwarnings_curr > 0
+            update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit, rep_comm=par_info%report_comm)
+            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit, bloom_stats=bloom_stats, &
+                                 rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 
