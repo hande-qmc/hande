@@ -3,6 +3,8 @@ module qmc_data
 use const
 use spawn_data
 
+! [review] - FDM: I think some or all of the following should be in calc.
+
 ! Don't bother renormalising generation probabilities; instead allow forbidden
 ! excitations to be generated and then rejected.
 logical :: no_renorm = .false.
@@ -114,6 +116,9 @@ type(parallel_t) :: par_info
 
 ! Are we doing a timestep search
 logical :: tau_search = .false.
+
+! [review] - FDM: End of suggestions for move to calc.
+
 !--- Reference determinant ---
 type reference_t
     ! Bit string of reference determinant.
@@ -282,11 +287,13 @@ type dmqmc_t
     integer, allocatable :: correlation_sites(:)
 end type dmqmc_t
 
+! [review] - FDM: Not sure where this belongs.
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
 real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
+! [review] - FDM: Not sure where this belongs (spawned_walkers / walkers?).
 real(dp) :: annihilation_comms_time = 0.0_dp
 
 !--- Folded spectrum data ---
@@ -306,6 +313,8 @@ type(initiator_t)
     ! Population above which a determinant is an initiator.
     real(p) :: initiator_population = 3.0_p
 end type initiator_t
+
+! [review] - FDM: Should determ_hash_t and semi_stoch_t be in semi_stoch.F90?
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
 ! by calculating a hash value. This type is used by the semi_stoch_t type and
@@ -375,6 +384,7 @@ type semi_stoch_t
     integer, allocatable :: flags(:)
 end type semi_stoch_t
 
+! [review] - FDM: Not sure how to organise semi-stochastic data given that there already exists a semi_stoch_t object.
 !--- Semi-stochastic ---
 enum, bind(c)
     ! This option uses an empty deterministic space, and so turns
@@ -448,6 +458,7 @@ type walker_t
     ! Current number of walkers stored in the main list (processor dependent).
     ! This is updated during annihilation and merging of the spawned walkers into
     ! the main list.
+    ! [review] - FDM: rename (ndets perhaps)? Should this be here?
     integer :: tot_walkers
     ! Total number of particles on all walkers/determinants (processor dependent)
     ! Updated during death and annihilation and merging.
@@ -507,6 +518,7 @@ type walker_t
     real(p) :: spawn_cutoff = 0.01_p
 end type walker_t
 
+! [review] - FDM: Should the spawned walker arrays be members of the walker_t.
 type spawned_walker_t
     ! Array sizes
     ! If these are < 0, then the values represent the number of MB to be used to
@@ -518,6 +530,7 @@ type spawned_walker_t
     type(spawn_t) :: received_list
     ! spawn times of the progeny (only used for ct_fciqmc)
     real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
+    ! [review] - FDM: Should this be here? maybe calc?
     ! Rate of spawning.  This is a running total over MC cycles on each processor
     ! until it is summed over processors and averaged over cycles in
     ! update_energy_estimators.
