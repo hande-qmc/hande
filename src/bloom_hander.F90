@@ -172,7 +172,7 @@ module bloom_handler
                 case(bloom_mode_fixedn)
                     write (6,'(1X, "# WARNING: more than", '//int_fmt(bloom_stats%nparticles,1)//',&
                        &" particles spawned in a single event", '//int_fmt(bloom_stats%nblooms_curr,1)//',&
-                       &" times in the last report loop.)') bloom_stats%nparticles, bloom_stats%nblooms_curr
+                       &" times in the last report loop.")') bloom_stats%nparticles, bloom_stats%nblooms_curr
                 case(bloom_mode_fractionn)
                     write (6,'(1X, "# WARNING: more than", '//int_fmt(int(bloom_stats%prop)*100,1)//',&
                        &"% of the total population spawned in a single event", '//int_fmt(bloom_stats%nblooms_curr,1)//',&
