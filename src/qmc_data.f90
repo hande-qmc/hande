@@ -64,10 +64,6 @@ logical :: calc_ground_rdm = .false.
 ! They are thrown away after these calculation has been performed on them.
 logical :: calc_inst_rdm = .false.
 
-! The length of the spawning array for RDMs. Each RDM calculated has the same
-! length array.
-integer :: spawned_rdm_length
-
 ! If true then calculate the concurrence for reduced density matrix of two sites.
 logical :: doing_concurrence = .false.
 
@@ -108,10 +104,16 @@ integer :: mc_cycles_done = 0
 ! greatest population?
 ! Default: we don't.
 integer :: select_ref_det_every_nreports = huge(1)
+! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
+! operator.  This is only done if no restart file is used *and* |D_0> is not
+! a closed shell determinant.
+logical :: init_spin_inv_D0 = .false.
 
 ! Type for storing parallel information: see calc for description.
 type(parallel_t) :: par_info
 
+! Are we doing a timestep search
+logical :: tau_search = .false.
 !--- Reference determinant ---
 type reference_t
     ! Bit string of reference determinant.
@@ -135,10 +137,6 @@ type reference_t
     ! determinant's population in order to be accepted as the new reference
     ! determinant.
     real(p) :: ref_det_factor = 1.50_p
-    ! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
-    ! operator.  This is only done if no restart file is used *and* |D_0> is not
-    ! a closed shell determinant.
-    logical :: init_spin_inv_D0 = .false.
 end type reference_t
 
 ! Spawned lists for rdms.
@@ -245,6 +243,9 @@ type dmqmc_t
     type(rdm_spawn_t), allocatable :: rdm_spawn(:)
     ! The total number of rdms beings calculated.
     integer :: nrdms
+    ! The length of the spawning array for RDMs. Each RDM calculated has the same
+    ! length array.
+    integer :: spawned_rdm_length
     ! This stores all the information for the various RDMs that the user asks
     ! to be calculated. Each element of this array corresponds to one of these RDMs.
     type(rdm_t), allocatable :: rdms(:)
@@ -535,8 +536,6 @@ type(qmc_data_t)
     integer :: beta_loops = 100
     ! timestep
     real(p) :: tau
-    ! Are we doing a timestep search
-    logical :: tau_search = .false.
     ! projected energy
     ! This stores during an FCIQMC report loop
     !   \sum_{i/=0} <D_0|H|D_i> N_i
