@@ -1,0 +1,24 @@
+( Exact CISDTQ correlation energy: -0.212918 )
+
+read INTDUMP
+nel 10
+cas 8 22
+
+sym 0
+ms 0
+
+fciqmc
+truncation_level 4
+no_renorm
+seed 14373
+
+walker_length 100 mb
+spawned_walker_length 50 mb
+
+init_pop 100
+tau 0.003
+
+nreports 750
+mc_cycles 10
+
+varyshift_target 50000
