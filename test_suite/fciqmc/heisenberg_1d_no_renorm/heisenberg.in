@@ -3,8 +3,7 @@ heisenberg
 lattice
 14
 ms 0
-sym 0
-u 1
+J 1
 
 fciqmc
 tau 0.005
