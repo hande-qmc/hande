@@ -439,8 +439,9 @@ in the path, containing:
 
 .. code-block:: bash
 
-    #!/bin/sed -f
+    #!/bin/sed -nf
     1,/iterations/d
+    /^ *[0-9]/p
 
 When plotting in gnuplot, using the command
 
