@@ -1004,6 +1004,7 @@ The following options are valid for FCIQMC calculations.
     Default: Momentum-space formulation of the Hubbard model
     Uses the Hartree--Fock determinant (ie that formed from occupying the
     nalpha and nbeta spin-orbitals with the lowest kinetic energy); 
+
     Default: Real-space formulation of the Hubbard model
     Attempt to minimise the number of doubly-occupied sites.  
     Note that this is not guaranteed (especially in the
@@ -1124,7 +1125,9 @@ The following options are valid for FCIQMC calculations.
     Not valid for simple_fciqmc calculations, where the population of spawned
     walkers on each determinant is stored.
 **no_renorm**
-    Default: off.
+    Default (uniform electron gas): On.
+
+    Default (all other systems): Off.
 
     Generate (and then reject) excitations which involve exciting an electron
     into a spin-orbital which is already occupied.  Whilst this is wasteful, it
