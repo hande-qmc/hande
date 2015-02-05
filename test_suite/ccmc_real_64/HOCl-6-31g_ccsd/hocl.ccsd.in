@@ -1,0 +1,32 @@
+( Exact CCSD energy: -0.183629 )
+( Integrals obtained using: )
+( molecule HOCl { )
+(   H )
+(   O 1 1.0 )
+(   Cl 2 1.7 1 110.0 )
+( } )
+( set globals { )
+(   basis 6-31g )
+(   freeze_core true )
+( } )
+( energy('ccsd') )
+
+read INTDUMP
+nel 14
+ms 0
+sym 0
+
+ccmc
+real_amplitudes
+tau 0.001
+seed 13086
+truncation_level 2
+
+walker_length 500 mb
+spawned_walker_length 200 mb
+
+nreports 1000
+mc_cycles 10
+
+varyshift_target 12000
+init_pop 200
