@@ -313,6 +313,7 @@ contains
                                      &factorial routines for larger clusters.  Please &
                                      &implement better factorial routines.')
         end if
+        ! [review] - RSTF: This looks like debugging output which should be removed.
         write (6,*) 'real_factor', real_factor
 
         ! Allocate and initialise per thread...
@@ -608,6 +609,8 @@ contains
                     do iattempt = 1, tot_walkers
                         cdet(it)%data => walker_data(:,iattempt)
                         cdet(it)%f = walker_dets(:,iattempt)
+                        ! [review] - RSTF: everywhere except here cluster%amplitude is a decoded
+                        ! [review] - RSTF: population. Would it be better to be consistent with that?
                         cluster(it)%amplitude = walker_population(1,iattempt)
                         if (iattempt == D0_pos) then
                             cluster(it)%nexcitors = 0
