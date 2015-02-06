@@ -881,11 +881,12 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
-        real(dp) :: p_single(sys%basis%nbasis/2), p_bin(sys%basis%nbasis/2)
+        real(dp) :: p_single(sys%basis%nbasis/2)
         real(dp) :: r
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%string_len)
         integer :: ireplica, iorb, ipsip
+        logical :: gen
 
         ireplica = 1
 
@@ -897,44 +898,31 @@ contains
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
                                                           (1+exp(beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
-        ! Subdivide the interval [0,1] into nbasis/2 boxes whose width is equal
-        ! to 1/N_e p_single(i). So, p_bin(iorb)-p_bin(iorb-1) = p_single(iorb)
-        p_bin(1) = p_single(1) / sys%nalpha
-        do iorb = 2, sys%basis%nbasis/2
-            p_bin(iorb) = p_bin(iorb-1) + p_single(iorb)/sys%nalpha
-        end do
-
         ! Occupy the diagonal.
         do ipsip = 1, npsips
-            do
-                occ_list = 0
-                ! Select the alpha spin orbitals.
-                call generate_allowed_orbital_list(rng, p_bin, sys%nalpha, 1, occ_list(:sys%nalpha))
-                ! Select beta spin orbitals.
-                call generate_allowed_orbital_list(rng, p_bin, sys%nbeta, 0, occ_list(sys%nalpha+1:))
-                ! Create the determinant.
-                if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
-                    call encode_det(sys%basis, occ_list, f)
-                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                                                sys%basis%tensor_label_len, real_factor, ireplica)
-                    exit
-                else
-                    ! Determinant was not generated in the correct symmetry
-                    ! sector, reject.
-                    cycle
-                end if
-            end do
+            occ_list = 0
+            ! Select the alpha and beta spin orbitals.
+            if (sys%nalpha > 0) call generate_allowed_orbital_list(rng, p_single, sys%nalpha, 1, occ_list(:sys%nalpha), gen)
+            if (.not. gen) cycle
+            if (sys%nbeta > 0) call generate_allowed_orbital_list(rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
+            if (.not. gen) cycle
+            ! Create the determinant.
+            if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                call encode_det(sys%basis, occ_list, f)
+                call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                                                            sys%basis%tensor_label_len, real_factor, ireplica)
+            end if
         end do
 
         contains
 
-            subroutine generate_allowed_orbital_list(rng, porb, nselect, spin_factor, occ_list)
+            subroutine generate_allowed_orbital_list(rng, porb, nselect, spin_factor, occ_list, gen)
 
                 ! Generate a list of orbitals according to their single
                 ! particle GC orbital occupancy probabilities.
 
                 ! In:
-                !    porb: porb(i)-porb(i-1) gives the probabilty of selecting
+                !    porb: porb(i) gives the probabilty of selecting
                 !        the orbital i.
                 !    nselect: number of orbitals to select.
                 !    spin_factor: integer to account for odd/even ordering of
@@ -949,55 +937,35 @@ contains
                 integer, intent(in) :: nselect
                 integer, intent(in) :: spin_factor
                 type(dSFMT_t), intent(inout) :: rng
-                integer, intent(inout) :: occ_list(:)
+                integer, intent(out) :: occ_list(:)
+                logical, intent(out) :: gen
 
-                integer :: orb, iselect
+                integer :: iorb, iselect
                 real(dp) :: r
 
                 iselect = 0
-                do
-                    if (iselect == nselect) exit
+                occ_list = 0
+
+                do iorb = 1, sys%basis%nbasis/2
+                    ! Select a random orbital.
                     r = get_rand_close_open(rng)
-                    orb = 2*find_orbital(r, porb) - spin_factor
-                    if (any(occ_list == orb)) then
-                        ! Accidentally selected the same orbital twice -
-                        ! discard.
-                        iselect = 0
-                        occ_list = 0
-                        cycle
+                    if (porb(iorb) > r) then
+                        iselect = iselect + 1
+                        if (iselect > nselect) then
+                            ! Selected too many.
+                            gen = .false.
+                            exit
+                        end if
+                        occ_list(iselect) = 2*iorb - spin_factor
                     end if
-                    iselect = iselect + 1
-                    occ_list(iselect) = orb
                 end do
+                if (iselect == nselect) then
+                    gen = .true.
+                else
+                    gen = .false.
+                end if
 
             end subroutine generate_allowed_orbital_list
-
-            function find_orbital(r, porb) result (iorb)
-
-                ! Find orbital corresponding to random number r.
-
-                ! In:
-                !    r: uniformly generated random number in interval [0, 1)
-                !    porb: porb(i)-porb(i-1) gives the probabilty of selecting
-                !        the orbital i.
-                ! Returns:
-                !    iorb: index of orbital we have selected.
-
-                real(dp), intent(in) :: r
-                real(dp), intent(in) :: porb(:)
-
-                integer :: iorb
-
-                do iorb = 1, size(porb)
-                    if (porb(iorb) > r) exit
-                end do
-                ! Case when condition is not met, should only happen when the
-                ! last orbital is the correct orbital to occupy.
-                ! [todo] - Maybe renormalise the probability so that the last
-                ! entry is 1.
-                if (iorb == size(porb)+1) iorb = iorb - 1
-
-            end function find_orbital
 
     end subroutine init_grand_canonical_ensemble
 

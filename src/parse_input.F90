@@ -223,7 +223,7 @@ contains
                 free_electron_trial = .true.
             case('CHEM_POT')
                 call readf(sys%ueg%chem_pot)
-            case('GRAND_CANONICAL_ENSEMBLE')
+            case('GRAND_CANONICAL_INITIALISATION')
                 grand_canonical_initialisation = .true.
             case('FERMI_TEMPERATURE')
                 fermi_temperature = .true.

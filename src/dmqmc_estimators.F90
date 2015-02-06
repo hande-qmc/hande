@@ -517,7 +517,7 @@ contains
         ! involve the diagonal element of the Hamiltonian.
         if (excitation%nexcit == 0) then
             estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
-                (walker_data(1,idet)+H00)*walker_pop
+                kinetic_energy_ueg(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
         end if
 
     end subroutine dmqmc_energy_ueg_free
