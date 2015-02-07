@@ -7,6 +7,7 @@ contains
 
     subroutine init_dmqmc(sys)
 
+<<<<<<< HEAD
         ! In:
         !    sys: system being studied.
 
@@ -137,18 +138,6 @@ contains
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
         if (doing_reduced_dm) call setup_rdm_arrays(sys)
-
-        ! If doing concurrence calculation then construct and store the 4x4
-        ! flip spin matrix i.e. \sigma_y \otimes \sigma_y
-        if (doing_concurrence) then
-            allocate(flip_spin_matrix(4,4), stat=ierr)
-            call check_allocate('flip_spin_matrix',16,ierr)
-            flip_spin_matrix = 0.0_p
-            flip_spin_matrix(1,4) = -1.0_p
-            flip_spin_matrix(4,1) = -1.0_p
-            flip_spin_matrix(3,2) = 1.0_p
-            flip_spin_matrix(2,3) = 1.0_p    
-        end if
 
     end subroutine init_dmqmc
 

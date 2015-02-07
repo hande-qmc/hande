@@ -4,6 +4,13 @@ use const
 use spawn_data
 
 ! [review] - FDM: I think some or all of the following should be in calc.
+! [review] - NSB: Yes that seems reasonable. We could perhaps do with some
+! [review] - NSB: derived types for holding calculation options specific to
+! [review] - NSB: each method (FCIQMC, CCMC, DMQMC...), and they should go
+! [review] - NSB: in calc I guess. These variables look mostly to do with
+! [review] - NSB: DMQMC options. Then qmc_data should contain derived types
+! [review] - NSB: for various data objects used by those methods, which looks
+! [review] - NSB: like what is happening, so it looks good to me.
 
 ! Don't bother renormalising generation probabilities; instead allow forbidden
 ! excitations to be generated and then rejected.
@@ -184,7 +191,25 @@ type rdm_t
     integer(i0), allocatable :: end1(:), end2(:)
 end type rdm_t
 
-type dmqmc_t
+! [review] - NSB: This is actually constant, so I've moved here (for now) and
+! [review] - NSB: changed it to a parameter. This can probably be global data
+! [review] - NSB: since it is constant.
+! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
+! concurrence is to be calculated.
+real(p) parameter :: flip_spin_matrix(4,4) = (\ 0.0_p,  0.0_p, 0.0_p, -1.0_p,  &
+                                                0.0_p,  0.0_p, 1.0_p,  0.0_p,  &
+                                                0.0_p,  1.0_p, 0.0_p,  0.0_p,  &
+                                               -1.0_p,  0.0_p, 0.0_p,  0.0_p  \)
+
+! [review] - NSB: dmqmc_t was very large, and I think can be split up a bit more
+! [review] - NSB: logically. I've created derived types for ground-state RDMs and
+! [review] - NSB: instantaneous RDMs, and for the weighted sampling.
+type dmqmc_estimates_t
+    ! [review] - NSB: dmqmc_factor is a bit of a wierd one because it is used more
+    ! [review] - NSB: more generally by other methods, too. It is just a number
+    ! [review] - NSB: which is set to 2 for DMQMC, or to 1 otherwise.
+    ! [review] - NSB: It is a fundamental property of the equation that we evolve with...
+    ! [review] - NSB: Suggestions on where to put this?
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
     ! the full probability, we spawn from two different ends with half probability each.
@@ -195,9 +220,23 @@ type dmqmc_t
     ! of 2 to account for the extra 1/2 in tau. dmqmc_factor is set to 1.0 when not
     ! performing a DMQMC calculation, and so can be ignored in these cases.
     real(p) :: dmqmc_factor = 1.0_p
+
     ! This variable stores the number of estimators which are to be
     ! calculated and printed out in a DMQMC calculation.
     integer :: number_dmqmc_estimators = 0
+    ! The integers below store the index of the element in the array
+    ! estimator_numerators, in which the corresponding thermal quantity is
+    ! stored. In general, a different number and combination of estimators
+    ! may be calculated, and hence we need a way of knowing which element
+    ! refers to which operator. These indices give labels to operators.
+    ! They will be set to 0 if no used, or else their positions in the array,
+    ! from 1-number_dmqmc_estimators.
+    integer :: energy_index = 0
+    integer :: energy_squared_index = 0
+    integer :: correlation_index = 0
+    integer :: staggered_mag_index = 0
+    integer :: full_r2_index = 0
+
     ! In DMQMC the trace of the density matrix is an important quantity
     ! used in calculating all thermal estimators. This quantity stores
     ! the this value, Tr(\rho), where rho is the density matrix which
@@ -213,18 +252,15 @@ type dmqmc_t
     ! processor. This is then output, and the values of estimator_numerators
     ! are reset on each processor to start the next report loop.
     real(p), allocatable :: estimator_numerators(:) !(number_dmqmc_estimators)
-    ! The integers below store the index of the element in the array
-    ! estimator_numerators, in which the corresponding thermal quantity is
-    ! stored. In general, a different number and combination of estimators
-    ! may be calculated, and hence we need a way of knowing which element
-    ! refers to which operator. These indices give labels to operators.
-    ! They will be set to 0 if no used, or else their positions in the array,
-    ! from 1-number_dmqmc_estimators.
-    integer :: energy_index = 0
-    integer :: energy_squared_index = 0
-    integer :: correlation_index = 0
-    integer :: staggered_mag_index = 0
-    integer :: full_r2_index = 0
+
+    ! correlation_mask is a bit string with a 1 at positions i and j which
+    ! are considered when finding the spin correlation function, C(r_{i,j}).
+    ! All other bits are set to 0. i and j are chosen by the user initially.
+    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
+    ! correlation_sites stores the site positions specified by the users
+    ! initially (as orbital labels).
+    integer, allocatable :: correlation_sites(:)
+
     ! When using the replica_tricks option, if the rdm in the first
     ! simulation if denoted \rho^1 and the ancillary rdm is denoted
     ! \rho^2 then renyi_2 holds:
@@ -234,38 +270,20 @@ type dmqmc_t
     ! be normalised by the product of the corresponding RDM traces.
     ! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
     real(p), allocatable :: renyi_2(:)
-    ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-    real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
-    real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
-    real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
-    real(p), allocatable :: dmqmc_accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
-    integer :: finish_varying_weights = 0
-    real(dp), allocatable :: weight_altering_factors(:)
+
     real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
-    ! This stores the reduces matrix, which is slowly accumulated over time
-    ! (on each processor).
-    real(p), allocatable :: reduced_density_matrix(:,:)
-    type(rdm_spawn_t), allocatable :: rdm_spawn(:)
-    ! The total number of rdms beings calculated.
-    integer :: nrdms
-    ! The length of the spawning array for RDMs. Each RDM calculated has the same
-    ! length array.
-    integer :: spawned_rdm_length
-    ! This stores all the information for the various RDMs that the user asks
-    ! to be calculated. Each element of this array corresponds to one of these RDMs.
-    type(rdm_t), allocatable :: rdms(:)
-    ! The total number of translational symmetry vectors.
-    ! This is only set and used when performing rdm calculations.
-    integer :: nsym_vec
-    ! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
-    ! concurrence is to be calculated.
-    real(p), allocatable :: flip_spin_matrix(:,:)
+
+    ! [review] - NSB: This is used both for excit_distribution and ground-state
+    ! [review] - NSB: I should create a new variable for the ground-state
+    ! [review] - NSB: RDMs and add it to that derived type.
     ! When calculating certain DMQMC properties, we only want to start
     ! averaging once the ground state is reached. The below integer is input
     ! by the user, and gives the iteration at which data should start being
     ! accumulated for the quantity. This is currently only used for the
     ! reduced density matrix and calculating importance sampling weights.
     integer :: start_averaging = 0
+
+    ! [review] - NSB: I might remove these two - I doubt they'll ever be used.
     ! In DMQMC, the user may want want the shift as a function of beta to be
     ! the same for each beta loop. If average_shift_until is non-zero then
     ! shift_profile is allocated, and for the first average_shift_until
@@ -278,22 +296,64 @@ type dmqmc_t
     ! shift_profile.
     integer :: average_shift_until = 0
     real(p), allocatable :: shift_profile(:) ! (nreport)
-    ! correlation_mask is a bit string with a 1 at positions i and j which
-    ! are considered when finding the spin correlation function, C(r_{i,j}).
-    ! All other bits are set to 0. i and j are chosen by the user initially.
-    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
-    ! correlation_sites stores the site positions specified by the users
-    ! initially (as orbital labels).
-    integer, allocatable :: correlation_sites(:)
-end type dmqmc_t
+end type dmqmc_estimates_t
+
+
+!--- Type for all instantaneous RDMs ---
+type dmqmc_inst_rdms_t
+    ! The total number of rdms beings calculated.
+    integer :: nrdms
+    ! The total number of translational symmetry vectors.
+    ! This is only set and used when performing rdm calculations.
+    integer :: nsym_vec
+
+    ! This stores all the information for the various RDMs that the user asks
+    ! to be calculated. Each element of this array corresponds to one of these RDMs.
+    type(rdm_t), allocatable :: rdms(:) ! nrdms
+
+    ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
+    real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
+
+    type(rdm_spawn_t), allocatable :: rdm_spawn(:) ! nrdms
+
+    ! The length of the spawning array for RDMs. Each RDM calculated has the same
+    ! length array.
+    integer :: spawned_rdm_length
+end type dmqmc_inst_rdms_t
+
+
+!--- Type for a ground state RDM ---
+type dmqmc_ground_rdm_t
+    ! This stores the reduces matrix, which is slowly accumulated over time
+    ! (on each processor).
+    real(p), allocatable :: reduced_density_matrix(:,:)
+    ! The trace of the ground-state RDM.
+    ! TODO: Currently ground-state RDMs use the global rdm_traces, the same
+    !       as instantaneous RDMs. This needs updating.
+    real(p) :: trace
+end type dmqmc_ground_rdm_t
+
+
+!--- Type for weighted sampling parameters ---
+type dmqmc_weighted_sampling_t
+    real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
+    real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
+    real(p), allocatable :: dmqmc_accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
+
+    integer :: finish_varying_weights = 0
+    real(dp), allocatable :: weight_altering_factors(:)
+end type dmqmc_weighted_sampling_t
 
 ! [review] - FDM: Not sure where this belongs.
+! [review] - NSB: I'm not sure either... perhaps an FCIQMC importance sampling type?
+! [review] - NSB: This is a constant for a given system, so maybe in a Heisenberg system type?
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
 real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
 ! [review] - FDM: Not sure where this belongs (spawned_walkers / walkers?).
+! [review] - NSB: This this isn't used and should be removed.
 real(dp) :: annihilation_comms_time = 0.0_dp
 
 !--- Folded spectrum data ---
@@ -315,6 +375,10 @@ type(initiator_t)
 end type initiator_t
 
 ! [review] - FDM: Should determ_hash_t and semi_stoch_t be in semi_stoch.F90?
+! [review] - NSB: There was I good reason I moved them to fciqmc_data, but I
+! [review] - NSB: can't remember... I think it must have been a circular
+! [review] - NSB: dependence but can't see why. If it doesn't cause problems then
+! [review] - NSB: let's try and move them back to semi_stoch.F90.
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
 ! by calculating a hash value. This type is used by the semi_stoch_t type and
@@ -385,6 +449,9 @@ type semi_stoch_t
 end type semi_stoch_t
 
 ! [review] - FDM: Not sure how to organise semi-stochastic data given that there already exists a semi_stoch_t object.
+! [review] - NSB: A semi_stoch_t refers to a particular instance of a deterministic space. Most of the following
+! [review] - NSB: refer to options input into the semi-stochastic initialisation routine. They should probably be
+! [review] - NSB: in a derived type for semi-stochastic options in calc.
 !--- Semi-stochastic ---
 enum, bind(c)
     ! This option uses an empty deterministic space, and so turns
@@ -459,6 +526,7 @@ type walker_t
     ! This is updated during annihilation and merging of the spawned walkers into
     ! the main list.
     ! [review] - FDM: rename (ndets perhaps)? Should this be here?
+    ! [review] - NSB: I think James, Alex and I agreed on ndets_active.
     integer :: tot_walkers
     ! Total number of particles on all walkers/determinants (processor dependent)
     ! Updated during death and annihilation and merging.
@@ -515,6 +583,7 @@ type walker_t
     ! If real amplitudes are not used then the following default will be
     ! overwritten by 0.0_p. In this case it will effectively not be used and all
     ! spawnings events will be integers.
+    ! [review] - NSB: This should probably be in spawned_walker_t
     real(p) :: spawn_cutoff = 0.01_p
 end type walker_t
 
@@ -531,6 +600,9 @@ type spawned_walker_t
     ! spawn times of the progeny (only used for ct_fciqmc)
     real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
     ! [review] - FDM: Should this be here? maybe calc?
+    ! [review] - NSB: I'm not sure about this. I think it should probably be here,
+    ! [review] - NSB: as in theory you could have different spawned lists with
+    ! [review] - NSB: different spawning rates, so it is a property of this instance.
     ! Rate of spawning.  This is a running total over MC cycles on each processor
     ! until it is summed over processors and averaged over cycles in
     ! update_energy_estimators.
