@@ -4,6 +4,7 @@ module spawn_data
 ! psips/excips in FCIQMC/CCMC/DMQMC calculations).
 
 use const, only: p, dp, int_s, int_p
+use parallel, only: parallel_timing_t
 use, intrinsic :: iso_c_binding, only: c_int
 
 implicit none
@@ -98,8 +99,8 @@ type spawn_t
     ! will change once in every 2^move_freq blocks of values for hash_shift.
     ! See assign_particle_processor.
     integer :: move_freq = 0
-    ! Time spent doing MPI communication.
-    real(dp) :: comm_time = 0.0_dp
+    ! Information on timings related to MPI communication.
+    type(parallel_timing_t) :: mpi_time
     ! Private storage arrays for communication.
     ! Array for receiving spawned particles from other processes (like sdata points to
     ! store1/store2).
@@ -165,7 +166,8 @@ contains
         end if
         spawn%array_len = array_len
         spawn%hash_seed = hash_seed
-        spawn%comm_time = 0.0_dp
+        spawn%mpi_time%barrier_time = 0.0_p
+        spawn%mpi_time%comm_time = 0.0_p
         ! Convert the spawning cutoff to the encoded representation for walker
         ! populations (see comments for walker_population) and round up to
         ! nearest integer. (It may not be possible to use the exact cutoff
@@ -526,11 +528,17 @@ contains
         integer :: i, ierr
         integer(int_s), pointer :: tmp_data(:,:)
 
-        real(dp) :: t1
+        real(p) :: t1
         ! Must be compressed by now, if using threads.
         integer, parameter :: thread_id = 0
 
-        t1 = MPI_WTIME()
+        ! Start by timing an MPI_Barrier call, which can indicate potential
+        ! load balancing issues.
+        t1 = real(MPI_WTIME(), p)
+        call MPI_Barrier(MPI_COMM_WORLD, ierr)
+        spawn%mpi_time%barrier_time = spawn%mpi_time%barrier_time + real(MPI_WTIME(), p) - t1
+
+        t1 = real(MPI_WTIME(), p)
 
         ! Send spawned particles to the processor which "owns" them and receive
         ! the particles "owned" by this processor.
@@ -585,7 +593,7 @@ contains
                            spawn%sdata_recvd, receive_counts, receive_displacements, mpi_sdata_integer, &
                            MPI_COMM_WORLD, ierr)
 
-        spawn%comm_time = spawn%comm_time + MPI_WTIME() - t1
+        spawn%mpi_time%comm_time = spawn%mpi_time%comm_time + real(MPI_WTIME(), p) - t1
 
         ! Swap pointers so that spawn%sdata points to the received data.
         tmp_data => spawn%sdata

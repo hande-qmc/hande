@@ -233,7 +233,11 @@ contains
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
-        call load_balancing_report()
+        if (semi_stochastic .and. determ%separate_annihilation) then
+            call load_balancing_report(qmc_spawn%mpi_time, determ%mpi_time)
+        else
+            call load_balancing_report(qmc_spawn%mpi_time)
+        end if
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + ncycles*ireport
