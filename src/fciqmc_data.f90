@@ -375,7 +375,7 @@ real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
 ! dmqmc_accumulated_probs(i) stores the multiplication of all the elements
 ! of dmqmc_sampling_probs up to the ith element. This quantity is often
 ! needed, so it is stored.
-logical :: dmqmc_weighted_sampling
+logical :: dmqmc_weighted_sampling = .false.
 real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
 real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
 real(p), allocatable :: dmqmc_accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
