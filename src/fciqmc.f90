@@ -117,7 +117,7 @@ contains
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_start_iter) then
-                    call dealloc_semi_stoch_t(determ)
+                    call dealloc_semi_stoch_t(determ, .false.)
                     call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
                                             separate_determ_annihil, write_determ_space)
                     semi_stochastic = .true.
@@ -246,7 +246,7 @@ contains
             if (parent) write (6,'()')
         end if
 
-        call dealloc_semi_stoch_t(determ)
+        call dealloc_semi_stoch_t(determ, .false.)
 
         call dealloc_det_info_t(cdet, .false.)
 

@@ -86,6 +86,10 @@ enum, bind(c)
     ! This option generates the deterministic space by reading the states in
     ! from an HDF5 file (named SEMI.STOCH.*.H5).
     enumerator :: read_determ_space
+    ! This option tells the semi-stochastic initialisation routine to use a
+    ! deterministic space which has already been created, and which should
+    ! be stored in the dets array within the semi_stoch_t instance on input.
+    enumerator :: reuse_determ_space
 end enum
 
 ! Array to hold the indices of deterministic states in the dets array, accessed

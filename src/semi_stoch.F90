@@ -123,7 +123,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: walker_length, empty_determ_space, high_pop_determ_space
-        use fciqmc_data, only: read_determ_space
+        use fciqmc_data, only: read_determ_space, reuse_determ_space
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -155,7 +155,13 @@ contains
         ! If an empty space is being used then don't dump a semi-stoch file.
         write_determ = write_determ_in .and. space_type /= empty_determ_space
 
-        if (print_info) write(6,'(1X,a43)') '# Beginning semi-stochastic initialisation.'
+        if (print_info) then
+            if (determ%space_type == reuse_determ_space) then
+                write(6,'(1X,"# Recreating semi-stochastic objects.")')
+            else
+                write(6,'(1X,"# Beginning semi-stochastic initialisation.")')
+            end if
+        end if
 
         allocate(determ%flags(walker_length), stat=ierr)
         call check_allocate('determ%flags', walker_length, ierr)
@@ -163,7 +169,10 @@ contains
         call check_allocate('determ%sizes', nprocs, ierr)
 
         determ%sizes = 0
-        determ%space_type = space_type
+
+        ! If we're reusing the determ object, then don't overwrite the
+        ! space type.
+        if (.not. space_type == reuse_determ_space) determ%space_type = space_type
 
         ! Create temporary space for enumerating the deterministic space
         ! belonging to this processor only.
@@ -171,7 +180,13 @@ contains
         call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
         dets_this_proc = 0_i0
 
-        if (print_info) write(6,'(1X,a31)') '# Creating deterministic space.'
+        if (print_info) then
+            if (determ%space_type == reuse_determ_space) then
+                write(6,'(1X,"# Redistributing deterministic states.")')
+            else
+                write(6,'(1X,"# Creating deterministic space.")')
+            end if
+        end if
 
         ! If space_type does not take one of the below values then an empty
         ! deterministic space will be used. This is the default behaviour
@@ -180,6 +195,8 @@ contains
             call create_high_pop_space(dets_this_proc, spawn, target_size, determ%sizes(iproc))
         else if (space_type == read_determ_space) then
             call read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
+        else if (space_type == reuse_determ_space) then
+            call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc))
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -226,13 +243,17 @@ contains
 
         call qsort(dets_this_proc, determ%sizes(iproc)) 
 
-        ! Array to hold all deterministic states from all processes.
-        ! The memory required in MB.
-        determ_dets_mem = sys%basis%tensor_label_len*determ%tot_size*i0_length/(8*10**6)
-        if (print_info) write(6,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
-            '# Memory required per core to store deterministic dets (MB):', determ_dets_mem
-        allocate(determ%dets(sys%basis%tensor_label_len, determ%tot_size), stat=ierr)
-        call check_allocate('determ%dets', size(determ%dets), ierr)
+        ! If we're reusing the deterministic space then we don't need to
+        ! allocate the dets array. It's already allocated to the correct size.
+        if (space_type /= reuse_determ_space) then
+            ! Array to hold all deterministic states from all processes.
+            ! The memory required in MB.
+            determ_dets_mem = sys%basis%tensor_label_len*determ%tot_size*i0_length/(8*10**6)
+            if (print_info) write(6,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
+                '# Memory required per core to store deterministic dets (MB):', determ_dets_mem
+            allocate(determ%dets(sys%basis%tensor_label_len, determ%tot_size), stat=ierr)
+            call check_allocate('determ%dets', size(determ%dets), ierr)
+        end if
 
         ! Join and store all deterministic states from all processes.
 #ifdef PARALLEL
@@ -270,21 +291,26 @@ contains
 
     end subroutine init_semi_stoch_t
 
-    subroutine dealloc_semi_stoch_t(determ)
+    subroutine dealloc_semi_stoch_t(determ, keep_dets)
 
         ! In/Out:
         !    determ: Deterministic space object to be deallocated.
+        ! In:
+        !    keep_dets: If true then do not deallocate or clear the dets
+        !       object. This can then be reused later if desired.
 
         use checking, only: check_deallocate
         use csr, only: end_csrp
         use fciqmc_data, only: empty_determ_space
 
         type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(in) :: keep_dets
         integer :: ierr
 
-        ! Reset the space type to an empty space, the default value, in case
-        ! this semi_stoch_t object is reused.
-        determ%space_type = empty_determ_space
+        if (.not. keep_dets) then
+            ! Reset the space type to an empty space.
+            determ%space_type = empty_determ_space
+        end if
 
         if (allocated(determ%sizes)) then
             deallocate(determ%sizes, stat=ierr)
@@ -302,7 +328,7 @@ contains
             deallocate(determ%indices, stat=ierr)
             call check_deallocate('determ%indices', ierr)
         end if
-        if (allocated(determ%dets)) then
+        if ((.not. keep_dets) .and. allocated(determ%dets)) then
             deallocate(determ%dets, stat=ierr)
             call check_deallocate('determ%dets', ierr)
         end if
@@ -1233,5 +1259,43 @@ contains
 #endif
 
     end subroutine write_determ_to_file
+
+    subroutine recreate_determ_space(dets_this_proc, dets_all_procs, spawn, determ_size_this_proc)
+
+        ! Generate the deterministic space on this processor from the
+        ! already-generated list of deterministic states on *all* processors.
+
+        ! Out:
+        !    dets_this_proc: The deterministic states belonging to this
+        !        process. On entry it should be large enough to hold all states
+        !        on this process.
+        !    determ_size_this_proc: Size of the deterministic space on this
+        !        processor only.
+        ! In:
+        !    dets_all_procs: The full list of all deterministic states on all
+        !        processes.
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    sys: system being studied.
+
+        use spawn_data, only: spawn_t
+
+        integer(i0), intent(out) :: dets_this_proc(:,:)
+        integer(i0), intent(in) :: dets_all_procs(:,:)
+        type(spawn_t), intent(in) :: spawn
+        integer, intent(out) :: determ_size_this_proc
+
+        integer :: idet
+
+        ! Just in case...
+        determ_size_this_proc = 0
+
+        ! Loop over all deterministic states and try adding each state to the
+        ! space for this process. If it belongs to this process then the
+        ! following routine will add it and update the space size accordingly.
+        do idet = 1, size(dets_all_procs,2)
+            call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, dets_all_procs(:,idet), .true.)
+        end do
+
+    end subroutine recreate_determ_space
 
 end module semi_stoch
