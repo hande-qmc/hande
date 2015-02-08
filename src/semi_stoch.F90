@@ -156,7 +156,7 @@ contains
         write_determ = write_determ_in .and. space_type /= empty_determ_space
 
         if (print_info) then
-            if (determ%space_type == reuse_determ_space) then
+            if (space_type == reuse_determ_space) then
                 write(6,'(1X,"# Recreating semi-stochastic objects.")')
             else
                 write(6,'(1X,"# Beginning semi-stochastic initialisation.")')

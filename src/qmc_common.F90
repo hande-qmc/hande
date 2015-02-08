@@ -6,14 +6,6 @@ use fciqmc_data
 
 implicit none
 
-public
-private :: stochastic_round_int_32, stochastic_round_int_64
-
-interface stochastic_round
-    module procedure stochastic_round_int_32
-    module procedure stochastic_round_int_64
-end interface stochastic_round
-
 contains
 
 ! --- Utility routines ---
@@ -344,78 +336,6 @@ contains
 
     end function decide_nattempts
 
-    subroutine stochastic_round_int_32(rng, population, cutoff, ntypes)
-
-        ! For any values in population less than cutoff, round up to cutoff or
-        ! down to zero. This is done such that the expectation value of the
-        ! resulting populations is equal to the input values.
-
-        ! In/Out:
-        !    rng: random number generator.
-        ! In:
-        !    population: populations to be stochastically rounded.
-        !    cutoff: the value to round up to.
-        !    ntypes: the number of values in population to apply this op to.
-
-        use const, only: int_32
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-
-        type(dSFMT_t), intent(inout) :: rng
-        integer(int_32), intent(inout) :: population(:)
-        integer(int_32), intent(in) :: cutoff
-        integer, intent(in) :: ntypes
-        integer :: itype
-        real(p) :: r
-
-        do itype = 1, ntypes
-            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_32) then
-                r = get_rand_close_open(rng)*cutoff
-                if (abs(population(itype)) > r) then
-                    population(itype) = sign(cutoff, population(itype))
-                else
-                    population(itype) = 0_int_32
-                end if
-            end if
-        end do
-
-    end subroutine stochastic_round_int_32
-
-    subroutine stochastic_round_int_64(rng, population, cutoff, ntypes)
-
-        ! For any values in population less than cutoff, round up to cutoff or
-        ! down to zero. This is done such that the expectation value of the
-        ! resulting populations is equal to the input values.
-
-        ! In/Out:
-        !    rng: random number generator.
-        ! In:
-        !    population: populations to be stochastically rounded.
-        !    cutoff: the value to round up to.
-        !    ntypes: the number of values in population to apply this op to.
-
-        use const, only: int_64
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-
-        type(dSFMT_t), intent(inout) :: rng
-        integer(int_64), intent(inout) :: population(:)
-        integer(int_64), intent(in) :: cutoff
-        integer, intent(in) :: ntypes
-        integer :: itype
-        real(p) :: r
-
-        do itype = 1, ntypes
-            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_64) then
-                r = get_rand_close_open(rng)*cutoff
-                if (abs(population(itype)) > r) then
-                    population(itype) = sign(cutoff, population(itype))
-                else
-                    population(itype) = 0_int_64
-                end if
-            end if
-        end do
-
-    end subroutine stochastic_round_int_64
-
     subroutine load_balancing_report()
 
         ! Print out a load-balancing report when run in parallel showing how
@@ -542,6 +462,46 @@ contains
         nparticles = nparticles - nsent
 
     end subroutine redistribute_particles
+
+    subroutine redistribute_semi_stoch_t(sys, spawn, determ)
+
+        ! Recreate the semi_stoch_t object (if a non-empty space is in use).
+        ! This requires sending deterministic states to their new processes
+        ! and recreating the related objects, such as the deterministic
+        ! Hamiltonian.
+
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
+
+        ! In:
+        !    sys: system being studied.
+        !    spawn: spawn_t object, required for determining the new processes
+        !        labels for deterministic states.
+        ! In/Out:
+        !    determ: The deterministic space being used, as required for
+        !        semi-stochastic calculations.
+
+        use spawn_data, only: spawn_t
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(spawn_t), intent(in) :: spawn
+        type(semi_stoch_t), intent(inout) :: determ
+
+        logical :: sep_annihil_copy
+
+        if (determ%space_type /= empty_determ_space) then
+            ! Copy this logical to re-pass into the initialisation routine.
+            sep_annihil_copy = determ%separate_annihilation
+
+            ! Deallocate the semi_stoch_t instance, except for the list of all
+            ! deterministic states, which we want to reuse.
+            call dealloc_semi_stoch_t(determ, keep_dets=.true.)
+            ! Recreate the semi_stoch_t instance, by reusing the deterministic
+            ! space already generated, but with states on their new processes.
+            call init_semi_stoch_t(determ, sys, spawn, reuse_determ_space, 0, sep_annihil_copy, .true.)
+        end if
+
+    end subroutine redistribute_semi_stoch_t
 
 ! --- Output routines ---
 
@@ -703,7 +663,7 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
-        if(doing_load_balancing .and. par_info%load%needed) then
+        if (doing_load_balancing .and. par_info%load%needed) then
             call do_load_balancing(real_factor, par_info)
         end if
 
@@ -854,8 +814,8 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(walker_dets, real_factor,        &
-                                                walker_populations, tot_walkers, &
+    subroutine redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, &
+                                                walker_populations, tot_walkers,       &
                                                 nparticles, spawn, load_tag)
 
         ! When doing load balancing we need to redistribute chosen sections of
@@ -864,11 +824,17 @@ contains
         ! further load balancing is attempted this report loop. Currently don't
         ! check if anything will actually be sent.
 
+        ! Also if a non-empty semi-stochastic deterministic space is being used
+        ! then this object needs to be redistributed, too.
+
         ! In:
+        !    sys: system being studied.
         !    walker_dets: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! In/Out:
+        !    determ: The deterministic space being used, as required for
+        !        semi-stochastic calculations.
         !    nparticles: number of excips on the current processor.
         !    walker_populations: Population on occupied excitors.  On output the
         !        populations of excitors which are sent to other processors are
@@ -882,9 +848,12 @@ contains
         !        .false.
 
         use spawn_data, only: spawn_t
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: walker_dets(:,:)
         integer(int_p), intent(in) :: real_factor
+        type(semi_stoch_t), intent(inout) :: determ
         integer(int_p), intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
         real(dp), intent(inout) :: nparticles(:)
@@ -893,6 +862,7 @@ contains
 
         if (load_tag) then
             call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+            call redistribute_semi_stoch_t(sys, spawn, determ)
             load_tag = .false.
         end if
 

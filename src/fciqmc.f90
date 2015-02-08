@@ -27,7 +27,7 @@ contains
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, create_excited_det
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
-                                direct_annihilation_spawned_list
+                                direct_annihilation_spawned_list, deterministic_annihilation
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
                         doing_load_balancing
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
@@ -196,20 +196,29 @@ contains
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
                     call direct_annihilation_received_list(sys, rng, initiator_approximation)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
-                    if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, real_factor, walker_population, &
-                                                                        tot_walkers, nparticles, qmc_spawn, par_info%load%needed)
+                    if (doing_load_balancing) call redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, &
+                                                                        walker_population, tot_walkers, nparticles,        &
+                                                                        qmc_spawn, par_info%load%needed)
                     call direct_annihilation_spawned_list(sys, rng, initiator_approximation, send_counts, req_data_s, &
                                                           par_info%report_comm%nb_spawn)
                     call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
                 else
-                    if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, real_factor, walker_population, &
-                                                                        tot_walkers, nparticles, qmc_spawn, par_info%load%needed)
+                    ! If using semi-stochastic then perform the deterministic
+                    ! projection step.
                     if (semi_stochastic) then
                         if (determ%separate_annihilation) then
                             call determ_projection_separate_annihil(determ)
+                            call deterministic_annihilation(sys, rng, determ)
                         else
                             call determ_projection(rng, qmc_spawn, determ)
                         end if
+                    end if
+
+                    if (doing_load_balancing) call redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, &
+                                                                        walker_population, tot_walkers, nparticles,        &
+                                                                        qmc_spawn, par_info%load%needed)
+
+                    if (semi_stochastic) then
                         call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ)
                     else
                         call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
