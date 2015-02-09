@@ -1,5 +1,5 @@
 ( Exact CCSD energy: -0.183629 )
-( Integrals obtained using: )
+( Integrals obtained using the following settings in PSI4: )
 ( molecule HOCl { )
 (   H )
 (   O 1 1.0 )
