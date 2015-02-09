@@ -607,6 +607,7 @@ contains
                     do iattempt = 1, tot_walkers
                         cdet(it)%data => walker_data(:,iattempt)
                         cdet(it)%f = walker_dets(:,iattempt)
+                        cluster(it)%amplitude = walker_population(1,iattempt)
                         if (iattempt == D0_pos) then
                             cluster(it)%nexcitors = 0
                         else
