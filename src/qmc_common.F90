@@ -335,7 +335,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
-        real(dp), intent(in) :: population
+        real(p), intent(in) :: population
         real(dp) :: r, pextra
         integer :: nattempts
 
@@ -576,7 +576,7 @@ contains
 
         integer :: idet
         real(dp) :: ntot_particles(sampling_size)
-        real(dp) :: real_population(sampling_size)
+        real(p) :: real_population(sampling_size)
         type(det_info_t) :: cdet
         real(p) :: hmatel
         type(excit_t) :: D0_excit

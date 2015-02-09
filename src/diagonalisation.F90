@@ -51,7 +51,7 @@ contains
         type(soln), allocatable :: lanczos_solns(:), exact_solns(:), solns_tmp(:)
 
         ! For communication with Lanczos and exact diagonalisers.
-        real(dp), allocatable :: lanczos_eigv(:)
+        real(p), allocatable :: lanczos_eigv(:)
         real(p), allocatable :: exact_eigv(:)
 
         ! For sorting the solutions by energy rather than by energy within each

@@ -34,7 +34,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        real(dp) :: hub_matel
+        real(p) :: hub_matel
         type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers

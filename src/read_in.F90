@@ -62,7 +62,7 @@ contains
 
         ! Integrals
         integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb, ti
-        real(dp) :: x
+        real(p) :: x
 
         ! reading in...
         integer :: ir, ios, ierr

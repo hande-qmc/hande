@@ -41,7 +41,8 @@ contains
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
         integer(int_64) :: init_tot_nparticles
-        real(dp) :: tot_nparticles_old(sampling_size), real_population(sampling_size)
+        real(dp) :: tot_nparticles_old(sampling_size)
+        real(p) :: real_population(sampling_size)
         integer(int_64) :: nattempts
         integer :: nel_temp, nattempts_current_det
         type(det_info_t) :: cdet1, cdet2
