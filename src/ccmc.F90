@@ -267,11 +267,11 @@ contains
         integer :: i, ireport, icycle, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
         integer(int_64) :: nattempts_spawn
-        real(dp) :: nparticles_old(sampling_size), nparticles_change(sampling_size), junk2
+        real(dp) :: nparticles_old(sampling_size), nparticles_change(sampling_size)
         type(det_info_t), allocatable :: cdet(:)
         type(det_info_t), allocatable :: ldet(:), rdet(:)
 
-        integer(int_p) :: nspawned, ndeath, junk3
+        integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events, ierr
         type(excit_t) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
@@ -597,8 +597,7 @@ contains
                             if ((.not. linked_ccmc) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_full_nc) then
-                                    call stochastic_ccmc_death(rng(it), real_factor, sys, cdet(it), cluster(it), &
-                                            junk3, junk2, junk3)
+                                    call stochastic_ccmc_death(rng(it), real_factor, sys, cdet(it), cluster(it))
                                 end if
                             end if
                         end if
@@ -612,19 +611,11 @@ contains
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) reduction(+:ndeath,nparticles_change)
                     do iattempt = 1, tot_walkers
-                        cdet(it)%data => walker_data(:,iattempt)
-                        cdet(it)%f = walker_dets(:,iattempt)
-                        cluster(it)%amplitude = walker_population(1,iattempt)
-                        if (iattempt == D0_pos) then
-                            cluster(it)%nexcitors = 0
-                        else
-                            cluster(it)%nexcitors = 1
-                        end if
                         ! Note we use the (encoded) population directly in
                         ! stochastic_ccmc_death (unlike the previous call, which uses
                         ! cluster%ampltiude) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
-                        call stochastic_ccmc_death(rng(it), real_factor, sys, cdet(it), cluster(it), &
+                        call stochastic_ccmc_death_nc(rng(it), real_factor, iattempt==D0_pos, walker_data(1,iattempt), &
                             walker_population(1, iattempt), nparticles_change(1), ndeath)
                     end do
                     !$omp end do
@@ -1353,7 +1344,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, real_factor, sys, cdet, cluster, population, tot_population, ndeath)
+    subroutine stochastic_ccmc_death(rng, real_factor, sys, cdet, cluster)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1380,31 +1371,25 @@ contains
         !    cluster: information about the cluster which forms the excitor.
         ! In/Out:
         !    rng: random number generator.
-        !    ndeath: running (encoded) total of number of particles killed/cloned.
-        !    population: If a non-composite cluster, the (encoded) population on it
-        !    tot_population: total number of particles.
 
         use const, only: dp
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
-        use fciqmc_data, only: tau, shift, H00, f0, qmc_spawn
-        use excitations, only: excit_t, get_excitation_level
+        use fciqmc_data, only: tau, shift, H00, qmc_spawn
+        use excitations, only: excit_t
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
-        use spawning, only: create_spawned_particle_truncated
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
-        use calc, only: linked_ccmc, ccmc_full_nc
+        use calc, only: linked_ccmc
 
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
-        integer(int_p), intent(inout) :: population, ndeath
-        real(dp), intent(inout) :: tot_population
 
         real(p) :: pdeath, KiiAi
-        integer(int_p) :: nkill, old_pop
+        integer(int_p) :: nkill
         type(excit_t), parameter :: null_excit = excit_t( 0, [0,0,0,0], [0,0,0,0], .false.)
 
         ! Spawning onto the same excitor so no change in sign due to
@@ -1445,16 +1430,10 @@ contains
             end select
         end if
 
-        if (ccmc_full_nc .and. cluster%nexcitors <=1) then
-            ! Death is attempted exactly once on this cluster regardless of pselect.
-            ! Population passed in in cluster%amplitude is in the *encoded* form.
-            pdeath = tau*abs(KiiAi)
-        else
-            ! Amplitude is the decoded value.  Scale here so death is performed exactly (bar precision).
-            ! See comments in stochastic_death.
-            KiiAi = real_factor*KiiAi
-            pdeath = tau*abs(KiiAi)/cluster%pselect
-        end if
+        ! Amplitude is the decoded value.  Scale here so death is performed exactly (bar precision).
+        ! See comments in stochastic_death.
+        KiiAi = real_factor*KiiAi
+        pdeath = tau*abs(KiiAi)/cluster%pselect
 
         if (pdeath < qmc_spawn%cutoff) then
             ! Calling death once per excip (and hence with a low pselect) without any
@@ -1483,28 +1462,125 @@ contains
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
 !            cdet%initiator_flag=0  !All death is allowed
-            if (ccmc_full_nc .and. cluster%nexcitors <= 1) then
-                ! Kill directly for single excips
-                ! This only works in the full non composite algorithm as otherwise the
-                ! population on an excip can still be needed if it as selected as (part of)
-                ! another cluster. It is also necessary that death is not done until after
-                ! all spawning attempts from the excip
-                old_pop = population
-                population = population + nkill
-                ! Also need to update total population
-                tot_population = tot_population + real(abs(population)-abs(old_pop),dp)/real_factor
-                ndeath = ndeath + abs(nkill)
-            else
-                ! The excitor might be a composite cluster so we'll just create
-                ! excips in the spawned list and allow the annihilation process to take
-                ! care of the rest.
-                ! Pass through a null excitation so that we create a spawned particle on
-                ! the current excitor.
-                call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nkill, 1, qmc_spawn)
-            end if
+            ! The excitor might be a composite cluster so we'll just create
+            ! excips in the spawned list and allow the annihilation process to take
+            ! care of the rest.
+            ! Pass through a null excitation so that we create a spawned particle on
+            ! the current excitor.
+            call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nkill, 1, qmc_spawn)
         end if
 
     end subroutine stochastic_ccmc_death
+
+    subroutine stochastic_ccmc_death_nc(rng, real_factor, D0, Hii, population, tot_population, ndeath)
+
+        ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
+        ! with probability
+        !    \tau |<D_s|H|D_s> A_s|
+        !    ----------------------
+        !       n_sel p_s p_clust
+        ! where |D_s> is the determinant formed by applying the excitor to the
+        ! reference determinant and A_s is the amplitude.  See comments in
+        ! select_cluster about the probabilities.
+
+        ! When doing linked CCMC, the matrix elements
+        !   <D_s|H|D_s> = <D_s|H T^n|D_0>
+        ! are replaced by
+        !   <D_s|[..[H,T],..T]|D_0>
+        ! which changes the death probabilities, and also means the shift only
+        ! applies on the reference determinant.
+
+        ! This procedure kills the excips directly, rather than by creating anti-particles
+        ! in the spawned list, so only works for non-composite excips (single excitors or
+        ! particles on the reference).
+
+        ! In:
+        !    real_factor: the encoding factor by which the stored populations are multiplied
+        !       to enable non-integer populations.
+        !    D0: true if the current excip is the null (reference) excitor
+        !    Hii: the diagonal matrix element of the determinant formed by applying the excip to the
+        !       reference
+        ! In/Out:
+        !    rng: random number generator.
+        !    ndeath: running (encoded) total of number of particles killed/cloned.
+        !    population: the (encoded) population on the current excip
+        !    tot_population: total number of particles.
+
+        use const, only: dp
+        use fciqmc_data, only: tau, shift, qmc_spawn
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use calc, only: linked_ccmc
+
+        integer(int_p), intent(in) :: real_factor
+        logical, intent(in) :: D0
+        real(p), intent(in) :: Hii
+        type(dSFMT_t), intent(inout) :: rng
+        integer(int_p), intent(inout) :: population, ndeath
+        real(dp), intent(inout) :: tot_population
+
+        real(p) :: pdeath, KiiAi
+        integer(int_p) :: nkill, old_pop
+
+        ! Spawning onto the same excitor so no change in sign due to
+        ! a difference in the sign of the determinant formed from applying the
+        ! parent excitor to the reference and that formed from applying the
+        ! child excitor.
+
+        if (D0) then
+            KiiAi = (-shift(1))*population
+        else
+            if (linked_ccmc) then
+                ! In linked coupled cluster the shift only applies on the reference
+                KiiAi = Hii*population
+            else
+                KiiAi = (Hii - shift(1))*population
+            end if
+        end if
+
+        ! Death is attempted exactly once on this cluster regardless of pselect.
+        ! Population passed in in cluster%amplitude is in the *encoded* form.
+        pdeath = tau*abs(KiiAi)
+
+        if (pdeath < qmc_spawn%cutoff) then
+            ! Calling death once per excip (and hence with a low pselect) without any
+            ! stochastic rounding leads to a large number of excips being spawned with low
+            ! weight (with the death then performed during annihilation).  This is not
+            ! good for performance of the communication and an annihilation algorithms, so
+            ! stochastically round here to overcome this.  Unlike in FCIQMC, death in CCMC
+            ! can spawn new particles on basis functions that are not yet occupied so
+            ! treating it on the same footing as death is not the worst idea...
+            ! Note if death is called once per cluster of size 0 and 1, then this branch
+            ! is unlikely to be triggered and death will be performed exactly, as in FCIQMC.
+            if (pdeath > get_rand_close_open(rng)*qmc_spawn%cutoff) then
+                nkill = qmc_spawn%cutoff
+            else
+                nkill = 0_int_p
+            end if
+        else
+            ! Number that will definitely die
+            nkill = int(pdeath,int_p)
+            ! Stochastic death...
+            pdeath = pdeath - nkill
+            if (pdeath > get_rand_close_open(rng)) nkill = nkill + 1
+        end if
+
+        if (nkill /= 0) then
+            ! Create nkill excips with sign of -K_ii A_i
+            if (KiiAi > 0) nkill = -nkill
+!            cdet%initiator_flag=0  !All death is allowed
+            ! Kill directly for single excips
+            ! This only works in the full non composite algorithm as otherwise the
+            ! population on an excip can still be needed if it as selected as (part of)
+            ! another cluster. It is also necessary that death is not done until after
+            ! all spawning attempts from the excip
+            old_pop = population
+            population = population + nkill
+            ! Also need to update total population
+            tot_population = tot_population + real(abs(population)-abs(old_pop),dp)/real_factor
+            ndeath = ndeath + abs(nkill)
+        end if
+
+    end subroutine stochastic_ccmc_death_nc
 
     pure subroutine collapse_cluster(basis, excitor, excitor_population, cluster_excitor, cluster_population, allowed)
 
