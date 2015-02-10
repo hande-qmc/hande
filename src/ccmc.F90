@@ -611,9 +611,8 @@ contains
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) reduction(+:ndeath,nparticles_change)
                     do iattempt = 1, tot_walkers
-                        ! Note we use the (encoded) population directly in
-                        ! stochastic_ccmc_death (unlike the previous call, which uses
-                        ! cluster%ampltiude) to avoid unnecessary decoding/encoding
+                        ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
+                        ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
                         call stochastic_ccmc_death_nc(rng(it), real_factor, iattempt==D0_pos, walker_data(1,iattempt), &
                             walker_population(1, iattempt), nparticles_change(1), ndeath)
@@ -1443,8 +1442,8 @@ contains
             ! stochastically round here to overcome this.  Unlike in FCIQMC, death in CCMC
             ! can spawn new particles on basis functions that are not yet occupied so
             ! treating it on the same footing as death is not the worst idea...
-            ! Note if death is called once per cluster of size 0 and 1, then this branch
-            ! is unlikely to be triggered and death will be performed exactly, as in FCIQMC.
+            ! Note death is performed exactly for non-composite clusters with the non-composite
+            ! algorithm in stochastic_ccmc_death_nc, as in FCIQMC.
             if (pdeath > get_rand_close_open(rng)*qmc_spawn%cutoff) then
                 nkill = qmc_spawn%cutoff
             else
@@ -1538,7 +1537,7 @@ contains
         end if
 
         ! Death is attempted exactly once on this cluster regardless of pselect.
-        ! Population passed in in cluster%amplitude is in the *encoded* form.
+        ! Population passed in is in the *encoded* form.
         pdeath = tau*abs(KiiAi)
 
         if (pdeath < qmc_spawn%cutoff) then
@@ -1567,7 +1566,6 @@ contains
         if (nkill /= 0) then
             ! Create nkill excips with sign of -K_ii A_i
             if (KiiAi > 0) nkill = -nkill
-!            cdet%initiator_flag=0  !All death is allowed
             ! Kill directly for single excips
             ! This only works in the full non composite algorithm as otherwise the
             ! population on an excip can still be needed if it as selected as (part of)
