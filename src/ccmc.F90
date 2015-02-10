@@ -1541,6 +1541,8 @@ contains
         pdeath = tau*abs(KiiAi)
 
         if (pdeath < qmc_spawn%cutoff) then
+            ! [review] - JSS: given we are performing death exactly, this branch should not
+            ! [review] - JSS: be triggered.  Best to remove it (so identical to doing death in FCIQMC)?
             ! Calling death once per excip (and hence with a low pselect) without any
             ! stochastic rounding leads to a large number of excips being spawned with low
             ! weight (with the death then performed during annihilation).  This is not
