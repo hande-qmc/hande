@@ -215,7 +215,7 @@ real(p) :: initial_shift = 0.0_p
 
 ! Factor by which the changes in the population are damped when updating the
 ! shift.
-real(p) :: shift_damping = 0.050_dp
+real(p) :: shift_damping = 0.050_p
 
 ! projected energy
 ! This stores during an FCIQMC report loop

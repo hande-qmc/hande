@@ -757,7 +757,7 @@ contains
 #ifdef PARALLEL
         real(p) :: merged_excit_dist(0:max_number_excitations) 
         call mpi_allreduce(excit_distribution, merged_excit_dist, max_number_excitations+1, &
-            MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
         
         excit_distribution = merged_excit_dist        
 #endif
