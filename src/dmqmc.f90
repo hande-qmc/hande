@@ -127,7 +127,7 @@ contains
                         call decoder_ptr(sys, cdet2%f, cdet2)
 
                         ! Extract the real signs from the encoded signs.
-                        real_population = real(walker_population(:,idet),dp)/real_factor
+                        real_population = real(walker_population(:,idet),p)/real_factor
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always

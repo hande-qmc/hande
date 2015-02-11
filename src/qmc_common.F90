@@ -595,7 +595,7 @@ contains
             cdet%f = walker_dets(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
             cdet%data => walker_data(:,idet)
-            real_population = real(walker_population(:,idet),dp)/real_factor
+            real_population = real(walker_population(:,idet),p)/real_factor
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &
