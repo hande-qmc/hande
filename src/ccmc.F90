@@ -502,7 +502,7 @@ contains
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
                 !$omp        nsingle_excitors, cluster_multispawn_threshold,    &
                 !$omp        linked_ccmc, ldet, rdet, left_cluster,             &
-                !$omp        right_cluster, nprocs, ccmc_full_nc,               &
+                !$omp        right_cluster, nprocs, ccmc_full_nc, ms_stats,     &
                 !$omp        walker_population, tot_walkers, walker_data,       &
                 !$omp        walker_dets, nparticles_change, ndeath, D0_population)
                 it = get_thread_id()

@@ -68,6 +68,7 @@ contains
         type(multispawn_stats_t), intent(in) :: ms_stats_arr(:)
         integer :: i
 
+        ! [review] - RSTF: Would it be simpler to use sum(ms_stats_arr%nevents) etc?
         do i = 1, ubound(ms_stats_arr, dim=1)
             ms_stats%nevents = ms_stats%nevents + ms_stats_arr(i)%nevents
             ms_stats%nspawnings = ms_stats%nspawnings + ms_stats_arr(i)%nspawnings
@@ -89,6 +90,7 @@ contains
         type(multispawn_stats_t), intent(in) :: ms_stats(:)
         type(multispawn_stats_t) :: ms_stats_total
 
+        ! [review] - RSTF: Should the ms_stats objects be reduced across the MPI ranks as well as the threads?
         ms_stats_total = ms_stats_reduction(ms_stats)
         if (ms_stats_total%nevents > 0 .and. parent) then
             write (6,'(1X,"Multiple spawning events occurred.")')
