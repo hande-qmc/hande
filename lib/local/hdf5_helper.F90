@@ -690,7 +690,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: sp, int_32, int_64
+            use const, only: dp, sp, int_32, int_64
             use checking
             use errors
 
@@ -703,12 +703,21 @@ module hdf5_helper
             type(c_ptr) :: ptr
             integer(int_32), allocatable :: arr_32(:)
             integer(int_64), allocatable :: arr_64(:)
+            real(dp), allocatable :: arr_dp(:)
             integer :: ierr
             character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
 
             if (dtype_equal(id, dset, kinds%sp)) then
                 ptr = c_loc(arr)
                 call read_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else if (dtype_equal(id, dset, kinds%dp)) then
+                call warning('read_array_1d_real_sp', 'Converting from double to single precision for dataset: '//dset//'.')
+                allocate(arr_dp(arr_shape(1)), stat=ierr)
+                call check_allocate('arr_dp', arr_shape(1), ierr)
+                call hdf5_read(id, dset, kinds, arr_shape, arr_dp)
+                arr = arr_dp
+                deallocate(arr_dp, stat=ierr)
+                call check_deallocate('arr_dp', ierr)
             else
                 call warning('read_array_1d_real_sp', msg//dset//'.')
                 if (dtype_equal(id, dset, kinds%i32)) then
@@ -747,7 +756,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: sp, int_32, int_64
+            use const, only: dp, sp, int_32, int_64
             use checking
             use errors
 
@@ -760,12 +769,21 @@ module hdf5_helper
             type(c_ptr) :: ptr
             integer(int_32), allocatable :: arr_32(:,:)
             integer(int_64), allocatable :: arr_64(:,:)
+            real(dp), allocatable :: arr_dp(:,:)
             integer :: ierr
             character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
 
             if (dtype_equal(id, dset, kinds%sp)) then
                 ptr = c_loc(arr)
                 call read_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else if (dtype_equal(id, dset, kinds%dp)) then
+                call warning('read_array_2d_real_sp', 'Converting from double to single precision for dataset: '//dset//'.')
+                allocate(arr_dp(arr_shape(1),arr_shape(2)), stat=ierr)
+                call check_allocate('arr_dp', size(arr_dp), ierr)
+                call hdf5_read(id, dset, kinds, arr_shape, arr_dp)
+                arr = arr_dp
+                deallocate(arr_dp, stat=ierr)
+                call check_deallocate('arr_dp', ierr)
             else
                 call warning('read_array_2d_real_sp', msg//dset//'.')
                 if (dtype_equal(id, dset, kinds%i32)) then
@@ -804,7 +822,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: dp, int_32, int_64
+            use const, only: sp, dp, int_32, int_64
             use checking
             use errors
 
@@ -817,12 +835,21 @@ module hdf5_helper
             type(c_ptr) :: ptr
             integer(int_32), allocatable :: arr_32(:)
             integer(int_64), allocatable :: arr_64(:)
+            real(sp), allocatable :: arr_sp(:)
             integer :: ierr
             character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
 
             if (dtype_equal(id, dset, kinds%dp)) then
                 ptr = c_loc(arr)
                 call read_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else if (dtype_equal(id, dset, kinds%sp)) then
+                call warning('read_array_1d_real_dp', 'Converting from single to double precision for dataset: '//dset//'.')
+                allocate(arr_sp(arr_shape(1)), stat=ierr)
+                call check_allocate('arr_sp', arr_shape(1), ierr)
+                call hdf5_read(id, dset, kinds, arr_shape, arr_sp)
+                arr = arr_sp
+                deallocate(arr_sp, stat=ierr)
+                call check_deallocate('arr_sp', ierr)
             else
                 call warning('read_array_1d_real_dp', msg//dset//'.')
                 if (dtype_equal(id, dset, kinds%i32)) then
@@ -861,7 +888,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: dp, int_32, int_64
+            use const, only: sp, dp, int_32, int_64
             use checking
             use errors
 
@@ -874,12 +901,21 @@ module hdf5_helper
             type(c_ptr) :: ptr
             integer(int_32), allocatable :: arr_32(:,:)
             integer(int_64), allocatable :: arr_64(:,:)
+            real(sp), allocatable :: arr_sp(:,:)
             integer :: ierr
             character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
 
             if (dtype_equal(id, dset, kinds%dp)) then
                 ptr = c_loc(arr)
                 call read_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else if (dtype_equal(id, dset, kinds%sp)) then
+                call warning('read_array_2d_real_dp', 'Converting from single to double precision for dataset: '//dset//'.')
+                allocate(arr_sp(arr_shape(1),arr_shape(2)), stat=ierr)
+                call check_allocate('arr_sp', size(arr_sp), ierr)
+                call hdf5_read(id, dset, kinds, arr_shape, arr_sp)
+                arr = arr_sp
+                deallocate(arr_sp, stat=ierr)
+                call check_deallocate('arr_sp', ierr)
             else
                 call warning('read_array_2d_real_dp', msg//dset//'.')
                 if (dtype_equal(id, dset, kinds%i32)) then
