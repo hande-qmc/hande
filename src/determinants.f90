@@ -300,10 +300,10 @@ contains
                     occ_list(nfound+1:nfound+in_field) = bit_table_256(1:in_field, field) + nbits_seen
                     nfound = nfound + in_field
                 end associate
-                if (nfound == size(occ_list)) exit outer
                 offset = offset + field_size
                 nbits_seen = nbits_seen + field_size
             end do
+            if (nfound == size(occ_list)) exit outer
             nbits_seen = iel*i0_length
         end do outer
 
