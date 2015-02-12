@@ -134,8 +134,8 @@ contains
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
-            call decode_det(sys%basis, f0, occ_list0)
             f0 = dets(:,ref_det)
+            call decode_det(sys%basis, f0, occ_list0)
             walker_population(1,ref_det) = nint(D0_population)
         end if
 
