@@ -68,10 +68,9 @@ contains
         type(multispawn_stats_t), intent(in) :: ms_stats_arr(:)
         integer :: i
 
-        ! [review] - RSTF: Would it be simpler to use sum(ms_stats_arr%nevents) etc?
+        ms_stats%nevents = sum(ms_stats_arr%nevents)
+        ms_stats%nspawnings = sum(ms_stats_arr%nspawnings)
         do i = 1, ubound(ms_stats_arr, dim=1)
-            ms_stats%nevents = ms_stats%nevents + ms_stats_arr(i)%nevents
-            ms_stats%nspawnings = ms_stats%nspawnings + ms_stats_arr(i)%nspawnings
             ms_stats%nspawnings_max = maxval(ms_stats_arr%nspawnings_max)
         end do
 
@@ -84,14 +83,26 @@ contains
         ! In:
         !    ms_stats: array of multispawn_stats_t objects.  The reduced version is printed out.
 
-        use parallel, only: parent
+        use parallel
         use utils, only: int_fmt
 
         type(multispawn_stats_t), intent(in) :: ms_stats(:)
         type(multispawn_stats_t) :: ms_stats_total
+#ifdef PARALLEL
+        type(multispawn_stats_t) :: ms_stats_local
+        integer :: ierr
 
         ! [review] - RSTF: Should the ms_stats objects be reduced across the MPI ranks as well as the threads?
+        ms_stats_local = ms_stats_reduction(ms_stats)
+        call mpi_reduce(ms_stats_local%nevents, ms_stats_total%nevents, 1, MPI_INTEGER, &
+                        MPI_SUM, root, MPI_COMM_WORLD, ierr)
+        call mpi_reduce(ms_stats_local%nspawnings, ms_stats_total%nspawnings, 1, MPI_INTEGER, &
+                        MPI_SUM, root, MPI_COMM_WORLD, ierr)
+        call mpi_reduce(ms_stats_local%nspawnings_max, ms_stats_total%nspawnings_max, 1, MPI_INTEGER, &
+                        MPI_MAX, root, MPI_COMM_WORLD, ierr)
+#else
         ms_stats_total = ms_stats_reduction(ms_stats)
+#endif
         if (ms_stats_total%nevents > 0 .and. parent) then
             write (6,'(1X,"Multiple spawning events occurred.")')
             write (6,'(1X,"Number of multiple spawning events:",'//int_fmt(ms_stats_total%nevents,1)//')') &
