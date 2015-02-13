@@ -267,7 +267,7 @@ contains
         integer :: i, ireport, icycle, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
         integer(int_64) :: nattempts_spawn
-        real(dp) :: nparticles_old(sampling_size), nparticles_change(sampling_size), junk2
+        real(p) :: nparticles_old(sampling_size), nparticles_change(sampling_size), junk2
         type(det_info_t), allocatable :: cdet(:)
         type(det_info_t), allocatable :: ldet(:), rdet(:)
 
@@ -1401,7 +1401,7 @@ contains
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(inout) :: population, ndeath
-        real(dp), intent(inout) :: tot_population
+        real(p), intent(inout) :: tot_population
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill, old_pop
@@ -1492,7 +1492,7 @@ contains
                 old_pop = population
                 population = population + nkill
                 ! Also need to update total population
-                tot_population = tot_population + real(abs(population)-abs(old_pop),dp)/real_factor
+                tot_population = tot_population + real(abs(population)-abs(old_pop),p)/real_factor
                 ndeath = ndeath + abs(nkill)
             else
                 ! The excitor might be a composite cluster so we'll just create

@@ -292,7 +292,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),dp)/real_factor
+                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),p)/real_factor
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -373,7 +373,7 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop), dp)/real_factor
+                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),p)/real_factor
                 ! One more entry to be removed from the spawn%sdata array.
                 nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
@@ -451,7 +451,7 @@ contains
             ! Add in the now-encoded deterministic spawning amplitude.
             old_pop = walker_population(:,ind)
             walker_population(1,ind) = walker_population(1,ind) + spawn_sign*nspawn
-            nparticles = nparticles + real(abs(walker_population(:,ind)) - abs(old_pop),dp)/real_factor
+            nparticles = nparticles + real(abs(walker_population(:,ind)) - abs(old_pop),p)/real_factor
         end do
 
     end subroutine deterministic_annihilation
@@ -494,7 +494,7 @@ contains
             if (real_amplitudes .and. (.not. determ_det)) then
                 old_pop = walker_population(:,i)
                 call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
-                nparticles = nparticles + real(abs(walker_population(:,i)) - abs(old_pop),dp)/real_factor
+                nparticles = nparticles + real(abs(walker_population(:,i)) - abs(old_pop),p)/real_factor
             end if
 
             if (all(walker_population(:,i) == 0_int_p) .and. (.not. determ_det)) then
@@ -598,7 +598,7 @@ contains
 
         integer :: i, istart, iend, j, k, pos, spawn_start, disp
         integer(int_p) :: spawned_population(sampling_size)
-        real(dp) :: real_population(sampling_size)
+        real(p) :: real_population(sampling_size)
 
         logical :: hit
         integer, parameter :: thread_id = 0
@@ -653,7 +653,7 @@ contains
                     tbl=>sys%basis%tensor_label_len)
                 call insert_new_walker(sys, k, int(spawn%sdata(:tbl,i), i0), int(spawned_population, int_p))
                 ! Extract the real sign from the encoded sign.
-                real_population = real(spawned_population,dp)/real_factor
+                real_population = real(spawned_population,p)/real_factor
                 nparticles = nparticles + abs(real_population)
             end associate
 

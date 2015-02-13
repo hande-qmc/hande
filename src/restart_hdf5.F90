@@ -229,7 +229,7 @@ module restart_hdf5
 
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: ncycles
-            real(dp), intent(in) :: total_population(:)
+            real(p), intent(in) :: total_population(:)
 #ifndef DISABLE_HDF5
             character(255) :: restart_file
 
@@ -248,7 +248,7 @@ module restart_hdf5
             ! Temporary variables so for copying data to which we can also call c_ptr on.
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
-            real(dp), allocatable, target :: tmp_pop(:)
+            real(p), allocatable, target :: tmp_pop(:)
             real(p), target :: tmp(1)
 
 

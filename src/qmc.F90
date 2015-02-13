@@ -413,11 +413,11 @@ contains
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
-        forall (i=1:sampling_size) nparticles(i) = sum(abs( real(walker_population(i,:tot_walkers),dp)/real_factor))
+        forall (i=1:sampling_size) nparticles(i) = sum(abs( real(walker_population(i,:tot_walkers),p)/real_factor))
         ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
         do i=1, sampling_size
-            call mpi_allgather(nparticles(i), 1, MPI_REAL8, nparticles_proc(i,:), 1, MPI_REAL8, MPI_COMM_WORLD, ierr)
+            call mpi_allgather(nparticles(i), 1, MPI_PREAL, nparticles_proc(i,:), 1, MPI_PREAL, MPI_COMM_WORLD, ierr)
         end do
         ! When restarting a non-blocking calculation this sum will not equal
         ! tot_nparticles as some walkers have been communicated around the report

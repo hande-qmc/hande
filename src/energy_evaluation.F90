@@ -69,7 +69,7 @@ contains
 
         use parallel
 
-        real(dp), intent(inout) :: ntot_particles_old(sampling_size)
+        real(p), intent(inout) :: ntot_particles_old(sampling_size)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
 
@@ -137,7 +137,7 @@ contains
         use parallel
 
         integer, intent(inout) :: rep_request_s(:)
-        real(dp), intent(inout) :: ntot_particles_old(:)
+        real(p), intent(inout) :: ntot_particles_old(:)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: update_tau
 
@@ -253,11 +253,11 @@ contains
         use parallel, only: nprocs
 
         real(dp), intent(in) :: rep_loop_sum(:)
-        real(dp), intent(inout) :: ntot_particles_old(sampling_size)
+        real(p), intent(inout) :: ntot_particles_old(sampling_size)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: update_tau
 
-        real(dp) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
+        real(p) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
         integer :: i
 
         proj_energy = rep_loop_sum(proj_energy_ind)
@@ -351,7 +351,7 @@ contains
         use fciqmc_data, only: shift, tau, shift_damping, dmqmc_factor
 
         real(p), intent(inout) :: loc_shift
-        real(dp), intent(in) :: nparticles_old, nparticles
+        real(p), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
@@ -377,7 +377,7 @@ contains
         use fciqmc_data, only: tau, shift_damping
         use hfs_data, only: hf_shift
 
-        real(dp), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
+        real(p), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
 
         ! Given the definition of the shift, S, \tilde{S} \equiv \frac{dS}{d\alpha}|_{\alpha=0}.
@@ -406,14 +406,14 @@ contains
         use fciqmc_data, only: walker_population, tot_walkers, real_factor, sampling_size
         use hfs_data, only: alpha0
 
-        real(dp) :: hf_signed_pop
-        real(dp) :: real_population(sampling_size)
+        real(p) :: hf_signed_pop
+        real(p) :: real_population(sampling_size)
 
         integer :: i
 
         hf_signed_pop = 0.0_dp
         do i = 1, tot_walkers
-            real_population = real(abs(walker_population(:,i)),dp)/real_factor
+            real_population = real(abs(walker_population(:,i)),p)/real_factor
             if (walker_population(1,i) == 0_int_p) then
                 if (alpha0 < 0) then
                     ! letting alpha->0_-
@@ -423,7 +423,7 @@ contains
                     hf_signed_pop = hf_signed_pop + real_population(2)
                 end if
             else
-                hf_signed_pop = hf_signed_pop + sign(1.0_dp, real_population(1))*&
+                hf_signed_pop = hf_signed_pop + sign(1.0_p, real_population(1))*&
                                                  real_population(2)
             end if
         end do

@@ -52,7 +52,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, ideterm
         integer :: iter
         integer(int_64) :: nattempts
-        real(dp) :: nparticles_old(sampling_size)
+        real(p) :: nparticles_old(sampling_size)
 
         integer(i0) :: f_child(sys%basis%string_len)
         integer(int_p) :: nspawned, ndeath
@@ -286,7 +286,7 @@ contains
         integer :: idet, iparticle
         integer(int_p) :: nspawned
         integer(int_p) :: pop(spawn%ntypes)
-        real(dp) :: list_pop
+        real(p) :: list_pop
         integer(i0), target :: ftmp(sys%basis%tensor_label_len)
 
         cdet%f => ftmp

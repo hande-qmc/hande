@@ -56,7 +56,7 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(int_64) :: nattempts
-        real(dp) :: nparticles_old(sampling_size)
+        real(p) :: nparticles_old(sampling_size)
         real(p) :: real_population(sampling_size)
         type(det_info_t) :: cdet
 

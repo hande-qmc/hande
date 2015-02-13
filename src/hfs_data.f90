@@ -59,6 +59,6 @@ real(p) :: O00
 ! where
 !     N_i is the Hamiltonian population on i 
 !     \tilde{N}_i is the Hellmann--Feynman population on i 
-real(dp) :: hf_signed_pop
+real(p) :: hf_signed_pop
 
 end module hfs_data

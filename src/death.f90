@@ -42,7 +42,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
         integer(int_p), intent(inout) :: population, ndeath
-        real(dp), intent(inout) :: tot_population
+        real(p), intent(inout) :: tot_population
 
         real(p) :: pd
         real(dp) :: r
@@ -97,7 +97,7 @@ contains
             population = population - kill
         end if
         tot_population = tot_population + &
-            real(abs(population) - abs(old_population),dp)/real_factor
+            real(abs(population) - abs(old_population),p)/real_factor
         ndeath = ndeath + abs(kill)
 
     end subroutine stochastic_death

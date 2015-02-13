@@ -441,8 +441,8 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, sampling_size, mpi_real8, load_data, sampling_size, &
-                            mpi_real8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, sampling_size, mpi_preal, load_data, sampling_size, &
+                            mpi_preal, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 do i = 1, sampling_size
                     if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
@@ -506,10 +506,10 @@ contains
         integer(int_p), intent(in) :: real_factor
         integer(int_p), intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
-        real(dp), intent(inout) :: nparticles(:)
+        real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
 
-        real(dp) :: nsent(size(nparticles))
+        real(p) :: nsent(size(nparticles))
 
         integer :: iexcitor, pproc, string_len, slot
 
@@ -533,7 +533,7 @@ contains
                 ! was an initiator...
                 call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
                 ! Update population on the sending processor.
-                nsent = nsent + abs(real(walker_populations(:,iexcitor),dp))
+                nsent = nsent + abs(real(walker_populations(:,iexcitor),p))
                 ! Zero population here.  Will be pruned on this determinant
                 ! automatically during annihilation (which will also update tot_walkers).
                 walker_populations(:,iexcitor) = 0_int_p
@@ -575,7 +575,7 @@ contains
         integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet
-        real(dp) :: ntot_particles(sampling_size)
+        real(p) :: ntot_particles(sampling_size)
         real(p) :: real_population(sampling_size)
         type(det_info_t) :: cdet
         real(p) :: hmatel
@@ -615,7 +615,7 @@ contains
             call update_energy_estimators_send(rep_comm)
         else
             call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
             proj_energy = proj_energy_sum
             D0_population = D0_population_sum
@@ -759,7 +759,7 @@ contains
         logical, intent(in) :: update_tau
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
-        real(dp), intent(inout) :: ntot_particles(sampling_size)
+        real(p), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
         logical, intent(out) :: soft_exit
         type(nb_rep_t), optional, intent(inout) :: rep_comm
@@ -892,7 +892,7 @@ contains
         integer(int_p), intent(in) :: real_factor
         integer(int_p), intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
-        real(dp), intent(inout) :: nparticles(:)
+        real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
         logical, intent(inout) :: load_tag
 

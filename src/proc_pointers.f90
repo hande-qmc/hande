@@ -81,7 +81,7 @@ abstract interface
         real(p), intent(in) :: mat
         real(p), intent(in) :: loc_shift
         integer(int_p), intent(inout) :: pop, ndeath
-        real(dp), intent(inout) :: tot_pop
+        real(p), intent(inout) :: tot_pop
     end subroutine i_death
     pure function i_sc0(sys, f) result(hmatel)
         use system, only: sys_t

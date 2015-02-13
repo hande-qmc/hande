@@ -144,8 +144,8 @@ contains
         use fciqmc_data, only: shift, shift_profile, average_shift_until, ncycles
         use fciqmc_data, only: target_particles, vary_shift, nreport, sampling_size
 
-        real(dp), intent(in) :: loc_tot_nparticles(:)
-        real(dp), intent(in) :: loc_tot_nparticles_old(:)
+        real(p), intent(in) :: loc_tot_nparticles(:)
+        real(p), intent(in) :: loc_tot_nparticles_old(:)
         integer, intent(in) :: ireport
         integer :: ireplica
 
@@ -208,7 +208,7 @@ contains
        ! excitation levels correctly.
 
        ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet).
-       unweighted_walker_pop = real(walker_population(:,idet),dp)*dmqmc_accumulated_probs(excitation%nexcit)/&
+       unweighted_walker_pop = real(walker_population(:,idet),p)*dmqmc_accumulated_probs(excitation%nexcit)/&
                                 real_factor
 
        ! If diagonal element, add to the trace.

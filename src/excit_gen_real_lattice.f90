@@ -139,7 +139,7 @@ contains
             ! For single excitations
             !   pgen = p(i) p(a|i)
             !        = 1/(nel*nconnected_sites)
-            pgen = 1.0_dp/(sys%nel*sys%real_lattice%connected_sites(0,i))
+            pgen = 1.0_p/(sys%nel*sys%real_lattice%connected_sites(0,i))
 
         end if
 
@@ -270,7 +270,7 @@ contains
             ! For single excitations
             !   pgen = p(i) p(a|i)
             !        = 1/(sys%nel*nconnected_sites)
-            pgen = 1.0_dp/(sys%nel*sys%real_lattice%connected_sites(0,i))
+            pgen = 1.0_p/(sys%nel*sys%real_lattice%connected_sites(0,i))
 
             ! 3. find the connecting matrix element.
             ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
