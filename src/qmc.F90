@@ -562,6 +562,7 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) then
                 write (6,'(1X,a68)') '# HF psips: current total population of Hellmann--Feynman particles.'
             end if
+            write (6,'(1X,"# states: number of many-particle states occupied.")')
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
             write (6,'(1X,a41,/)') 'time: average time per Monte Carlo cycle.'
         end if

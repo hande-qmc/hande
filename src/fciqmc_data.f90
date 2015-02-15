@@ -236,10 +236,13 @@ real(p) :: proj_energy
 
 !--- Walker data ---
 
-! Current number of walkers stored in the main list (processor dependent).
+! Current number of determinants occupied in the main list (processor dependent).
 ! This is updated during annihilation and merging of the spawned walkers into
 ! the main list.
+! [todo] - change name to be meaningful.  I am very sorry...
 integer :: tot_walkers
+! Ditto but across all processors.
+integer :: tot_nocc_states
 
 ! Total number of particles on all walkers/determinants (processor dependent)
 ! Updated during death and annihilation and merging.
@@ -705,7 +708,7 @@ contains
                 end do
             end if
 
-            write (6, '(3X,a11,7X,a7,3X,a4)') '# particles', 'R_spawn', 'time'
+            write (6, '(3X,a11,6X)', advance='no') '# particles'
 
         else
             write (6,'(1X,a13,3(2X,a17))', advance='no') &
@@ -717,8 +720,8 @@ contains
             else
                 write (6,'(4X,a9,8X)', advance='no') "# H psips"
             end if
-            write (6,'(1X,a7,3X,a4)') "R_spawn",  "time"
         end if
+        write (6,'(3X,"# states  R_spawn   time")')
 
     end subroutine write_fciqmc_report_header
 
@@ -799,7 +802,7 @@ contains
                                              proj_energy, D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,f7.4,2X,f6.3)') rspawn, elapsed_time/ncycles
+        write (6,'(2X,i10,2X,f7.4,2X,f6.3)') tot_nocc_states, rspawn, elapsed_time/ncycles
 
     end subroutine write_fciqmc_report
 

@@ -20,6 +20,7 @@ enum, bind(c)
     enumerator :: hf_proj_O_ind
     enumerator :: hf_proj_H_ind
     enumerator :: hf_D0_pop_ind
+    enumerator :: nocc_states
     enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
 end enum
 
@@ -187,7 +188,7 @@ contains
         !       evaluation.
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
-                               proj_energy, D0_population
+                               proj_energy, D0_population, tot_walkers
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -216,6 +217,7 @@ contains
         rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
         rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
         rep_loop_loc(hf_D0_pop_ind) = D0_hf_population
+        rep_loop_loc(nocc_states) = tot_walkers
 
         offset = nparticles_start_ind-1 + iproc*sampling_size
         if (present(spawn_elsewhere)) then
@@ -245,7 +247,7 @@ contains
         use fciqmc_data, only: sampling_size, target_particles, ncycles, rspawn,               &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
                                vary_shift_from_proje, D0_population, fold_line,                &
-                               nparticles_proc, par_info
+                               nparticles_proc, par_info, tot_nocc_states
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
@@ -277,6 +279,7 @@ contains
         proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
         proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
         D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
+        tot_nocc_states = rep_loop_sum(nocc_states)
 
         do i = 1, sampling_size
             nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)
