@@ -25,7 +25,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
-        use excitations, only: excit_t, create_excited_det
+        use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
         use calc, only: doing_calc, seed, initiator_approximation, non_blocking_comm, &
@@ -153,6 +153,7 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
+                    connection = get_excitation(sys%nel, sys%basis, cdet%f, f0)
                     call update_proj_energy_ptr(sys, f0, cdet, real_population, D0_population, &
                                                 proj_energy, connection, hmatel)
 

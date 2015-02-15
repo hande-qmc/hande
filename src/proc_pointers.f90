@@ -27,7 +27,7 @@ abstract interface
         type(det_info_t), intent(in) :: d
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit_t), intent(out) :: excitation
+        type(excit_t), intent(inout) :: excitation
         real(p), intent(out) :: hmatel
     end subroutine i_update_proj_energy
     subroutine i_update_proj_hfs(sys, f, fpop, f_hfpop, fdata, excitation, hmatel,&
