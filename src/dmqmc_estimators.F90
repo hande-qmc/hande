@@ -20,8 +20,8 @@ contains
         use checking, only: check_allocate
         use fciqmc_data, only: nparticles, sampling_size, rspawn, shift, replica_tricks
         use fciqmc_data, only: estimator_numerators, number_dmqmc_estimators
-        use fciqmc_data, only: ncycles, trace, calculate_excit_distribution
-        use fciqmc_data, only: excit_distribution, tot_nparticles
+        use fciqmc_data, only: ncycles, trace, calculate_excit_distribution, tot_walkers
+        use fciqmc_data, only: excit_distribution, tot_nparticles, tot_nocc_states
         use fciqmc_data, only: calc_inst_rdm, rdm_spawn, rdms, nrdms, rdm_traces, renyi_2
         use hash_table, only: reset_hash_table
         use parallel
@@ -62,7 +62,7 @@ contains
 #ifdef PARALLEL
         ! Put all the quantities to be communicated together in one array.
 
-        array_size = 2*sampling_size+1+number_dmqmc_estimators
+        array_size = 2*sampling_size + number_dmqmc_estimators + 2
         if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
         if (calc_inst_rdm) array_size = array_size + size(rdm_traces)
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) array_size = array_size + size(renyi_2)
@@ -75,6 +75,8 @@ contains
         ! Need to sum the number of particles and other quantites over all processors.
         min_ind = 1; max_ind = sampling_size
         ir(min_ind:max_ind) = nparticles
+        min_ind = max_ind + 1; max_ind = min_ind
+        ir(min_ind:max_ind) = tot_walkers
         min_ind = max_ind + 1; max_ind = min_ind
         ir(min_ind) = rspawn
         min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1
@@ -102,6 +104,8 @@ contains
         ! Extract the summed data from the combined array.
         min_ind = 1; max_ind = sampling_size
         tot_nparticles = nint(ir_sum(min_ind:max_ind))
+        min_ind = max_ind + 1; max_ind = min_ind
+        tot_nocc_states = ir_sum(min_ind)
         min_ind = max_ind + 1; max_ind = min_ind
         rspawn = ir_sum(min_ind)
         min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1
