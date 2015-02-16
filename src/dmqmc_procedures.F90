@@ -618,7 +618,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use hilbert_space, only: gen_random_det_full_space
         use system, only: sys_t
-        use fciqmc_data, only: real_factor
+        use fciqmc_data, only: real_factor, all_mom_sectors
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -635,7 +635,7 @@ contains
                 ! Generate a random determinant uniformly in this specific
                 ! symmetry sector and spin polarisation.
                 call gen_random_det_full_space(rng, sys, f, occ_list)
-                if (symmetry_orb_list(sys, occ_list) == sym) then
+                if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                         sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
