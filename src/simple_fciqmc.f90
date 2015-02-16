@@ -72,7 +72,7 @@ contains
 
 
         ! Set up hamiltonian matrix.
-        call generate_hamil(sys, ndets, dets, distribute_off)
+        call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_off)
         ! generate_hamil fills in only the lower triangle.
         ! fill in upper triangle for easy access.
         do i = 1,ndets

@@ -224,7 +224,7 @@ contains
                 else
 
                     if (nprocs == 1 .and. (doing_calc(exact_diag) .or. .not.direct_lanczos)) &
-                        call generate_hamil(sys, ndets, dets, distribute_off)
+                        call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_off)
 
                     ! Lanczos.
                     if (doing_calc(lanczos_diag)) then
@@ -232,7 +232,8 @@ contains
                         call check_allocate('lanczos_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1 .and. .not.direct_lanczos) call generate_hamil(sys, ndets, dets, distribute_cols)
+                        if (nprocs > 1 .and. .not.direct_lanczos) &
+                            call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_cols)
                         call lanczos_diagonalisation(sys, dets, nfound, lanczos_eigv)
                         if (nlanczos+nfound > size(lanczos_solns)) then
                             ! We have found more solutions than we asked for.
@@ -256,7 +257,7 @@ contains
                         call check_allocate('exact_eigv',ndets,ierr)
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
-                        if (nprocs > 1) call generate_hamil(sys, ndets, dets, distribute_blocks)
+                        if (nprocs > 1) call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_blocks)
                         call exact_diagonalisation(sys, dets, exact_eigv)
                         exact_solns(nexact+1:nexact+ndets)%energy = exact_eigv
                         exact_solns(nexact+1:nexact+ndets)%ms = ms
@@ -369,7 +370,7 @@ contains
 
     end subroutine diagonalise
 
-    subroutine generate_hamil(sys, ndets, dets, distribute_mode)
+    subroutine generate_hamil(sys, ndets, dets, sparse_mode, distribute_mode)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
@@ -377,6 +378,10 @@ contains
         ! Only generate the upper diagonal for use with (sca)lapack and Lanczos routines.
         ! In:
         !    sys: system to be studied.
+        !    ndets: number of determinants in the Hilbert space.
+        !    dets: list of determinants in the Hilbert space (bit-string representation).
+        !    sparse_mode: if true, generate the Hamiltonian in sparse format (in hamil_csr)
+        !        rather than in non-sparse format (in hamil).
         !    distribute_mode (optional): flag for determining how the
         !        Hamiltonian matrix is distributed among processors.  It is
         !        irrelevant if only one processor is used: the distribution schemes
@@ -384,8 +389,6 @@ contains
         !        processor.  Can take the values given by the distribute_off,
         !        distribute_blocks and distribute_cols parameters.  See above
         !        for descriptions of the different behaviours.
-        !    ndets: number of determinants in the Hilbert space.
-        !    dets: list of determinants in the Hilbert space (bit-string representation).
 
         use checking, only: check_allocate, check_deallocate
         use csr, only: init_csrp, end_csrp
@@ -400,6 +403,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ndets
         integer(i0), intent(in) :: dets(:,:)
+        logical, intent(in) :: sparse_mode
         integer, intent(in), optional :: distribute_mode
         integer :: ierr, iunit, n1, n2, ind_offset
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
@@ -459,7 +463,7 @@ contains
             call stop_all('generate_hamil','Unknown distribution scheme.')
         end select
 
-        if (use_sparse_hamil) then
+        if (sparse_mode) then
             if (distribute /= distribute_off) then
                 write (6,'(1X,a58,/,1X,a26,/,1X,a83)') &
                     'Sparse distributed matrices are not currently implemented.', &
@@ -474,7 +478,7 @@ contains
             end if
         end if
 
-        if (distribute /= distribute_off .or. doing_calc(exact_diag) .or. .not. use_sparse_hamil) then
+        if (distribute /= distribute_off .or. doing_calc(exact_diag) .or. .not. sparse_mode) then
             allocate(hamil(n1,n2), stat=ierr)
             call check_allocate('hamil',n1*n2,ierr)
         end if
@@ -487,7 +491,7 @@ contains
         ! Form the Hamiltonian matrix < D_i | H | D_j >.
         select case(distribute)
         case(distribute_off)
-            if (use_sparse_hamil .and. .not. doing_calc(exact_diag)) then
+            if (sparse_mode .and. .not. doing_calc(exact_diag)) then
                 ! First, find out how many non-zero elements there are.
                 ! We'll be naive and not just test for non-zero by symmetry, but
                 ! actually calculate all matrix elements for now.
