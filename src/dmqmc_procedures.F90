@@ -487,7 +487,7 @@ contains
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, sym_in, ireplica)
+                    call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, sym_in, ireplica, qmc_spawn)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
                 end if
@@ -605,14 +605,14 @@ contains
         ! Determinants are generated uniformly in the Hilbert space associated
         ! to selected symmetry sector and spin polarisation.
 
-        ! In/Out:
-        !    rng: random number generator.
         ! In:
         !    sys: system being studied.
         !    sym: only keep determinants in this symmetry sector.
         !    npsips: The total number of psips to be created.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
+        ! In/Out:
+        !    rng: random number generator
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use symmetry, only: symmetry_orb_list
@@ -645,7 +645,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica)
+    subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica, qmc_spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -670,6 +670,8 @@ contains
         !    ireplica: replica index.
         ! In/Out:
         !    rng: random number generator.
+        !    qmc_spawn: spawn_t object containing the initial distribution of
+        !        psips on the diagonal.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
@@ -678,11 +680,11 @@ contains
         use excitations, only: excit_t, create_excited_det
         use fciqmc_data, only: real_factor, all_mom_sectors, f0, sampling_size, metropolis_attempts, &
                                max_metropolis_move
-        use calc, only: grand_canonical_initialisation
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
         use utils, only: int_fmt
+        use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
         real(dp), intent(in) :: beta
@@ -690,6 +692,7 @@ contains
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
         type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: qmc_spawn
 
         integer :: occ_list(sys%nel), naccept
         integer :: idet, iattempt, nsuccess
