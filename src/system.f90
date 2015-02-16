@@ -228,9 +228,11 @@ type sys_ueg_t
     type(ueg_basis_t) :: basis
 
     ! Fermi-wavevector (Infinite system).
-    real(p) :: kf
+    real(p) :: kf = 1.0_p
     ! Fermi-Energy (Infinite system).
-    real(p) :: ef
+    real(p) :: ef = 1.0_p
+    ! Chemical potential.
+    real(p) :: chem_pot = 1.0_p
 
     ! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
     ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and

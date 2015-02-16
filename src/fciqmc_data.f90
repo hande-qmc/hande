@@ -612,8 +612,6 @@ integer :: max_metropolis_move = 2
 logical :: free_electron_trial = .false.
 ! Use the grand canonical partition function to inititally distribute the psips.
 logical :: grand_canonical_ensemble = .false.
-! Chemical potential.
-real(p) :: chem_pot
 ! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
 logical :: fermi_temperature
 

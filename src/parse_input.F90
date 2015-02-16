@@ -222,7 +222,7 @@ contains
             case('FREE_ELECTRON_TRIAL')
                 free_electron_trial = .true.
             case('CHEM_POT')
-                call readf(chem_pot)
+                call readf(sys%ueg%chem_pot)
             case('GRAND_CANONICAL_ENSEMBLE')
                 grand_canonical_ensemble = .true.
             case('FERMI_TEMPERATURE')
@@ -876,7 +876,7 @@ contains
         call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%ueg%chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(grand_canonical_ensemble, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.

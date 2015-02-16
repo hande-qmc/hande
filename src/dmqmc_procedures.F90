@@ -859,7 +859,7 @@ contains
 
         use system, only: sys_t
         use spawn_data, only: spawn_t
-        use fciqmc_data, only: chem_pot, init_beta, real_factor, all_mom_sectors
+        use fciqmc_data, only: init_beta, real_factor, all_mom_sectors
         use symmetry, only: symmetry_orb_list
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
@@ -884,7 +884,7 @@ contains
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-chem_pot)))
+                                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
         ! Subdivide the interval [0,1] into nbasis/2 boxes whose width is equal
         ! to 1/N_e p_single(i). So, p_bin(iorb)-p_bin(iorb-1) = p_single(iorb)
