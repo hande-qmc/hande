@@ -403,12 +403,12 @@ contains
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: initiator_approximation
+        use calc, only: initiator_approximation, sym_in
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
         use fciqmc_data, only: sampling_size, all_sym_sectors
         use parallel
-        use system, only: sys_t, heisenberg
+        use system, only: sys_t, heisenberg, ueg
         use utils, only: binom_r
 
         type(dSFMT_t), intent(inout) :: rng
@@ -457,6 +457,8 @@ contains
                     ! of psips.
                     call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica)
                 end if
+            case(ueg)
+                call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
             end select
@@ -546,6 +548,58 @@ contains
         end do
 
     end subroutine random_distribution_heisenberg
+
+    subroutine random_distribution_electronic(rng, sys, sym, npsips, ireplica)
+
+        ! For the electronic Hamiltonians only. Distribute the initial number of psips
+        ! along the main diagonal. Each diagonal element should be chosen
+        ! with the same probability.
+
+        ! Determinants are generated uniformly in the Hilbert space associated
+        ! to selected symmetry sector and spin polarisation.
+
+        ! [todo]: Allow for arbitrary spin-polarisations by modifying sys (in
+        ! the correct way).
+
+        ! In/Out:
+        !    rng: random number generator.
+        ! In:
+        !    sys: system being studied.
+        !    sym: only keep determinants in this symmetry sector.
+        !    npsips: The total number of psips to be created.
+        !    ireplica: index of replica (ie which of the possible concurrent
+        !       DMQMC populations are we initialising)
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use symmetry, only: symmetry_orb_list
+        use hilbert_space, only: gen_random_det_full_space
+        use system, only: sys_t
+        use fciqmc_data, only: real_factor
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: sym
+        integer(int_64), intent(in) :: npsips
+        integer, intent(in) :: ireplica
+
+        integer(int_64) :: i
+        integer(i0) :: f(sys%basis%string_len)
+        integer :: occ_list(sys%nalpha+sys%nbeta)
+
+        do i = 1, npsips
+            do
+                ! Generate a random determinant uniformly in this specific
+                ! symmetry sector and spin polarisation.
+                call gen_random_det_full_space(rng, sys, f, occ_list)
+                if (symmetry_orb_list(sys, occ_list) == sym) then
+                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                        sys%basis%tensor_label_len, real_factor, ireplica)
+                    exit
+                end if
+            end do
+        end do
+
+    end subroutine random_distribution_electronic
 
     subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type)
 
