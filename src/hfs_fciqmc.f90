@@ -56,8 +56,8 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(int_64) :: nattempts
-        real(dp) :: nparticles_old(sampling_size)
-        real(dp) :: real_population(sampling_size)
+        real(p) :: nparticles_old(sampling_size)
+        real(p) :: real_population(sampling_size)
         type(det_info_t) :: cdet
 
         integer(int_p) :: nspawned, ndeath
@@ -123,7 +123,7 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet)
 
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(walker_population(1,idet),dp)/real_factor
+                    real_population = real(walker_population(1,idet),p)/real_factor
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're

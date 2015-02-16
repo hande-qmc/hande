@@ -36,7 +36,7 @@ integer :: walker_length
 integer :: spawned_walker_length
 
 ! Number of particles before which varyshift mode is turned on.
-real(dp) :: target_particles = 10000.0_dp
+real(p) :: target_particles = 10000.0_p
 
 ! Don't bother renormalising generation probabilities; instead allow forbidden
 ! excitations to be generated and then rejected.
@@ -215,7 +215,7 @@ real(p) :: initial_shift = 0.0_p
 
 ! Factor by which the changes in the population are damped when updating the
 ! shift.
-real(p) :: shift_damping = 0.050_dp
+real(p) :: shift_damping = 0.050_p
 
 ! projected energy
 ! This stores during an FCIQMC report loop
@@ -239,12 +239,12 @@ integer :: tot_walkers
 ! Updated during death and annihilation and merging.
 ! The first element is the number of normal (Hamiltonian) particles.
 ! Subsequent elements are the number of Hellmann--Feynamnn particles.
-real(dp), allocatable :: nparticles(:) ! (sampling_size)
+real(p), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
-real(dp), allocatable, target :: tot_nparticles(:) ! (sampling_size)
+real(p), allocatable, target :: tot_nparticles(:) ! (sampling_size)
 ! Total number of particles on all determinants for each processor
 ! [todo] - JSS: check type with Nick when merging due to the reals work.
-real(dp), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
+real(p), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
 
 ! Walker information: main list.
 ! sampling_size is one for each quantity sampled (i.e. 1 for standard
@@ -627,10 +627,10 @@ contains
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath
         integer(int_64), intent(in) :: nattempts
-        real(dp) :: ndeath_real
+        real(p) :: ndeath_real
 
         ! Death is not scaled when using reals.
-        ndeath_real = real(ndeath,dp)/real_factor
+        ndeath_real = real(ndeath,p)/real_factor
 
         ! The total spawning rate is
         !   (nspawn + ndeath) / nattempts
@@ -732,7 +732,7 @@ contains
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
-        real(dp), intent(in) :: ntot_particles(:)
+        real(p), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical :: comment
         integer :: mc_cycles, i, j

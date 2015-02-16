@@ -167,7 +167,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
         integer :: ireport, icycle, iwalker, ipart
-        real(dp) :: nparticles, nparticles_old
+        real(p) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
         type(dSFMT_t) :: rng
@@ -179,7 +179,7 @@ contains
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
-        nparticles = real(sum(abs(walker_population(1,:))),dp)
+        nparticles = real(sum(abs(walker_population(1,:))),p)
         nparticles_old = nparticles
 
         call write_fciqmc_report_header()
@@ -228,7 +228,7 @@ contains
             end do
 
             ! Update the shift
-            nparticles = real(sum(abs(walker_population(1,:))),dp)
+            nparticles = real(sum(abs(walker_population(1,:))),p)
             if (vary_shift(1)) then
                 call update_shift(shift(1), nparticles_old, nparticles, ncycles)
             end if

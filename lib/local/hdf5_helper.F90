@@ -33,12 +33,13 @@ module hdf5_helper
 
 
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
-    ! hdf5_init_kinds.
+    ! hdf5_kinds_init.
     type hdf5_kinds_t
         integer(hid_t) :: i32
         integer(hid_t) :: i64
         integer(hid_t) :: int_p
-        integer(hid_t) :: p
+        integer(hid_t) :: sp
+        integer(hid_t) :: dp
     end type hdf5_kinds_t
 
     interface hdf5_write
@@ -48,8 +49,10 @@ module hdf5_helper
         module procedure write_array_1d_int_64
         module procedure write_array_2d_int_32
         module procedure write_array_2d_int_64
-        module procedure write_array_1d_real_p
-        module procedure write_array_2d_real_p
+        module procedure write_array_1d_real_sp
+        module procedure write_array_1d_real_dp
+        module procedure write_array_2d_real_sp
+        module procedure write_array_2d_real_dp
     end interface hdf5_write
 
     interface hdf5_read
@@ -58,8 +61,10 @@ module hdf5_helper
         module procedure read_array_1d_int_64
         module procedure read_array_2d_int_32
         module procedure read_array_2d_int_64
-        module procedure read_array_1d_real_p
-        module procedure read_array_2d_real_p
+        module procedure read_array_1d_real_sp
+        module procedure read_array_1d_real_dp
+        module procedure read_array_2d_real_sp
+        module procedure read_array_2d_real_dp
     end interface hdf5_read
 
     contains
@@ -75,7 +80,7 @@ module hdf5_helper
             !          Further, the kind values are *not* constant between closing and then re-opening
             !          the HDF5 library.  Learn from my (painful) experiences...
 
-            use const, only: int_32, int_64, int_p, p
+            use const, only: int_32, int_64, int_p, sp, dp
             use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
 
             type(hdf5_kinds_t), intent(out) :: kinds
@@ -84,7 +89,8 @@ module hdf5_helper
             kinds%i32 = h5kind_to_type(int_32, H5_INTEGER_KIND)
             kinds%i64 = h5kind_to_type(int_64, H5_INTEGER_KIND)
             kinds%int_p = h5kind_to_type(int_p, H5_INTEGER_KIND)
-            kinds%p = h5kind_to_type(p, H5_REAL_KIND)
+            kinds%sp = h5kind_to_type(sp, H5_REAL_KIND)
+            kinds%dp = h5kind_to_type(dp, H5_REAL_KIND)
 
         end subroutine hdf5_kinds_init
 
@@ -355,40 +361,9 @@ module hdf5_helper
 
         end subroutine write_array_2d_int_64
 
-        subroutine write_array_1d_real_p(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_1d_real_dp(id, dset, kinds, arr_shape, arr)
 
-            ! Write out 1D real(p) array to an HDF5 file.
-
-            ! In:
-            !    id: file or group HD5 identifier.
-            !    dset: dataset name.
-            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
-            !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
-            !    arr: array to be written.
-
-            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
-            use hdf5, only: hid_t, HSIZE_T
-            use const, only: p
-
-            integer(hid_t), intent(in) :: id
-            character(*), intent(in) :: dset
-            type(hdf5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(:)
-            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
-            ! cannot be passed to c_loc.
-            real(p), intent(in), target :: arr(arr_shape(1))
-
-            type(c_ptr) :: ptr
-
-            ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
-
-        end subroutine write_array_1d_real_p
-
-        subroutine write_array_2d_real_p(id, dset, kinds, arr_shape, arr)
-
-            ! Write out 2D real(p) array to an HDF5 file.
+            ! Write out 1D real(dp) array to an HDF5 file.
 
             ! In:
             !    id: file or group HD5 identifier.
@@ -400,7 +375,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: p
+            use const, only: dp
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -408,14 +383,107 @@ module hdf5_helper
             integer, intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
-            real(p), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            real(dp), intent(in), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
 
-        end subroutine write_array_2d_real_p
+        end subroutine write_array_1d_real_dp
+
+        subroutine write_array_2d_real_dp(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 2D real(dp) array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: dp
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            real(dp), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine write_array_2d_real_dp
+
+        subroutine write_array_1d_real_sp(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 1D real(sp) array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: sp
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            real(sp), intent(in), target :: arr(arr_shape(1))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine write_array_1d_real_sp
+
+        subroutine write_array_2d_real_sp(id, dset, kinds, arr_shape, arr)
+
+            ! Write out 2D real(sp) array to an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: sp
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
+            ! cannot be passed to c_loc.
+            real(sp), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+
+            ptr = c_loc(arr)
+            call write_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+
+        end subroutine write_array_2d_real_sp
 
         subroutine write_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
 
@@ -607,9 +675,9 @@ module hdf5_helper
 
         end subroutine read_array_2d_int_64
 
-        subroutine read_array_1d_real_p(id, dset, kinds, arr_shape, arr)
+        subroutine read_array_1d_real_sp(id, dset, kinds, arr_shape, arr)
 
-            ! Read in 1D real(p) array from an HDF5 file.
+            ! Read in 1D real(sp) array from an HDF5 file.
 
             ! In:
             !    id: file or group HD5 identifier.
@@ -622,7 +690,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: p, int_32, int_64
+            use const, only: dp, sp, int_32, int_64
             use checking
             use errors
 
@@ -630,19 +698,28 @@ module hdf5_helper
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
             integer, intent(in) :: arr_shape(:)
-            real(p), intent(out), target :: arr(arr_shape(1))
+            real(sp), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
             integer(int_32), allocatable :: arr_32(:)
             integer(int_64), allocatable :: arr_64(:)
+            real(dp), allocatable :: arr_dp(:)
             integer :: ierr
             character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
 
-            if (dtype_equal(id, dset, kinds%p)) then
+            if (dtype_equal(id, dset, kinds%sp)) then
                 ptr = c_loc(arr)
-                call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+                call read_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else if (dtype_equal(id, dset, kinds%dp)) then
+                call warning('read_array_1d_real_sp', 'Converting from double to single precision for dataset: '//dset//'.')
+                allocate(arr_dp(arr_shape(1)), stat=ierr)
+                call check_allocate('arr_dp', arr_shape(1), ierr)
+                call hdf5_read(id, dset, kinds, arr_shape, arr_dp)
+                arr = arr_dp
+                deallocate(arr_dp, stat=ierr)
+                call check_deallocate('arr_dp', ierr)
             else
-                call warning('read_array_1d_real_p', msg//dset//'.')
+                call warning('read_array_1d_real_sp', msg//dset//'.')
                 if (dtype_equal(id, dset, kinds%i32)) then
                     allocate(arr_32(arr_shape(1)), stat=ierr)
                     call check_allocate('arr_32', size(arr_32), ierr)
@@ -658,15 +735,15 @@ module hdf5_helper
                     deallocate(arr_64, stat=ierr)
                     call check_deallocate('arr_64', ierr)
                 else
-                    call stop_all('read_array_1d_real_p', 'Reading mismatched data type and cannot convert.')
+                    call stop_all('read_array_1d_real_sp', 'Reading mismatched data type and cannot convert.')
                 end if
             end if
 
-        end subroutine read_array_1d_real_p
+        end subroutine read_array_1d_real_sp
 
-        subroutine read_array_2d_real_p(id, dset, kinds, arr_shape, arr)
+        subroutine read_array_2d_real_sp(id, dset, kinds, arr_shape, arr)
 
-            ! Read in 2D real(p) array from an HDF5 file.
+            ! Read in 2D real(sp) array from an HDF5 file.
 
             ! In:
             !    id: file or group HD5 identifier.
@@ -679,7 +756,7 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: p, int_32, int_64
+            use const, only: dp, sp, int_32, int_64
             use checking
             use errors
 
@@ -687,19 +764,28 @@ module hdf5_helper
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
             integer, intent(in) :: arr_shape(:)
-            real(p), intent(out), target :: arr(arr_shape(1), arr_shape(2))
+            real(sp), intent(out), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr
             integer(int_32), allocatable :: arr_32(:,:)
             integer(int_64), allocatable :: arr_64(:,:)
+            real(dp), allocatable :: arr_dp(:,:)
             integer :: ierr
             character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
 
-            if (dtype_equal(id, dset, kinds%p)) then
+            if (dtype_equal(id, dset, kinds%sp)) then
                 ptr = c_loc(arr)
-                call read_ptr(id, dset, kinds%p, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+                call read_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else if (dtype_equal(id, dset, kinds%dp)) then
+                call warning('read_array_2d_real_sp', 'Converting from double to single precision for dataset: '//dset//'.')
+                allocate(arr_dp(arr_shape(1),arr_shape(2)), stat=ierr)
+                call check_allocate('arr_dp', size(arr_dp), ierr)
+                call hdf5_read(id, dset, kinds, arr_shape, arr_dp)
+                arr = arr_dp
+                deallocate(arr_dp, stat=ierr)
+                call check_deallocate('arr_dp', ierr)
             else
-                call warning('read_array_2d_real_p', msg//dset//'.')
+                call warning('read_array_2d_real_sp', msg//dset//'.')
                 if (dtype_equal(id, dset, kinds%i32)) then
                     allocate(arr_32(arr_shape(1),arr_shape(2)), stat=ierr)
                     call check_allocate('arr_32', size(arr_32), ierr)
@@ -715,11 +801,143 @@ module hdf5_helper
                     deallocate(arr_64, stat=ierr)
                     call check_deallocate('arr_64', ierr)
                 else
-                    call stop_all('read_array_1d_real_p', 'Reading mismatched data type and cannot convert.')
+                    call stop_all('read_array_1d_real_sp', 'Reading mismatched data type and cannot convert.')
                 end if
             end if
 
-        end subroutine read_array_2d_real_p
+        end subroutine read_array_2d_real_sp
+
+        subroutine read_array_1d_real_dp(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 1D real(dp) array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: sp, dp, int_32, int_64
+            use checking
+            use errors
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            real(dp), intent(out), target :: arr(arr_shape(1))
+
+            type(c_ptr) :: ptr
+            integer(int_32), allocatable :: arr_32(:)
+            integer(int_64), allocatable :: arr_64(:)
+            real(sp), allocatable :: arr_sp(:)
+            integer :: ierr
+            character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
+
+            if (dtype_equal(id, dset, kinds%dp)) then
+                ptr = c_loc(arr)
+                call read_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else if (dtype_equal(id, dset, kinds%sp)) then
+                call warning('read_array_1d_real_dp', 'Converting from single to double precision for dataset: '//dset//'.')
+                allocate(arr_sp(arr_shape(1)), stat=ierr)
+                call check_allocate('arr_sp', arr_shape(1), ierr)
+                call hdf5_read(id, dset, kinds, arr_shape, arr_sp)
+                arr = arr_sp
+                deallocate(arr_sp, stat=ierr)
+                call check_deallocate('arr_sp', ierr)
+            else
+                call warning('read_array_1d_real_dp', msg//dset//'.')
+                if (dtype_equal(id, dset, kinds%i32)) then
+                    allocate(arr_32(arr_shape(1)), stat=ierr)
+                    call check_allocate('arr_32', size(arr_32), ierr)
+                    call hdf5_read(id, dset, kinds, arr_shape, arr_32)
+                    arr = arr_32
+                    deallocate(arr_32, stat=ierr)
+                    call check_deallocate('arr_32', ierr)
+                else if (dtype_equal(id, dset, kinds%i64)) then
+                    allocate(arr_64(arr_shape(1)), stat=ierr)
+                    call check_allocate('arr_64', size(arr_64), ierr)
+                    call hdf5_read(id, dset, kinds, arr_shape, arr_64)
+                    arr = arr_64
+                    deallocate(arr_64, stat=ierr)
+                    call check_deallocate('arr_64', ierr)
+                else
+                    call stop_all('read_array_1d_real_dp', 'Reading mismatched data type and cannot convert.')
+                end if
+            end if
+
+        end subroutine read_array_1d_real_dp
+
+        subroutine read_array_2d_real_dp(id, dset, kinds, arr_shape, arr)
+
+            ! Read in 2D real(dp) array from an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
+            use hdf5, only: hid_t, HSIZE_T
+            use const, only: sp, dp, int_32, int_64
+            use checking
+            use errors
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(:)
+            real(dp), intent(out), target :: arr(arr_shape(1), arr_shape(2))
+
+            type(c_ptr) :: ptr
+            integer(int_32), allocatable :: arr_32(:,:)
+            integer(int_64), allocatable :: arr_64(:,:)
+            real(sp), allocatable :: arr_sp(:,:)
+            integer :: ierr
+            character(*), parameter :: msg = 'Attempting conversion from integer to real for dataset: '
+
+            if (dtype_equal(id, dset, kinds%dp)) then
+                ptr = c_loc(arr)
+                call read_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            else if (dtype_equal(id, dset, kinds%sp)) then
+                call warning('read_array_2d_real_dp', 'Converting from single to double precision for dataset: '//dset//'.')
+                allocate(arr_sp(arr_shape(1),arr_shape(2)), stat=ierr)
+                call check_allocate('arr_sp', size(arr_sp), ierr)
+                call hdf5_read(id, dset, kinds, arr_shape, arr_sp)
+                arr = arr_sp
+                deallocate(arr_sp, stat=ierr)
+                call check_deallocate('arr_sp', ierr)
+            else
+                call warning('read_array_2d_real_dp', msg//dset//'.')
+                if (dtype_equal(id, dset, kinds%i32)) then
+                    allocate(arr_32(arr_shape(1),arr_shape(2)), stat=ierr)
+                    call check_allocate('arr_32', size(arr_32), ierr)
+                    call hdf5_read(id, dset, kinds, arr_shape, arr_32)
+                    arr = arr_32
+                    deallocate(arr_32, stat=ierr)
+                    call check_deallocate('arr_32', ierr)
+                else if (dtype_equal(id, dset, kinds%i64)) then
+                    allocate(arr_64(arr_shape(1),arr_shape(2)), stat=ierr)
+                    call check_allocate('arr_64', size(arr_64), ierr)
+                    call hdf5_read(id, dset, kinds, arr_shape, arr_64)
+                    arr = arr_64
+                    deallocate(arr_64, stat=ierr)
+                    call check_deallocate('arr_64', ierr)
+                else
+                    call stop_all('read_array_1d_real_dp', 'Reading mismatched data type and cannot convert.')
+                end if
+            end if
+
+        end subroutine read_array_2d_real_dp
 
         subroutine read_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
 

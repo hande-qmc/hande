@@ -41,7 +41,7 @@ contains
         integer :: nspawn_events
         integer :: ireport, idet
         integer(int_64) :: nattempts
-        real(dp) :: nparticles_old(sampling_size)
+        real(p) :: nparticles_old(sampling_size)
         integer :: iparticle, max_nexcitations, ierr, proc_id
         integer(int_p) :: tmp_pop
         integer, allocatable :: current_pos(:,:) ! (nthreads, 0:max(1,nprocs-1))
@@ -141,7 +141,7 @@ contains
                                        int(walker_population(1,idet),int_p)*nspawned < 0_int_p) then
                                 tmp_pop = tmp_pop + nspawned
                                 ! abs(nspawned) guaranteed to be 1
-                                nparticles(1) = nparticles(1) - 1.0_dp
+                                nparticles(1) = nparticles(1) - 1.0_p
                                 ! The walker is dead---no need to continue spawning to barrier.
                                 ndeath = ndeath + 1_int_p
                                 exit

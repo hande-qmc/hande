@@ -222,7 +222,7 @@ contains
             case('REAL_AMPLITUDES')
                 real_amplitudes = .true.
             case('SPAWN_CUTOFF')
-                call getf(spawn_cutoff)
+                call readf(spawn_cutoff)
 
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
@@ -262,8 +262,10 @@ contains
                 allocate(dmqmc_sampling_probs(nweights), stat=ierr)
                 call check_allocate('dmqmc_sampling_probs', nweights, ierr)
                 dmqmc_weighted_sampling = .true.
+                call read_line(eof)
+                if (eof) call stop_all('read_input', 'Unexpected end of file reading DMQMC weights.')
                 do i = 1, nweights
-                    call getf(dmqmc_sampling_probs(i))
+                    call readf(dmqmc_sampling_probs(i))
                 end do
             case('DMQMC_VARY_WEIGHTS')
                 call readi(finish_varying_weights)

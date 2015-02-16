@@ -52,14 +52,14 @@ contains
         integer :: idet, ireport, icycle, iparticle, ideterm
         integer :: iter
         integer(int_64) :: nattempts
-        real(dp) :: nparticles_old(sampling_size)
+        real(p) :: nparticles_old(sampling_size)
 
         integer(i0) :: f_child(sys%basis%string_len)
         integer(int_p) :: nspawned, ndeath
         integer :: nattempts_current_det, nspawn_events
         type(excit_t) :: connection
         real(p) :: hmatel
-        real(dp) :: real_population
+        real(p) :: real_population
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
 
         logical :: soft_exit
@@ -134,7 +134,7 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet)
 
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(walker_population(1,idet),dp)/real_factor
+                    real_population = real(walker_population(1,idet),p)/real_factor
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array.
@@ -286,7 +286,7 @@ contains
         integer :: idet, iparticle
         integer(int_p) :: nspawned
         integer(int_p) :: pop(spawn%ntypes)
-        real(dp) :: list_pop
+        real(p) :: list_pop
         integer(i0), target :: ftmp(sys%basis%tensor_label_len)
 
         cdet%f => ftmp
@@ -311,7 +311,7 @@ contains
 
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
-            call set_parent_flag_ptr(real(pop(1),dp), cdet%f, 1, cdet%initiator_flag)
+            call set_parent_flag_ptr(real(pop(1),p), cdet%f, 1, cdet%initiator_flag)
 
             ! Possibly redundant if only one walker spawned at each spawning event.
             do iparticle = 1, abs(pop(1))

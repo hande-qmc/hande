@@ -414,8 +414,8 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: target_nparticles_tot
-        real(dp), intent(out) :: nparticles_tot(sampling_size)
-        real(dp) :: nparticles_temp(sampling_size)
+        real(p), intent(out) :: nparticles_tot(sampling_size)
+        real(p) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
@@ -427,7 +427,7 @@ contains
         if (target_nparticles_tot-(nprocs*npsips_this_proc) > iproc) &
               npsips_this_proc = npsips_this_proc + 1_int_64
 
-        nparticles_temp = 0.0_dp
+        nparticles_temp = 0.0_p
 
         do ireplica = 1, sampling_size
             select case(sys%system)
@@ -449,7 +449,7 @@ contains
                         r = get_rand_close_open(rng)
                         if (r < prob) npsips = npsips + 1_int_64
 
-                        nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, dp)
+                        nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, p)
                         call random_distribution_heisenberg(rng, sys%basis, nel, npsips, ireplica)
                     end do
                 else
@@ -465,7 +465,7 @@ contains
         ! Finally, count the total number of particles across all processes.
         if (all_sym_sectors) then
 #ifdef PARALLEL
-            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_REAL8, MPI_SUM, &
+            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_PREAL, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
             nparticles_tot = nparticles_temp
@@ -673,12 +673,12 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
-        real(dp) :: new_population_target(sampling_size)
+        real(p) :: new_population_target(sampling_size)
         integer(int_p) :: old_population(sampling_size), new_population(sampling_size)
         real(dp) :: r, pextra
 
         ! Alter weights for the next iteration.
-        dmqmc_accumulated_probs = real(dmqmc_accumulated_probs,dp)*weight_altering_factors
+        dmqmc_accumulated_probs = real(dmqmc_accumulated_probs,p)*weight_altering_factors
 
         ! When the weights for an excitation level are increased by a factor,
         ! the number of psips on that level has to decrease by the same factor,
@@ -696,7 +696,7 @@ contains
             ! The new population that we are aiming for. If this is not an
             ! integer then we will have to round up or down to an integer with
             ! an unbiased probability.
-            new_population_target = abs(real(walker_population(:,idet),dp))/weight_altering_factors(excit_level)
+            new_population_target = abs(real(walker_population(:,idet),p))/weight_altering_factors(excit_level)
             new_population = int(new_population_target, int_p)
 
             ! If new_population_target is not an integer, round it up or down
@@ -716,7 +716,7 @@ contains
             end do
 
             ! Update the total number of walkers.
-            nparticles = nparticles + real(new_population - old_population, dp)/real_factor
+            nparticles = nparticles + real(new_population - old_population, p)/real_factor
 
         end do
 
@@ -755,7 +755,7 @@ contains
 #ifdef PARALLEL
         real(p) :: merged_excit_dist(0:max_number_excitations) 
         call mpi_allreduce(excit_distribution, merged_excit_dist, max_number_excitations+1, &
-            MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
         
         excit_distribution = merged_excit_dist        
 #endif

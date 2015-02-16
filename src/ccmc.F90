@@ -267,7 +267,7 @@ contains
         integer :: i, ireport, icycle, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
         integer(int_64) :: nattempts_spawn
-        real(dp) :: nparticles_old(sampling_size), nparticles_change(sampling_size)
+        real(p) :: nparticles_old(sampling_size), nparticles_change(sampling_size)
         type(det_info_t), allocatable :: cdet(:)
         type(det_info_t), allocatable :: ldet(:), rdet(:)
 
@@ -424,7 +424,7 @@ contains
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
                 call init_mc_cycle(real_factor, nattempts, ndeath, nint(D0_normalisation,int_64))
-                nparticles_change = 0.0_dp
+                nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
                 ! per cluster
@@ -1505,7 +1505,6 @@ contains
         !    population: the (encoded) population on the current excip
         !    tot_population: total number of particles.
 
-        use const, only: dp
         use fciqmc_data, only: tau, shift, qmc_spawn
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use calc, only: linked_ccmc
@@ -1515,7 +1514,7 @@ contains
         real(p), intent(in) :: Hii
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(inout) :: population, ndeath
-        real(dp), intent(inout) :: tot_population
+        real(p), intent(inout) :: tot_population
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill, old_pop
@@ -1557,7 +1556,7 @@ contains
             old_pop = population
             population = population + nkill
             ! Also need to update total population
-            tot_population = tot_population + real(abs(population)-abs(old_pop),dp)/real_factor
+            tot_population = tot_population + real(abs(population)-abs(old_pop),p)/real_factor
             ndeath = ndeath + abs(nkill)
         end if
 

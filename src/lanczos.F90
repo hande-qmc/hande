@@ -43,7 +43,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: dets(:,:)
         integer, intent(out) :: nfound
-        real(dp), intent(out) :: eigv(:)
+        real(p), intent(out) :: eigv(:)
 
         integer :: ndets
 
@@ -51,7 +51,7 @@ contains
         call stop_all('lanczos_diagonalisation','Lanczos diagonalisation disabled at compile-time.')
         ! Avoid compile-time warnings about unset intent(out) variables...
         nfound = 0
-        eigv = huge(0.0_dp)
+        eigv = huge(0.0_p)
 #else
 
         integer, parameter :: lohi = -1
@@ -60,6 +60,11 @@ contains
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         integer :: ierr, nrows, i, nwfn
         type(trl_info_t) :: info
+
+#ifdef SINGLE_PRECISION
+        ! TRLan requires a double precision interface; elsewhere we need single precision
+        real(p), allocatable :: evec_copy(:,:)
+#endif
 
         ndets = ubound(dets, dim=2)
 
@@ -120,6 +125,12 @@ contains
             call trlan(HPsi, info, nrows, mev, eval, evec, nrows)
         end if
 
+#ifdef SINGLE_PRECISION
+        allocate(evec_copy(nrows,mev), stat=ierr)
+        call check_allocate('evec_copy',nrows*mev,ierr)
+        evec_copy=evec
+#endif
+
         ! Get info...
         ! dsymv uses 2(N^2+2N) floating point operations.
         ! Ref: Benchmark of the Extended Basic Linear Algebra Subprograms on
@@ -134,23 +145,35 @@ contains
         if (parent) write (6,'()')
 
         nfound = min(nlanczos_eigv,ndets)
-        eigv(1:nfound) = eval(1:nfound)
+        eigv(1:nfound) = real(eval(1:nfound),p)
 
         nwfn = analyse_fci_wfn
         if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
         do i = 1, nwfn
+#ifdef SINGLE_PRECISION
+            call analyse_wavefunction(sys, evec_copy(:,i), dets)
+#else
             call analyse_wavefunction(sys, evec(:,i), dets)
+#endif
         end do
         nwfn = print_fci_wfn
         if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
         do i = 1, nwfn
+#ifdef SINGLE_PRECISION
+            call print_wavefunction(print_fci_wfn_file, evec_copy(:,i), dets)
+#else
             call print_wavefunction(print_fci_wfn_file, evec(:,i), dets)
+#endif
         end do
 
         deallocate(eval, stat=ierr)
         call check_deallocate('eval',ierr)
         deallocate(evec, stat=ierr)
         call check_deallocate('evec',ierr)
+#ifdef SINGLE_PRECISION
+        deallocate(evec_copy, stat=ierr)
+        call check_deallocate('evec_copy',ierr)
+#endif
 #endif // ndef DISABLE_LANCZOS
 
     contains
@@ -286,7 +309,7 @@ contains
             real(dp), intent(in) :: xin(ldx,ncol)
             real(dp), intent(out) :: yout(ldy,ncol)
             integer :: i, j, k
-            real(dp) :: tmp, hmatel
+            real(p) :: tmp, hmatel
 
             yout = 0.0_dp
             do k = 1, ncol
@@ -296,7 +319,7 @@ contains
                 ! Borrowing from ideas in dsymv, we can perform this only using one
                 ! triangle of the Hamiltonian matrix.
                 do j = 1, nrow ! Identical to ndets in serial.
-                    tmp = 0.0_dp
+                    tmp = 0.0_p
                     do i = 1, j-1
                         hmatel = get_hmatel(sys, dets(:,i), dets(:,j))
                         yout(i,k) = yout(i,k) + hmatel*xin(j, k)

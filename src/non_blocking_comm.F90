@@ -142,12 +142,12 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout) :: request_s(:), request_rep(:)
         real, intent(inout) :: report_time
-        real(dp), intent(inout) :: ntot_particles(sampling_size)
+        real(p), intent(inout) :: ntot_particles(sampling_size)
         real(p), intent(inout) :: shift
 
         real :: curr_time
         real(p) :: shift_save
-        real(dp) :: ntot_particles_save(sampling_size)
+        real(p) :: ntot_particles_save(sampling_size)
 
         call cpu_time(curr_time)
 

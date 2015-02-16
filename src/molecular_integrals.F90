@@ -672,7 +672,7 @@ contains
 
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
-        call MPI_BCast(store%op_sym, 1, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             do j = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
                 call MPI_BCast(store%integrals(i,j)%v, size(store%integrals(i,j)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
@@ -706,7 +706,7 @@ contains
         integer :: i, ierr
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
-        call MPI_BCast(store%op_sym, 1, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
         end do
