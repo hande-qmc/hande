@@ -173,6 +173,7 @@ contains
         type(dSFMT_t) :: rng
         integer :: ref_det, ndets
         integer(i0), allocatable :: dets(:,:)
+        real(p) :: H0i, Hii
 
         call init_simple_fciqmc(sys, ndets, dets, ref_det)
 
@@ -204,9 +205,12 @@ contains
                 ! Consider all walkers.
                 do iwalker = 1, ndets
 
+                    H0i = hamil(iwalker,ref_det)
+                    Hii = hamil(iwalker,iwalker)
+
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det, iwalker, proj_energy)
+                    call simple_update_proj_energy(ref_det == iwalker, H0i, walker_population(1,iwalker), proj_energy)
 
                     ! Simulate spawning.
                     do ipart = 1, abs(walker_population(1,iwalker))
@@ -215,7 +219,7 @@ contains
                         call attempt_spawn(rng, iwalker)
                     end do
 
-                    call simple_death(rng, iwalker)
+                    call simple_death(rng, Hii, walker_population(1,iwalker))
 
                 end do
 
@@ -328,16 +332,19 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(rng, iwalker)
+    subroutine simple_death(rng, Hii, pop)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
         ! In:
-        !    iwalker: walker whose particles attempt to clone/die.
+        !    Hii: diagonal matrix element, <D_i|H|D_i>
         ! In/Out:
         !    rng: random number generator.
+        !    pop: population on |D_i>.  On output, the population is updated from applying
+        !         the death step.
 
-        integer, intent(in) :: iwalker
         type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(in) :: Hii
+        integer(int_p), intent(inout) :: pop
 
         integer :: nkill
         real(p) :: rate
@@ -350,7 +357,7 @@ contains
         ! We store the Hamiltonian matrix rather than the K matrix.
         ! It is efficient to allow all particles on a given determinant to
         ! attempt to die in one go (like lemmings) in a stochastic process.
-        rate = abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift(1))
+        rate = abs(pop)*tau*(Hii-H00-shift(1))
         ! Number to definitely kill.
         nkill = int(rate)
         rate = rate - nkill
@@ -366,20 +373,19 @@ contains
         end if
 
         ! Don't allow creation of anti-particles in simple_fciqmc.
-        if (nkill > abs(walker_population(1,iwalker))) then
-            write (6,*) iwalker, walker_population(1,iwalker), &
-            abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift(1))
+        if (nkill > abs(pop)) then
+            write (6,*) pop, abs(pop)*tau*(Hii-H00-shift(1))
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 
         ! Update walker populations.
-        ! Particle death takes the walker_population closer to 0...
+        ! Particle death takes the population closer to 0...
         ! (and similarly if cloning (ie nkill is negative) then the
-        ! walker_population should move away from 0...)
-        if (walker_population(1,iwalker) > 0) then
-            walker_population(1,iwalker) = walker_population(1,iwalker) - nkill
+        ! population should move away from 0...)
+        if (pop > 0) then
+            pop = pop - nkill
         else
-            walker_population(1,iwalker) = walker_population(1,iwalker) + nkill
+            pop = pop + nkill
         end if
 
     end subroutine simple_death
@@ -396,7 +402,7 @@ contains
 
     end subroutine simple_annihilation
 
-    subroutine simple_update_proj_energy(ref_det, iwalker, inst_proj_energy)
+    subroutine simple_update_proj_energy(ref, H0i, pop, proj_energy)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -412,20 +418,22 @@ contains
         ! This procedure is only for the simple fciqmc algorithm, where the
         ! Hamiltonian matrix is explicitly stored.
         ! In:
-        !    ref_det: index of the reference determinant in the walker list.
-        !    iwalker: index of current determinant in the main walker list.
+        !    ref: true if |D_i> is the reference, |D_0>.
+        !    pop: population on |D_i>.
         ! In/Out:
-        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !    This is updated if D_i is connected to D_0 (and isn't D_0).
+        !    proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !    This is updated if |D_i> is connected to |D_0> (and isn't |D_0>).
 
-        integer, intent(in) :: ref_det, iwalker
-        real(p), intent(inout) :: inst_proj_energy
+        logical, intent(in) :: ref
+        real(p), intent(in) :: H0i
+        integer(int_p), intent(in) :: pop
+        real(p), intent(inout) :: proj_energy
 
-        if (iwalker == ref_det) then
+        if (ref) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,iwalker)
+            D0_population = D0_population + pop
         else
-            inst_proj_energy = inst_proj_energy + hamil(iwalker,ref_det)*walker_population(1,iwalker)
+            proj_energy = proj_energy + H0i*pop
         end if
 
     end subroutine simple_update_proj_energy
