@@ -681,6 +681,9 @@ end type spawned_walker_t
 ! [review] - NSB: Sure. I wonder if there really needs to be a type containing all of
 ! [review] - NSB: dmqmc_t, ccmc_t, folded_spect_t, etc... Do these things ever need
 ! [review] - NSB: to be grouped together?
+! [review] - FDM: Probably not, I was thinking that it might be nice (so that it
+! [review] - FDM: can be passed to functions easily) to have one type containing the
+! [review] - FDM: population information and the method specific data..
 type qmc_data_t
     ! number of monte carlo cycles/report loop
     integer :: ncycles
