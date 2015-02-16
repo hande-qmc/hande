@@ -12,6 +12,7 @@ contains
 
          use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
          use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
+         use calc, only: propagate_to_beta, fermi_temperature
          use checking, only: check_allocate
          use fciqmc_data
          use system, only: sys_t
@@ -417,11 +418,11 @@ contains
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: initiator_approximation, sym_in
+        use calc, only: initiator_approximation, sym_in, propagate_to_beta
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_sym_sectors, f0, propagate_to_beta, &
-                               init_beta, walker_dets, nparticles, real_factor, &
+        use fciqmc_data, only: sampling_size, all_sym_sectors, f0, init_beta, &
+                               walker_dets, nparticles, real_factor, &
                                walker_population, tot_walkers, qmc_spawn
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
@@ -662,14 +663,15 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
-        use determinants, only: decode_det, alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
+        use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, metropolis_attempts, all_mom_sectors, f0, qmc_spawn, &
-                               sampling_size, grand_canonical_ensemble, max_metropolis_move
+        use fciqmc_data, only: real_factor, all_mom_sectors, f0, qmc_spawn, sampling_size, metropolis_attempts, &
+                               max_metropolis_move
+        use calc, only: grand_canonical_initialisation
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
-        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
+        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
         use utils, only: int_fmt
 
         type(sys_t), intent(in) :: sys
@@ -684,8 +686,8 @@ contains
         integer :: thread_id = 0, proc
         integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
         real(p), target :: tmp_data(sampling_size)
-        real(p) :: pgen, hmatel
-        real(dp) :: r, E_new, E_old, prob
+        real(p) :: pgen, hmatel, E_new, E_old, prob
+        real(dp) :: r
         type(det_info_t) :: cdet
         type(excit_t) :: connection
         real(p) :: move_prob(0:sys%nalpha, sys%max_number_excitations)
@@ -697,8 +699,8 @@ contains
         call alloc_det_info_t(sys, cdet)
 
         ! Initially distribute psips along the diagonal.
-        if (grand_canonical_ensemble) then
-            call init_grand_canonical_ensemble(sys, sym, npsips, qmc_spawn, rng)
+        if (grand_canonical_initialisation) then
+            call init_grand_canonical_ensemble(sys, sym, npsips, beta, qmc_spawn, rng)
         else
             call init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
         end if
@@ -735,7 +737,7 @@ contains
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
                     E_new = trial_dm_ptr(sys, f_new)
-                    prob = exp(-1.0_dp*beta*(E_new-E_old))
+                    prob = exp(-1.0_p*beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
                         ! Accept the new determinant by modifying the entry
@@ -774,7 +776,7 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: f0, real_factor, metropolis_attempts, all_mom_sectors
+        use fciqmc_data, only: f0, real_factor, all_mom_sectors, metropolis_attempts
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
@@ -831,7 +833,7 @@ contains
 
     end subroutine init_uniform_ensemble
 
-    subroutine init_grand_canonical_ensemble(sys, sym, npsips, spawn, rng)
+    subroutine init_grand_canonical_ensemble(sys, sym, npsips, beta, spawn, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function. The level probabilities won't, in general, be
@@ -853,13 +855,14 @@ contains
         !    sys: system being studied.
         !    sym: symmetry sector under consideration.
         !    npsips: number of psips to create on the diagonal.
+        !    beta: inverse temperature.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
 
         use system, only: sys_t
         use spawn_data, only: spawn_t
-        use fciqmc_data, only: init_beta, real_factor, all_mom_sectors
+        use fciqmc_data, only: real_factor, all_mom_sectors
         use symmetry, only: symmetry_orb_list
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
@@ -867,6 +870,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
+        real(p), intent(in) :: beta
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
@@ -884,7 +888,7 @@ contains
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
+                                                          (1+exp(beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
         ! Subdivide the interval [0,1] into nbasis/2 boxes whose width is equal
         ! to 1/N_e p_single(i). So, p_bin(iorb)-p_bin(iorb-1) = p_single(iorb)

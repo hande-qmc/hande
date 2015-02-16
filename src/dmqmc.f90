@@ -33,7 +33,7 @@ contains
         use interact, only: fciqmc_interact
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
-        use calc, only: seed, initiator_approximation
+        use calc, only: seed, initiator_approximation, propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
 

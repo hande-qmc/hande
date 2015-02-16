@@ -690,7 +690,7 @@ contains
         !    population: The population to insert into walker_population.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
-        use calc, only: trial_function, neel_singlet
+        use calc, only: trial_function, neel_singlet, propagate_to_beta
         use heisenberg_estimators, only: neel_singlet_data
         use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr

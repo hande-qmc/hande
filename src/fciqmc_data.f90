@@ -577,6 +577,18 @@ integer(i0), allocatable :: correlation_mask(:) ! (string_len)
 ! initially (as orbital labels).
 integer, allocatable :: correlation_sites(:)
 
+! Value of beta which we propagate the density matrix to.
+real(p) :: init_beta = 1.0
+! Number of metropolis attempts (per psip) we use when generating
+! the trial density matrix.
+integer :: metropolis_attempts = 1000
+! For the metropolis move we generate an excitation of the current determinant
+! up to the max_metropolis_move'th excitation level (excluding zero-fold
+! excitations). Only applicable if all_mom_sym = .true., otherwise the
+! excitation generators are used which conserve momentum symmetry.
+! Default: Single and double excitations (if applicable).
+integer :: max_metropolis_move = 2
+
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
@@ -593,27 +605,6 @@ integer :: select_ref_det_every_nreports = huge(1)
 ! determinant's population in order to be accepted as the new reference
 ! determinant.
 real(p) :: ref_det_factor = 1.50_p
-
-! Propagate a trial density matrix to a specific temeperature.
-logical :: propagate_to_beta
-! Value of beta which we propagate the density matrix to.
-real(dp) :: init_beta
-! Number of metropolis attempts (per psip) we use when generating
-! the trial density matrix.
-integer :: metropolis_attempts = 1000
-! For the metropolis move we generate an excitation of the current determinant
-! up to the max_metropolis_move'th excitation level (excluding zero-fold
-! excitations). Only applicable if all_mom_sym = .true., otherwise the
-! excitation generators are used which conserve momentum symmetry.
-! Default: Single and double excitations (if applicable).
-integer :: max_metropolis_move = 2
-! Use the free electron Hamiltonian as the trial density matrix.
-! Default: Use the "Hartree-Fock" trial density matrix.
-logical :: free_electron_trial = .false.
-! Use the grand canonical partition function to inititally distribute the psips.
-logical :: grand_canonical_ensemble = .false.
-! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
-logical :: fermi_temperature
 
 !--- Calculation modes ---
 
