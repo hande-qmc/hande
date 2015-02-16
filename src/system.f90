@@ -650,6 +650,8 @@ contains
 
         end select
 
+        call set_fermi_energy(sys)
+
     end subroutine set_spin_polarisation
 
     elemental subroutine copy_sys_spin_info(sys1, sys2)
@@ -674,5 +676,32 @@ contains
         sys2%nvirt_beta = sys1%nvirt_beta
 
     end subroutine copy_sys_spin_info
+
+    subroutine set_fermi_energy(sys)
+
+        ! Set the Fermi energy and wavevector.
+        ! Currently only implemented for the fully polarised/unpolarised
+        ! electron gas.
+
+        ! In/Out:
+        !    sys: sys_t object, on output Fermi energy and wavevector are set.
+
+        type(sys_t), intent(inout) :: sys
+
+        integer :: pol_factor
+
+        select case(sys%system)
+        case (ueg)
+            ! Polarisation factor = 2 for polarised system, 1 for unpolarised.
+            pol_factor = 1 + abs((sys%nalpha-sys%nbeta)/sys%nel)
+            ! Only deal with fully spin (un)polarised system, so that kf^{up} =
+            ! kf^{down}.
+            ! Fermi wavevector.
+            sys%ueg%kf = (9.0_dp*pol_factor*pi/(4.0_dp*sys%ueg%r_s**3))**(1.0_dp/3.0_dp)
+            ! Fermi Energy.
+            sys%ueg%ef = 0.5 * sys%ueg%kf**2
+        end select
+
+    end subroutine set_fermi_energy
 
 end module system

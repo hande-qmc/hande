@@ -35,7 +35,7 @@ contains
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
         use calc
-        use ueg_system, only: init_ueg_proc_pointers, set_derived_ueg_properties
+        use ueg_system, only: init_ueg_proc_pointers
 
         type(sys_t), intent(inout) :: sys
         real, intent(out) :: start_cpu_time
@@ -72,7 +72,6 @@ contains
         end if
 
         ! Set spin polarisation for QMC and Hilbert space calculations.
-        if (ms_in /= huge(1)) call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
@@ -86,7 +85,6 @@ contains
         case(ueg)
             call init_momentum_symmetry(sys)
             call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
-            call set_derived_ueg_properties(sys)
         case(hub_k)
             call init_momentum_symmetry(sys)
         case(hub_real, heisenberg, chung_landau)
