@@ -72,14 +72,16 @@ contains
 
 
         ! Set up hamiltonian matrix.
-        call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_off)
+        call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_off, .true.)
         ! generate_hamil fills in only the lower triangle.
-        ! fill in upper triangle for easy access.
-        do i = 1,ndets
-            do j = i+1, ndets
-                hamil(j,i) = hamil(i,j)
+        if (.not.use_sparse_hamil) then
+            ! Fill in upper triangle for easy access.
+            do i = 1,ndets
+                do j = i+1, ndets
+                    hamil(j,i) = hamil(i,j)
+                end do
             end do
-        end do
+        end if
 
         write (6,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
         write (6,'(1X,a53,1X)') 'Using a simple (but correct) serial FCIQMC algorithm.'
@@ -117,15 +119,30 @@ contains
             allocate(f0(sys%basis%string_len), stat=ierr)
             call check_allocate('f0',sys%basis%string_len,ierr)
         else
-            ref_det = 1
-            do i = 2, ndets
-                if (hamil(i,i) < hamil(ref_det, ref_det)) then
-                    ref_det = i
-                end if
-            end do
+            if (use_sparse_hamil) then
+                H00 = huge(1.0_p)
+                do i = 1, ndets
+                    ! mat(k) is M_{ij}, so row_ptr(i) <= k < row_ptr(i+1) and col_ind(k) = j
+                    do j = hamil_csr%row_ptr(i), hamil_csr%row_ptr(i+1)-1
+                        if (hamil_csr%col_ind(j) == i) then
+                            if (hamil_csr%mat(j) < H00) then
+                                H00 = hamil_csr%mat(j)
+                                ref_det = i
+                            end if
+                        end if
+                    end do
+                end do
+            else
+                ref_det = 1
+                H00 = hamil(1,1)
+                do i = 2, ndets
+                    if (hamil(i,i) < H00) then
+                        ref_det = i
+                        H00 = hamil(ref_det,ref_det)
+                    end if
+                end do
+            end if
 
-            ! Reference det
-            H00 = hamil(ref_det,ref_det)
             if (.not.allocated(f0)) then
                 allocate(f0(sys%basis%string_len), stat=ierr)
                 call check_allocate('f0',sys%basis%string_len,ierr)
@@ -205,19 +222,35 @@ contains
                 ! Consider all walkers.
                 do idet = 1, ndets
 
-                    H0i = hamil(idet,ref_det)
-                    Hii = hamil(idet,idet)
+                    if (use_sparse_hamil) then
+                        Hii = 0.0_p
+                        H0i = 0.0_p
+                        do j = hamil_csr%row_ptr(idet), hamil_csr%row_ptr(idet+1)-1
+                            if (hamil_csr%col_ind(j) == idet) Hii = hamil_csr%mat(j)
+                            if (hamil_csr%col_ind(j) == ref_det) H0i = hamil_csr%mat(j)
+                        end do
+                    else
+                        H0i = hamil(idet,ref_det)
+                        Hii = hamil(idet,idet)
+                    end if
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
                     call simple_update_proj_energy(ref_det == idet, H0i, walker_population(1,idet), proj_energy)
 
-                    ! Simulate spawning.
-                    do ipart = 1, abs(walker_population(1,idet))
-                        ! Attempt to spawn from the current particle onto all
-                        ! connected determinants.
-                        call attempt_spawn(rng, idet, walker_population(1,idet), hamil(:,idet))
-                    end do
+                    ! Attempt to spawn from each particle onto all connected determinants.
+                    if (use_sparse_hamil) then
+                        associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
+                            do ipart = 1, abs(walker_population(1,idet))
+                                call attempt_spawn(rng, idet, walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                                                   hamil_csr%col_ind(hstart:hend))
+                            end do
+                        end associate
+                    else
+                        do ipart = 1, abs(walker_population(1,idet))
+                            call attempt_spawn(rng, idet, walker_population(1,idet), hamil(:,idet))
+                        end do
+                    end if
 
                     call simple_death(rng, Hii, walker_population(1,idet))
 
