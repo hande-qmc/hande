@@ -165,6 +165,7 @@ end type reference_t
 
 ! [review] - JSS: RDMs here are DMQMC-specific.  Should there be further dmqmc_data, fciqmc_data,
 ! [review] - JSS: ccmc_data, etc modules?
+! [review] - NSB: Yes, I think that's sensible.
 
 ! Spawned lists for rdms.
 type rdm_spawn_t
@@ -210,6 +211,8 @@ end type rdm_t
 ! [review] - NSB: changed it to a parameter. This can probably be global data
 ! [review] - NSB: since it is constant.
 ! [review] - JSS: Applicable only to Heisenberg model?  If so, please can it have a more specific name?
+! [review] - NSB: I don't think so, its a matrix used in calculating concurrence
+! [review] - NSB: which is more general (in theory at least)
 ! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
 ! concurrence is to be calculated.
 real(p), parameter :: flip_spin_matrix(4,4) = (\ 0.0_p,  0.0_p, 0.0_p, -1.0_p,  &
@@ -221,6 +224,7 @@ real(p), parameter :: flip_spin_matrix(4,4) = (\ 0.0_p,  0.0_p, 0.0_p, -1.0_p,  
 ! [review] - NSB: logically. I've created derived types for ground-state RDMs and
 ! [review] - NSB: instantaneous RDMs, and for the weighted sampling.
 ! [review] - JSS: split this into input-level data and calculation-derived data.
+! [review] - NSB: Agree, will do.
 type dmqmc_estimates_t
     ! [review] - NSB: dmqmc_factor is a bit of a wierd one because it is used more
     ! [review] - NSB: more generally by other methods, too. It is just a number
@@ -251,6 +255,7 @@ type dmqmc_estimates_t
     ! [review] - JSS: can this be turned into an enum?  estimator_numerators is small, so
     ! [review] - JSS: we may as well allocate an element for every possible data type to
     ! [review] - JSS: make the code simpler.
+    ! [review] - NSB: Yes that seems sensible.
     integer :: energy_index = 0
     integer :: energy_squared_index = 0
     integer :: correlation_index = 0
@@ -277,6 +282,9 @@ type dmqmc_estimates_t
     ! are considered when finding the spin correlation function, C(r_{i,j}).
     ! All other bits are set to 0. i and j are chosen by the user initially.
     ! [review] - JSS: both input-derived data.
+    ! [review] - NSB: True, but its not really an input option, so I'm not
+    ! [review] - NSB: sure it belongs in an input type. Is that what you're
+    ! [review] - suggesting? They're perhaps more system, or estimator related.
     integer(i0), allocatable :: correlation_mask(:) ! (string_len)
     ! correlation_sites stores the site positions specified by the users
     ! initially (as orbital labels).
@@ -291,6 +299,9 @@ type dmqmc_estimates_t
     ! be normalised by the product of the corresponding RDM traces.
     ! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
     ! [review] - JSS: dimensions?
+    ! [review] - NSB: It has dimensions nrdms, which belongs to 
+    ! [review] - NSB: dmqmc_inst_rdms_t. It should probably be
+    ! [review] - NSB: moved there, agreed?
     real(p), allocatable :: renyi_2(:)
 
     real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
@@ -382,6 +393,7 @@ real(dp) :: annihilation_comms_time = 0.0_dp
 
 !--- Folded spectrum data ---
 ! [review] - JSS: input options (also, should we just delete folded spectrum?)
+! [review] - NSB: I wouldn't mind, but I'll have to leave it up to you.
 type folded_spect_t
     ! The line about which you are folding i.e. eps in (H-eps)^2 - E_0
     real(p) :: fold_line = 0
@@ -392,6 +404,7 @@ type folded_spect_t
 end type folded_spect_t
 
 ! [review] - JSS: input options (also, should we remove initiator_cas?)
+! [review] - NSB: Yes I think that initiator_cas should be removed.
 type initiator_t
     ! Complete active space within which a determinant is an initiator.
     ! (0,0) corresponds to the reference determinant only.
@@ -407,6 +420,8 @@ end type initiator_t
 ! [review] - NSB: let's try and move them back to semi_stoch.F90.
 ! [review] - JSS: Looks like they were moved to fciqmc_data in aab941d1 to avoid a circular
 ! [review] - JSS: dependency involving annihilation.
+! [review[ - NSB: OK, I say leave here for now and then see if there's somewhere
+! [review] - NSB: better to move it later.
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
 ! by calculating a hash value. This type is used by the semi_stoch_t type and
@@ -552,6 +567,8 @@ end type shift_t
 
 ! [review] - JSS: please let's remove all references to walker.  I favour 'particle'.
 ! [review] - JSS: also needs to be split further into input-data, calculation-state data.
+! [review] - NSB: I'm happy with any name for it, so long as we're consistent.
+! [review] - NSB: Happy to go with 'particle'.
 type walker_t
     ! Array sizes
     ! If these are < 0, then the values represent the number of MB to be used to
@@ -563,6 +580,7 @@ type walker_t
     ! [review] - FDM: rename (ndets perhaps)? Should this be here?
     ! [review] - NSB: I think James, Alex and I agreed on ndets_active.
     ! [review] - JSS: Perhaps nstates_active so it applies to CCMC, DMQMC and FCIQMC?
+    ! [review] - NSB: Sure.
     integer :: tot_walkers
     ! Total number of particles on all walkers/determinants (processor dependent)
     ! Updated during death and annihilation and merging.
@@ -587,6 +605,11 @@ type walker_t
     ! [review] - JSS: encoding/decoding information (perhaps as parameters?)
     ! [review] - JSS: should we have a derived type for a single population and for an
     ! [review] - JSS: array of populations?
+    ! [review] - NSB: Perhaps, though might it be slow to extract every population
+    ! [review] - NSB: from the array derived type to another derived type? Is this
+    ! [review] - NSB: kind of thing you're suggesting.
+    ! [review] - NSB: I think that encoding info should be parameters, but at the
+    ! [review] - NSB: same time it seems odd having a parameter as a type component.
     ! b) walker population
     ! NOTE:
     !   When using the real_amplitudes option, walker_population stores encoded
@@ -655,6 +678,9 @@ end type spawned_walker_t
 
 ! [review] - JSS: split into info about state of calculation and info arising from the
 ! [review] - JSS: state (ie energy estimators)?
+! [review] - NSB: Sure. I wonder if there really needs to be a type containing all of
+! [review] - NSB: dmqmc_t, ccmc_t, folded_spect_t, etc... Do these things ever need
+! [review] - NSB: to be grouped together?
 type qmc_data_t
     ! number of monte carlo cycles/report loop
     integer :: ncycles
