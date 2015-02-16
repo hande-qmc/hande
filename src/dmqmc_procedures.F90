@@ -418,7 +418,8 @@ contains
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: initiator_approximation, sym_in, propagate_to_beta
+        use calc, only: initiator_approximation, sym_in, propagate_to_beta, &
+                        grand_canonical_initialisation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
         use fciqmc_data, only: sampling_size, all_sym_sectors, f0, init_beta, &
@@ -477,6 +478,15 @@ contains
                 end if
             case(ueg)
                 if (propagate_to_beta) then
+                    ! Initially distribute psips along the diagonal according to
+                    ! a guess.
+                    if (grand_canonical_initialisation) then
+                        call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, init_beta, qmc_spawn, rng)
+                    else
+                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, ireplica, rng, qmc_spawn)
+                    end if
+                    ! Perform metropolis algorithm on initial distribution so
+                    ! that we are sampling the trial density matrix.
                     call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, sym_in, ireplica)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
@@ -666,7 +676,7 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, all_mom_sectors, f0, qmc_spawn, sampling_size, metropolis_attempts, &
+        use fciqmc_data, only: real_factor, all_mom_sectors, f0, sampling_size, metropolis_attempts, &
                                max_metropolis_move
         use calc, only: grand_canonical_initialisation
         use parallel, only: nprocs, nthreads, parent
@@ -698,12 +708,6 @@ contains
 
         call alloc_det_info_t(sys, cdet)
 
-        ! Initially distribute psips along the diagonal.
-        if (grand_canonical_initialisation) then
-            call init_grand_canonical_ensemble(sys, sym, npsips, beta, qmc_spawn, rng)
-        else
-            call init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
-        end if
         ! The metropolis move is to excite two electrons. This is achieved
         ! either by using the excitation generators when working in a
         ! symmetry contrained system or by uniformly exciting the electrons
