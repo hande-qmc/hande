@@ -216,7 +216,7 @@ contains
                     do ipart = 1, abs(walker_population(1,idet))
                         ! Attempt to spawn from the current particle onto all
                         ! connected determinants.
-                        call attempt_spawn(rng, idet)
+                        call attempt_spawn(rng, idet, walker_population(1,idet), hamil(:,idet))
                     end do
 
                     call simple_death(rng, Hii, walker_population(1,idet))
@@ -270,7 +270,7 @@ contains
 
     end subroutine do_simple_fciqmc
 
-    subroutine attempt_spawn(rng, iwalker)
+    subroutine attempt_spawn(rng, idet, pop, hrow, det_indx)
 
         ! Simulate spawning part of FCIQMC algorithm.
         ! We attempt to spawn on all determinants connected to the current
@@ -282,49 +282,58 @@ contains
         ! In/Out:
         !    rng: random number generator.
 
-        integer, intent(in) :: iwalker
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: idet
+        integer(int_p), intent(in) :: pop
+        real(p), intent(in) :: hrow(:)
+        integer, intent(in), optional :: det_indx(:)
 
-        integer :: j
+        integer :: j, jdet
         integer(int_s) :: nspawn
         real(p) :: rate
         real(p) :: r
 
         ! Simulate spawning by attempting to spawn on all
         ! connected determinants.
-        do j = 1, ubound(hamil, dim=1)
+        do j = 1, ubound(hrow, dim=1)
+
+            if (present(det_indx)) then
+                jdet = det_indx(j)
+            else
+                jdet = j
+            end if
 
             ! Can't spawn onto self.
-            if (iwalker == j) cycle
+            if (idet == jdet) cycle
             ! Can't spawn onto disconnected dets
-            if (hamil(iwalker,j) == 0.0_p) cycle
+            if (abs(hrow(j)) < depsilon) cycle
 
             ! Attempt spawning.
             ! Spawn with probability tau|K_ij|.
             ! As K_ij = H_ij for off-diagonal elements, we can just use the
             ! stored Hamiltonian matrix directly.
-            rate = abs(Tau*hamil(iwalker,j))
+            rate = abs(Tau*hrow(j))
             nspawn = int(rate, int_s)
             rate = rate - nspawn
             r = get_rand_close_open(rng)
             if (rate > r) nspawn = nspawn + 1_int_s
 
             ! Create particles.
-            if (hamil(iwalker,j) > 0.0_p) then
+            if (hrow(j) > 0.0_p) then
                 ! Flip child sign.
-                if (walker_population(1,iwalker) < 0) then
+                if (pop < 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
+                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
+                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
                 end if
             else
                 ! Same sign as parent.
-                if (walker_population(1,iwalker) > 0) then
+                if (pop > 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
+                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
+                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
                 end if
             end if
 
