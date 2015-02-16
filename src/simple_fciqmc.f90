@@ -166,7 +166,7 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         type(sys_t), intent(inout) :: sys
-        integer :: ireport, icycle, iwalker, ipart
+        integer :: ireport, icycle, idet, ipart, j
         real(p) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
@@ -203,23 +203,23 @@ contains
                 nattempts = int(nparticles)
 
                 ! Consider all walkers.
-                do iwalker = 1, ndets
+                do idet = 1, ndets
 
-                    H0i = hamil(iwalker,ref_det)
-                    Hii = hamil(iwalker,iwalker)
+                    H0i = hamil(idet,ref_det)
+                    Hii = hamil(idet,idet)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det == iwalker, H0i, walker_population(1,iwalker), proj_energy)
+                    call simple_update_proj_energy(ref_det == idet, H0i, walker_population(1,idet), proj_energy)
 
                     ! Simulate spawning.
-                    do ipart = 1, abs(walker_population(1,iwalker))
+                    do ipart = 1, abs(walker_population(1,idet))
                         ! Attempt to spawn from the current particle onto all
                         ! connected determinants.
-                        call attempt_spawn(rng, iwalker)
+                        call attempt_spawn(rng, idet)
                     end do
 
-                    call simple_death(rng, Hii, walker_population(1,iwalker))
+                    call simple_death(rng, Hii, walker_population(1,idet))
 
                 end do
 
