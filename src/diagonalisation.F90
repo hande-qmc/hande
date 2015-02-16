@@ -370,7 +370,7 @@ contains
 
     end subroutine diagonalise
 
-    subroutine generate_hamil(sys, ndets, dets, sparse_mode, distribute_mode)
+    subroutine generate_hamil(sys, ndets, dets, sparse_mode, distribute_mode, sparse_full)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
@@ -389,6 +389,8 @@ contains
         !        processor.  Can take the values given by the distribute_off,
         !        distribute_blocks and distribute_cols parameters.  See above
         !        for descriptions of the different behaviours.
+        !    sparse_full (optional): if present and true generate the full matrix rather than
+        !        just storing one triangle.
 
         use checking, only: check_allocate, check_deallocate
         use csr, only: init_csrp, end_csrp
@@ -405,6 +407,7 @@ contains
         integer(i0), intent(in) :: dets(:,:)
         logical, intent(in) :: sparse_mode
         integer, intent(in), optional :: distribute_mode
+        logical, intent(in), optional :: sparse_full
         integer :: ierr, iunit, n1, n2, ind_offset
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
         real(p) :: hmatel
@@ -417,17 +420,18 @@ contains
         ! scratch array for printing distributed matrix
         real(p), allocatable :: work_print(:)
 
+        logical :: sparse_full_mat
+
         if (allocated(hamil)) then
             deallocate(hamil, stat=ierr)
             call check_deallocate('hamil',ierr)
         end if
         if (allocated(hamil_csr%mat)) call end_csrp(hamil_csr)
 
-        if (present(distribute_mode)) then
-            distribute = distribute_mode
-        else
-            distribute = distribute_off
-        end if
+        distribute = distribute_off
+        if (present(distribute_mode)) distribute = distribute_mode
+        sparse_full_mat = .false.
+        if (present(sparse_full)) sparse_full_mat = sparse_full
 
         ! Find dimensions of local array.
         select case(distribute)
@@ -500,10 +504,15 @@ contains
                     nnz = 0
                     !$omp parallel
                     do i = 1, ndets
+                        if (sparse_full_mat) then
+                            ii = 1
+                        else
+                            ii = i
+                        end if
                         ! OpenMP chunk size determined completely empirically
                         ! from a single test.  Please feel free to improve...
                         !$omp do private(j, hmatel) schedule(dynamic, 200)
-                        do j = i, ndets
+                        do j = ii, ndets
                             hmatel = get_hmatel(sys, dets(:,i+ind_offset), dets(:,j+ind_offset))
                             if (abs(hmatel) > depsilon) then
                                 !$omp critical
