@@ -724,7 +724,7 @@ contains
             call stop_all(this, 'The dmqmc_vary_weights option can only be used together with the dmqmc_weighted_sampling option.')
         end if
         if (sys%system /= heisenberg .and. dmqmc_calc_type > dmqmc_energy) then
-            call stop_all(this, 'The observable requested is not currently inmplemented for this Hamiltonian.')
+            call stop_all(this, 'The observable requested is not currently implemented for this Hamiltonian.')
         end if
 
         if (parent) write (6,'(/,1X,13("-"),/)')
