@@ -142,7 +142,7 @@ contains
                             ! If this condition is met then there will only be
                             ! one det in this symmetry sector, so don't attempt
                             ! to spawn.
-                            if (.not. ((sys%nel == 0) .or. (sys%nel == sys%lattice%nsites .and. sys%system == heisenberg))) then
+                            if (.not. ((sys%nel == 0) .or. (sys%nel == sys%basis%nbasis))) then
                                 nattempts_current_det = decide_nattempts(rng, real_population(ireplica))
                                 do iparticle = 1, nattempts_current_det
                                     ! Spawn from the first end.
