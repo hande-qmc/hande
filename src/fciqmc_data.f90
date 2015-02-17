@@ -301,10 +301,6 @@ type(spawn_t) :: qmc_spawn
 ! Walker information: received list for non-blocking communications.
 type(spawn_t) :: received_list
 
-! Additional spawned list for storing starting configuration when using
-! importance sampling in dmqmc.
-type(spawn_t) :: initial_config
-
 ! spawn times of the progeny (only used for ct_fciqmc)
 real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
 
@@ -869,7 +865,6 @@ contains
         end if
         call dealloc_parallel_t(par_info)
         call dealloc_spawn_t(qmc_spawn)
-        call dealloc_spawn_t(initial_config)
 
     end subroutine end_fciqmc
 

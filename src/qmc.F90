@@ -244,10 +244,6 @@ contains
             call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
                                spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
-        if (propagate_to_beta) then
-            call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
-                               spawned_walker_length, spawn_cutoff, real_bit_shift, 7, initial_config)
-        end if
 
         if (nprocs == 1 .or. .not. doing_load_balancing) par_info%load%nslots = 1
         call init_parallel_t(sampling_size, nparticles_start_ind-1, non_blocking_comm, par_info)
