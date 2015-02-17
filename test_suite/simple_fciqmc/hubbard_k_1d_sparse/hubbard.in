@@ -1,0 +1,17 @@
+( Correlation energy: -0.170135 )
+hubbard_k
+lattice
+10
+electrons 10
+ms 0
+sym 1
+sparse_hamiltonian
+
+simple_fciqmc
+seed 5234
+
+init_pop 20
+mc_cycles 20
+nreports 500
+varyshift_target 5000
+tau 0.003
