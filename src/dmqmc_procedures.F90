@@ -7,171 +7,171 @@ contains
 
     subroutine init_dmqmc(sys)
 
-         ! In:
-         !    sys: system being studied.
+        ! In:
+        !    sys: system being studied.
 
-         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
-         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
-         use calc, only: propagate_to_beta, fermi_temperature
-         use checking, only: check_allocate
-         use fciqmc_data
-         use system, only: sys_t
+        use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
+        use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
+        use calc, only: propagate_to_beta, fermi_temperature
+        use checking, only: check_allocate
+        use fciqmc_data
+        use system, only: sys_t
 
-         type(sys_t), intent(in) :: sys
+        type(sys_t), intent(in) :: sys
 
-         integer :: ierr, i, bit_position, bit_element
+        integer :: ierr, i, bit_position, bit_element
 
-         number_dmqmc_estimators = 0
+        number_dmqmc_estimators = 0
 
-         allocate(trace(sampling_size), stat=ierr)
-         call check_allocate('trace',sampling_size,ierr)
-         trace = 0.0_p
+        allocate(trace(sampling_size), stat=ierr)
+        call check_allocate('trace',sampling_size,ierr)
+        trace = 0.0_p
 
-         allocate(rdm_traces(sampling_size,nrdms), stat=ierr)
-         call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
-         rdm_traces = 0.0_p
+        allocate(rdm_traces(sampling_size,nrdms), stat=ierr)
+        call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
+        rdm_traces = 0.0_p
 
-         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             full_r2_index = number_dmqmc_estimators
-         end if
-         if (doing_dmqmc_calc(dmqmc_energy)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             energy_index = number_dmqmc_estimators
-         end if
-         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             energy_squared_index = number_dmqmc_estimators
-         end if
-         if (doing_dmqmc_calc(dmqmc_correlation)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             correlation_index = number_dmqmc_estimators
-             allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
-             call check_allocate('correlation_mask',sys%basis%string_len,ierr)
-             correlation_mask = 0_i0
-             do i = 1, 2
-                 bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
-                 bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
-                 correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
-             end do
-         end if
-         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             staggered_mag_index = number_dmqmc_estimators
-         end if
+        if (doing_dmqmc_calc(dmqmc_full_r2)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            full_r2_index = number_dmqmc_estimators
+        end if
+        if (doing_dmqmc_calc(dmqmc_energy)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            energy_index = number_dmqmc_estimators
+        end if
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            energy_squared_index = number_dmqmc_estimators
+        end if
+        if (doing_dmqmc_calc(dmqmc_correlation)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            correlation_index = number_dmqmc_estimators
+            allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
+            call check_allocate('correlation_mask',sys%basis%string_len,ierr)
+            correlation_mask = 0_i0
+            do i = 1, 2
+            bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
+            bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
+            correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
+            end do
+        end if
+        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            staggered_mag_index = number_dmqmc_estimators
+        end if
 
-         ! Array too to hold the estimates of the numerators of all the above
-         ! quantities.
-         allocate(estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
-         call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
-         estimator_numerators = 0.0_p
+        ! Array too to hold the estimates of the numerators of all the above
+        ! quantities.
+        allocate(estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
+        call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
+        estimator_numerators = 0.0_p
 
-         if (calculate_excit_distribution .or. dmqmc_find_weights) then
-             allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('excit_distribution',sys%max_number_excitations+1,ierr)
-             excit_distribution = 0.0_p
-         end if
+        if (calculate_excit_distribution .or. dmqmc_find_weights) then
+            allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('excit_distribution',sys%max_number_excitations+1,ierr)
+            excit_distribution = 0.0_p
+        end if
 
-         ! If this is true then the user has asked to average the shift over
-         ! several beta loops (average_shift_until of them), and then use the
-         ! this average in all subsequent loops.
-         if (average_shift_until > 0) then
-             allocate(shift_profile(1:nreport+1), stat=ierr)
-             call check_allocate('shift_profile',nreport+1,ierr)
-             shift_profile = 0.0_p
-         end if
+        ! If this is true then the user has asked to average the shift over
+        ! several beta loops (average_shift_until of them), and then use the
+        ! this average in all subsequent loops.
+        if (average_shift_until > 0) then
+            allocate(shift_profile(1:nreport+1), stat=ierr)
+            call check_allocate('shift_profile',nreport+1,ierr)
+            shift_profile = 0.0_p
+        end if
 
-         ! When using an importance sampled initial density matrix we use then
-         ! unsymmetrised version of Bloch's equation. This means we don't have
-         ! to worry about these factors of 1/2.
-         if (.not. propagate_to_beta) then
-             ! In DMQMC we want the spawning probabilities to have an extra factor
-             ! of a half, because we spawn from two different ends with half
-             ! probability. To avoid having to multiply by an extra variable in
-             ! every spawning routine to account for this, we multiply the time
-             ! step by 0.5 instead, then correct this in the death step (see below).
-             tau = tau*0.5_p
-             ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
-             ! multiplied by this factor it cancels the factor of 0.5 introduced
-             ! into the timestep in DMQMC.cThis factor is also used in updated the
-             ! shift, where the true tau is needed.
-             dmqmc_factor = 2.0_p
-         end if
-         ! Set the timestep to be the appropriate factor of ef so that results
-         ! are at temperatures commensurate(ish) with the reduced (inverse) temperature
-         ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
-         ! to set the appropriate beta = Beta / T_F.
-         if (fermi_temperature) then
-             tau = tau / sys%ueg%ef
-             init_beta = init_beta / sys%ueg%ef
-         end if
+        ! When using an importance sampled initial density matrix we use then
+        ! unsymmetrised version of Bloch's equation. This means we don't have
+        ! to worry about these factors of 1/2.
+        if (.not. propagate_to_beta) then
+            ! In DMQMC we want the spawning probabilities to have an extra factor
+            ! of a half, because we spawn from two different ends with half
+            ! probability. To avoid having to multiply by an extra variable in
+            ! every spawning routine to account for this, we multiply the time
+            ! step by 0.5 instead, then correct this in the death step (see below).
+            tau = tau*0.5_p
+            ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
+            ! multiplied by this factor it cancels the factor of 0.5 introduced
+            ! into the timestep in DMQMC.cThis factor is also used in updated the
+            ! shift, where the true tau is needed.
+            dmqmc_factor = 2.0_p
+        end if
+        ! Set the timestep to be the appropriate factor of ef so that results
+        ! are at temperatures commensurate(ish) with the reduced (inverse) temperature
+        ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
+        ! to set the appropriate beta = Beta / T_F.
+        if (fermi_temperature) then
+            tau = tau / sys%ueg%ef
+            init_beta = init_beta / sys%ueg%ef
+        end if
 
 
-         if (dmqmc_weighted_sampling) then
-             ! dmqmc_sampling_probs stores the factors by which probabilities
-             ! are to be reduced when spawning away from the diagonal. The trial
-             ! function required from these probabilities, for use in importance
-             ! sampling, is actually that of the accumulated factors, ie, if
-             ! dmqmc_sampling_probs = (a, b, c, ...) then
-             ! dmqmc_accumulated_factors = (1, a, ab, abc, ...).
-             ! This is the array which we need to create and store.
-             ! dmqmc_sampling_probs is no longer needed and so can be
-             ! deallocated. Also, the user may have only input factors for the
-             ! first few excitation levels, but we need to store factors for all
-             ! levels, as done below.
-             if (.not.allocated(dmqmc_sampling_probs)) then
-                 allocate(dmqmc_sampling_probs(1:sys%max_number_excitations), stat=ierr)
-                 call check_allocate('dmqmc_sampling_probs',sys%max_number_excitations,ierr)
-                 dmqmc_sampling_probs = 1.0_p
-             end if
-             allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
-             allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
-             dmqmc_accumulated_probs(0) = 1.0_p
-             dmqmc_accumulated_probs_old = 1.0_p
-             do i = 1, size(dmqmc_sampling_probs)
-                 dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
-             end do
-             dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:sys%max_number_excitations) = &
-                                    dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
-             if (dmqmc_vary_weights) then
-                 ! Allocate an array to store the factors by which the weights
-                 ! will change each iteration.
-                 allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
-                 call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
-                 weight_altering_factors = real(dmqmc_accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
-                 ! If varying the weights, start the accumulated probabilties
-                 ! as all 1.0 initially, and then alter them gradually later.
-                 dmqmc_accumulated_probs = 1.0_p
-             end if
-         else
-             ! If not using the importance sampling procedure, turn it off by
-             ! setting all amplitudes to 1.0 in the relevant arrays.
-             allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
-             allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
-             dmqmc_accumulated_probs = 1.0_p
-             dmqmc_accumulated_probs_old = 1.0_p
-         end if
+        if (dmqmc_weighted_sampling) then
+            ! dmqmc_sampling_probs stores the factors by which probabilities
+            ! are to be reduced when spawning away from the diagonal. The trial
+            ! function required from these probabilities, for use in importance
+            ! sampling, is actually that of the accumulated factors, ie, if
+            ! dmqmc_sampling_probs = (a, b, c, ...) then
+            ! dmqmc_accumulated_factors = (1, a, ab, abc, ...).
+            ! This is the array which we need to create and store.
+            ! dmqmc_sampling_probs is no longer needed and so can be
+            ! deallocated. Also, the user may have only input factors for the
+            ! first few excitation levels, but we need to store factors for all
+            ! levels, as done below.
+            if (.not.allocated(dmqmc_sampling_probs)) then
+                allocate(dmqmc_sampling_probs(1:sys%max_number_excitations), stat=ierr)
+                call check_allocate('dmqmc_sampling_probs',sys%max_number_excitations,ierr)
+                dmqmc_sampling_probs = 1.0_p
+            end if
+            allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
+            allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
+            dmqmc_accumulated_probs(0) = 1.0_p
+            dmqmc_accumulated_probs_old = 1.0_p
+            do i = 1, size(dmqmc_sampling_probs)
+            dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
+            end do
+            dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:sys%max_number_excitations) = &
+                dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
+            if (dmqmc_vary_weights) then
+                ! Allocate an array to store the factors by which the weights
+                ! will change each iteration.
+                allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
+                call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
+                weight_altering_factors = real(dmqmc_accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
+                ! If varying the weights, start the accumulated probabilties
+                ! as all 1.0 initially, and then alter them gradually later.
+                dmqmc_accumulated_probs = 1.0_p
+            end if
+        else
+            ! If not using the importance sampling procedure, turn it off by
+            ! setting all amplitudes to 1.0 in the relevant arrays.
+            allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
+            allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
+            dmqmc_accumulated_probs = 1.0_p
+            dmqmc_accumulated_probs_old = 1.0_p
+        end if
 
-         ! If doing a reduced density matrix calculation, allocate and define
-         ! the bit masks that have 1's at the positions referring to either
-         ! subsystems A or B.
-         if (doing_reduced_dm) call setup_rdm_arrays(sys)
+        ! If doing a reduced density matrix calculation, allocate and define
+        ! the bit masks that have 1's at the positions referring to either
+        ! subsystems A or B.
+        if (doing_reduced_dm) call setup_rdm_arrays(sys)
 
-         ! If doing concurrence calculation then construct and store the 4x4
-         ! flip spin matrix i.e. \sigma_y \otimes \sigma_y
-         if (doing_concurrence) then
-             allocate(flip_spin_matrix(4,4), stat=ierr)
-             call check_allocate('flip_spin_matrix',16,ierr)
-             flip_spin_matrix = 0.0_p
-             flip_spin_matrix(1,4) = -1.0_p
-             flip_spin_matrix(4,1) = -1.0_p
-             flip_spin_matrix(3,2) = 1.0_p
-             flip_spin_matrix(2,3) = 1.0_p    
-         end if
+        ! If doing concurrence calculation then construct and store the 4x4
+        ! flip spin matrix i.e. \sigma_y \otimes \sigma_y
+        if (doing_concurrence) then
+            allocate(flip_spin_matrix(4,4), stat=ierr)
+            call check_allocate('flip_spin_matrix',16,ierr)
+            flip_spin_matrix = 0.0_p
+            flip_spin_matrix(1,4) = -1.0_p
+            flip_spin_matrix(4,1) = -1.0_p
+            flip_spin_matrix(3,2) = 1.0_p
+            flip_spin_matrix(2,3) = 1.0_p    
+        end if
 
     end subroutine init_dmqmc
 
@@ -299,7 +299,7 @@ contains
                 end if
             end if
         end if
-        
+
     end subroutine setup_rdm_arrays
 
     subroutine find_rdm_masks(sys)
@@ -399,7 +399,7 @@ contains
 
     end subroutine find_rdm_masks
 
-        subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot)
+    subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -1113,7 +1113,7 @@ contains
         ! This function maps a full DMQMC bitstring to two bitstrings encoding
         ! the subsystem-A RDM bitstrings. These resulting bitstrings are stored
         ! in the end1 and end2 components of rdms(irdm).
-        
+
         ! Crucially, the mapping is performed so that, if there are two
         ! subsystems which are equivalent by symmetry, then equivalent sites in
         ! those two subsystems will be mapped to the same RDM bitstrings. This
@@ -1156,9 +1156,9 @@ contains
         end do
 
     end subroutine decode_dm_bitstring
- 
+
     subroutine update_sampling_weights(rng, basis)
-        
+
         ! This routine updates the values of the weights used in importance
         ! sampling. It also removes or adds psips from the various excitation
         ! levels accordingly.
@@ -1259,11 +1259,11 @@ contains
 
         integer :: i, ierr
 #ifdef PARALLEL
-        real(p) :: merged_excit_dist(0:max_number_excitations) 
+        real(p) :: merged_excit_dist(0:max_number_excitations)
         call mpi_allreduce(excit_distribution, merged_excit_dist, max_number_excitations+1, &
             MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
-        
-        excit_distribution = merged_excit_dist        
+
+        excit_distribution = merged_excit_dist
 #endif
 
         ! It is assumed that there is an even maximum number of excitations.
@@ -1277,7 +1277,7 @@ contains
                 dmqmc_sampling_probs(max_number_excitations+1-i) = dmqmc_sampling_probs(i)**(-1)
             end if
         end do
-        
+
         ! Recalculate dmqmc_accumulated_probs with the new weights.
         do i = 1, max_number_excitations
             dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)

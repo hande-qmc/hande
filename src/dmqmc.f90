@@ -78,7 +78,7 @@ contains
         ! output we subtract one from the iteration number, and run for one more
         ! report loop, asimplemented in the line of code below.
         nreport = nreport+1
-                            
+
         if (all_sym_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(D0_population, int_64)
 
