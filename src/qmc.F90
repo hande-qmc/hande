@@ -628,7 +628,13 @@ contains
             decoder_ptr => decode_det_spinocc_spinunocc
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
-
+            if (propagate_to_beta) then
+                if (free_electron_trial) then
+                    trial_dm_ptr => kinetic0_hub_k
+                else
+                    trial_dm_ptr => slater_condon0_hub_k
+                end if
+            end if
             spawner_ptr => spawn_lattice_split_gen
             if (no_renorm) then
                 gen_excit_ptr%full => gen_excit_hub_k_no_renorm
@@ -800,7 +806,11 @@ contains
                     end if
                 end if
             case(hub_k)
-                if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_hub_k
+                if (propagate_to_beta) then
+                    update_dmqmc_energy_ptr => dmqmc_energy_hub_k_propagate
+                else
+                    update_dmqmc_energy_ptr => dmqmc_energy_hub_k
+                end if
             case(hub_real)
                 if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_hub_real
             end select

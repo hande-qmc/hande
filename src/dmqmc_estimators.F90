@@ -431,10 +431,8 @@ contains
             estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
                 (walker_data(1,idet)+H00)*walker_pop
         else if (excitation%nexcit == 2) then
-            ! If not a diagonal element, but only a single excitation, then the
-            ! corresponding Hamiltonian element may be non-zero. Calculate if the
-            ! flipped spins are neighbours on the lattice, and if so, add the
-            ! contribution from this site.
+            ! Have a determinant connected to the reference determinant: add to
+            ! projected energy.
             hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
                 excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
@@ -442,6 +440,48 @@ contains
         end if
 
     end subroutine dmqmc_energy_hub_k
+
+    subroutine dmqmc_energy_hub_k_propagate(sys, idet, excitation, walker_pop)
+
+        ! Add the contribution from the current density matrix element to the
+        ! thermal energy estimate.
+
+        ! In:
+        !    sys: system being studied.
+        !    idet: Current position in the main bitstring (density matrix) list.
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding to
+        !        the two labels for the density matrix element.
+        !    walker_pop: Number of particles on the current density matrix
+        !        element.
+
+        use excitations, only: excit_t
+        use fciqmc_data, only: walker_dets, H00
+        use fciqmc_data, only: estimator_numerators, energy_index
+        use hamiltonian_hub_k, only: slater_condon2_hub_k, slater_condon0_hub_k
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: idet
+        type(excit_t), intent(in) :: excitation
+        real(p), intent(in) :: walker_pop
+        real(p) :: hmatel
+
+        ! if no excitation, we have a diagonal element, so add elements which
+        ! involve the diagonal element of the hamiltonian.
+        if (excitation%nexcit == 0) then
+            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+                slater_condon0_hub_k(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
+        else if (excitation%nexcit == 2) then
+            ! Have a determinant connected to the reference determinant: add to
+            ! projected energy.
+            hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
+            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+                (hmatel*walker_pop)
+        end if
+
+    end subroutine dmqmc_energy_hub_k_propagate
 
     subroutine dmqmc_energy_ueg_free(sys, idet, excitation, walker_pop)
 

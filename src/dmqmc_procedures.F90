@@ -476,7 +476,7 @@ contains
                     ! of psips.
                     call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica)
                 end if
-            case(ueg)
+            case(ueg, hub_k)
                 if (propagate_to_beta) then
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
@@ -491,7 +491,7 @@ contains
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
                 end if
-            case(hub_k, hub_real)
+            case(hub_real)
                 call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
