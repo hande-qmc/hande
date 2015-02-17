@@ -408,7 +408,7 @@ contains
         use errors
         use fciqmc_data, only: sampling_size, all_sym_sectors
         use parallel
-        use system, only: sys_t, heisenberg, ueg
+        use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
 
         type(dSFMT_t), intent(inout) :: rng
@@ -457,7 +457,7 @@ contains
                     ! of psips.
                     call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica)
                 end if
-            case(ueg)
+            case(hub_k, hub_real, ueg)
                 call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
