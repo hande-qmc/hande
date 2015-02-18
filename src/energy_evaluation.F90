@@ -20,7 +20,7 @@ enum, bind(c)
     enumerator :: hf_proj_O_ind
     enumerator :: hf_proj_H_ind
     enumerator :: hf_D0_pop_ind
-    enumerator :: nocc_states
+    enumerator :: nocc_states_ind
     enumerator :: nspawned_ind
     enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
 end enum
@@ -223,7 +223,7 @@ contains
         rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
         rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
         rep_loop_loc(hf_D0_pop_ind) = D0_hf_population
-        rep_loop_loc(nocc_states) = tot_walkers
+        rep_loop_loc(nocc_states_ind) = tot_walkers
         if (present(nspawn_events)) rep_loop_loc(nspawned_ind) = nspawn_events
 
         offset = nparticles_start_ind-1 + iproc*sampling_size
@@ -287,7 +287,7 @@ contains
         proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
         proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
         D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
-        tot_nocc_states = rep_loop_sum(nocc_states)
+        tot_nocc_states = rep_loop_sum(nocc_states_ind)
         tot_nspawn_events = rep_loop_sum(nspawned_ind)
 
         do i = 1, sampling_size
