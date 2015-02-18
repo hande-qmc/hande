@@ -72,14 +72,16 @@ contains
 
 
         ! Set up hamiltonian matrix.
-        call generate_hamil(sys, ndets, dets, distribute_off)
+        call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_off, .true.)
         ! generate_hamil fills in only the lower triangle.
-        ! fill in upper triangle for easy access.
-        do i = 1,ndets
-            do j = i+1, ndets
-                hamil(j,i) = hamil(i,j)
+        if (.not.use_sparse_hamil) then
+            ! Fill in upper triangle for easy access.
+            do i = 1,ndets
+                do j = i+1, ndets
+                    hamil(j,i) = hamil(i,j)
+                end do
             end do
-        end do
+        end if
 
         write (6,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
         write (6,'(1X,a53,1X)') 'Using a simple (but correct) serial FCIQMC algorithm.'
@@ -117,15 +119,30 @@ contains
             allocate(f0(sys%basis%string_len), stat=ierr)
             call check_allocate('f0',sys%basis%string_len,ierr)
         else
-            ref_det = 1
-            do i = 2, ndets
-                if (hamil(i,i) < hamil(ref_det, ref_det)) then
-                    ref_det = i
-                end if
-            end do
+            if (use_sparse_hamil) then
+                H00 = huge(1.0_p)
+                do i = 1, ndets
+                    ! mat(k) is M_{ij}, so row_ptr(i) <= k < row_ptr(i+1) and col_ind(k) = j
+                    do j = hamil_csr%row_ptr(i), hamil_csr%row_ptr(i+1)-1
+                        if (hamil_csr%col_ind(j) == i) then
+                            if (hamil_csr%mat(j) < H00) then
+                                H00 = hamil_csr%mat(j)
+                                ref_det = i
+                            end if
+                        end if
+                    end do
+                end do
+            else
+                ref_det = 1
+                H00 = hamil(1,1)
+                do i = 2, ndets
+                    if (hamil(i,i) < H00) then
+                        ref_det = i
+                        H00 = hamil(ref_det,ref_det)
+                    end if
+                end do
+            end if
 
-            ! Reference det
-            H00 = hamil(ref_det,ref_det)
             if (.not.allocated(f0)) then
                 allocate(f0(sys%basis%string_len), stat=ierr)
                 call check_allocate('f0',sys%basis%string_len,ierr)
@@ -166,13 +183,14 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         type(sys_t), intent(inout) :: sys
-        integer :: ireport, icycle, iwalker, ipart
+        integer :: ireport, icycle, idet, ipart, j
         real(p) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
         type(dSFMT_t) :: rng
         integer :: ref_det, ndets
         integer(i0), allocatable :: dets(:,:)
+        real(p) :: H0i, Hii
 
         call init_simple_fciqmc(sys, ndets, dets, ref_det)
 
@@ -202,20 +220,39 @@ contains
                 nattempts = int(nparticles)
 
                 ! Consider all walkers.
-                do iwalker = 1, ndets
+                do idet = 1, ndets
+
+                    if (use_sparse_hamil) then
+                        Hii = 0.0_p
+                        H0i = 0.0_p
+                        do j = hamil_csr%row_ptr(idet), hamil_csr%row_ptr(idet+1)-1
+                            if (hamil_csr%col_ind(j) == idet) Hii = hamil_csr%mat(j)
+                            if (hamil_csr%col_ind(j) == ref_det) H0i = hamil_csr%mat(j)
+                        end do
+                    else
+                        H0i = hamil(idet,ref_det)
+                        Hii = hamil(idet,idet)
+                    end if
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det, iwalker, proj_energy)
+                    call simple_update_proj_energy(ref_det == idet, H0i, walker_population(1,idet), proj_energy)
 
-                    ! Simulate spawning.
-                    do ipart = 1, abs(walker_population(1,iwalker))
-                        ! Attempt to spawn from the current particle onto all
-                        ! connected determinants.
-                        call attempt_spawn(rng, iwalker)
-                    end do
+                    ! Attempt to spawn from each particle onto all connected determinants.
+                    if (use_sparse_hamil) then
+                        associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
+                            do ipart = 1, abs(walker_population(1,idet))
+                                call attempt_spawn(rng, idet, walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                                                   hamil_csr%col_ind(hstart:hend))
+                            end do
+                        end associate
+                    else
+                        do ipart = 1, abs(walker_population(1,idet))
+                            call attempt_spawn(rng, idet, walker_population(1,idet), hamil(:,idet))
+                        end do
+                    end if
 
-                    call simple_death(rng, iwalker)
+                    call simple_death(rng, Hii, walker_population(1,idet))
 
                 end do
 
@@ -266,7 +303,7 @@ contains
 
     end subroutine do_simple_fciqmc
 
-    subroutine attempt_spawn(rng, iwalker)
+    subroutine attempt_spawn(rng, idet, pop, hrow, det_indx)
 
         ! Simulate spawning part of FCIQMC algorithm.
         ! We attempt to spawn on all determinants connected to the current
@@ -278,49 +315,58 @@ contains
         ! In/Out:
         !    rng: random number generator.
 
-        integer, intent(in) :: iwalker
         type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: idet
+        integer(int_p), intent(in) :: pop
+        real(p), intent(in) :: hrow(:)
+        integer, intent(in), optional :: det_indx(:)
 
-        integer :: j
+        integer :: j, jdet
         integer(int_s) :: nspawn
         real(p) :: rate
         real(p) :: r
 
         ! Simulate spawning by attempting to spawn on all
         ! connected determinants.
-        do j = 1, ubound(hamil, dim=1)
+        do j = 1, ubound(hrow, dim=1)
+
+            if (present(det_indx)) then
+                jdet = det_indx(j)
+            else
+                jdet = j
+            end if
 
             ! Can't spawn onto self.
-            if (iwalker == j) cycle
+            if (idet == jdet) cycle
             ! Can't spawn onto disconnected dets
-            if (hamil(iwalker,j) == 0.0_p) cycle
+            if (abs(hrow(j)) < depsilon) cycle
 
             ! Attempt spawning.
             ! Spawn with probability tau|K_ij|.
             ! As K_ij = H_ij for off-diagonal elements, we can just use the
             ! stored Hamiltonian matrix directly.
-            rate = abs(Tau*hamil(iwalker,j))
+            rate = abs(Tau*hrow(j))
             nspawn = int(rate, int_s)
             rate = rate - nspawn
             r = get_rand_close_open(rng)
             if (rate > r) nspawn = nspawn + 1_int_s
 
             ! Create particles.
-            if (hamil(iwalker,j) > 0.0_p) then
+            if (hrow(j) > 0.0_p) then
                 ! Flip child sign.
-                if (walker_population(1,iwalker) < 0) then
+                if (pop < 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
+                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
+                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
                 end if
             else
                 ! Same sign as parent.
-                if (walker_population(1,iwalker) > 0) then
+                if (pop > 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) + nspawn
+                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,j) = qmc_spawn%sdata(1,j) - nspawn
+                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
                 end if
             end if
 
@@ -328,16 +374,19 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(rng, iwalker)
+    subroutine simple_death(rng, Hii, pop)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
         ! In:
-        !    iwalker: walker whose particles attempt to clone/die.
+        !    Hii: diagonal matrix element, <D_i|H|D_i>
         ! In/Out:
         !    rng: random number generator.
+        !    pop: population on |D_i>.  On output, the population is updated from applying
+        !         the death step.
 
-        integer, intent(in) :: iwalker
         type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(in) :: Hii
+        integer(int_p), intent(inout) :: pop
 
         integer :: nkill
         real(p) :: rate
@@ -350,7 +399,7 @@ contains
         ! We store the Hamiltonian matrix rather than the K matrix.
         ! It is efficient to allow all particles on a given determinant to
         ! attempt to die in one go (like lemmings) in a stochastic process.
-        rate = abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift(1))
+        rate = abs(pop)*tau*(Hii-H00-shift(1))
         ! Number to definitely kill.
         nkill = int(rate)
         rate = rate - nkill
@@ -366,20 +415,19 @@ contains
         end if
 
         ! Don't allow creation of anti-particles in simple_fciqmc.
-        if (nkill > abs(walker_population(1,iwalker))) then
-            write (6,*) iwalker, walker_population(1,iwalker), &
-            abs(walker_population(1,iwalker))*tau*(hamil(iwalker,iwalker)-H00-shift(1))
+        if (nkill > abs(pop)) then
+            write (6,*) pop, abs(pop)*tau*(Hii-H00-shift(1))
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 
         ! Update walker populations.
-        ! Particle death takes the walker_population closer to 0...
+        ! Particle death takes the population closer to 0...
         ! (and similarly if cloning (ie nkill is negative) then the
-        ! walker_population should move away from 0...)
-        if (walker_population(1,iwalker) > 0) then
-            walker_population(1,iwalker) = walker_population(1,iwalker) - nkill
+        ! population should move away from 0...)
+        if (pop > 0) then
+            pop = pop - nkill
         else
-            walker_population(1,iwalker) = walker_population(1,iwalker) + nkill
+            pop = pop + nkill
         end if
 
     end subroutine simple_death
@@ -396,7 +444,7 @@ contains
 
     end subroutine simple_annihilation
 
-    subroutine simple_update_proj_energy(ref_det, iwalker, inst_proj_energy)
+    subroutine simple_update_proj_energy(ref, H0i, pop, proj_energy)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -412,20 +460,22 @@ contains
         ! This procedure is only for the simple fciqmc algorithm, where the
         ! Hamiltonian matrix is explicitly stored.
         ! In:
-        !    ref_det: index of the reference determinant in the walker list.
-        !    iwalker: index of current determinant in the main walker list.
+        !    ref: true if |D_i> is the reference, |D_0>.
+        !    pop: population on |D_i>.
         ! In/Out:
-        !    inst_proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !    This is updated if D_i is connected to D_0 (and isn't D_0).
+        !    proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !    This is updated if |D_i> is connected to |D_0> (and isn't |D_0>).
 
-        integer, intent(in) :: ref_det, iwalker
-        real(p), intent(inout) :: inst_proj_energy
+        logical, intent(in) :: ref
+        real(p), intent(in) :: H0i
+        integer(int_p), intent(in) :: pop
+        real(p), intent(inout) :: proj_energy
 
-        if (iwalker == ref_det) then
+        if (ref) then
             ! Have reference determinant.
-            D0_population = D0_population + walker_population(1,iwalker)
+            D0_population = D0_population + pop
         else
-            inst_proj_energy = inst_proj_energy + hamil(iwalker,ref_det)*walker_population(1,iwalker)
+            proj_energy = proj_energy + H0i*pop
         end if
 
     end subroutine simple_update_proj_energy
