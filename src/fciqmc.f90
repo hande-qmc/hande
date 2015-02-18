@@ -40,7 +40,6 @@ contains
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
-        use energy_evaluation, only: update_energy_estimators_recv
 
         type(sys_t), intent(in) :: sys
 
@@ -87,6 +86,9 @@ contains
         else
             call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false., .false., .false.)
         end if
+
+        ! In case this is not set.
+        nspawn_events = 0
 
         ! Are we using a non-empty semi-stochastic space?
         semi_stochastic = .not. (determ%space_type == empty_determ_space)
@@ -221,8 +223,8 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit, bloom_stats=bloom_stats, &
-                                 rep_comm=par_info%report_comm)
+            call end_report_loop(sys, ireport, update_tau, nparticles_old, nspawn_events, t1, soft_exit, &
+                                  bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 

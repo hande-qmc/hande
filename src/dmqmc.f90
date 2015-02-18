@@ -213,13 +213,14 @@ contains
                 if (average_shift_until > 0) shift_profile(ireport) = shift_profile(ireport) + shift(1)
 
                 ! Sum all quantities being considered across all MPI processes.
-                call communicate_dmqmc_estimates()
+                call communicate_dmqmc_estimates(nspawn_events)
 
                 call update_shift_dmqmc(tot_nparticles, tot_nparticles_old, ireport)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, ireport, .false., tot_nparticles_old, t1, soft_exit, .false., bloom_stats=bloom_stats)
+                call end_report_loop(sys, ireport, .false., tot_nparticles_old, nspawn_events, t1, soft_exit, &
+                                      .false., bloom_stats=bloom_stats)
 
                 if (soft_exit) exit
 

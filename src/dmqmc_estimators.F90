@@ -6,13 +6,16 @@ implicit none
 
 contains
 
-   subroutine communicate_dmqmc_estimates()
+   subroutine communicate_dmqmc_estimates(nspawn_events)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
         ! total number of walkers) across all MPI processes.
 
         ! This is called every report loop in a DMQMC calculation.
+
+        ! In:
+        !    nspawn_events: The total number of spawning events to this process.
 
         use spawn_data, only: annihilate_wrapper_spawn_t
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
@@ -23,8 +26,11 @@ contains
         use fciqmc_data, only: ncycles, trace, calculate_excit_distribution, tot_walkers
         use fciqmc_data, only: excit_distribution, tot_nparticles, tot_nocc_states
         use fciqmc_data, only: calc_inst_rdm, rdm_spawn, rdms, nrdms, rdm_traces, renyi_2
+        use fciqmc_data, only: tot_nspawn_events
         use hash_table, only: reset_hash_table
         use parallel
+
+        integer, intent(in) :: nspawn_events
 
         integer :: irdm
 
@@ -78,6 +84,8 @@ contains
         min_ind = max_ind + 1; max_ind = min_ind
         ir(min_ind:max_ind) = tot_walkers
         min_ind = max_ind + 1; max_ind = min_ind
+        ir(min_ind:max_ind) = nspawn_events
+        min_ind = max_ind + 1; max_ind = min_ind
         ir(min_ind) = rspawn
         min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1
         ir(min_ind:max_ind) = trace
@@ -106,6 +114,8 @@ contains
         tot_nparticles = nint(ir_sum(min_ind:max_ind))
         min_ind = max_ind + 1; max_ind = min_ind
         tot_nocc_states = ir_sum(min_ind)
+        min_ind = max_ind + 1; max_ind = min_ind
+        tot_nspawn_events = ir_sum(min_ind)
         min_ind = max_ind + 1; max_ind = min_ind
         rspawn = ir_sum(min_ind)
         min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1

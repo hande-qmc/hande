@@ -36,7 +36,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         logical, intent(in) :: tinitiator
-        integer, optional :: nspawn_events
+        integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
 
         integer, parameter :: thread_id = 0

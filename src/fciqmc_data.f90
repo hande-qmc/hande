@@ -85,7 +85,7 @@ integer(int_p) :: real_factor
 ! the spawned list.
 ! If real amplitudes are not used then the following default will be
 ! overwritten by 0.0_p. In this case it will effectively not be used and all
-! spawnings events will be integers.
+! spawning events will be integers.
 real(p) :: spawn_cutoff = 0.01_p
 
 !--- Semi-stochastic ---
@@ -304,6 +304,9 @@ real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
 ! until it is summed over processors and averaged over cycles in
 ! update_energy_estimators.
 real(p) :: rspawn
+
+! The total number of successful spawning events, across all processes.
+integer :: tot_nspawn_events
 
 !--- Reference determinant ---
 
@@ -663,7 +666,7 @@ contains
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2
+        use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, non_blocking_comm
         use utils, only: int_fmt
 
         integer :: i, j
@@ -721,7 +724,11 @@ contains
                 write (6,'(4X,a9,8X)', advance='no') "# H psips"
             end if
         end if
-        write (6,'(3X,"# states  R_spawn   time")')
+        if (non_blocking_comm) then
+            write (6,'(3X,"# states  R_spawn   time")')
+        else
+            write (6,'(3X,"# states  # spawn_events  R_spawn   time")')
+        end if
 
     end subroutine write_fciqmc_report_header
 
@@ -802,7 +809,11 @@ contains
                                              proj_energy, D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,i10,2X,f7.4,2X,f6.3)') tot_nocc_states, rspawn, elapsed_time/ncycles
+        if (non_blocking_comm) then
+            write (6,'(2X,i10,2X,f7.4,2X,f6.3)') tot_nocc_states, rspawn, elapsed_time/ncycles
+        else
+            write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') tot_nocc_states, tot_nspawn_events, rspawn, elapsed_time/ncycles
+        end if
 
     end subroutine write_fciqmc_report
 
