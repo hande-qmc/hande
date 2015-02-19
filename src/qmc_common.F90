@@ -460,9 +460,11 @@ contains
             call mpi_gather(tot_walkers, 1, mpi_integer8, load_data_int_64, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(spawn_mpi_time%comm_time, 1, mpi_preal, spawn_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
 
+            if (present(determ_mpi_time)) call mpi_gather(determ_mpi_time%comm_time, 1, mpi_preal, determ_comms, 1, &
+                                                           mpi_preal, 0, MPI_COMM_WORLD, ierr)
+
             if (use_mpi_barriers) then
                 if (present(determ_mpi_time)) then
-                    call mpi_gather(determ_mpi_time%comm_time, 1, mpi_preal, determ_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
                     barrier_this_proc = spawn_mpi_time%barrier_time + determ_mpi_time%barrier_time
                 else
                     barrier_this_proc = spawn_mpi_time%barrier_time
