@@ -83,9 +83,9 @@ contains
         ! then turn it on now. Otherwise, use an empty deterministic space.
         if (semi_stoch_start_iter == 0) then
             call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
-                                    separate_determ_annihil, write_determ_space)
+                                    separate_determ_annihil, use_mpi_barriers, write_determ_space)
         else
-            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false., .false.)
+            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false., .false., .false.)
         end if
 
         ! Are we using a non-empty semi-stochastic space?
@@ -119,7 +119,7 @@ contains
                 if (iter == semi_stoch_start_iter) then
                     call dealloc_semi_stoch_t(determ)
                     call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
-                                            separate_determ_annihil, write_determ_space)
+                                            separate_determ_annihil, use_mpi_barriers, write_determ_space)
                     semi_stochastic = .true.
                 end if
 

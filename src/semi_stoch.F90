@@ -99,7 +99,7 @@ implicit none
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, separate_annihilation, write_determ_in)
+    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, separate_annihilation, mpi_barriers, write_determ_in)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -118,6 +118,8 @@ contains
         !        determ object will not use the standard annihilation routine
         !        to treat deterministic spawnings, but will handle them
         !        separately.
+        !    mpi_barriers: If true then use an mpi_barrier call to measure
+        !        load balancing before semi-stochastic communication.
         !    write_determ_in: If true then write out the deterministic states to
         !        a file.
 
@@ -136,6 +138,7 @@ contains
         integer, intent(in) :: space_type
         integer, intent(in) :: target_size
         logical, intent(in) :: separate_annihilation
+        logical, intent(in) :: mpi_barriers
         logical, intent(in) :: write_determ_in
 
         integer :: i, ierr, determ_dets_mem
@@ -154,6 +157,7 @@ contains
 
         ! Zero the semi-stochastic MPI times, just in case this determ object
         ! is being reused.
+        if (mpi_barriers) determ%mpi_time%check_barrier_time = .true.
         determ%mpi_time%comm_time = 0.0_p
         determ%mpi_time%barrier_time = 0.0_p
 
@@ -741,9 +745,11 @@ contains
 
         ! Start by timing an MPI_Barrier call, which can indicate potential
         ! load balancing issues.
-        t1 = real(MPI_WTIME(), p)
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
-        determ%mpi_time%barrier_time = determ%mpi_time%barrier_time + real(MPI_WTIME(), p) - t1
+        if (determ%mpi_time%check_barrier_time) then
+            t1 = real(MPI_WTIME(), p)
+            call MPI_Barrier(MPI_COMM_WORLD, ierr)
+            determ%mpi_time%barrier_time = determ%mpi_time%barrier_time + real(MPI_WTIME(), p) - t1
+        end if
 
         t1 = real(MPI_WTIME(), p)
 

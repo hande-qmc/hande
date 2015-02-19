@@ -122,7 +122,7 @@ contains
 
 !--- Initialisation/finalisation ---
 
-    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, cutoff, bit_shift, hash_seed, spawn)
+    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, cutoff, bit_shift, hash_seed, mpi_barriers, spawn)
 
         ! Allocate and initialise a spawn_t object.
 
@@ -134,6 +134,8 @@ contains
         !       for each entry.
         !    cutoff: The size of the minimum spawning event allowed.
         !    bit_shift: The number of bits to shift the cutoff by when encoding it.
+        !    mpi_barriers: If true then use an mpi_barrier call to measure
+        !        load balancing before semi-stochastic communication.
         ! Out:
         !    spawn: initialised object for storing, communicating and
         !       annihilation spawned particles.
@@ -146,7 +148,7 @@ contains
 
         integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift
         real(p) :: cutoff
-        logical, intent(in) :: flag
+        logical, intent(in) :: flag, mpi_barriers
         type(spawn_t), intent(out) :: spawn
 
         integer :: ierr, block_size, i, j
@@ -166,6 +168,7 @@ contains
         end if
         spawn%array_len = array_len
         spawn%hash_seed = hash_seed
+        if (mpi_barriers) spawn%mpi_time%check_barrier_time = .true.
         spawn%mpi_time%barrier_time = 0.0_p
         spawn%mpi_time%comm_time = 0.0_p
         ! Convert the spawning cutoff to the encoded representation for walker
@@ -534,9 +537,11 @@ contains
 
         ! Start by timing an MPI_Barrier call, which can indicate potential
         ! load balancing issues.
-        t1 = real(MPI_WTIME(), p)
-        call MPI_Barrier(MPI_COMM_WORLD, ierr)
-        spawn%mpi_time%barrier_time = spawn%mpi_time%barrier_time + real(MPI_WTIME(), p) - t1
+        if (spawn%mpi_time%check_barrier_time) then
+            t1 = real(MPI_WTIME(), p)
+            call MPI_Barrier(MPI_COMM_WORLD, ierr)
+            spawn%mpi_time%barrier_time = spawn%mpi_time%barrier_time + real(MPI_WTIME(), p) - t1
+        end if
 
         t1 = real(MPI_WTIME(), p)
 

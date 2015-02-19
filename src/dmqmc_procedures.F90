@@ -180,7 +180,7 @@ contains
         use fciqmc_data, only: replica_tricks, renyi_2, sampling_size, real_bit_shift, spawn_cutoff
         use fciqmc_data, only: spawned_rdm_length, rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
-        use parallel, only: parent
+        use parallel, only: parent, use_mpi_barriers
         use spawn_data, only: alloc_spawn_t
         use system, only: sys_t, heisenberg
         use utils, only: int_fmt
@@ -249,7 +249,7 @@ contains
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_string_len*2, sampling_size, .false., &
                                      spawned_rdm_length, spawn_cutoff, real_bit_shift, &
-                                     27, rdm_spawn(i)%spawn)
+                                     27, use_mpi_barriers, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
                 ! the table is three times as large as the spawning arrays and
                 ! each hash value can have 7 clashes. This was found to give

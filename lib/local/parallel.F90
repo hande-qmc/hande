@@ -68,8 +68,15 @@ type blacs_info
     integer :: desc_v(9)
 end type blacs_info
 
+!--- Information about MPI timing ---
+
+! If true then allow the use of MPI barrier calls.
+logical :: use_mpi_barriers = .false.
+
 ! Type for holding MPI barrier and communication times.
 type parallel_timing_t
+    ! If true then check the MPI barrier time before communication.
+    logical :: check_barrier_time = .false.
     ! The amount of time spent waiting for other processes before an MPI call
     ! can be made.
     real(p) :: barrier_time = 0.0_p

@@ -459,13 +459,16 @@ contains
             end if
             call mpi_gather(tot_walkers, 1, mpi_integer8, load_data_int_64, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(spawn_mpi_time%comm_time, 1, mpi_preal, spawn_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
-            if (present(determ_mpi_time)) then
-                call mpi_gather(determ_mpi_time%comm_time, 1, mpi_preal, determ_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
-                barrier_this_proc = spawn_mpi_time%barrier_time + determ_mpi_time%barrier_time
-            else
-                barrier_this_proc = spawn_mpi_time%barrier_time
+
+            if (use_mpi_barriers) then
+                if (present(determ_mpi_time)) then
+                    call mpi_gather(determ_mpi_time%comm_time, 1, mpi_preal, determ_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
+                    barrier_this_proc = spawn_mpi_time%barrier_time + determ_mpi_time%barrier_time
+                else
+                    barrier_this_proc = spawn_mpi_time%barrier_time
+                end if
+                call mpi_gather(barrier_this_proc, 1, mpi_preal, barrier_time, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
             end if
-            call mpi_gather(barrier_this_proc, 1, mpi_preal, barrier_time, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
 
             if (parent) then
                 lfmt = int_fmt(maxval(load_data_int_64),0)
@@ -473,10 +476,12 @@ contains
                 write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int_64)
                 write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_int_64), p)/nprocs
                 write (6,'()')
-                write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
-                write (6,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
-                write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') real(sum(barrier_time), p)/nprocs
-                write (6,'()')
+                if (use_mpi_barriers) then
+                    write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
+                    write (6,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
+                    write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') real(sum(barrier_time), p)/nprocs
+                    write (6,'()')
+                end if
                 write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s")') minval(spawn_comms)
                 write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s")') maxval(spawn_comms)
                 write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') real(sum(spawn_comms), p)/nprocs
