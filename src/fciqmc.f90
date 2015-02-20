@@ -29,7 +29,7 @@ contains
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
-                        doing_load_balancing
+                        doing_load_balancing, use_mpi_barriers
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
         use qmc_common

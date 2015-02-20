@@ -70,10 +70,6 @@ end type blacs_info
 
 !--- Information about MPI timing ---
 
-! If true then allow the use of MPI barrier calls.
-! [review] - JSS: move to fciqmc_data/calc so it is picked up by the purity effort?
-logical :: use_mpi_barriers = .false.
-
 ! Type for holding MPI barrier and communication times.
 type parallel_timing_t
     ! If true then check the MPI barrier time before communication.

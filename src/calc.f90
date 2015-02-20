@@ -261,6 +261,9 @@ type parallel_t
     type(nb_rep_t) :: report_comm
 end type parallel_t
 
+! If true then allow the use of MPI barrier calls.
+logical :: use_mpi_barriers = .false.
+
 contains
 
     subroutine init_calc_defaults(git_sha1, uuid)

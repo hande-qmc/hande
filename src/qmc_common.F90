@@ -429,6 +429,7 @@ contains
         ! determinants and walkers/particles are distributed over the processors.
 
 #ifdef PARALLEL
+        use calc, only: use_mpi_barriers
         use parallel
         use utils, only: int_fmt
 

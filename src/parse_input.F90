@@ -39,7 +39,6 @@ contains
         use input
         use utils, only: get_free_unit
         use checking, only: check_allocate
-        use parallel, only: use_mpi_barriers
 
 #ifdef NAGF95
         use f90_unix_env, ONLY: getarg,iargc

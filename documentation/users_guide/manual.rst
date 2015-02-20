@@ -1606,10 +1606,11 @@ the result but can have a significant impact on performance.
     Perform MPI_Barrier calls before the main MPI communication calls (both
     for communication of the spawned list, and any semi-stochastic
     communication). These are timed, and the total time spent in these calls
-    is output at the end of a simulation. This is turned off by default
-    because such calls may have an initialisation time which scales badly
-    to many processors.
-.. [review] - JSS: when might this be useful?
+    is output at the end of a simulation. This option is useful for assessing
+    issues in load balancing, as it will allow you to see when certain
+    processors take longer to perform their work than others. This is turned
+    off by default because such calls may have an initialisation time which
+    scales badly to many processors.
 
 Calculation options: folded spectrum options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
