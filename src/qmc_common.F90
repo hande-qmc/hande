@@ -497,7 +497,8 @@ contains
                 if (present(determ_mpi_time)) then
                     write (6,'(1X,"Min time taken by semi-stochastic communication:",5X,f8.2,"s")') minval(determ_comms)
                     write (6,'(1X,"Max time taken by semi-stochastic communication:",5X,f8.2,"s")') maxval(determ_comms)
-                    write (6,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') real(sum(determ_comms), p)/nprocs
+                    write (6,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') &
+                        real(sum(determ_comms), p)/nprocs
                     write (6,'()')
                 end if
             end if
