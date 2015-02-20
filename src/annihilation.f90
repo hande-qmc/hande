@@ -716,7 +716,7 @@ contains
                 ! Store H^T_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj),
                 ! where H^T_ii is the "trial" Hamiltonian.
                 associate(bl=>sys%basis%string_len)
-                    walker_data(1,pos) = trial_dm_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - (walker_data(1,pos) + H00)
+                    walker_data(1,pos) = -trial_dm_ptr(sys, walker_dets((bl+1):(2*bl),pos)) + (walker_data(1,pos) + H00)
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.
