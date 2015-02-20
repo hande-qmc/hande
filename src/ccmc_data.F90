@@ -70,9 +70,7 @@ contains
 
         ms_stats%nevents = sum(ms_stats_arr%nevents)
         ms_stats%nspawnings = sum(ms_stats_arr%nspawnings)
-        do i = 1, ubound(ms_stats_arr, dim=1)
-            ms_stats%nspawnings_max = maxval(ms_stats_arr%nspawnings_max)
-        end do
+        ms_stats%nspawnings_max = maxval(ms_stats_arr%nspawnings_max)
 
     end function ms_stats_reduction
 
@@ -92,7 +90,6 @@ contains
         type(multispawn_stats_t) :: ms_stats_local
         integer :: ierr
 
-        ! [review] - RSTF: Should the ms_stats objects be reduced across the MPI ranks as well as the threads?
         ms_stats_local = ms_stats_reduction(ms_stats)
         call mpi_reduce(ms_stats_local%nevents, ms_stats_total%nevents, 1, MPI_INTEGER, &
                         MPI_SUM, root, MPI_COMM_WORLD, ierr)
