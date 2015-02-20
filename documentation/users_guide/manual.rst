@@ -1609,6 +1609,7 @@ the result but can have a significant impact on performance.
     is output at the end of a simulation. This is turned off by default
     because such calls may have an initialisation time which scales badly
     to many processors.
+.. [review] - JSS: when might this be useful?
 
 Calculation options: folded spectrum options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
