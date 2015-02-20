@@ -68,6 +68,19 @@ type blacs_info
     integer :: desc_v(9)
 end type blacs_info
 
+!--- Information about MPI timing ---
+
+! Type for holding MPI barrier and communication times.
+type parallel_timing_t
+    ! If true then check the MPI barrier time before communication.
+    logical :: check_barrier_time = .false.
+    ! The amount of time spent waiting for other processes before an MPI call
+    ! can be made.
+    real(p) :: barrier_time = 0.0_p
+    ! The total time taken for MPI communications.
+    real(p) :: comm_time = 0.0_p
+end type parallel_timing_t
+
 !--- MPI Communication data types ---
 
 ! MPI data type for 32-bit or 64-bit integer used in determinant bit arrays.

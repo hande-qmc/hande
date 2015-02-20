@@ -523,6 +523,8 @@ contains
                 call readi(par_info%load%max_attempts)
             case('WRITE_LOAD_INFO')
                 par_info%load%write_info = .true.
+            case('USE_MPI_BARRIERS')
+                use_mpi_barriers = .true.
 
             case('FINITE_CLUSTER')
                 ! this will be checked in check_input to ensure that it
@@ -967,6 +969,7 @@ contains
         call mpi_bcast(par_info%load%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%write_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(use_mpi_barriers, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(fold_line, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(P__, 1, mpi_preal, 0, mpi_comm_world, ierr)

@@ -171,7 +171,7 @@ contains
         ! In:
         !    sys: system being studied.
 
-        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2
+        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
@@ -247,7 +247,7 @@ contains
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%rdm_string_len*2, sampling_size, .false., &
                                      spawned_rdm_length, spawn_cutoff, real_bit_shift, &
-                                     27, rdm_spawn(i)%spawn)
+                                     27, use_mpi_barriers, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
                 ! the table is three times as large as the spawning arrays and
                 ! each hash value can have 7 clashes. This was found to give

@@ -8,6 +8,7 @@ use csr, only: csrp_t
 use spawn_data, only: spawn_t
 use hash_table, only: hash_table_t
 use calc, only: parallel_t
+use parallel, only: parallel_timing_t
 implicit none
 
 !--- Input data: FCIQMC ---
@@ -168,6 +169,11 @@ type semi_stoch_t
     ! equal to 0 then the corresponding state in position i of the main list is
     ! a deterministic state, else it is not.
     integer, allocatable :: flags(:)
+    ! Type for holding information about semi-stochastic MPI timings.
+    ! This is only used if separate_annihilation is .true.. If it is false
+    ! then semi-stochastic communication is performed with the main spawning
+    ! communicaton.
+    type(parallel_timing_t) :: mpi_time
 end type semi_stoch_t
 
 ! The iteration on which to turn on the semi-stochastic algorithm using the
@@ -570,8 +576,6 @@ integer :: select_ref_det_every_nreports = huge(1)
 ! determinant's population in order to be accepted as the new reference
 ! determinant.
 real(p) :: ref_det_factor = 1.50_p
-
-real(dp) :: annihilation_comms_time = 0.0_dp
 
 !--- Calculation modes ---
 

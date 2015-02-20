@@ -421,19 +421,31 @@ contains
 
     end subroutine stochastic_round_int_64
 
-    subroutine load_balancing_report()
+    subroutine load_balancing_report(spawn_mpi_time, determ_mpi_time)
+
+        ! In:
+        !    spawn_mpi_time: MPI timings for the spawned list, on this process
+        !        only.
+        ! In (optional):
+        !    determ_mpi_time: MPI timings for semi-stochastic communications,
+        !        on this process only.
 
         ! Print out a load-balancing report when run in parallel showing how
         ! determinants and walkers/particles are distributed over the processors.
 
 #ifdef PARALLEL
+        use calc, only: use_mpi_barriers
         use parallel
         use utils, only: int_fmt
+
+        type(parallel_timing_t), intent(in) :: spawn_mpi_time
+        type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 
         real(dp) :: load_data(sampling_size, nprocs)
         integer(int_64) :: load_data_int_64(nprocs)
         integer :: i, ierr
-        real(dp) :: comms(nprocs)
+        real(p) :: barrier_this_proc
+        real(p) :: spawn_comms(nprocs), determ_comms(nprocs), barrier_time(nprocs)
         character(4) :: lfmt
 
         if (nprocs > 1) then
@@ -452,19 +464,49 @@ contains
                 end do
             end if
             call mpi_gather(tot_walkers, 1, mpi_integer8, load_data_int_64, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
-            call mpi_gather(annihilation_comms_time, 1, mpi_real8, comms, 1, mpi_real8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(spawn_mpi_time%comm_time, 1, mpi_preal, spawn_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
+
+            if (present(determ_mpi_time)) call mpi_gather(determ_mpi_time%comm_time, 1, mpi_preal, determ_comms, 1, &
+                                                           mpi_preal, 0, MPI_COMM_WORLD, ierr)
+
+            if (use_mpi_barriers) then
+                if (present(determ_mpi_time)) then
+                    barrier_this_proc = spawn_mpi_time%barrier_time + determ_mpi_time%barrier_time
+                else
+                    barrier_this_proc = spawn_mpi_time%barrier_time
+                end if
+                call mpi_gather(barrier_this_proc, 1, mpi_preal, barrier_time, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
+            end if
+
             if (parent) then
                 lfmt = int_fmt(maxval(load_data_int_64),0)
                 write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int_64)
                 write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int_64)
                 write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_int_64), p)/nprocs
                 write (6,'()')
-                write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s.")') minval(comms)
-                write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s.")') maxval(comms)
-                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s.")') real(sum(comms), p)/nprocs
+                if (use_mpi_barriers) then
+                    write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
+                    write (6,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
+                    write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') real(sum(barrier_time), p)/nprocs
+                    write (6,'()')
+                end if
+                write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s")') minval(spawn_comms)
+                write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s")') maxval(spawn_comms)
+                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') real(sum(spawn_comms), p)/nprocs
                 write (6,'()')
+                if (present(determ_mpi_time)) then
+                    write (6,'(1X,"Min time taken by semi-stochastic communication:",5X,f8.2,"s")') minval(determ_comms)
+                    write (6,'(1X,"Max time taken by semi-stochastic communication:",5X,f8.2,"s")') maxval(determ_comms)
+                    write (6,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') real(sum(determ_comms), p)/nprocs
+                    write (6,'()')
+                end if
             end if
         end if
+#else
+        use parallel, only: parallel_timing_t
+
+        type(parallel_timing_t), intent(in) :: spawn_mpi_time
+        type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 #endif
 
     end subroutine load_balancing_report

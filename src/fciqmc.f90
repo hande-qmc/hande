@@ -29,7 +29,7 @@ contains
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list
         use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
-                        doing_load_balancing
+                        doing_load_balancing, use_mpi_barriers
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
@@ -83,9 +83,9 @@ contains
         ! then turn it on now. Otherwise, use an empty deterministic space.
         if (semi_stoch_start_iter == 0) then
             call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
-                                    separate_determ_annihil, write_determ_space)
+                                    separate_determ_annihil, use_mpi_barriers, write_determ_space)
         else
-            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false., .false.)
+            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false., .false., .false.)
         end if
 
         ! Are we using a non-empty semi-stochastic space?
@@ -119,7 +119,7 @@ contains
                 if (iter == semi_stoch_start_iter) then
                     call dealloc_semi_stoch_t(determ)
                     call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
-                                            separate_determ_annihil, write_determ_space)
+                                            separate_determ_annihil, use_mpi_barriers, write_determ_space)
                     semi_stochastic = .true.
                 end if
 
@@ -233,7 +233,11 @@ contains
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
-        call load_balancing_report()
+        if (semi_stochastic .and. determ%separate_annihilation) then
+            call load_balancing_report(qmc_spawn%mpi_time, determ%mpi_time)
+        else
+            call load_balancing_report(qmc_spawn%mpi_time)
+        end if
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + ncycles*ireport

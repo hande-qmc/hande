@@ -245,10 +245,10 @@ contains
         if (.not. real_amplitudes) spawn_cutoff = 0.0_p
 
         call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
-                         spawned_walker_length, spawn_cutoff, real_bit_shift, 7, qmc_spawn)
+                         spawned_walker_length, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
         if (non_blocking_comm) then
             call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
-                               spawned_walker_length, spawn_cutoff, real_bit_shift, 7, received_list)
+                               spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
         if (nprocs == 1 .or. .not. doing_load_balancing) par_info%load%nslots = 1

@@ -1593,12 +1593,24 @@ the result but can have a significant impact on performance.
     Load balancing will be attempted once per report loop until max_load_attempts
     is reached.
 **write_load_info**
-    Default false.
+    Default: false.
 
     Write out the population of the most and least heavily populated processor
     before and after load balancing is carried out. Also print out the
     minimum slot population on the most populated processor which will
     indicate if load balancing is possible.
+
+**use_mpi_barriers**
+    Default: false.
+
+    Perform MPI_Barrier calls before the main MPI communication calls (both
+    for communication of the spawned list, and any semi-stochastic
+    communication). These are timed, and the total time spent in these calls
+    is output at the end of a simulation. This option is useful for assessing
+    issues in load balancing, as it will allow you to see when certain
+    processors take longer to perform their work than others. This is turned
+    off by default because such calls may have an initialisation time which
+    scales badly to many processors.
 
 Calculation options: folded spectrum options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
