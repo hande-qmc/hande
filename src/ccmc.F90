@@ -247,7 +247,7 @@ contains
                                  accumulate_bloom_stats, write_bloom_report
         use calc, only: seed, truncation_level, truncate_space, initiator_approximation, &
                               linked_ccmc, ccmc_full_nc
-        use ccmc_data, only: cluster_t
+        use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level
         use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
@@ -276,6 +276,7 @@ contains
         type(excit_t) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
         type(cluster_t), allocatable :: left_cluster(:), right_cluster(:)
+        type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
         real(p) :: junk, bloom_threshold
 
@@ -318,6 +319,8 @@ contains
         ! Allocate and initialise per thread...
         allocate(rng(0:nthreads-1), stat=ierr)
         call check_allocate('rng', size(rng), ierr)
+        allocate(ms_stats(0:nthreads-1), stat=ierr)
+        call check_allocate('ms_stats', size(ms_stats), ierr)
         if (parent) call rng_init_info(seed+iproc)
 
         if (linked_ccmc) then
@@ -499,7 +502,7 @@ contains
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
                 !$omp        nsingle_excitors, cluster_multispawn_threshold,    &
                 !$omp        linked_ccmc, ldet, rdet, left_cluster,             &
-                !$omp        right_cluster, nprocs, ccmc_full_nc,               &
+                !$omp        right_cluster, nprocs, ccmc_full_nc, ms_stats,     &
                 !$omp        walker_population, tot_walkers, walker_data,       &
                 !$omp        walker_dets, nparticles_change, ndeath, D0_population)
                 it = get_thread_id()
@@ -563,8 +566,9 @@ contains
                         ! increased to the ratio of these.
                         nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
                                                          cluster_multispawn_threshold))
-
+                        call ms_stats_update(nspawnings_total, ms_stats(it))
                         nattempts_spawn = nattempts_spawn + nspawnings_total
+
                         do i = 1, nspawnings_total
                             if (cluster(it)%excitation_level == huge(0)) then
                                 ! When sampling e^-T H e^T, the cluster operators in e^-T
@@ -646,6 +650,7 @@ contains
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
+        call multispawn_stats_report(ms_stats)
         call load_balancing_report(qmc_spawn%mpi_time)
 
         if (soft_exit) then
