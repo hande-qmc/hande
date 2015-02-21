@@ -899,7 +899,8 @@ contains
                                                           (1+exp(beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
         ! Occupy the diagonal.
-        do ipsip = 1, npsips
+        ipsip = 0
+        do while (ipsip < npsips)
             occ_list = 0
             ! Select the alpha and beta spin orbitals.
             if (sys%nalpha > 0) call generate_allowed_orbital_list(rng, p_single, sys%nalpha, 1, occ_list(:sys%nalpha), gen)
@@ -911,6 +912,7 @@ contains
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                             sys%basis%tensor_label_len, real_factor, ireplica)
+                ipsip = ipsip + 1
             end if
         end do
 
