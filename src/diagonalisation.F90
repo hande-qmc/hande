@@ -530,7 +530,7 @@ contains
                     !$omp end parallel
                     if (imode == 1) then
                         write (6,'(1X,a50,i8/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
-                        call init_csrp(hamil_csr, ndets, nnz)
+                        call init_csrp(hamil_csr, ndets, nnz, .true.)
                         hamil_csr%row_ptr(1:ndets) = 0
                     else
                         ! Any element not set in row_ptr means that the
