@@ -825,8 +825,8 @@ contains
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(rep_info_copy, update_tau=update_tau_now, bloom_stats=bloom_stats, &
-                                          spawn_elsewhere=rep_comm%nb_spawn(2))
+            call local_energy_estimators(rep_info_copy, nspawn_events, update_tau_now, bloom_stats, &
+                                          rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
             call update_energy_estimators_recv(rep_comm%request, ntot_particles, update_tau_now, bloom_stats)
             ! Send current report loop quantities.
