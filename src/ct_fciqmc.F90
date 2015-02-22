@@ -95,7 +95,7 @@ contains
         do ireport = 1, nreport
 
             call init_report_loop(bloom_stats)
-            call init_mc_cycle(real_factor, nattempts, ndeath)
+            call init_mc_cycle(sys, real_factor, nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers

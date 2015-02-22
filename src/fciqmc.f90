@@ -123,7 +123,7 @@ contains
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(real_factor, nattempts, ndeath)
+                call init_mc_cycle(sys, real_factor, nattempts, ndeath, determ=determ)
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
@@ -196,9 +196,9 @@ contains
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
                     call direct_annihilation_received_list(sys, rng, initiator_approximation)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
-                    if (doing_load_balancing) call redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, &
-                                                                        walker_population, tot_walkers, nparticles,        &
-                                                                        qmc_spawn, par_info%load%needed)
+                    if (doing_load_balancing) call redistribute_particles(walker_dets, real_factor, &
+                                                                          walker_population, tot_walkers, &
+                                                                          nparticles, qmc_spawn)
                     call direct_annihilation_spawned_list(sys, rng, initiator_approximation, send_counts, req_data_s, &
                                                           par_info%report_comm%nb_spawn)
                     call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
@@ -213,10 +213,6 @@ contains
                             call determ_projection(rng, qmc_spawn, determ)
                         end if
                     end if
-
-                    if (doing_load_balancing) call redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, &
-                                                                        walker_population, tot_walkers, nparticles,        &
-                                                                        qmc_spawn, par_info%load%needed)
 
                     if (semi_stochastic) then
                         call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ)

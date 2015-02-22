@@ -613,12 +613,13 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(real_factor, nattempts, ndeath, min_attempts)
+    subroutine init_mc_cycle(sys, real_factor, nattempts, ndeath, min_attempts, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
 
         ! In:
+        !    sys: system being studied
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         !    min_attempts (optional): if present, set nattempts to be at least this value.
@@ -627,14 +628,20 @@ contains
         !        processor) this cycle.
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
+        ! In/Out (optional):
+        !    determ: The deterministic space being used, as required for
+        !        semi-stochastic calculations.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, doing_load_balancing
         use load_balancing, only: do_load_balancing
+        use system, only: sys_t
 
+        type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
+        type(semi_stoch_t), optional, intent(inout) :: determ
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
@@ -665,6 +672,8 @@ contains
 
         if (doing_load_balancing .and. par_info%load%needed) then
             call do_load_balancing(real_factor, par_info)
+            call redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, walker_population, &
+                                                  tot_walkers, nparticles, qmc_spawn, par_info%load%needed)
         end if
 
     end subroutine init_mc_cycle
@@ -833,7 +842,7 @@ contains
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! In/Out:
-        !    determ: The deterministic space being used, as required for
+        !    determ (optional): The deterministic space being used, as required for
         !        semi-stochastic calculations.
         !    nparticles: number of excips on the current processor.
         !    walker_populations: Population on occupied excitors.  On output the
@@ -853,7 +862,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: walker_dets(:,:)
         integer(int_p), intent(in) :: real_factor
-        type(semi_stoch_t), intent(inout) :: determ
+        type(semi_stoch_t), optional, intent(inout) :: determ
         integer(int_p), intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
         real(dp), intent(inout) :: nparticles(:)
@@ -862,7 +871,7 @@ contains
 
         if (load_tag) then
             call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
-            call redistribute_semi_stoch_t(sys, spawn, determ)
+            if (present(determ)) call redistribute_semi_stoch_t(sys, spawn, determ)
             load_tag = .false.
         end if
 
