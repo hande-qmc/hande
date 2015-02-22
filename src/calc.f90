@@ -115,6 +115,7 @@ integer, parameter :: distribute_cols = 2
 
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
+
 ! Flag for using non-blocking communications.
 ! Default: False.
 logical :: non_blocking_comm = .false.
@@ -265,6 +266,7 @@ type load_t
     integer, allocatable :: proc_map(:)
 end type load_t
 
+! [todo] - document
 type parallel_t
     type(load_t) :: load
     type(nb_rep_t) :: report_comm

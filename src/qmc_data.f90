@@ -3,119 +3,223 @@ module qmc_data
 use const
 use spawn_data, only: spawn_t
 use calc, only: parallel_t
+use hash_table, only: hash_table_t
+use csr, only: csrp_t
 
 implicit none
 
 ! [todo] - update kinds following Ruth's single precision work.
-! [todo] - get in a state that actually compiles...
 
-! [review] - FDM: I think some or all of the following should be in calc.
-! [review] - NSB: Yes that seems reasonable. We could perhaps do with some
-! [review] - NSB: derived types for holding calculation options specific to
-! [review] - NSB: each method (FCIQMC, CCMC, DMQMC...), and they should go
-! [review] - NSB: in calc I guess. These variables look mostly to do with
-! [review] - NSB: DMQMC options. Then qmc_data should contain derived types
-! [review] - NSB: for various data objects used by those methods, which looks
-! [review] - NSB: like what is happening, so it looks good to me.
-! [review] - JSS: Agree with NSB.  There should be a derived type for settings common to
-! [review] - JSS: all the QMC methods as well.  Only input *options* should be moved to
-! [review] - JSS: calc though (ie telling the calculation what to do).  The results of
-! [review] - JSS: the calculation should be in a *_data module.
-! [todo] - dicuss.
+! --- QMC input ---
 
-! --- QMC input (generic) ---
+type qmc_in_t
 
-! Don't bother renormalising generation probabilities; instead allow forbidden
-! excitations to be generated and then rejected.
-logical :: no_renorm = .false.
+    ! Seed used to initialise the dSFMT random number generator.
+    integer :: seed
 
-! probability of attempting single or double excitations...
-! set to be nonsense value so can easily detect if it's given as an input option
-real(p) :: pattempt_single = -1, pattempt_double = -1
+    ! True if allowing non-integer values for psip populations.
+    logical :: real_amplitudes = .false.
 
-! True if allowing non-integer values for psip populations.
-logical :: real_amplitudes = .false.
+    ! Don't bother renormalising generation probabilities; instead allow forbidden
+    ! excitations to be generated and then rejected.
+    logical :: no_renorm = .false.
 
-! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
-! Currently only implemented for DMQMC.
-logical :: replica_tricks = .false.
+    ! probability of attempting single or double excitations...
+    ! set to be nonsense value so can easily detect if it's given as an input option
+    real(p) :: pattempt_single = -1, pattempt_double = -1
 
-! --- DMQMC input --
+    ! timestep
+    ! Note: qmc_data_t%tau is used and (if desired) updated during the course of a simulation)
+    real(p) :: tau
+    ! Are we doing a timestep search
+    logical :: tau_search = .false.
 
-! [review] - JSS: derived types for input options for the base algorithm, input
-! [review] - JSS: options for the estimators calculated (and separately for RDMs?)?
+    ! The shift (energy offset) is set to vary_shift_from when variable shift mode is entered.
+    ! WARNING: if both initial_shift and vary_shift_from are set, then we expect the
+    ! user to have been sensible.
+    real(p) :: vary_shift_from = 0.0_p
+    ! If true, then the when variable shift mode is entered the shift is set to be the
+    ! current projected energy estimator.  Overrides vary_shift_from.
+    logical :: vary_shift_from_proje = .false.
+    ! Initial shift.
+    real(p) :: initial_shift = 0.0_p
+    ! Factor by which the changes in the population are damped when updating the
+    ! shift.
+    real(p) :: shift_damping = 0.050_dp
 
-! If this logical is true then the program runs the DMQMC algorithm with
-! importance sampling.
-! dmqmc_sampling_prob stores the factors by which the probabilities of
-! spawning to a larger excitation are reduced by. So, when spawning from
-! a diagonal element to a element with one excitation, the probability
-! of spawning is reduced by a factor dmqmc_sampling_probs(1).
-! dmqmc_accumulated_probs(i) stores the multiplication of all the elements
-! of dmqmc_sampling_probs up to the ith element. This quantity is often
-! needed, so it is stored.
-logical :: dmqmc_weighted_sampling = .false.
-! If dmqmc_vary_weights is true, then instead of using the final sampling
-! weights for all the iterations, the weights will be gradually increased
-! until finish_varying_weights, at which point they will be held constant.
-! weight_altering_factors stores the factors by which each weight is
-! multiplied at each step. 
-logical :: dmqmc_vary_weights = .false.
-! If this logical is true then the program will calculate the ratios
-! of the numbers of the psips on neighbouring excitation levels. These
-! are output so that they can be used when doing importance sampling
-! for DMQMC, so that each level will have roughly equal numbers of psips.
-! The resulting new weights are used in the next beta loop.
-logical :: dmqmc_find_weights = .false.
-! If true then the simulation will start with walkers uniformly distributed
-! along the diagonal of the entire density matrix, including all symmetry
-! sectors.
-logical :: all_sym_sectors = .false.
-! If half_density_matrix is true then half the density matrix will be 
-! calculated by reflecting spawning onto the lower triangle into the
-! upper triangle. This is allowed because the density matrix is 
-! symmetric.
-! [review] - JSS: would a better default be true?
-logical :: half_density_matrix = .false.
+    ! The initial population on the reference determinant/trace of the density matrix.
+    ! Overridden by a restart file.
+    real(p) :: D0_population
+    ! Number of particles before which varyshift mode is turned on.
+    ! [todo] - check set.
+    real(dp) :: target_particles = -1
 
-! [review] - JSS: is it better to have a bit field, as done for calc options, rather than multiple logicals?
+    ! Using the initiator approximation?
+    logical :: initiator_approximation = .false.
+    ! Population above which a determinant is an initiator.
+    real(p) :: initiator_population = 3.0_p
 
-! If true then the reduced density matricies will be calulated for the 'A'
-! subsystems specified by the user.
-logical :: doing_reduced_dm = .false.
+    ! number of monte carlo cycles/report loop
+    integer :: ncycles
+    ! number of report cycles
+    ! the shift is updated and the calculation information printed out
+    ! at the end of each report cycle.
+    integer :: nreport
 
-! If true then each subsystem A RDM specified by the user will be accumulated
-! from the iteration start_averaging until the end of the beat loop, allowing
-! ground-state estimates of the RDMs to be calculated.
-logical :: calc_ground_rdm = .false.
+end type qmc_in_t
 
-! If true then the reduced density matricies will be calculated for each
-! subsystem specified by the user at the end of each report loop. These RDMs
-! can be used to calculate instantaeous estimates at the given beta value.
-! They are thrown away after these calculation has been performed on them.
-logical :: calc_inst_rdm = .false.
+type fciqmc_in_t
 
-! If true then calculate the concurrence for reduced density matrix of two sites.
-logical :: doing_concurrence = .false.
+    ! How often do we change the reference determinant to the determinant with
+    ! greatest population?
+    ! Default: we don't.
+    integer :: select_ref_det_every_nreports = huge(1)
 
-! If true then calculate the von Neumann entanglement entropy for specified subsystem.
-logical :: doing_von_neumann_entropy = .false.
+    ! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
+    ! operator.  This is only done if no restart file is used *and* |D_0> is not
+    ! a closed shell determinant.
+    logical :: init_spin_inv_D0 = .false.
 
-! If true then, if doing an exact diagonalisation, calculate and output the
-! eigenvalues of the reduced density matrix requested.
-logical :: doing_exact_rdm_eigv=.false.
+    ! Factor by which the population on a determinant must exceed the reference
+    ! determinant's population in order to be accepted as the new reference
+    ! determinant.
+    real(p) :: ref_det_factor = 1.50_p
 
-! If true then the fraction of psips at each
-! excitation level will be output at each report loop. These fractions
-! will be stored in the array below.
-! The number of excitations for a given system is defined by
-! sys_t%max_number_excitations; see comments in sys_t for more details.
-logical :: calculate_excit_distribution = .false.
-! If true then the reduced density matrix is output to a file, 'reduced_dm'
-! each beta loop.
-logical :: output_rdm = .false.
+    ! Flag for using non-blocking communications.
+    ! Default: False.
+    logical :: non_blocking_comm = .false.
+    ! Flag for using load balancing.
+    ! Default: False.
+    logical :: doing_load_balancing = .false.
 
-!--- Restart data ---
+end type fciqmc_in_t
+
+type semi_stoch_in_t
+    ! The iteration on which to turn on the semi-stochastic algorithm using the
+    ! parameters deterministic space specified by determ_space_type.
+    integer :: semi_stoch_start_iter = 0
+    ! determ_space_type is used to tell the semi-stochastic initialisation routine
+    ! which type of deterministic space to use. See the 'determ-space' parameters
+    ! defined in semi_stoch.F90 for the various values it can take.
+    integer :: determ_space_type = 0
+    ! Certain deterministic space types need a target size to be input to tell the
+    ! semi-stochastic initialisation routine how many states to try and include. In
+    ! such cases this variable should be set on input.
+    integer :: determ_target_size = 0
+    ! If true then the deterministic states will be written to a file.
+    logical :: write_determ_space = .false.
+    ! If true then deterministic spawnings will not be added to the spawning list
+    ! but rather treated separately via an extra MPI call.
+    logical :: separate_determ_annihil = .true.
+end type semi_stoch_in_t
+
+type ccmc_in_t
+    ! [todo] - rename components: no need for ccmc_ stem.
+    ! How frequently (in log_2) an excitor can be moved to a different processor.
+    ! See comments in spawn_t and assign_particle_processor.
+    integer :: ccmc_move_freq = 5
+    ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
+    ! The default value corresponds to off.
+    real(p) :: cluster_multispawn_threshold = huge(1.0_p)
+    ! Use the full non-composite algorithm?
+    logical :: ccmc_full_nc = .false.
+    ! Sample only linked clusters in CCMC?
+    logical :: linked_ccmc = .false.
+end type ccmc_in_t
+
+type dmqmc_in_t
+    ! [todo] - rename components: no need for dmqmc_ stem.
+
+    ! The number of times the program will loop over each value of beta in the main loop.
+    integer :: beta_loops = 100
+
+    ! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
+    ! Currently only implemented for DMQMC.
+    logical :: replica_tricks = .false.
+
+    ! [review] - NSB: This is used both for excit_distribution and ground-state
+    ! [review] - NSB: I should create a new variable for the ground-state
+    ! [review] - NSB: RDMs and add it to that derived type.
+    ! When calculating certain DMQMC properties, we only want to start
+    ! averaging once the ground state is reached. The below integer is input
+    ! by the user, and gives the iteration at which data should start being
+    ! accumulated for the quantity. This is currently only used for the
+    ! reduced density matrix and calculating importance sampling weights.
+    integer :: start_averaging = 0
+
+    ! If this logical is true then the program runs the DMQMC algorithm with
+    ! importance sampling.
+    ! dmqmc_sampling_prob stores the factors by which the probabilities of
+    ! spawning to a larger excitation are reduced by. So, when spawning from
+    ! a diagonal element to a element with one excitation, the probability
+    ! of spawning is reduced by a factor dmqmc_sampling_probs(1).
+    ! dmqmc_accumulated_probs(i) stores the multiplication of all the elements
+    ! of dmqmc_sampling_probs up to the ith element. This quantity is often
+    ! needed, so it is stored.
+    logical :: dmqmc_weighted_sampling = .false.
+    ! If dmqmc_vary_weights is true, then instead of using the final sampling
+    ! weights for all the iterations, the weights will be gradually increased
+    ! until finish_varying_weights, at which point they will be held constant.
+    ! weight_altering_factors stores the factors by which each weight is
+    ! multiplied at each step.
+    logical :: dmqmc_vary_weights = .false.
+    ! If this logical is true then the program will calculate the ratios
+    ! of the numbers of the psips on neighbouring excitation levels. These
+    ! are output so that they can be used when doing importance sampling
+    ! for DMQMC, so that each level will have roughly equal numbers of psips.
+    ! The resulting new weights are used in the next beta loop.
+    logical :: dmqmc_find_weights = .false.
+    ! If true then the simulation will start with walkers uniformly distributed
+    ! along the diagonal of the entire density matrix, including all symmetry
+    ! sectors.
+    logical :: all_sym_sectors = .false.
+    ! If half_density_matrix is true then half the density matrix will be
+    ! calculated by reflecting spawning onto the lower triangle into the
+    ! upper triangle. This is allowed because the density matrix is
+    ! symmetric.
+    ! [review] - JSS: would a better default be true? (Check works with Fionn's new code)
+    logical :: half_density_matrix = .false.
+
+end type dmqmc_in_t
+
+type dmqmc_rdm_in_t
+
+    ! If true then the reduced density matricies will be calulated for the 'A'
+    ! subsystems specified by the user.
+    logical :: doing_reduced_dm = .false.
+
+    ! If true then each subsystem A RDM specified by the user will be accumulated
+    ! from the iteration start_averaging until the end of the beat loop, allowing
+    ! ground-state estimates of the RDMs to be calculated.
+    logical :: calc_ground_rdm = .false.
+
+    ! If true then the reduced density matricies will be calculated for each
+    ! subsystem specified by the user at the end of each report loop. These RDMs
+    ! can be used to calculate instantaeous estimates at the given beta value.
+    ! They are thrown away after these calculation has been performed on them.
+    logical :: calc_inst_rdm = .false.
+
+    ! If true then calculate the concurrence for reduced density matrix of two sites.
+    logical :: doing_concurrence = .false.
+
+    ! If true then calculate the von Neumann entanglement entropy for specified subsystem.
+    logical :: doing_von_neumann_entropy = .false.
+
+    ! If true then, if doing an exact diagonalisation, calculate and output the
+    ! eigenvalues of the reduced density matrix requested.
+    logical :: doing_exact_rdm_eigv=.false.
+
+    ! If true then the fraction of psips at each
+    ! excitation level will be output at each report loop. These fractions
+    ! will be stored in the array below.
+    ! The number of excitations for a given system is defined by
+    ! sys_t%max_number_excitations; see comments in sys_t for more details.
+    logical :: calculate_excit_distribution = .false.
+    ! If true then the reduced density matrix is output to a file, 'reduced_dm'
+    ! each beta loop.
+    logical :: output_rdm = .false.
+
+end type dmqmc_rdm_in_t
 
 type restart_in_t
     ! Restart calculation from file.
@@ -126,56 +230,30 @@ type restart_in_t
     logical :: dump_restart_file_shift = .false.
 end type restart_in_t
 
-! How often do we change the reference determinant to the determinant with
-! greatest population?
-! Default: we don't.
-integer :: select_ref_det_every_nreports = huge(1)
-! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
-! operator.  This is only done if no restart file is used *and* |D_0> is not
-! a closed shell determinant.
-logical :: init_spin_inv_D0 = .false.
-! Factor by which the population on a determinant must exceed the reference
-! determinant's population in order to be accepted as the new reference
-! determinant.
-real(p) :: ref_det_factor = 1.50_p
+! --- DMQMC input --
 
-! Are we doing a timestep search
-logical :: tau_search = .false.
-
-! [review] - FDM: End of suggestions for move to calc.
-
-! Restart data.
-! [todo] - return from read_restart_hdf5.
-integer :: mc_cycles_done = 0
-
-! Type for storing parallel information: see calc for description.
-! [review] - JSS: is calc the best place for parallel_t?
-! [review] - JSS: should go in a qmc_state_t object (which currently doesn't exist)?
-type(parallel_t) :: par_info
+! [todo] - move parallel_t here
 
 !--- Reference determinant ---
 
 type reference_t
     ! Bit string of reference determinant.
-    integer(i0), allocatable, target :: f0(:)
+    integer(i0), allocatable :: f0(:)
     ! List of occupied orbitals in reference determinant.
     integer, allocatable :: occ_list0(:)
     ! Bit string of reference determinant used to generate the Hilbert space.
     ! This is usually identical to f0, but not necessarily (e.g. if we're doing
     ! a spin-flip calculation).
-    integer(i0), allocatable, target :: hs_f0(:)
+    integer(i0), allocatable :: hs_f0(:)
     ! hs_f0:hs_occ_list0 as f0:occ_list0.
     integer, allocatable :: hs_occ_list0(:)
-    ! Population of walkers on reference determinant.
-    ! The initial value can be overridden by a restart file or input option.
-    ! For DMQMC, this variable stores the initial number of psips to be
-    ! randomly distributed along the diagonal elements of the density matrix.
+    ! Population of walkers on reference determinant/trace of density matrix.
     real(p) :: D0_population
     ! Energy of reference determinant.
     real(p) :: H00
 end type reference_t
 
-! [todo] - move to dmqmc_data.
+! [todo] - move to dmqmc_state_t
 ! Spawned lists for rdms.
 type rdm_spawn_t
     type(spawn_t) :: spawn
@@ -185,7 +263,7 @@ type rdm_spawn_t
     type(hash_table_t) :: ht
 end type rdm_spawn_t
 
-! [todo] - move to dmqmc_data.
+! [todo] - move to dmqmc_state_t
 ! This type contains information for the RDM corresponding to a given
 ! subsystem. It takes translational symmetry into account by storing information
 ! for all subsystems which are equivalent by translational symmetry.
@@ -202,11 +280,11 @@ type rdm_t
     ! version i of subsystem B, where the different 'versions' correspond to
     ! subsystems which are equivalent by symmetry.
     integer(i0), allocatable :: B_masks(:,:)
-    ! bit_pos(i,j,1) contains the position of the bit corresponding to site i in 
+    ! bit_pos(i,j,1) contains the position of the bit corresponding to site i in
     ! 'version' j of subsystem A.
     ! bit_pos(i,j,2) contains the element of the bit corresponding to site i in
     ! 'version' j of subsystem A.
-    ! Note that site i in a given version is the site that corresponds to site i 
+    ! Note that site i in a given version is the site that corresponds to site i
     ! in all other versions of subsystem A (and so bit_pos(i,:,1) and
     ! bit_pos(i,:,2) will not be sorted). This is very important so that
     ! equivalent psips will contribute to the same RDM element.
@@ -220,29 +298,13 @@ end type rdm_t
 ! [todo] - Now it's a fixed paramater, move to calculate_concurrence (only place it's used).
 ! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
 ! concurrence is to be calculated.
-real(p), parameter :: flip_spin_matrix(4,4) = (\ 0.0_p,  0.0_p, 0.0_p, -1.0_p,  &
-                                                0.0_p,  0.0_p, 1.0_p,  0.0_p,  &
-                                                0.0_p,  1.0_p, 0.0_p,  0.0_p,  &
-                                               -1.0_p,  0.0_p, 0.0_p,  0.0_p  \)
+real(p), parameter :: flip_spin_matrix(4,4) = reshape([  0.0_p,  0.0_p, 0.0_p, -1.0_p,  &
+                                                         0.0_p,  0.0_p, 1.0_p,  0.0_p,  &
+                                                         0.0_p,  1.0_p, 0.0_p,  0.0_p,  &
+                                                        -1.0_p,  0.0_p, 0.0_p,  0.0_p  ], shape(flip_spin_matrix))
 
-! [todo] - split this into input-level data and calculation-derived data.
+! [todo] - split this into input-level data and calculation-derived data?
 type dmqmc_estimates_t
-    ! [review] - NSB: dmqmc_factor is a bit of a wierd one because it is used more
-    ! [review] - NSB: more generally by other methods, too. It is just a number
-    ! [review] - NSB: which is set to 2 for DMQMC, or to 1 otherwise.
-    ! [review] - NSB: It is a fundamental property of the equation that we evolve with...
-    ! [review] - NSB: Suggestions on where to put this?
-    ! [reply] - JSS: qmc_state_t?
-    ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
-    ! required because in DMQMC calculations, instead of spawning from one end with
-    ! the full probability, we spawn from two different ends with half probability each.
-    ! Hence, tau is set to tau/2 in DMQMC calculations, so that an extra factor is not
-    ! required in every spawning routine. In the death step however, we use
-    ! walker_energies(1,idet), which has a factor of 1/2 included for convenience
-    ! already, for conveniece elsewhere. Hence we have to multiply by an extra factor
-    ! of 2 to account for the extra 1/2 in tau. dmqmc_factor is set to 1.0 when not
-    ! performing a DMQMC calculation, and so can be ignored in these cases.
-    real(p) :: dmqmc_factor = 1.0_p
 
     ! This variable stores the number of estimators which are to be
     ! calculated and printed out in a DMQMC calculation.
@@ -254,7 +316,7 @@ type dmqmc_estimates_t
     ! refers to which operator. These indices give labels to operators.
     ! They will be set to 0 if no used, or else their positions in the array,
     ! from 1-number_dmqmc_estimators.
-    ! [review] - JSS: turn into an enum?  estimator_numerators is small, so we may as well allocate 
+    ! [review] - JSS: turn into an enum?  estimator_numerators is small, so we may as well allocate
     ! [review] - JSS: an element for every possible data type to make the code simpler.
     integer :: energy_index = 0
     integer :: energy_squared_index = 0
@@ -304,17 +366,7 @@ type dmqmc_estimates_t
 
     real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
 
-    ! [review] - NSB: This is used both for excit_distribution and ground-state
-    ! [review] - NSB: I should create a new variable for the ground-state
-    ! [review] - NSB: RDMs and add it to that derived type.
-    ! When calculating certain DMQMC properties, we only want to start
-    ! averaging once the ground state is reached. The below integer is input
-    ! by the user, and gives the iteration at which data should start being
-    ! accumulated for the quantity. This is currently only used for the
-    ! reduced density matrix and calculating importance sampling weights.
-    integer :: start_averaging = 0
-
-    ! [review] - NSB: I might remove these two - I doubt they'll ever be used.
+    ! [todo] - (NSB) remove these two - I doubt they'll ever be used.
     ! In DMQMC, the user may want want the shift as a function of beta to be
     ! the same for each beta loop. If average_shift_until is non-zero then
     ! shift_profile is allocated, and for the first average_shift_until
@@ -331,6 +383,7 @@ end type dmqmc_estimates_t
 
 
 !--- Type for all instantaneous RDMs ---
+! [todo] - input?  state?
 type dmqmc_inst_rdms_t
     ! The total number of rdms beings calculated.
     integer :: nrdms
@@ -366,6 +419,7 @@ end type dmqmc_ground_rdm_t
 
 
 !--- Type for weighted sampling parameters ---
+! [todo] - split into input and state
 type dmqmc_weighted_sampling_t
     ! [review] - JSS: the commented bounds seem specific to the Heisenberg
     ! [review] - JSS: model.  Check for other systems.
@@ -377,35 +431,28 @@ type dmqmc_weighted_sampling_t
     real(dp), allocatable :: weight_altering_factors(:)
 end type dmqmc_weighted_sampling_t
 
-! [todo] - move to sys_heisenberg_t?  derived type for importance sampling data?
+! [todo] - move to sys_heisenberg_t
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
 real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
-!--- Folded spectrum data ---
-! [todo] - discuss removing folded spectrum
-type folded_spect_t
-    ! The line about which you are folding i.e. eps in (H-eps)^2 - E_0
-    real(p) :: fold_line = 0
-    ! The generation probabilities of a dual excitation type
-    real(p) :: P__=0.05, Po_=0.475, P_o=0.475
-    ! The split generation normalisations
-    real(p) :: X__=0, Xo_=0, X_o=0
-end type folded_spect_t
-
-! --- initiator ---
-
-! [todo] - discuss removing initiator_cas (NSB and JSS in favour)
-type initiator_t
-    ! Complete active space within which a determinant is an initiator.
-    ! (0,0) corresponds to the reference determinant only.
-    integer :: initiator_cas(2) = (/ 0,0 /)
-    ! Population above which a determinant is an initiator.
-    real(p) :: initiator_population = 3.0_p
-end type initiator_t
-
 ! --- semi-stochastic ---
+
+! Types of space.
+enum, bind(c)
+    ! This option uses an empty deterministic space, and so turns
+    ! semi-stochastic off.
+    enumerator :: empty_determ_space
+    ! This space is generated by choosing the determinants with the highest
+    ! populations in the main walker list, at the point the deterministic space
+    ! is generated.
+    enumerator :: high_pop_determ_space
+    ! This option generates the deterministic space by reading the states in
+    ! from an HDF5 file (named SEMI.STOCH.*.H5).
+    enumerator :: read_determ_space
+end enum
+
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
 ! by calculating a hash value. This type is used by the semi_stoch_t type and
@@ -475,76 +522,16 @@ type semi_stoch_t
     integer, allocatable :: flags(:)
 end type semi_stoch_t
 
-!--- Semi-stochastic input ---
-enum, bind(c)
-    ! This option uses an empty deterministic space, and so turns
-    ! semi-stochastic off.
-    enumerator :: empty_determ_space
-    ! This space is generated by choosing the determinants with the highest
-    ! populations in the main walker list, at the point the deterministic space
-    ! is generated.
-    enumerator :: high_pop_determ_space
-    ! This option generates the deterministic space by reading the states in
-    ! from an HDF5 file (named SEMI.STOCH.*.H5).
-    enumerator :: read_determ_space
-end enum
-type semi_stoch_in_t
-    ! The iteration on which to turn on the semi-stochastic algorithm using the
-    ! parameters deterministic space specified by determ_space_type.
-    integer :: semi_stoch_start_iter = 0
-    ! determ_space_type is used to tell the semi-stochastic initialisation routine
-    ! which type of deterministic space to use. See the 'determ-space' parameters
-    ! defined in semi_stoch.F90 for the various values it can take.
-    integer :: determ_space_type = 0
-    ! Certain deterministic space types need a target size to be input to tell the
-    ! semi-stochastic initialisation routine how many states to try and include. In
-    ! such cases this variable should be set on input.
-    integer :: determ_target_size = 0
-    ! If true then the deterministic states will be written to a file.
-    logical :: write_determ_space = .false.
-    ! If true then deterministic spawnings will not be added to the spawning list
-    ! but rather treated separately via an extra MPI call.
-    logical :: separate_determ_annihil = .true.
-end type semi_stoch_in_t
+! --- Estimators ---
 
-! ---- CCMC input ---
-
-type ccmc_t
-    ! How frequently (in log_2) an excitor can be moved to a different processor.
-    ! See comments in spawn_t and assign_particle_processor.
-    integer :: ccmc_move_freq = 5
-    ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
-    ! The default value corresponds to off.
-    real(p) :: cluster_multispawn_threshold = huge(1.0_p)
-end type ccmc_t
-
-! [todo] - split into input options and data arising from the calc.
 type shift_t
-    ! shift: the shift is held constant at the initial value (from input) unless
-    ! vary_shift is true. When the replica_tricks option is used, the elements
+    ! Energy offset (shift) applied to the Hamiltonian.
+    real(p), allocatable :: shift(:) ! (sampling_size) ! todo: move
+    ! The shift is updated at the end of each report loop when vary_shift is true.
+    ! When the replica_tricks option is used, the elements
     ! of the shift array refer to the shifts in the corresponding replica systems.
     ! When replica_tricks is not being used, only the first element is used.
-    ! vary_shift_from_proje: if true, then the when variable shift mode is entered
-    ! the shift is set to be the current projected energy.
-    ! vary_shift_from: if vary_shift_from_proje is false, then the shift is set to
-    ! this value when variable shift mode is entered.
-    ! warning: if both initial_shift and vary_shift_from are set, then we expect the
-    ! user to have been sensible.
-    real(p), allocatable, target :: shift(:) ! (sampling_size)
-    real(p) :: vary_shift_from = 0.0_p
-    logical :: vary_shift_from_proje = .false.
-    ! Initial shift, needed in DMQMC to reset the shift at the start of each
-    ! beta 
-    real(p) :: initial_shift = 0.0_p
-    ! Factor by which the changes in the population are damped when updating the
-    ! shift.
-    real(p) :: shift_damping = 0.050_dp
-    ! Number of particles before which varyshift mode is turned on.
-    ! [review] - JSS: remove default and force user to specify.
-    real(dp) :: target_particles = 10000.0_dp
-    ! The shift is updated at the end of each report loop when vary_shift is true.
-    ! [review] - JSS: does it make sense for this to be an array?
-    logical, allocatable :: vary_shift(:) ! (sampling_size)
+    logical, allocatable :: vary_shift(:) ! (sampling_size) ! todo: move
 end type shift_t
 
 ! [todo] - rename walker -> particle
@@ -564,7 +551,7 @@ type walker_t
     ! Subsequent elements are the number of Hellmann--Feynamnn particles.
     real(dp), allocatable :: nparticles(:) ! (sampling_size)
     ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
-    real(dp), allocatable, target :: tot_nparticles(:) ! (sampling_size)
+    real(dp), allocatable :: tot_nparticles(:) ! (sampling_size)
     ! Total number of particles on all determinants for each processor
     real(dp), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
     ! Walker information: main list.
@@ -576,7 +563,7 @@ type walker_t
     ! (e.g.) importance sampling.
     integer :: info_size
     ! a) determinants
-    integer(i0), allocatable, target :: walker_dets(:,:) ! (string_len, walker_length)
+    integer(i0), allocatable :: walker_dets(:,:) ! (string_len, walker_length)
     ! [todo] - nicer referencing for elements of walker_data and ! walker_population
     ! b) walker population
     ! NOTE:
@@ -589,7 +576,7 @@ type walker_t
     !   option, real_factor will be equal to 1, allowing only integer
     !   populations. In general, when one sees that a integer is of kind int_p, it
     !   should be understood that it stores a population in its encoded form.
-    integer(int_p), allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
+    integer(int_p), allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
     ! c) Walker information.  This contains:
     ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
     !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
@@ -603,15 +590,17 @@ type walker_t
     !   gives the total number of spins up on the first sublattice. The second
     !   component gives the number of 0-1 bonds where the 1 is on the first
     !   sublattice.
-    real(p), allocatable, target :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
-    ! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
-    ! encoded as integers by multiplying them by 2**(real_bit_shift).
-    ! [todo] - compile-time parameter
-    integer :: real_bit_shift
-    ! real_factor = 2**(real_bit_shift)
-    ! [todo] - compile-time parameter
-    integer(int_p) :: real_factor
+    real(p), allocatable :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
 end type walker_t
+
+! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
+! encoded as integers by multiplying them by 2**(real_bit_shift).
+! [todo] - compile-time parameter
+integer :: real_bit_shift
+! real_factor = 2**(real_bit_shift)
+! [todo] - compile-time parameter
+integer(int_p) :: real_factor
+! [todo] - procedures for encoding and decoding the populations.
 
 type spawned_walker_t
     ! Array sizes
@@ -636,26 +625,17 @@ type spawned_walker_t
     real(p) :: rspawn
 end type spawned_walker_t
 
-! [review] - JSS: split into info about state of calculation and info arising from the
-! [review] - JSS: state (ie energy estimators)?
-! [review] - NSB: Sure. I wonder if there really needs to be a type containing all of
-! [review] - NSB: dmqmc_t, ccmc_t, folded_spect_t, etc... Do these things ever need
-! [review] - NSB: to be grouped together?
-! [review] - FDM: Probably not, I was thinking that it might be nice (so that it
-! [review] - FDM: can be passed to functions easily) to have one type containing the
-! [review] - FDM: population information and the method specific data..
-! [review] - JSS: gets messy for passing to the estimator comms in that case though.
-! [todo] - dicuss.
-type qmc_data_t
-    ! number of monte carlo cycles/report loop
-    integer :: ncycles
-    ! number of report cycles
-    ! the shift is updated and the calculation information printed out
-    ! at the end of each report cycle.
-    integer :: nreport
-    ! For DMQMC, beta_loops specifies the number of times
-    ! the program will loop over each value of beta in the main loop.
-    integer :: beta_loops = 100
+type qmc_state_t
+    ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
+    ! required because in DMQMC calculations, instead of spawning from one end with
+    ! the full probability, we spawn from two different ends with half probability each.
+    ! Hence, tau is set to tau/2 in DMQMC calculations, so that an extra factor is not
+    ! required in every spawning routine. In the death step however, we use
+    ! walker_energies(1,idet), which has a factor of 1/2 included for convenience
+    ! already, for conveniece elsewhere. Hence we have to multiply by an extra factor
+    ! of 2 to account for the extra 1/2 in tau. dmqmc_factor is set to 1.0 when not
+    ! performing a DMQMC calculation, and so can be ignored in these cases.
+    real(p) :: dmqmc_factor = 1.0_p
     ! timestep
     real(p) :: tau
     ! projected energy
@@ -671,8 +651,13 @@ type qmc_data_t
     type(shift_t) :: shift
     type(walker_t) :: walkers
     type(reference_t) :: reference
-    type(dmqmc_t) :: dmqmc
-    type(initiator_t) :: initiator
-    type(ccmc_t) :: ccmc
-    type(folded_spect_t) folded
-end type qmc_data_t
+    type(parallel_t) :: par_info
+end type qmc_state_t
+
+! --- GLOBAL STATE (TEMPORARY) ---
+
+! Restart data.
+! [todo] - return from read_restart_hdf5, which will be called from inside the do_* algos...
+integer :: mc_cycles_done = 0
+
+end module qmc_data
