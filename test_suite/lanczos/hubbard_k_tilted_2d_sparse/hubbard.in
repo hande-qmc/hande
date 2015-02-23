@@ -1,0 +1,15 @@
+hubbard_k
+
+lattice
+3  3
+3 -3
+u 2
+electrons 4
+
+ms 0
+
+sparse_hamiltonian
+lanczos
+lanczos_basis 20
+lanczos_solns 8
+block_size 8

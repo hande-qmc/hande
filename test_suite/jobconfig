@@ -3,6 +3,8 @@
 # deterministic methods
 [fci/*/]
 [lanczos/*/]
+[lanczos/*sparse/]
+max_nprocs = 1
 [lanczos_direct/*/]
 max_nprocs = 1
 
@@ -53,7 +55,7 @@ max_nprocs = 1
 [*mc_real_??/*/]
 max_nprocs = 1
 
-# force MC jobs to run on the same number of cores as the benchmarks in order to
+# force MC jobs to run on the same number of cores as the benchmarks in order to have the same Markov chains...
 [*_mpi/np2/*/]
 nprocs = 2
 min_nprocs = 2
