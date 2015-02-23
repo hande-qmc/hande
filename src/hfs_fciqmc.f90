@@ -65,7 +65,7 @@ contains
         type(excit_t) :: connection
         type(dSFMT_t) :: rng
         real(p) :: hmatel
-        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0,0,0], [0,0,0,0], .false.)
+        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
 
         logical :: soft_exit
 

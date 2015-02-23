@@ -334,9 +334,6 @@ contains
         ! without actually generating the excitation when working in momentum
         ! space.
 
-        ! However, we need pgen and a complete excitation for use with, e.g. the folded
-        ! spectrum algorithm.
-
         connection%nexcit = 2
 
         ! 1. Select a random pair of spin orbitals to excite from.

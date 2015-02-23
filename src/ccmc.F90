@@ -881,7 +881,7 @@ contains
             cluster%pselect = cluster%pselect*(1.0_p - psize)
         end if
 
-        ! Initiator approximation: no point using a CAS so just use the populations.
+        ! Initiator approximation.
         ! This is sufficiently quick that we'll just do it in all cases, even
         ! when not using the initiator approximation.  This matches the approach
         ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
@@ -1047,7 +1047,7 @@ contains
 
         cluster%nexcitors = 0
 
-        ! Initiator approximation: no point using a CAS so just use the populations.
+        ! Initiator approximation.
         ! This is sufficiently quick that we'll just do it in all cases, even
         ! when not using the initiator approximation.  This matches the approach
         ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
@@ -1188,7 +1188,7 @@ contains
 
             cluster%nexcitors = 1
 
-            ! Initiator approximation: no point using a CAS so just use the populations.
+            ! Initiator approximation.
             ! This is sufficiently quick that we'll just do it in all cases, even
             ! when not using the initiator approximation.  This matches the approach
             ! used by Alex Thom in 'Initiator Stochastic Coupled Cluster Theory'
@@ -1394,7 +1394,7 @@ contains
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill
-        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0,0,0], [0,0,0,0], .false.)
+        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
 
         ! Spawning onto the same excitor so no change in sign due to
         ! a difference in the sign of the determinant formed from applying the
