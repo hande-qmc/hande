@@ -49,10 +49,6 @@ real(p) :: pattempt_single = -1, pattempt_double = -1
 
 !--- Input data: initiator-FCIQMC ---
 
-! Complete active space within which a determinant is an initiator.
-! (0,0) corresponds to the reference determinant only.
-integer :: initiator_cas(2) = (/ 0,0 /)
-
 ! Population above which a determinant is an initiator.
 real(p) :: initiator_population = 3.0_p
 

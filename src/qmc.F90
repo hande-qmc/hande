@@ -25,7 +25,6 @@ contains
         use ct_fciqmc, only: do_ct_fciqmc
         use dmqmc, only: do_dmqmc
         use fciqmc, only: do_fciqmc
-        use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
@@ -47,8 +46,6 @@ contains
         call init_qmc(sys)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
-
-        if (initiator_approximation) call init_ifciqmc(sys%nel, sys%basis)
 
         if (doing_calc(dmqmc_calc)) then
             call do_dmqmc(sys)
@@ -498,11 +495,8 @@ contains
             end if
             if (initiator_approximation) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
-                if (doing_calc(fciqmc_calc)) &
-                    write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
-                    'CAS space of initiator determinants:',initiator_CAS
                 write (6,'(1X,a66,f3.1,/)') &
-                    'Population for a determinant outside CAS space to be an initiator:', initiator_population
+                    'Population for a determinant to be an initiator:', initiator_population
             end if
             write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
             write (6,'(1X,a69)') 'Note that all particle populations are averaged over the report loop.'

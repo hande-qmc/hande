@@ -463,9 +463,6 @@ contains
                 init_spin_inv_D0 = .true.
 
             ! Calculation options: initiator-fciqmc.
-            case('INITIATOR_CAS')
-                call readi(initiator_cas(1))
-                call readi(initiator_cas(2))
             case('INITIATOR_POPULATION')
                 call readf(initiator_population)
 
@@ -672,7 +669,6 @@ contains
                     end if
                 end if
             end if
-            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
             if (par_info%load%nslots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
             if (par_info%load%pop < 0) call stop_all(this, 'Load balancing population must be positive.')
             if (par_info%load%percent < 0 .or. par_info%load%percent > 1.0) &
@@ -939,7 +935,6 @@ contains
         call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

@@ -1510,28 +1510,6 @@ options are also valid in initiator-FCIQMC calculations:
     Set the (unsigned) population at which a determinant is considered to be an
     initiator determinant.  Setting this value to 0 retrieves the FCIQMC
     result.
-**initiator_cas** *N* *M*
-    Integers.
-
-    Default: 0 0.
-
-    Set a complete active space (CAS) to be (*N*, *M*), which defines the CAS
-    such that the lowest *nel* - *N* spin-orbitals are core (occupied)
-    spin-orbitals; precisely *N* electrons occupy the next 2 *M* "active"
-    spin-orbitals and the remaining spin-orbitals form the "external" space and
-    are unoccupied.  Any determinant within the CAS is considered to be an
-    initiator determinant, no matter what the population of walkers on that
-    determinant.
-
-    A CAS of (0,0) contains only the determinant with the *nel* lowest energy
-    spin-orbitals occupied and a CAS of (*nel*, *norbs*) contains the full
-    space of determinants, where *norbs* is the number of spin-orbitals used in
-    the simulation (i.e. twice the number of sites in the crystal cell in the
-    case of the Hubbard model).
-
-    Note that the CAS is somewhat meaningless when using the real space
-    formulation of the Hubbard model (as the spin-orbitals used as the basis do
-    not have an associated energy) and so great care should be used.
 
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
