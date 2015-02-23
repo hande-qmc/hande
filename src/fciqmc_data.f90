@@ -596,17 +596,6 @@ logical :: dump_restart_file_shift = .false.
 ! Restart data.
 integer :: mc_cycles_done = 0
 
-!--- Folded spectrum data ---
-
-! The line about which you are folding i.e. eps in (H-eps)^2 - E_0
-real(p) :: fold_line = 0
-
-! The generation probabilities of a dual excitation type
-real(p) :: P__=0.05, Po_=0.475, P_o=0.475
-
-! The split generation normalisations
-real(p) :: X__=0, Xo_=0, X_o=0
-
 ! Type for storing parallel information: see calc for description.
 type(parallel_t) :: par_info
 

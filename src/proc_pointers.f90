@@ -73,16 +73,6 @@ abstract interface
         type(excit_t), intent(inout) :: connection
         real(p), intent(out) :: hmatel
     end subroutine i_gen_excit_finalise
-    subroutine i_death(rng, mat, loc_shift, pop, tot_pop, ndeath)
-        use dSFMT_interface, only: dSFMT_t
-        import :: p, dp, int_p
-        implicit none
-        type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: mat
-        real(p), intent(in) :: loc_shift
-        integer(int_p), intent(inout) :: pop, ndeath
-        real(p), intent(inout) :: tot_pop
-    end subroutine i_death
     pure function i_sc0(sys, f) result(hmatel)
         use system, only: sys_t
         import :: p, i0
@@ -149,8 +139,6 @@ procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_ptr => null
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_correlation_ptr => null()
-
-procedure(i_death), pointer :: death_ptr => null()
 
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()

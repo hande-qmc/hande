@@ -24,6 +24,7 @@ contains
         use bit_utils, only: count_set_bits
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
+        use death, only: stochastic_death
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use dmqmc_estimators
         use dmqmc_procedures
@@ -180,7 +181,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call death_ptr(rng, walker_data(ireplica,idet), shift(ireplica), &
+                            call stochastic_death(rng, walker_data(ireplica,idet), shift(ireplica), &
                                            walker_population(ireplica,idet), nparticles(ireplica), ndeath)
                         end do
                     end do

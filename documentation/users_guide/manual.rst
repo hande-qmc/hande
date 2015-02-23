@@ -782,10 +782,6 @@ Note that multiple calculations can be specified within a single input, but are 
     When run on multiple processors, an estimate of the error in the size is produced.
     This is not available on a single processor, and the user is warned to test the
     value by changing seeds or number of cycles, as not all printed figures may be significant.
-**folded_spectrum**
-    Perform a folded spectrum (FSFCIQMC) calculation. This involves mapping the
-    Hamiltonian :math:`H \rightarrow (H-\varepsilon)^2`. This will compute the excited
-    state closest to :math:`\varepsilon`.
 
     For the real space formulation of the Hubbard model and the Heisenberg
     model, the exact size of the space (at least to the first 8 significant
@@ -1075,9 +1071,7 @@ The following options are valid for FCIQMC calculations.
     population every *N* cycles if that population is greater than the
     population on the current reference determinant by a factor larger than
     *pop_fac*.  *pop_fac* should be greater than 1 to avoid repeated switching
-    between degenerate determinants.  This is useful (particularly in
-    folded-spectrum calculations) if the best reference determinant is not
-    known beforehand. 
+    between degenerate determinants.
 
     .. warning::
 
@@ -1611,51 +1605,6 @@ the result but can have a significant impact on performance.
     processors take longer to perform their work than others. This is turned
     off by default because such calls may have an initialisation time which
     scales badly to many processors.
-
-Calculation options: folded spectrum options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-These options are valid when performing a folded spectrum calculation
-
-**fold_line** *fold_line*
-    Real.
-
-    Default: 0.0
-
-    Choose the point about which to fold the hamiltonian, i.e. the value of
-    :math:`\varepsilon` in :math:`(H-\varepsilon)^2`. In the case of convergence the psips
-    settle on a stochastic representation of the eigenstate(s) with energy
-    closest to :math:`\varepsilon`.
-
-**P__** *P_{doub}*
-    Real.
-
-    Default: 0.05
-
-    Manually choose the split generation probabilities. Best to choose them such that 
-    the ratio of: 
-
-    .. math::
-
-        \frac{P_{doub}}{P_{sing1}} = \frac{P_{doub}}{P_{sing2}} \approx \frac{H_{off diag}}{H_{on diag}},
-
-    where :math:`H_{on(off) diag}` are the rough magnitudes of the on(off)
-    diagonal elements of the Hamiltonian. Code automatically renormalises the
-    probabilities.
-
-**Po_** *P_{sing1}*
-    Real.
-
-    Default: 0.475
-
-    See above.
-
-**P_o** *P_{sing2}*
-    Real.
-
-    Default: 0.475
-
-    See above.
 
 Output options
 ^^^^^^^^^^^^^^
