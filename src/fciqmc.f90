@@ -28,8 +28,9 @@ contains
         use excitations, only: excit_t, create_excited_det
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list
-        use calc, only: folded_spectrum, doing_calc, seed, initiator_approximation, non_blocking_comm, &
+        use calc, only: doing_calc, seed, initiator_approximation, non_blocking_comm, &
                         doing_load_balancing, use_mpi_barriers
+        use death, only: stochastic_death
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
         use qmc_common
@@ -186,7 +187,7 @@ contains
                     end do
 
                     ! Clone or die.
-                    if (.not. determ_parent) call death_ptr(rng, walker_data(1,idet), shift(1), &
+                    if (.not. determ_parent) call stochastic_death(rng, walker_data(1,idet), shift(1), &
                                                             walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
@@ -271,6 +272,7 @@ contains
         !   ndeath: running total of number of particles which have died or been cloned.
 
         use proc_pointers, only: sc0_ptr
+        use death, only: stochastic_death
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t
@@ -332,7 +334,7 @@ contains
 
             ! Clone or die.
             ! list_pop is meaningless as nparticles is updated upon annihilation.
-            call death_ptr(rng, tmp_data(1), shift(1), pop(1), list_pop, ndeath)
+            call stochastic_death(rng, tmp_data(1), shift(1), pop(1), list_pop, ndeath)
             ! Update population of walkers on current determinant.
             spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet) = pop
 

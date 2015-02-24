@@ -244,12 +244,11 @@ contains
 
         use fciqmc_data, only: sampling_size, target_particles, ncycles, rspawn,               &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
-                               vary_shift_from_proje, D0_population, fold_line,                &
-                               nparticles_proc, par_info
+                               vary_shift_from_proje, D0_population, nparticles_proc, par_info
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
-        use calc, only: doing_calc, hfs_fciqmc_calc, folded_spectrum, doing_load_balancing
+        use calc, only: doing_calc, hfs_fciqmc_calc, doing_load_balancing
         use parallel, only: nprocs
 
         real(dp), intent(in) :: rep_loop_sum(:)
@@ -303,16 +302,10 @@ contains
         if (ntot_particles(1) > target_particles .and. .not.vary_shift(1)) then
             vary_shift(1) = .true.
             if (vary_shift_from_proje) then
-                if(doing_calc(folded_spectrum)) then
-                  ! if running a folded spectrum calculation, set the shift to
-                  ! instantaneously be the projected energy of the folded hamiltonian
-                  shift = (proj_energy/D0_population - fold_line)**2
-                else
-                  ! Set shift to be instantaneous projected energy.
-                  shift = proj_energy/D0_population
-                  hf_shift = proj_hf_O_hpsip/D0_population + proj_hf_H_hfpsip/D0_population &
-                                                           - (proj_energy*D0_hf_population)/D0_population**2
-                endif
+              ! Set shift to be instantaneous projected energy.
+              shift = proj_energy/D0_population
+              hf_shift = proj_hf_O_hpsip/D0_population + proj_hf_H_hfpsip/D0_population &
+                                                       - (proj_energy*D0_hf_population)/D0_population**2
             else
                 shift = vary_shift_from
             end if
@@ -347,7 +340,6 @@ contains
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
 
-        use calc, only: doing_calc, folded_spectrum
         use fciqmc_data, only: shift, tau, shift_damping, dmqmc_factor
 
         real(p), intent(inout) :: loc_shift

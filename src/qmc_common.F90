@@ -123,9 +123,6 @@ contains
             do i = 1, tot_walkers
                 walker_data(1,i) = walker_data(1,i) - H00
             end do
-            ! The fold line in the folded spectrum approach is set (during
-            ! initialisation) relative to the reference.
-            fold_line = fold_line - H00
             ! Now set H00 = <D_0|H|D_0> so that future references to it are
             ! correct.
             H00 = H00 + H00_old

@@ -122,7 +122,7 @@ contains
         integer :: n, lattice_1_up, lattice_2_up
         real(p) :: importance_sampling_factor
 
-        excitation = excit_t(0, (/ 0,0,0,0 /), (/ 0,0,0,0 /), .false.)
+        excitation = excit_t(0, (/ 0,0 /), (/ 0,0 /), .false.)
 
         importance_sampling_factor = 1.0_p
 

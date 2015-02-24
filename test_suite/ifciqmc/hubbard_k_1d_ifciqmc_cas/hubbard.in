@@ -5,7 +5,7 @@ lattice
 electrons 4
 
 ifciqmc
-initiator_cas 2 4
+initiator_population 1
 
 spawned_walker_length 100
 walker_length 10

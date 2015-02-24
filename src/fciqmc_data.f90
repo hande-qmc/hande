@@ -49,10 +49,6 @@ real(p) :: pattempt_single = -1, pattempt_double = -1
 
 !--- Input data: initiator-FCIQMC ---
 
-! Complete active space within which a determinant is an initiator.
-! (0,0) corresponds to the reference determinant only.
-integer :: initiator_cas(2) = (/ 0,0 /)
-
 ! Population above which a determinant is an initiator.
 real(p) :: initiator_population = 3.0_p
 
@@ -595,17 +591,6 @@ logical :: dump_restart_file_shift = .false.
 
 ! Restart data.
 integer :: mc_cycles_done = 0
-
-!--- Folded spectrum data ---
-
-! The line about which you are folding i.e. eps in (H-eps)^2 - E_0
-real(p) :: fold_line = 0
-
-! The generation probabilities of a dual excitation type
-real(p) :: P__=0.05, Po_=0.475, P_o=0.475
-
-! The split generation normalisations
-real(p) :: X__=0, Xo_=0, X_o=0
 
 ! Type for storing parallel information: see calc for description.
 type(parallel_t) :: par_info

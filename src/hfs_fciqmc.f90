@@ -38,7 +38,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use calc, only: seed, initiator_approximation
-        use death, only: stochastic_hf_cloning
+        use death, only: stochastic_death, stochastic_hf_cloning
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t
@@ -65,7 +65,7 @@ contains
         type(excit_t) :: connection
         type(dSFMT_t) :: rng
         real(p) :: hmatel
-        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0,0,0], [0,0,0,0], .false.)
+        type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
 
         logical :: soft_exit
 
@@ -206,7 +206,7 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(2,idet), nparticles(2), ndeath)
+                    call stochastic_death(rng, walker_data(1,idet), shift(1), walker_population(2,idet), nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
@@ -216,7 +216,7 @@ contains
                     if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nspawned, 2, qmc_spawn)
 
                     ! Clone or die: Hamiltonian walkers.
-                    call death_ptr(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
+                    call stochastic_death(rng, walker_data(1,idet), shift(1), walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 

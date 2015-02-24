@@ -208,8 +208,6 @@ contains
             case('ESTIMATE_HILBERT_SPACE')
                 calc_type = calc_type + mc_hilbert_space
                 call readi(nhilbert_cycles)
-            case('FOLDED_SPECTRUM')
-                calc_type = calc_type + folded_spectrum
 
             case('REPLICA_TRICKS')
                 replica_tricks = .true.
@@ -420,16 +418,6 @@ contains
             case('move_freq')
                 call readi(ccmc_move_freq)
 
-            ! Calculation options: Folded spectrum.
-            case('FOLD_LINE')
-                call readf(fold_line)
-            case('P__')
-                call readf(P__)
-            case('Po_')
-                call readf(Po_)
-            case('P_o')
-                call readf(P_o)
-
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
             case('RESTART')
@@ -475,9 +463,6 @@ contains
                 init_spin_inv_D0 = .true.
 
             ! Calculation options: initiator-fciqmc.
-            case('INITIATOR_CAS')
-                call readi(initiator_cas(1))
-                call readi(initiator_cas(2))
             case('INITIATOR_POPULATION')
                 call readf(initiator_population)
 
@@ -630,7 +615,7 @@ contains
 
         ! Real amplitude checks.
         if (real_amplitudes) then
-            if (doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc) .or. doing_calc(folded_spectrum)) then
+            if (doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc)) then
                 call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
             end if
             if (bit_size(0_int_p) == 32 .and. parent) then
@@ -645,8 +630,8 @@ contains
             call warning(this,'You have specified an iteration to turn semi-stochastic on but have not &
                          &specified a deterministic space to use.')
         if (determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. &
-              doing_calc(hfs_fciqmc_calc) .or. doing_calc(folded_spectrum)) ) call stop_all(this, &
-            'Semi-stochastic is only implemented with the FCIQMC method.')
+              doing_calc(hfs_fciqmc_calc))) &
+              call stop_all(this, 'Semi-stochastic is only implemented with the FCIQMC method.')
 
         if (init_spin_inv_D0 .and. ms_in /= 0) then
             if (parent) call warning(this, 'Flipping the reference state will give &
@@ -684,7 +669,6 @@ contains
                     end if
                 end if
             end if
-            if (any(initiator_CAS < 0)) call stop_all(this,'Initiator CAS space must be non-negative.')
             if (par_info%load%nslots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
             if (par_info%load%pop < 0) call stop_all(this, 'Load balancing population must be positive.')
             if (par_info%load%percent < 0 .or. par_info%load%percent > 1.0) &
@@ -951,7 +935,6 @@ contains
         call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_CAS, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
@@ -970,11 +953,6 @@ contains
         call mpi_bcast(par_info%load%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%write_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(use_mpi_barriers, 1, mpi_logical, 0, mpi_comm_world, ierr)
-
-        call mpi_bcast(fold_line, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(P__, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(Po_, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(P_o, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
 #endif
 

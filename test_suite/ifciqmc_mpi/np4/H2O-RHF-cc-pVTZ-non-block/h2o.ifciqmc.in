@@ -1,8 +1,6 @@
 read INTDUMP.H2O.CC-PVDZ
 nel 10
 
-initiator_cas 10 12
-
 ifciqmc
 
 nreports 200

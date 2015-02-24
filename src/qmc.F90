@@ -25,8 +25,6 @@ contains
         use ct_fciqmc, only: do_ct_fciqmc
         use dmqmc, only: do_dmqmc
         use fciqmc, only: do_fciqmc
-        use folded_spectrum_utils, only: init_folded_spectrum
-        use ifciqmc, only: init_ifciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
@@ -49,8 +47,6 @@ contains
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
-        if (initiator_approximation) call init_ifciqmc(sys%nel, sys%basis)
-
         if (doing_calc(dmqmc_calc)) then
             call do_dmqmc(sys)
         else if (doing_calc(ct_fciqmc_calc)) then
@@ -60,7 +56,6 @@ contains
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
-            if (doing_calc(folded_spectrum)) call init_folded_spectrum()
             if (doing_calc(hfs_fciqmc_calc)) then
                 call do_hfs_fciqmc(sys)
             else
@@ -500,11 +495,8 @@ contains
             end if
             if (initiator_approximation) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
-                if (doing_calc(fciqmc_calc)) &
-                    write (6,'(1X,a36,1X,"(",'//int_fmt(initiator_CAS(1),0)//',",",'//int_fmt(initiator_CAS(2),0)//'")")')  &
-                    'CAS space of initiator determinants:',initiator_CAS
                 write (6,'(1X,a66,f3.1,/)') &
-                    'Population for a determinant outside CAS space to be an initiator:', initiator_population
+                    'Population for a determinant to be an initiator:', initiator_population
             end if
             write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
             write (6,'(1X,a69)') 'Note that all particle populations are averaged over the report loop.'
@@ -593,7 +585,6 @@ contains
         use excit_gen_op_hub_k
         use excit_gen_real_lattice
         use excit_gen_ueg, only: gen_excit_ueg_no_renorm
-        use folded_spectrum_utils, only: fs_spawner, fs_stochastic_death
         use hamiltonian_chung_landau, only: slater_condon0_chung_landau
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
@@ -729,7 +720,7 @@ contains
 
         ! 2. Set calculation-specific procedure pointers
 
-        ! a) initiator-approximation
+        ! 2: initiator-approximation
         if (initiator_approximation) then
             set_parent_flag_ptr => set_parent_flag
             if (all(ras > 0)) then
@@ -750,15 +741,7 @@ contains
             end if
         end if
 
-        ! b) folded-spectrum
-        if (doing_calc(folded_spectrum)) then
-            spawner_ptr => fs_spawner
-            death_ptr => fs_stochastic_death
-        else
-            death_ptr => stochastic_death
-        end if
-
-        ! c) density-matrix
+        ! 2: density-matrix
         if (doing_calc(dmqmc_calc)) then
 
             ! Spawned particle creation. 
@@ -802,7 +785,7 @@ contains
 
         end if
 
-        ! d) Hellmann--Feynman operator sampling
+        ! 2: Hellmann--Feynman operator sampling
         if (doing_calc(hfs_fciqmc_calc)) then
             select case(hf_operator)
             case(hamiltonian_operator)

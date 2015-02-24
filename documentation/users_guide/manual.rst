@@ -782,10 +782,6 @@ Note that multiple calculations can be specified within a single input, but are 
     When run on multiple processors, an estimate of the error in the size is produced.
     This is not available on a single processor, and the user is warned to test the
     value by changing seeds or number of cycles, as not all printed figures may be significant.
-**folded_spectrum**
-    Perform a folded spectrum (FSFCIQMC) calculation. This involves mapping the
-    Hamiltonian :math:`H \rightarrow (H-\varepsilon)^2`. This will compute the excited
-    state closest to :math:`\varepsilon`.
 
     For the real space formulation of the Hubbard model and the Heisenberg
     model, the exact size of the space (at least to the first 8 significant
@@ -1075,9 +1071,7 @@ The following options are valid for FCIQMC calculations.
     population every *N* cycles if that population is greater than the
     population on the current reference determinant by a factor larger than
     *pop_fac*.  *pop_fac* should be greater than 1 to avoid repeated switching
-    between degenerate determinants.  This is useful (particularly in
-    folded-spectrum calculations) if the best reference determinant is not
-    known beforehand. 
+    between degenerate determinants.
 
     .. warning::
 
@@ -1516,28 +1510,6 @@ options are also valid in initiator-FCIQMC calculations:
     Set the (unsigned) population at which a determinant is considered to be an
     initiator determinant.  Setting this value to 0 retrieves the FCIQMC
     result.
-**initiator_cas** *N* *M*
-    Integers.
-
-    Default: 0 0.
-
-    Set a complete active space (CAS) to be (*N*, *M*), which defines the CAS
-    such that the lowest *nel* - *N* spin-orbitals are core (occupied)
-    spin-orbitals; precisely *N* electrons occupy the next 2 *M* "active"
-    spin-orbitals and the remaining spin-orbitals form the "external" space and
-    are unoccupied.  Any determinant within the CAS is considered to be an
-    initiator determinant, no matter what the population of walkers on that
-    determinant.
-
-    A CAS of (0,0) contains only the determinant with the *nel* lowest energy
-    spin-orbitals occupied and a CAS of (*nel*, *norbs*) contains the full
-    space of determinants, where *norbs* is the number of spin-orbitals used in
-    the simulation (i.e. twice the number of sites in the crystal cell in the
-    case of the Hubbard model).
-
-    Note that the CAS is somewhat meaningless when using the real space
-    formulation of the Hubbard model (as the spin-orbitals used as the basis do
-    not have an associated energy) and so great care should be used.
 
 Calculation options: parallel options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1611,51 +1583,6 @@ the result but can have a significant impact on performance.
     processors take longer to perform their work than others. This is turned
     off by default because such calls may have an initialisation time which
     scales badly to many processors.
-
-Calculation options: folded spectrum options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-These options are valid when performing a folded spectrum calculation
-
-**fold_line** *fold_line*
-    Real.
-
-    Default: 0.0
-
-    Choose the point about which to fold the hamiltonian, i.e. the value of
-    :math:`\varepsilon` in :math:`(H-\varepsilon)^2`. In the case of convergence the psips
-    settle on a stochastic representation of the eigenstate(s) with energy
-    closest to :math:`\varepsilon`.
-
-**P__** *P_{doub}*
-    Real.
-
-    Default: 0.05
-
-    Manually choose the split generation probabilities. Best to choose them such that 
-    the ratio of: 
-
-    .. math::
-
-        \frac{P_{doub}}{P_{sing1}} = \frac{P_{doub}}{P_{sing2}} \approx \frac{H_{off diag}}{H_{on diag}},
-
-    where :math:`H_{on(off) diag}` are the rough magnitudes of the on(off)
-    diagonal elements of the Hamiltonian. Code automatically renormalises the
-    probabilities.
-
-**Po_** *P_{sing1}*
-    Real.
-
-    Default: 0.475
-
-    See above.
-
-**P_o** *P_{sing2}*
-    Real.
-
-    Default: 0.475
-
-    See above.
 
 Output options
 ^^^^^^^^^^^^^^
@@ -1756,3 +1683,30 @@ involving them are not, so although the FCIDUMP file must be translated, it stil
 same format (see comments in src/read_in.F90 and src/molecular_integrals.F90 for details if 
 you wish to create FCIDUMP files by other means).  NB these transformed integral files
 require you to enforce Lz symmetry and will produce incorrect results if you do not.
+
+Old (removed) functionality
+---------------------------
+
+Unused and **not useful** functionality is occasionally removed from HANDE, in
+order to remove the maintenance burden for code that really has no benefit.  In
+general, keeping failed experiments in the codebase is not helpful to
+developers (more work) and users (not obvious if an option should or should not
+be used).  When it transpires that something falls into the category, we may
+hence remove it and detail it below.  If you are interested in resurrecting
+this functionality, please dig through the git history and/or speak to
+a developer.
+
+folded-spectrum FCIQMC
+    The folded-spectrum approach allows, in principle, access to excited states
+    in FCIQMC via using the Hamiltonian :math:`(H-\epsilon)^2`, where
+    :math:`epsilon` is an energy offset.  It emerged in practice to be very
+    painful/impossible to converge to excited states for systems beyond the
+    reach of conventional FCI.
+defining an initiator determinant via a complete active space
+    Originally the initiator space was defined by a population threshold and
+    a complete active space (CAS).  It turns out that it is simpler to allow
+    the initiator space to emerge naturally just through the population
+    threshold (as used in later studies), whereas defining a CAS that is small
+    but effective is not easy in large systems.  Furthermore, using just
+    a population threshold makes the initiator approximation easier to extend
+    to other algorithms (i.e. CCMC and DMQMC).
