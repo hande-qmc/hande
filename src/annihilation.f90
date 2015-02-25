@@ -62,7 +62,6 @@ contains
 
     end subroutine direct_annihilation
 
-    ! [todo] - handle nspawn_events and determ_flags (as in direct_annihilation)
     subroutine direct_annihilation_received_list(sys, rng, tinitiator)
 
         ! Annihilation algorithm for non-blocking communications.
