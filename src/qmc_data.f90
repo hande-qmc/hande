@@ -169,6 +169,12 @@ type dmqmc_in_t
     ! for DMQMC, so that each level will have roughly equal numbers of psips.
     ! The resulting new weights are used in the next beta loop.
     logical :: dmqmc_find_weights = .false.
+    ! If true then the fraction of psips at each
+    ! excitation level will be output at each report loop. These fractions
+    ! will be stored in the array below.
+    ! The number of excitations for a given system is defined by
+    ! sys_t%max_number_excitations; see comments in sys_t for more details.
+    logical :: calculate_excit_distribution = .false.
     ! If true then the simulation will start with walkers uniformly distributed
     ! along the diagonal of the entire density matrix, including all symmetry
     ! sectors.
@@ -180,10 +186,19 @@ type dmqmc_in_t
     ! [review] - JSS: would a better default be true? (Check works with Fionn's new code)
     logical :: half_density_matrix = .false.
 
+    ! When using the old weighted importance sampling, dmqmc_sampling_probs
+    ! stores the factors by which probabilities are to be reduced when spawning
+    ! away from the diagonal.
+    real(p), allocatable :: dmqmc_sampling_probs(:) ! (max_number_excitations)
+    ! When using the old weighted importance sampling, how many iterations are
+    ! the weights varied for?
+    integer :: finish_varying_weights = 0
+
 end type dmqmc_in_t
 
 type dmqmc_rdm_in_t
 
+    ! [todo] - rename.
     ! If true then the reduced density matricies will be calulated for the 'A'
     ! subsystems specified by the user.
     logical :: doing_reduced_dm = .false.
@@ -209,12 +224,6 @@ type dmqmc_rdm_in_t
     ! eigenvalues of the reduced density matrix requested.
     logical :: doing_exact_rdm_eigv=.false.
 
-    ! If true then the fraction of psips at each
-    ! excitation level will be output at each report loop. These fractions
-    ! will be stored in the array below.
-    ! The number of excitations for a given system is defined by
-    ! sys_t%max_number_excitations; see comments in sys_t for more details.
-    logical :: calculate_excit_distribution = .false.
     ! If true then the reduced density matrix is output to a file, 'reduced_dm'
     ! each beta loop.
     logical :: output_rdm = .false.
@@ -408,6 +417,7 @@ end type dmqmc_inst_rdms_t
 
 !--- Type for a ground state RDM ---
 type dmqmc_ground_rdm_t
+    ! [todo] - rename to 'rdm'.
     ! This stores the reduces matrix, which is slowly accumulated over time
     ! (on each processor).
     real(p), allocatable :: reduced_density_matrix(:,:)
@@ -417,17 +427,18 @@ type dmqmc_ground_rdm_t
     real(p) :: trace
 end type dmqmc_ground_rdm_t
 
-
 !--- Type for weighted sampling parameters ---
-! [todo] - split into input and state
 type dmqmc_weighted_sampling_t
-    ! [review] - JSS: the commented bounds seem specific to the Heisenberg
-    ! [review] - JSS: model.  Check for other systems.
-    real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
-    real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
-    real(p), allocatable :: dmqmc_accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
+    ! [todo] - remove dmqmc_ stem.
+    ! This holds the factors by which the populations on each excitation level
+    ! (from 0 to max_number_excitations) are reduced, relative to DMQMC
+    ! without any importance sampling.
+    real(p), allocatable :: dmqmc_accumulated_probs(:) ! (max_number_excitations + 1)
+    ! The value of dmqmc_accumulated_probs on the last report cycle.
+    real(p), allocatable :: dmqmc_accumulated_probs_old(:) ! (max_number_excitations + 1)
 
-    integer :: finish_varying_weights = 0
+    ! If varying the weights then this array holds the factors by which the
+    ! weights are changed each iteration.
     real(dp), allocatable :: weight_altering_factors(:)
 end type dmqmc_weighted_sampling_t
 
