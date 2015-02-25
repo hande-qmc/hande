@@ -673,7 +673,7 @@ contains
         if (doing_load_balancing .and. par_info%load%needed) then
             call do_load_balancing(real_factor, par_info)
             call redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, walker_population, &
-                                                  tot_walkers, nparticles, qmc_spawn, par_info%load%needed)
+                                                  tot_walkers, nparticles, qmc_spawn)
         end if
 
     end subroutine init_mc_cycle
@@ -825,7 +825,7 @@ contains
 
     subroutine redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, &
                                                 walker_populations, tot_walkers,       &
-                                                nparticles, spawn, load_tag)
+                                                nparticles, spawn)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -852,9 +852,6 @@ contains
         !    spawn: spawn_t object.  On output particles which need to be sent
         !        to another processor have been added to the correct position in
         !        the spawned store.
-        !    load_tag: load_t object. On input this has load_tag%doing = .true.
-        !        On output flags will be reset so that load_tag%required =
-        !        .false.
 
         use spawn_data, only: spawn_t
         use system, only: sys_t
@@ -867,13 +864,9 @@ contains
         integer, intent(inout) :: tot_walkers
         real(dp), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
-        logical, intent(inout) :: load_tag
 
-        if (load_tag) then
-            call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
-            if (present(determ)) call redistribute_semi_stoch_t(sys, spawn, determ)
-            load_tag = .false.
-        end if
+        call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+        if (present(determ)) call redistribute_semi_stoch_t(sys, spawn, determ)
 
     end subroutine redistribute_load_balancing_dets
 

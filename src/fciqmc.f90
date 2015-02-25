@@ -124,6 +124,15 @@ contains
                 end if
 
                 call init_mc_cycle(sys, real_factor, nattempts, ndeath, determ=determ)
+                if (par_info%load%needed) then
+                    ! Merge determinants which have potentially moved processor
+                    ! back into the appropriate main list.
+                    call direct_annihilation(sys, rng, initiator_approximation, determ=determ)
+                    qmc_spawn%head = qmc_spawn%head_start
+                    ! If using non-blocking communications we still need this
+                    ! flag to be set.
+                    if (.not. non_blocking_comm) par_info%load%needed = .false.
+                end if
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
@@ -196,9 +205,11 @@ contains
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
                     call direct_annihilation_received_list(sys, rng, initiator_approximation)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
-                    if (doing_load_balancing) call redistribute_particles(walker_dets, real_factor, &
-                                                                          walker_population, tot_walkers, &
-                                                                          nparticles, qmc_spawn)
+                    if (par_info%load%needed) then
+                        call redistribute_particles(walker_dets, real_factor,  walker_population, tot_walkers, &
+                                                    nparticles, qmc_spawn)
+                        par_info%load%needed = .false.
+                    end if
                     call direct_annihilation_spawned_list(sys, rng, initiator_approximation, send_counts, req_data_s, &
                                                           par_info%report_comm%nb_spawn)
                     call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
