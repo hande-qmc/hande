@@ -20,6 +20,8 @@ enum, bind(c)
     enumerator :: hf_proj_O_ind
     enumerator :: hf_proj_H_ind
     enumerator :: hf_D0_pop_ind
+    enumerator :: nocc_states_ind
+    enumerator :: nspawned_ind
     enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
 end enum
 
@@ -46,13 +48,15 @@ contains
 
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(ntot_particles_old, update_tau, bloom_stats)
+    subroutine update_energy_estimators(nspawn_events, ntot_particles_old, update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
 
         ! Should be called every report loop in an FCIQMC/iFCIQMC calculation.
 
+        ! In:
+        !    nspawn_events: The total number of spawning events to this process.
         ! In/Out:
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -69,6 +73,7 @@ contains
 
         use parallel
 
+        integer, intent(in) :: nspawn_events
         real(p), intent(inout) :: ntot_particles_old(sampling_size)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
@@ -77,7 +82,7 @@ contains
         real(dp) :: rep_loop_sum(sampling_size*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
-        call local_energy_estimators(rep_loop_loc, update_tau, bloom_stats)
+        call local_energy_estimators(rep_loop_loc, nspawn_events, update_tau, bloom_stats)
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
 
@@ -172,12 +177,13 @@ contains
 
     end subroutine update_energy_estimators_recv
 
-    subroutine local_energy_estimators(rep_loop_loc, update_tau, bloom_stats, spawn_elsewhere)
+    subroutine local_energy_estimators(rep_loop_loc, nspawn_events, update_tau, bloom_stats, spawn_elsewhere)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
 
         ! In (optional):
+        !    nspawn_events: The total number of spawning events to this process.
         !    update_tau: if true, then the current processor wants to automatically rescale tau.
         !    bloom_stats: Bloom stats.  The report loop quantities must be set.
         !    spawn_elsewhere: number of walkers spawned from current processor
@@ -187,7 +193,7 @@ contains
         !       evaluation.
 
         use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
-                               proj_energy, D0_population
+                               proj_energy, D0_population, tot_walkers
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -195,6 +201,7 @@ contains
 
         real(dp), intent(out) :: rep_loop_loc(:)
         type(bloom_stats_t), intent(in), optional :: bloom_stats
+        integer, intent(in), optional :: nspawn_events
         logical, intent(in), optional :: update_tau
         integer, intent(in) , optional :: spawn_elsewhere
 
@@ -216,6 +223,8 @@ contains
         rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
         rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
         rep_loop_loc(hf_D0_pop_ind) = D0_hf_population
+        rep_loop_loc(nocc_states_ind) = tot_walkers
+        if (present(nspawn_events)) rep_loop_loc(nspawned_ind) = nspawn_events
 
         offset = nparticles_start_ind-1 + iproc*sampling_size
         if (present(spawn_elsewhere)) then
@@ -244,7 +253,8 @@ contains
 
         use fciqmc_data, only: sampling_size, target_particles, ncycles, rspawn,               &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
-                               vary_shift_from_proje, D0_population, nparticles_proc, par_info
+                               vary_shift_from_proje, D0_population, nparticles_proc, par_info,&
+                               tot_nocc_states, tot_nspawn_events
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
@@ -276,6 +286,8 @@ contains
         proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
         proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
         D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
+        tot_nocc_states = rep_loop_sum(nocc_states_ind)
+        tot_nspawn_events = rep_loop_sum(nspawned_ind)
 
         do i = 1, sampling_size
             nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)

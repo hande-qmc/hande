@@ -756,8 +756,8 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators, &
-                               bloom_stats, rep_comm)
+    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, nspawn_events, report_time, &
+                                soft_exit, update_estimators, bloom_stats, rep_comm)
 
         ! In:
         !    sys: system being studied.
@@ -765,6 +765,7 @@ contains
         !    update_tau: true if the processor thinks the timestep should be rescaled.
         !             Only used if not in variable shift mode and if tau_search is being
         !             used.
+        !    nspawn_events: The total number of spawning events to this process.
         !    update_estimators (optional): update the (FCIQMC/CCMC) energy estimators.  Default: true.
         ! In/Out:
         !    ntot_particles: total number (across all processors) of
@@ -797,6 +798,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ireport
         logical, intent(in) :: update_tau
+        integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
         real(p), intent(inout) :: ntot_particles(sampling_size)
@@ -815,12 +817,13 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. non_blocking_comm) then
-            call update_energy_estimators(ntot_particles, update_tau_now, bloom_stats)
+            call update_energy_estimators(nspawn_events, ntot_particles, update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(rep_info_copy, update_tau_now, bloom_stats, rep_comm%nb_spawn(2))
+            call local_energy_estimators(rep_info_copy, nspawn_events, update_tau_now, bloom_stats, &
+                                          rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
             call update_energy_estimators_recv(rep_comm%request, ntot_particles, update_tau_now, bloom_stats)
             ! Send current report loop quantities.

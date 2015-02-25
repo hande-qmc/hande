@@ -225,7 +225,7 @@ contains
             end do
 
             ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(nparticles_old)
+            call update_energy_estimators(nspawn_events, nparticles_old)
 
             call cpu_time(t2)
 
