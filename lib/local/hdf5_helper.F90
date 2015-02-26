@@ -93,7 +93,7 @@ module hdf5_helper
 
         end subroutine hdf5_kinds_init
 
-        subroutine dataset_array_plist(arr_rank, arr_dim, plist_id, chunk_size, compress_lvl)
+        subroutine dataset_array_plist(arr_rank, arr_dim, plist_id, chunk_size, compress_lvl, chunk)
 
             ! Create a properties list for an array data set.
 
@@ -101,12 +101,14 @@ module hdf5_helper
             !    arr_rank: rank of array.
             !    arr_dim: size of array along each dimension.
             !    chunk_size (optional): size of chunks to stored when using a chunked
-            !        layout.  We currently chunk solely only the last dimension.  Default: 100000.
+            !        layout.  We currently chunk solely the last dimension.  Default: 100000.
             !    compress_lvl (optional): compression level (1-9).  Default: 6.
             !        The levels are those used by gzip (see man page) where 1 is fastest
             !        with the worst compression ratio and 9 is the slowest but
             !        gives (usually) the best compression ratio.  6 is the same default
             !        used by gzip.
+            !    chunk (optional) :: if true, force chunking of the data set.  Default: chunk
+            !        only arrays with more elements than chunk_size.
             ! Out:
             !    plist_id: properties list.  If the array has more than chunk_size entries,
             !        chunking and compression are enabled.  Currently we use the default
@@ -122,20 +124,24 @@ module hdf5_helper
             integer(hsize_t), intent(in) :: arr_dim(:)
             integer(hid_t), intent(out) :: plist_id
             integer, intent(in), optional :: chunk_size, compress_lvl
+            logical, intent(in), optional :: chunk
 
             integer :: ierr
             integer :: chunk_size_loc
             integer :: compress_lvl_loc
             integer(hsize_t) :: chunk_dim(arr_rank)
+            logical :: chunk_loc
 
             chunk_size_loc = 100000
             compress_lvl_loc = 6
+            chunk_loc = .false.
             if (present(chunk_size)) chunk_size_loc = chunk_size
             if (present(compress_lvl)) compress_lvl_loc = compress_lvl
+            if (present(chunk)) chunk_loc = chunk
 
             call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, ierr)
 
-            if (product(arr_dim) > chunk_size_loc) then
+            if (product(arr_dim) > chunk_size_loc .or. chunk_loc) then
                 chunk_dim(1:arr_rank-1) = arr_dim(1:arr_rank-1)
                 chunk_dim(arr_rank) = chunk_size_loc / product(chunk_dim(1:arr_rank-1))
                 call h5pset_chunk_f(plist_id, arr_rank, chunk_dim, ierr)
@@ -236,7 +242,7 @@ module hdf5_helper
         ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
         ! types and array dimensions as needed!
 
-        subroutine write_array_1d_int_32(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_1d_int_32(id, dset, kinds, arr_shape, arr, append)
 
             ! Write out 1D 32-bit integer array to an HDF5 file.
 
@@ -247,6 +253,8 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    append (optional): if true, append to an existing dataset or create an
+            !        extensible dataset if it doesn't already exist.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
@@ -259,15 +267,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_32), intent(in), target :: arr(arr_shape(1))
+            logical, intent(in), optional :: append
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_int_32
 
-        subroutine write_array_1d_int_64(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_1d_int_64(id, dset, kinds, arr_shape, arr, append)
 
             ! Write out 1D 64-bit integer array to an HDF5 file.
 
@@ -278,6 +287,8 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    append (optional): if true, append to an existing dataset or create an
+            !        extensible dataset if it doesn't already exist.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
@@ -290,15 +301,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_64), intent(in), target :: arr(arr_shape(1))
+            logical, intent(in), optional :: append
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_int_64
 
-        subroutine write_array_2d_int_32(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_2d_int_32(id, dset, kinds, arr_shape, arr, append)
 
             ! Write out 2D 32-bit integer array to an HDF5 file.
 
@@ -309,6 +321,8 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    append (optional): if true, append to an existing dataset or create an
+            !        extensible dataset if it doesn't already exist.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
@@ -321,15 +335,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_32), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            logical, intent(in), optional :: append
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr, append)
 
         end subroutine write_array_2d_int_32
 
-        subroutine write_array_2d_int_64(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_2d_int_64(id, dset, kinds, arr_shape, arr, append)
 
             ! Write out 2D 64-bit integer array to an HDF5 file.
 
@@ -340,6 +355,8 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    append (optional): if true, append to an existing dataset or create an
+            !        extensible dataset if it doesn't already exist.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
@@ -352,15 +369,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_64), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            logical, intent(in), optional :: append
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr, append)
 
         end subroutine write_array_2d_int_64
 
-        subroutine write_array_1d_real_dp(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_1d_real_dp(id, dset, kinds, arr_shape, arr, append)
 
             ! Write out 1D real(dp) array to an HDF5 file.
 
@@ -371,6 +389,8 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    append (optional): if true, append to an existing dataset or create an
+            !        extensible dataset if it doesn't already exist.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
@@ -383,15 +403,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(dp), intent(in), target :: arr(arr_shape(1))
+            logical, intent(in), optional :: append
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_real_dp
 
-        subroutine write_array_2d_real_dp(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_2d_real_dp(id, dset, kinds, arr_shape, arr, append)
 
             ! Write out 2D real(dp) array to an HDF5 file.
 
@@ -402,6 +423,8 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    append (optional): if true, append to an existing dataset or create an
+            !        extensible dataset if it doesn't already exist.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
@@ -414,15 +437,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(dp), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            logical, intent(in), optional :: append
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr, append)
 
         end subroutine write_array_2d_real_dp
 
-        subroutine write_array_1d_real_sp(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_1d_real_sp(id, dset, kinds, arr_shape, arr, append)
 
             ! Write out 1D real(sp) array to an HDF5 file.
 
@@ -433,6 +457,8 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    append (optional): if true, append to an existing dataset or create an
+            !        extensible dataset if it doesn't already exist.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
@@ -445,15 +471,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(sp), intent(in), target :: arr(arr_shape(1))
+            logical, intent(in), optional :: append
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_real_sp
 
-        subroutine write_array_2d_real_sp(id, dset, kinds, arr_shape, arr)
+        subroutine write_array_2d_real_sp(id, dset, kinds, arr_shape, arr, append)
 
             ! Write out 2D real(sp) array to an HDF5 file.
 
@@ -464,6 +491,8 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    append (optional): if true, append to an existing dataset or create an
+            !        extensible dataset if it doesn't already exist.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
@@ -476,15 +505,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(sp), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            logical, intent(in), optional :: append
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+            call write_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr, append)
 
         end subroutine write_array_2d_real_sp
 
-        subroutine write_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr)
+        subroutine write_ptr(id, dset, dtype, arr_rank, arr_dim, arr_ptr, arr_append)
 
             ! Write an array to an open HDF5 file/group.
 
@@ -495,12 +525,16 @@ module hdf5_helper
             !    arr_rank: rank of array.
             !    arr_dim: size of array along each dimension.
             !    arr_ptr: C pointer to first element in array to be written out.
+            !    arr_append (optional): if true, append to an existing data set (created
+            !        if necessary).  Appending is currently only supported along the
+            !        outer-most index.
 
             ! NOTE: get dtype from h5kind_to_type if not using a native HDF5
             ! Fortran type.
 
             use hdf5
             use, intrinsic :: iso_c_binding
+            use errors, only: stop_all
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -508,17 +542,67 @@ module hdf5_helper
             integer, intent(in) :: arr_rank
             integer(hsize_t), intent(in) :: arr_dim(:)
             type(c_ptr), intent(in) :: arr_ptr
+            logical, intent(in), optional :: arr_append
 
             integer :: ierr
-            integer(hid_t) :: dspace_id, dset_id, plist_id
+            integer(hid_t) :: dspace_id, dset_id, plist_id, memspace_id
+            integer :: arr_rank_stored
+            integer(hsize_t) :: arr_max_dim(size(arr_dim)), arr_dim_stored(size(arr_dim)), &
+                                arr_max_dim_stored(size(arr_dim)), offset(size(arr_dim)), &
+                                arr_tot_dim(size(arr_dim))
+            logical :: append, exists, chunk
 
-            call h5screate_simple_f(arr_rank, arr_dim, dspace_id, ierr)
-            call dataset_array_plist(arr_rank, arr_dim, plist_id)
-            call h5dcreate_f(id, dset, dtype, dspace_id, dset_id, ierr, dcpl_id=plist_id)
+            append = .false.
+            arr_max_dim = arr_dim
 
-            call h5dwrite_f(dset_id, dtype, arr_ptr, ierr)
+            if (present(arr_append)) append = arr_append
+            if (append) then
+                call h5lexists_f(id, dset, exists, ierr)
+                if (.not.exists) then
+                    ! Need to create a new extensible space.
+                    append = .false.
+                end if
+                arr_max_dim(size(arr_dim)) = H5S_UNLIMITED_F
+            end if
 
-            call h5pclose_f(plist_id, ierr)
+            if (append) then
+                call h5dopen_f(id, dset, dset_id, ierr)
+                call h5dget_space_f(dset_id, dspace_id, ierr)
+
+                ! Get existing size.
+                call h5sget_simple_extent_ndims_f(dspace_id, arr_rank_stored, ierr)
+                if (arr_rank /= arr_rank_stored) call stop_all('write_ptr', 'Reading mismatched data rank.')
+                call h5sget_simple_extent_dims_f(dspace_id, arr_dim_stored, arr_max_dim_stored, ierr)
+                if (any(arr_dim(:arr_rank-1) - arr_dim_stored(:arr_rank-1) /= 0)) &
+                    call stop_all('write_ptr', 'Reading mismatched array bounds')
+
+                ! Extend.
+                arr_tot_dim = arr_dim_stored
+                arr_tot_dim(size(arr_dim)) = arr_dim_stored(size(arr_dim)) + arr_dim(size(arr_dim))
+                call h5dset_extent_f(dset_id, arr_tot_dim, ierr)
+                call h5screate_simple_f(arr_rank, arr_dim, memspace_id, ierr, arr_max_dim)
+                ! Refresh dataspace following extension before accessing more data.
+                call h5dget_space_f(dset_id, dspace_id, ierr)
+
+                ! Write to extended part of dataset.
+                offset = 0
+                offset(size(arr_dim)) = arr_dim_stored(size(arr_dim))
+                call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, offset, arr_dim, ierr)
+                call h5dwrite_f(dset_id, dtype, arr_ptr, ierr, memspace_id, dspace_id)
+
+            else
+                ! Create.
+                call h5screate_simple_f(arr_rank, arr_dim, dspace_id, ierr, arr_max_dim)
+                chunk = arr_max_dim(size(arr_dim)) == H5S_UNLIMITED_F
+                call dataset_array_plist(arr_rank, arr_dim, plist_id, chunk=chunk)
+                call h5dcreate_f(id, dset, dtype, dspace_id, dset_id, ierr, dcpl_id=plist_id)
+
+                ! Write.
+                call h5dwrite_f(dset_id, dtype, arr_ptr, ierr)
+
+                call h5pclose_f(plist_id, ierr)
+            end if
+
             call h5dclose_f(dset_id, ierr)
             call h5sclose_f(dspace_id, ierr)
 
