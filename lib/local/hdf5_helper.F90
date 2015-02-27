@@ -28,7 +28,7 @@ module hdf5_helper
     implicit none
 
     private
-    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal
+    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape
 
 
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
@@ -175,6 +175,35 @@ module hdf5_helper
             call h5dclose_f(dset_id, ierr)
 
         end function dtype_equal
+
+        subroutine dset_shape(id, dset, arr_shape)
+
+            ! Find the shape of a dataset in an HDF5 file.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            ! Out:
+            !    arr_shape: shape of array stored in dataset.  Must have dimensions
+            !        equal to the rank of the dataset (not checked).
+
+            use hdf5
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            integer(hsize_t), intent(out) :: arr_shape(:)
+
+            integer :: ierr
+            integer(hid_t) :: dset_id, dspace_id
+            integer(hsize_t) :: arr_max_shape(size(arr_shape))
+
+            call h5dopen_f(id, dset, dset_id, ierr)
+            call h5dget_space_f(dset_id, dspace_id, ierr)
+            call h5sget_simple_extent_dims_f(dspace_id, arr_shape, arr_max_shape, ierr)
+            call h5sclose_f(dspace_id, ierr)
+            call h5dclose_f(dset_id, ierr)
+
+        end subroutine dset_shape
 
         ! === Helper procedures: writing ===
 
