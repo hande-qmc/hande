@@ -68,7 +68,7 @@ contains
 #ifdef PARALLEL
         ! Put all the quantities to be communicated together in one array.
 
-        array_size = 2*sampling_size + number_dmqmc_estimators + 2
+        array_size = 2*sampling_size + number_dmqmc_estimators + 3
         if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
         if (calc_inst_rdm) array_size = array_size + size(rdm_traces)
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) array_size = array_size + size(renyi_2)
