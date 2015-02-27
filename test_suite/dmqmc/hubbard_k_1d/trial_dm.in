@@ -1,0 +1,26 @@
+hubbard_k
+
+lattice
+12
+electrons 12
+ms 0
+sym 1
+
+walker_length 200 mb
+spawned_walker_length 100 mb
+
+dmqmc
+dmqmc_energy
+
+propagate_to_beta
+init_beta 0.5
+
+metropolis_attempts 1000
+
+tau 0.001
+beta_loops 5
+mc_cycles 10
+nreports 100
+seed 7
+varyshift_target 1e10
+init_pop 1000
