@@ -424,7 +424,8 @@ contains
         use errors
         use fciqmc_data, only: sampling_size, all_sym_sectors, f0, init_beta, &
                                walker_dets, nparticles, real_factor, &
-                               walker_population, tot_walkers, qmc_spawn
+                               walker_population, tot_walkers, qmc_spawn, &
+                               metropolis_attempts
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
@@ -487,7 +488,8 @@ contains
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, sym_in, ireplica, qmc_spawn)
+                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, &
+                                                                               sym_in, ireplica, qmc_spawn)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
                 end if
@@ -758,7 +760,7 @@ contains
         end do
 
         if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", f8.7)') &
-                          real(naccept)/nsuccess, real(metropolis_attempts*npsips-nsuccess)/(metropolis_attempts*npsips)
+                           real(naccept)/nsuccess, real(metropolis_attempts*npsips-nsuccess)/(metropolis_attempts*npsips)
 
         call dealloc_det_info_t(cdet)
 

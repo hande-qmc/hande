@@ -577,7 +577,7 @@ integer, allocatable :: correlation_sites(:)
 real(p) :: init_beta = 1.0
 ! Number of metropolis attempts (per psip) we use when generating
 ! the trial density matrix.
-integer :: metropolis_attempts = 1000
+integer :: metropolis_attempts = 0
 ! For the metropolis move we generate an excitation of the current determinant
 ! up to the max_metropolis_move'th excitation level (excluding zero-fold
 ! excitations). Only applicable if all_mom_sym = .true., otherwise the
