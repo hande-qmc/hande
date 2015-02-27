@@ -713,7 +713,7 @@ contains
 
         call alloc_det_info_t(sys, cdet)
 
-        ! The metropolis move is to excite two electrons. This is achieved
+        ! The metropolis move is to excite [1:max_metropolis_move] electrons. This is achieved
         ! either by using the excitation generators when working in a
         ! symmetry contrained system or by uniformly exciting the electrons
         ! among the available levels. In the latter case we need to set the
@@ -845,20 +845,7 @@ contains
     subroutine init_grand_canonical_ensemble(sys, sym, npsips, beta, spawn, rng)
 
         ! Initially distribute psips according to the grand canonical
-        ! distribution function. The level probabilities won't, in general, be
-        ! the same as those of the canonical ensemble, but the distribution
-        ! should serve as a good starting point for the Metropolis algorithm.
-
-        ! We know the value of < n_i >_0 exactly, so in turn know in principle
-        ! how to occupy the single particle levels. Uniformly selecting orbitals
-        ! becomes increasingly inefficient with basis set size so instead we
-        ! subdivide the interval [0,1] according to the single particle
-        ! occupancies. As an example consider the case when p_0 = 1/ne < n_0 > = 0.5,
-        ! with this method we will then select the 0th orbital 50% of the time
-        ! when trying to generate a determinant, compared to 1 / nbasis if
-        ! selecting orbitals uniformly. Of course, we now need to discard any
-        ! determinants where we select any given orbital twice, but the pay-off
-        ! is substantial.
+        ! distribution function.
 
         ! In:
         !    sys: system being studied.
@@ -893,18 +880,26 @@ contains
         ireplica = 1
 
         ! Calculate orbital occupancies.
-        ! * Warning *: We assume that we are dealing with the UEG with no
+        ! * Warning *: We assume that we are dealing with a system without
         ! magnetic fields or other funny stuff, so the probabilty of occupying
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
                                                           (1+exp(beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
-        ! Occupy the diagonal.
+        ! In the grand canoical ensemble the probability of occupying a
+        ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the
+        ! Fermi factors calculated above in p_single(i). We normally work in the
+        ! canonical ensemble, however, so we need to discard any determinant
+        ! generated which does not contain nel electrons to obtain the correct
+        ! normalisation and hence, the correct distribution. For small systems
+        ! the number fluctuations are usually small, so this routine is quite
+        ! fast.
         ipsip = 0
         do while (ipsip < npsips)
             occ_list = 0
-            ! Select the alpha and beta spin orbitals.
+            ! Select the alpha and beta spin orbitals and discard any
+            ! determinant without the correct number of particles.
             if (sys%nalpha > 0) call generate_allowed_orbital_list(rng, p_single, sys%nalpha, 1, occ_list(:sys%nalpha), gen)
             if (.not. gen) cycle
             if (sys%nbeta > 0) call generate_allowed_orbital_list(rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
