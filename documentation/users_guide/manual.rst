@@ -1528,17 +1528,17 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     Thus by propagating :math:`f` using the (appropriately modified) DMQMC algorithm we can sample the density matrix at a particular beta.
     This removes the difficulty of sampling the infinite temperature density matrix for systems with strong reference components, as typically
     the reference will be highly populated in the trial density matrix at any :math:`\beta > 0`.
-**init_beta**
+**init_beta** *beta*
     Real.
 
     Beta value the (trial) density matrix will initially be sampled at.
-**metropolis_attempts**
+**metropolis_attempts** *nattempts*
     Integer.
 
-    Default 1000.
+    Default 0.
 
     Number of metropolis iterations per psip to be carried out when attempting to sample a trial density matrix.
-**max_metropolis_moves**
+**max_metropolis_moves** *max_move*
     Integer.
 
     Default: 2.
@@ -1546,18 +1546,39 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     A metropolis move is defined as a nfold excitation of the determiant under consideration.
     max_metropolis_move gives the maximum n considered in that nfold excitation.
 **free_electron_trial**
-    Default False.
+    Default use "Hartree-Fock" trial density matrix.
 
     Use the non-interacting Hamiltonian in our trial density matrix. This is not as efficient as the default "Hartree-Fock" density matrix.
-**grand_canonical_ensemble**
+    If using the grand_canonical_intialisation option then metropolis_attempts can be set to zero as the canonical free-electron trial density
+    matrix is already being sampled.
+**grand_canonical_initialisation**
     Default False.
 
-    Use the grand canonical partition function (for the free electron gas) to guide the initialisation of the trial density matrix.
-    This is usually a good starting point for the Metropolis algorithm.
+    Use the grand canonical partition function to guide the initialisation of the trial density matrix.
+    This is usually a good starting point for the Metropolis algorithm and *is* also the starting point when using the free-electron trial
+    density matrix.
 **chem_pot** *chemical potential*
     Real.
 
-    Chemical potential to be used to initialise the density matrix in the grand canonical ensemble. This can be calculated using chem_pot.py in tools/dmqmc/
+    Chemical potential to be used to initialise the density matrix in the grand canonical ensemble. This can be calculated using chem_pot.py in tools/dmqmc/.
+    If using the free-electron trial density matrix this chemical potential will produce the correct single particle occupancies, :math:`p_i`, so that the probability of occupying
+    a given determinant is given by
+
+    .. math::
+
+        p(i_1, i_2, \dots, i_N) = \prod_i^N p_i,
+
+    where,
+
+    .. math::
+        p_i = \frac{1}{e^{\beta (\varepsilon_i - \mu)} + 1}
+
+    is the usual Fermi factor.
+**fermi_temperature**
+    Default: False.
+
+    Rescale time step to be a multiple of :math:`1/T_F`, where :math:`T_F = E_F/k_B` is the Fermi Temperature, :math:`E_F` is the Fermi energy and :math:`k_B` is the Boltzman constant.
+    This allows results to be output in terms of :math:`\Theta=T/T_F` which a useful quantity when comparing energy scales.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
