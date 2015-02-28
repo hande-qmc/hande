@@ -226,7 +226,7 @@ contains
 
             ! Remove low-population spawned walkers by stochastically
             ! rounding their population up to one or down to zero.
-            if (real_amplitudes) call round_low_population_spawns(rng)
+            if (real_amplitudes) call round_low_population_spawns(rng, lower_bound)
 
             ! Insert new walkers into main walker list.
             call insert_new_walkers(sys, spawn, determ_flags, lower_bound)
@@ -514,7 +514,7 @@ contains
 
     end subroutine remove_unoccupied_dets
 
-    subroutine round_low_population_spawns(rng)
+    subroutine round_low_population_spawns(rng, lower_bound)
 
         ! Loop over all spawned walkers. For each walker with a population of
         ! less than one, round it up to one with a probability equal to its
@@ -531,23 +531,33 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        ! In (optional):
+        !    lower_bound: starting point we annihiliate from in spawn_t object.
+        !       Default: 1.
 
         use dSFMT_interface, only: dSFMT_t
         use stoch_utils, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
+        integer, optional, intent(in) :: lower_bound
 
-        integer :: i, k, itype, nremoved
+        integer :: i, k, itype, nremoved, spawn_start
         integer(int_s) :: real_factor_s
         real(dp) :: r
         integer, parameter :: thread_id = 0
+
+        if (present(lower_bound)) then
+            spawn_start = lower_bound
+        else
+            spawn_start = 1
+        end if
 
         real_factor_s = int(real_factor, int_s)
 
         nremoved = 0
         ! [note] - It might be more efficient to combine this with insert_new_walkers.
         ! [note] - The number of particles to insert should be small by this point though...
-        do i = 1, qmc_spawn%head(thread_id,0)
+        do i = spawn_start, qmc_spawn%head(thread_id,0)
 
             ! spawned_population holds the spawned population in its encoded
             ! form (see comments for walker_population).
