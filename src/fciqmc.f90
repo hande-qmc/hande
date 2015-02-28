@@ -286,6 +286,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t
         use system, only: sys_t
+        use qmc_common, only: decide_nattempts
 
         type(sys_t), intent(in) :: sys
         type(spawn_t), intent(inout) :: spawn
@@ -298,9 +299,10 @@ contains
         real(p), target :: tmp_data(sampling_size)
         type(excit_t) :: connection
         real(p) :: hmatel
-        integer :: idet, iparticle
+        integer :: idet, iparticle, nattempts_current_det
         integer(int_p) :: nspawned
-        integer(int_p) :: pop(spawn%ntypes)
+        integer(int_p) :: int_pop(spawn%ntypes)
+        real(p) :: real_pop
         real(p) :: list_pop
         integer(i0), target :: ftmp(sys%basis%tensor_label_len)
 
@@ -308,7 +310,8 @@ contains
 
         do idet = 1, spawn%head(0,0) ! loop over walkers/dets
 
-            pop = int(spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet), int_p)
+            int_pop = int(spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet), int_p)
+            real_pop = real(int_pop(1),p) / real_factor
             ftmp = int(spawn%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
             tmp_data(1) = sc0_ptr(sys, cdet%f) - H00
@@ -321,18 +324,20 @@ contains
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
-            call update_proj_energy_ptr(sys, f0, cdet, real(pop(1),p), D0_population, &
+            call update_proj_energy_ptr(sys, f0, cdet, real_pop, D0_population, &
                                         proj_energy, connection, hmatel)
 
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
-            call set_parent_flag_ptr(real(pop(1),p), cdet%f, 1, cdet%initiator_flag)
+            call set_parent_flag_ptr(real_pop, cdet%f, 1, cdet%initiator_flag)
+
+            nattempts_current_det = decide_nattempts(rng, real_pop)
 
             ! Possibly redundant if only one walker spawned at each spawning event.
-            do iparticle = 1, abs(pop(1))
+            do iparticle = 1, nattempts_current_det
 
                 ! Attempt to spawn.
-                call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, pop(1), gen_excit_ptr, nspawned, connection)
+                call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, nspawned, connection)
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then
@@ -343,9 +348,9 @@ contains
 
             ! Clone or die.
             ! list_pop is meaningless as nparticles is updated upon annihilation.
-            call stochastic_death(rng, tmp_data(1), shift(1), pop(1), list_pop, ndeath)
+            call stochastic_death(rng, tmp_data(1), shift(1), int_pop(1), list_pop, ndeath)
             ! Update population of walkers on current determinant.
-            spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet) = pop
+            spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet) = int_pop
 
         end do
 
