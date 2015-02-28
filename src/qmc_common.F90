@@ -613,11 +613,13 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(sys, real_factor, nattempts, ndeath, min_attempts, determ)
+    subroutine init_mc_cycle(rng, sys, real_factor, nattempts, ndeath, min_attempts, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
 
+        ! In/Out:
+        !    rng: random number generator.
         ! In:
         !    sys: system being studied
         !    real_factor: The factor by which populations are multiplied to
@@ -633,9 +635,12 @@ contains
         !        semi-stochastic calculations.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, doing_load_balancing
+        use calc, only: non_blocking_comm
+        use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
         use system, only: sys_t
 
+        type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
@@ -672,8 +677,11 @@ contains
 
         if (doing_load_balancing .and. par_info%load%needed) then
             call do_load_balancing(real_factor, par_info)
-            call redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, walker_population, &
+            call redistribute_load_balancing_dets(rng, sys, walker_dets, real_factor, determ, walker_population, &
                                                   tot_walkers, nparticles, qmc_spawn)
+            ! If using non-blocking communications we still need this flag to
+            ! be set.
+            if (.not. non_blocking_comm) par_info%load%needed = .false.
         end if
 
     end subroutine init_mc_cycle
@@ -823,8 +831,8 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(sys, walker_dets, real_factor, determ, &
-                                                walker_populations, tot_walkers,       &
+    subroutine redistribute_load_balancing_dets(rng, sys, walker_dets, real_factor, &
+                                                determ, walker_populations, tot_walkers, &
                                                 nparticles, spawn)
 
         ! When doing load balancing we need to redistribute chosen sections of
@@ -842,6 +850,7 @@ contains
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! In/Out:
+        !    rng: random number generator.
         !    determ (optional): The deterministic space being used, as required for
         !        semi-stochastic calculations.
         !    nparticles: number of excips on the current processor.
@@ -853,9 +862,12 @@ contains
         !        to another processor have been added to the correct position in
         !        the spawned store.
 
+        use annihilation, only: direct_annihilation
+        use dSFMT_interface, only: dSFMT_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 
+        type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: walker_dets(:,:)
         integer(int_p), intent(in) :: real_factor
@@ -866,6 +878,12 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+
+        ! Merge determinants which have potentially moved processor back into
+        ! the appropriate main list.
+        call direct_annihilation(sys, rng, tinitiator = .false.)
+        spawn%head = spawn%head_start
+
         if (present(determ)) call redistribute_semi_stoch_t(sys, spawn, determ)
 
     end subroutine redistribute_load_balancing_dets

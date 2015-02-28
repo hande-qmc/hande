@@ -123,16 +123,7 @@ contains
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(sys, real_factor, nattempts, ndeath, determ=determ)
-                if (par_info%load%needed) then
-                    ! Merge determinants which have potentially moved processor
-                    ! back into the appropriate main list.
-                    call direct_annihilation(sys, rng, initiator_approximation, determ=determ)
-                    qmc_spawn%head = qmc_spawn%head_start
-                    ! If using non-blocking communications we still need this
-                    ! flag to be set.
-                    if (.not. non_blocking_comm) par_info%load%needed = .false.
-                end if
+                call init_mc_cycle(rng, sys, real_factor, nattempts, ndeath, determ=determ)
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets

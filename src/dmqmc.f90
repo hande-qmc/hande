@@ -99,7 +99,7 @@ contains
 
                 do icycle = 1, ncycles
 
-                    call init_mc_cycle(sys, real_factor, nattempts, ndeath)
+                    call init_mc_cycle(rng, sys, real_factor, nattempts, ndeath)
 
                     iteration = (ireport-1)*ncycles + icycle
 
