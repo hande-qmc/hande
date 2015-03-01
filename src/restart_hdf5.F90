@@ -387,7 +387,7 @@ Module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
 #endif
             use errors, only: stop_all
             use const
@@ -482,10 +482,7 @@ Module restart_hdf5
 
                 ! Figure out how many determinants we wrote out...
                 ! qs%psip_list%states has rank 2, so need not look that up!
-                call h5dopen_f(subgroup_id, ddets, dset_id, ierr)
-                call h5dget_space_f(dset_id, dspace_id, ierr)
-                call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
-                call h5dclose_f(dset_id, ierr)
+                call dset_shape(subgroup_id, ddets, dims)
                 ! Number of determinants is the last index...
                 qs%psip_list%nstates = dims(size(dims))
 
