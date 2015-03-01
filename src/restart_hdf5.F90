@@ -151,7 +151,7 @@ Module restart_hdf5
         end subroutine init_restart_info_t
 
 #ifndef DISABLE_HDF5
-        subroutine init_restart_hdf5(ri, write_mode, filename, kinds)
+        subroutine init_restart_hdf5(ri, write_mode, filename, kinds, ip, verbose)
 
             ! Initialise restart functionality:
 
@@ -167,9 +167,13 @@ Module restart_hdf5
             !    ri: restart information. ri%restart_stem and ri%write_id/ri%read_id (as
             !        appropriate) are used.
             !    write_mode: true for writing out a restart file, false for reading one in.
+            !    ip (optional): processor index for the restart filename.  Default: iproc,
+            !        the processor index assigned by MPI.
+            !    verbose (optional): write output.  Default: true if on parent processor,
+            !        false otherwise.
             ! Out:
             !    filename: name of the restart file.
-            !    kinds: derived type containing HDF5 types which correspond to the
+            !    kinds (optional): derived type containing HDF5 types which correspond to the
             !        non-standard integer and real kinds used in HANDE.
 
             use hdf5_helper, only: hdf5_kinds_t, hdf5_kinds_init
@@ -180,11 +184,18 @@ Module restart_hdf5
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: write_mode
             character(*), intent(out) :: filename
-            type(hdf5_kinds_t), intent(out) :: kinds
+            type(hdf5_kinds_t), intent(out), optional :: kinds
+            integer, intent(in), optional :: ip
+            logical, intent(in), optional :: verbose
 
-            character(10) :: proc_suf
-            integer :: id, ierr
-            logical :: exists
+            character(14) :: proc_suf
+            integer :: id, ierr, ip_loc
+            logical :: exists, verbose_loc
+
+            verbose_loc = parent
+            if (present(verbose)) verbose_loc = verbose
+            ip_loc = iproc
+            if (present(ip)) ip_loc = ip
 
             if (write_mode) then
                 id = ri%write_id
@@ -193,7 +204,7 @@ Module restart_hdf5
             end if
 
             ! Figure out filename: restart_stem.Y.pX.H5, where Y is related to id and X is the processor rank.
-            write (proc_suf,'(".p",'//int_fmt(iproc,0)//',".H5")') iproc
+            write (proc_suf,'(".p",'//int_fmt(ip_loc,0)//',".H5")') ip_loc
             call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
 
             ! New HDF5 files have a '.H5' suffix. However, older HANDE restart
@@ -201,11 +212,11 @@ Module restart_hdf5
             ! exist, try without '.H5'.
             inquire(file=filename, exist=exists)
             if ((.not. write_mode) .and. (.not. exists)) then
-                write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
+                write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') ip_loc
                 call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
             end if
 
-            if (parent) then
+            if (verbose_loc) then
                 if (write_mode) then
                     write (6,'(1X,"#",1X,"Writing restart file to",1X,a)', advance='no') trim(filename)
                 else
@@ -218,7 +229,7 @@ Module restart_hdf5
                 end if
             end if
 
-            call hdf5_kinds_init(kinds)
+            if (present(kinds)) call hdf5_kinds_init(kinds)
 
         end subroutine init_restart_hdf5
 #endif
