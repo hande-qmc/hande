@@ -37,6 +37,7 @@ module hdf5_helper
         integer(hid_t) :: i32
         integer(hid_t) :: i64
         integer(hid_t) :: int_p
+        integer(hid_t) :: i0
         integer(hid_t) :: sp
         integer(hid_t) :: dp
     end type hdf5_kinds_t
@@ -79,7 +80,7 @@ module hdf5_helper
             !          Further, the kind values are *not* constant between closing and then re-opening
             !          the HDF5 library.  Learn from my (painful) experiences...
 
-            use const, only: int_32, int_64, int_p, sp, dp
+            use const, only: int_32, int_64, int_p, i0, sp, dp
             use hdf5, only: H5_INTEGER_KIND, H5_REAL_KIND, h5kind_to_type
 
             type(hdf5_kinds_t), intent(out) :: kinds
@@ -88,6 +89,7 @@ module hdf5_helper
             kinds%i32 = h5kind_to_type(int_32, H5_INTEGER_KIND)
             kinds%i64 = h5kind_to_type(int_64, H5_INTEGER_KIND)
             kinds%int_p = h5kind_to_type(int_p, H5_INTEGER_KIND)
+            kinds%i0 = h5kind_to_type(i0, H5_INTEGER_KIND)
             kinds%sp = h5kind_to_type(sp, H5_REAL_KIND)
             kinds%dp = h5kind_to_type(dp, H5_REAL_KIND)
 
