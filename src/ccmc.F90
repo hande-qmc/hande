@@ -254,7 +254,8 @@ contains
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
                                write_fciqmc_report_header, nparticles, ccmc_move_freq, real_factor,  &
-                               cluster_multispawn_threshold, real_factor
+                               cluster_multispawn_threshold, real_factor, semi_stoch_shift_iter,     &
+                               semi_stoch_start_iter
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles
@@ -264,7 +265,7 @@ contains
 
         type(sys_t), intent(in) :: sys
 
-        integer :: i, ireport, icycle, it
+        integer :: i, ireport, icycle, iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors
         integer(int_64) :: nattempts_spawn
         real(dp) :: nparticles_old(sampling_size), nparticles_change(sampling_size), junk2
@@ -365,6 +366,8 @@ contains
             call init_report_loop(bloom_stats)
 
             do icycle = 1, ncycles
+
+                iter = mc_cycles_done + (ireport-1)*ncycles + icycle
 
                 call assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
                                                qmc_spawn%move_freq, nprocs, D0_proc, slot)
@@ -623,7 +626,8 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, update_tau, nparticles_old, t1, soft_exit, bloom_stats=bloom_stats)
+            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, t1, semi_stoch_shift_iter, &
+                                  semi_stoch_start_iter, soft_exit, bloom_stats=bloom_stats)
 
             if (soft_exit) exit
 

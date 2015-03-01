@@ -233,7 +233,8 @@ contains
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
-            call end_report_loop(sys, ireport, .false., nparticles_old, t1, soft_exit)
+            call end_report_loop(sys, ireport, ireport, .false., nparticles_old, t1, semi_stoch_shift_iter, &
+                                 semi_stoch_start_iter, soft_exit)
 
             if (soft_exit) exit
 

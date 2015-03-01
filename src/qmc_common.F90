@@ -688,21 +688,26 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, report_time, soft_exit, update_estimators, &
-                               bloom_stats, rep_comm)
+    subroutine end_report_loop(sys, ireport, iteration, update_tau, ntot_particles, report_time, semi_stoch_shift_it, &
+                               semi_stoch_start_it, soft_exit, update_estimators, bloom_stats, rep_comm)
 
         ! In:
         !    sys: system being studied.
         !    ireport: index of current report loop.
+        !    iteration: The current iteration of the simulation.
         !    update_tau: true if the processor thinks the timestep should be rescaled.
         !             Only used if not in variable shift mode and if tau_search is being
         !             used.
+        !    semi_stoch_shift_it: How many iterations after the shift starts
+        !        to vary to begin using semi-stochastic.
         !    update_estimators (optional): update the (FCIQMC/CCMC) energy estimators.  Default: true.
         ! In/Out:
         !    ntot_particles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop if update_estimators is true.
+        !    semi_stoch_start_it: The iteration on which to start performing
+        !        semi-stochastic.
         !    report_time: time at the start of the current report loop.  Returns
         !        the current time (ie the time for the start of the next report
         !        loop.
@@ -727,21 +732,26 @@ contains
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: ireport
+        integer, intent(in) :: ireport, iteration
         logical, intent(in) :: update_tau
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
         real(dp), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
+        integer, intent(in) :: semi_stoch_shift_it
+        integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
-        logical :: update, update_tau_now
+        logical :: update, update_tau_now, vary_shift_before
         real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
         update_tau_now = update_tau .and. .not. vary_shift(1) .and. tau_search
+
+        ! Are all the shifts currently varying?
+        vary_shift_before = all(vary_shift)
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
@@ -761,6 +771,12 @@ contains
         else
             update_tau_now = .false.
         end if
+
+        ! If we have just started varying the shift, then we can calculate the
+        ! iteration at which to start semi-stochastic, if it is being turned on
+        ! relative to the shift start.
+        if ((.not. vary_shift_before) .and. all(vary_shift) .and. (semi_stoch_shift_it /= -1)) &
+            semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
         call cpu_time(curr_time)
 
