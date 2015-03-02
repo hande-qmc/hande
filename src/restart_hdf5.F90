@@ -47,6 +47,8 @@ Module restart_hdf5
     !      state/
     !            shift                 # shift (energy offset/population control)
     !            ncycles               # number of Monte Carlo cycles performed
+    !            hash seed             # hash seed passed to hash function to assign a state to a processor
+    !            move frequency        # (log2 of the) frequency at which the processor location is modified in CCMC
     !      reference/
     !                reference determinant # reference determinant
     !                reference population  # population on reference
@@ -108,12 +110,14 @@ Module restart_hdf5
                                ddets = 'determinants',              &
                                dpops = 'populations',               &
                                ddata = 'data',                      &
-                               dshift = 'shift',                    &
-                               dncycles = 'ncycles',                &
                                dtot_pop = 'total population',       &
                                dproc_map = 'processor map',         &
                                dspawn = 'received_list',            &
                                dnspawn = 'nspawn',                  &
+                               dshift = 'shift',                    &
+                               dncycles = 'ncycles',                &
+                               dhash_seed = 'hash_seed',            &
+                               dmove_freq = 'move_freq',            &
                                dref = 'reference determinant',      &
                                dref_pop = 'reference population @ t-1', &
                                dhsref = 'Hilbert space reference determinant'
@@ -354,6 +358,10 @@ Module restart_hdf5
                     call hdf5_write(subgroup_id, dncycles, ncycles)
 
                     call hdf5_write(subgroup_id, dshift, kinds, shape(qs%shift), qs%shift)
+
+                    call hdf5_write(subgroup_id, dhash_seed, qs%spawn_store%spawn%hash_seed)
+
+                    call hdf5_write(subgroup_id, dmove_freq, qs%spawn_store%spawn%move_freq)
 
                 call h5gclose_f(subgroup_id, ierr)
 
