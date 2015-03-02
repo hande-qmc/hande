@@ -71,11 +71,6 @@ contains
             call init_model_basis_fns(sys)
         end if
 
-        ! [review] - JSS: not sure why this comment has appeared...?
-        ! [reply] - FMD: set_spin_polarisation was here at some point and must
-        ! [reply] -      have forgotten to delete the comment. I think I also
-        ! [reply] -      accidentally deleted a comment in simple_fciqmc. I'll
-        ! [reply] -      fix these.
         call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
         call init_determinants(sys)

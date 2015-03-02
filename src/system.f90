@@ -697,8 +697,6 @@ contains
 
         select case(sys%system)
         case (ueg)
-            ! [review] - JSS: throw a stop_all if this condition isn't met?
-            ! [reply] - FDM: Will do.
             ! Polarisation factor = 2 for polarised system, 1 for unpolarised.
             ! Only deal with fully spin (un)polarised system, so that kf^{up} =
             ! kf^{down}.
@@ -706,9 +704,6 @@ contains
             if (pol_factor-int(pol_factor) > depsilon) &
                 call warning('set_fermi_energy','Fermi energy not calculated correctly for given &
                              spin polarisation. Please implement.')
-            ! [review] - JSS: probably want _p rather than _dp.
-            ! [review] - JSS: I suspect this only holds for the 3D gas...
-            ! [reply] - FDM: I'll fix this.
             select case(sys%lattice%ndim)
             case (3)
                 dim_factor = (9.0_p*pol_factor*pi/4.0_p)**(1.0_p/3.0_p)

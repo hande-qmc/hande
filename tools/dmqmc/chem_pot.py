@@ -1,11 +1,4 @@
 #!/usr/bin/env python
-# [review] - JSS: rename to emphasise UEG-specific?  ueg_chemical_potential.py?
-# [reply] - FDM: In principle this can be adapted for any system, all that needs to be updated
-# [reply] - is the system class a bit and the energy eigenvalues/kpoints. I just haven't done this yet
-# [reply] - but will likely investigate it in the future.
-# [review] - JSS: would be nice to meet PEP-8 standards where possible in python
-# [review] - JSS: scripts.
-# [review] - FDM: I'll try to fix some of these.
 
 import sys
 import scipy as sc
@@ -163,9 +156,6 @@ mu : float
     chemical potential.
 ne : int
     number of electrons.
-# [review] - JSS: unclear if this is an list of lists/tuples or a numpy array,
-# [review] - JSS: based on comments here and in compress_spval.
-# [reply] - FDM: Looks like a list of lists. It probably should be a numpy array at some point.
 spval : list of lists
     single particle energies and their degeneracies.
 beta : float
@@ -178,14 +168,6 @@ Returns
 N : float
     average number of particles.
 '''
-
-    # [review] - JSS: simpler code:
-    # [review] - JSS: ?
-    # [review] - FDM: Yep.
-    # [review] - JSS: could also investigate doing numpy array operations for
-    # [review] - JSS: speed if required.
-    # [reply] - FDM: Maybe in the future, speed isn't an issue at the moment.
-    N = 0
 
     N = sum(degen/(np.exp(-beta*(mu-eigv))+1) for (degen, eigv) in spval)
 
@@ -285,13 +267,11 @@ None.
     args = parse_args(args)
 
     if args.beta == 0:
-        # [review] - JSS: python 2 specific.  Use print(...) instead.
         print("beta must be greater than zero.")
         sys.exit(1)
     else:
         sys_pars = [args.rs, args.ne, args.ecutoff, args.pol]
         system = System(sys_pars)
-        # [review] - JSS: avoid putting code blocks on a single line.
         if args.fermi_temperature:
             args.beta = args.beta / system.ef
         chem_pot = chem_pot_sum(system, args.beta)
