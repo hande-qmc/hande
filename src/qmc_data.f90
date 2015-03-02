@@ -7,7 +7,7 @@ use csr, only: csrp_t
 
 implicit none
 
-! [todo] - update kinds following Ruth's single precision work.
+! [todo] - update kinds following Ruth's single precision work.  Check kind when removing each variable from fciqmc_data.
 
 ! --- QMC input ---
 
@@ -181,7 +181,7 @@ type dmqmc_in_t
     ! calculated by reflecting spawning onto the lower triangle into the
     ! upper triangle. This is allowed because the density matrix is
     ! symmetric.
-    ! [review] - JSS: would a better default be true? (Check works with Fionn's new code)
+    ! [todo] - would true be a better default? (Check works with Fionn's new code)
     logical :: half_density_matrix = .false.
 
     ! When using the old weighted importance sampling, dmqmc_sampling_probs
@@ -368,7 +368,6 @@ type rdm_t
     integer(i0), allocatable :: end1(:), end2(:)
 end type rdm_t
 
-! [todo] - split this into input-level data and calculation-derived data?
 type dmqmc_estimates_t
 
     ! This variable stores the number of estimators which are to be
@@ -408,14 +407,10 @@ type dmqmc_estimates_t
     ! correlation_mask is a bit string with a 1 at positions i and j which
     ! are considered when finding the spin correlation function, C(r_{i,j}).
     ! All other bits are set to 0. i and j are chosen by the user initially.
-    ! [review] - JSS: both input-derived data.
-    ! [review] - NSB: True, but its not really an input option, so I'm not
-    ! [review] - NSB: sure it belongs in an input type. Is that what you're
-    ! [review] - NSB: suggesting? They're perhaps more system, or estimator related.
-    ! [reply] - JSS: Let's look at where it's used and be pragmatic about assigning them to a structure.
     integer(i0), allocatable :: correlation_mask(:) ! (string_len)
     ! correlation_sites stores the site positions specified by the users
     ! initially (as orbital labels).
+    ! [review] - JSS: input option.
     integer, allocatable :: correlation_sites(:)
 
     ! When using the replica_tricks option, if the rdm in the first
