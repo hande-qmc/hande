@@ -76,8 +76,6 @@ contains
         ! [reply] -      have forgotten to delete the comment. I think I also
         ! [reply] -      accidentally deleted a comment in simple_fciqmc. I'll
         ! [reply] -      fix these.
-        ! Set spin polarisation for QMC and Hilbert space calculations.
-
         call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
         call init_determinants(sys)

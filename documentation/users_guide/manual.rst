@@ -1533,6 +1533,7 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
     Thus by propagating :math:`f` using the (appropriately modified) DMQMC algorithm we can sample the density matrix at a particular beta.
     This removes the difficulty of sampling the infinite temperature density matrix for systems with strong reference components, as typically
     the reference will be highly populated in the trial density matrix at any :math:`\beta > 0`.
+    Currently only implemented for the UEG and k-space Hubbard model.
 **init_beta** *beta*
     Real.
 

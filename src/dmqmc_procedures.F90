@@ -735,8 +735,8 @@ contains
                     ! [reply] - up to max_metropolis_move will be attempted,
                     ! [reply] - single moves are also important for moving between
                     ! [reply] - symmetry sectors when all_mom_sectors = .true.
-                    ! Metropolis move is to create a double excitation of
-                    ! the current determinant.
+                    ! [reply] - FDM: There is an explanation of this above, so
+                    ! [reply] - just remove this comment.
                     if (all_mom_sectors) then
                         call gen_random_det_truncate_space(rng, sys, max_metropolis_move, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
@@ -816,7 +816,6 @@ contains
         det0%f = f0
         ! [review] - JSS: the following line is confusing as it doesn't relate to the following loop.  Remove?
         ! [reply] - FDM: Will do.
-        ! Pick an excitation level to spawn a particle onto
         ! gen_random_det_truncate_space does not produce determinants at
         ! excitation level zero, so take care of this explicitly.
         do idet = 1, psips_per_level
