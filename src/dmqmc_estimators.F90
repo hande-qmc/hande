@@ -1010,12 +1010,20 @@ contains
         ! the literature.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: reduced_density_matrix, flip_spin_matrix
+        use fciqmc_data, only: reduced_density_matrix
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p) :: reigv(4), ieigv(4)
         real(p) :: concurrence
         real(p) :: rdm_spin_flip(4,4), rdm_spin_flip_tmp(4,4), VL(4,4), VR(4,4)
+
+        ! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
+        ! concurrence is to be calculated.
+        real(p), parameter :: flip_spin_matrix(4,4) = reshape( &
+                                    [  0.0_p,  0.0_p, 0.0_p, -1.0_p,  &
+                                       0.0_p,  0.0_p, 1.0_p,  0.0_p,  &
+                                       0.0_p,  1.0_p, 0.0_p,  0.0_p,  &
+                                       -1.0_p,  0.0_p, 0.0_p,  0.0_p  ], shape(flip_spin_matrix))
 
         ! Make rdm_spin_flip_tmp because sgeev and dgeev delete input matrix.
         rdm_spin_flip_tmp = matmul(reduced_density_matrix, flip_spin_matrix)

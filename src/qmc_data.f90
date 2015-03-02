@@ -369,14 +369,6 @@ type rdm_t
     integer(i0), allocatable :: end1(:), end2(:)
 end type rdm_t
 
-! [todo] - Now it's a fixed paramater, move to calculate_concurrence (only place it's used).
-! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
-! concurrence is to be calculated.
-real(p), parameter :: flip_spin_matrix(4,4) = reshape([  0.0_p,  0.0_p, 0.0_p, -1.0_p,  &
-                                                         0.0_p,  0.0_p, 1.0_p,  0.0_p,  &
-                                                         0.0_p,  1.0_p, 0.0_p,  0.0_p,  &
-                                                        -1.0_p,  0.0_p, 0.0_p,  0.0_p  ], shape(flip_spin_matrix))
-
 ! [todo] - split this into input-level data and calculation-derived data?
 type dmqmc_estimates_t
 

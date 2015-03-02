@@ -539,10 +539,6 @@ logical :: output_rdm
 ! The unit of the file reduced_dm.
 integer :: rdm_unit
 
-! This will store the 4x4 flip spin matrix \sigma_y \otimes \sigma_y if
-! concurrence is to be calculated.
-real(p), allocatable :: flip_spin_matrix(:,:)
-
 ! When calculating certain DMQMC properties, we only want to start
 ! averaging once the ground state is reached. The below integer is input
 ! by the user, and gives the iteration at which data should start being
