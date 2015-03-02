@@ -1,3 +1,6 @@
+# [review] - JSS: rename to emphasise UEG-specific?  ueg_chemical_potential.py?
+# [review] - JSS: would be nice to meet PEP-8 standards where possible in python
+# [review] - JSS: scripts.
 #!/usr/bin/env python
 
 import sys
@@ -150,6 +153,8 @@ mu : float
     chemical potential.
 ne : int
     number of electrons.
+# [review] - JSS: unclear if this is an list of lists/tuples or a numpy array,
+# [review] - JSS: based on comments here and in compress_spval.
 spval : list of floats
     single particle energies and their degeneracies.
 beta : float
@@ -163,6 +168,11 @@ N : float
     average number of particles.
 '''
 
+    # [review] - JSS: simpler code:
+    #   N = sum(degen/np.exp(-beta*(mu-eigv)) for (degen,eigv) in spval)
+    # [review] - JSS: ?
+    # [review] - JSS: could also investigate doing numpy array operations for
+    # [review] - JSS: speed if required.
     N = 0
 
     for speig in range(0,len(spval)):
@@ -254,11 +264,13 @@ None.
 '''
     args = parse_args(args)
     if args.beta == 0:
+        # [review] - JSS: python 2 specific.  Use print(...) instead.
         print "beta must be greater than zero."
         sys.exit(1)
     else:
         sys_pars = [args.rs, args.ne, args.ecutoff, args.pol]
         system = System(sys_pars)
+        # [review] - JSS: avoid putting code blocks on a single line.
         if args.fermi_temperature: args.beta = args.beta / system.ef
         chem_pot = chem_pot_sum(system, args.beta)
 

@@ -1372,6 +1372,8 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 **use_all_sym_sectors**
     Run a DMQMC calculation in all symmetry sectors simultaneously. Psips will be
     distributed across all symmetry sectors for the initial density matrix.
+.. [review] - JSS: why don't we re-use use_all_sym_sectors instead of introducing a new
+.. [review] - keyword for essentially the same thing?
 **use_all_mom_sectors**
     Run a DMQMC calculation in all momentum symmetry sectors simultaneously. Psips will be
     distributed across all symmetry sectors for the initial density matrix.
