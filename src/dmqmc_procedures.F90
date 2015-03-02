@@ -730,6 +730,7 @@ contains
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
                     call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
+                    ! [review] - JSS: will this work if single excitations are also permitted?
                     ! Metropolis move is to create a double excitation of
                     ! the current determinant.
                     if (all_mom_sectors) then
@@ -809,7 +810,8 @@ contains
         call alloc_det_info_t(sys, det0)
         call decode_det_spinocc_spinunocc(sys, f0, det0)
         det0%f = f0
-        ! Pick an excitation level to spawn a particle onto.
+        ! [review] - JSS: the following line is confusing as it doesn't relate to the following loop.  Remove?
+        ! Pick an excitation level to spawn a particle onto
         ! gen_random_det_truncate_space does not produce determinants at
         ! excitation level zero, so take care of this explicitly.
         do idet = 1, psips_per_level
@@ -833,6 +835,7 @@ contains
                 else
                     ! Determinant was not generated in the correct symmetry
                     ! sector, reject.
+                    ! [review] - JSS: cycle entirely unnecessary.
                     cycle
                 end if
             end do
@@ -969,6 +972,9 @@ contains
     end subroutine init_grand_canonical_ensemble
 
     subroutine set_level_probabilities(sys, ptrunc_level, max_excit)
+        ! [review] - JSS: isn't this accomplishing the same thing as the code already in
+        ! [review] - JSS: estimate_hilbert_space?  If so, can we refactor it so the same
+        ! [review] - JSS: code is used in both places to avoid code repetition?
 
         ! Set the probabilities for creating a determinant on a given
         ! excitation level so that get_random_det_truncate_space can be used.

@@ -71,6 +71,7 @@ contains
             call init_model_basis_fns(sys)
         end if
 
+        ! [review] - JSS: not sure why this comment has appeared...?
         ! Set spin polarisation for QMC and Hilbert space calculations.
 
         call init_basis_strings(sys%basis)
