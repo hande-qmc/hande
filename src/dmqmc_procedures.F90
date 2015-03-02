@@ -981,6 +981,12 @@ contains
         ! [reply] - FDM: Not quite, here we choose from the number of electrons
         ! [reply] - FDM: rather than the number of orbitals, but the procedure
         ! [reply] - FDM: is the same, we could generalise it.
+        ! [reply] - FDM: I'm not so sure anymore. I think there is a difference
+        ! [reply] - between the two bits of code. For instance I don't multiply
+        ! [reply] - by the additional C(N_{down},i-a) factor as in estimate_hilbert_space.
+        ! [reply] - I also normalise it such that all each level has an equal
+        ! [reply] - probability. I guess I could rig it so that the missing
+        ! [reply] - combinatoric factor is one here and then renormalise afterwards?
 
         ! Set the probabilities for creating a determinant on a given
         ! excitation level so that get_random_det_truncate_space can be used.
