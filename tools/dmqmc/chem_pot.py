@@ -1,6 +1,10 @@
 # [review] - JSS: rename to emphasise UEG-specific?  ueg_chemical_potential.py?
+# [reply] - FDM: In principle this can be adapted for any system, all that needs to be updated
+# [reply] - is the system class a bit and the energy eigenvalues/kpoints. I just haven't done this yet
+# [reply] - but will likely investigate it in the future.
 # [review] - JSS: would be nice to meet PEP-8 standards where possible in python
 # [review] - JSS: scripts.
+# [review] - FDM: I'll try to fix some of these.
 #!/usr/bin/env python
 
 import sys
@@ -155,6 +159,7 @@ ne : int
     number of electrons.
 # [review] - JSS: unclear if this is an list of lists/tuples or a numpy array,
 # [review] - JSS: based on comments here and in compress_spval.
+# [reply] - FDM: Looks like a list of lists. It probably should be a numpy array at some point.
 spval : list of floats
     single particle energies and their degeneracies.
 beta : float
@@ -171,8 +176,10 @@ N : float
     # [review] - JSS: simpler code:
     #   N = sum(degen/np.exp(-beta*(mu-eigv)) for (degen,eigv) in spval)
     # [review] - JSS: ?
+    # [review] - FDM: Yep.
     # [review] - JSS: could also investigate doing numpy array operations for
     # [review] - JSS: speed if required.
+    # [reply] - FDM: Maybe in the future, speed isn't an issue at the moment.
     N = 0
 
     for speig in range(0,len(spval)):

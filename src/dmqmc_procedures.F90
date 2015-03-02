@@ -731,6 +731,10 @@ contains
                     cdet%data => tmp_data
                     call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
                     ! [review] - JSS: will this work if single excitations are also permitted?
+                    ! [reply] - FDM: This comment is wrong, currently any move
+                    ! [reply] - up to max_metropolis_move will be attempted,
+                    ! [reply] - single moves are also important for moving between
+                    ! [reply] - symmetry sectors when all_mom_sectors = .true.
                     ! Metropolis move is to create a double excitation of
                     ! the current determinant.
                     if (all_mom_sectors) then
@@ -811,6 +815,7 @@ contains
         call decode_det_spinocc_spinunocc(sys, f0, det0)
         det0%f = f0
         ! [review] - JSS: the following line is confusing as it doesn't relate to the following loop.  Remove?
+        ! [reply] - FDM: Will do.
         ! Pick an excitation level to spawn a particle onto
         ! gen_random_det_truncate_space does not produce determinants at
         ! excitation level zero, so take care of this explicitly.
@@ -836,6 +841,7 @@ contains
                     ! Determinant was not generated in the correct symmetry
                     ! sector, reject.
                     ! [review] - JSS: cycle entirely unnecessary.
+                    ! [review] - FDM: You're right.
                     cycle
                 end if
             end do
@@ -975,6 +981,9 @@ contains
         ! [review] - JSS: isn't this accomplishing the same thing as the code already in
         ! [review] - JSS: estimate_hilbert_space?  If so, can we refactor it so the same
         ! [review] - JSS: code is used in both places to avoid code repetition?
+        ! [reply] - FDM: Not quite, here we choose from the number of electrons
+        ! [reply] - FDM: rather than the number of orbitals, but the procedure
+        ! [reply] - FDM: is the same, we could generalise it.
 
         ! Set the probabilities for creating a determinant on a given
         ! excitation level so that get_random_det_truncate_space can be used.

@@ -695,6 +695,7 @@ contains
         select case(sys%system)
         case (ueg)
             ! [review] - JSS: throw a stop_all if this condition isn't met?
+            ! [reply] - FDM: Will do.
             ! Polarisation factor = 2 for polarised system, 1 for unpolarised.
             pol_factor = 1 + abs((sys%nalpha-sys%nbeta)/sys%nel)
             ! Only deal with fully spin (un)polarised system, so that kf^{up} =
@@ -702,6 +703,7 @@ contains
             ! Fermi wavevector.
             ! [review] - JSS: probably want _p rather than _dp.
             ! [review] - JSS: I suspect this only holds for the 3D gas...
+            ! [reply] - FDM: I'll fix this.
             sys%ueg%kf = (9.0_dp*pol_factor*pi/(4.0_dp*sys%ueg%r_s**3))**(1.0_dp/3.0_dp)
             ! Fermi Energy.
             sys%ueg%ef = 0.5 * sys%ueg%kf**2
