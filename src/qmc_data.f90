@@ -586,16 +586,6 @@ end type semi_stoch_t
 
 ! --- Estimators ---
 
-type shift_t
-    ! Energy offset (shift) applied to the Hamiltonian.
-    real(p), allocatable :: shift(:) ! (sampling_size) ! todo: move
-    ! The shift is updated at the end of each report loop when vary_shift is true.
-    ! When the replica_tricks option is used, the elements
-    ! of the shift array refer to the shifts in the corresponding replica systems.
-    ! When replica_tricks is not being used, only the first element is used.
-    logical, allocatable :: vary_shift(:) ! (sampling_size) ! todo: move
-end type shift_t
-
 ! [todo] - rename walker -> particle
 type walker_t
     ! Array sizes
@@ -710,7 +700,14 @@ type qmc_state_t
     ! and so proj_energy must be 'normalised' and averaged over the report loops
     ! accordingly.
     real(p) :: proj_energy
-    type(shift_t) :: shift
+    ! Energy offset (shift) applied to the Hamiltonian.
+    real(p), allocatable :: shift(:) ! (sampling_size)
+    ! The shift is updated at the end of each report loop when vary_shift is true.
+    ! When the replica_tricks option is used, the elements
+    ! of the shift array refer to the shifts in the corresponding replica systems.
+    ! When replica_tricks is not being used, only the first element is used.
+    logical, allocatable :: vary_shift(:) ! (sampling_size)
+    ! Convenience handles.
     type(walker_t) :: walkers
     type(reference_t) :: reference
     type(parallel_t) :: par_info
