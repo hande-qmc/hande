@@ -116,15 +116,7 @@ contains
             perm = 0
 
             ! Excitation level...
-#ifdef PGI
-            ! Work round an *insane* bug in PGI where intrinsic bit operations
-            ! return an integer(4) if the arguments are of a kind smaller than
-            ! 4.  PGI gets it right if the kind is larger than 4, but that
-            ! doesn't help us always in this case...
-            excitation%nexcit = sum(count_set_bits(int(ieor(f1,f2),i0)))/2
-#else
             excitation%nexcit = sum(count_set_bits(ieor(f1,f2)))/2
-#endif
 
             ! Finding the permutation to align the determinants is non-trivial.
             ! It turns out to be quite easy with bit operations.
@@ -222,15 +214,7 @@ contains
         integer :: level
         integer(i0), intent(in) :: f1(:), f2(:)
 
-#ifdef PGI
-        ! Work round an *insane* bug in PGI where intrinsic bit operations
-        ! return an integer(4) if the arguments are of a kind smaller than
-        ! 4.  PGI gets it right if the kind is larger than 4, but that
-        ! doesn't help us always in this case...
-        level = sum(count_set_bits(int(ieor(f1,f2),i0)))/2
-#else
         level = sum(count_set_bits(ieor(f1,f2)))/2
-#endif
 
     end function get_excitation_level
 

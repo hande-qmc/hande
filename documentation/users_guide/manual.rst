@@ -227,12 +227,6 @@ NAGF95
 
     If defined then code specific to, and necessary for compilation using, the
     NAG Fortran compiler is included.
-PGI  
-    Default: not defined.
-
-    If defined then code required to work around a bug in the PGI compiler (only 
-    version 10.1 was tested) is included.  This is required for successful
-    compilation if DET_SIZE is set to be 8 or 16.
 PARALLEL  
     Default: not defined.
 
