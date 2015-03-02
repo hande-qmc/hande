@@ -836,13 +836,11 @@ contains
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                                 sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
-                else
+                end if
                     ! Determinant was not generated in the correct symmetry
                     ! sector, reject.
                     ! [review] - JSS: cycle entirely unnecessary.
                     ! [review] - FDM: You're right.
-                    cycle
-                end if
             end do
         end do
 
