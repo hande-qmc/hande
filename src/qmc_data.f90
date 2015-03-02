@@ -50,8 +50,7 @@ type qmc_in_t
     ! Overridden by a restart file.
     real(p) :: D0_population
     ! Number of particles before which varyshift mode is turned on.
-    ! [todo] - check set.
-    real(dp) :: target_particles = -1
+    real(dp) :: target_particles = huge(1.0_dp)
 
     ! Using the initiator approximation?
     logical :: initiator_approximation = .false.
