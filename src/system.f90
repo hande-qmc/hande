@@ -689,6 +689,7 @@ contains
         !    sys: sys_t object, on output Fermi energy and wavevector are set.
 
         use errors, only: warning
+        use parallel, only: parent
 
         type(sys_t), intent(inout) :: sys
 
@@ -716,7 +717,7 @@ contains
             sys%ueg%kf = dim_factor / sys%ueg%r_s
             ! Fermi energy.
             sys%ueg%ef = 0.5_p * sys%ueg%kf**2
-            write (6,'(1X,a13,1X,f10.8)') 'Fermi Energy:', sys%ueg%ef
+            if (parent) write (6,'(1X,a13,1X,f10.8)') 'Fermi Energy:', sys%ueg%ef
         end select
 
     end subroutine set_fermi_energy
