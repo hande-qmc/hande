@@ -97,6 +97,10 @@ enum, bind(c)
     ! This option generates the deterministic space by reading the states in
     ! from an HDF5 file (named SEMI.STOCH.*.H5).
     enumerator :: read_determ_space
+    ! This option tells the semi-stochastic initialisation routine to use a
+    ! deterministic space which has already been created, and which should
+    ! be stored in the dets array within the semi_stoch_t instance on input.
+    enumerator :: reuse_determ_space
 end enum
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
@@ -175,6 +179,10 @@ end type semi_stoch_t
 ! The iteration on which to turn on the semi-stochastic algorithm using the
 ! parameters deterministic space specified by determ_space_type.
 integer :: semi_stoch_start_iter = 0
+! The iteration on which to turn on the semi-stochastic algorithm, relative
+! to the iteration that the shift starts to vary (or the iteration at which
+! all shifts have started to vary, in the case of multiple replicas).
+integer :: semi_stoch_shift_iter = -1
 ! determ_space_type is used to tell the semi-stochastic initialisation routine
 ! which type of deterministic space to use. See the 'determ-space' parameters
 ! defined in semi_stoch.F90 for the various values it can take.

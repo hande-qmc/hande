@@ -95,7 +95,7 @@ contains
         do ireport = 1, nreport
 
             call init_report_loop(bloom_stats)
-            call init_mc_cycle(real_factor, nattempts, ndeath)
+            call init_mc_cycle(rng, sys, real_factor, nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
@@ -233,7 +233,8 @@ contains
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
-            call end_report_loop(sys, ireport, .false., nparticles_old, nspawn_events, t1, soft_exit)
+            call end_report_loop(sys, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
+                                 semi_stoch_shift_iter, semi_stoch_start_iter, soft_exit)
 
             if (soft_exit) exit
 

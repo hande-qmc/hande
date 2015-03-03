@@ -730,6 +730,9 @@ types below. They are turned off by default.
     **write_determ_space** option.
 **semi_stoch_iteration** *iter*
     Turn the semi-stochastic algorithm on at iteration number *iter*.
+**semi_stoch_shift_start** *iter*
+    Turn the semi-stochastic algorithm on *iter* iterations after the shift
+    starts to vary.
 **semi_stoch_combine_annihil**
     Default: false.
 

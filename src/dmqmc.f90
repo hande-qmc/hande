@@ -101,7 +101,7 @@ contains
 
                 do icycle = 1, ncycles
 
-                    call init_mc_cycle(real_factor, nattempts, ndeath)
+                    call init_mc_cycle(rng, sys, real_factor, nattempts, ndeath)
 
                     iteration = (ireport-1)*ncycles + icycle
 
@@ -220,8 +220,8 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, ireport, .false., tot_nparticles_old, nspawn_events, t1, soft_exit, &
-                                      .false., bloom_stats=bloom_stats)
+                call end_report_loop(sys, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
+                                     semi_stoch_shift_iter, semi_stoch_start_iter, soft_exit, .false., bloom_stats=bloom_stats)
 
                 if (soft_exit) exit
 

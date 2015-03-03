@@ -27,7 +27,7 @@ contains
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, create_excited_det
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
-                                direct_annihilation_spawned_list
+                                direct_annihilation_spawned_list, deterministic_annihilation
         use calc, only: doing_calc, seed, initiator_approximation, non_blocking_comm, &
                         doing_load_balancing, use_mpi_barriers
         use death, only: stochastic_death
@@ -120,13 +120,13 @@ contains
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_start_iter) then
-                    call dealloc_semi_stoch_t(determ)
+                    call dealloc_semi_stoch_t(determ, .false.)
                     call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
                                             separate_determ_annihil, use_mpi_barriers, write_determ_space)
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(real_factor, nattempts, ndeath)
+                call init_mc_cycle(rng, sys, real_factor, nattempts, ndeath, determ=determ)
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
@@ -199,20 +199,27 @@ contains
                     call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
                     call direct_annihilation_received_list(sys, rng, initiator_approximation)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
-                    if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, real_factor, walker_population, &
-                                                                        tot_walkers, nparticles, qmc_spawn, par_info%load%needed)
+                    if (par_info%load%needed) then
+                        call redistribute_particles(walker_dets, real_factor,  walker_population, tot_walkers, &
+                                                    nparticles, qmc_spawn)
+                        par_info%load%needed = .false.
+                    end if
                     call direct_annihilation_spawned_list(sys, rng, initiator_approximation, send_counts, req_data_s, &
                                                           par_info%report_comm%nb_spawn, nspawn_events)
                     call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
                 else
-                    if (doing_load_balancing) call redistribute_load_balancing_dets(walker_dets, real_factor, walker_population, &
-                                                                        tot_walkers, nparticles, qmc_spawn, par_info%load%needed)
+                    ! If using semi-stochastic then perform the deterministic
+                    ! projection step.
                     if (semi_stochastic) then
                         if (determ%separate_annihilation) then
                             call determ_projection_separate_annihil(determ)
+                            call deterministic_annihilation(sys, rng, determ)
                         else
                             call determ_projection(rng, qmc_spawn, determ)
                         end if
+                    end if
+
+                    if (semi_stochastic) then
                         call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ)
                     else
                         call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
@@ -224,8 +231,8 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, update_tau, nparticles_old, nspawn_events, t1, soft_exit, &
-                                  bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
+            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_shift_iter, &
+                                  semi_stoch_start_iter, soft_exit, bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 
@@ -253,7 +260,7 @@ contains
             if (parent) write (6,'()')
         end if
 
-        call dealloc_semi_stoch_t(determ)
+        call dealloc_semi_stoch_t(determ, .false.)
 
         call dealloc_det_info_t(cdet, .false.)
 

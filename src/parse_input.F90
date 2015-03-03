@@ -226,6 +226,10 @@ contains
             case('SEMI_STOCH_ITERATION')
                 call readi(semi_stoch_start_iter)
                 real_amplitudes = .true.
+            case('SEMI_STOCH_SHIFT_START')
+                call readi(semi_stoch_shift_iter)
+                semi_stoch_start_iter = -1
+                real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
                 determ_space_type = high_pop_determ_space
@@ -767,6 +771,7 @@ contains
         call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)

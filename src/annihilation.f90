@@ -49,7 +49,6 @@ contains
         if (present(determ)) then
             if (determ%separate_annihilation) then
                 call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
-                call deterministic_annihilation(sys, rng, determ)
             else
                 call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator, determ%sizes(iproc))
             end if
@@ -476,7 +475,7 @@ contains
         !        walker_dets are deterministic or not.
 
         use dSFMT_interface, only: dSFMT_t
-        use qmc_common, only: stochastic_round
+        use stoch_utils, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(inout), optional :: determ_flags(:)
@@ -534,7 +533,7 @@ contains
         !    rng: random number generator.
 
         use dSFMT_interface, only: dSFMT_t
-        use qmc_common, only: stochastic_round
+        use stoch_utils, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
 

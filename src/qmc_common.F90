@@ -6,14 +6,6 @@ use fciqmc_data
 
 implicit none
 
-public
-private :: stochastic_round_int_32, stochastic_round_int_64
-
-interface stochastic_round
-    module procedure stochastic_round_int_32
-    module procedure stochastic_round_int_64
-end interface stochastic_round
-
 contains
 
 ! --- Utility routines ---
@@ -346,78 +338,6 @@ contains
 
     end function decide_nattempts
 
-    subroutine stochastic_round_int_32(rng, population, cutoff, ntypes)
-
-        ! For any values in population less than cutoff, round up to cutoff or
-        ! down to zero. This is done such that the expectation value of the
-        ! resulting populations is equal to the input values.
-
-        ! In/Out:
-        !    rng: random number generator.
-        ! In:
-        !    population: populations to be stochastically rounded.
-        !    cutoff: the value to round up to.
-        !    ntypes: the number of values in population to apply this op to.
-
-        use const, only: int_32
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-
-        type(dSFMT_t), intent(inout) :: rng
-        integer(int_32), intent(inout) :: population(:)
-        integer(int_32), intent(in) :: cutoff
-        integer, intent(in) :: ntypes
-        integer :: itype
-        real(p) :: r
-
-        do itype = 1, ntypes
-            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_32) then
-                r = get_rand_close_open(rng)*cutoff
-                if (abs(population(itype)) > r) then
-                    population(itype) = sign(cutoff, population(itype))
-                else
-                    population(itype) = 0_int_32
-                end if
-            end if
-        end do
-
-    end subroutine stochastic_round_int_32
-
-    subroutine stochastic_round_int_64(rng, population, cutoff, ntypes)
-
-        ! For any values in population less than cutoff, round up to cutoff or
-        ! down to zero. This is done such that the expectation value of the
-        ! resulting populations is equal to the input values.
-
-        ! In/Out:
-        !    rng: random number generator.
-        ! In:
-        !    population: populations to be stochastically rounded.
-        !    cutoff: the value to round up to.
-        !    ntypes: the number of values in population to apply this op to.
-
-        use const, only: int_64
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-
-        type(dSFMT_t), intent(inout) :: rng
-        integer(int_64), intent(inout) :: population(:)
-        integer(int_64), intent(in) :: cutoff
-        integer, intent(in) :: ntypes
-        integer :: itype
-        real(p) :: r
-
-        do itype = 1, ntypes
-            if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_64) then
-                r = get_rand_close_open(rng)*cutoff
-                if (abs(population(itype)) > r) then
-                    population(itype) = sign(cutoff, population(itype))
-                else
-                    population(itype) = 0_int_64
-                end if
-            end if
-        end do
-
-    end subroutine stochastic_round_int_64
-
     subroutine load_balancing_report(spawn_mpi_time, determ_mpi_time)
 
         ! In:
@@ -588,6 +508,46 @@ contains
 
     end subroutine redistribute_particles
 
+    subroutine redistribute_semi_stoch_t(sys, spawn, determ)
+
+        ! Recreate the semi_stoch_t object (if a non-empty space is in use).
+        ! This requires sending deterministic states to their new processes
+        ! and recreating the related objects, such as the deterministic
+        ! Hamiltonian.
+
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
+
+        ! In:
+        !    sys: system being studied.
+        !    spawn: spawn_t object, required for determining the new processes
+        !        labels for deterministic states.
+        ! In/Out:
+        !    determ: The deterministic space being used, as required for
+        !        semi-stochastic calculations.
+
+        use spawn_data, only: spawn_t
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(spawn_t), intent(in) :: spawn
+        type(semi_stoch_t), intent(inout) :: determ
+
+        logical :: sep_annihil_copy
+
+        if (determ%space_type /= empty_determ_space) then
+            ! Copy this logical to re-pass into the initialisation routine.
+            sep_annihil_copy = determ%separate_annihilation
+
+            ! Deallocate the semi_stoch_t instance, except for the list of all
+            ! deterministic states, which we want to reuse.
+            call dealloc_semi_stoch_t(determ, keep_dets=.true.)
+            ! Recreate the semi_stoch_t instance, by reusing the deterministic
+            ! space already generated, but with states on their new processes.
+            call init_semi_stoch_t(determ, sys, spawn, reuse_determ_space, 0, sep_annihil_copy, .false., .true.)
+        end if
+
+    end subroutine redistribute_semi_stoch_t
+
 ! --- Output routines ---
 
     subroutine initial_fciqmc_status(sys, rep_comm, spawn_elsewhere)
@@ -698,12 +658,15 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(real_factor, nattempts, ndeath, min_attempts)
+    subroutine init_mc_cycle(rng, sys, real_factor, nattempts, ndeath, min_attempts, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
 
+        ! In/Out:
+        !    rng: random number generator.
         ! In:
+        !    sys: system being studied
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         !    min_attempts (optional): if present, set nattempts to be at least this value.
@@ -712,14 +675,23 @@ contains
         !        processor) this cycle.
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
+        ! In/Out (optional):
+        !    determ: The deterministic space being used, as required for
+        !        semi-stochastic calculations.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, doing_load_balancing
+        use calc, only: non_blocking_comm
+        use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
+        use system, only: sys_t
 
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
+        type(semi_stoch_t), optional, intent(inout) :: determ
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
@@ -748,30 +720,40 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
-        if(doing_load_balancing .and. par_info%load%needed) then
+        if (doing_load_balancing .and. par_info%load%needed) then
             call do_load_balancing(real_factor, par_info)
+            call redistribute_load_balancing_dets(rng, sys, walker_dets, real_factor, determ, walker_population, &
+                                                  tot_walkers, nparticles, qmc_spawn)
+            ! If using non-blocking communications we still need this flag to
+            ! be set.
+            if (.not. non_blocking_comm) par_info%load%needed = .false.
         end if
 
     end subroutine init_mc_cycle
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, ireport, update_tau, ntot_particles, nspawn_events, report_time, &
-                                soft_exit, update_estimators, bloom_stats, rep_comm)
+    subroutine end_report_loop(sys, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
+                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, update_estimators, bloom_stats, rep_comm)
 
         ! In:
         !    sys: system being studied.
         !    ireport: index of current report loop.
+        !    iteration: The current iteration of the simulation.
         !    update_tau: true if the processor thinks the timestep should be rescaled.
         !             Only used if not in variable shift mode and if tau_search is being
         !             used.
         !    nspawn_events: The total number of spawning events to this process.
+        !    semi_stoch_shift_it: How many iterations after the shift starts
+        !        to vary to begin using semi-stochastic.
         !    update_estimators (optional): update the (FCIQMC/CCMC) energy estimators.  Default: true.
         ! In/Out:
         !    ntot_particles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop if update_estimators is true.
+        !    semi_stoch_start_it: The iteration on which to start performing
+        !        semi-stochastic.
         !    report_time: time at the start of the current report loop.  Returns
         !        the current time (ie the time for the start of the next report
         !        loop.
@@ -796,22 +778,27 @@ contains
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: ireport
+        integer, intent(in) :: ireport, iteration
         logical, intent(in) :: update_tau
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
         real(p), intent(inout) :: ntot_particles(sampling_size)
         real, intent(inout) :: report_time
+        integer, intent(in) :: semi_stoch_shift_it
+        integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
-        logical :: update, update_tau_now
+        logical :: update, update_tau_now, vary_shift_before
         real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
         update_tau_now = update_tau .and. .not. vary_shift(1) .and. tau_search
+
+        ! Are all the shifts currently varying?
+        vary_shift_before = all(vary_shift)
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
@@ -832,6 +819,12 @@ contains
         else
             update_tau_now = .false.
         end if
+
+        ! If we have just started varying the shift, then we can calculate the
+        ! iteration at which to start semi-stochastic, if it is being turned on
+        ! relative to the shift start.
+        if ((.not. vary_shift_before) .and. all(vary_shift) .and. (semi_stoch_shift_it /= -1)) &
+            semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
         call cpu_time(curr_time)
 
@@ -902,9 +895,9 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(walker_dets, real_factor,        &
-                                                walker_populations, tot_walkers, &
-                                                nparticles, spawn, load_tag)
+    subroutine redistribute_load_balancing_dets(rng, sys, walker_dets, real_factor, &
+                                                determ, walker_populations, tot_walkers, &
+                                                nparticles, spawn)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -912,11 +905,18 @@ contains
         ! further load balancing is attempted this report loop. Currently don't
         ! check if anything will actually be sent.
 
+        ! Also if a non-empty semi-stochastic deterministic space is being used
+        ! then this object needs to be redistributed, too.
+
         ! In:
+        !    sys: system being studied.
         !    walker_dets: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! In/Out:
+        !    rng: random number generator.
+        !    determ (optional): The deterministic space being used, as required for
+        !        semi-stochastic calculations.
         !    nparticles: number of excips on the current processor.
         !    walker_populations: Population on occupied excitors.  On output the
         !        populations of excitors which are sent to other processors are
@@ -925,24 +925,30 @@ contains
         !    spawn: spawn_t object.  On output particles which need to be sent
         !        to another processor have been added to the correct position in
         !        the spawned store.
-        !    load_tag: load_t object. On input this has load_tag%doing = .true.
-        !        On output flags will be reset so that load_tag%required =
-        !        .false.
 
+        use annihilation, only: direct_annihilation
+        use dSFMT_interface, only: dSFMT_t
         use spawn_data, only: spawn_t
+        use system, only: sys_t
 
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: walker_dets(:,:)
         integer(int_p), intent(in) :: real_factor
+        type(semi_stoch_t), optional, intent(inout) :: determ
         integer(int_p), intent(inout) :: walker_populations(:,:)
         integer, intent(inout) :: tot_walkers
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
-        logical, intent(inout) :: load_tag
 
-        if (load_tag) then
-            call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
-            load_tag = .false.
-        end if
+        call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+
+        ! Merge determinants which have potentially moved processor back into
+        ! the appropriate main list.
+        call direct_annihilation(sys, rng, tinitiator = .false.)
+        spawn%head = spawn%head_start
+
+        if (present(determ)) call redistribute_semi_stoch_t(sys, spawn, determ)
 
     end subroutine redistribute_load_balancing_dets
 
