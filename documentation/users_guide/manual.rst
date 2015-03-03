@@ -1537,7 +1537,10 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 **init_beta** *beta*
     Real.
 
-    Beta value the (trial) density matrix will initially be sampled at.
+    Beta value the (trial) density matrix will initially be sampled at when using propagate_to_beta option.
+    When analysing observables using the finite_temp_analysis.py script it is only this temperature value
+    which has any meaning (in terms of averages with respect to the thermal density matrix) and is the last
+    iteration in the simulation.
 **metropolis_attempts** *nattempts*
     Integer.
 
