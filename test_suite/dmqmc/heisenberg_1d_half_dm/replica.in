@@ -38,7 +38,7 @@ mc_cycles 10
 
 seed 23598
 
-use_all_sym_sectors
+use_all_spin_sectors
 
 tau 0.025
 varyshift_target 100

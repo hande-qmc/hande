@@ -15,7 +15,7 @@ dmqmc_energy
 
 propagate_to_beta
 init_beta 1.0
-use_all_mom_sectors
+use_all_sym_sectors
 
 fermi_temperature
 chem_pot 1.65142241072
