@@ -1372,14 +1372,9 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 **use_all_sym_sectors**
     Run a DMQMC calculation in all symmetry sectors simultaneously. Psips will be
     distributed across all symmetry sectors for the initial density matrix.
-.. [review] - JSS: why don't we re-use use_all_sym_sectors instead of introducing a new
-.. [review] - keyword for essentially the same thing?
-.. [review] - FDM: I thought this was a bit messy. use_all_sym_sectors currently means average
-.. [review] - over spin which we can't currently do for electronic systems. This changes how things
-.. [review] - run in dmqmc.f90 (excitation generation) whereas use_all_mom_sectors does not affect the excitation generation.
-**use_all_mom_sectors**
-    Run a DMQMC calculation in all momentum symmetry sectors simultaneously. Psips will be
-    distributed across all symmetry sectors for the initial density matrix.
+**use_all_spin_sectors**
+    Run a DMQMC calculation in all spin symmetry sectors simultaneously. Psips will be
+    distributed across all spin symmetry sectors for the initial density matrix.
 **dmqmc_weighted_sampling** *number_weights* Integer.
                             *w_{01} w_{12} ... w_{n-1,n}* Real list.
 

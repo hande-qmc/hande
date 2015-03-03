@@ -373,7 +373,7 @@ contains
         ! Initialise system based upon input parameters.
 
         use calc, only: ms_in
-        use fciqmc_data, only: all_sym_sectors
+        use fciqmc_data, only: all_spin_sectors
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -429,7 +429,7 @@ contains
 
                     ! If performing a calculation in all symmetry sectors, set ms_in to be its maximum value
                     ! so that the necessary arrays will be allocated to their maximum size.
-                    if (all_sym_sectors) ms_in = sl%nsites
+                    if (all_spin_sectors) ms_in = sl%nsites
 
                 end select
 
@@ -481,7 +481,7 @@ contains
 
                 select case(sys%system)
                 case(heisenberg)
-                    if (all_sym_sectors) then
+                    if (all_spin_sectors) then
                         sys%max_number_excitations = sl%nsites/2
                     else
                         sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))

@@ -79,7 +79,7 @@ contains
         ! report loop, asimplemented in the line of code below.
         nreport = nreport+1
 
-        if (all_sym_sectors) nel_temp = sys%nel
+        if (all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(D0_population, int_64)
 
         do beta_cycle = 1, beta_loops
@@ -116,7 +116,7 @@ contains
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
-                        if (all_sym_sectors) then
+                        if (all_spin_sectors) then
                             sys%nel = sum(count_set_bits(cdet1%f))
                             sys%nvirt = sys%lattice%nsites - sys%nel
                         end if
@@ -194,7 +194,7 @@ contains
                     ! Now we have finished looping over all determinants, set
                     ! the symmetry labels back to their default value, if
                     ! necessary.
-                    if (all_sym_sectors) then
+                    if (all_spin_sectors) then
                         sys%nel = nel_temp
                         sys%nvirt = sys%lattice%nsites - sys%nel
                     end if

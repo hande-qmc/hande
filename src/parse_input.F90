@@ -295,8 +295,8 @@ contains
                 calculate_excit_distribution = .true.
             case('USE_ALL_SYM_SECTORS')
                 all_sym_sectors = .true.
-            case('USE_ALL_MOM_SECTORS')
-                all_mom_sectors = .true.
+            case('USE_ALL_SPIN_SECTORS')
+                all_spin_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
                 call readi(nrdms)
                 allocate(rdms(nrdms), stat=ierr)
@@ -582,7 +582,7 @@ contains
             if (guiding_function /= no_guiding) &
                 call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
                                          & currently.')
-            if (all_sym_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
+            if (all_spin_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
                                          & available for the Heisenberg model.')
         end if
 
@@ -608,7 +608,7 @@ contains
             end if
 
             if (sys%system == heisenberg) then
-                if (ms_in > sys%lattice%nsites .and. (.not. all_sym_sectors)) call stop_all(this,'Value of Ms given is&
+                if (ms_in > sys%lattice%nsites .and. (.not. all_spin_sectors)) call stop_all(this,'Value of Ms given is&
                                                                              & too large for this lattice.')
                 if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
                 if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
@@ -713,13 +713,13 @@ contains
             sys%real_lattice%finite_cluster = .false.
         end if
 
-        if (all_sym_sectors) then
-            if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_sym_sectors option can only be used in&
+        if (all_spin_sectors) then
+            if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_spin_sectors option can only be used in&
                                                                    & DMQMC calculations.')
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
-                    call stop_all(this, 'The use_all_sym_sectors option cannot be used with magnetic fields.')
-            if (calc_ground_rdm) call stop_all(this, 'The use_all_sym_sectors and ground_state_rdm options cannot be&
+                    call stop_all(this, 'The use_all_spin_sectors option cannot be used with magnetic fields.')
+            if (calc_ground_rdm) call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options cannot be&
                                                       & used together.')
         end if
 
@@ -867,7 +867,7 @@ contains
         call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(all_mom_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)

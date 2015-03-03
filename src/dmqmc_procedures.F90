@@ -422,7 +422,7 @@ contains
                         grand_canonical_initialisation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_sym_sectors, f0, init_beta, &
+        use fciqmc_data, only: sampling_size, all_spin_sectors, f0, init_beta, &
                                walker_dets, nparticles, real_factor, &
                                walker_population, tot_walkers, qmc_spawn, &
                                metropolis_attempts
@@ -452,7 +452,7 @@ contains
         do ireplica = 1, sampling_size
             select case(sys%system)
             case(heisenberg)
-                if (all_sym_sectors) then
+                if (all_spin_sectors) then
                     ! The size (number of configurations) of all symmetry
                     ! sectors combined.
                     total_size = 2.0_dp**(real(sys%lattice%nsites,dp))
@@ -501,7 +501,7 @@ contains
         end do
 
         ! Finally, count the total number of particles across all processes.
-        if (all_sym_sectors) then
+        if (all_spin_sectors) then
 #ifdef PARALLEL
             call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_PREAL, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
@@ -620,7 +620,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use hilbert_space, only: gen_random_det_full_space
         use system, only: sys_t
-        use fciqmc_data, only: real_factor, all_mom_sectors
+        use fciqmc_data, only: real_factor, all_sym_sectors
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -637,7 +637,7 @@ contains
                 ! Generate a random determinant uniformly in this specific
                 ! symmetry sector and spin polarisation.
                 call gen_random_det_full_space(rng, sys, f, occ_list)
-                if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                         sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
@@ -680,7 +680,7 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, all_mom_sectors, f0, sampling_size, metropolis_attempts, &
+        use fciqmc_data, only: real_factor, all_sym_sectors, f0, sampling_size, metropolis_attempts, &
                                max_metropolis_move
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
@@ -719,7 +719,7 @@ contains
         ! among the available levels. In the latter case we need to set the
         ! probabilities of a particular move (e.g. move two alpha spins),
         ! so do this here.
-        if (all_mom_sectors) call set_level_probabilities(sys, move_prob, max_metropolis_move)
+        if (all_sym_sectors) call set_level_probabilities(sys, move_prob, max_metropolis_move)
 
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, metropolis_attempts
@@ -730,7 +730,7 @@ contains
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
                     call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
-                    if (all_mom_sectors) then
+                    if (all_sym_sectors) then
                         call gen_random_det_truncate_space(rng, sys, max_metropolis_move, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
@@ -783,7 +783,7 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: f0, real_factor, all_mom_sectors, metropolis_attempts
+        use fciqmc_data, only: f0, real_factor, all_sym_sectors, metropolis_attempts
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
@@ -822,7 +822,7 @@ contains
             ! excitation level.
             do
                 call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
-                if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                                 sys%basis%tensor_label_len, real_factor, ireplica)
@@ -851,7 +851,7 @@ contains
 
         use system, only: sys_t
         use spawn_data, only: spawn_t
-        use fciqmc_data, only: real_factor, all_mom_sectors
+        use fciqmc_data, only: real_factor, all_sym_sectors
         use symmetry, only: symmetry_orb_list
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
@@ -898,7 +898,7 @@ contains
             if (sys%nbeta > 0) call generate_allowed_orbital_list(rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
             if (.not. gen) cycle
             ! Create the determinant.
-            if (all_mom_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+            if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                             sys%basis%tensor_label_len, real_factor, ireplica)
