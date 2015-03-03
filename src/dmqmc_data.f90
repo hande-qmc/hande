@@ -18,15 +18,13 @@ type dmqmc_in_t
     ! Currently only implemented for DMQMC.
     logical :: replica_tricks = .false.
 
-    ! [review] - NSB: This is used both for excit_distribution and ground-state
-    ! [review] - NSB: I should create a new variable for the ground-state
-    ! [review] - NSB: RDMs and add it to that derived type.
-    ! When calculating certain DMQMC properties, we only want to start
-    ! averaging once the ground state is reached. The below integer is input
-    ! by the user, and gives the iteration at which data should start being
-    ! accumulated for the quantity. This is currently only used for the
-    ! reduced density matrix and calculating importance sampling weights.
-    integer :: start_averaging = 0
+    ! When performing a ground-state RDM calculation, on what iteration do we
+    ! start accumulating the ground-state RDM?
+    integer :: start_av_rdm = 0
+
+    ! When calculating the distributon of particles across excitation levels,
+    ! on what iteration do we start performing this calculation?
+    integer :: start_av_excit_dist = 0
 
     ! If this logical is true then the program runs the DMQMC algorithm with
     ! importance sampling.
@@ -55,6 +53,7 @@ type dmqmc_in_t
     ! will be stored in the array below.
     ! The number of excitations for a given system is defined by
     ! sys_t%max_number_excitations; see comments in sys_t for more details.
+    ! [todo] - rename, maybe to calc_excit_dist.
     logical :: calculate_excit_distribution = .false.
     ! If true then the simulation will start with walkers uniformly distributed
     ! along the diagonal of the entire density matrix, including all symmetry
@@ -64,8 +63,18 @@ type dmqmc_in_t
     ! calculated by reflecting spawning onto the lower triangle into the
     ! upper triangle. This is allowed because the density matrix is
     ! symmetric.
-    ! [todo] - would true be a better default? (Check works with Fionn's new code)
     logical :: half_density_matrix = .false.
+
+    ! correlation_sites stores the site positions specified by the users
+    ! initially (as orbital labels), to be used in the calculation of
+    ! spin correlation functions.
+    integer, allocatable :: correlation_sites(:)
+    ! correlation_mask is a bit string with a 1 at positions i and j which
+    ! are considered when finding the spin correlation function, C(r_{i,j}).
+    ! All other bits are set to 0. i and j are chosen by the user initially.
+    ! This is not actually an input option but is calculated from
+    ! correlation_sites, but we store it here to be pragmatic.
+    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
 
     ! When using the old weighted importance sampling, dmqmc_sampling_probs
     ! stores the factors by which probabilities are to be reduced when spawning
@@ -78,6 +87,17 @@ type dmqmc_in_t
 end type dmqmc_in_t
 
 type dmqmc_rdm_in_t
+
+    ! The total number of rdms beings calculated (currently only applicable to
+    ! instantaneous RDM calculations, not to ground-state RDM calculations,
+    ! which only ever calculate one RDM).
+    integer :: nrdms
+
+    ! The length of the spawning array for RDMs. Each RDM calculated has the
+    ! same length array. Note, this is only used for instantaneous RDMs.
+    ! Ground-state RDM calculations allocate an array exactly the size of the
+    ! full RDM.
+    integer :: spawned_rdm_length
 
     ! [todo] - rename.
     ! If true then the reduced density matricies will be calulated for the 'A'
@@ -103,7 +123,7 @@ type dmqmc_rdm_in_t
 
     ! If true then, if doing an exact diagonalisation, calculate and output the
     ! eigenvalues of the reduced density matrix requested.
-    logical :: doing_exact_rdm_eigv=.false.
+    logical :: doing_exact_rdm_eigv = .false.
 
     ! If true then the reduced density matrix is output to a file, 'reduced_dm'
     ! each beta loop.
@@ -111,7 +131,6 @@ type dmqmc_rdm_in_t
 
 end type dmqmc_rdm_in_t
 
-! [todo] - move to dmqmc_state_t
 ! Spawned lists for rdms.
 type rdm_spawn_t
     type(spawn_t) :: spawn
@@ -121,7 +140,6 @@ type rdm_spawn_t
     type(hash_table_t) :: ht
 end type rdm_spawn_t
 
-! [todo] - move to dmqmc_state_t
 ! This type contains information for the RDM corresponding to a given
 ! subsystem. It takes translational symmetry into account by storing information
 ! for all subsystems which are equivalent by translational symmetry.
@@ -189,26 +207,8 @@ type dmqmc_estimates_t
     ! are reset on each processor to start the next report loop.
     real(p), allocatable :: estimator_numerators(:) !(number_dmqmc_estimators)
 
-    ! correlation_mask is a bit string with a 1 at positions i and j which
-    ! are considered when finding the spin correlation function, C(r_{i,j}).
-    ! All other bits are set to 0. i and j are chosen by the user initially.
-    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
-    ! correlation_sites stores the site positions specified by the users
-    ! initially (as orbital labels).
-    ! [review] - JSS: input option.
-    integer, allocatable :: correlation_sites(:)
-
-    ! When using the replica_tricks option, if the rdm in the first
-    ! simulation if denoted \rho^1 and the ancillary rdm is denoted
-    ! \rho^2 then renyi_2 holds:
-    ! x = \sum_{ij} \rho^1_{ij} * \rho^2_{ij}.
-    ! The indices of renyi_2 hold this value for the various rdms being
-    ! calculated. After post-processing averaging, this quantity should
-    ! be normalised by the product of the corresponding RDM traces.
-    ! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
-    ! [todo] - move to dmqmc_inst_rdms_t.
-    real(p), allocatable :: renyi_2(:) ! (nrdms)
-
+    ! This array is used to hold the number of particles on each excitation
+    ! level of the density matrix.
     real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
 
     ! [todo] - (NSB) remove these two - I doubt they'll ever be used.
@@ -228,7 +228,6 @@ end type dmqmc_estimates_t
 
 
 !--- Type for all instantaneous RDMs ---
-! [todo] - input?  state?
 type dmqmc_inst_rdms_t
     ! The total number of rdms beings calculated.
     integer :: nrdms
@@ -240,14 +239,22 @@ type dmqmc_inst_rdms_t
     ! to be calculated. Each element of this array corresponds to one of these RDMs.
     type(rdm_t), allocatable :: rdms(:) ! nrdms
 
+    ! [todo] - remove rdm_ stem.
     ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
     real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
 
+    ! [todo] - remove rdm_ stem.
     type(rdm_spawn_t), allocatable :: rdm_spawn(:) ! nrdms
 
-    ! The length of the spawning array for RDMs. Each RDM calculated has the same
-    ! length array.
-    integer :: spawned_rdm_length
+    ! When using the replica_tricks option, if the rdm in the first
+    ! simulation if denoted \rho^1 and the ancillary rdm is denoted
+    ! \rho^2 then renyi_2 holds:
+    ! x = \sum_{ij} \rho^1_{ij} * \rho^2_{ij}.
+    ! The indices of renyi_2 hold this value for the various rdms being
+    ! calculated. After post-processing averaging, this quantity should
+    ! be normalised by the product of the corresponding RDM traces -
+    ! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
+    real(p), allocatable :: renyi_2(:) ! (nrdms)
 end type dmqmc_inst_rdms_t
 
 
