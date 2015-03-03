@@ -8,7 +8,6 @@ ifciqmc
 
 semi_stoch_high_pop 2000
 semi_stoch_shift_start 200
-semi_stoch_combine_annihil
 
 spawned_walker_length 60000
 walker_length 60000
