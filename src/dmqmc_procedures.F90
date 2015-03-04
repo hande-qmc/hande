@@ -712,7 +712,7 @@ contains
 
     end subroutine update_sampling_weights
 
-    subroutine output_and_alter_weights(dmqmc_in, max_number_excitations, excit_dist, weighted_sampling)
+    subroutine output_and_alter_weights(sys, dmqmc_in, excit_dist, weighted_sampling)
 
         ! This routine will alter and output the sampling weights used in
         ! importance sampling. It uses the excitation distribution, calculated
@@ -735,9 +735,10 @@ contains
         !    weighted_sampling: type containing weighted sampling information.
 
         use dmqmc_data, only: dmqmc_in_t, dmqmc_weighted_sampling_t
+        use system, only: sys_t, heisenberg, ueg, hub_k
         use parallel
 
-        integer, intent(in) :: max_number_excitations
+        type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         real(p), intent(inout) :: excit_dist(0:)
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
@@ -745,27 +746,50 @@ contains
         integer :: i
 #ifdef PARALLEL
         integer :: ierr
-        real(p) :: merged_excit_dist(0:max_number_excitations)
-        call mpi_allreduce(excit_dist, merged_excit_dist, max_number_excitations+1, &
-            MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
+        real(p) :: merged_excit_dist(0:sys%max_number_excitations)
+        call mpi_allreduce(excit_dist, merged_excit_dist, sys%max_number_excitations+1, &
+                           MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
 
         excit_dist = merged_excit_dist
 #endif
 
-        ! It is assumed that there is an even maximum number of excitations.
-        do i = 1, (max_number_excitations/2)
-            ! Don't include levels where there are very few psips accumulated.
-            if (excit_dist(i-1) > 10.0_p .and. excit_dist(i) > 10.0_p) then
-                ! Alter the sampling weights using the relevant excitation
-                ! distribution.
-                weighted_sampling%sampling_probs(i) = weighted_sampling%sampling_probs(i)*&
-                    (excit_dist(i)/excit_dist(i-1))
-                weighted_sampling%sampling_probs(max_number_excitations+1-i) = weighted_sampling%sampling_probs(i)**(-1)
+        select case(sys%system)
+        case (heisenberg)
+            ! It is assumed that there is an even maximum number of excitations.
+            do i = 1, (sys%max_number_excitations/2)
+                ! Don't include levels where there are very few psips accumulated.
+                if (excit_dist(i-1) > 10.0_p .and. excit_dist(i) > 10.0_p) then
+                    ! Alter the sampling weights using the relevant excitation
+                    ! distribution.
+                    weighted_sampling%sampling_probs(i) = weighted_sampling%sampling_probs(i)*&
+                        (excit_dist(i)/excit_dist(i-1))
+                    weighted_sampling%sampling_probs(sys%max_number_excitations+1-i) = weighted_sampling%sampling_probs(i)**(-1)
+                end if
+            end do
+        case (ueg, hub_k)
+            ! By momentum conservation there are never any psips on excitation level 1.
+            if (excit_dist(0) > 10.0_p .and. excit_dist(2) > 10.0_p) then
+                weighted_sampling%sampling_probs(1) = 1.0_p
+                weighted_sampling%sampling_probs(2) = weighted_sampling%sampling_probs(2)*&
+                                                      (excit_dist(2)/excit_dist(0))
             end if
-        end do
+            do i = 3, sys%max_number_excitations
+                if (excit_dist(i-1) > 10.0_p .and. excit_dist(i) > 10.0_p) then
+                weighted_sampling%sampling_probs(i) = weighted_sampling%sampling_probs(i)*&
+                                                      (excit_dist(i)/excit_dist(i-1))
+                end if
+            end do
+        case default
+            do i = 1, sys%max_number_excitations
+                if (excit_dist(i-1) > 10.0_p .and. excit_dist(i) > 10.0_p) then
+                weighted_sampling%sampling_probs(i) = weighted_sampling%sampling_probs(i)*&
+                                                      (excit_dist(i)/excit_dist(i-1))
+                end if
+            end do
+        end select
 
-        ! Recalculate weighted_sampling%probs with the new weights.
-        do i = 1, max_number_excitations
+        ! Recalculate dmqmc_accumulated_probs with the new weights.
+        do i = 1, sys%max_number_excitations
             weighted_sampling%probs(i) = weighted_sampling%probs(i-1)*weighted_sampling%sampling_probs(i)
         end do
 
@@ -774,7 +798,7 @@ contains
         ! weighted_sampling%altering_factors to coincide with the new sampling weights.
         if (dmqmc_in%vary_weights) then
             weighted_sampling%altering_factors = &
-                & real(weighted_sampling%probs(:max_number_excitations),dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
+                & real(weighted_sampling%probs(:sys%max_number_excitations),dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
             ! Reset the weights for the next loop.
             weighted_sampling%probs = 1.0_p
         end if
@@ -783,7 +807,7 @@ contains
             ! Print out weights in a form which can be copied into an input
             ! file.
             write(6, '(1X,"# Importance sampling weights: sampling_weights = {")', advance = 'no')
-            do i = 1, max_number_excitations
+            do i = 1, sys%max_number_excitations
                 write (6, '(es12.4,",",2X)', advance = 'no') weighted_sampling%sampling_probs(i)
             end do
             write (6, '("},")', advance = 'yes')

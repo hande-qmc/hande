@@ -375,8 +375,7 @@ contains
             if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(dmqmc_estimates, beta_cycle, dmqmc_in%rdm)
             ! Calculate and output new weights based on the psip distriubtion in
             ! the previous loop.
-            if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, &
-                                                                     dmqmc_estimates%excit_dist, weighted_sampling)
+            if (dmqmc_in%find_weights) call output_and_alter_weights(sys, dmqmc_in, dmqmc_estimates%excit_dist, weighted_sampling)
 
         end do outer_loop
 
