@@ -704,7 +704,7 @@ contains
             pol_factor = 1.0_p + abs(real(sys%nalpha-sys%nbeta,p)/sys%nel)
             if (pol_factor-int(pol_factor) > depsilon) &
                 call warning('set_fermi_energy','Fermi energy not calculated correctly for given &
-                             spin polarisation. Please implement.')
+                             &spin polarisation. Please implement.')
             select case(sys%lattice%ndim)
             case (3)
                 dim_factor = (9.0_p*pol_factor*pi/4.0_p)**(1.0_p/3.0_p)
