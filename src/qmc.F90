@@ -703,7 +703,11 @@ contains
                 if (truncate_space) then
                     create_spawned_particle_dm_ptr => create_spawned_particle_truncated_density_matrix
                 else
-                    create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+                    if (qmc_in%initiator_approx) then
+                        create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix_initiator
+                    else
+                        create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
+                    end if
                 end if
             end if
 

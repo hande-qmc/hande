@@ -1133,7 +1133,8 @@ contains
 
     end subroutine create_spawned_particle_initiator_ras
 
-    subroutine create_spawned_particle_density_matrix(basis, reference, cdet, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_density_matrix(basis, reference, cdet, connection, nspawn, &
+                                                      spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1199,7 +1200,8 @@ contains
 
     end subroutine create_spawned_particle_density_matrix
 
-    subroutine create_spawned_particle_density_matrix_initiator(basis, reference, cdet, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_density_matrix_initiator(basis, reference, cdet, connection, nspawn, &
+                                                                spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1267,7 +1269,8 @@ contains
 
     end subroutine create_spawned_particle_density_matrix_initiator
 
-    subroutine create_spawned_particle_half_density_matrix(basis, reference, cdet, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_half_density_matrix(basis, reference, cdet, connection, nspawn, &
+                                                           spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! If walker tries to spawn in the lower triangle of density matrix

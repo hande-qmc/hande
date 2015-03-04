@@ -50,6 +50,7 @@ contains
                               rdm_in_t_json, operators_in_t_json
         use check_input, only: check_qmc_opts, check_dmqmc_opts
         use spawn_data, only: write_memcheck_report
+        use idmqmc, only: set_parent_flag_dmqmc
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -200,7 +201,6 @@ contains
                         cdet1%data => qs%psip_list%dat(:,idet)
                         cdet2%f => qs%psip_list%states((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
                         cdet2%f2 => qs%psip_list%states(:sys%basis%string_len,idet)
-
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
                         ! to refer to the correct element in the density matrix.
@@ -213,6 +213,11 @@ contains
 
                         ! Extract the real signs from the encoded signs.
                         real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
+                        ! Is this density matrix element an initiator?
+                        if (qmc_in%initiator_approx) then
+                            call set_parent_flag_dmqmc(real_population(1), qmc_in%initiator_pop, cdet1%f, cdet1%f2, cdet1%initiator_flag)
+                            cdet2%initiator_flag = cdet1%initiator_flag
+                        end if
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
@@ -245,10 +250,8 @@ contains
                                                      gen_excit_ptr, weighted_sampling%probs, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
-                                        call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet1%f, cdet2%f, connection, &
-                                                                            nspawned, spawning_end, ireplica, &
-                                                                            qs%spawn_store%spawn)
-
+                                        call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet1, connection, nspawned, &
+                                                                            spawning_end, ireplica, qs%spawn_store%spawn)
                                         if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
                                     end if
@@ -260,10 +263,8 @@ contains
                                                          qs%psip_list%pop_real_factor, cdet2, qs%psip_list%pops(ireplica,idet), &
                                                          gen_excit_ptr, weighted_sampling%probs, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
-                                            call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2%f, cdet1%f, &
-                                                                                connection, nspawned, spawning_end, ireplica, &
-                                                                                qs%spawn_store%spawn)
-
+                                            call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2, connection, nspawned, &
+                                                                                spawning_end, ireplica, qs%spawn_store%spawn)
                                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                                 call accumulate_bloom_stats(bloom_stats, nspawned)
                                         end if

@@ -99,13 +99,14 @@ contains
                         if (r < prob) npsips = npsips + 1_int_64
 
                         nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, p)
-                        call random_distribution_heisenberg(rng, sys%basis, nel, npsips, psip_list%pop_real_factor, ireplica, spawn)
+                        call random_distribution_heisenberg(rng, sys%basis, nel, npsips, psip_list%pop_real_factor, ireplica, &
+                                                            qmc_in%initiator_pop,  spawn)
                     end do
                 else
                     ! This process will always create excatly the target number
                     ! of psips.
                     call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, psip_list%pop_real_factor, &
-                                                        ireplica, spawn)
+                                                        ireplica, qmc_in%initiator_pop, spawn)
                 end if
             case(ueg, hub_k, read_in)
                 if (dmqmc_in%propagate_to_beta) then
@@ -113,10 +114,10 @@ contains
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
-                                                           qmc_state%ref%energy_shift, qmc_state%init_beta, rng)
+                                                           qmc_state%ref%energy_shift, qmc_state%init_beta, qmc_in%initiator_pop, rng)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
-                                                                        dmqmc_in%all_sym_sectors, spawn)
+                                                            dmqmc_in%all_sym_sectors, qmc_in%initiator_pop, spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
@@ -153,17 +154,17 @@ contains
                             sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
                             sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
                             call random_distribution_electronic(rng, sys, npsips, psip_list%pop_real_factor, ireplica, &
-                                                                dmqmc_in%all_sym_sectors, spawn)
+                                                                dmqmc_in%all_sym_sectors, qmc_in%initiator_pop, spawn)
                         end do
                         call copy_sys_spin_info(sys_copy, sys)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
-                                                            dmqmc_in%all_sym_sectors, spawn)
+                                                            dmqmc_in%all_sym_sectors, qmc_in%initiator_pop, spawn)
                     end if
                 end if
             case(hub_real)
                 call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
-                                                    dmqmc_in%all_sym_sectors, spawn)
+                                                    dmqmc_in%all_sym_sectors, qmc_in%initiator_pop, spawn)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
             end select
@@ -199,7 +200,7 @@ contains
 
     end subroutine create_initial_density_matrix
 
-    subroutine random_distribution_heisenberg(rng, basis, spins_up, npsips, pop_real_factor, ireplica, spawn)
+    subroutine random_distribution_heisenberg(rng, basis, spins_up, npsips, pop_real_factor, ireplica, initiator_pop,  spawn)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -220,6 +221,7 @@ contains
         !        enable non-integer populations.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
+        !    initiator_pop: population for element to be set to an initiator.
 
         use basis_types, only: basis_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -234,7 +236,9 @@ contains
         integer(int_64), intent(in) :: npsips
         integer(int_p), intent(in) :: pop_real_factor
         integer, intent(in) :: ireplica
+        real(p), intent(in) :: initiator_pop
         type(spawn_t), intent(inout) :: spawn
+
         integer(int_64) :: i
         integer :: rand_basis, bits_set
         integer :: bit_element, bit_position
@@ -267,13 +271,13 @@ contains
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
             call create_diagonal_dm_particle_ptr(f,basis%string_len, &
-                    basis%tensor_label_len, pop_real_factor, ireplica, spawn)
+                    basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
 
         end do
 
     end subroutine random_distribution_heisenberg
 
-    subroutine random_distribution_electronic(rng, sys, npsips, pop_real_factor, ireplica, all_sym_sectors, spawn)
+    subroutine random_distribution_electronic(rng, sys, npsips, pop_real_factor, ireplica, all_sym_sectors, initiator_pop, spawn)
 
         ! For the electronic Hamiltonians only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -290,6 +294,7 @@ contains
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
         !    all_sym_sectors: create determinants in all symmetry sectors?
+        !    initiator_pop: population for element to be set to an initiator.
         ! In/Out:
         !    rng: random number generator
         !    spawn: spawn_t object to hold spawned particles.
@@ -307,6 +312,7 @@ contains
         integer(int_p), intent(in) :: pop_real_factor
         integer, intent(in) :: ireplica
         logical, intent(in) :: all_sym_sectors
+        real(p), intent(in) :: initiator_pop
         type(spawn_t), intent(inout) :: spawn
 
         integer(int_64) :: i
@@ -320,7 +326,7 @@ contains
                 call gen_random_det_full_space(rng, sys, f, occ_list)
                 if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                     call create_diagonal_dm_particle_ptr(f, sys%basis%string_len, &
-                        sys%basis%tensor_label_len, pop_real_factor, ireplica, spawn)
+                        sys%basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
                     exit
                 end if
             end do
@@ -537,7 +543,7 @@ contains
 
     end subroutine dmqmc_spin_cons_metropolis_move
 
-    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, pop_real_factor, spawn, energy_shift, init_beta, rng)
+    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, pop_real_factor, spawn, energy_shift, init_beta, initiator_pop, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -550,6 +556,7 @@ contains
         !        enable non-integer populations.
         !    energy_shift: <D_0|H_new|D_0> - <D_0|H_old|D_0>.
         !    init_beta: temperature at which we initialise the density matrix.
+        !    initiator_pop: population for element to be set to an initiator.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
@@ -568,6 +575,7 @@ contains
         integer(int_64), intent(in) :: npsips
         integer(int_p), intent(in) :: pop_real_factor
         real(p), intent(in) :: energy_shift, init_beta
+        real(p), intent(in) :: initiator_pop
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
@@ -631,7 +639,7 @@ contains
                                                             energy_shift, spawn%cutoff, pop_real_factor, rng)
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_dm_particle_ptr(f, sys%basis%string_len, &
-                                            sys%basis%tensor_label_len, nspawn, ireplica, spawn)
+                                            sys%basis%tensor_label_len, nspawn, ireplica, initiator_pop, pop_real_factor, spawn)
                 ipsip = ipsip + 1
             end if
         end do
