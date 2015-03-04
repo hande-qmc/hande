@@ -132,17 +132,16 @@ abstract interface
         integer(i0), intent(in), optional, target :: f(:)
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
-    subroutine i_create_spawned_particle_dm(basis, reference, f1, f2, connection, nspawned, spawning_end, &
+    subroutine i_create_spawned_particle_dm(basis, reference, cdet, connection, nspawned, spawning_end, &
                                             particle_indx, spawn)
         use spawn_data, only: spawn_t
         use basis_types, only: basis_t
         use qmc_data, only: reference_t
-        import :: excit_t, i0, int_p
+        import :: excit_t, i0, int_p, det_info_t
         implicit none
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
-        integer(i0), intent(in) :: f1(basis%string_len)
-        integer(i0), intent(in) :: f2(basis%string_len)
+        type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: spawning_end, particle_indx
