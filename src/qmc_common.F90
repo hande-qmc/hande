@@ -359,7 +359,7 @@ contains
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 
         real(dp) :: load_data(sampling_size, nprocs)
-        integer(int_64) :: load_data_int_64(nprocs)
+        integer :: load_data_int(nprocs)
         integer :: i, ierr
         real(p) :: barrier_this_proc
         real(p) :: spawn_comms(nprocs), determ_comms(nprocs), barrier_time(nprocs)
@@ -380,7 +380,7 @@ contains
                     write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer8, load_data_int_64, 1, mpi_integer8, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(tot_walkers, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(spawn_mpi_time%comm_time, 1, mpi_preal, spawn_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
 
             if (present(determ_mpi_time)) call mpi_gather(determ_mpi_time%comm_time, 1, mpi_preal, determ_comms, 1, &
@@ -396,10 +396,10 @@ contains
             end if
 
             if (parent) then
-                lfmt = int_fmt(maxval(load_data_int_64),0)
-                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int_64)
-                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int_64)
-                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_int_64), p)/nprocs
+                lfmt = int_fmt(maxval(load_data_int),0)
+                write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int)
+                write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int)
+                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_int), p)/nprocs
                 write (6,'()')
                 if (use_mpi_barriers) then
                     write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
