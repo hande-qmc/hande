@@ -33,7 +33,7 @@ contains
         use interact, only: fciqmc_interact
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
-        use calc, only: seed, initiator_approximation
+        use calc, only: seed, initiator_approximation, propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
 
@@ -78,8 +78,8 @@ contains
         ! output we subtract one from the iteration number, and run for one more
         ! report loop, asimplemented in the line of code below.
         nreport = nreport+1
-                            
-        if (all_sym_sectors) nel_temp = sys%nel
+
+        if (all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(D0_population, int_64)
 
         do beta_cycle = 1, beta_loops
@@ -116,7 +116,7 @@ contains
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
-                        if (all_sym_sectors) then
+                        if (all_spin_sectors) then
                             sys%nel = sum(count_set_bits(cdet1%f))
                             sys%nvirt = sys%lattice%nsites - sys%nel
                         end if
@@ -146,6 +146,9 @@ contains
                             if (.not. ((sys%nel == 0) .or. (sys%nel == sys%basis%nbasis))) then
                                 nattempts_current_det = decide_nattempts(rng, real_population(ireplica))
                                 do iparticle = 1, nattempts_current_det
+                                    ! When using importance sampling in DMQMC we
+                                    ! only spawn from one end of a density
+                                    ! matrix element.
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
@@ -161,15 +164,17 @@ contains
                                     end if
 
                                     ! Now attempt to spawn from the second end.
-                                    spawning_end = 2
-                                    call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet2, &
-                                                     walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
-                                    if (nspawned /= 0_int_p) then
-                                        call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
-                                                                            spawning_end, ireplica, qmc_spawn)
+                                    if (.not. propagate_to_beta) then
+                                        spawning_end = 2
+                                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet2, &
+                                                         walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                        if (nspawned /= 0_int_p) then
+                                            call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
+                                                                                spawning_end, ireplica, qmc_spawn)
 
-                                        if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
-                                            call accumulate_bloom_stats(bloom_stats, nspawned)
+                                            if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
+                                                call accumulate_bloom_stats(bloom_stats, nspawned)
+                                        end if
                                     end if
                                 end do
                             end if
@@ -189,7 +194,7 @@ contains
                     ! Now we have finished looping over all determinants, set
                     ! the symmetry labels back to their default value, if
                     ! necessary.
-                    if (all_sym_sectors) then
+                    if (all_spin_sectors) then
                         sys%nel = nel_temp
                         sys%nvirt = sys%lattice%nsites - sys%nel
                     end if

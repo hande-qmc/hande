@@ -1372,6 +1372,9 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 **use_all_sym_sectors**
     Run a DMQMC calculation in all symmetry sectors simultaneously. Psips will be
     distributed across all symmetry sectors for the initial density matrix.
+**use_all_spin_sectors**
+    Run a DMQMC calculation in all spin symmetry sectors simultaneously. Psips will be
+    distributed across all spin symmetry sectors for the initial density matrix.
 **dmqmc_weighted_sampling** *number_weights* Integer.
                             *w_{01} w_{12} ... w_{n-1,n}* Real list.
 
@@ -1498,6 +1501,88 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 
     The **use_all_sym_sectors** option is not implemented with **exact** calculations, and so cannot be used
     here.
+**propagate_to_beta**
+    Default False.
+
+    Propagate a particular trial density matrix to a specific value of :math:`\beta` so that in the last step we are sampling the
+    actual density matrix at this :math:`\beta`.
+    To see this consider the function
+
+    .. math::
+
+        f(\tau) = \rho^{T}(\beta-\tau)\rho(\tau),
+
+    where :math:`\rho^{T}` is a "trial" density matrix and :math:`\rho` is our usual density matrix.
+    Note that
+
+    .. math::
+
+        f(0) = \rho^{T}(\beta) \rho(0) = \rho^{T}(\beta)
+
+    and
+
+    .. math::
+
+        f(\tau=\beta) = \rho(\beta).
+
+    Thus by propagating :math:`f` using the (appropriately modified) DMQMC algorithm we can sample the density matrix at a particular beta.
+    This removes the difficulty of sampling the infinite temperature density matrix for systems with strong reference components, as typically
+    the reference will be highly populated in the trial density matrix at any :math:`\beta > 0`.
+    Currently only implemented for the UEG and k-space Hubbard model.
+**init_beta** *beta*
+    Real.
+
+    Beta value the (trial) density matrix will initially be sampled at when using propagate_to_beta option.
+    When analysing observables using the finite_temp_analysis.py script it is only this temperature value
+    which has any meaning (in terms of averages with respect to the thermal density matrix) and is the last
+    iteration in the simulation.
+**metropolis_attempts** *nattempts*
+    Integer.
+
+    Default 0.
+
+    Number of metropolis iterations per psip to be carried out when attempting to sample a trial density matrix.
+**max_metropolis_moves** *max_move*
+    Integer.
+
+    Default: 2.
+
+    A metropolis move is defined as a nfold excitation of the determiant under consideration.
+    max_metropolis_move gives the maximum n considered in that nfold excitation.
+**free_electron_trial**
+    Default use "Hartree-Fock" trial density matrix.
+
+    Use the non-interacting Hamiltonian in our trial density matrix. This is not as efficient as the default "Hartree-Fock" density matrix.
+    If using the grand_canonical_intialisation option then metropolis_attempts can be set to zero as the canonical free-electron trial density
+    matrix is already being sampled.
+**grand_canonical_initialisation**
+    Default False.
+
+    Use the grand canonical partition function to guide the initialisation of the trial density matrix.
+    This is usually a good starting point for the Metropolis algorithm and *is* also the starting point when using the free-electron trial
+    density matrix.
+**chem_pot** *chemical potential*
+    Real.
+
+    Chemical potential to be used to initialise the density matrix in the grand canonical ensemble. This can be calculated using chem_pot.py in tools/dmqmc/.
+    If using the free-electron trial density matrix this chemical potential will produce the correct single particle occupancies, :math:`p_i`, so that the probability of occupying
+    a given determinant is given by
+
+    .. math::
+
+        p(i_1, i_2, \dots, i_N) = \prod_i^N p_i,
+
+    where,
+
+    .. math::
+        p_i = \frac{1}{e^{\beta (\varepsilon_i - \mu)} + 1}
+
+    is the usual Fermi factor.
+**fermi_temperature**
+    Default: False.
+
+    Rescale time step to be a multiple of :math:`1/T_F`, where :math:`T_F = E_F/k_B` is the Fermi Temperature, :math:`E_F` is the Fermi energy and :math:`k_B` is the Boltzman constant.
+    This allows results to be output in terms of :math:`\Theta=T/T_F` which a useful quantity when comparing energy scales.
 
 Calculation options: initiator-FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

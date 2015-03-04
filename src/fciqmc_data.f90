@@ -446,6 +446,10 @@ real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
 ! along the diagonal of the entire density matrix, including all symmetry
 ! sectors.
 logical :: all_sym_sectors = .false.
+! If true then the simulation will start with walkers distributed in all
+! spin symmetry sectors of the Hamiltonian i.e. all 2S+1 blocks between
+! -ms...ms.
+logical :: all_spin_sectors = .false.
 
 ! If true then the reduced density matricies will be calulated for the 'A'
 ! subsystems specified by the user.
@@ -569,6 +573,18 @@ integer(i0), allocatable :: correlation_mask(:) ! (string_len)
 ! correlation_sites stores the site positions specified by the users
 ! initially (as orbital labels).
 integer, allocatable :: correlation_sites(:)
+
+! Value of beta which we propagate the density matrix to.
+real(p) :: init_beta = 1.0
+! Number of metropolis attempts (per psip) we use when generating
+! the trial density matrix.
+integer :: metropolis_attempts = 0
+! For the metropolis move we generate an excitation of the current determinant
+! up to the max_metropolis_move'th excitation level (excluding zero-fold
+! excitations). Only applicable if all_mom_sym = .true., otherwise the
+! excitation generators are used which conserve momentum symmetry.
+! Default: Single and double excitations (if applicable).
+integer :: max_metropolis_move = 2
 
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since

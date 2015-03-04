@@ -7,7 +7,7 @@ implicit none
 integer :: nhilbert_cycles
 
 private
-public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space
+public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space, gen_random_det_truncate_space
 
 contains
 

@@ -39,7 +39,7 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
+        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
         integer, intent(out) :: ref_det

@@ -254,6 +254,12 @@ contains
         allocate(hs_f0(sys%basis%string_len), stat=ierr)
         call check_allocate('hs_f0', size(hs_f0), ierr)
 
+        ! --- Number of reports ---
+        ! When using the propagate_to_beta option the number of iterations in imaginary
+        ! time we want to do depends on what value of beta we are seeking. It's
+        ! annoying to have to modify this in the input file, so just do it here.
+        if (propagate_to_beta) nreport = int(ceiling(init_beta/(ncycles*tau)))
+
         ! --- Initial walker distributions ---
         ! Note occ_list could be set and allocated in the input.
 
@@ -594,7 +600,7 @@ contains
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol
-        use hamiltonian_ueg, only: slater_condon0_ueg
+        use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg
         use heisenberg_estimators
         use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
         use importance_sampling
@@ -623,7 +629,13 @@ contains
             decoder_ptr => decode_det_spinocc_spinunocc
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
-
+            if (propagate_to_beta) then
+                if (free_electron_trial) then
+                    trial_dm_ptr => kinetic0_hub_k
+                else
+                    trial_dm_ptr => slater_condon0_hub_k
+                end if
+            end if
             spawner_ptr => spawn_lattice_split_gen
             if (no_renorm) then
                 gen_excit_ptr%full => gen_excit_hub_k_no_renorm
@@ -706,6 +718,13 @@ contains
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
 
+            if (propagate_to_beta) then
+                if (free_electron_trial) then
+                    trial_dm_ptr => kinetic_energy_ueg
+                else
+                    trial_dm_ptr => slater_condon0_ueg
+                end if
+            end if
             if (no_renorm) then
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
@@ -780,9 +799,19 @@ contains
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
-                if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_ueg
+                if (doing_dmqmc_calc(dmqmc_energy)) then
+                    if (propagate_to_beta) then
+                        update_dmqmc_energy_ptr => dmqmc_energy_ueg_propagate
+                    else
+                        update_dmqmc_energy_ptr => dmqmc_energy_ueg
+                    end if
+                end if
             case(hub_k)
-                if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_hub_k
+                if (propagate_to_beta) then
+                    update_dmqmc_energy_ptr => dmqmc_energy_hub_k_propagate
+                else
+                    update_dmqmc_energy_ptr => dmqmc_energy_hub_k
+                end if
             case(hub_real)
                 if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_hub_real
             end select

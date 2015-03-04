@@ -227,6 +227,13 @@ type sys_ueg_t
     ! UEG-specific basis lookup tables, etc.
     type(ueg_basis_t) :: basis
 
+    ! Fermi-wavevector (Infinite system).
+    real(p) :: kf = 1.0_p
+    ! Fermi-Energy (Infinite system).
+    real(p) :: ef = 1.0_p
+    ! Chemical potential.
+    real(p) :: chem_pot = 1.0_p
+
     ! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
     ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and
     ! k_a, k_b is uniquely defined.  Further, once we've chosen k_i and k_j and if
@@ -302,7 +309,7 @@ type sys_t
     ! the number of 0's in the basis functions
     integer :: nvirt
 
-    ! Spin polarisation is set in set_spin_polarisation in the determinants module.
+    ! Spin polarisation is set in set_spin_polarisation in the system module.
     ! Only used in Fermionic systems; see note for nel and nvirt for how the spin
     ! polarisation is handled in the Heisenberg system.
     ! Note: Chung-Landau Hamiltonian is for spinless fermions; hence nalpha is
@@ -366,7 +373,7 @@ contains
         ! Initialise system based upon input parameters.
 
         use calc, only: ms_in
-        use fciqmc_data, only: all_sym_sectors
+        use fciqmc_data, only: all_spin_sectors
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -422,7 +429,7 @@ contains
 
                     ! If performing a calculation in all symmetry sectors, set ms_in to be its maximum value
                     ! so that the necessary arrays will be allocated to their maximum size.
-                    if (all_sym_sectors) ms_in = sl%nsites
+                    if (all_spin_sectors) ms_in = sl%nsites
 
                 end select
 
@@ -474,7 +481,7 @@ contains
 
                 select case(sys%system)
                 case(heisenberg)
-                    if (all_sym_sectors) then
+                    if (all_spin_sectors) then
                         sys%max_number_excitations = sl%nsites/2
                     else
                         sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
@@ -645,6 +652,8 @@ contains
 
         end select
 
+        call set_fermi_energy(sys)
+
     end subroutine set_spin_polarisation
 
     elemental subroutine copy_sys_spin_info(sys1, sys2)
@@ -669,5 +678,48 @@ contains
         sys2%nvirt_beta = sys1%nvirt_beta
 
     end subroutine copy_sys_spin_info
+
+    subroutine set_fermi_energy(sys)
+
+        ! Set the Fermi energy and wavevector.
+        ! Currently only implemented for the fully polarised/unpolarised
+        ! electron gas.
+
+        ! In/Out:
+        !    sys: sys_t object, on output Fermi energy and wavevector are set.
+
+        use errors, only: warning
+        use parallel, only: parent
+
+        type(sys_t), intent(inout) :: sys
+
+        real(p):: pol_factor
+        real(p) :: dim_factor
+
+        select case(sys%system)
+        case (ueg)
+            ! Polarisation factor = 2 for polarised system, 1 for unpolarised.
+            ! Only deal with fully spin (un)polarised system, so that kf^{up} =
+            ! kf^{down}.
+            pol_factor = 1.0_p + abs(real(sys%nalpha-sys%nbeta,p)/sys%nel)
+            if (pol_factor-int(pol_factor) > depsilon) &
+                call warning('set_fermi_energy','Fermi energy not calculated correctly for given &
+                             spin polarisation. Please implement.')
+            select case(sys%lattice%ndim)
+            case (3)
+                dim_factor = (9.0_p*pol_factor*pi/4.0_p)**(1.0_p/3.0_p)
+            case (2)
+                dim_factor = sqrt(2.0_p*pol_factor)
+            case (1)
+                dim_factor = pi*pol_factor / 4.0_p
+            end select
+            ! Fermi wavevector.
+            sys%ueg%kf = dim_factor / sys%ueg%r_s
+            ! Fermi energy.
+            sys%ueg%ef = 0.5_p * sys%ueg%kf**2
+            if (parent) write (6,'(1X,a13,1X,f10.8)') 'Fermi Energy:', sys%ueg%ef
+        end select
+
+    end subroutine set_fermi_energy
 
 end module system

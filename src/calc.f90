@@ -197,6 +197,15 @@ integer, parameter :: dmqmc_energy_squared = 2**2
 integer, parameter :: dmqmc_correlation = 2**3
 integer, parameter :: dmqmc_rdm_r2 = 2**4
 integer, parameter :: dmqmc_full_r2 = 2**5
+! Propagate a trial density matrix to a specific temeperature.
+logical :: propagate_to_beta = .false.
+! Use the free electron Hamiltonian as the trial density matrix.
+! Default: Use the "Hartree-Fock" trial density matrix.
+logical :: free_electron_trial = .false.
+! Use the grand canonical partition function to inititally distribute the psips.
+logical :: grand_canonical_initialisation = .false.
+! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
+logical :: fermi_temperature = .false.
 
 ! Combine information required for non-blocking report loop quantities
 ! into one type for convenience.

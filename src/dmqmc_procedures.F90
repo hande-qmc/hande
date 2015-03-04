@@ -7,156 +7,171 @@ contains
 
     subroutine init_dmqmc(sys)
 
-         ! In:
-         !    sys: system being studied.
+        ! In:
+        !    sys: system being studied.
 
-         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
-         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
-         use checking, only: check_allocate
-         use fciqmc_data
-         use system, only: sys_t
+        use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
+        use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
+        use calc, only: propagate_to_beta, fermi_temperature
+        use checking, only: check_allocate
+        use fciqmc_data
+        use system, only: sys_t
 
-         type(sys_t), intent(in) :: sys
+        type(sys_t), intent(in) :: sys
 
-         integer :: ierr, i, bit_position, bit_element
+        integer :: ierr, i, bit_position, bit_element
 
-         number_dmqmc_estimators = 0
+        number_dmqmc_estimators = 0
 
-         allocate(trace(sampling_size), stat=ierr)
-         call check_allocate('trace',sampling_size,ierr)
-         trace = 0.0_p
+        allocate(trace(sampling_size), stat=ierr)
+        call check_allocate('trace',sampling_size,ierr)
+        trace = 0.0_p
 
-         allocate(rdm_traces(sampling_size,nrdms), stat=ierr)
-         call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
-         rdm_traces = 0.0_p
+        allocate(rdm_traces(sampling_size,nrdms), stat=ierr)
+        call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
+        rdm_traces = 0.0_p
 
-         if (doing_dmqmc_calc(dmqmc_full_r2)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             full_r2_index = number_dmqmc_estimators
-         end if
-         if (doing_dmqmc_calc(dmqmc_energy)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             energy_index = number_dmqmc_estimators
-         end if
-         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             energy_squared_index = number_dmqmc_estimators
-         end if
-         if (doing_dmqmc_calc(dmqmc_correlation)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             correlation_index = number_dmqmc_estimators
-             allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
-             call check_allocate('correlation_mask',sys%basis%string_len,ierr)
-             correlation_mask = 0_i0
-             do i = 1, 2
-                 bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
-                 bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
-                 correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
-             end do
-         end if
-         if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-             number_dmqmc_estimators = number_dmqmc_estimators + 1
-             staggered_mag_index = number_dmqmc_estimators
-         end if
+        if (doing_dmqmc_calc(dmqmc_full_r2)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            full_r2_index = number_dmqmc_estimators
+        end if
+        if (doing_dmqmc_calc(dmqmc_energy)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            energy_index = number_dmqmc_estimators
+        end if
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            energy_squared_index = number_dmqmc_estimators
+        end if
+        if (doing_dmqmc_calc(dmqmc_correlation)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            correlation_index = number_dmqmc_estimators
+            allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
+            call check_allocate('correlation_mask',sys%basis%string_len,ierr)
+            correlation_mask = 0_i0
+            do i = 1, 2
+            bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
+            bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
+            correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
+            end do
+        end if
+        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+            number_dmqmc_estimators = number_dmqmc_estimators + 1
+            staggered_mag_index = number_dmqmc_estimators
+        end if
 
-         ! Array too to hold the estimates of the numerators of all the above
-         ! quantities.
-         allocate(estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
-         call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
-         estimator_numerators = 0.0_p
+        ! Array too to hold the estimates of the numerators of all the above
+        ! quantities.
+        allocate(estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
+        call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
+        estimator_numerators = 0.0_p
 
-         if (calculate_excit_distribution .or. dmqmc_find_weights) then
-             allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('excit_distribution',sys%max_number_excitations+1,ierr)
-             excit_distribution = 0.0_p
-         end if
+        if (calculate_excit_distribution .or. dmqmc_find_weights) then
+            allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('excit_distribution',sys%max_number_excitations+1,ierr)
+            excit_distribution = 0.0_p
+        end if
 
-         ! If this is true then the user has asked to average the shift over
-         ! several beta loops (average_shift_until of them), and then use the
-         ! this average in all subsequent loops.
-         if (average_shift_until > 0) then
-             allocate(shift_profile(1:nreport+1), stat=ierr)
-             call check_allocate('shift_profile',nreport+1,ierr)
-             shift_profile = 0.0_p
-         end if
+        ! If this is true then the user has asked to average the shift over
+        ! several beta loops (average_shift_until of them), and then use the
+        ! this average in all subsequent loops.
+        if (average_shift_until > 0) then
+            allocate(shift_profile(1:nreport+1), stat=ierr)
+            call check_allocate('shift_profile',nreport+1,ierr)
+            shift_profile = 0.0_p
+        end if
 
-         ! In DMQMC we want the spawning probabilities to have an extra factor
-         ! of a half, because we spawn from two different ends with half
-         ! probability. To avoid having to multiply by an extra variable in
-         ! every spawning routine to account for this, we multiply the time
-         ! step by 0.5 instead, then correct this in the death step (see below).
-         tau = tau*0.5_p
-         ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
-         ! multiplied by this factor it cancels the factor of 0.5 introduced
-         ! into the timestep in DMQMC.cThis factor is also used in updated the
-         ! shift, where the true tau is needed.
-         dmqmc_factor = 2.0_p
+        ! When using an importance sampled initial density matrix we use then
+        ! unsymmetrised version of Bloch's equation. This means we don't have
+        ! to worry about these factors of 1/2.
+        if (.not. propagate_to_beta) then
+            ! In DMQMC we want the spawning probabilities to have an extra factor
+            ! of a half, because we spawn from two different ends with half
+            ! probability. To avoid having to multiply by an extra variable in
+            ! every spawning routine to account for this, we multiply the time
+            ! step by 0.5 instead, then correct this in the death step (see below).
+            tau = tau*0.5_p
+            ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
+            ! multiplied by this factor it cancels the factor of 0.5 introduced
+            ! into the timestep in DMQMC.cThis factor is also used in updated the
+            ! shift, where the true tau is needed.
+            dmqmc_factor = 2.0_p
+        end if
+        ! Set the timestep to be the appropriate factor of ef so that results
+        ! are at temperatures commensurate(ish) with the reduced (inverse) temperature
+        ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
+        ! to set the appropriate beta = Beta / T_F.
+        if (fermi_temperature) then
+            tau = tau / sys%ueg%ef
+            init_beta = init_beta / sys%ueg%ef
+        end if
 
-         if (dmqmc_weighted_sampling) then
-             ! dmqmc_sampling_probs stores the factors by which probabilities
-             ! are to be reduced when spawning away from the diagonal. The trial
-             ! function required from these probabilities, for use in importance
-             ! sampling, is actually that of the accumulated factors, ie, if
-             ! dmqmc_sampling_probs = (a, b, c, ...) then
-             ! dmqmc_accumulated_factors = (1, a, ab, abc, ...).
-             ! This is the array which we need to create and store.
-             ! dmqmc_sampling_probs is no longer needed and so can be
-             ! deallocated. Also, the user may have only input factors for the
-             ! first few excitation levels, but we need to store factors for all
-             ! levels, as done below.
-             if (.not.allocated(dmqmc_sampling_probs)) then
-                 allocate(dmqmc_sampling_probs(1:sys%max_number_excitations), stat=ierr)
-                 call check_allocate('dmqmc_sampling_probs',sys%max_number_excitations,ierr)
-                 dmqmc_sampling_probs = 1.0_p
-             end if
-             allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
-             allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
-             dmqmc_accumulated_probs(0) = 1.0_p
-             dmqmc_accumulated_probs_old = 1.0_p
-             do i = 1, size(dmqmc_sampling_probs)
-                 dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
-             end do
-             dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:sys%max_number_excitations) = &
-                                    dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
-             if (dmqmc_vary_weights) then
-                 ! Allocate an array to store the factors by which the weights
-                 ! will change each iteration.
-                 allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
-                 call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
-                 weight_altering_factors = real(dmqmc_accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
-                 ! If varying the weights, start the accumulated probabilties
-                 ! as all 1.0 initially, and then alter them gradually later.
-                 dmqmc_accumulated_probs = 1.0_p
-             end if
-         else
-             ! If not using the importance sampling procedure, turn it off by
-             ! setting all amplitudes to 1.0 in the relevant arrays.
-             allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
-             allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
-             call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
-             dmqmc_accumulated_probs = 1.0_p
-             dmqmc_accumulated_probs_old = 1.0_p
-         end if
 
-         ! If doing a reduced density matrix calculation, allocate and define
-         ! the bit masks that have 1's at the positions referring to either
-         ! subsystems A or B.
-         if (doing_reduced_dm) call setup_rdm_arrays(sys)
+        if (dmqmc_weighted_sampling) then
+            ! dmqmc_sampling_probs stores the factors by which probabilities
+            ! are to be reduced when spawning away from the diagonal. The trial
+            ! function required from these probabilities, for use in importance
+            ! sampling, is actually that of the accumulated factors, ie, if
+            ! dmqmc_sampling_probs = (a, b, c, ...) then
+            ! dmqmc_accumulated_factors = (1, a, ab, abc, ...).
+            ! This is the array which we need to create and store.
+            ! dmqmc_sampling_probs is no longer needed and so can be
+            ! deallocated. Also, the user may have only input factors for the
+            ! first few excitation levels, but we need to store factors for all
+            ! levels, as done below.
+            if (.not.allocated(dmqmc_sampling_probs)) then
+                allocate(dmqmc_sampling_probs(1:sys%max_number_excitations), stat=ierr)
+                call check_allocate('dmqmc_sampling_probs',sys%max_number_excitations,ierr)
+                dmqmc_sampling_probs = 1.0_p
+            end if
+            allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
+            allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
+            dmqmc_accumulated_probs(0) = 1.0_p
+            dmqmc_accumulated_probs_old = 1.0_p
+            do i = 1, size(dmqmc_sampling_probs)
+            dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
+            end do
+            dmqmc_accumulated_probs(size(dmqmc_sampling_probs)+1:sys%max_number_excitations) = &
+                dmqmc_accumulated_probs(size(dmqmc_sampling_probs))
+            if (dmqmc_vary_weights) then
+                ! Allocate an array to store the factors by which the weights
+                ! will change each iteration.
+                allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
+                call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
+                weight_altering_factors = real(dmqmc_accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
+                ! If varying the weights, start the accumulated probabilties
+                ! as all 1.0 initially, and then alter them gradually later.
+                dmqmc_accumulated_probs = 1.0_p
+            end if
+        else
+            ! If not using the importance sampling procedure, turn it off by
+            ! setting all amplitudes to 1.0 in the relevant arrays.
+            allocate(dmqmc_accumulated_probs(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_accumulated_probs',sys%max_number_excitations+1,ierr)
+            allocate(dmqmc_accumulated_probs_old(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_accumulated_probs_old',sys%max_number_excitations+1,ierr)
+            dmqmc_accumulated_probs = 1.0_p
+            dmqmc_accumulated_probs_old = 1.0_p
+        end if
 
-         ! If doing concurrence calculation then construct and store the 4x4
-         ! flip spin matrix i.e. \sigma_y \otimes \sigma_y
-         if (doing_concurrence) then
-             allocate(flip_spin_matrix(4,4), stat=ierr)
-             call check_allocate('flip_spin_matrix',16,ierr)
-             flip_spin_matrix = 0.0_p
-             flip_spin_matrix(1,4) = -1.0_p
-             flip_spin_matrix(4,1) = -1.0_p
-             flip_spin_matrix(3,2) = 1.0_p
-             flip_spin_matrix(2,3) = 1.0_p    
-         end if
+        ! If doing a reduced density matrix calculation, allocate and define
+        ! the bit masks that have 1's at the positions referring to either
+        ! subsystems A or B.
+        if (doing_reduced_dm) call setup_rdm_arrays(sys)
+
+        ! If doing concurrence calculation then construct and store the 4x4
+        ! flip spin matrix i.e. \sigma_y \otimes \sigma_y
+        if (doing_concurrence) then
+            allocate(flip_spin_matrix(4,4), stat=ierr)
+            call check_allocate('flip_spin_matrix',16,ierr)
+            flip_spin_matrix = 0.0_p
+            flip_spin_matrix(1,4) = -1.0_p
+            flip_spin_matrix(4,1) = -1.0_p
+            flip_spin_matrix(3,2) = 1.0_p
+            flip_spin_matrix(2,3) = 1.0_p    
+        end if
 
     end subroutine init_dmqmc
 
@@ -284,7 +299,7 @@ contains
                 end if
             end if
         end if
-        
+
     end subroutine setup_rdm_arrays
 
     subroutine find_rdm_masks(sys)
@@ -403,13 +418,18 @@ contains
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: initiator_approximation, sym_in
+        use calc, only: initiator_approximation, sym_in, propagate_to_beta, &
+                        grand_canonical_initialisation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_sym_sectors
+        use fciqmc_data, only: sampling_size, all_spin_sectors, f0, init_beta, &
+                               walker_dets, nparticles, real_factor, &
+                               walker_population, tot_walkers, qmc_spawn, &
+                               metropolis_attempts
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
+        use qmc_common, only: redistribute_particles
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -432,7 +452,7 @@ contains
         do ireplica = 1, sampling_size
             select case(sys%system)
             case(heisenberg)
-                if (all_sym_sectors) then
+                if (all_spin_sectors) then
                     ! The size (number of configurations) of all symmetry
                     ! sectors combined.
                     total_size = 2.0_dp**(real(sys%lattice%nsites,dp))
@@ -457,7 +477,23 @@ contains
                     ! of psips.
                     call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica)
                 end if
-            case(hub_k, hub_real, ueg)
+            case(ueg, hub_k)
+                if (propagate_to_beta) then
+                    ! Initially distribute psips along the diagonal according to
+                    ! a guess.
+                    if (grand_canonical_initialisation) then
+                        call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, init_beta, qmc_spawn, rng)
+                    else
+                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, ireplica, rng, qmc_spawn)
+                    end if
+                    ! Perform metropolis algorithm on initial distribution so
+                    ! that we are sampling the trial density matrix.
+                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, &
+                                                                               sym_in, ireplica, qmc_spawn)
+                else
+                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
+                end if
+            case(hub_real)
                 call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
@@ -465,7 +501,7 @@ contains
         end do
 
         ! Finally, count the total number of particles across all processes.
-        if (all_sym_sectors) then
+        if (all_spin_sectors) then
 #ifdef PARALLEL
             call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_PREAL, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
@@ -476,7 +512,20 @@ contains
             nparticles_tot = target_nparticles_tot
         end if
 
+
         call direct_annihilation(sys, rng, initiator_approximation)
+
+        if (propagate_to_beta) then
+            ! Reset the position of the first spawned particle in the spawning array
+            qmc_spawn%head = qmc_spawn%head_start
+            ! During the metropolis steps determinants originally in the correct
+            ! portions of the spawned walker array are no longer there due to
+            ! new determinants being accepted. So we need to reorganise the
+            ! determinants appropriately.
+            call redistribute_particles(walker_dets, real_factor, walker_population, &
+                                                               tot_walkers, nparticles, qmc_spawn)
+            call direct_annihilation(sys, rng, initiator_approximation)
+        end if
 
     end subroutine create_initial_density_matrix
 
@@ -558,23 +607,20 @@ contains
         ! Determinants are generated uniformly in the Hilbert space associated
         ! to selected symmetry sector and spin polarisation.
 
-        ! [todo]: Allow for arbitrary spin-polarisations by modifying sys (in
-        ! the correct way).
-
-        ! In/Out:
-        !    rng: random number generator.
         ! In:
         !    sys: system being studied.
         !    sym: only keep determinants in this symmetry sector.
         !    npsips: The total number of psips to be created.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
+        ! In/Out:
+        !    rng: random number generator
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use symmetry, only: symmetry_orb_list
         use hilbert_space, only: gen_random_det_full_space
         use system, only: sys_t
-        use fciqmc_data, only: real_factor
+        use fciqmc_data, only: real_factor, all_sym_sectors
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -591,7 +637,7 @@ contains
                 ! Generate a random determinant uniformly in this specific
                 ! symmetry sector and spin polarisation.
                 call gen_random_det_full_space(rng, sys, f, occ_list)
-                if (symmetry_orb_list(sys, occ_list) == sym) then
+                if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                         sys%basis%tensor_label_len, real_factor, ireplica)
                     exit
@@ -600,6 +646,372 @@ contains
         end do
 
     end subroutine random_distribution_electronic
+
+    subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica, qmc_spawn)
+
+        ! Attempt to initialise the temperature dependent trial density matrix
+        ! using the metropolis algorithm. We either uniformly distribute psips
+        ! on all excitation levels or use the grand canonical partition function
+        ! as first guess and then use the Metropolis algorithm to distribute
+        ! psips according to desired trial density matrix.
+        ! The Metropolis algorithm works by generating a new determinant which
+        ! is accepted / rejected based on the value of the total energy of the
+        ! Slater determinant i.e. E_i = <D_i | H_T | D_i>, where H_T is the
+        ! "trial" Hamiltonian.
+
+        ! *** Warning ***: It is up to the user to decide whether enough
+        !     metropolis steps have been carried out and that the trial density
+        !     matrix is indeed being sampled correctly.
+
+        ! In:
+        !    sys: system being studied.
+        !    beta: (inverse) temperature at which we're looking to sample the
+        !        trial density matrix.
+        !    sym: symmetry index of determinant space we wish to sample.
+        !    npsips: number of psips to distribute in this sector.
+        !    ireplica: replica index.
+        ! In/Out:
+        !    rng: random number generator.
+        !    qmc_spawn: spawn_t object containing the initial distribution of
+        !        psips on the diagonal.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use system, only: sys_t
+        use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
+                                encode_det
+        use excitations, only: excit_t, create_excited_det
+        use fciqmc_data, only: real_factor, all_sym_sectors, f0, sampling_size, metropolis_attempts, &
+                               max_metropolis_move
+        use parallel, only: nprocs, nthreads, parent
+        use hilbert_space, only: gen_random_det_truncate_space
+        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
+        use utils, only: int_fmt
+        use spawn_data, only: spawn_t
+
+        type(sys_t), intent(in) :: sys
+        real(dp), intent(in) :: beta
+        integer, intent(in) :: sym
+        integer(int_64), intent(in) :: npsips
+        integer, intent(in) :: ireplica
+        type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: qmc_spawn
+
+        integer :: occ_list(sys%nel), naccept
+        integer :: idet, iattempt, nsuccess
+        integer :: thread_id = 0, proc
+        integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
+        real(p), target :: tmp_data(sampling_size)
+        real(p) :: pgen, hmatel, E_new, E_old, prob
+        real(dp) :: r
+        type(det_info_t) :: cdet
+        type(excit_t) :: connection
+        real(p) :: move_prob(0:sys%nalpha, sys%max_number_excitations)
+
+        naccept = 0 ! Number of metropolis moves which are accepted.
+        nsuccess = 0 ! Number of successful proposal steps i.e. excluding null excitations.
+        idet = 0
+
+        call alloc_det_info_t(sys, cdet)
+
+        ! The metropolis move is to excite [1:max_metropolis_move] electrons. This is achieved
+        ! either by using the excitation generators when working in a
+        ! symmetry contrained system or by uniformly exciting the electrons
+        ! among the available levels. In the latter case we need to set the
+        ! probabilities of a particular move (e.g. move two alpha spins),
+        ! so do this here.
+        if (all_sym_sectors) call set_level_probabilities(sys, move_prob, max_metropolis_move)
+
+        ! Visit every psip metropolis_attempts times.
+        do iattempt = 1, metropolis_attempts
+            do proc = 0, nprocs-1
+                do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
+                    cdet%f = qmc_spawn%sdata(:sys%basis%string_len,idet)
+                    E_old = trial_dm_ptr(sys, cdet%f)
+                    tmp_data(1) = E_old
+                    cdet%data => tmp_data
+                    call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
+                    if (all_sym_sectors) then
+                        call gen_random_det_truncate_space(rng, sys, max_metropolis_move, cdet, move_prob, occ_list)
+                        nsuccess = nsuccess + 1
+                        call encode_det(sys%basis, occ_list, f_new)
+                    else
+                        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+                        ! Check that we didn't generate a null excitation.
+                        ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
+                        if (hmatel == 0) cycle
+                        nsuccess = nsuccess + 1
+                        call create_excited_det(sys%basis, cdet%f, connection, f_new)
+                    end if
+                    ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
+                    E_new = trial_dm_ptr(sys, f_new)
+                    prob = exp(-1.0_p*beta*(E_new-E_old))
+                    r = get_rand_close_open(rng)
+                    if (prob > r) then
+                        ! Accept the new determinant by modifying the entry
+                        ! in spawned walker list.
+                        naccept = naccept + 1
+                        qmc_spawn%sdata(:sys%basis%string_len,idet) = f_new
+                        qmc_spawn%sdata(sys%basis%string_len+1:sys%basis%tensor_label_len,idet) = f_new
+                    end if
+                end do
+            end do
+        end do
+
+        if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", f8.7)') &
+                           real(naccept)/nsuccess, real(metropolis_attempts*npsips-nsuccess)/(metropolis_attempts*npsips)
+
+        call dealloc_det_info_t(cdet)
+
+    end subroutine initialise_dm_metropolis
+
+    subroutine init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
+
+        ! Create an initital distribution of psips along the diagonal.
+        ! This subroutine will return a list of occupied determinants in
+        ! qmc_spawn which can then be used for the metropolis initialisation.
+        ! Psips are distributed equally among all excitation levels.
+
+        ! In:
+        !    sys: system being studied.
+        !    npsips: number of psips to distribute on the diagonal.
+        !    sym: symmetry of determinants being occupied.
+        !    ireplica: replica index.
+        ! In/Out:
+        !    rng: random number generator.
+        !    qmc_spawn: spawn_t object containing list of occupied determinants.
+
+        use spawn_data, only: spawn_t
+        use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
+                                det_info_t, alloc_det_info_t
+        use fciqmc_data, only: f0, real_factor, all_sym_sectors, metropolis_attempts
+        use hilbert_space, only: gen_random_det_truncate_space
+        use symmetry, only: symmetry_orb_list
+        use system, only: sys_t
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        integer(int_64), intent(in) :: npsips
+        integer, intent(in) :: sym
+        integer, intent(in) :: ireplica
+        type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: qmc_spawn
+
+        integer :: occ_list(sys%nel), idet, ilevel
+        integer(i0) :: f(sys%basis%string_len)
+        type(det_info_t) :: det0
+        integer(int_64) :: psips_per_level
+        real(p) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
+
+        ! [todo] - Include all psips.
+        psips_per_level = int(npsips/sys%max_number_excitations)
+        call alloc_det_info_t(sys, det0)
+        call decode_det_spinocc_spinunocc(sys, f0, det0)
+        det0%f = f0
+        ! gen_random_det_truncate_space does not produce determinants at
+        ! excitation level zero, so take care of this explicitly.
+        do idet = 1, psips_per_level
+            call create_diagonal_density_matrix_particle(f0, sys%basis%string_len, &
+                                                         sys%basis%tensor_label_len, real_factor, ireplica)
+        end do
+
+        ! Uniformly distribute the psips on all other levels.
+        call set_level_probabilities(sys, ptrunc_level, sys%max_number_excitations)
+
+        do idet = 1, npsips-psips_per_level
+            ! Repeatedly attempt to create determinants on every other
+            ! excitation level.
+            do
+                call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
+                if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                    call encode_det(sys%basis, occ_list, f)
+                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                                                                sys%basis%tensor_label_len, real_factor, ireplica)
+                    exit
+                end if
+            end do
+        end do
+
+        call dealloc_det_info_t(det0)
+
+    end subroutine init_uniform_ensemble
+
+    subroutine init_grand_canonical_ensemble(sys, sym, npsips, beta, spawn, rng)
+
+        ! Initially distribute psips according to the grand canonical
+        ! distribution function.
+
+        ! In:
+        !    sys: system being studied.
+        !    sym: symmetry sector under consideration.
+        !    npsips: number of psips to create on the diagonal.
+        !    beta: inverse temperature.
+        ! In/Out:
+        !    spawn: spawned list.
+        !    rng: random number generator.
+
+        use system, only: sys_t
+        use spawn_data, only: spawn_t
+        use fciqmc_data, only: real_factor, all_sym_sectors
+        use symmetry, only: symmetry_orb_list
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use determinants, only: encode_det
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: sym
+        integer(int_64), intent(in) :: npsips
+        real(p), intent(in) :: beta
+        type(spawn_t), intent(inout) :: spawn
+        type(dSFMT_t), intent(inout) :: rng
+
+        real(dp) :: p_single(sys%basis%nbasis/2)
+        real(dp) :: r
+        integer :: occ_list(sys%nel)
+        integer(i0) :: f(sys%basis%string_len)
+        integer :: ireplica, iorb, ipsip
+        logical :: gen
+
+        ireplica = 1
+
+        ! Calculate orbital occupancies.
+        ! * Warning *: We assume that we are dealing with a system without
+        ! magnetic fields or other funny stuff, so the probabilty of occupying
+        ! an alpha spin orbital is equal to that of occupying a beta spin
+        ! orbital.
+        forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
+                                                          (1+exp(beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
+
+        ! In the grand canoical ensemble the probability of occupying a
+        ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the
+        ! Fermi factors calculated above in p_single(i). We normally work in the
+        ! canonical ensemble, however, so we need to discard any determinant
+        ! generated which does not contain nel electrons to obtain the correct
+        ! normalisation and hence, the correct distribution. For small systems
+        ! the number fluctuations are usually small, so this routine is quite
+        ! fast.
+        ipsip = 0
+        do while (ipsip < npsips)
+            occ_list = 0
+            ! Select the alpha and beta spin orbitals and discard any
+            ! determinant without the correct number of particles.
+            if (sys%nalpha > 0) call generate_allowed_orbital_list(rng, p_single, sys%nalpha, 1, occ_list(:sys%nalpha), gen)
+            if (.not. gen) cycle
+            if (sys%nbeta > 0) call generate_allowed_orbital_list(rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
+            if (.not. gen) cycle
+            ! Create the determinant.
+            if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                call encode_det(sys%basis, occ_list, f)
+                call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                                                            sys%basis%tensor_label_len, real_factor, ireplica)
+                ipsip = ipsip + 1
+            end if
+        end do
+
+        contains
+
+            subroutine generate_allowed_orbital_list(rng, porb, nselect, spin_factor, occ_list, gen)
+
+                ! Generate a list of orbitals according to their single
+                ! particle GC orbital occupancy probabilities.
+
+                ! In:
+                !    porb: porb(i) gives the probabilty of selecting
+                !        the orbital i.
+                !    nselect: number of orbitals to select.
+                !    spin_factor: integer to account for odd/even ordering of
+                !        alpha/beta spin orbitals. Set to 1 for alpha spins, 0 for beta spins.
+                ! In/Out:
+                !    rng: random number generator.
+                !    occ_list: array containing occupied orbitals.
+
+                use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+                real(dp), intent(in) :: porb(:)
+                integer, intent(in) :: nselect
+                integer, intent(in) :: spin_factor
+                type(dSFMT_t), intent(inout) :: rng
+                integer, intent(out) :: occ_list(:)
+                logical, intent(out) :: gen
+
+                integer :: iorb, iselect
+                real(dp) :: r
+
+                iselect = 0
+                occ_list = 0
+
+                do iorb = 1, sys%basis%nbasis/2
+                    ! Select a random orbital.
+                    r = get_rand_close_open(rng)
+                    if (porb(iorb) > r) then
+                        iselect = iselect + 1
+                        if (iselect > nselect) then
+                            ! Selected too many.
+                            gen = .false.
+                            exit
+                        end if
+                        occ_list(iselect) = 2*iorb - spin_factor
+                    end if
+                end do
+                if (iselect == nselect) then
+                    gen = .true.
+                else
+                    gen = .false.
+                end if
+
+            end subroutine generate_allowed_orbital_list
+
+    end subroutine init_grand_canonical_ensemble
+
+    subroutine set_level_probabilities(sys, ptrunc_level, max_excit)
+
+        ! Set the probabilities for creating a determinant on a given
+        ! excitation level so that get_random_det_truncate_space can be used.
+        !
+        ! In:
+        !    sys: system being studied.
+        !    max_excit: maximum excitation of a reference determinant we wish to
+        !        consider.
+        ! In/Out:
+        !    ptrunc_level: array containing probabilities for spawning at a
+        !        particular (ialpha, ilevel) excitation level.
+
+        use system, only: sys_t
+        use utils, only: binom_r
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: max_excit
+        real(p), intent(inout) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
+
+        integer :: ialpha, ilevel
+        real(p) :: offset
+
+        ! Set up the probabilities for creating a determinant on a given
+        ! excitation level.
+        ! ptunc_level(ialpha, ilevel) gives the probability of creating a
+        ! determinant with excitation level by exciting ialpha
+        ! alpha spins (and (ilevel-ialpha) beta spins). We give each possible
+        ! realisation of an excitation equal probability and allow each
+        ! excitation to occur with equal probability.
+        ptrunc_level = 0.0_p
+        do ilevel = 1, max_excit
+            do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
+                ! Number of ways of exciting ialpha electrons such that
+                ! ialpha + nbeta = ilevel.
+                ptrunc_level(ialpha, ilevel) = binom_r(ilevel,ialpha)
+            end do
+        end do
+
+        ! Normalisation for the distribution at this excitation level.
+        forall(ilevel=1:max_excit) ptrunc_level(:,ilevel) = ptrunc_level(:,ilevel) / (max_excit*sum(ptrunc_level(:,ilevel)))
+
+        offset = 0.0_p
+        do ilevel = 1, max_excit
+            do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
+                ptrunc_level(ialpha, ilevel) = offset + ptrunc_level(ialpha, ilevel)
+                offset = ptrunc_level(ialpha, ilevel)
+            end do
+        end do
+
+    end subroutine set_level_probabilities
 
     subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type)
 
@@ -661,7 +1073,7 @@ contains
         ! This function maps a full DMQMC bitstring to two bitstrings encoding
         ! the subsystem-A RDM bitstrings. These resulting bitstrings are stored
         ! in the end1 and end2 components of rdms(irdm).
-        
+
         ! Crucially, the mapping is performed so that, if there are two
         ! subsystems which are equivalent by symmetry, then equivalent sites in
         ! those two subsystems will be mapped to the same RDM bitstrings. This
@@ -704,9 +1116,9 @@ contains
         end do
 
     end subroutine decode_dm_bitstring
- 
+
     subroutine update_sampling_weights(rng, basis)
-        
+
         ! This routine updates the values of the weights used in importance
         ! sampling. It also removes or adds psips from the various excitation
         ! levels accordingly.
@@ -807,11 +1219,11 @@ contains
 
         integer :: i, ierr
 #ifdef PARALLEL
-        real(p) :: merged_excit_dist(0:max_number_excitations) 
+        real(p) :: merged_excit_dist(0:max_number_excitations)
         call mpi_allreduce(excit_distribution, merged_excit_dist, max_number_excitations+1, &
             MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
-        
-        excit_distribution = merged_excit_dist        
+
+        excit_distribution = merged_excit_dist
 #endif
 
         ! It is assumed that there is an even maximum number of excitations.
@@ -825,7 +1237,7 @@ contains
                 dmqmc_sampling_probs(max_number_excitations+1-i) = dmqmc_sampling_probs(i)**(-1)
             end if
         end do
-        
+
         ! Recalculate dmqmc_accumulated_probs with the new weights.
         do i = 1, max_number_excitations
             dmqmc_accumulated_probs(i) = dmqmc_accumulated_probs(i-1)*dmqmc_sampling_probs(i)
