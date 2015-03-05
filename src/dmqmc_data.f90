@@ -58,7 +58,7 @@ type dmqmc_in_t
     ! If true then the simulation will start with walkers uniformly distributed
     ! along the diagonal of the entire density matrix, including all symmetry
     ! sectors.
-    logical :: all_sym_sectors = .false.
+    logical :: all_spin_sectors = .false.
     ! If half_density_matrix is true then half the density matrix will be
     ! calculated by reflecting spawning onto the lower triangle into the
     ! upper triangle. This is allowed because the density matrix is
@@ -83,6 +83,27 @@ type dmqmc_in_t
     ! When using the old weighted importance sampling, how many iterations are
     ! the weights varied for?
     integer :: finish_varying_weights = 0
+
+    ! Propagate a trial density matrix to a specific temeperature.
+    logical :: propagate_to_beta = .false.
+    ! Use the free electron Hamiltonian as the trial density matrix.
+    ! Default: Use the "Hartree-Fock" trial density matrix.
+    logical :: free_electron_trial = .false.
+    ! Use the grand canonical partition function to inititally distribute the psips.
+    logical :: grand_canonical_initialisation = .false.
+    ! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
+    logical :: fermi_temperature = .false.
+    ! Value of beta which we propagate the density matrix to.
+    real(p) :: init_beta = 1.0
+    ! Number of metropolis attempts (per psip) we use when generating
+    ! the trial density matrix.
+    integer :: metropolis_attempts = 0
+    ! For the metropolis move we generate an excitation of the current determinant
+    ! up to the max_metropolis_move'th excitation level (excluding zero-fold
+    ! excitations). Only applicable if all_mom_sym = .true., otherwise the
+    ! excitation generators are used which conserve momentum symmetry.
+    ! Default: Single and double excitations (if applicable).
+    integer :: max_metropolis_move = 2
 
 end type dmqmc_in_t
 
