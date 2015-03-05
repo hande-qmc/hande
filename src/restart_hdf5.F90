@@ -827,8 +827,7 @@ Module restart_hdf5
 
                     use const, only: i0, int_p, p
 
-                    use hdf5, only: h5fopen_f, h5fclose_f, h5gopen_f, h5gclose_f, H5F_ACC_RDWR_F, &
-                                    hid_t, hsize_t
+                    use hdf5
                     use hdf5_helper, only: hdf5_write, dset_shape, hdf5_kinds_t
 
                     character(*), intent(in) :: fname
