@@ -28,7 +28,7 @@ contains
 #endif
 
         write (6,'(/a7)') 'ERROR.'
-        write (6,'(1X,a)') 'hubbard stops in subroutine: '//adjustl(sub_name)//'.'
+        write (6,'(1X,a)') 'HANDE stops in subroutine: '//adjustl(sub_name)//'.'
         write (6,'(a9,a)') 'Reason: ',adjustl(error_msg)
         write (6,'(1X,a10)') 'EXITING...'
 
