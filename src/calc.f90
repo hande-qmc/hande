@@ -44,6 +44,8 @@ integer, parameter :: dmqmc_calc = 2**8
 integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
 integer, parameter :: mc_canonical_kinetic_energy = 2**10
+! Redistributing restart info.
+integer, parameter :: restart_redistribute = 2**11
 
 !--- Info for DMQMC calculations ---
 

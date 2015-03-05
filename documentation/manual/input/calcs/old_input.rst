@@ -89,6 +89,14 @@ types below. They are turned off by default.
     For the real space formulation of the Hubbard model and the Heisenberg
     model, the exact size of the space (at least to the first 8 significant
     figures) is found by simple combinatorics.
+**redistribute_restart** *nprocs*
+    Redistribute a set of restart files to be used in a calculation parallelised over
+    *nprocs* MPI ranks.
+
+    .. warning::
+
+        Currently this is not parallelised and must be done separately from any QMC
+        calculations.
 
 **estimate_canonical_kinetic_energy**
 
