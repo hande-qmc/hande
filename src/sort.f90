@@ -31,7 +31,7 @@ contains
         ! list(:,i).
 
         ! In/Out:
-        !    list: 2D array of int_s integers.  Sorted on output.
+        !    list: 2D array of int_32 integers.  Sorted on output.
         ! In:
         !    head (optional): sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
@@ -184,7 +184,7 @@ contains
         ! list(:,i).
 
         ! In/Out:
-        !    list: 2D array of int_s integers.  Sorted on output.
+        !    list: 2D array of int_64 integers.  Sorted on output.
         ! In:
         !    head (optional): sort list up to and including list(:,:head) and
         !        leave the rest of the array untouched.  Default: sort the
