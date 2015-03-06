@@ -23,7 +23,7 @@ contains
 
 ! \hat{D} = 1/L \sum_i n_{i,\uparrow} n_{i,downarrow} (in local orbitals) gives the
 ! fraction of sites which contain two electrons, where L is the total number of
-! sites.  See Becca et al (PRB 61 (2000) R16288).
+! sites.  See Becca et al (PRB 61 (2000) R16287).
 
 ! In momentum space this becomes (similar to the potential in the Hamiltonian
 ! operator): 1/L^2 \sum_{k_1,k_2,k_3} c^{\dagger}_{k_1,\uparrow} c^{\dagger}_{k_2,\downarrow} c_{k_3,\downarrow} c_{k_1+k_2-k_3,\uparrow}
