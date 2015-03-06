@@ -42,6 +42,18 @@ abstract interface
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
     end subroutine i_update_proj_hfs
+    subroutine i_update_dmqmc_energy_and_trace(sys, excitation, d, walker_pop, diag, trace, energy)
+        use system, only: sys_t
+        import :: excit_t, p, det_info_t
+        implicit none
+        type(sys_t), intent(in) :: sys
+        type(excit_t), intent(inout) :: excitation
+        type(det_info_t), intent(in) :: d
+        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: diag
+        real(p), intent(inout) :: trace(:)
+        real(p), intent(inout) :: energy
+    end subroutine i_update_dmqmc_energy_and_trace
     subroutine i_update_dmqmc_estimators(sys, idet,excitation,walker_pop)
         use system, only: sys_t
         import :: excit_t, p
@@ -135,7 +147,7 @@ procedure(i_decoder), pointer :: decoder_ptr => null()
 procedure(i_update_proj_energy), pointer :: update_proj_energy_ptr => null()
 procedure(i_update_proj_hfs), pointer :: update_proj_hfs_ptr => null()
 
-procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_ptr => null()
+procedure(i_update_dmqmc_energy_and_trace), pointer :: update_dmqmc_energy_and_trace_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_correlation_ptr => null()

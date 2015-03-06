@@ -629,13 +629,6 @@ contains
             decoder_ptr => decode_det_spinocc_spinunocc
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
-            if (propagate_to_beta) then
-                if (free_electron_trial) then
-                    trial_dm_ptr => kinetic0_hub_k
-                else
-                    trial_dm_ptr => slater_condon0_hub_k
-                end if
-            end if
             spawner_ptr => spawn_lattice_split_gen
             if (no_renorm) then
                 gen_excit_ptr%full => gen_excit_hub_k_no_renorm
@@ -718,13 +711,6 @@ contains
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
 
-            if (propagate_to_beta) then
-                if (free_electron_trial) then
-                    trial_dm_ptr => kinetic_energy_ueg
-                else
-                    trial_dm_ptr => slater_condon0_ueg
-                end if
-            end if
             if (no_renorm) then
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
@@ -789,9 +775,15 @@ contains
             end if
 
             ! Expectation values.
+            if (doing_dmqmc_calc(dmqmc_energy)) then
+                if (propagate_to_beta) then
+                    update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace_propagate
+                else
+                    update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
+                end if
+            end if
             select case(sys%system)
             case(heisenberg)
-                if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_heisenberg
                 if (doing_dmqmc_calc(dmqmc_energy_squared)) &
                                          update_dmqmc_energy_squared_ptr => dmqmc_energy_squared_heisenberg
                 if (doing_dmqmc_calc(dmqmc_correlation)) update_dmqmc_correlation_ptr => &
@@ -799,21 +791,21 @@ contains
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
-                if (doing_dmqmc_calc(dmqmc_energy)) then
-                    if (propagate_to_beta) then
-                        update_dmqmc_energy_ptr => dmqmc_energy_ueg_propagate
+                if (propagate_to_beta) then
+                    if (free_electron_trial) then
+                        trial_dm_ptr => kinetic_energy_ueg
                     else
-                        update_dmqmc_energy_ptr => dmqmc_energy_ueg
+                        trial_dm_ptr => slater_condon0_ueg
                     end if
                 end if
             case(hub_k)
                 if (propagate_to_beta) then
-                    update_dmqmc_energy_ptr => dmqmc_energy_hub_k_propagate
-                else
-                    update_dmqmc_energy_ptr => dmqmc_energy_hub_k
+                    if (free_electron_trial) then
+                        trial_dm_ptr => kinetic0_hub_k
+                    else
+                        trial_dm_ptr => slater_condon0_hub_k
+                    end if
                 end if
-            case(hub_real)
-                if (doing_dmqmc_calc(dmqmc_energy)) update_dmqmc_energy_ptr => dmqmc_energy_hub_real
             end select
 
         end if
