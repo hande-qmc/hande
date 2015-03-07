@@ -7,7 +7,6 @@ contains
 
     subroutine init_dmqmc(sys)
 
-<<<<<<< HEAD
         ! In:
         !    sys: system being studied.
 

@@ -8,6 +8,21 @@ implicit none
 
 ! [todo] - update kinds following Ruth's single precision work.  Check kind when removing each variable from fciqmc_data.
 
+! This variable holds the total number of operators which are implemented
+! for DMQMC. It must be updated if more operators are added.
+integer, parameter :: num_dmqmc_operators = 5
+
+! The following indicies are used to access components of estimator_numerators.
+enum, bind(c)
+    enumerator :: energy_ind = 1
+    enumerator :: energy_squared_ind
+    enumerator :: correlation_fn_ind
+    enumerator :: staggered_mag_ind
+    enumerator :: full_r2_ind
+    ! NOTE: If you add a new estimator then the must increase the size of
+    ! num_dmqmc_operators to account for this.
+end enum
+
 type dmqmc_in_t
     ! [todo] - rename components: no need for dmqmc_ stem.
 
@@ -193,40 +208,21 @@ type rdm_t
 end type rdm_t
 
 type dmqmc_estimates_t
-
-    ! This variable stores the number of estimators which are to be
-    ! calculated and printed out in a DMQMC calculation.
-    integer :: number_dmqmc_estimators = 0
-    ! The integers below store the index of the element in the array
-    ! estimator_numerators, in which the corresponding thermal quantity is
-    ! stored. In general, a different number and combination of estimators
-    ! may be calculated, and hence we need a way of knowing which element
-    ! refers to which operator. These indices give labels to operators.
-    ! They will be set to 0 if no used, or else their positions in the array,
-    ! from 1-number_dmqmc_estimators.
-    ! [review] - JSS: turn into an enum?  estimator_numerators is small, so we may as well allocate
-    ! [review] - JSS: an element for every possible data type to make the code simpler.
-    integer :: energy_index = 0
-    integer :: energy_squared_index = 0
-    integer :: correlation_index = 0
-    integer :: staggered_mag_index = 0
-    integer :: full_r2_index = 0
-
-    ! In DMQMC the trace of the density matrix is an important quantity
-    ! used in calculating all thermal estimators. This quantity stores
-    ! the this value, Tr(\rho), where rho is the density matrix which
-    ! the DMQMC algorithm calculates stochastically.
-    real(p), allocatable :: trace(:) ! (sampling_size)
-    ! estimator_numerators stores all the numerators for the estimators in DMQMC
-    ! which the user has asked to be calculated. These are, for a general
-    ! operator O which we wish to find the thermal average of:
+    ! estimator_numerators stores the numerators for the estimators in DMQMC. These
+    ! are, for a general operator O which we wish to find the thermal average of:
     ! \sum_{i,j} \rho_{ij} * O_{ji}
     ! This variabe will store this value from the first iteration of each
     ! report loop. At the end of a report loop, the values from each
     ! processor are combined and stored in estimator_numerators on the parent
     ! processor. This is then output, and the values of estimator_numerators
     ! are reset on each processor to start the next report loop.
-    real(p), allocatable :: estimator_numerators(:) !(number_dmqmc_estimators)
+    real(p) :: estimator_numerators(num_dmqmc_operators)
+
+    ! In DMQMC the trace of the density matrix is an important quantity
+    ! used in calculating all thermal estimators. This quantity stores
+    ! the this value, Tr(\rho), where rho is the density matrix which
+    ! the DMQMC algorithm calculates stochastically.
+    real(p), allocatable :: trace(:) ! (sampling_size)
 
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.
