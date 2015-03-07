@@ -219,7 +219,7 @@ contains
                 if (average_shift_until > 0) shift_profile(ireport) = shift_profile(ireport) + shift(1)
 
                 ! Sum all quantities being considered across all MPI processes.
-                call communicate_dmqmc_estimates(nspawn_events)
+                call dmqmc_estimate_comms(nspawn_events, sys%max_number_excitations)
 
                 call update_shift_dmqmc(tot_nparticles, tot_nparticles_old, ireport)
 

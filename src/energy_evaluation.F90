@@ -7,7 +7,7 @@ use const
 
 implicit none
 
-! indices for corresponding data items  in estimator/population/etc buffers (see
+! indices for corresponding data items in estimator/population/etc buffers (see
 ! comments below).
 enum, bind(c)
     enumerator :: proj_energy_ind = 1

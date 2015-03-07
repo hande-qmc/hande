@@ -10,4 +10,5 @@ skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support\|Restar
 
 [user]
 diff = vimdiff
-benchmark = f7ef0cd cf9ace6 cb077f8 ba600c2 5ac5d11 74d944e 22956a9 30247a9 9672d18 40ca120 4b5a3d5 82f85d2 cf6b945 00c311f b966bd8 f447d1e 26e14a5 87fbdfc 6b4a41e 8cf57ec 4167c5c f506d39 e0da81d 29786d6 0dc363f a331116 7ccbd38 611ecb6 45eedbf c27f9ed 62cb9ac 11a9d6b ce3dfde debf5bb a590225 6d904b0 6c9c111 484eac7 9bdd382 1461a8d 4369f83 5ee500b 9bc0a5c e311449
+benchmark = 2e7529b d06bbac f7ef0cd cf9ace6 cb077f8 ba600c2 5ac5d11 74d944e 22956a9 30247a9 9672d18 40ca120 4b5a3d5 82f85d2 cf6b945 00c311f b966bd8 f447d1e 26e14a5 87fbdfc 6b4a41e 8cf57ec 4167c5c f506d39 e0da81d 29786d6 0dc363f a331116 7ccbd38 611ecb6 45eedbf c27f9ed 62cb9ac 11a9d6b ce3dfde debf5bb a590225 6d904b0 6c9c111 484eac7 9bdd382 1461a8d 4369f83 5ee500b 9bc0a5c e311449
+

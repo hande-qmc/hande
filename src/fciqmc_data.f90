@@ -350,38 +350,36 @@ logical :: init_spin_inv_D0 = .false.
 ! performing a DMQMC calculation, and so can be ignored in these cases.
 real(p) :: dmqmc_factor = 1.0_p
 
-! This variable stores the number of estimators which are to be
-! calculated and printed out in a DMQMC calculation.
-integer :: number_dmqmc_estimators = 0
-
 ! In DMQMC the trace of the density matrix is an important quantity
 ! used in calculating all thermal estimators. This quantity stores
 ! the this value, Tr(\rho), where rho is the density matrix which
 ! the DMQMC algorithm calculates stochastically.
 real(p), allocatable :: trace(:) ! (sampling_size)
 
-! estimator_numerators stores all the numerators for the estimators in DMQMC
-! which the user has asked to be calculated. These are, for a general
-! operator O which we wish to find the thermal average of:
+! This variable holds the total number of operators which are implemented
+! for DMQMC. It must be updated if more operators are added.
+integer, parameter :: num_dmqmc_operators = 5
+
+! estimator_numerators stores the numerators for the estimators in DMQMC. These
+! are, for a general operator O which we wish to find the thermal average of:
 ! \sum_{i,j} \rho_{ij} * O_{ji}
 ! This variabe will store this value from the first iteration of each
 ! report loop. At the end of a report loop, the values from each
 ! processor are combined and stored in estimator_numerators on the parent
 ! processor. This is then output, and the values of estimator_numerators
 ! are reset on each processor to start the next report loop.
-real(p), allocatable :: estimator_numerators(:) !(number_dmqmc_estimators)
-! The integers below store the index of the element in the array
-! estimator_numerators, in which the corresponding thermal quantity is
-! stored. In general, a different number and combination of estimators
-! may be calculated, and hence we need a way of knowing which element
-! refers to which operator. These indices give labels to operators.
-! They will be set to 0 if no used, or else their positions in the array,
-! from 1-number_dmqmc_estimators.
-integer :: energy_index = 0
-integer :: energy_squared_index = 0
-integer :: correlation_index = 0
-integer :: staggered_mag_index = 0
-integer :: full_r2_index = 0
+real(p) :: estimator_numerators(num_dmqmc_operators)
+
+! The following indicies are used to access components of estimator_numerators.
+enum, bind(c)
+    enumerator :: energy_ind = 1
+    enumerator :: energy_squared_ind
+    enumerator :: correlation_fn_ind
+    enumerator :: staggered_mag_ind
+    enumerator :: full_r2_ind
+    ! NOTE: If you add a new estimator then the must increase the size of
+    ! num_dmqmc_operators to account for this.
+end enum
 
 ! When using the replica_tricks option, if the rdm in the first
 ! simulation if denoted \rho^1 and the ancillary rdm is denoted
@@ -495,7 +493,7 @@ end type rdm_spawn_t
 type(rdm_spawn_t), allocatable :: rdm_spawn(:)
 
 ! The total number of rdms beings calculated.
-integer :: nrdms
+integer :: nrdms = 0
 
 ! This type contains information for the RDM corresponding to a given
 ! subsystem. It takes translational symmetry into account by storing information
@@ -747,7 +745,8 @@ contains
         !    comment: if true, then prefix the line with a #.
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
-        use calc, only: dmqmc_full_r2, dmqmc_rdm_r2, non_blocking_comm
+        use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
+        use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, non_blocking_comm
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
 
         integer, intent(in) :: ireport
@@ -771,22 +770,49 @@ contains
         end if
 
         ! See also the format used in inital_fciqmc_status if this is changed.
+
+        ! DMQMC output.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
                 (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
-            ! Perform a loop which outputs the numerators for each of the different
-            ! estimators, as stored in total_estimator_numerators.
+            ! The trace on the second replica.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
                 write(6, '(3X,es17.10)',advance = 'no') trace(2)
             end if
-            do i = 1, number_dmqmc_estimators
-                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(i)
-            end do
+
+            ! Renyi-2 entropy for the full density matrix.
+            if (doing_dmqmc_calc(dmqmc_full_r2)) then
+                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(full_r2_ind)
+            end if
+
+            ! Energy.
+            if (doing_dmqmc_calc(dmqmc_energy)) then
+                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(energy_ind)
+            end if
+
+            ! Energy squared.
+            if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(energy_squared_ind)
+            end if
+
+            ! Correlation function.
+            if (doing_dmqmc_calc(dmqmc_correlation)) then
+                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(correlation_fn_ind)
+            end if
+
+            ! Staggered magnetisation.
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
+                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(staggered_mag_ind)
+            end if
+
+            ! Renyi-2 entropy for all RDMs being sampled.
             if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
                 do i = 1, nrdms
                     write (6, '(6X,es17.10)', advance = 'no') renyi_2(i)
                 end do
             end if
+
+            ! Traces for instantaneous RDM estimates.
             if (calc_inst_rdm) then
                 do i = 1, nrdms
                     do j = 1, sampling_size
@@ -794,13 +820,18 @@ contains
                     end do
                 end do
             end if
+
+            ! The distribution of walkers on different excitation levels of the
+            ! density matrix.
             if (calculate_excit_distribution) then
                 excit_distribution = excit_distribution/ntot_particles(1)
                 do i = 0, ubound(excit_distribution,1)
                     write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
                 end do
             end if
+
             write (6, '(2X,es17.10)', advance='no') ntot_particles(1)
+
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,X,es17.10)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, shift(1),   &
@@ -855,10 +886,6 @@ contains
         if (allocated(neel_singlet_amp)) then
             deallocate(neel_singlet_amp, stat=ierr)
             call check_deallocate('neel_singlet_amp',ierr)
-        end if
-        if (allocated(estimator_numerators)) then
-            deallocate(estimator_numerators, stat=ierr)
-            call check_deallocate('estimator_numerators', ierr)
         end if
         if (allocated(nparticles_proc)) then
             deallocate(nparticles_proc, stat=ierr)

@@ -4,9 +4,24 @@ use const
 
 implicit none
 
+! indices for corresponding data items in estimator/population/etc buffers (see
+! comments below).
+enum, bind(c)
+    enumerator :: rspawn_ind = 1
+    enumerator :: nocc_states_ind
+    enumerator :: nspawned_ind
+    enumerator :: nparticles_ind
+    enumerator :: trace_ind
+    enumerator :: operators_ind
+    enumerator :: excit_dist_ind
+    enumerator :: rdm_trace_ind
+    enumerator :: rdm_r2_ind
+    enumerator :: final_ind ! ensure this remains the last index.
+end enum
+
 contains
 
-    subroutine communicate_dmqmc_estimates(nspawn_events)
+    subroutine dmqmc_estimate_comms(nspawn_events, max_num_excits)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -16,133 +31,207 @@ contains
 
         ! In:
         !    nspawn_events: The total number of spawning events to this process.
+        !    max_num_excits: The maximum excitation level for the system being
+        !        studied.
 
-        use spawn_data, only: annihilate_wrapper_spawn_t
-        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
-        use calc, only: dmqmc_energy_squared, dmqmc_rdm_r2
-        use checking, only: check_allocate
-        use fciqmc_data, only: nparticles, sampling_size, rspawn, shift, replica_tricks
-        use fciqmc_data, only: estimator_numerators, number_dmqmc_estimators
-        use fciqmc_data, only: ncycles, trace, calculate_excit_distribution, tot_walkers
-        use fciqmc_data, only: excit_distribution, tot_nparticles, tot_nocc_states
-        use fciqmc_data, only: calc_inst_rdm, rdm_spawn, rdms, nrdms, rdm_traces, renyi_2
-        use fciqmc_data, only: tot_nspawn_events
-        use hash_table, only: reset_hash_table
+        use checking, only: check_allocate, check_deallocate
+        use fciqmc_data, only: sampling_size, num_dmqmc_operators, calc_inst_rdm, nrdms
         use parallel
 
+        integer, intent(in) :: nspawn_events, max_num_excits
+
+        real(dp), allocatable :: rep_loop_loc(:)
+        real(dp), allocatable :: rep_loop_sum(:)
+        integer :: nelems(final_ind-1), min_ind(final_ind-1), max_ind(final_ind-1)
+        integer :: tot_nelems, i, ierr
+
+        ! If calculating instantaneous RDM estimates then call this routine to
+        ! perform annihilation for RDM particles, and calculate RDM estimates
+        ! before they are summed over processors. below.
+        if (calc_inst_rdm) call communicate_inst_rdms()
+
+        ! How big is each variable to be communicated?
+        nelems(rspawn_ind) = 1
+        nelems(nocc_states_ind) = 1
+        nelems(nspawned_ind) = 1
+        nelems(nparticles_ind) = sampling_size
+        nelems(trace_ind) = sampling_size
+        nelems(operators_ind) = num_dmqmc_operators 
+        nelems(excit_dist_ind) = max_num_excits + 1
+        nelems(rdm_trace_ind) = sampling_size*nrdms
+        nelems(rdm_r2_ind) = nrdms
+
+        ! The total number of elements in the array to be communicated.
+        tot_nelems = sum(nelems)
+
+        ! Create min_ind and max_ind, which hold the minimum and maximum
+        ! indices that each object takes in rep_loop_loc and rep_loop_sum.
+        do i = 1, final_ind-1
+            min_ind(i) = sum(nelems(1:i-1)) + 1
+            max_ind(i) = sum(nelems(1:i))
+        end do
+
+        allocate(rep_loop_loc(1:tot_nelems), stat=ierr)
+        call check_allocate('rep_loop_loc', tot_nelems, ierr)
+        allocate(rep_loop_sum(1:tot_nelems), stat=ierr)
+        call check_allocate('rep_loop_sum', tot_nelems, ierr)
+
+        ! Move the variables to be communicated to rep_loop_loc.
+        call local_dmqmc_estimators(rep_loop_loc, min_ind, max_ind, nspawn_events)
+
+#ifdef PARALLEL
+        call mpi_allreduce(rep_loop_loc, rep_loop_sum, size(rep_loop_loc), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+#else
+        rep_loop_sum = rep_loop_loc
+        ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
+#endif
+
+        ! Move the communicated quantites to the corresponding variables.
+        call communicated_dmqmc_estimators(rep_loop_sum, min_ind, max_ind)
+
+        ! Clean up.
+        deallocate(rep_loop_loc, stat=ierr)
+        call check_deallocate('rep_loop_loc', ierr)
+        deallocate(rep_loop_sum, stat=ierr)
+        call check_deallocate('rep_loop_sum', ierr)
+
+    end subroutine dmqmc_estimate_comms
+
+    subroutine local_dmqmc_estimators(rep_loop_loc, min_ind, max_ind, nspawn_events)
+
+        ! Enter processor dependent report loop quantites into array for
+        ! efficient sending to other processors.
+
+        ! In:
+        !    min_ind: Array holding the minimum indices of the various
+        !        quantities in rep_loop_sum.
+        !    max_ind: Array holding the maximum indices of the various
+        !        quantities in rep_loop_sum.
+        !    nspawn_events: The total number of spawning events to this process.
+        ! Out:
+        !    rep_loop_loc: array containing local quantities to be communicated.
+
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
+        use fciqmc_data, only: estimator_numerators, rspawn, tot_walkers
+        use fciqmc_data, only: trace, calculate_excit_distribution, tot_walkers
+        use fciqmc_data, only: excit_distribution, tot_nparticles, nparticles
+        use fciqmc_data, only: trace, excit_distribution, rdm_traces, renyi_2
+        use fciqmc_data, only: calculate_excit_distribution, calc_inst_rdm
+        use fciqmc_data, only: nrdms, sampling_size
+
+        integer, intent(in) :: min_ind(:), max_ind(:)
         integer, intent(in) :: nspawn_events
+        real(dp), intent(out) :: rep_loop_loc(:)
+
+        rep_loop_loc = 0.0_dp
+
+        rep_loop_loc(rspawn_ind) = rspawn
+        rep_loop_loc(nocc_states_ind) = tot_walkers
+        rep_loop_loc(nspawned_ind) = nspawn_events
+        rep_loop_loc(min_ind(nparticles_ind):max_ind(nparticles_ind)) = nparticles
+        rep_loop_loc(min_ind(trace_ind):max_ind(trace_ind)) = trace
+        rep_loop_loc(min_ind(operators_ind):max_ind(operators_ind)) = estimator_numerators
+        if (calculate_excit_distribution) then
+            rep_loop_loc(min_ind(excit_dist_ind):max_ind(excit_dist_ind)) = excit_distribution
+        end if
+        if (calc_inst_rdm) then
+            ! Reshape this 2d array into a 1d array to add it to rep_loop_loc.
+            rep_loop_loc(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)) = reshape(rdm_traces, (/nrdms*sampling_size/))
+        end if
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
+            rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = renyi_2
+        end if
+
+    end subroutine local_dmqmc_estimators
+
+    subroutine communicated_dmqmc_estimators(rep_loop_sum, min_ind, max_ind)
+
+        ! Update report loop quantites with information received from other
+        ! processors.
+
+        ! In:
+        !    rep_loop_sum: array containing quantites which have been
+        !        summed over all processors, and are to be moved to their
+        !         corresponding report loop quantities.
+        !    min_ind: Array holding the minimum indices of the various
+        !        quantities in rep_loop_sum.
+        !    max_ind: Array holding the maximum indices of the various
+        !        quantities in rep_loop_sum.
+
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
+        use fciqmc_data, only: ncycles, rspawn, tot_nocc_states, tot_nspawn_events, nrdms
+        use fciqmc_data, only: tot_nparticles, trace, estimator_numerators, excit_distribution
+        use fciqmc_data, only: rdm_traces, renyi_2, calculate_excit_distribution, calc_inst_rdm
+        use fciqmc_data, only: sampling_size
+        use parallel, only: nprocs
+
+        real(dp), intent(in) :: rep_loop_sum(:)
+        integer, intent(in) :: min_ind(:), max_ind(:)
+
+        rspawn = rep_loop_sum(rspawn_ind)
+        tot_nocc_states = rep_loop_sum(nocc_states_ind)
+        tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
+        trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
+        estimator_numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))
+        if (calculate_excit_distribution) then
+            excit_distribution = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
+        end if
+        if (calc_inst_rdm) then
+            rdm_traces = reshape(rep_loop_sum(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)), (/sampling_size, nrdms/))
+        end if
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
+            renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
+        end if
+
+        ! Average the spawning rate.
+        rspawn = rspawn/(ncycles*nprocs)
+
+    end subroutine communicated_dmqmc_estimators
+
+    subroutine communicate_inst_rdms()
+
+        ! Perform annihilation between 'RDM particles'. This is done exactly
+        ! by calling the normal annihilation routine for a spawned object,
+        ! done for each RDM being calculated, which communicates the RDM
+        ! particles and annihilates them.
+
+        ! Also, once annihilation has occurred, calculate all instantaneous
+        ! RDM estimates.
+
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
+        use fciqmc_data, only: rdm_spawn, rdms, nrdms, rdm_traces, renyi_2
+        use hash_table, only: reset_hash_table
+        use spawn_data, only: annihilate_wrapper_spawn_t
 
         integer :: irdm
 
-#ifdef PARALLEL
-        real(dp), allocatable :: ir(:)
-        real(dp), allocatable :: ir_sum(:)
-        integer :: ierr, array_size, min_ind, max_ind
-#endif
+        ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
+        ! array of type spawn_t due to a bug in gfortran which results in
+        ! memory deallocations!
+        ! See https://groups.google.com/forum/#!topic/comp.lang.fortran/VuFvOsLs6hE
+        ! and http://gcc.gnu.org/bugzilla/show_bug.cgi?id=58310.
+        ! The explicit loop is also meant to be more efficient anyway, as it
+        ! prevents any chance of copy-in/copy-out...
+        do irdm = 1, nrdms
+            call annihilate_wrapper_spawn_t(rdm_spawn(irdm)%spawn, .false.)
+            ! Now is also a good time to reset the hash table (otherwise we
+            ! attempt to lookup non-existent data in the next cycle!).
+            call reset_hash_table(rdm_spawn(irdm)%ht)
+            ! spawn_t comms changes the memory used by spawn%sdata.  Make
+            ! sure the hash table always uses the currently 'active'
+            ! spawning memory.
+            rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
+        end do
 
-        if (calc_inst_rdm) then
-            ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
-            ! array of type spawn_t due to a bug in gfortran which results in
-            ! memory deallocations!
-            ! See https://groups.google.com/forum/#!topic/comp.lang.fortran/VuFvOsLs6hE
-            ! and http://gcc.gnu.org/bugzilla/show_bug.cgi?id=58310.
-            ! The explicit loop is also meant to be more efficient anyway, as it
-            ! prevents any chance of copy-in/copy-out...
-            do irdm = 1, nrdms
-                call annihilate_wrapper_spawn_t(rdm_spawn(irdm)%spawn, .false.)
-                ! Now is also a good time to reset the hash table (otherwise we
-                ! attempt to lookup non-existent data in the next cycle!).
-                call reset_hash_table(rdm_spawn(irdm)%ht)
-                ! spawn_t comms changes the memory used by spawn%sdata.  Make
-                ! sure the hash table always uses the currently 'active'
-                ! spawning memory.
-                rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
-            end do
-            call calculate_rdm_traces(rdms, rdm_spawn%spawn, rdm_traces)
-            if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
-            do irdm = 1, nrdms
-                rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
-            end do
-        end if
+        call calculate_rdm_traces(rdms, rdm_spawn%spawn, rdm_traces)
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
 
-#ifdef PARALLEL
-        ! Put all the quantities to be communicated together in one array.
+        do irdm = 1, nrdms
+            rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
+        end do
 
-        array_size = 2*sampling_size + number_dmqmc_estimators + 3
-        if (calculate_excit_distribution) array_size = array_size + size(excit_distribution)
-        if (calc_inst_rdm) array_size = array_size + size(rdm_traces)
-        if (doing_dmqmc_calc(dmqmc_rdm_r2)) array_size = array_size + size(renyi_2)
-
-        allocate(ir(1:array_size), stat=ierr)
-        call check_allocate('ir',array_size,ierr)
-        allocate(ir_sum(1:array_size), stat=ierr)
-        call check_allocate('ir_sum',array_size,ierr)
-
-        ! Need to sum the number of particles and other quantites over all processors.
-        min_ind = 1; max_ind = sampling_size
-        ir(min_ind:max_ind) = nparticles
-        min_ind = max_ind + 1; max_ind = min_ind
-        ir(min_ind:max_ind) = tot_walkers
-        min_ind = max_ind + 1; max_ind = min_ind
-        ir(min_ind:max_ind) = nspawn_events
-        min_ind = max_ind + 1; max_ind = min_ind
-        ir(min_ind) = rspawn
-        min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1
-        ir(min_ind:max_ind) = trace
-        min_ind = max_ind + 1; max_ind = min_ind + number_dmqmc_estimators - 1
-        ir(min_ind:max_ind) = estimator_numerators
-        if (calculate_excit_distribution) then
-            min_ind = max_ind + 1; max_ind = min_ind + size(excit_distribution) - 1
-            ir(min_ind:max_ind) = excit_distribution
-        end if
-        if (calc_inst_rdm) then
-            do irdm = 1, nrdms
-                min_ind = max_ind + 1; max_ind = min_ind + size(rdm_traces(:,irdm)) - 1
-                ir(min_ind:max_ind) = rdm_traces(:,irdm)
-            end do
-        end if
-        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            min_ind = max_ind + 1; max_ind = min_ind + size(renyi_2) - 1
-            ir(min_ind:max_ind) = renyi_2
-        end if
-
-        ! Sum the data from each processor together.
-        call mpi_allreduce(ir, ir_sum, size(ir), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-        ! Extract the summed data from the combined array.
-        min_ind = 1; max_ind = sampling_size
-        tot_nparticles = nint(ir_sum(min_ind:max_ind))
-        min_ind = max_ind + 1; max_ind = min_ind
-        tot_nocc_states = ir_sum(min_ind)
-        min_ind = max_ind + 1; max_ind = min_ind
-        tot_nspawn_events = ir_sum(min_ind)
-        min_ind = max_ind + 1; max_ind = min_ind
-        rspawn = ir_sum(min_ind)
-        min_ind = max_ind + 1; max_ind = min_ind + sampling_size - 1
-        trace = nint(ir_sum(min_ind:max_ind))
-        min_ind = max_ind + 1; max_ind = min_ind + number_dmqmc_estimators - 1
-        estimator_numerators = ir_sum(min_ind:max_ind)
-        if (calculate_excit_distribution) then
-            min_ind = max_ind + 1; max_ind = min_ind + size(excit_distribution) - 1
-            excit_distribution = ir_sum(min_ind:max_ind)
-        end if
-        if (calc_inst_rdm) then
-            do irdm = 1, nrdms
-                min_ind = max_ind + 1; max_ind = min_ind + size(rdm_traces(:,irdm)) - 1
-                rdm_traces(:,irdm) = real(ir_sum(min_ind:max_ind),p)
-            end do
-        end if
-        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            min_ind = max_ind + 1; max_ind = min_ind + size(renyi_2) - 1
-            renyi_2 = real(ir_sum(min_ind:max_ind),p)
-        end if
-#else
-        tot_nparticles = nparticles
-#endif
-
-        rspawn = rspawn/(ncycles*nprocs)
-
-    end subroutine communicate_dmqmc_estimates
+    end subroutine communicate_inst_rdms
 
     subroutine update_shift_dmqmc(loc_tot_nparticles, loc_tot_nparticles_old, ireport)
 
@@ -282,7 +371,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
         use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_index
+        use fciqmc_data, only: estimator_numerators, energy_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -294,7 +383,7 @@ contains
         ! If no excitation, we have a diagonal element, so add elements which
         ! involve the diagonal element of the Hamiltonian.
         if (excitation%nexcit == 0) then
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 (walker_data(1,idet)+H00)*walker_pop
         else if (excitation%nexcit == 1) then
             ! If not a diagonal element, but only a single excitation, then the
@@ -304,7 +393,7 @@ contains
             bit_position = sys%basis%bit_lookup(1,excitation%from_orb(1))
             bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
             if (btest(sys%real_lattice%connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
-                estimator_numerators(energy_index) = estimator_numerators(energy_index) - &
+                estimator_numerators(energy_ind) = estimator_numerators(energy_ind) - &
                 (sys%heisenberg%J*walker_pop/2)
         end if
 
@@ -328,7 +417,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
         use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_index
+        use fciqmc_data, only: estimator_numerators, energy_ind
         use hamiltonian_ueg, only: slater_condon2_ueg
         use system, only: sys_t
 
@@ -341,12 +430,12 @@ contains
         ! If no excitation, we have a diagonal element, so add elements which
         ! involve the diagonal element of the Hamiltonian.
         if (excitation%nexcit == 0) then
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 (walker_data(1,idet)+H00)*walker_pop
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
                 & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)*walker_pop
         end if
@@ -374,7 +463,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets, f0
         use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_index
+        use fciqmc_data, only: estimator_numerators, energy_ind
         use hamiltonian_ueg, only: slater_condon2_ueg, slater_condon0_ueg
         use system, only: sys_t
 
@@ -386,12 +475,12 @@ contains
         ! If no excitation, we have a diagonal element, so add elements which
         ! involve the diagonal element of the Hamiltonian.
         if (excitation%nexcit == 0) then
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 slater_condon0_ueg(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
                 & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)*walker_pop
         end if
@@ -415,7 +504,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
         use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_index
+        use fciqmc_data, only: estimator_numerators, energy_ind
         use hamiltonian_hub_k, only: slater_condon2_hub_k
         use system, only: sys_t
 
@@ -428,14 +517,14 @@ contains
         ! If no excitation, we have a diagonal element, so add elements which
         ! involve the diagonal element of the Hamiltonian.
         if (excitation%nexcit == 0) then
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 (walker_data(1,idet)+H00)*walker_pop
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
                 excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 (hmatel*walker_pop)
         end if
 
@@ -457,7 +546,7 @@ contains
 
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets, H00
-        use fciqmc_data, only: estimator_numerators, energy_index
+        use fciqmc_data, only: estimator_numerators, energy_ind
         use hamiltonian_hub_k, only: slater_condon2_hub_k, slater_condon0_hub_k
         use system, only: sys_t
 
@@ -470,14 +559,14 @@ contains
         ! if no excitation, we have a diagonal element, so add elements which
         ! involve the diagonal element of the hamiltonian.
         if (excitation%nexcit == 0) then
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 slater_condon0_hub_k(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
         else if (excitation%nexcit == 2) then
             ! Have a determinant connected to the reference determinant: add to
             ! projected energy.
             hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
                 excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 (hmatel*walker_pop)
         end if
 
@@ -504,7 +593,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets, f0
         use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_index
+        use fciqmc_data, only: estimator_numerators, energy_ind
         use hamiltonian_ueg, only: kinetic_energy_ueg
         use system, only: sys_t
 
@@ -516,7 +605,7 @@ contains
         ! If no excitation, we have a diagonal element, so add elements which
         ! involve the diagonal element of the Hamiltonian.
         if (excitation%nexcit == 0) then
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 kinetic_energy_ueg(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
         end if
 
@@ -540,7 +629,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
         use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_squared_index
+        use fciqmc_data, only: estimator_numerators, energy_squared_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -629,7 +718,7 @@ contains
 
         end if
 
-        estimator_numerators(energy_squared_index) = estimator_numerators(energy_squared_index) + &
+        estimator_numerators(energy_squared_ind) = estimator_numerators(energy_squared_ind) + &
             sum_H1_H2*walker_pop
 
     end subroutine dmqmc_energy_squared_heisenberg
@@ -651,7 +740,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
         use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_index
+        use fciqmc_data, only: estimator_numerators, energy_ind
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
 
@@ -664,7 +753,7 @@ contains
         ! If no excitation, we have a diagonal element, so add elements which
         ! involve the diagonal element of the Hamiltonian.
         if (excitation%nexcit == 0) then
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 (walker_data(1,idet)+H00)*walker_pop
         else if (excitation%nexcit == 1) then
             ! If not a diagonal element, but only a single excitation, then the
@@ -672,7 +761,7 @@ contains
             ! flipped spins are neighbours on the lattice, and if so, add the
             ! contribution from this site.
             hmatel = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            estimator_numerators(energy_index) = estimator_numerators(energy_index) + &
+            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
                 (hmatel*walker_pop)
         end if
 
@@ -697,7 +786,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
         use fciqmc_data, only: walker_data, H00, correlation_mask
-        use fciqmc_data, only: estimator_numerators, correlation_index
+        use fciqmc_data, only: estimator_numerators, correlation_fn_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -726,7 +815,7 @@ contains
             sign_factor = (mod(sign_factor+1,2)*2)-1
             ! Hence sign_factor can be used to find the matrix element, as used
             ! below.
-            estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + &
+            estimator_numerators(correlation_fn_ind) = estimator_numerators(correlation_fn_ind) + &
                 (sign_factor*(walker_pop/4))
         else if (excitation%nexcit == 1) then
             ! If not a diagonal element, but only a single excitation, then the
@@ -739,7 +828,7 @@ contains
             bit_position2 = sys%basis%bit_lookup(1,excitation%to_orb(1))
             bit_element2 = sys%basis%bit_lookup(2,excitation%to_orb(1))
             if (btest(correlation_mask(bit_element1), bit_position1) .and. btest(correlation_mask(bit_element2), bit_position2)) &
-                estimator_numerators(correlation_index) = estimator_numerators(correlation_index) + (walker_pop/2)
+                estimator_numerators(correlation_fn_ind) = estimator_numerators(correlation_fn_ind) + (walker_pop/2)
         end if
 
     end subroutine dmqmc_correlation_function_heisenberg
@@ -762,7 +851,7 @@ contains
         use bit_utils, only: count_set_bits
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: estimator_numerators, staggered_mag_index
+        use fciqmc_data, only: estimator_numerators, staggered_mag_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -814,7 +903,7 @@ contains
             total_sum = (mod(total_sum+1,2)*2)-1
         end if
 
-        estimator_numerators(staggered_mag_index) = estimator_numerators(staggered_mag_index) + &
+        estimator_numerators(staggered_mag_ind) = estimator_numerators(staggered_mag_ind) + &
             (real(total_sum)/real(sys%lattice%nsites**2))*walker_pop
 
     end subroutine dmqmc_stag_mag_heisenberg
@@ -830,7 +919,7 @@ contains
         !    excit_level: The excitation level between the two bitstrings
         !        contributing to the full density matrix bitstring.
 
-        use fciqmc_data, only: estimator_numerators, full_r2_index, half_density_matrix
+        use fciqmc_data, only: estimator_numerators, full_r2_ind, half_density_matrix
 
         real(p), intent(in) :: walker_pop(:)
         integer, intent(in) :: excit_level
@@ -841,11 +930,9 @@ contains
             ! as large instead. Thus, a product of off-diagonal elements is four
             ! times as large. We want two 'correct size' contributions, so we
             ! need to divide these contirbutions by two to get this.
-            estimator_numerators(full_r2_index) = estimator_numerators(full_r2_index) + &
-                walker_pop(1)*walker_pop(2)/2.0_p
+            estimator_numerators(full_r2_ind) = estimator_numerators(full_r2_ind) + walker_pop(1)*walker_pop(2)/2.0_p
         else
-            estimator_numerators(full_r2_index) = estimator_numerators(full_r2_index) + &
-                walker_pop(1)*walker_pop(2)
+            estimator_numerators(full_r2_ind) = estimator_numerators(full_r2_ind) + walker_pop(1)*walker_pop(2)
         end if
 
     end subroutine update_full_renyi_2

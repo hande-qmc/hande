@@ -21,8 +21,6 @@ contains
 
         integer :: ierr, i, bit_position, bit_element
 
-        number_dmqmc_estimators = 0
-
         allocate(trace(sampling_size), stat=ierr)
         call check_allocate('trace',sampling_size,ierr)
         trace = 0.0_p
@@ -31,40 +29,19 @@ contains
         call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
         rdm_traces = 0.0_p
 
-        if (doing_dmqmc_calc(dmqmc_full_r2)) then
-            number_dmqmc_estimators = number_dmqmc_estimators + 1
-            full_r2_index = number_dmqmc_estimators
-        end if
-        if (doing_dmqmc_calc(dmqmc_energy)) then
-            number_dmqmc_estimators = number_dmqmc_estimators + 1
-            energy_index = number_dmqmc_estimators
-        end if
-        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-            number_dmqmc_estimators = number_dmqmc_estimators + 1
-            energy_squared_index = number_dmqmc_estimators
-        end if
+        ! If calculating a correlaton function then set up the necessary bit
+        ! mask. This has a bit set for each of the two sites/orbitals being
+        ! considered in the correlation function.
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            number_dmqmc_estimators = number_dmqmc_estimators + 1
-            correlation_index = number_dmqmc_estimators
             allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
             call check_allocate('correlation_mask',sys%basis%string_len,ierr)
             correlation_mask = 0_i0
             do i = 1, 2
-            bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
-            bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
-            correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
+                bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
+                bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
+                correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
             end do
         end if
-        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-            number_dmqmc_estimators = number_dmqmc_estimators + 1
-            staggered_mag_index = number_dmqmc_estimators
-        end if
-
-        ! Array too to hold the estimates of the numerators of all the above
-        ! quantities.
-        allocate(estimator_numerators(1:number_dmqmc_estimators), stat=ierr)
-        call check_allocate('estimator_numerators',number_dmqmc_estimators,ierr)
-        estimator_numerators = 0.0_p
 
         if (calculate_excit_distribution .or. dmqmc_find_weights) then
             allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
@@ -220,6 +197,7 @@ contains
             allocate(rdm_spawn(nrdms), stat=ierr)
             call check_allocate('rdm_spawn', nrdms, ierr)
         end if
+
         ! If calculating Renyi entropy (S2).
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             allocate(renyi_2(nrdms), stat=ierr)
