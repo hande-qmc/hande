@@ -34,12 +34,8 @@ contains
         !    max_num_excits: The maximum excitation level for the system being
         !        studied.
 
-        use spawn_data, only: annihilate_wrapper_spawn_t
-        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: sampling_size, calc_inst_rdm, rdm_spawn, rdms
-        use fciqmc_data, only: nrdms, rdm_traces, renyi_2, num_dmqmc_operators
-        use hash_table, only: reset_hash_table
+        use fciqmc_data, only: sampling_size, num_dmqmc_operators, calc_inst_rdm, nrdms
         use parallel
 
         integer, intent(in) :: nspawn_events, max_num_excits
@@ -47,32 +43,12 @@ contains
         real(dp), allocatable :: rep_loop_loc(:)
         real(dp), allocatable :: rep_loop_sum(:)
         integer :: nelems(final_ind-1), min_ind(final_ind-1), max_ind(final_ind-1)
-        integer :: tot_nelems, i, irdm, ierr
+        integer :: tot_nelems, i, ierr
 
-        if (calc_inst_rdm) then
-            ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
-            ! array of type spawn_t due to a bug in gfortran which results in
-            ! memory deallocations!
-            ! See https://groups.google.com/forum/#!topic/comp.lang.fortran/VuFvOsLs6hE
-            ! and http://gcc.gnu.org/bugzilla/show_bug.cgi?id=58310.
-            ! The explicit loop is also meant to be more efficient anyway, as it
-            ! prevents any chance of copy-in/copy-out...
-            do irdm = 1, nrdms
-                call annihilate_wrapper_spawn_t(rdm_spawn(irdm)%spawn, .false.)
-                ! Now is also a good time to reset the hash table (otherwise we
-                ! attempt to lookup non-existent data in the next cycle!).
-                call reset_hash_table(rdm_spawn(irdm)%ht)
-                ! spawn_t comms changes the memory used by spawn%sdata.  Make
-                ! sure the hash table always uses the currently 'active'
-                ! spawning memory.
-                rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
-            end do
-            call calculate_rdm_traces(rdms, rdm_spawn%spawn, rdm_traces)
-            if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
-            do irdm = 1, nrdms
-                rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
-            end do
-        end if
+        ! If calculating instantaneous RDM estimates then call this routine to
+        ! perform annihilation for RDM particles, and calculate RDM estimates
+        ! before they are summed over processors. below.
+        if (calc_inst_rdm) call communicate_inst_rdms()
 
         ! How big is each variable to be communicated?
         nelems(rspawn_ind) = 1
@@ -212,6 +188,50 @@ contains
         rspawn = rspawn/(ncycles*nprocs)
 
     end subroutine communicated_dmqmc_estimators
+
+    subroutine communicate_inst_rdms()
+
+        ! Perform annihilation between 'RDM particles'. This is done exactly
+        ! by calling the normal annihilation routine for a spawned object,
+        ! done for each RDM being calculated, which communicates the RDM
+        ! particles and annihilates them.
+
+        ! Also, once annihilation has occurred, calculate all instantaneous
+        ! RDM estimates.
+
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
+        use fciqmc_data, only: rdm_spawn, rdms, nrdms, rdm_traces, renyi_2
+        use hash_table, only: reset_hash_table
+        use spawn_data, only: annihilate_wrapper_spawn_t
+
+        integer :: irdm
+
+        ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
+        ! array of type spawn_t due to a bug in gfortran which results in
+        ! memory deallocations!
+        ! See https://groups.google.com/forum/#!topic/comp.lang.fortran/VuFvOsLs6hE
+        ! and http://gcc.gnu.org/bugzilla/show_bug.cgi?id=58310.
+        ! The explicit loop is also meant to be more efficient anyway, as it
+        ! prevents any chance of copy-in/copy-out...
+        do irdm = 1, nrdms
+            call annihilate_wrapper_spawn_t(rdm_spawn(irdm)%spawn, .false.)
+            ! Now is also a good time to reset the hash table (otherwise we
+            ! attempt to lookup non-existent data in the next cycle!).
+            call reset_hash_table(rdm_spawn(irdm)%ht)
+            ! spawn_t comms changes the memory used by spawn%sdata.  Make
+            ! sure the hash table always uses the currently 'active'
+            ! spawning memory.
+            rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
+        end do
+
+        call calculate_rdm_traces(rdms, rdm_spawn%spawn, rdm_traces)
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
+
+        do irdm = 1, nrdms
+            rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
+        end do
+
+    end subroutine communicate_inst_rdms
 
     subroutine update_shift_dmqmc(loc_tot_nparticles, loc_tot_nparticles_old, ireport)
 
