@@ -677,6 +677,7 @@ contains
         use utils, only: int_fmt
 
         integer :: i, j
+        character(16) :: excit_header
 
         write (6,'()')
 
@@ -714,7 +715,8 @@ contains
             end if
             if (calculate_excit_distribution) then
                 do i = 0, ubound(excit_distribution,1)
-                    write (6, '(5X,a13,1X,i2)', advance = 'no') 'Excit. level:', i
+                    write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
+                    write (6, '(5X,a16)', advance='no') excit_header
                 end do
             end if
 
