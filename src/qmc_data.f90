@@ -448,4 +448,11 @@ end type qmc_state_t
 ! [todo] - return from read_restart_hdf5, which will be called from inside the do_* algos...
 integer :: mc_cycles_done = 0
 
+! Global handle for purity work.
+type(qmc_in_t) :: qmc_in
+type(fciqmc_in_t) :: fciqmc_in
+type(semi_stoch_in_t) :: semi_stoch_in
+type(ccmc_in_t) :: ccmc_in
+type(restart_in_t) :: restart_in
+
 end module qmc_data
