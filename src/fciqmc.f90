@@ -81,7 +81,7 @@ contains
         ! Create the semi_stoch_t object, determ.
         ! If the user has asked to use semi-stochastic from the first iteration
         ! then turn it on now. Otherwise, use an empty deterministic space.
-        if (semi_stoch_start_iter == 0) then
+        if (start_iter == 0) then
             call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
                                     separate_determ_annihil, use_mpi_barriers, write_determ_space)
         else
@@ -119,7 +119,7 @@ contains
                 iter = mc_cycles_done + (ireport-1)*ncycles + icycle
 
                 ! Should we turn semi-stochastic on now?
-                if (iter == semi_stoch_start_iter) then
+                if (iter == start_iter) then
                     call dealloc_semi_stoch_t(determ, .false.)
                     call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
                                             separate_determ_annihil, use_mpi_barriers, write_determ_space)
@@ -232,8 +232,8 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_shift_iter, &
-                                  semi_stoch_start_iter, soft_exit, bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
+            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, shift_iter, &
+                                  start_iter, soft_exit, bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 

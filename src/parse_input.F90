@@ -245,11 +245,11 @@ contains
 
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
-                call readi(semi_stoch_start_iter)
+                call readi(start_iter)
                 real_amplitudes = .true.
             case('SEMI_STOCH_SHIFT_START')
-                call readi(semi_stoch_shift_iter)
-                semi_stoch_start_iter = -1
+                call readi(shift_iter)
+                start_iter = -1
                 real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
@@ -653,7 +653,7 @@ contains
         end if
 
         ! Semi-stochastic checks.
-        if (semi_stoch_start_iter /= 0 .and. determ_space_type == empty_determ_space .and. parent) &
+        if (start_iter /= 0 .and. determ_space_type == empty_determ_space .and. parent) &
             call warning(this,'You have specified an iteration to turn semi-stochastic on but have not &
                          &specified a deterministic space to use.')
         if (determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. &
@@ -793,8 +793,8 @@ contains
         end if
         call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(semi_stoch_start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(semi_stoch_shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)

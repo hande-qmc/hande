@@ -254,8 +254,8 @@ contains
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
                                write_fciqmc_report_header, nparticles, ccmc_move_freq, real_factor,  &
-                               cluster_multispawn_threshold, semi_stoch_shift_iter,                  &
-                               semi_stoch_start_iter
+                               cluster_multispawn_threshold, shift_iter,                  &
+                               start_iter
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles
@@ -646,8 +646,8 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_shift_iter, &
-                                  semi_stoch_start_iter, soft_exit, bloom_stats=bloom_stats)
+            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, shift_iter, &
+                                  start_iter, soft_exit, bloom_stats=bloom_stats)
 
             if (soft_exit) exit
 

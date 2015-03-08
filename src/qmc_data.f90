@@ -94,7 +94,11 @@ end type fciqmc_in_t
 type semi_stoch_in_t
     ! The iteration on which to turn on the semi-stochastic algorithm using the
     ! parameters deterministic space specified by determ_space_type.
-    integer :: semi_stoch_start_iter = 0
+    integer :: start_iter = 0
+    ! The iteration on which to turn on the semi-stochastic algorithm, relative
+    ! to the iteration that the shift starts to vary (or the iteration at which
+    ! all shifts have started to vary, in the case of multiple replicas).
+    integer :: shift_iter = -1
     ! determ_space_type is used to tell the semi-stochastic initialisation routine
     ! which type of deterministic space to use. See the 'determ-space' parameters
     ! defined in semi_stoch.F90 for the various values it can take.
