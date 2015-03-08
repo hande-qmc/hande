@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys)
+    subroutine do_fciqmc(sys, semi_stoch_in)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -19,6 +19,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use parallel
 
@@ -42,7 +43,10 @@ contains
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
+        use qmc_data, only: semi_stoch_in_t
+
         type(sys_t), intent(in) :: sys
+        type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -50,7 +54,7 @@ contains
         type(semi_stoch_t) :: determ
 
         integer :: idet, ireport, icycle, iparticle, ideterm
-        integer :: iter
+        integer :: iter, semi_stoch_iter
         integer(int_64) :: nattempts
         real(p) :: nparticles_old(sampling_size)
 
@@ -78,12 +82,15 @@ contains
         ! Allocate det_info_t components.
         call alloc_det_info_t(sys, cdet, .false.)
 
+        ! The iteration on which to start performing semi-stochastic.
+        semi_stoch_iter = semi_stoch_in%start_iter
+
         ! Create the semi_stoch_t object, determ.
         ! If the user has asked to use semi-stochastic from the first iteration
         ! then turn it on now. Otherwise, use an empty deterministic space.
-        if (start_iter == 0) then
-            call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
-                                    separate_determ_annihil, use_mpi_barriers, write_determ_space)
+        if (semi_stoch_iter == 0) then
+            call init_semi_stoch_t(determ, sys, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
+                                    semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
         else
             call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false., .false., .false.)
         end if
@@ -119,10 +126,10 @@ contains
                 iter = mc_cycles_done + (ireport-1)*ncycles + icycle
 
                 ! Should we turn semi-stochastic on now?
-                if (iter == start_iter) then
+                if (iter == semi_stoch_iter) then
                     call dealloc_semi_stoch_t(determ, .false.)
-                    call init_semi_stoch_t(determ, sys, qmc_spawn, determ_space_type, determ_target_size, &
-                                            separate_determ_annihil, use_mpi_barriers, write_determ_space)
+                    call init_semi_stoch_t(determ, sys, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
+                                            semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
                     semi_stochastic = .true.
                 end if
 
@@ -232,8 +239,8 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, shift_iter, &
-                                  start_iter, soft_exit, bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
+            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_in%shift_iter, &
+                                  semi_stoch_iter, soft_exit, bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 

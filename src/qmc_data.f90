@@ -106,12 +106,12 @@ type semi_stoch_in_t
     ! Certain deterministic space types need a target size to be input to tell the
     ! semi-stochastic initialisation routine how many states to try and include. In
     ! such cases this variable should be set on input.
-    integer :: determ_target_size = 0
+    integer :: target_size = 0
     ! If true then the deterministic states will be written to a file.
     logical :: write_determ_space = .false.
     ! If true then deterministic spawnings will not be added to the spawning list
     ! but rather treated separately via an extra MPI call.
-    logical :: separate_determ_annihil = .true.
+    logical :: separate_annihil = .true.
 end type semi_stoch_in_t
 
 type ccmc_in_t

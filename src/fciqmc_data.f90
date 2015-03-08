@@ -176,27 +176,6 @@ type semi_stoch_t
     type(parallel_timing_t) :: mpi_time
 end type semi_stoch_t
 
-! The iteration on which to turn on the semi-stochastic algorithm using the
-! parameters deterministic space specified by determ_space_type.
-integer :: start_iter = 0
-! The iteration on which to turn on the semi-stochastic algorithm, relative
-! to the iteration that the shift starts to vary (or the iteration at which
-! all shifts have started to vary, in the case of multiple replicas).
-integer :: shift_iter = -1
-! determ_space_type is used to tell the semi-stochastic initialisation routine
-! which type of deterministic space to use. See the 'determ-space' parameters
-! defined in semi_stoch.F90 for the various values it can take.
-integer :: determ_space_type = 0
-! Certain deterministic space types need a target size to be input to tell the
-! semi-stochastic initialisation routine how many states to try and include. In
-! such cases this variable should be set on input.
-integer :: determ_target_size = 0
-! If true then the deterministic states will be written to a file.
-logical :: write_determ_space = .false.
-! If true then deterministic spawnings will not be added to the spawning list
-! but rather treated separately via an extra MPI call.
-logical :: separate_determ_annihil = .true.
-
 !--- Input data: CCMC ---
 
 ! How frequently (in log_2) an excitor can be moved to a different processor.

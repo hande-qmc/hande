@@ -40,6 +40,7 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
+        integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
         real(p) :: tot_nparticles_old(sampling_size)
         real(p) :: real_population(sampling_size)
@@ -221,7 +222,7 @@ contains
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
                 call end_report_loop(sys, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
-                                     shift_iter, start_iter, soft_exit, .false., bloom_stats=bloom_stats)
+                                     unused_int_1, unused_int_2, soft_exit, .false., bloom_stats=bloom_stats)
 
                 if (soft_exit) exit
 
