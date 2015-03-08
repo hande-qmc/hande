@@ -1409,7 +1409,7 @@ contains
         type(rdm_spawn_t), intent(inout) :: rdm_spawn
         integer(int_p) :: nspawn
 
-        integer(i0) :: f_new_tot(2*rdm%rdm_string_len)
+        integer(i0) :: f_new_tot(2*rdm%string_len)
 
         integer :: iproc_spawn, slot
         ! WARNING!  The below algorithm is *not* suitable for conversion to
@@ -1423,7 +1423,7 @@ contains
         logical :: hit
         integer :: err_code
 
-        associate(f1=>rdm%end1, f2=>rdm%end2, rdm_bl=>rdm%rdm_string_len, spawn=>rdm_spawn%spawn, &
+        associate(f1=>rdm%end1, f2=>rdm%end2, rdm_bl=>rdm%string_len, spawn=>rdm_spawn%spawn, &
                   ht=>rdm_spawn%ht, bsl=>rdm_spawn%spawn%bit_str_len)
 
             nspawn = nspawn_in

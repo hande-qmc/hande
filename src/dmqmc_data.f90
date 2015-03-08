@@ -12,7 +12,7 @@ implicit none
 ! for DMQMC. It must be updated if more operators are added.
 integer, parameter :: num_dmqmc_operators = 5
 
-! The following indicies are used to access components of estimator_numerators.
+! The following indicies are used to access components of numerators.
 enum, bind(c)
     enumerator :: energy_ind = 1
     enumerator :: energy_squared_ind
@@ -66,8 +66,7 @@ type dmqmc_in_t
     ! will be stored in the array below.
     ! The number of excitations for a given system is defined by
     ! sys_t%max_number_excitations; see comments in sys_t for more details.
-    ! [todo] - rename, maybe to calc_excit_dist.
-    logical :: calculate_excit_distribution = .false.
+    logical :: calc_excit_dist = .false.
     ! If true then the simulation will start with walkers uniformly distributed
     ! along the diagonal of the entire density matrix, including all symmetry
     ! sectors.
@@ -121,7 +120,6 @@ type dmqmc_in_t
 end type dmqmc_in_t
 
 type dmqmc_rdm_in_t
-
     ! The total number of rdms beings calculated (currently only applicable to
     ! instantaneous RDM calculations, not to ground-state RDM calculations,
     ! which only ever calculate one RDM).
@@ -131,7 +129,7 @@ type dmqmc_rdm_in_t
     ! same length array. Note, this is only used for instantaneous RDMs.
     ! Ground-state RDM calculations allocate an array exactly the size of the
     ! full RDM.
-    integer :: spawned_rdm_length
+    integer :: spawned_length
 
     ! [todo] - rename.
     ! If true then the reduced density matricies will be calulated for the 'A'
@@ -153,7 +151,7 @@ type dmqmc_rdm_in_t
     logical :: doing_concurrence = .false.
 
     ! If true then calculate the von Neumann entanglement entropy for specified subsystem.
-    logical :: doing_von_neumann_entropy = .false.
+    logical :: doing_vn_entropy = .false.
 
     ! If true then, if doing an exact diagonalisation, calculate and output the
     ! eigenvalues of the reduced density matrix requested.
@@ -180,10 +178,10 @@ end type rdm_spawn_t
 type rdm_t
     ! The total number of sites in subsystem A.
     integer :: A_nsites
-    ! Similar to string_len, rdm_string_len is the length of the byte array
+    ! Similar to string_len, string_len is the length of the byte array
     ! necessary to contain a bit for each subsystem-A basis function. An array
     ! of twice this length is stored to hold both RDM indices.
-    integer :: rdm_string_len
+    integer :: string_len
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
     ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
@@ -199,22 +197,22 @@ type rdm_t
     ! bit_pos(i,:,2) will not be sorted). This is very important so that
     ! equivalent psips will contribute to the same RDM element.
     integer, allocatable :: bit_pos(:,:,:)
-    ! Two bitstrings of length rdm_string_len. To be used as temporary
+    ! Two bitstrings of length string_len. To be used as temporary
     ! bitstrings to prevent having to regularly allocate different length
     ! bitstrings for different RDMs.
     integer(i0), allocatable :: end1(:), end2(:)
 end type rdm_t
 
 type dmqmc_estimates_t
-    ! estimator_numerators stores the numerators for the estimators in DMQMC. These
+    ! numerators stores the numerators for the estimators in DMQMC. These
     ! are, for a general operator O which we wish to find the thermal average of:
     ! \sum_{i,j} \rho_{ij} * O_{ji}
     ! This variabe will store this value from the first iteration of each
     ! report loop. At the end of a report loop, the values from each
-    ! processor are combined and stored in estimator_numerators on the parent
-    ! processor. This is then output, and the values of estimator_numerators
+    ! processor are combined and stored in numerators on the parent
+    ! processor. This is then output, and the values of numerators
     ! are reset on each processor to start the next report loop.
-    real(p) :: estimator_numerators(num_dmqmc_operators)
+    real(p) :: numerators(num_dmqmc_operators)
 
     ! In DMQMC the trace of the density matrix is an important quantity
     ! used in calculating all thermal estimators. This quantity stores
@@ -224,7 +222,7 @@ type dmqmc_estimates_t
 
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.
-    real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
+    real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
     ! [todo] - (NSB) remove these two - I doubt they'll ever be used.
     ! In DMQMC, the user may want want the shift as a function of beta to be

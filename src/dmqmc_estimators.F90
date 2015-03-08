@@ -112,11 +112,11 @@ contains
         !    rep_loop_loc: array containing local quantities to be communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: estimator_numerators, rspawn, tot_walkers
-        use fciqmc_data, only: trace, calculate_excit_distribution, tot_walkers
-        use fciqmc_data, only: excit_distribution, tot_nparticles, nparticles
-        use fciqmc_data, only: trace, excit_distribution, rdm_traces, renyi_2
-        use fciqmc_data, only: calculate_excit_distribution, calc_inst_rdm
+        use fciqmc_data, only: numerators, rspawn, tot_walkers
+        use fciqmc_data, only: trace, calc_excit_dist, tot_walkers
+        use fciqmc_data, only: excit_dist, tot_nparticles, nparticles
+        use fciqmc_data, only: trace, excit_dist, rdm_traces, renyi_2
+        use fciqmc_data, only: calc_excit_dist, calc_inst_rdm
         use fciqmc_data, only: nrdms, sampling_size
 
         integer, intent(in) :: min_ind(:), max_ind(:)
@@ -130,9 +130,9 @@ contains
         rep_loop_loc(nspawned_ind) = nspawn_events
         rep_loop_loc(min_ind(nparticles_ind):max_ind(nparticles_ind)) = nparticles
         rep_loop_loc(min_ind(trace_ind):max_ind(trace_ind)) = trace
-        rep_loop_loc(min_ind(operators_ind):max_ind(operators_ind)) = estimator_numerators
-        if (calculate_excit_distribution) then
-            rep_loop_loc(min_ind(excit_dist_ind):max_ind(excit_dist_ind)) = excit_distribution
+        rep_loop_loc(min_ind(operators_ind):max_ind(operators_ind)) = numerators
+        if (calc_excit_dist) then
+            rep_loop_loc(min_ind(excit_dist_ind):max_ind(excit_dist_ind)) = excit_dist
         end if
         if (calc_inst_rdm) then
             ! Reshape this 2d array into a 1d array to add it to rep_loop_loc.
@@ -160,8 +160,8 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use fciqmc_data, only: ncycles, rspawn, tot_nocc_states, tot_nspawn_events, nrdms
-        use fciqmc_data, only: tot_nparticles, trace, estimator_numerators, excit_distribution
-        use fciqmc_data, only: rdm_traces, renyi_2, calculate_excit_distribution, calc_inst_rdm
+        use fciqmc_data, only: tot_nparticles, trace, numerators, excit_dist
+        use fciqmc_data, only: rdm_traces, renyi_2, calc_excit_dist, calc_inst_rdm
         use fciqmc_data, only: sampling_size
         use parallel, only: nprocs
 
@@ -173,9 +173,9 @@ contains
         tot_nspawn_events = rep_loop_sum(nspawned_ind)
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
         trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
-        estimator_numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))
-        if (calculate_excit_distribution) then
-            excit_distribution = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
+        numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))
+        if (calc_excit_dist) then
+            excit_dist = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
         end if
         if (calc_inst_rdm) then
             rdm_traces = reshape(rep_loop_sum(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)), (/sampling_size, nrdms/))
@@ -291,9 +291,9 @@ contains
         use excitations, only: get_excitation, excit_t
         use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
         use fciqmc_data, only: accumulated_probs, start_averaging, find_weights
-        use fciqmc_data, only: calculate_excit_distribution, excit_distribution
+        use fciqmc_data, only: calc_excit_dist, excit_dist
         use fciqmc_data, only: sampling_size, accumulated_probs_old, real_factor
-        use fciqmc_data, only: replica_tricks, energy_ind, walker_data, estimator_numerators
+        use fciqmc_data, only: replica_tricks, energy_ind, walker_data, numerators
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
@@ -327,7 +327,7 @@ contains
             ! Energy
             If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
                     &(sys, excitation, cdet, unweighted_walker_pop(1), walker_data(1, idet), trace, &
-                    estimator_numerators(energy_ind))
+                    numerators(energy_ind))
             ! Energy squared.
             if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
                 &(sys, idet, excitation, unweighted_walker_pop(1))
@@ -338,11 +338,11 @@ contains
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
                 &(sys, idet, excitation, unweighted_walker_pop(1))
             ! Excitation distribution.
-            if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
-                excit_distribution(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
+            if (calc_excit_dist) excit_dist(excitation%nexcit) = &
+                excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
             ! Excitation distribtuion for calculating importance sampling weights.
-            if (find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
-                excit_distribution(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
+            if (find_weights .and. iteration > start_averaging) excit_dist(excitation%nexcit) = &
+                excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
         end if
 
         ! Full Renyi entropy (S_2).
@@ -466,7 +466,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
         use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_squared_ind
+        use fciqmc_data, only: numerators, energy_squared_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -555,7 +555,7 @@ contains
 
         end if
 
-        estimator_numerators(energy_squared_ind) = estimator_numerators(energy_squared_ind) + &
+        numerators(energy_squared_ind) = numerators(energy_squared_ind) + &
             sum_H1_H2*walker_pop
 
     end subroutine dmqmc_energy_squared_heisenberg
@@ -579,7 +579,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
         use fciqmc_data, only: walker_data, H00, correlation_mask
-        use fciqmc_data, only: estimator_numerators, correlation_fn_ind
+        use fciqmc_data, only: numerators, correlation_fn_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -608,7 +608,7 @@ contains
             sign_factor = (mod(sign_factor+1,2)*2)-1
             ! Hence sign_factor can be used to find the matrix element, as used
             ! below.
-            estimator_numerators(correlation_fn_ind) = estimator_numerators(correlation_fn_ind) + &
+            numerators(correlation_fn_ind) = numerators(correlation_fn_ind) + &
                 (sign_factor*(walker_pop/4))
         else if (excitation%nexcit == 1) then
             ! If not a diagonal element, but only a single excitation, then the
@@ -621,7 +621,7 @@ contains
             bit_position2 = sys%basis%bit_lookup(1,excitation%to_orb(1))
             bit_element2 = sys%basis%bit_lookup(2,excitation%to_orb(1))
             if (btest(correlation_mask(bit_element1), bit_position1) .and. btest(correlation_mask(bit_element2), bit_position2)) &
-                estimator_numerators(correlation_fn_ind) = estimator_numerators(correlation_fn_ind) + (walker_pop/2)
+                numerators(correlation_fn_ind) = numerators(correlation_fn_ind) + (walker_pop/2)
         end if
 
     end subroutine dmqmc_correlation_function_heisenberg
@@ -644,7 +644,7 @@ contains
         use bit_utils, only: count_set_bits
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: estimator_numerators, staggered_mag_ind
+        use fciqmc_data, only: numerators, staggered_mag_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -696,7 +696,7 @@ contains
             total_sum = (mod(total_sum+1,2)*2)-1
         end if
 
-        estimator_numerators(staggered_mag_ind) = estimator_numerators(staggered_mag_ind) + &
+        numerators(staggered_mag_ind) = numerators(staggered_mag_ind) + &
             (real(total_sum)/real(sys%lattice%nsites**2))*walker_pop
 
     end subroutine dmqmc_stag_mag_heisenberg
@@ -712,7 +712,7 @@ contains
         !    excit_level: The excitation level between the two bitstrings
         !        contributing to the full density matrix bitstring.
 
-        use fciqmc_data, only: estimator_numerators, full_r2_ind, half_density_matrix
+        use fciqmc_data, only: numerators, full_r2_ind, half_density_matrix
 
         real(p), intent(in) :: walker_pop(:)
         integer, intent(in) :: excit_level
@@ -723,9 +723,9 @@ contains
             ! as large instead. Thus, a product of off-diagonal elements is four
             ! times as large. We want two 'correct size' contributions, so we
             ! need to divide these contirbutions by two to get this.
-            estimator_numerators(full_r2_ind) = estimator_numerators(full_r2_ind) + walker_pop(1)*walker_pop(2)/2.0_p
+            numerators(full_r2_ind) = numerators(full_r2_ind) + walker_pop(1)*walker_pop(2)/2.0_p
         else
-            estimator_numerators(full_r2_ind) = estimator_numerators(full_r2_ind) + walker_pop(1)*walker_pop(2)
+            numerators(full_r2_ind) = numerators(full_r2_ind) + walker_pop(1)*walker_pop(2)
         end if
 
     end subroutine update_full_renyi_2
@@ -807,7 +807,7 @@ contains
                 unweighted_walker_pop = real(walker_population(:,idet),p)*&
                     accumulated_probs(excitation%nexcit)/real_factor
                 ! Note, when storing the entire RDM (as done here), the
-                ! maximum value of rdms(i)%rdm_string_len is 1, so we
+                ! maximum value of rdms(i)%string_len is 1, so we
                 ! only consider this one element here.
                 reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) = &
                     reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) + unweighted_walker_pop(1)
@@ -839,7 +839,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: rdms, reduced_density_matrix
-        use fciqmc_data, only: doing_von_neumann_entropy, doing_concurrence
+        use fciqmc_data, only: doing_vn_entropy, doing_concurrence
         use fciqmc_data, only: output_rdm, rdm_unit, rdm_traces
         use parallel
         use utils, only: get_free_unit, append_ext, int_fmt
@@ -889,7 +889,7 @@ contains
             end do
 
             ! Call the routines to calculate the desired quantities.
-            if (doing_von_neumann_entropy) call calculate_vn_entropy(rdm_traces(1,1))
+            if (doing_vn_entropy) call calculate_vn_entropy(rdm_traces(1,1))
             if (doing_concurrence) call calculate_concurrence()
 
             write (6,'(1x,"# RDM trace =",1X,es17.10)') rdm_traces(1,1)
@@ -1081,7 +1081,7 @@ contains
 
         ! Loop over all RDMs being calculated.
         do irdm = 1, size(rdm_data)
-            rdm_bl = rdm_data(irdm)%rdm_string_len
+            rdm_bl = rdm_data(irdm)%string_len
             ! Loop over the total population of RDM psips on this processor.
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
                 ! If on the diagonal of the RDM...
@@ -1123,7 +1123,7 @@ contains
 
         ! Loop over all RDMs being calculated.
         do irdm = 1, size(rdm_data)
-            rdm_bl = rdm_data(irdm)%rdm_string_len
+            rdm_bl = rdm_data(irdm)%string_len
             ! Loop over the total population of RDM psips on this processor.
             do i = 1, rdm_lists(irdm)%head(thread_id,0)
 

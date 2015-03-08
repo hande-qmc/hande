@@ -359,17 +359,17 @@ real(p), allocatable :: trace(:) ! (sampling_size)
 ! for DMQMC. It must be updated if more operators are added.
 integer, parameter :: num_dmqmc_operators = 5
 
-! estimator_numerators stores the numerators for the estimators in DMQMC. These
+! numerators stores the numerators for the estimators in DMQMC. These
 ! are, for a general operator O which we wish to find the thermal average of:
 ! \sum_{i,j} \rho_{ij} * O_{ji}
 ! This variabe will store this value from the first iteration of each
 ! report loop. At the end of a report loop, the values from each
-! processor are combined and stored in estimator_numerators on the parent
-! processor. This is then output, and the values of estimator_numerators
+! processor are combined and stored in numerators on the parent
+! processor. This is then output, and the values of numerators
 ! are reset on each processor to start the next report loop.
-real(p) :: estimator_numerators(num_dmqmc_operators)
+real(p) :: numerators(num_dmqmc_operators)
 
-! The following indicies are used to access components of estimator_numerators.
+! The following indicies are used to access components of numerators.
 enum, bind(c)
     enumerator :: energy_ind = 1
     enumerator :: energy_squared_ind
@@ -436,8 +436,8 @@ logical :: replica_tricks = .false.
 ! will be stored in the array below.
 ! The number of excitations for a given system is defined by
 ! sys_t%max_number_excitations; see comments in sys_t for more details.
-logical :: calculate_excit_distribution = .false.
-real(p), allocatable :: excit_distribution(:) ! (0:max_number_excitations)
+logical :: calc_excit_dist = .false.
+real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
 ! If true then the simulation will start with walkers uniformly distributed
 ! along the diagonal of the entire density matrix, including all symmetry
@@ -465,13 +465,13 @@ logical :: calc_inst_rdm = .false.
 
 ! The length of the spawning array for RDMs. Each RDM calculated has the same
 ! length array.
-integer :: spawned_rdm_length
+integer :: spawned_length
 
 ! If true then calculate the concurrence for reduced density matrix of two sites.
 logical :: doing_concurrence = .false.
 
 ! If true then calculate the von Neumann entanglement entropy for specified subsystem.
-logical :: doing_von_neumann_entropy = .false.
+logical :: doing_vn_entropy = .false.
 
 ! If true then, if doing an exact diagonalisation, calculate and output the
 ! eigenvalues of the reduced density matrix requested.
@@ -500,10 +500,10 @@ integer :: nrdms = 0
 type rdm_t
     ! The total number of sites in subsystem A.
     integer :: A_nsites
-    ! Similar to string_len, rdm_string_len is the length of the byte array
+    ! Similar to string_len, string_len is the length of the byte array
     ! necessary to contain a bit for each subsystem-A basis function. An array
     ! of twice this length is stored to hold both RDM indices.
-    integer :: rdm_string_len
+    integer :: string_len
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
     ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
@@ -519,7 +519,7 @@ type rdm_t
     ! bit_pos(i,:,2) will not be sorted). This is very important so that
     ! equivalent psips will contribute to the same RDM element.
     integer, allocatable :: bit_pos(:,:,:)
-    ! Two bitstrings of length rdm_string_len. To be used as temporary
+    ! Two bitstrings of length string_len. To be used as temporary
     ! bitstrings to prevent having to regularly allocate different length
     ! bitstrings for different RDMs.
     integer(i0), allocatable :: end1(:), end2(:)
@@ -708,8 +708,8 @@ contains
                     end do
                 end do
             end if
-            if (calculate_excit_distribution) then
-                do i = 0, ubound(excit_distribution,1)
+            if (calc_excit_dist) then
+                do i = 0, ubound(excit_dist,1)
                     write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
                     write (6, '(5X,a16)', advance='no') excit_header
                 end do
@@ -779,27 +779,27 @@ contains
 
             ! Renyi-2 entropy for the full density matrix.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(full_r2_ind)
+                write (6, '(4X,es17.10)', advance = 'no') numerators(full_r2_ind)
             end if
 
             ! Energy.
             if (doing_dmqmc_calc(dmqmc_energy)) then
-                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(energy_ind)
+                write (6, '(4X,es17.10)', advance = 'no') numerators(energy_ind)
             end if
 
             ! Energy squared.
             if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(energy_squared_ind)
+                write (6, '(4X,es17.10)', advance = 'no') numerators(energy_squared_ind)
             end if
 
             ! Correlation function.
             if (doing_dmqmc_calc(dmqmc_correlation)) then
-                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(correlation_fn_ind)
+                write (6, '(4X,es17.10)', advance = 'no') numerators(correlation_fn_ind)
             end if
 
             ! Staggered magnetisation.
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                write (6, '(4X,es17.10)', advance = 'no') estimator_numerators(staggered_mag_ind)
+                write (6, '(4X,es17.10)', advance = 'no') numerators(staggered_mag_ind)
             end if
 
             ! Renyi-2 entropy for all RDMs being sampled.
@@ -820,10 +820,10 @@ contains
 
             ! The distribution of walkers on different excitation levels of the
             ! density matrix.
-            if (calculate_excit_distribution) then
-                excit_distribution = excit_distribution/ntot_particles(1)
-                do i = 0, ubound(excit_distribution,1)
-                    write (6, '(4X,es17.10)', advance = 'no') excit_distribution(i)
+            if (calc_excit_dist) then
+                excit_dist = excit_dist/ntot_particles(1)
+                do i = 0, ubound(excit_dist,1)
+                    write (6, '(4X,es17.10)', advance = 'no') excit_dist(i)
                 end do
             end if
 

@@ -653,9 +653,9 @@ contains
         D0_population = 0.0_p
 
         ! DMQMC-specific...
-        if (calculate_excit_distribution) excit_distribution = 0.0_p
+        if (calc_excit_dist) excit_dist = 0.0_p
         if (allocated(trace)) trace = 0.0_p
-        estimator_numerators = 0.0_p
+        numerators = 0.0_p
 
     end subroutine init_report_loop
 

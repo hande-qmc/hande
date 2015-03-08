@@ -551,7 +551,7 @@ contains
                     write (6, '(1x,a83)') 'RDM(n) trace m: The current total population on the diagonal of replica m &
                                           &of RDM n.'
                 end if
-                if (calculate_excit_distribution) then
+                if (calc_excit_dist) then
                     write (6, '(1x,a86)') 'Excit. level n: The fraction of particles on excitation level n of the &
                                           &density matrix.'
                 end if

@@ -297,7 +297,7 @@ contains
                 find_weights = .true.
                 weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
-                calculate_excit_distribution = .true.
+                calc_excit_dist = .true.
             case('USE_ALL_SYM_SECTORS')
                 all_sym_sectors = .true.
             case('USE_ALL_SPIN_SECTORS')
@@ -329,7 +329,7 @@ contains
             case('CONCURRENCE')
                 doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
-                doing_von_neumann_entropy = .true.
+                doing_vn_entropy = .true.
             case('RENYI_ENTROPY_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
             case('START_AVERAGING')
@@ -387,11 +387,11 @@ contains
                     end if
                 end if
             case('SPAWNED_RDM_LENGTH')
-                call readi(spawned_rdm_length)
+                call readi(spawned_length)
                 if (item /= nitems) then
                     call readu(w)
                     if (w == 'MB') then
-                        spawned_rdm_length = -spawned_rdm_length
+                        spawned_length = -spawned_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
@@ -671,7 +671,7 @@ contains
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
                &sites for the correlation function option.')
 
-          if (find_weights .and. calculate_excit_distribution) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
+          if (find_weights .and. calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
               &_DISTRIBUTION options cannot be used together.')
 
         ! Calculation specific checking.
@@ -687,7 +687,7 @@ contains
                 if (walker_length == 0) call stop_all(this,'Walker length zero.')
                 if (spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
-            if (calc_inst_rdm .and. spawned_rdm_length == 0) call stop_all(this,'Spawned RDM length zero.')
+            if (calc_inst_rdm .and. spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
             if (tau <= 0) call stop_all(this,'Tau not positive.')
             if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(occ_list0)) then
@@ -854,7 +854,7 @@ contains
         call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawned_rdm_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
@@ -868,7 +868,7 @@ contains
         call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_von_neumann_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
@@ -881,7 +881,7 @@ contains
         call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)

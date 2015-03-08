@@ -299,7 +299,7 @@ contains
         nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
         if (vary_weights) accumulated_probs = 1.0_p
-        if (find_weights) excit_distribution = 0.0_p
+        if (find_weights) excit_dist = 0.0_p
 
         new_seed = seed+iproc+(beta_cycle-1)*nprocs
 

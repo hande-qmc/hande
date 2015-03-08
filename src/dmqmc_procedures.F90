@@ -43,10 +43,10 @@ contains
             end do
         end if
 
-        if (calculate_excit_distribution .or. find_weights) then
-            allocate(excit_distribution(0:sys%max_number_excitations), stat=ierr)
-            call check_allocate('excit_distribution',sys%max_number_excitations+1,ierr)
-            excit_distribution = 0.0_p
+        if (calc_excit_dist .or. find_weights) then
+            allocate(excit_dist(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('excit_dist',sys%max_number_excitations+1,ierr)
+            excit_dist = 0.0_p
         end if
 
         ! If this is true then the user has asked to average the shift over
@@ -156,7 +156,7 @@ contains
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
         use fciqmc_data, only: replica_tricks, renyi_2, sampling_size, real_bit_shift, spawn_cutoff
-        use fciqmc_data, only: spawned_rdm_length, rdm_spawn, rdms
+        use fciqmc_data, only: spawned_length, rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
@@ -196,11 +196,11 @@ contains
         ! Loop over all subsystems for which we are calculating RDMs.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
-            rdms(i)%rdm_string_len = ceiling(real(rdms(i)%A_nsites)/i0_length)
-            allocate(rdms(i)%end1(rdms(i)%rdm_string_len), stat=ierr)
-            call check_allocate('rdms(i)%end1', rdms(i)%rdm_string_len, ierr)
-            allocate(rdms(i)%end2(rdms(i)%rdm_string_len), stat=ierr)
-            call check_allocate('rdms(i)%end2', rdms(i)%rdm_string_len, ierr)
+            rdms(i)%string_len = ceiling(real(rdms(i)%A_nsites)/i0_length)
+            allocate(rdms(i)%end1(rdms(i)%string_len), stat=ierr)
+            call check_allocate('rdms(i)%end1', rdms(i)%string_len, ierr)
+            allocate(rdms(i)%end2(rdms(i)%string_len), stat=ierr)
+            call check_allocate('rdms(i)%end2', rdms(i)%string_len, ierr)
             rdms(i)%end1 = 0_i0
             rdms(i)%end2 = 0_i0
 
@@ -208,41 +208,41 @@ contains
             ! the following condition is met then the number of rows is greater
             ! than the maximum integer accessible. This would clearly be too
             ! large, so abort in this case.
-            if (calc_ground_rdm .and. rdms(i)%rdm_string_len > 1) call stop_all("setup_rdm_arrays",&
+            if (calc_ground_rdm .and. rdms(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
             ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
-                size_spawned_rdm = (rdms(i)%rdm_string_len*2+sampling_size)*int_s_length/8
+                size_spawned_rdm = (rdms(i)%string_len*2+sampling_size)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
-                if (spawned_rdm_length < 0) then
+                if (spawned_length < 0) then
                     ! Given in MB.  Convert.
                     ! Note that the factor of 2 is because two spawning arrays
                     ! are stored, and 21*nbytes_int is added because there are
                     ! 21 integers in the hash table for each spawned rdm slot.
                     ! 21 was found to be appropriate after testing.
-                    spawned_rdm_length = int((-real(spawned_rdm_length,p)*10**6)/&
+                    spawned_length = int((-real(spawned_length,p)*10**6)/&
                                           (2*size_spawned_rdm + 21*nbytes_int))
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
-                call alloc_spawn_t(rdms(i)%rdm_string_len*2, sampling_size, .false., &
-                                     spawned_rdm_length, spawn_cutoff, real_bit_shift, &
+                call alloc_spawn_t(rdms(i)%string_len*2, sampling_size, .false., &
+                                     spawned_length, spawn_cutoff, real_bit_shift, &
                                      27, use_mpi_barriers, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
                 ! the table is three times as large as the spawning arrays and
                 ! each hash value can have 7 clashes. This was found to give
                 ! reasonable performance.
-                call alloc_hash_table(3*spawned_rdm_length, 7, rdms(i)%rdm_string_len*2, &
+                call alloc_hash_table(3*spawned_length, 7, rdms(i)%string_len*2, &
                                      0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
 
         if (parent .and. calc_inst_rdm) then
             write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
-                total_size_spawned_rdm*real(2*spawned_rdm_length,p)/10**6
-            write (6,'(1X,a49,'//int_fmt(spawned_rdm_length,1)//',/)') &
-                'Number of elements per core in spawned RDM lists:', spawned_rdm_length
+                total_size_spawned_rdm*real(2*spawned_length,p)/10**6
+            write (6,'(1X,a49,'//int_fmt(spawned_length,1)//',/)') &
+                'Number of elements per core in spawned RDM lists:', spawned_length
         end if
 
         ! For an ms = 0 subspace, assuming less than or exactly half the spins
@@ -1125,7 +1125,7 @@ contains
         !       sys_t type in system for details).
 
         use fciqmc_data, only: sampling_probs, accumulated_probs
-        use fciqmc_data, only: excit_distribution, finish_varying_weights
+        use fciqmc_data, only: excit_dist, finish_varying_weights
         use fciqmc_data, only: vary_weights, weight_altering_factors
         use parallel
 
@@ -1134,20 +1134,20 @@ contains
         integer :: i, ierr
 #ifdef PARALLEL
         real(p) :: merged_excit_dist(0:max_number_excitations)
-        call mpi_allreduce(excit_distribution, merged_excit_dist, max_number_excitations+1, &
+        call mpi_allreduce(excit_dist, merged_excit_dist, max_number_excitations+1, &
             MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
 
-        excit_distribution = merged_excit_dist
+        excit_dist = merged_excit_dist
 #endif
 
         ! It is assumed that there is an even maximum number of excitations.
         do i = 1, (max_number_excitations/2)
             ! Don't include levels where there are very few psips accumulated.
-            if (excit_distribution(i-1) > 10.0_p .and. excit_distribution(i) > 10.0_p) then
+            if (excit_dist(i-1) > 10.0_p .and. excit_dist(i) > 10.0_p) then
                 ! Alter the sampling weights using the relevant excitation
                 ! distribution.
                 sampling_probs(i) = sampling_probs(i)*&
-                    (excit_distribution(i)/excit_distribution(i-1))
+                    (excit_dist(i)/excit_dist(i-1))
                 sampling_probs(max_number_excitations+1-i) = sampling_probs(i)**(-1)
             end if
         end do
