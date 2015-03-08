@@ -1316,13 +1316,6 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 
     Set the number of beta loops. This is the number of times that the complete range of beta values
     will be looped over before the simulation finishes.
-**dmqmc_average_shift** *N*
-    Integer.
-
-    For the first *N* beta loops, the shift as a function of beta is stored. It is then averaged, and
-    this average shift profile is used in all future beta loops. Using a constant shift profile for
-    all beta loops will remove shift biases. Note that large fluctuations in the population may
-    occur on many beta loops when using this option.
 **dmqmc_energy**
     Calculate the thermal expectation value of the Hamiltonian operator.
 

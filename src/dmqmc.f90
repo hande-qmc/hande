@@ -213,10 +213,6 @@ contains
 
                 end do
 
-                ! If averaging the shift to use in future beta loops, add
-                ! contirubtion from this report.
-                if (average_shift_until > 0) shift_profile(ireport) = shift_profile(ireport) + shift(1)
-
                 ! Sum all quantities being considered across all MPI processes.
                 call dmqmc_estimate_comms(nspawn_events, sys%max_number_excitations)
 
@@ -232,15 +228,6 @@ contains
             end do
 
             if (soft_exit) exit
-
-            ! If have just finished last beta loop of accumulating the shift,
-            ! then perform the averaging and set average_shift_until to -1.
-            ! This tells the shift update algorithm to use the values for
-            ! shift stored in shift_profile.
-            if (beta_cycle == average_shift_until) then
-                shift_profile = shift_profile/average_shift_until
-                average_shift_until = -1
-            end if
 
             ! Calculate and output all requested estimators based on the reduced
             ! density matrix. This is for ground-state RDMs only.

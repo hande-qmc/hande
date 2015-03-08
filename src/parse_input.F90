@@ -413,8 +413,6 @@ contains
                     call reread(0)
                     call readf(vary_shift_from)
                 end if
-            case('DMQMC_AVERAGE_SHIFT')
-                call readi(average_shift_until)
             case('VARYSHIFT_TARGET')
                 call readf(target_particles)
             case('INIT_POP')
@@ -860,7 +858,6 @@ contains
         call mpi_bcast(initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(average_shift_until, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)

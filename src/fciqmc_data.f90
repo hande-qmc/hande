@@ -546,19 +546,6 @@ integer :: rdm_unit
 ! reduced density matrix and calculating importance sampling weights.
 integer :: start_averaging = 0
 
-! In DMQMC, the user may want want the shift as a function of beta to be
-! the same for each beta loop. If average_shift_until is non-zero then
-! shift_profile is allocated, and for the first average_shift_until
-! beta loops, the shift is stored at each beta value and then averaged
-! over all these beta loops afterwards. These shift values are stored
-! in shift profile, and then used in future beta loops as the shift
-! profile for each one.
-! When average_shift_until is set equal to -1, all the averaging has
-! finished, and the algorithm uses the averaged values stored in
-! shift_profile.
-integer :: average_shift_until = 0
-real(p), allocatable :: shift_profile(:) ! (nreport)
-
 ! correlation_mask is a bit string with a 1 at positions i and j which
 ! are considered when finding the spin correlation function, C(r_{i,j}).
 ! All other bits are set to 0. i and j are chosen by the user initially.

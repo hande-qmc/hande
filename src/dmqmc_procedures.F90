@@ -49,15 +49,6 @@ contains
             excit_dist = 0.0_p
         end if
 
-        ! If this is true then the user has asked to average the shift over
-        ! several beta loops (average_shift_until of them), and then use the
-        ! this average in all subsequent loops.
-        if (average_shift_until > 0) then
-            allocate(shift_profile(1:nreport+1), stat=ierr)
-            call check_allocate('shift_profile',nreport+1,ierr)
-            shift_profile = 0.0_p
-        end if
-
         ! When using an importance sampled initial density matrix we use then
         ! unsymmetrised version of Bloch's equation. This means we don't have
         ! to worry about these factors of 1/2.
