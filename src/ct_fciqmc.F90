@@ -57,6 +57,7 @@ contains
         integer, parameter :: thread_id = 0
         integer :: spawned_pop
         type(bloom_stats_t) :: bloom_stats
+        integer :: unused_int_1 = -1, unused_int_2 = 0
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -235,7 +236,7 @@ contains
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
             call end_report_loop(sys, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
-                                 semi_stoch_shift_iter, semi_stoch_start_iter, soft_exit)
+                                 unused_int_1, unused_int_2, soft_exit)
 
             if (soft_exit) exit
 

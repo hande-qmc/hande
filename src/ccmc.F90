@@ -224,7 +224,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys)
+    subroutine do_ccmc(sys, semi_stoch_in)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -234,6 +234,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -254,8 +255,7 @@ contains
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
                                write_fciqmc_report_header, nparticles, ccmc_move_freq, real_factor,  &
-                               cluster_multispawn_threshold, semi_stoch_shift_iter,                  &
-                               semi_stoch_start_iter
+                               cluster_multispawn_threshold
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles
@@ -263,9 +263,12 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t
 
-        type(sys_t), intent(in) :: sys
+        use qmc_data, only: semi_stoch_in_t
 
-        integer :: i, ireport, icycle, iter, it
+        type(sys_t), intent(in) :: sys
+        type(semi_stoch_in_t), intent(in) :: semi_stoch_in
+
+        integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
         integer(int_64) :: nattempts_spawn
         real(p) :: nparticles_old(sampling_size), nparticles_change(sampling_size)
@@ -365,6 +368,9 @@ contains
         qmc_spawn%hash_shift = mc_cycles_done
         ! Hard code how frequently (ie 2^10) a determinant can move.
         qmc_spawn%move_freq = ccmc_move_freq
+
+        ! The iteration on which to start performing semi-stochastic.
+        semi_stoch_iter = semi_stoch_in%start_iter
 
         do ireport = 1, nreport
 
@@ -646,8 +652,8 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_shift_iter, &
-                                  semi_stoch_start_iter, soft_exit, bloom_stats=bloom_stats)
+            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_in%shift_iter, &
+                                  semi_stoch_iter, soft_exit, bloom_stats=bloom_stats)
 
             if (soft_exit) exit
 

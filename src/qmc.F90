@@ -10,7 +10,7 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc(sys)
+    subroutine do_qmc(sys, semi_stoch_in)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -18,6 +18,8 @@ contains
         !    sys: system being studied.  This should(!) be returned unaltered on
         !         output from each procedure, but might be varied during the
         !         run if needed.
+        ! In:
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use calc
 
@@ -27,10 +29,12 @@ contains
         use fciqmc, only: do_fciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
+        use qmc_data, only: semi_stoch_in_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
+        type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         real(p) :: hub_matel
         type(sys_t) :: sys_bak
@@ -52,14 +56,14 @@ contains
         else if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(sys, hub_matel)
         else if (doing_calc(ccmc_calc)) then
-            call do_ccmc(sys)
+            call do_ccmc(sys, semi_stoch_in)
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
             if (doing_calc(hfs_fciqmc_calc)) then
                 call do_hfs_fciqmc(sys)
             else
-                call do_fciqmc(sys)
+                call do_fciqmc(sys, semi_stoch_in)
             end if
         end if
 

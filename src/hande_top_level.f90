@@ -26,6 +26,7 @@ contains
         use system
         use basis, only: init_model_basis_fns
         use basis_types, only: copy_basis_t, dealloc_basis_t, init_basis_strings, print_basis_metadata
+        use calc
         use determinants, only: init_determinants
         use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
@@ -33,8 +34,8 @@ contains
         use real_lattice, only: init_real_space
         use momentum_symmetry, only: init_momentum_symmetry
         use point_group_symmetry, only: print_pg_symmetry_info
+        use qmc_data, only: semi_stoch_in_t, semi_stoch_in
         use read_in_system, only: read_in_integrals
-        use calc
         use ueg_system, only: init_ueg_proc_pointers
 
         type(sys_t), intent(inout) :: sys
@@ -56,13 +57,13 @@ contains
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
-        if (parent) call read_input(sys)
+        if (parent) call read_input(sys, semi_stoch_in)
 
-        call distribute_input(sys)
+        call distribute_input(sys, semi_stoch_in)
 
         call init_system(sys)
 
-        call check_input(sys)
+        call check_input(sys, semi_stoch_in)
 
         ! Initialise basis functions.
         if (sys%system == read_in) then
@@ -108,6 +109,7 @@ contains
         use hilbert_space, only: estimate_hilbert_space
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
+        use qmc_data, only: semi_stoch_in_t, semi_stoch_in
         use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
@@ -127,7 +129,7 @@ contains
             if (doing_calc(simple_fciqmc_calc)) then
                 call do_simple_fciqmc(sys)
             else 
-                call do_qmc(sys)
+                call do_qmc(sys, semi_stoch_in)
             end if
         end if
 

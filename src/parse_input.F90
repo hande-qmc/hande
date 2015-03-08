@@ -20,21 +20,23 @@ implicit none
 
 contains
 
-    subroutine read_input(sys)
+    subroutine read_input(sys, semi_stoch_in)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
 
         ! In/Out:
-        !   sys: system being studied.  Parameters specified in the input file
-        !        are set directly in the system object, components which are not
-        !        mentioned in the input file are not altered.
+        !    sys: system being studied.  Parameters specified in the input file
+        !         are set directly in the system object, components which are not
+        !         mentioned in the input file are not altered.
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
 ! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
         use f90_unix_env
 #endif
 
+        use qmc_data, only: semi_stoch_in_t
         use system
 
         use input
@@ -47,7 +49,8 @@ contains
         integer :: iargc ! External function.
 #endif
 
-        type (sys_t), intent(inout) :: sys
+        type(sys_t), intent(inout) :: sys
+        type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         character(255) :: cInp
         character(100) :: w
@@ -245,24 +248,24 @@ contains
 
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
-                call readi(semi_stoch_start_iter)
+                call readi(semi_stoch_in%start_iter)
                 real_amplitudes = .true.
             case('SEMI_STOCH_SHIFT_START')
-                call readi(semi_stoch_shift_iter)
-                semi_stoch_start_iter = -1
+                call readi(semi_stoch_in%shift_iter)
+                semi_stoch_in%start_iter = -1
                 real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
-                determ_space_type = high_pop_determ_space
-                call readi(determ_target_size)
+                semi_stoch_in%determ_space_type = high_pop_determ_space
+                call readi(semi_stoch_in%target_size)
             case('SEMI_STOCH_READ')
-                determ_space_type = read_determ_space
+                semi_stoch_in%determ_space_type = read_determ_space
                 ! Not needed.
-                determ_target_size = -1
+                semi_stoch_in%target_size = -1
             case('WRITE_DETERM_SPACE')
-                write_determ_space = .true.
+                semi_stoch_in%write_determ_space = .true.
             case('SEMI_STOCH_COMBINE_ANNIHIL')
-                separate_determ_annihil = .false.
+                semi_stoch_in%separate_annihil = .false.
 
             ! DMQMC expectation values to be calculated.
             case('DMQMC_FULL_RENYI_2')
@@ -475,7 +478,7 @@ contains
                 
                 ! If semi-stochastic is being used then a semi-stoch file will
                 ! automatically be dumped when using this option.
-                write_determ_space = .true.
+                semi_stoch_in%write_determ_space = .true.
             case('DUMP_RESTART_FREQUENCY')
                 call readi(restart_info_global%write_restart_freq)
             case('SEED')
@@ -562,18 +565,22 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys)
+    subroutine check_input(sys, semi_stoch_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
 
         ! In/Out:
         !    sys: system object, as set in read_input (invalid settings are overridden).
+        ! In:
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use const
+        use qmc_data, only: semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
+        type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
@@ -653,10 +660,10 @@ contains
         end if
 
         ! Semi-stochastic checks.
-        if (semi_stoch_start_iter /= 0 .and. determ_space_type == empty_determ_space .and. parent) &
+        if (semi_stoch_in%start_iter /= 0 .and. semi_stoch_in%determ_space_type == empty_determ_space .and. parent) &
             call warning(this,'You have specified an iteration to turn semi-stochastic on but have not &
                          &specified a deterministic space to use.')
-        if (determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. &
+        if (semi_stoch_in%determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. &
               doing_calc(hfs_fciqmc_calc))) &
               call stop_all(this, 'Semi-stochastic is only implemented with the FCIQMC method.')
 
@@ -746,7 +753,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys)
+    subroutine distribute_input(sys, semi_stoch_in)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -757,12 +764,15 @@ contains
         ! In/Out:
         !    sys: object describing the system.  All parameters which can be set
         !       in the input file are distributed to other processors.
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
 #ifndef PARALLEL
 
+        use qmc_data, only: semi_stoch_in_t
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
+        type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
 #else
 
@@ -770,9 +780,11 @@ contains
         use parallel
         use checking, only: check_allocate
 
+        use qmc_data, only: semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
+        type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         integer :: i, ierr, occ_list_size
         logical :: option_set
@@ -793,12 +805,12 @@ contains
         end if
         call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(semi_stoch_start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(semi_stoch_shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(separate_determ_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%separate_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(linked_ccmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
