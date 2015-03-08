@@ -209,7 +209,7 @@ contains
                     ! the trial function, call a routine to update these weights
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
-                    if (dmqmc_vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng, sys%basis)
+                    if (vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng, sys%basis)
 
                 end do
 
@@ -247,7 +247,7 @@ contains
             if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
-            if (dmqmc_find_weights) call output_and_alter_weights(sys%max_number_excitations)
+            if (find_weights) call output_and_alter_weights(sys%max_number_excitations)
 
         end do
 
@@ -298,8 +298,8 @@ contains
         shift = initial_shift
         nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
-        if (dmqmc_vary_weights) dmqmc_accumulated_probs = 1.0_p
-        if (dmqmc_find_weights) excit_distribution = 0.0_p
+        if (vary_weights) accumulated_probs = 1.0_p
+        if (find_weights) excit_distribution = 0.0_p
 
         new_seed = seed+iproc+(beta_cycle-1)*nprocs
 

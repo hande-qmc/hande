@@ -282,20 +282,20 @@ contains
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             case('DMQMC_WEIGHTED_SAMPLING')
                 call readi(nweights)
-                allocate(dmqmc_sampling_probs(nweights), stat=ierr)
-                call check_allocate('dmqmc_sampling_probs', nweights, ierr)
-                dmqmc_weighted_sampling = .true.
+                allocate(sampling_probs(nweights), stat=ierr)
+                call check_allocate('sampling_probs', nweights, ierr)
+                weighted_sampling = .true.
                 call read_line(eof)
                 if (eof) call stop_all('read_input', 'Unexpected end of file reading DMQMC weights.')
                 do i = 1, nweights
-                    call readf(dmqmc_sampling_probs(i))
+                    call readf(sampling_probs(i))
                 end do
             case('DMQMC_VARY_WEIGHTS')
                 call readi(finish_varying_weights)
-                dmqmc_vary_weights = .true.
+                vary_weights = .true.
             case('DMQMC_FIND_WEIGHTS')
-                dmqmc_find_weights = .true.
-                dmqmc_weighted_sampling = .true.
+                find_weights = .true.
+                weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 calculate_excit_distribution = .true.
             case('USE_ALL_SYM_SECTORS')
@@ -671,7 +671,7 @@ contains
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
                &sites for the correlation function option.')
 
-          if (dmqmc_find_weights .and. calculate_excit_distribution) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
+          if (find_weights .and. calculate_excit_distribution) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
               &_DISTRIBUTION options cannot be used together.')
 
         ! Calculation specific checking.
@@ -737,8 +737,8 @@ contains
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
                  call stop_all(this, 'The ids of the restart files could be the same')
         end if   
-        if (dmqmc_vary_weights .and. (.not. dmqmc_weighted_sampling)) then
-            call stop_all(this, 'The dmqmc_vary_weights option can only be used together with the dmqmc_weighted_sampling option.')
+        if (vary_weights .and. (.not. weighted_sampling)) then
+            call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
         if (sys%system /= heisenberg .and. dmqmc_calc_type > dmqmc_energy) then
             call stop_all(this, 'The observable requested is not currently implemented for this Hamiltonian.')
@@ -871,9 +871,9 @@ contains
         call mpi_bcast(doing_von_neumann_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -888,16 +888,16 @@ contains
         call mpi_bcast(grand_canonical_initialisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.
-        if (parent) option_set = allocated(dmqmc_sampling_probs)
+        if (parent) option_set = allocated(sampling_probs)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(dmqmc_sampling_probs)
+            occ_list_size = size(sampling_probs)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(dmqmc_sampling_probs(occ_list_size), stat=ierr)
-                call check_allocate('dmqmc_sampling_probs',occ_list_size,ierr)
+                allocate(sampling_probs(occ_list_size), stat=ierr)
+                call check_allocate('sampling_probs',occ_list_size,ierr)
             end if
-            call mpi_bcast(dmqmc_sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
+            call mpi_bcast(sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
         if (parent) option_set = allocated(rdms)

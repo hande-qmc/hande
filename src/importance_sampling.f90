@@ -97,7 +97,7 @@ contains
         ! reducing the probability of spawning to higher excitation levels
         ! between the two ends of the DMQMC bitstring. The exact trial function
         ! used is specified by the users upon input, and stored in the vector
-        ! dmqmc_accumulated_probs.
+        ! accumulated_probs.
 
         ! In:
         !    sys: system being studied.
@@ -117,7 +117,7 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, create_excited_det
-        use fciqmc_data, only: dmqmc_accumulated_probs
+        use fciqmc_data, only: accumulated_probs
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -133,7 +133,7 @@ contains
 
         excit_level_new = get_excitation_level(f_new,cdet%f2)
 
-        hmatel = dmqmc_accumulated_probs(excit_level_old)*hmatel*(1/dmqmc_accumulated_probs(excit_level_new))
+        hmatel = accumulated_probs(excit_level_old)*hmatel*(1/accumulated_probs(excit_level_new))
 
     end subroutine dmqmc_weighting_fn
 

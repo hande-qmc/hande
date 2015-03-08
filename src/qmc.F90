@@ -769,7 +769,7 @@ contains
             end if
 
             ! Weighted importance sampling routines.
-            if (dmqmc_weighted_sampling) then
+            if (weighted_sampling) then
                 spawner_ptr => spawn_importance_sampling
                 gen_excit_ptr%trial_fn => dmqmc_weighting_fn
             end if

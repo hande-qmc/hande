@@ -398,20 +398,20 @@ real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
 ! dmqmc_sampling_prob stores the factors by which the probabilities of
 ! spawning to a larger excitation are reduced by. So, when spawning from
 ! a diagonal element to a element with one excitation, the probability
-! of spawning is reduced by a factor dmqmc_sampling_probs(1).
-! dmqmc_accumulated_probs(i) stores the multiplication of all the elements
-! of dmqmc_sampling_probs up to the ith element. This quantity is often
+! of spawning is reduced by a factor sampling_probs(1).
+! accumulated_probs(i) stores the multiplication of all the elements
+! of sampling_probs up to the ith element. This quantity is often
 ! needed, so it is stored.
-logical :: dmqmc_weighted_sampling = .false.
-real(p), allocatable :: dmqmc_sampling_probs(:) ! (min(nel, nsites-nel))
-real(p), allocatable :: dmqmc_accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
-real(p), allocatable :: dmqmc_accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
-! If dmqmc_vary_weights is true, then instead of using the final sampling
+logical :: weighted_sampling = .false.
+real(p), allocatable :: sampling_probs(:) ! (min(nel, nsites-nel))
+real(p), allocatable :: accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
+real(p), allocatable :: accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
+! If vary_weights is true, then instead of using the final sampling
 ! weights for all the iterations, the weights will be gradually increased
 ! until finish_varying_weights, at which point they will be held constant.
 ! weight_altering_factors stores the factors by which each weight is
 ! multiplied at each step. 
-logical :: dmqmc_vary_weights = .false.
+logical :: vary_weights = .false.
 integer :: finish_varying_weights = 0
 real(dp), allocatable :: weight_altering_factors(:)
 ! If this logical is true then the program will calculate the ratios
@@ -419,7 +419,7 @@ real(dp), allocatable :: weight_altering_factors(:)
 ! are output so that they can be used when doing importance sampling
 ! for DMQMC, so that each level will have roughly equal numbers of psips.
 ! The resulting new weights are used in the next beta loop.
-logical :: dmqmc_find_weights = .false.
+logical :: find_weights = .false.
 
 ! If half_density_matrix is true then half the density matrix will be 
 ! calculated by reflecting spawning onto the lower triangle into the

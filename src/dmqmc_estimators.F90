@@ -290,9 +290,9 @@ contains
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
         use excitations, only: get_excitation, excit_t
         use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
-        use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
+        use fciqmc_data, only: accumulated_probs, start_averaging, find_weights
         use fciqmc_data, only: calculate_excit_distribution, excit_distribution
-        use fciqmc_data, only: sampling_size, dmqmc_accumulated_probs_old, real_factor
+        use fciqmc_data, only: sampling_size, accumulated_probs_old, real_factor
         use fciqmc_data, only: replica_tricks, energy_ind, walker_data, estimator_numerators
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
@@ -316,7 +316,7 @@ contains
         ! excitation levels correctly.
 
         ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet).
-        unweighted_walker_pop = real(walker_population(:,idet),p)*dmqmc_accumulated_probs(excitation%nexcit)/&
+        unweighted_walker_pop = real(walker_population(:,idet),p)*accumulated_probs(excitation%nexcit)/&
             real_factor
 
         ! The following only use the populations with ireplica = 1, so only call
@@ -341,7 +341,7 @@ contains
             if (calculate_excit_distribution) excit_distribution(excitation%nexcit) = &
                 excit_distribution(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
             ! Excitation distribtuion for calculating importance sampling weights.
-            if (dmqmc_find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
+            if (find_weights .and. iteration > start_averaging) excit_distribution(excitation%nexcit) = &
                 excit_distribution(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
         end if
 
@@ -357,7 +357,7 @@ contains
         if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
             &(sys%basis, idet, excitation, walker_population(:,idet), iteration)
 
-        dmqmc_accumulated_probs_old = dmqmc_accumulated_probs
+        accumulated_probs_old = accumulated_probs
 
     end subroutine update_dmqmc_estimators
 
@@ -761,7 +761,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
         use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, rdms, nrdms
-        use fciqmc_data, only: start_averaging, rdm_spawn, dmqmc_accumulated_probs
+        use fciqmc_data, only: start_averaging, rdm_spawn, accumulated_probs
         use fciqmc_data, only: nsym_vec, real_factor
         use spawning, only: create_spawned_particle_rdm
 
@@ -805,7 +805,7 @@ contains
                 rdms(irdm)%end1 = rdms(irdm)%end1 + 1
                 rdms(irdm)%end2 = rdms(irdm)%end2 + 1
                 unweighted_walker_pop = real(walker_population(:,idet),p)*&
-                    dmqmc_accumulated_probs(excitation%nexcit)/real_factor
+                    accumulated_probs(excitation%nexcit)/real_factor
                 ! Note, when storing the entire RDM (as done here), the
                 ! maximum value of rdms(i)%rdm_string_len is 1, so we
                 ! only consider this one element here.
@@ -1109,7 +1109,7 @@ contains
 
         use fciqmc_data, only: rdm_t
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: dmqmc_accumulated_probs_old
+        use fciqmc_data, only: accumulated_probs_old
         use spawn_data, only: spawn_t
 
         type(rdm_t), intent(in) :: rdm_data(:)
@@ -1132,8 +1132,8 @@ contains
 
                 ! Renormalise the psip populations to correct for the importance
                 ! sampling procedure used.
-                unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*dmqmc_accumulated_probs_old(excit_level)
-                unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2,i)*dmqmc_accumulated_probs_old(excit_level)
+                unweighted_pop_1 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+1,i)*accumulated_probs_old(excit_level)
+                unweighted_pop_2 = rdm_lists(irdm)%sdata(rdm_lists(irdm)%bit_str_len+2,i)*accumulated_probs_old(excit_level)
 
                 ! As we only hold RDM elements above the diagonal, off-diagonal
                 ! elements must be counted twice.
