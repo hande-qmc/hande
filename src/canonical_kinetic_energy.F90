@@ -26,6 +26,7 @@ contains
         use calc, only: ms_in, seed
         use fciqmc_data, only: init_beta, D0_population
         use utils, only: rng_init_info
+        use hamiltonian_ueg, only: sum_sp_eigenvalues
 
         type(sys_t), intent(inout) :: sys
 
@@ -63,7 +64,7 @@ contains
                                                                       0, occ_list(sys%nalpha+1:), gen)
                 if (.not. gen) cycle
                 iaccept = iaccept + 1
-                ke_proc = ke_proc + calc_energy(sys, occ_list)
+                ke_proc = ke_proc + sum_sp_eigenvalues(sys, occ_list)
             end do
 
 #ifdef PARALLEL
@@ -77,24 +78,6 @@ contains
         if (parent) write(6, '()')
 
     end subroutine estimate_kinetic_energy
-
-    function calc_energy(sys, occ_list) result(ke)
-
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: occ_list(sys%nel)
-
-        integer :: iorb
-        real(p) :: ke
-
-        ke = 0.0_p
-
-        do iorb = 1, sys%nel
-            ke = ke + sys%basis%basis_fns(occ_list(iorb))%sp_eigv
-        end do
-
-    end function calc_energy
 
     subroutine generate_allowed_orbital_list(sys, rng, porb, nselect, spin_factor, occ_list, gen)
 
