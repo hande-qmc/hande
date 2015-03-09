@@ -550,7 +550,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, rep_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, rep_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -558,19 +558,22 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         ! In (optional):
         ! Out (Optional):
         !    rep_comm: nb_rep_t object containg report loop information.
 
+        use calc, only: non_blocking_comm, nb_rep_t
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
+        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
-        use calc, only: non_blocking_comm, nb_rep_t
-        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(nb_rep_t), optional, intent(inout) :: rep_comm
         integer, optional, intent(in) :: spawn_elsewhere
 
@@ -610,8 +613,8 @@ contains
             ! the send here.
             ! For simplicity, hook into the normal estimator communications, which normalises
             ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
-            D0_population = D0_population*ncycles
-            proj_energy = proj_energy*ncycles
+            D0_population = D0_population*qmc_in%ncycles
+            proj_energy = proj_energy*qmc_in%ncycles
             call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
@@ -630,7 +633,7 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            call write_fciqmc_report(0, ntot_particles, 0.0, .true.)
+            call write_fciqmc_report(qmc_in, 0, ntot_particles, 0.0, .true.)
         end if
 
     end subroutine initial_fciqmc_status
@@ -844,15 +847,15 @@ contains
         ! curr_time - report_time is thus the time taken by this report loop.
         if (parent) then
             if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-            call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
+            call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false.)
         end if
 
         ! Write restart file if required.
         if (dump_restart_file_shift .and. any(vary_shift)) then
             dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+ncycles*ireport, ntot_particles)
+            call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+qmc_in%ncycles*ireport, ntot_particles)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, ntot_particles)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, ntot_particles)
         end if
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time

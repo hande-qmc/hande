@@ -111,9 +111,9 @@ contains
 
         if (non_blocking_comm) then
             call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart)
-            call initial_fciqmc_status(sys, par_info%report_comm, send_counts(iproc)/received_list%element_len)
+            call initial_fciqmc_status(sys, qmc_in, par_info%report_comm, send_counts(iproc)/received_list%element_len)
         else
-            call initial_fciqmc_status(sys)
+            call initial_fciqmc_status(sys, qmc_in)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -123,9 +123,9 @@ contains
             ! Zero report cycle quantities.
             call init_report_loop(bloom_stats)
 
-            do icycle = 1, ncycles
+            do icycle = 1, qmc_in%ncycles
 
-                iter = mc_cycles_done + (ireport-1)*ncycles + icycle
+                iter = mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter) then
@@ -260,9 +260,9 @@ contains
         end if
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + ncycles*ireport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*nreport
         end if
 
         if (dump_restart_file) then

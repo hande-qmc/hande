@@ -92,7 +92,7 @@ contains
         t_barrier = qmc_in%tau ! or we could just not bother with the t_barrier var...
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys)
+        call initial_fciqmc_status(sys, qmc_in)
 
         ! time the report loop
         call cpu_time(t1)
@@ -251,9 +251,9 @@ contains
         call load_balancing_report(qmc_spawn%mpi_time)
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + ncycles*ireport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*nreport
         end if
 
         if (dump_restart_file) then

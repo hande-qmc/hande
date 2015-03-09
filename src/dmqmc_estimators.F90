@@ -21,7 +21,7 @@ end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(nspawn_events, max_num_excits)
+    subroutine dmqmc_estimate_comms(nspawn_events, max_num_excits, ncycles)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -33,12 +33,13 @@ contains
         !    nspawn_events: The total number of spawning events to this process.
         !    max_num_excits: The maximum excitation level for the system being
         !        studied.
+        !    ncycles: the number of monte carlo cycles.
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: sampling_size, num_dmqmc_operators, calc_inst_rdm, nrdms
         use parallel
 
-        integer, intent(in) :: nspawn_events, max_num_excits
+        integer, intent(in) :: nspawn_events, max_num_excits, ncycles
 
         real(dp), allocatable :: rep_loop_loc(:)
         real(dp), allocatable :: rep_loop_sum(:)
@@ -87,7 +88,7 @@ contains
 #endif
 
         ! Move the communicated quantites to the corresponding variables.
-        call communicated_dmqmc_estimators(rep_loop_sum, min_ind, max_ind)
+        call communicated_dmqmc_estimators(rep_loop_sum, min_ind, max_ind, ncycles)
 
         ! Clean up.
         deallocate(rep_loop_loc, stat=ierr)
@@ -144,7 +145,7 @@ contains
 
     end subroutine local_dmqmc_estimators
 
-    subroutine communicated_dmqmc_estimators(rep_loop_sum, min_ind, max_ind)
+    subroutine communicated_dmqmc_estimators(rep_loop_sum, min_ind, max_ind, ncycles)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -157,16 +158,17 @@ contains
         !        quantities in rep_loop_sum.
         !    max_ind: Array holding the maximum indices of the various
         !        quantities in rep_loop_sum.
+        !    ncycles: number of monte carlo cycles.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: ncycles, rspawn, tot_nocc_states, tot_nspawn_events, nrdms
+        use fciqmc_data, only: rspawn, tot_nocc_states, tot_nspawn_events, nrdms
         use fciqmc_data, only: tot_nparticles, trace, numerators, excit_dist
         use fciqmc_data, only: rdm_traces, renyi_2, calc_excit_dist, calc_inst_rdm
         use fciqmc_data, only: sampling_size
         use parallel, only: nprocs
 
         real(dp), intent(in) :: rep_loop_sum(:)
-        integer, intent(in) :: min_ind(:), max_ind(:)
+        integer, intent(in) :: min_ind(:), max_ind(:), ncycles
 
         rspawn = rep_loop_sum(rspawn_ind)
         tot_nocc_states = rep_loop_sum(nocc_states_ind)
@@ -245,7 +247,7 @@ contains
         !        particles in the simulation currently.
 
         use energy_evaluation, only: update_shift
-        use fciqmc_data, only: shift, ncycles, target_particles, vary_shift
+        use fciqmc_data, only: shift, target_particles, vary_shift
         use fciqmc_data, only: nreport, sampling_size
         use qmc_data, only: qmc_in_t
 
@@ -258,7 +260,7 @@ contains
         do ireplica = 1, sampling_size
             if (vary_shift(ireplica)) then
                 call update_shift(qmc_in, shift(ireplica), loc_tot_nparticles_old(ireplica), &
-                    loc_tot_nparticles(ireplica), ncycles)
+                    loc_tot_nparticles(ireplica), qmc_in%ncycles)
             end if
             if (loc_tot_nparticles(ireplica) > target_particles .and. (.not. vary_shift(ireplica))) &
                 vary_shift(ireplica) = .true.

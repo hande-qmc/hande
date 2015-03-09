@@ -206,7 +206,7 @@ contains
         !    rep_loop_loc: array containing local quantities required for energy
         !       evaluation.
 
-        use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
+        use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn, &
                                proj_energy, D0_population, tot_walkers
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
         use bloom_handler, only: bloom_stats_t
@@ -272,7 +272,7 @@ contains
         ! Out (optional):
         !     update_tau: if true, tau should be automatically rescaled.
 
-        use fciqmc_data, only: sampling_size, target_particles, ncycles, rspawn,               &
+        use fciqmc_data, only: sampling_size, target_particles, rspawn,                        &
                                proj_energy, shift, vary_shift, vary_shift_from,                &
                                vary_shift_from_proje, D0_population, nparticles_proc, par_info,&
                                tot_nocc_states, tot_nspawn_events
@@ -330,10 +330,10 @@ contains
         end associate
 
         if (vary_shift(1)) then
-            call update_shift(qmc_in, shift(1), ntot_particles_old(1), ntot_particles(1), ncycles)
+            call update_shift(qmc_in, shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
                 call update_hf_shift(qmc_in, ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
-                                     new_hf_signed_pop, ncycles)
+                                     new_hf_signed_pop, qmc_in%ncycles)
             end if
         end if
         ntot_particles_old = ntot_particles
@@ -351,14 +351,14 @@ contains
         end if
 
         ! average energy quantities over report loop.
-        proj_energy = proj_energy/ncycles
-        D0_population = D0_population/ncycles
+        proj_energy = proj_energy/qmc_in%ncycles
+        D0_population = D0_population/qmc_in%ncycles
         ! Similarly for the HFS estimator
-        D0_hf_population = D0_hf_population/ncycles
-        proj_hf_O_hpsip = proj_hf_O_hpsip/ncycles
-        proj_hf_H_hfpsip = proj_hf_H_hfpsip/ncycles
+        D0_hf_population = D0_hf_population/qmc_in%ncycles
+        proj_hf_O_hpsip = proj_hf_O_hpsip/qmc_in%ncycles
+        proj_hf_H_hfpsip = proj_hf_H_hfpsip/qmc_in%ncycles
         ! average spawning rate over report loop and processor.
-        rspawn = rspawn/(ncycles*nprocs)
+        rspawn = rspawn/(qmc_in%ncycles*nprocs)
 
     end subroutine communicated_energy_estimators
 

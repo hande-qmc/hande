@@ -252,7 +252,7 @@ contains
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
-        use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
+        use fciqmc_data, only: sampling_size, nreport, walker_dets, walker_population,               &
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
                                write_fciqmc_report_header, nparticles, ccmc_move_freq, real_factor,  &
@@ -362,7 +362,7 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys)
+        call initial_fciqmc_status(sys, qmc_in)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -378,9 +378,9 @@ contains
 
             call init_report_loop(bloom_stats)
 
-            do icycle = 1, ncycles
+            do icycle = 1, qmc_in%ncycles
 
-                iter = mc_cycles_done + (ireport-1)*ncycles + icycle
+                iter = mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                 call assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
                                                qmc_spawn%move_freq, nprocs, D0_proc, slot)
@@ -668,9 +668,9 @@ contains
         call load_balancing_report(qmc_spawn%mpi_time)
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + ncycles*ireport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*nreport
         end if
 
         if (dump_restart_file) then

@@ -13,8 +13,6 @@ implicit none
 
 !--- Input data: FCIQMC ---
 
-! number of monte carlo cycles/report loop
-integer :: ncycles
 ! number of report cycles
 ! the shift is updated and the calculation information printed out
 ! at the end of each report cycle.
@@ -687,10 +685,12 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(ireport, ntot_particles, elapsed_time, comment)
+    subroutine write_fciqmc_report(qmc_in, ireport, ntot_particles, elapsed_time, comment)
 
         ! Write the report line at the end of a report loop.
+
         ! In:
+        !    qmc_in: input options relating to QMC methods.
         !    ireport: index of the report loop.
         !    ntot_particles: total number of particles in main walker list.
         !    elapsed_time: time taken for the report loop.
@@ -700,7 +700,9 @@ contains
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, non_blocking_comm
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
+        use qmc_data, only: qmc_in_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: ireport
         real(p), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
@@ -710,9 +712,9 @@ contains
         ! For non-blocking communications we print out the nth report loop
         ! after the (n+1)st iteration. Adjust mc_cycles accordingly
         if (.not. non_blocking_comm) then
-            mc_cycles = ireport*ncycles
+            mc_cycles = ireport*qmc_in%ncycles
         else
-            mc_cycles = (ireport-1)*ncycles
+            mc_cycles = (ireport-1)*qmc_in%ncycles
         end if
 
         if (comment) then
@@ -726,7 +728,7 @@ contains
         ! DMQMC output.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
-                (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
+                (mc_cycles_done+mc_cycles-qmc_in%ncycles), shift(1), trace(1)
             ! The trace on the second replica.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
                 write(6, '(3X,es17.10)',advance = 'no') trace(2)
@@ -797,7 +799,7 @@ contains
                                              proj_energy, D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') tot_nocc_states, tot_nspawn_events, rspawn, elapsed_time/ncycles
+        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') tot_nocc_states, tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
 
     end subroutine write_fciqmc_report
 

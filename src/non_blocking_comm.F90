@@ -162,7 +162,7 @@ contains
         ntot_particles_save = ntot_particles
         shift_save = shift
         call update_energy_estimators_recv(qmc_in, request_rep, ntot_particles)
-        if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
+        if (parent) call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false.)
         ! The call to update_energy_estimators updates the shift and ntot_particles.
         ! When restarting a calculation we actually need the old (before the call)
         ! values of these quantites to be written to the restart file, so reset

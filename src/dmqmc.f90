@@ -102,11 +102,11 @@ contains
                 call init_report_loop(bloom_stats)
                 tot_nparticles_old = tot_nparticles
 
-                do icycle = 1, ncycles
+                do icycle = 1, qmc_in%ncycles
 
                     call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath)
 
-                    iteration = (ireport-1)*ncycles + icycle
+                    iteration = (ireport-1)*qmc_in%ncycles + icycle
 
                     do idet = 1, tot_walkers ! loop over walkers/dets
 
@@ -218,7 +218,7 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(nspawn_events, sys%max_number_excitations)
+                call dmqmc_estimate_comms(nspawn_events, sys%max_number_excitations, qmc_in%ncycles)
 
                 call update_shift_dmqmc(qmc_in, tot_nparticles, tot_nparticles_old, ireport)
 
@@ -247,9 +247,9 @@ contains
         call load_balancing_report(qmc_spawn%mpi_time)
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + ncycles*ireport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*nreport
         end if
 
         if (dump_restart_file) then

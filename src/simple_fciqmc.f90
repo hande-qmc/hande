@@ -216,7 +216,7 @@ contains
             rspawn = 0.0_p
             D0_population = 0.0_p
 
-            do icycle = 1, ncycles
+            do icycle = 1, qmc_in%ncycles
 
                 ! Zero spawning arrays.
                 qmc_spawn%sdata = 0_int_s
@@ -272,7 +272,7 @@ contains
             ! Update the shift
             nparticles = real(sum(abs(walker_population(1,:))),p)
             if (vary_shift(1)) then
-                call update_shift(qmc_in, shift(1), nparticles_old, nparticles, ncycles)
+                call update_shift(qmc_in, shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
             nparticles_old = nparticles
             if (nparticles > target_particles .and. .not.vary_shift(1)) then
@@ -280,18 +280,18 @@ contains
             end if
 
             ! Average these quantities over the report cycle.
-            proj_energy = proj_energy/ncycles
-            D0_population = D0_population/ncycles
-            rspawn = rspawn/ncycles
+            proj_energy = proj_energy/qmc_in%ncycles
+            D0_population = D0_population/qmc_in%ncycles
+            rspawn = rspawn/qmc_in%ncycles
 
             call cpu_time(t2)
 
             ! Output stats
-            call write_fciqmc_report(ireport, (/nparticles/), t2-t1, .false.)
+            call write_fciqmc_report(qmc_in, ireport, (/nparticles/), t2-t1, .false.)
 
             ! Write restart file if required.
             if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, (/nparticles_old/))
+                call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, (/nparticles_old/))
 
             t1 = t2
 
@@ -300,7 +300,7 @@ contains
         if (parent) write (6,'()')
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*nreport, (/nparticles_old/))
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*nreport, (/nparticles_old/))
             if (parent) write (6,'()')
         end if
 

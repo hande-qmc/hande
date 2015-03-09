@@ -269,7 +269,7 @@ contains
         ! When using the propagate_to_beta option the number of iterations in imaginary
         ! time we want to do depends on what value of beta we are seeking. It's
         ! annoying to have to modify this in the input file, so just do it here.
-        if (propagate_to_beta) nreport = int(ceiling(init_beta/(ncycles*qmc_in%tau)))
+        if (propagate_to_beta) nreport = int(ceiling(init_beta/(qmc_in%ncycles*qmc_in%tau)))
 
         ! --- Initial walker distributions ---
         ! Note occ_list could be set and allocated in the input.

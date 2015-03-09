@@ -365,7 +365,7 @@ contains
 
             ! Calculation options: fciqmc.
             case('MC_CYCLES')
-                call readi(ncycles)
+                call readi(qmc_in%ncycles)
             case('NREPORTS')
                 call readi(nreport)
                 if (nreport < 0) nreport = huge(nreport)
@@ -574,8 +574,8 @@ contains
 
         ! In/Out:
         !    sys: system object, as set in read_input (invalid settings are overridden).
-        ! In:
         !    qmc_in: Input options for QMC calculations.
+        ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use const
@@ -583,7 +583,7 @@ contains
         use system
 
         type(sys_t), intent(inout) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: ivec, jvec
@@ -713,7 +713,7 @@ contains
                 call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
             if (par_info%load%max_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
         end if
-        if (doing_calc(ct_fciqmc_calc)) ncycles = 1
+        if (doing_calc(ct_fciqmc_calc)) qmc_in%ncycles = 1
 
         if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. replica_tricks)) call stop_all(this,&
                     'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
@@ -866,7 +866,7 @@ contains
         call mpi_bcast(print_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(analyse_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)

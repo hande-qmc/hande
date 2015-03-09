@@ -87,7 +87,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys)
+        call initial_fciqmc_status(sys, qmc_in)
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -102,7 +102,7 @@ contains
             D0_hf_population = 0.0_p
             rspawn = 0.0_p
 
-            do icycle = 1, ncycles
+            do icycle = 1, qmc_in%ncycles
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
@@ -241,11 +241,11 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(ireport, nparticles_old, t2-t1, .false.)
+            if (parent) call write_fciqmc_report(qmc_in, ireport, nparticles_old, t2-t1, .false.)
 
             ! Write restart file if required.
 !            if (mod(ireport,write_restart_file_every_nreports) == 0) &
-!                call dump_restart(mc_cycles_done+ncycles*ireport, nparticles_old)
+!                call dump_restart(mc_cycles_done+qmc_in%ncycles*ireport, nparticles_old)
 
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
@@ -259,9 +259,9 @@ contains
         call load_balancing_report(qmc_spawn%mpi_time)
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + ncycles*ireport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*nreport
         end if
 
         if (dump_restart_file) then
