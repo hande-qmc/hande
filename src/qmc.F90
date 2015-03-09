@@ -644,7 +644,7 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
             spawner_ptr => spawn_lattice_split_gen
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_hub_k_no_renorm
                 gen_excit_ptr%init => gen_excit_init_hub_k_no_renorm
                 gen_excit_ptr%finalise => gen_excit_finalise_hub_k_no_renorm
@@ -670,7 +670,7 @@ contains
                 sc0_ptr => slater_condon0_chung_landau
             end if
 
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_hub_real_no_renorm
             else
                 gen_excit_ptr%full => gen_excit_hub_real
@@ -696,7 +696,7 @@ contains
             end if
 
             ! Set which guiding wavefunction to use, if requested.
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_heisenberg_no_renorm
             else
                     gen_excit_ptr%full => gen_excit_heisenberg
@@ -712,7 +712,7 @@ contains
             update_proj_energy_ptr => update_proj_energy_mol
             sc0_ptr => slater_condon0_mol
 
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             else
@@ -725,7 +725,7 @@ contains
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
 
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
             else
@@ -859,7 +859,7 @@ contains
                     op0_ptr => one_body0_mol
                     update_proj_hfs_ptr => update_proj_hfs_one_body_mol
                     spawner_hfs_ptr => spawner_ptr
-                    if (no_renorm) then
+                    if (qmc_in%no_renorm) then
                         gen_excit_hfs_ptr%full => gen_excit_one_body_mol_no_renorm
                     else
                         gen_excit_hfs_ptr%full => gen_excit_one_body_mol

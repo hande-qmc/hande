@@ -587,7 +587,7 @@ contains
                                 ! When sampling e^-T H e^T, the cluster operators in e^-T
                                 ! and e^T can excite to/from the same orbital, requiring
                                 ! a different spawning routine
-                                call linked_spawner_ccmc(rng(it), sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cluster(it), &
+                                call linked_spawner_ccmc(rng(it), sys, qmc_in, qmc_spawn%cutoff, real_factor, cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
                             else
@@ -2007,7 +2007,7 @@ contains
 
     end function unlinked_commutator
 
-    subroutine linked_spawner_ccmc(rng, sys, tau, spawn_cutoff, real_factor, cluster, gen_excit_ptr, nspawn, connection, &
+    subroutine linked_spawner_ccmc(rng, sys, qmc_in, spawn_cutoff, real_factor, cluster, gen_excit_ptr, nspawn, connection, &
                             nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
@@ -2021,7 +2021,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    tau: timestep being used.
+        !    qmc_in: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -2059,9 +2059,10 @@ contains
         use parallel, only: iproc
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: tau
+        type(qmc_in_t), intent(in) :: qmc_in
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(cluster_t), intent(in) :: cluster
@@ -2158,7 +2159,7 @@ contains
                     ! It's possible to get the same excitation from different partitionings
                     ! of the cluster so they all need to be accounted for in pgen
                     call create_excited_det(sys%basis, rdet%f, connection, new_det)
-                    pgen = pgen + calc_pgen(sys, rdet%f, new_det, connection, rdet)
+                    pgen = pgen + calc_pgen(sys, qmc_in, rdet%f, new_det, connection, rdet)
 
                     ! Sign of the term in the commutator depends on the number of Ts in left_cluster
                     ! also need to account for possible sign change on going from excitor to determinant
@@ -2192,7 +2193,7 @@ contains
             if (excitor_sign < 0) hmatel = -hmatel
 
             ! 4) Attempt to spawn
-            nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+            nspawn = attempt_to_spawn(rng, qmc_in%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
         else
             nspawn = 0
@@ -2294,13 +2295,14 @@ contains
 
     end subroutine partition_cluster
 
-    pure function calc_pgen(sys, f1, f2, connection, parent_det) result(pgen)
+    pure function calc_pgen(sys, qmc_in, f1, f2, connection, parent_det) result(pgen)
 
         ! Calculate the probability of an excitation being selected.
         ! Wrapper round system specific functions.
 
         ! In:
         !    sys: the system being studied
+        !    qmc_in: input options relating to QMC methods.
         !    f1: bit string representation of parent excitor
         !    f2: bit string representation of child excitor
         !    connection: excitation connection between the current excitor
@@ -2312,14 +2314,15 @@ contains
 
         use system
         use excitations, only: excit_t
-        use fciqmc_data, only: no_renorm
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm, calc_pgen_double_mol_no_renorm, &
                                  calc_pgen_single_mol, calc_pgen_double_mol
         use point_group_symmetry, only: gamma_sym, cross_product_pg_basis, pg_sym_conj
         use determinants, only: det_info_t
         use fciqmc_data, only: pattempt_single, pattempt_double
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         type(excit_t), intent(in) :: connection
         type(det_info_t), intent(in) :: parent_det
@@ -2329,7 +2332,7 @@ contains
 
         select case(sys%system)
         case(read_in)
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 if (connection%nexcit == 1) then
                     pgen = pattempt_single * calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
                 else

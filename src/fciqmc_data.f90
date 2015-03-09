@@ -26,10 +26,6 @@ integer :: spawned_walker_length
 ! Number of particles before which varyshift mode is turned on.
 real(p) :: target_particles = 10000.0_p
 
-! Don't bother renormalising generation probabilities; instead allow forbidden
-! excitations to be generated and then rejected.
-logical :: no_renorm = .false.
-
 ! probability of attempting single or double excitations...
 ! set to be nonsense value so can easily detect if it's given as an input option
 real(p) :: pattempt_single = -1, pattempt_double = -1

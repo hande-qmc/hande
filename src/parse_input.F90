@@ -435,7 +435,7 @@ contains
                     call readi(hs_occ_list0(i))
                 end do
             case('NO_RENORM')
-                no_renorm = .true.
+                qmc_in%no_renorm = .true.
             case('SELECT_REFERENCE_DET')
                 select_ref_det_every_nreports = 20
                 if (item /= nitems) call readi(select_ref_det_every_nreports)
@@ -984,7 +984,7 @@ contains
         call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
