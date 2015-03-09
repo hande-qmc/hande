@@ -148,8 +148,8 @@ contains
                     ! annihilation routine in the appropriate create_spawned_particle_*
                     ! routine, so we must set cdet%initiator_flag
                     ! appropriately...
-                    call set_parent_flag_ptr(real_population(1), cdet%f, 1, h_initiator_flag)
-                    call set_parent_flag_ptr(real_population(2), cdet%f, 1, hf_initiator_flag)
+                    call set_parent_flag_ptr(real_population(1), qmc_in%initiator_pop, cdet%f, 1, h_initiator_flag)
+                    call set_parent_flag_ptr(real_population(2), qmc_in%initiator_pop, cdet%f, 1, hf_initiator_flag)
                     cdet%initiator_flag = h_initiator_flag
 
                     do iparticle = 1, abs(walker_population(1,idet))

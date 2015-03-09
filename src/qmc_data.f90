@@ -54,7 +54,7 @@ type qmc_in_t
     ! Using the initiator approximation?
     logical :: initiator_approx = .false.
     ! Population above which a determinant is an initiator.
-    real(p) :: initiator_population = 3.0_p
+    real(p) :: initiator_pop = 3.0_p
 
     ! number of monte carlo cycles/report loop
     integer :: ncycles

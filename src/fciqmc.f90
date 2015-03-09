@@ -167,7 +167,7 @@ contains
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
-                    call set_parent_flag_ptr(real_population, cdet%f, determ%flags(idet), cdet%initiator_flag)
+                    call set_parent_flag_ptr(real_population, qmc_in%initiator_pop, cdet%f, determ%flags(idet), cdet%initiator_flag)
 
                     nattempts_current_det = decide_nattempts(rng, real_population)
 
@@ -339,7 +339,7 @@ contains
 
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
-            call set_parent_flag_ptr(real_pop, cdet%f, 1, cdet%initiator_flag)
+            call set_parent_flag_ptr(real_pop, qmc_in%initiator_pop, cdet%f, 1, cdet%initiator_flag)
 
             nattempts_current_det = decide_nattempts(rng, real_pop)
 

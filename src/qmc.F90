@@ -513,7 +513,7 @@ contains
             if (qmc_in%initiator_approx) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
                 write (6,'(1X,a48,1X,f3.1,/)') &
-                    'Population for a determinant to be an initiator:', initiator_population
+                    'Population for a determinant to be an initiator:', qmc_in%initiator_pop
             end if
             write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
             write (6,'(1X,a69)') 'Note that all particle populations are averaged over the report loop.'

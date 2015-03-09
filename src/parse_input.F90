@@ -494,7 +494,7 @@ contains
 
             ! Calculation options: initiator-fciqmc.
             case('INITIATOR_POPULATION')
-                call readf(initiator_population)
+                call readf(qmc_in%initiator_pop)
 
             ! Calculation options: operators sampled using Hellmann--Feynman.
             case('OPERATOR')
@@ -991,7 +991,7 @@ contains
         call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%initiator_pop, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%initiator_approx, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)

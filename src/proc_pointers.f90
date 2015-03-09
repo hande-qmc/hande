@@ -93,10 +93,10 @@ abstract interface
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
     end function i_sc0
-    subroutine i_set_parent_flag(pop, f, determ_flag, flag)
+    subroutine i_set_parent_flag(pop, init_pop, f, determ_flag, flag)
         import :: i0, p
         implicit none
-        real(p), intent(in) :: pop
+        real(p), intent(in) :: pop, init_pop
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: determ_flag
         integer, intent(out) :: flag

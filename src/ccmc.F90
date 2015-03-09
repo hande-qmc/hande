@@ -526,8 +526,8 @@ contains
                     ! than attempt to parallelise over three separate loops.
                     if (iattempt <= nstochastic_clusters) then
                         call select_cluster(rng(it), sys, real_factor, nstochastic_clusters, D0_normalisation, &
-                                            D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, &
-                                            max_cluster_size, cdet(it), cluster(it))
+                                            qmc_in%initiator_pop, D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, &
+                                            min_cluster_size, max_cluster_size, cdet(it), cluster(it))
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
@@ -539,13 +539,14 @@ contains
                             ! needs to be converted into a det_info_t object for the excitation
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
-                            call create_null_cluster(sys, nprocs*real(nD0_select,p), D0_normalisation, cdet(it), cluster(it))
+                            call create_null_cluster(sys, nprocs*real(nD0_select,p), D0_normalisation, qmc_in%initiator_pop, &
+                                                     cdet(it), cluster(it))
                         end if
                     else
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(sys, real_factor, iattempt-nstochastic_clusters-nD0_select, &
-                                                          iexcip_pos, nsingle_excitors, D0_normalisation, D0_pos, &
-                                                          cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
+                                                          iexcip_pos, nsingle_excitors, D0_normalisation, qmc_in%initiator_pop, &
+                                                          D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
                     end if
 
                     if (cluster(it)%excitation_level <= truncation_level+2 .or. &
@@ -766,7 +767,7 @@ contains
 
     end subroutine find_D0
 
-    subroutine select_cluster(rng, sys, real_factor, nattempts, normalisation, D0_pos, cumulative_excip_pop, &
+    subroutine select_cluster(rng, sys, real_factor, nattempts, normalisation, initiator_pop, D0_pos, cumulative_excip_pop, &
                               tot_excip_pop, min_size, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
@@ -783,6 +784,7 @@ contains
         !       to enable non-integer populations.
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
+        !    initiator_pop: the population above which a determinant is an initiator.
         !    D0_pos: position in the excip list of the reference.  Must be negative
         !       if the reference is not on the processor.
         !    cumulative_excip_population: running cumulative excip population on
@@ -816,7 +818,7 @@ contains
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data, initiator_population
+        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
         use search, only: binary_search
@@ -828,7 +830,7 @@ contains
         integer(int_64), intent(in) :: nattempts
         integer(int_p), intent(in) :: real_factor
         integer, intent(in) :: D0_pos
-        real(p), intent(in) :: normalisation
+        real(p), intent(in) :: normalisation, initiator_pop
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         integer :: min_size, max_size
         type(dSFMT_t), intent(inout) :: rng
@@ -914,7 +916,7 @@ contains
 
         select case(cluster%nexcitors)
         case(0)
-            call create_null_cluster(sys, cluster%pselect, normalisation, cdet, cluster)
+            call create_null_cluster(sys, cluster%pselect, normalisation, initiator_pop, cdet, cluster)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -973,7 +975,7 @@ contains
                 end if
                 ! If the excitor's population is below the initiator threshold, we remove the
                 ! initiator status for the cluster
-                if (abs(excitor_pop) <= initiator_population) cdet%initiator_flag = 1
+                if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = nint(pop)/tot_pop.
                 cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
                 cluster%excitors(i)%f => walker_dets(:,pos)
@@ -1019,7 +1021,7 @@ contains
 
     end subroutine select_cluster
 
-    subroutine create_null_cluster(sys, prob, D0_normalisation, cdet, cluster)
+    subroutine create_null_cluster(sys, prob, D0_normalisation, initiator_pop, cdet, cluster)
 
         ! Create a cluster with no excitors in it, and set it to have
         ! probability of generation prob.
@@ -1029,6 +1031,7 @@ contains
         !    prob: The probability we set in it of having been generated
         !    D0_normalisation:  The number of excips at the reference (which
         !        will become the amplitude of this cluster)
+        !    initiator_pop: the population above which a determinant is an initiator.
 
         ! In/Out:
         !    cdet: information about the cluster of excitors applied to the
@@ -1046,12 +1049,11 @@ contains
         use system, only: sys_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-        use fciqmc_data, only: f0, initiator_population
+        use fciqmc_data, only: f0
         use proc_pointers, only: decoder_ptr
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: prob
-        real(p), intent(in) :: D0_normalisation
+        real(p), intent(in) :: prob, D0_normalisation, initiator_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
@@ -1073,7 +1075,7 @@ contains
         cluster%excitation_level = 0
         cluster%amplitude = D0_normalisation
         cluster%cluster_to_det_sign = 1
-        if (cluster%amplitude <= initiator_population) then
+        if (cluster%amplitude <= initiator_pop) then
              ! Something has gone seriously wrong and the CC
              ! approximation is (most likely) not suitably for this system.
              ! Let the user be an idiot if they want to be...
@@ -1084,8 +1086,8 @@ contains
 
     end subroutine create_null_cluster
 
-    subroutine select_cluster_non_composite(sys, real_factor, iexcip, iexcip_pos, nattempts, normalisation, D0_pos, &
-                                            cumulative_excip_pop, tot_excip_pop, cdet, cluster)
+    subroutine select_cluster_non_composite(sys, real_factor, iexcip, iexcip_pos, nattempts, normalisation, initiator_pop, &
+                                            D0_pos, cumulative_excip_pop, tot_excip_pop, cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
@@ -1099,6 +1101,7 @@ contains
         !        of excitors is generated in the current timestep.
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
+        !    initiator_pop: the population above which a determinant is an initiator.
         !    D0_pos: position in the excip list of the reference.
         !    cumulative_excip_population: running cumulative excip population on
         !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_population(1:i)).
@@ -1133,7 +1136,7 @@ contains
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data, initiator_population
+        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data
         use search, only: binary_search
         use proc_pointers, only: decoder_ptr
 
@@ -1142,7 +1145,7 @@ contains
         integer(int_64), intent(in) :: iexcip, nattempts
         integer, intent(inout) :: iexcip_pos
         integer, intent(in) :: D0_pos
-        real(p), intent(in) :: normalisation
+        real(p), intent(in) :: normalisation, initiator_pop
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
@@ -1214,7 +1217,7 @@ contains
             cdet%data => walker_data(:,iexcip_pos)
             cluster%excitors(1)%f => walker_dets(:,iexcip_pos)
             excitor_pop = real(walker_population(1,iexcip_pos),p)/real_factor
-            if (abs(excitor_pop) <= initiator_population) cdet%initiator_flag = 1
+            if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
             ! pclust = |population|/total_population, as just a single excitor in the cluster..
             cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
             cluster%excitation_level = get_excitation_level(f0, cdet%f)

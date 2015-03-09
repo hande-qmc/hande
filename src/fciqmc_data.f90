@@ -43,9 +43,6 @@ real(p) :: pattempt_single = -1, pattempt_double = -1
 
 !--- Input data: initiator-FCIQMC ---
 
-! Population above which a determinant is an initiator.
-real(p) :: initiator_population = 3.0_p
-
 ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
 ! The default value corresponds to off.
 real(p) :: cluster_multispawn_threshold = huge(1.0_p)
