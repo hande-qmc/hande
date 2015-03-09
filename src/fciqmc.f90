@@ -31,8 +31,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
-        use calc, only: doing_calc, seed, initiator_approximation, non_blocking_comm, &
-                        doing_load_balancing, use_mpi_barriers
+        use calc, only: doing_calc, seed, non_blocking_comm, doing_load_balancing, use_mpi_barriers
         use death, only: stochastic_death
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
@@ -208,14 +207,14 @@ contains
                 if (non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
                     call evolve_spawned_walkers(sys, qmc_in, received_list, cdet, rng, ndeath)
-                    call direct_annihilation_received_list(sys, rng, initiator_approximation)
+                    call direct_annihilation_received_list(sys, rng, qmc_in%initiator_approx)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
                     if (par_info%load%needed) then
                         call redistribute_particles(walker_dets, real_factor,  walker_population, tot_walkers, &
                                                     nparticles, qmc_spawn)
                         par_info%load%needed = .false.
                     end if
-                    call direct_annihilation_spawned_list(sys, rng, initiator_approximation, send_counts, req_data_s, &
+                    call direct_annihilation_spawned_list(sys, rng, qmc_in%initiator_approx, send_counts, req_data_s, &
                                                           par_info%report_comm%nb_spawn, nspawn_events)
                     call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
                 else
@@ -226,14 +225,14 @@ contains
                             call determ_projection_separate_annihil(determ, qmc_in%tau)
                             call deterministic_annihilation(sys, rng, determ)
                         else
-                            call determ_projection(rng, qmc_spawn, determ, qmc_in%tau)
+                            call determ_projection(rng, qmc_in, qmc_spawn, determ)
                         end if
                     end if
 
                     if (semi_stochastic) then
-                        call direct_annihilation(sys, rng, initiator_approximation, nspawn_events, determ)
+                        call direct_annihilation(sys, rng, qmc_in%initiator_approx, nspawn_events, determ)
                     else
-                        call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+                        call direct_annihilation(sys, rng, qmc_in%initiator_approx, nspawn_events)
                     end if
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
                 end if
@@ -249,8 +248,8 @@ contains
 
         end do
 
-        if (non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, initiator_approximation, ireport, received_list, req_data_s, &
-                                                          par_info%report_comm%request, t1, nparticles_old, shift(1))
+        if (non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, qmc_in%initiator_approx, ireport, received_list, &
+                                                          req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1))
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)

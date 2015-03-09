@@ -33,7 +33,7 @@ contains
         use qmc_common
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
-        use calc, only: seed, initiator_approximation, propagate_to_beta
+        use calc, only: seed, propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t
@@ -91,7 +91,7 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, init_tot_nparticles, tot_nparticles)
+            call create_initial_density_matrix(rng, sys, init_tot_nparticles, tot_nparticles, qmc_in%initiator_approx)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
@@ -205,7 +205,7 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+                    call direct_annihilation(sys, rng, qmc_in%initiator_approx, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
 

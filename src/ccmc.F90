@@ -248,8 +248,7 @@ contains
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
-        use calc, only: seed, truncation_level, truncate_space, initiator_approximation, &
-                              linked_ccmc, ccmc_full_nc
+        use calc, only: seed, truncation_level, truncate_space, linked_ccmc, ccmc_full_nc
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -647,7 +646,7 @@ contains
                 if (nprocs > 1) call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                              tot_walkers, nparticles, qmc_spawn)
 
-                call direct_annihilation(sys, rng(0), initiator_approximation, nspawn_events)
+                call direct_annihilation(sys, rng(0), qmc_in%initiator_approx, nspawn_events)
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 

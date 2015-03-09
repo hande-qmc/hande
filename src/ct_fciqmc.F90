@@ -22,7 +22,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: bloom_stats_t
-        use calc, only: seed, initiator_approximation
+        use calc, only: seed
         use determinants, only: det_info_t, alloc_det_info_t
         use excitations, only: excit_t, get_excitation
         use qmc_common
@@ -236,7 +236,7 @@ contains
 
             end do
 
-            call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+            call direct_annihilation(sys, rng, qmc_in%initiator_approx, nspawn_events)
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 

@@ -361,7 +361,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot)
+    subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot, initiator_approx)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -375,13 +375,14 @@ contains
         !    sys: system being studied.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
+        !    initiator_approx: Should we use the initiator approximation
+        !        when calling annihilation routines?
         ! Out:
         !    nparticles_tot: The total number of psips in the generated density
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: initiator_approximation, sym_in, propagate_to_beta, &
-                        grand_canonical_initialisation
+        use calc, only: sym_in, propagate_to_beta, grand_canonical_initialisation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
         use fciqmc_data, only: sampling_size, all_spin_sectors, f0, init_beta, &
@@ -397,6 +398,8 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
+        logical, intent(in) :: initiator_approx
+
         real(p) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
         integer(int_64) :: npsips_this_proc, npsips
@@ -475,7 +478,7 @@ contains
         end if
 
 
-        call direct_annihilation(sys, rng, initiator_approximation)
+        call direct_annihilation(sys, rng, initiator_approx)
 
         if (propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -486,7 +489,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                                tot_walkers, nparticles, qmc_spawn)
-            call direct_annihilation(sys, rng, initiator_approximation)
+            call direct_annihilation(sys, rng, initiator_approx)
         end if
 
     end subroutine create_initial_density_matrix

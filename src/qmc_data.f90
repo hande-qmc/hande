@@ -52,7 +52,7 @@ type qmc_in_t
     real(dp) :: target_particles = huge(1.0_dp)
 
     ! Using the initiator approximation?
-    logical :: initiator_approximation = .false.
+    logical :: initiator_approx = .false.
     ! Population above which a determinant is an initiator.
     real(p) :: initiator_population = 3.0_p
 

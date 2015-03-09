@@ -39,7 +39,7 @@ contains
         use parallel
 
         use annihilation, only: direct_annihilation
-        use calc, only: seed, initiator_approximation
+        use calc, only: seed
         use death, only: stochastic_death, stochastic_hf_cloning
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
@@ -227,7 +227,7 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+                call direct_annihilation(sys, rng, qmc_in%initiator_approx, nspawn_events)
 
             end do
 

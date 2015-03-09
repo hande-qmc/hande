@@ -199,7 +199,7 @@ contains
                 calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
                 calc_type = calc_type + fciqmc_calc
-                initiator_approximation = .true.
+                qmc_in%initiator_approx = .true.
             case('CT_FCIQMC')
                 calc_type = calc_type + ct_fciqmc_calc
             case('DMQMC')
@@ -208,7 +208,7 @@ contains
                 calc_type = calc_type + ccmc_calc
             case('ICCMC')
                 calc_type = calc_type + ccmc_calc
-                initiator_approximation = .true.
+                qmc_in%initiator_approx = .true.
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
@@ -992,7 +992,7 @@ contains
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initiator_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%initiator_approx, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(alpha0, 1, mpi_integer, 0, mpi_comm_world, ierr)

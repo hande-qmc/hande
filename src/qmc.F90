@@ -42,7 +42,7 @@ contains
         type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers
-        call init_proc_pointers(sys)
+        call init_proc_pointers(sys, qmc_in)
 
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
@@ -166,7 +166,7 @@ contains
         end if
 
         ! Each spawned_walker occupies spawned_size kind=int_s integers.
-        if (initiator_approximation) then
+        if (qmc_in%initiator_approx) then
             size_spawned_walker = (sys%basis%tensor_label_len+sampling_size+1)*int_s_length/8
         else
             size_spawned_walker = (sys%basis%tensor_label_len+sampling_size)*int_s_length/8
@@ -250,10 +250,10 @@ contains
         ! equal to 1.0, so overwrite the default.
         if (.not. real_amplitudes) spawn_cutoff = 0.0_p
 
-        call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
+        call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
         if (non_blocking_comm) then
-            call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
+            call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                                spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
@@ -510,7 +510,7 @@ contains
                               'Initial population on reference determinant:',D0_population
                 write (6,'(1X,a53,/)') 'Note that the correlation energy is relative to |D0>.'
             end if
-            if (initiator_approximation) then
+            if (qmc_in%initiator_approx) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
                 write (6,'(1X,a48,1X,f3.1,/)') &
                     'Population for a determinant to be an initiator:', initiator_population
@@ -581,18 +581,20 @@ contains
 
     end subroutine init_qmc
 
-    subroutine init_proc_pointers(sys)
+    subroutine init_proc_pointers(sys, qmc_in)
 
         ! Set function pointers for QMC calculations.
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
 
         ! System and calculation data
         use calc
         use hfs_data
         use system
         use parallel, only: parent
+        use qmc_data, only: qmc_in_t
 
         ! Procedures to be pointed to.
         use death, only: stochastic_death
@@ -625,6 +627,7 @@ contains
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
 
         ! 0. In general, use the default spawning routine.
         spawner_ptr => spawn_standard
@@ -741,7 +744,7 @@ contains
         ! 2. Set calculation-specific procedure pointers
 
         ! 2: initiator-approximation
-        if (initiator_approximation) then
+        if (qmc_in%initiator_approx) then
             set_parent_flag_ptr => set_parent_flag
             if (all(ras > 0)) then
                 create_spawned_particle_ptr => create_spawned_particle_initiator_ras

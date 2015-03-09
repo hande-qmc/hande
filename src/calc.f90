@@ -44,9 +44,6 @@ integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
 integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
-! Using the initiator approximation in FCIQMC or CCMC?
-logical :: initiator_approximation = .false.
-
 ! [review] - AJWT: Both these options only refer to CCMC, so should they be in calc?
 ! [review] - JSS: calc is a bit of a dumping ground until the purication/lua-ification
 ! [review] - JSS: hits it.  I'd say it's fine to leave it here for now.
