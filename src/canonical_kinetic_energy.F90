@@ -85,6 +85,7 @@ contains
         ! particle GC orbital occupancy probabilities.
 
         ! In:
+        !    sys: system being studied.
         !    porb: porb(i) gives the probabilty of selecting
         !        the orbital i.
         !    nselect: number of orbitals to select.
@@ -92,7 +93,9 @@ contains
         !        alpha/beta spin orbitals. Set to 1 for alpha spins, 0 for beta spins.
         ! In/Out:
         !    rng: random number generator.
+        ! Out:
         !    occ_list: array containing occupied orbitals.
+        !    gen: true if generation attempt was successful (i.e. nselect orbitals were actually selected).
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
