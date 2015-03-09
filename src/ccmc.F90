@@ -252,7 +252,7 @@ contains
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
-        use fciqmc_data, only: sampling_size, nreport, walker_dets, walker_population,               &
+        use fciqmc_data, only: sampling_size, walker_dets, walker_population,                        &
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
                                write_fciqmc_report_header, nparticles, ccmc_move_freq, real_factor,  &
@@ -374,7 +374,7 @@ contains
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = semi_stoch_in%start_iter
 
-        do ireport = 1, nreport
+        do ireport = 1, qmc_in%nreport
 
             call init_report_loop(bloom_stats)
 
@@ -670,7 +670,7 @@ contains
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
         if (dump_restart_file) then

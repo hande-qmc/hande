@@ -247,8 +247,7 @@ contains
         !        particles in the simulation currently.
 
         use energy_evaluation, only: update_shift
-        use fciqmc_data, only: shift, target_particles, vary_shift
-        use fciqmc_data, only: nreport, sampling_size
+        use fciqmc_data, only: shift, target_particles, vary_shift, sampling_size
         use qmc_data, only: qmc_in_t
 
         type(qmc_in_t), intent(in) :: qmc_in

@@ -13,11 +13,6 @@ implicit none
 
 !--- Input data: FCIQMC ---
 
-! number of report cycles
-! the shift is updated and the calculation information printed out
-! at the end of each report cycle.
-integer :: nreport
-
 ! For DMQMC, beta_loops specifies the number of times
 ! the program will loop over each value of beta in the main loop.
 integer :: beta_loops = 100

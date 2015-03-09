@@ -92,7 +92,7 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
-        do ireport = 1, nreport
+        do ireport = 1, qmc_in%nreport
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
@@ -261,7 +261,7 @@ contains
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
         if (dump_restart_file) then

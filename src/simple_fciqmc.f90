@@ -209,7 +209,7 @@ contains
 
         call cpu_time(t1)
 
-        do ireport = 1, nreport
+        do ireport = 1, qmc_in%nreport
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
@@ -300,7 +300,7 @@ contains
         if (parent) write (6,'()')
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*nreport, (/nparticles_old/))
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, (/nparticles_old/))
             if (parent) write (6,'()')
         end if
 

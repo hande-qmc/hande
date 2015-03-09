@@ -80,7 +80,7 @@ contains
         ! of the initial distribution, which corresponds to beta=0. Hence, in the
         ! output we subtract one from the iteration number, and run for one more
         ! report loop, asimplemented in the line of code below.
-        nreport = nreport+1
+        qmc_in%nreport = qmc_in%nreport+1
 
         if (all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(D0_population, int_64)
@@ -97,7 +97,7 @@ contains
             ! this condition is met.
             vary_shift = tot_nparticles >= target_particles
 
-            do ireport = 1, nreport
+            do ireport = 1, qmc_in%nreport
 
                 call init_report_loop(bloom_stats)
                 tot_nparticles_old = tot_nparticles
@@ -249,7 +249,7 @@ contains
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
         if (dump_restart_file) then
