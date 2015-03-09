@@ -6,6 +6,7 @@ use const
 use parallel, only: parent, block_size
 use errors
 use hilbert_space
+use canonical_kinetic_energy, only: nkinetic_cycles
 use calc
 use lanczos
 use determinants
@@ -208,6 +209,10 @@ contains
             case('ESTIMATE_HILBERT_SPACE')
                 calc_type = calc_type + mc_hilbert_space
                 call readi(nhilbert_cycles)
+            case('ESTIMATE_CANONICAL_KINETIC_ENERGY')
+                calc_type = calc_type + mc_canonical_kinetic_energy
+            case('NUM_KINETIC_CYCLES')
+                call readi(nkinetic_cycles)
 
             case('REPLICA_TRICKS')
                 replica_tricks = .true.
@@ -605,6 +610,8 @@ contains
                         end if
                     end do
                 end do
+                if (doing_calc(mc_canonical_kinetic_energy)) call stop_all(this, 'estimate_canonical_kinetic_energy&
+                                                                           & only implemented for the UEG.')
             end if
 
             if (sys%system == heisenberg) then
@@ -833,6 +840,7 @@ contains
         call mpi_bcast(dmqmc_calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(nkinetic_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(lanczos_string_len, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)

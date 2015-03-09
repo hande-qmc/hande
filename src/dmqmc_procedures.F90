@@ -833,6 +833,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
+        use canonical_kinetic_energy, only: generate_allowed_orbital_list
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: sym
@@ -871,9 +872,9 @@ contains
             occ_list = 0
             ! Select the alpha and beta spin orbitals and discard any
             ! determinant without the correct number of particles.
-            if (sys%nalpha > 0) call generate_allowed_orbital_list(rng, p_single, sys%nalpha, 1, occ_list(:sys%nalpha), gen)
+            if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, 1, occ_list(:sys%nalpha), gen)
             if (.not. gen) cycle
-            if (sys%nbeta > 0) call generate_allowed_orbital_list(rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
+            if (sys%nbeta > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
             if (.not. gen) cycle
             ! Create the determinant.
             if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
@@ -883,59 +884,6 @@ contains
                 ipsip = ipsip + 1
             end if
         end do
-
-        contains
-
-            subroutine generate_allowed_orbital_list(rng, porb, nselect, spin_factor, occ_list, gen)
-
-                ! Generate a list of orbitals according to their single
-                ! particle GC orbital occupancy probabilities.
-
-                ! In:
-                !    porb: porb(i) gives the probabilty of selecting
-                !        the orbital i.
-                !    nselect: number of orbitals to select.
-                !    spin_factor: integer to account for odd/even ordering of
-                !        alpha/beta spin orbitals. Set to 1 for alpha spins, 0 for beta spins.
-                ! In/Out:
-                !    rng: random number generator.
-                !    occ_list: array containing occupied orbitals.
-
-                use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-
-                real(dp), intent(in) :: porb(:)
-                integer, intent(in) :: nselect
-                integer, intent(in) :: spin_factor
-                type(dSFMT_t), intent(inout) :: rng
-                integer, intent(out) :: occ_list(:)
-                logical, intent(out) :: gen
-
-                integer :: iorb, iselect
-                real(dp) :: r
-
-                iselect = 0
-                occ_list = 0
-
-                do iorb = 1, sys%basis%nbasis/2
-                    ! Select a random orbital.
-                    r = get_rand_close_open(rng)
-                    if (porb(iorb) > r) then
-                        iselect = iselect + 1
-                        if (iselect > nselect) then
-                            ! Selected too many.
-                            gen = .false.
-                            exit
-                        end if
-                        occ_list(iselect) = 2*iorb - spin_factor
-                    end if
-                end do
-                if (iselect == nselect) then
-                    gen = .true.
-                else
-                    gen = .false.
-                end if
-
-            end subroutine generate_allowed_orbital_list
 
     end subroutine init_grand_canonical_ensemble
 
