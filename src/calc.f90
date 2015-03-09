@@ -38,9 +38,9 @@ integer, parameter :: hfs_fciqmc_calc = 2**5
 ! Estimate the size of the Hilbert space using Monte Carlo?
 integer, parameter :: mc_hilbert_space = 2**6
 ! Doing Density Matrix Monte Carlo?
-integer, parameter :: dmqmc_calc = 2**7
+integer, parameter :: dmqmc_calc = 2**8
 ! Doing Coupled Cluster Monte Carlo?
-integer, parameter :: ccmc_calc = 2**8
+integer, parameter :: ccmc_calc = 2**9
 
 ! Using the initiator approximation in FCIQMC or CCMC?
 logical :: initiator_approximation = .false.
