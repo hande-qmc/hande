@@ -95,7 +95,7 @@ contains
 
     end subroutine init_non_blocking_comm
 
-    subroutine end_non_blocking_comm(sys, rng, qmc_in, tinitiator, ireport, spawn, request_s, request_rep, report_time, &
+    subroutine end_non_blocking_comm(sys, rng, qmc_in, ireport, spawn, request_s, request_rep, report_time, &
                                      ntot_particles, shift)
 
         ! Subroutine dealing with the last iteration when using non-blocking communications.
@@ -107,7 +107,6 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
-        !    tinitiator: true if the initiator approximation is being used.
         !    ireport: index of current report loop.
         ! In/Out:
         !    rng: random number generator.
@@ -140,7 +139,6 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(dSFMT_t), intent(inout) :: rng
-        logical, intent(in) :: tinitiator
         integer, intent(in) :: ireport
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout) :: request_s(:), request_rep(:)
@@ -157,8 +155,8 @@ contains
         ! Need to receive walkers sent from final iteration and merge into main list.
         call receive_spawned_walkers(spawn, request_s)
         if (.not. dump_restart_file) then
-            call annihilate_wrapper_non_blocking_spawn(spawn, tinitiator)
-            call annihilate_main_list_wrapper(sys, rng, tinitiator, spawn)
+            call annihilate_wrapper_non_blocking_spawn(spawn, qmc_in%initiator_approx)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, spawn)
             ! Receive final send of report loop quantities.
         end if
         ntot_particles_save = ntot_particles

@@ -101,7 +101,7 @@ contains
         do ireport = 1, nreport
 
             call init_report_loop(bloom_stats)
-            call init_mc_cycle(rng, sys, real_factor, nattempts, ndeath)
+            call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
@@ -236,7 +236,7 @@ contains
 
             end do
 
-            call direct_annihilation(sys, rng, qmc_in%initiator_approx, nspawn_events)
+            call direct_annihilation(sys, rng, qmc_in, nspawn_events)
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 

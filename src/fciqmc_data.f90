@@ -64,8 +64,6 @@ real(p) :: cluster_multispawn_threshold = huge(1.0_p)
 ! [todo] - be to hide the details in a class.  (From AJWT.)
 !
 ! [todo] - real_bit_shift and real_factor really should be compile-time constants.
-! True if allowing non-integer values for psip populations.
-logical :: real_amplitudes = .false.
 ! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
 ! encoded as integers by multiplying them by 2**(real_bit_shift).
 integer :: real_bit_shift

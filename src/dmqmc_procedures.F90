@@ -361,7 +361,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot, initiator_approx)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, target_nparticles_tot, nparticles_tot)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -373,10 +373,9 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
-        !    initiator_approx: Should we use the initiator approximation
-        !        when calling annihilation routines?
         ! Out:
         !    nparticles_tot: The total number of psips in the generated density
         !        matrix across all processes, for all replicas.
@@ -393,12 +392,13 @@ contains
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
+        use qmc_data, only: qmc_in_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
-        logical, intent(in) :: initiator_approx
 
         real(p) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
@@ -478,7 +478,7 @@ contains
         end if
 
 
-        call direct_annihilation(sys, rng, initiator_approx)
+        call direct_annihilation(sys, rng, qmc_in)
 
         if (propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -489,7 +489,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                                tot_walkers, nparticles, qmc_spawn)
-            call direct_annihilation(sys, rng, initiator_approx)
+            call direct_annihilation(sys, rng, qmc_in)
         end if
 
     end subroutine create_initial_density_matrix
@@ -1030,7 +1030,7 @@ contains
 
     end subroutine decode_dm_bitstring
 
-    subroutine update_sampling_weights(rng, basis)
+    subroutine update_sampling_weights(rng, basis, qmc_in)
 
         ! This routine updates the values of the weights used in importance
         ! sampling. It also removes or adds psips from the various excitation
@@ -1043,14 +1043,17 @@ contains
 
         use annihilation, only: remove_unoccupied_dets
         use basis_types, only: basis_t
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: get_excitation_level
         use fciqmc_data, only: accumulated_probs, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
         use fciqmc_data, only: nparticles, sampling_size, real_factor
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use qmc_data, only: qmc_in_t 
 
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
+        type(qmc_in_t), intent(in) :: qmc_in
+
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
         real(p) :: new_population_target(sampling_size)
         integer(int_p) :: old_population(sampling_size), new_population(sampling_size)
@@ -1102,7 +1105,7 @@ contains
         ! Call the annihilation routine to update the main walker list, as some
         ! sites will have become unoccupied and so need removing from the
         ! simulation.
-        call remove_unoccupied_dets(rng)
+        call remove_unoccupied_dets(rng, qmc_in%real_amplitudes)
 
     end subroutine update_sampling_weights
 

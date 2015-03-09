@@ -659,7 +659,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, real_factor, nattempts, ndeath, min_attempts, determ)
+    subroutine init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, min_attempts, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -668,6 +668,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied
+        !    qmc_in: input options relating to QMC methods.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         !    min_attempts (optional): if present, set nattempts to be at least this value.
@@ -684,10 +685,12 @@ contains
         use calc, only: non_blocking_comm
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
@@ -723,7 +726,7 @@ contains
 
         if (doing_load_balancing .and. par_info%load%needed) then
             call do_load_balancing(real_factor, par_info)
-            call redistribute_load_balancing_dets(rng, sys, walker_dets, real_factor, determ, walker_population, &
+            call redistribute_load_balancing_dets(rng, sys, qmc_in, walker_dets, real_factor, determ, walker_population, &
                                                   tot_walkers, nparticles, qmc_spawn)
             ! If using non-blocking communications we still need this flag to
             ! be set.
@@ -906,7 +909,7 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(rng, sys, walker_dets, real_factor, &
+    subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, walker_dets, real_factor, &
                                                 determ, walker_populations, tot_walkers, &
                                                 nparticles, spawn)
 
@@ -921,6 +924,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    walker_dets: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
@@ -939,11 +943,13 @@ contains
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         integer(i0), intent(in) :: walker_dets(:,:)
         integer(int_p), intent(in) :: real_factor
         type(semi_stoch_t), optional, intent(inout) :: determ
@@ -956,7 +962,7 @@ contains
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
-        call direct_annihilation(sys, rng, tinitiator = .false.)
+        call direct_annihilation(sys, rng, qmc_in)
         spawn%head = spawn%head_start
 
         if (present(determ)) call redistribute_semi_stoch_t(sys, spawn, determ)

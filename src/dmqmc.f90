@@ -91,7 +91,7 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, init_tot_nparticles, tot_nparticles, qmc_in%initiator_approx)
+            call create_initial_density_matrix(rng, sys, qmc_in, init_tot_nparticles, tot_nparticles)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
@@ -104,7 +104,7 @@ contains
 
                 do icycle = 1, ncycles
 
-                    call init_mc_cycle(rng, sys, real_factor, nattempts, ndeath)
+                    call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath)
 
                     iteration = (ireport-1)*ncycles + icycle
 
@@ -205,7 +205,7 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, qmc_in%initiator_approx, nspawn_events)
+                    call direct_annihilation(sys, rng, qmc_in, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
@@ -213,7 +213,7 @@ contains
                     ! the trial function, call a routine to update these weights
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
-                    if (vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng, sys%basis)
+                    if (vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng, sys%basis, qmc_in)
 
                 end do
 

@@ -229,7 +229,7 @@ contains
 
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers
         ! are being used.
-        if (real_amplitudes) then
+        if (qmc_in%real_amplitudes) then
             if (bit_size(0_int_p) == 64) then
                 ! Allow a maximum population of 2^32, and a minimum fractional
                 ! part of 2^-31.
@@ -248,7 +248,7 @@ contains
 
         ! If not using real amplitudes then we always want spawn_cutoff to be
         ! equal to 1.0, so overwrite the default.
-        if (.not. real_amplitudes) spawn_cutoff = 0.0_p
+        if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
         call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)

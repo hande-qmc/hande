@@ -244,18 +244,18 @@ contains
                 linked_ccmc = .true.
 
             case('REAL_AMPLITUDES')
-                real_amplitudes = .true.
+                qmc_in%real_amplitudes = .true.
             case('SPAWN_CUTOFF')
                 call readf(spawn_cutoff)
 
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
                 call readi(semi_stoch_in%start_iter)
-                real_amplitudes = .true.
+                qmc_in%real_amplitudes = .true.
             case('SEMI_STOCH_SHIFT_START')
                 call readi(semi_stoch_in%shift_iter)
                 semi_stoch_in%start_iter = -1
-                real_amplitudes = .true.
+                qmc_in%real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
                 semi_stoch_in%determ_space_type = high_pop_determ_space
@@ -652,7 +652,7 @@ contains
         end if
 
         ! Real amplitude checks.
-        if (real_amplitudes) then
+        if (qmc_in%real_amplitudes) then
             if (doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc)) then
                 call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
             end if
@@ -810,7 +810,7 @@ contains
             end if
             call mpi_bcast(sys%lattice%lattice, sys%lattice%ndim*sys%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
-        call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)

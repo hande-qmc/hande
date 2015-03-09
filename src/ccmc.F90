@@ -437,7 +437,7 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(rng(0), sys, real_factor, nattempts, ndeath, nint(D0_normalisation,int_64))
+                call init_mc_cycle(rng(0), sys, qmc_in, real_factor, nattempts, ndeath, nint(D0_normalisation,int_64))
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
@@ -646,7 +646,7 @@ contains
                 if (nprocs > 1) call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                              tot_walkers, nparticles, qmc_spawn)
 
-                call direct_annihilation(sys, rng(0), qmc_in%initiator_approx, nspawn_events)
+                call direct_annihilation(sys, rng(0), qmc_in, nspawn_events)
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 

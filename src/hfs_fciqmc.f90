@@ -227,7 +227,7 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, rng, qmc_in%initiator_approx, nspawn_events)
+                call direct_annihilation(sys, rng, qmc_in, nspawn_events)
 
             end do
 

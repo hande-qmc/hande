@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, tinitiator, nspawn_events, determ)
+    subroutine direct_annihilation(sys, rng, qmc_in, nspawn_events, determ)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -19,7 +19,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    tinitiator: true if the initiator approximation is being used.
+        !    qmc_in: input options relating to QMC methods.
         ! In/Out:
         !    rng: random number generator.
         !    determ (optional): Derived type containing information on the
@@ -32,10 +32,11 @@ contains
         use spawn_data, only: annihilate_wrapper_spawn_t, calc_events_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
-        logical, intent(in) :: tinitiator
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
 
@@ -48,20 +49,20 @@ contains
         ! on the situation.
         if (present(determ)) then
             if (determ%separate_annihilation) then
-                call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
+                call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx)
             else
-                call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator, determ%sizes(iproc))
+                call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx, determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, qmc_spawn, determ_flags=determ%flags)
         else
-            call annihilate_wrapper_spawn_t(qmc_spawn, tinitiator)
-            call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn)
+            call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, qmc_spawn)
         end if
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_received_list(sys, rng, tinitiator)
+    subroutine direct_annihilation_received_list(sys, rng, qmc_in)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -85,7 +86,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    tinitiator: true if the initiator approximation is being used.
+        !    qmc_in: input options relating to QMC methods.
         ! In/Out:
         !    rng: random number generator.
 
@@ -95,10 +96,11 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(dSFMT_t), intent(inout) :: rng
-        logical, intent(in) :: tinitiator
 
         integer, parameter :: thread_id = 0
 
@@ -107,13 +109,13 @@ contains
         ! (not including the current processor) from  the previous iteration.
         ! They have since been evolved so they can be annihilated with the main list.
         ! First annihilate within the received_list.
-        call annihilate_wrapper_non_blocking_spawn(received_list, tinitiator)
+        call annihilate_wrapper_non_blocking_spawn(received_list, qmc_in%initiator_approx)
         ! Annihilate with main list.
-        call annihilate_main_list_wrapper(sys, rng, tinitiator, received_list)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, received_list)
 
     end subroutine direct_annihilation_received_list
 
-    subroutine direct_annihilation_spawned_list(sys, rng, tinitiator, send_counts, req_data_s, non_block_spawn,&
+    subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, send_counts, req_data_s, non_block_spawn,&
                                                 nspawn_events)
 
         ! Annihilation algorithm for non-blocking communications.
@@ -126,7 +128,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    tinitiator: true if the initiator approximation is being used.
+        !    qmc_in: input options relating to QMC methods.
         ! In/Out:
         !    rng: random number generator.
         !    send_counts: array of messages sizes. Will be allocated in
@@ -144,10 +146,11 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
-        logical, intent(in) :: tinitiator
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(inout) :: send_counts(0:)
         integer, intent(inout) :: req_data_s(0:)
         integer, intent(out) :: non_block_spawn(:)
@@ -163,16 +166,16 @@ contains
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
         ! list which needs to be annihilated with the main list on this processor.
-        call annihilate_wrapper_non_blocking_spawn(qmc_spawn, tinitiator, iproc)
+        call annihilate_wrapper_non_blocking_spawn(qmc_spawn, qmc_in%initiator_approx, iproc)
         ! Annihilate portion of spawned list with main list.
-        call annihilate_main_list_wrapper(sys, rng, tinitiator, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+nthreads)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+nthreads)
         ! Communicate walkers spawned onto other processors during this
         ! evolution step to their new processors.
         call non_blocking_send(qmc_spawn, send_counts, req_data_s)
 
     end subroutine direct_annihilation_spawned_list
 
-    subroutine annihilate_main_list_wrapper(sys, rng, tinitiator, spawn, lower_bound, determ_flags)
+    subroutine annihilate_main_list_wrapper(sys, rng, qmc_in, spawn, lower_bound, determ_flags)
 
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process during non-blocking
@@ -180,7 +183,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    tinitiator: true if the initiator approximation is being used.
+        !    qmc_in: input options relating to QMC methods.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object containing spawned particles. For non-blocking
@@ -194,10 +197,11 @@ contains
         use system, only: sys_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
-        logical, intent(in) :: tinitiator
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, optional, intent(in) :: lower_bound
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
@@ -214,7 +218,7 @@ contains
         if (spawn%head(thread_id,0) >= spawn_start) then
             ! Have spawned walkers on this processor.
 
-            if (tinitiator) then
+            if (qmc_in%initiator_approx) then
                 call annihilate_main_list_initiator(spawn, sys%basis%tensor_label_len, lower_bound)
             else
                 call annihilate_main_list(spawn, sys%basis%tensor_label_len, lower_bound)
@@ -222,11 +226,11 @@ contains
 
             ! Remove determinants with zero walkers on them from the main
             ! walker list.
-            call remove_unoccupied_dets(rng, determ_flags)
+            call remove_unoccupied_dets(rng, qmc_in%real_amplitudes, determ_flags)
 
             ! Remove low-population spawned walkers by stochastically
             ! rounding their population up to one or down to zero.
-            if (real_amplitudes) call round_low_population_spawns(rng, lower_bound)
+            if (qmc_in%real_amplitudes) call round_low_population_spawns(rng, lower_bound)
 
             ! Insert new walkers into main walker list.
             call insert_new_walkers(sys, spawn, determ_flags, lower_bound)
@@ -235,7 +239,7 @@ contains
 
             ! No spawned walkers so we only have to check to see if death has
             ! killed the entire population on a determinant.
-            call remove_unoccupied_dets(rng, determ_flags)
+            call remove_unoccupied_dets(rng, qmc_in%real_amplitudes, determ_flags)
 
         end if
 
@@ -459,7 +463,7 @@ contains
 
     end subroutine deterministic_annihilation
 
-    subroutine remove_unoccupied_dets(rng, determ_flags)
+    subroutine remove_unoccupied_dets(rng, real_amplitudes, determ_flags)
 
         ! Remove any determinants with 0 population.
         ! This can be done in a more efficient manner by doing it only when
@@ -469,15 +473,18 @@ contains
         ! The above steps are not performed for deterministic states which are
         ! kept in walker_dets whatever their sign.
 
+        ! In:
+        !     real_amplitudes: true if using real particle amplitudes.
         ! In/Out:
-        !    rng: random number generator.
-        !    determ_flags: A list of flags specifying whether determinants in
-        !        walker_dets are deterministic or not.
+        !     rng: random number generator.
+        !     determ_flags: A list of flags specifying whether determinants in
+        !         walker_dets are deterministic or not.
 
         use dSFMT_interface, only: dSFMT_t
         use stoch_utils, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
+        logical, intent(in) :: real_amplitudes
         integer, intent(inout), optional :: determ_flags(:)
 
         integer :: nzero, i, k, itype
