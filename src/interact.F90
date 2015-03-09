@@ -8,7 +8,7 @@ character(*), parameter :: comms_file = "HANDE.COMM"
 
 contains
 
-    subroutine calc_interact(comms_found, soft_exit)
+    subroutine calc_interact(comms_found, soft_exit, qmc_in)
 
         ! Read HANDE.COMM if it exists in the working directory of any
         ! processor and set the variables according to the options defined in
@@ -18,15 +18,19 @@ contains
         !    softexit: true if SOFTEXIT is defined in HANDE.COMM, in which case
         !        any calculation should exit immediately and go to the
         !        post-processing steps.
+        ! In/Out:
+        !    qmc_in (optional): Input options relating to QMC methods.
 
         use input, line=>char
         use utils, only: get_free_unit
         use parallel
 
-        use fciqmc_data, only: target_particles, tau, vary_shift, shift, sampling_size
+        use fciqmc_data, only: target_particles, vary_shift, shift, sampling_size
+        use qmc_data, only: qmc_in_t
 
         logical, intent(in) :: comms_found
         logical, intent(out) :: soft_exit
+        type(qmc_in_t), optional, intent(inout) :: qmc_in
 
         logical :: comms_exists, comms_read, eof
         integer :: proc, i
@@ -91,7 +95,7 @@ contains
                             soft_exit = .true.
                         case('TAU')
                             ! Change timestep.
-                            call readf(tau)
+                            if (present(qmc_in)) call readf(qmc_in%tau)
                         case('VARYSHIFT_TARGET')
                             call readf(target_particles)
                             if (target_particles < 0) then
@@ -123,7 +127,7 @@ contains
 #ifdef PARALLEL
             ! If in parallel need to broadcast data.
             call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
-            call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
+            if (present(qmc_in)) call mpi_bcast(qmc_in%tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(shift, sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)

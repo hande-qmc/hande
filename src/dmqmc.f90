@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys)
+    subroutine do_dmqmc(sys, qmc_in)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -18,6 +18,7 @@ contains
         !    sys: system being studied.  NOTE: if modified inside a procedure,
         !         it should be returned in its original (ie unmodified state)
         !         at the end of the procedure.
+        !    qmc_in: input options relating to QMC methods.
 
         use parallel
         use annihilation, only: direct_annihilation
@@ -35,8 +36,10 @@ contains
         use calc, only: seed, initiator_approximation, propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
@@ -152,7 +155,7 @@ contains
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet1, &
+                                    call spawner_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet1, &
                                                      walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
@@ -166,7 +169,7 @@ contains
                                     ! Now attempt to spawn from the second end.
                                     if (.not. propagate_to_beta) then
                                         spawning_end = 2
-                                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet2, &
+                                        call spawner_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet2, &
                                                          walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
@@ -186,7 +189,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, walker_data(ireplica,idet), shift(ireplica), &
+                            call stochastic_death(rng, qmc_in%tau, walker_data(ireplica,idet), shift(ireplica), &
                                            walker_population(ireplica,idet), nparticles(ireplica), ndeath)
                         end do
                     end do
@@ -217,11 +220,11 @@ contains
                 ! Sum all quantities being considered across all MPI processes.
                 call dmqmc_estimate_comms(nspawn_events, sys%max_number_excitations)
 
-                call update_shift_dmqmc(tot_nparticles, tot_nparticles_old, ireport)
+                call update_shift_dmqmc(qmc_in, tot_nparticles, tot_nparticles_old, ireport)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
+                call end_report_loop(sys, qmc_in, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
                                      unused_int_1, unused_int_2, soft_exit, .false., bloom_stats=bloom_stats)
 
                 if (soft_exit) exit

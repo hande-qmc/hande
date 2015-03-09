@@ -168,21 +168,26 @@ contains
 
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc(sys)
+    subroutine do_simple_fciqmc(sys, qmc_in)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
 
         use calc, only: seed
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+
         integer :: ireport, icycle, idet, ipart, j
         real(p) :: nparticles, nparticles_old
         integer :: nattempts
@@ -242,17 +247,17 @@ contains
                     if (use_sparse_hamil) then
                         associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
                             do ipart = 1, abs(walker_population(1,idet))
-                                call attempt_spawn(rng, idet, walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                                call attempt_spawn(rng, qmc_in%tau, idet, walker_population(1,idet), hamil_csr%mat(hstart:hend), &
                                                    hamil_csr%col_ind(hstart:hend))
                             end do
                         end associate
                     else
                         do ipart = 1, abs(walker_population(1,idet))
-                            call attempt_spawn(rng, idet, walker_population(1,idet), hamil(:,idet))
+                            call attempt_spawn(rng, qmc_in%tau, idet, walker_population(1,idet), hamil(:,idet))
                         end do
                     end if
 
-                    call simple_death(rng, Hii, walker_population(1,idet))
+                    call simple_death(rng, qmc_in%tau, Hii, walker_population(1,idet))
 
                 end do
 
@@ -267,7 +272,7 @@ contains
             ! Update the shift
             nparticles = real(sum(abs(walker_population(1,:))),p)
             if (vary_shift(1)) then
-                call update_shift(shift(1), nparticles_old, nparticles, ncycles)
+                call update_shift(qmc_in, shift(1), nparticles_old, nparticles, ncycles)
             end if
             nparticles_old = nparticles
             if (nparticles > target_particles .and. .not.vary_shift(1)) then
@@ -303,14 +308,16 @@ contains
 
     end subroutine do_simple_fciqmc
 
-    subroutine attempt_spawn(rng, idet, pop, hrow, det_indx)
+    subroutine attempt_spawn(rng, tau, idet, pop, hrow, det_indx)
 
         ! Simulate spawning part of FCIQMC algorithm.
         ! We attempt to spawn on all determinants connected to the current
         ! determinant (given by iwalker) with probability tau|K_ij|.  Note this
         ! is different from the optimised FCIQMC algorithm where each walker
         ! only gets one opportunity per FCIQMC cycle to spawn.
+
         ! In:
+        !    tau: timestep being used.
         !    iwalker: walker whose particles attempt to clone/die.
         ! In/Out:
         !    rng: random number generator.
@@ -318,7 +325,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: idet
         integer(int_p), intent(in) :: pop
-        real(p), intent(in) :: hrow(:)
+        real(p), intent(in) :: tau, hrow(:)
         integer, intent(in), optional :: det_indx(:)
 
         integer :: j, jdet
@@ -345,7 +352,7 @@ contains
             ! Spawn with probability tau|K_ij|.
             ! As K_ij = H_ij for off-diagonal elements, we can just use the
             ! stored Hamiltonian matrix directly.
-            rate = abs(Tau*hrow(j))
+            rate = abs(tau*hrow(j))
             nspawn = int(rate, int_s)
             rate = rate - nspawn
             r = get_rand_close_open(rng)
@@ -374,10 +381,12 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(rng, Hii, pop)
+    subroutine simple_death(rng, tau, Hii, pop)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
+
         ! In:
+        !    tau: timestep being used.
         !    Hii: diagonal matrix element, <D_i|H|D_i>
         ! In/Out:
         !    rng: random number generator.
@@ -385,7 +394,7 @@ contains
         !         the death step.
 
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: Hii
+        real(p), intent(in) :: tau, Hii
         integer(int_p), intent(inout) :: pop
 
         integer :: nkill

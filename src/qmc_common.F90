@@ -734,7 +734,7 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
+    subroutine end_report_loop(sys, qmc_in, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
                                semi_stoch_shift_it, semi_stoch_start_it, soft_exit, update_estimators, bloom_stats, rep_comm)
 
         ! In:
@@ -749,6 +749,7 @@ contains
         !        to vary to begin using semi-stochastic.
         !    update_estimators (optional): update the (FCIQMC/CCMC) energy estimators.  Default: true.
         ! In/Out:
+        !    qmc_in: input optons relating to QMC methods.
         !    ntot_particles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
@@ -777,8 +778,10 @@ contains
         use system, only: sys_t
         use calc, only: non_blocking_comm, nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         integer, intent(in) :: ireport, iteration
         logical, intent(in) :: update_tau
         integer, intent(in) :: nspawn_events
@@ -796,7 +799,7 @@ contains
         real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
-        update_tau_now = update_tau .and. .not. vary_shift(1) .and. tau_search
+        update_tau_now = update_tau .and. .not. vary_shift(1) .and. qmc_in%tau_search
 
         ! Are all the shifts currently varying?
         vary_shift_before = all(vary_shift)
@@ -809,7 +812,7 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. non_blocking_comm) then
-            call update_energy_estimators(nspawn_events, ntot_particles, comms_found, update_tau_now, bloom_stats)
+            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, comms_found, update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
@@ -817,7 +820,7 @@ contains
             call local_energy_estimators(rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(rep_comm%request, ntot_particles, comms_found, update_tau_now, bloom_stats)
+            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, comms_found, update_tau_now, bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(rep_comm)
@@ -851,10 +854,10 @@ contains
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time
 
-        call calc_interact(comms_found, soft_exit)
+        call calc_interact(comms_found, soft_exit, qmc_in)
         if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
 
-        if (update_tau_now) call rescale_tau()
+        if (update_tau_now) call rescale_tau(qmc_in%tau)
 
     end subroutine end_report_loop
 
@@ -877,19 +880,21 @@ contains
 
     end subroutine end_mc_cycle
 
-    subroutine rescale_tau(factor)
+    subroutine rescale_tau(tau, factor)
 
         ! Scale the timestep by across all the processors.  This is performed if at least
         ! one processor thinks it should be.
 
         ! In:
+        !    tau: timestep to be updated.
         !    factor: factor to scale the timestep by (default: 0.95).
 
         use parallel
 
-        integer :: ierr
+        real(p), intent(inout) :: tau
         real(p), intent(in), optional :: factor
 
+        integer :: ierr
         logical :: update_tau_global
 
         if (present(factor)) then

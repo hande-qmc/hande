@@ -10,13 +10,15 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(sys, matel)
+    subroutine do_ct_fciqmc(sys, qmc_in, matel)
 
         ! In:
         !    sys: system being studied
         !    matel: off-diagonal Hamiltonian matrix element (ignoring sign due
         !       to permutations).  Either U (Bloch orbitals) or
         !       t (atomic/real-space orbitals).
+        ! In/Out:
+        !    qmc_in: Input options relating to QMC methods.
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: bloom_stats_t
@@ -34,7 +36,10 @@ contains
         use utils, only: rng_init_info
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
+        use qmc_data, only: qmc_in_t
+
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer(int_p) :: nspawned, ndeath
@@ -84,7 +89,7 @@ contains
 
         nparticles_old = tot_nparticles
 
-        t_barrier = tau ! or we could just not bother with the t_barrier var...
+        t_barrier = qmc_in%tau ! or we could just not bother with the t_barrier var...
 
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(sys)
@@ -235,7 +240,7 @@ contains
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
-            call end_report_loop(sys, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
+            call end_report_loop(sys, qmc_in, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
                                  unused_int_1, unused_int_2, soft_exit)
 
             if (soft_exit) exit

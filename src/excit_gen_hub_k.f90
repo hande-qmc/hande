@@ -181,7 +181,6 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
-        use fciqmc_data, only: tau
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -314,7 +313,6 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: tau
         use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
@@ -382,7 +380,6 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: tau
         use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t

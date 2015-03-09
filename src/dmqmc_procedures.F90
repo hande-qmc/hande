@@ -5,10 +5,12 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys)
+    subroutine init_dmqmc(sys, qmc_in)
 
         ! In:
         !    sys: system being studied.
+        ! In/Out:
+        !    qmc_in: Input options relating to QMC methods.
 
         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
@@ -17,7 +19,10 @@ contains
         use fciqmc_data
         use system, only: sys_t
 
+        use qmc_data, only: qmc_in_t
+
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
 
         integer :: ierr, i, bit_position, bit_element
 
@@ -58,7 +63,7 @@ contains
             ! probability. To avoid having to multiply by an extra variable in
             ! every spawning routine to account for this, we multiply the time
             ! step by 0.5 instead, then correct this in the death step (see below).
-            tau = tau*0.5_p
+            qmc_in%tau = qmc_in%tau*0.5_p
             ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
             ! multiplied by this factor it cancels the factor of 0.5 introduced
             ! into the timestep in DMQMC.cThis factor is also used in updated the
@@ -70,7 +75,7 @@ contains
         ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
         ! to set the appropriate beta = Beta / T_F.
         if (fermi_temperature) then
-            tau = tau / sys%ueg%ef
+            qmc_in%tau = qmc_in%tau / sys%ueg%ef
             init_beta = init_beta / sys%ueg%ef
         end if
 

@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, semi_stoch_in)
+    subroutine do_fciqmc(sys, qmc_in, semi_stoch_in)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -20,6 +20,8 @@ contains
         ! In:
         !    sys: system being studied.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        ! In/Out:
+        !    qmc_in: input options relating to QMC methods.
 
         use parallel
 
@@ -43,9 +45,10 @@ contains
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         type(det_info_t) :: cdet
@@ -172,7 +175,7 @@ contains
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                        call spawner_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
                                          gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
@@ -197,14 +200,14 @@ contains
                     end do
 
                     ! Clone or die.
-                    if (.not. determ_parent) call stochastic_death(rng, walker_data(1,idet), shift(1), &
+                    if (.not. determ_parent) call stochastic_death(rng, qmc_in%tau, walker_data(1,idet), shift(1), &
                                                             walker_population(1,idet), nparticles(1), ndeath)
 
                 end do
 
                 if (non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
-                    call evolve_spawned_walkers(sys, received_list, cdet, rng, ndeath)
+                    call evolve_spawned_walkers(sys, qmc_in, received_list, cdet, rng, ndeath)
                     call direct_annihilation_received_list(sys, rng, initiator_approximation)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
                     if (par_info%load%needed) then
@@ -220,10 +223,10 @@ contains
                     ! projection step.
                     if (semi_stochastic) then
                         if (determ%separate_annihilation) then
-                            call determ_projection_separate_annihil(determ)
+                            call determ_projection_separate_annihil(determ, qmc_in%tau)
                             call deterministic_annihilation(sys, rng, determ)
                         else
-                            call determ_projection(rng, qmc_spawn, determ)
+                            call determ_projection(rng, qmc_spawn, determ, qmc_in%tau)
                         end if
                     end if
 
@@ -239,14 +242,14 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_in%shift_iter, &
+            call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_in%shift_iter, &
                                   semi_stoch_iter, soft_exit, bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 
         end do
 
-        if (non_blocking_comm) call end_non_blocking_comm(sys, rng, initiator_approximation, ireport, received_list, req_data_s,  &
+        if (non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, initiator_approximation, ireport, received_list, req_data_s, &
                                                           par_info%report_comm%request, t1, nparticles_old, shift(1))
 
         if (parent) write (6,'()')
@@ -274,13 +277,14 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, spawn, cdet, rng, ndeath)
+    subroutine evolve_spawned_walkers(sys, qmc_in, spawn, cdet, rng, ndeath)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
 
         ! In:
         !   sys: system being studied.
+        !   qmc_in: input options relating to QMC methods.
         ! In/Out:
         !   spawn: spawn_t object containing walkers spawned onto this processor during previous time step.
         !   cdet: type containing information about determinant. (easier to take this in as it is allocated
@@ -293,10 +297,12 @@ contains
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
@@ -342,7 +348,8 @@ contains
             do iparticle = 1, nattempts_current_det
 
                 ! Attempt to spawn.
-                call spawner_ptr(rng, sys, qmc_spawn%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, nspawned, connection)
+                call spawner_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
+                                 nspawned, connection)
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then
@@ -353,7 +360,7 @@ contains
 
             ! Clone or die.
             ! list_pop is meaningless as nparticles is updated upon annihilation.
-            call stochastic_death(rng, tmp_data(1), shift(1), int_pop(1), list_pop, ndeath)
+            call stochastic_death(rng, qmc_in%tau, tmp_data(1), shift(1), int_pop(1), list_pop, ndeath)
             ! Update population of walkers on current determinant.
             spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet) = int_pop
 

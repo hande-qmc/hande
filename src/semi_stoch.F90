@@ -638,7 +638,7 @@ contains
 
     end function check_if_determ
 
-    subroutine determ_projection(rng, spawn, determ)
+    subroutine determ_projection(rng, spawn, determ, tau)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -648,12 +648,13 @@ contains
         !    rng: random number generator.
         !    spawn: spawn_t object to which deterministic spawning will occur.
         ! In:
-        !    determ: Deterministic space being used.
+        !    determ: deterministic space being used.
+        !    tau: timestep being used.
 
         use calc, only: initiator_approximation
         use csr, only: csrpgemv_single_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: shift, tau, real_factor
+        use fciqmc_data, only: shift, real_factor
         use omp_lib
         use parallel, only: nprocs, iproc, nthreads
         use spawn_data, only: spawn_t
@@ -662,6 +663,8 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
+        real(p), intent(in) :: tau
+
         integer :: i, proc, row
         real(p) :: out_vec
 
@@ -739,7 +742,7 @@ contains
 
     end subroutine determ_projection
 
-    subroutine determ_projection_separate_annihil(determ)
+    subroutine determ_projection_separate_annihil(determ, tau)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
@@ -758,10 +761,11 @@ contains
         !       amplitudes across all processes, on output.
 
         use csr, only: csrpgemv
-        use fciqmc_data, only: shift, tau
+        use fciqmc_data, only: shift
         use parallel
 
         type(semi_stoch_t), intent(inout) :: determ
+        real(p), intent(in) :: tau
 
         integer :: i, ierr
         integer :: send_counts(0:nprocs-1), receive_counts(0:nprocs-1)

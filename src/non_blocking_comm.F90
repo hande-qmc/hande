@@ -95,7 +95,7 @@ contains
 
     end subroutine init_non_blocking_comm
 
-    subroutine end_non_blocking_comm(sys, rng, tinitiator, ireport, spawn, request_s, request_rep, report_time, &
+    subroutine end_non_blocking_comm(sys, rng, qmc_in, tinitiator, ireport, spawn, request_s, request_rep, report_time, &
                                      ntot_particles, shift)
 
         ! Subroutine dealing with the last iteration when using non-blocking communications.
@@ -106,6 +106,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    tinitiator: true if the initiator approximation is being used.
         !    ireport: index of current report loop.
         ! In/Out:
@@ -131,11 +132,13 @@ contains
         use qmc_common, only: write_fciqmc_report
         use parallel, only: parent
         use fciqmc_data, only: dump_restart_file, sampling_size
+        use qmc_data, only: qmc_in_t
 
         use const, only: p, dp
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(dSFMT_t), intent(inout) :: rng
         logical, intent(in) :: tinitiator
         integer, intent(in) :: ireport
@@ -160,7 +163,7 @@ contains
         end if
         ntot_particles_save = ntot_particles
         shift_save = shift
-        call update_energy_estimators_recv(request_rep, ntot_particles)
+        call update_energy_estimators_recv(qmc_in, request_rep, ntot_particles)
         if (parent) call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
         ! The call to update_energy_estimators updates the shift and ntot_particles.
         ! When restarting a calculation we actually need the old (before the call)

@@ -31,7 +31,7 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn_standard(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_standard(rng, sys, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -42,6 +42,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    tau: timestep being used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -68,6 +69,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -82,11 +84,11 @@ contains
         call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_standard
 
-    subroutine spawn_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_importance_sampling(rng, sys, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -101,6 +103,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    tau: timestep being used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -127,6 +130,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -144,11 +148,11 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen(rng, sys, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -170,6 +174,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    tau: timestep being used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -194,12 +199,12 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -229,7 +234,7 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, &
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
                                                            gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -249,6 +254,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    tau: timestep being used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -273,12 +279,12 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -315,7 +321,7 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_null(rng, sys, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -325,6 +331,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    tau: timestep being used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -349,6 +356,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -460,9 +468,10 @@ contains
 
     end subroutine set_child_sign
 
-    function attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign) result(nspawn)
+    function attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign) result(nspawn)
 
         ! In:
+        !    tau: timestep being used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -480,11 +489,10 @@ contains
         !    unsuccessful.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: tau
 
         integer(int_p) :: nspawn
 
-        real(p), intent(in) :: pgen, hmatel
+        real(p), intent(in) :: tau, pgen, hmatel
         integer(int_p), intent(in) :: parent_sign
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(in) :: spawn_cutoff

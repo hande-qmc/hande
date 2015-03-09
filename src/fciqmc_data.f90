@@ -24,12 +24,6 @@ integer :: nreport
 ! the program will loop over each value of beta in the main loop.
 integer :: beta_loops = 100
 
-! timestep
-real(p) :: tau
-
-! Are we doing a timestep search
-logical :: tau_search = .false.
-
 ! Array sizes
 ! If these are < 0, then the values represent the number of MB to be used to
 ! store the main walker and spawned walker data respectively.

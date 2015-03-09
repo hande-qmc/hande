@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, semi_stoch_in)
+    subroutine read_input(sys, qmc_in, semi_stoch_in)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -29,6 +29,7 @@ contains
         !    sys: system being studied.  Parameters specified in the input file
         !         are set directly in the system object, components which are not
         !         mentioned in the input file are not altered.
+        !    qmc_in: Input options for QMC calculations.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
 ! nag doesn't automatically bring in command-line option handling.
@@ -36,7 +37,7 @@ contains
         use f90_unix_env
 #endif
 
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system
 
         use input
@@ -50,6 +51,7 @@ contains
 #endif
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         character(255) :: cInp
@@ -400,9 +402,9 @@ contains
                     end if
                 end if
             case('TAU')
-                call readf(tau)
+                call readf(qmc_in%tau)
             case('TAU_SEARCH')
-                tau_search = .true.
+                qmc_in%tau_search = .true.
             case('INITIAL_SHIFT')
                 call readf(initial_shift)
                 ! We assume the user is sensible/knows what he/she is doing if
@@ -565,7 +567,7 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, semi_stoch_in)
+    subroutine check_input(sys, qmc_in, semi_stoch_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
@@ -573,13 +575,15 @@ contains
         ! In/Out:
         !    sys: system object, as set in read_input (invalid settings are overridden).
         ! In:
+        !    qmc_in: Input options for QMC calculations.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use const
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: ivec, jvec
@@ -693,7 +697,7 @@ contains
                 if (spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
             if (calc_inst_rdm .and. spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
-            if (tau <= 0) call stop_all(this,'Tau not positive.')
+            if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
             if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(occ_list0)) then
                 if (size(occ_list0) /= sys%nel) then
@@ -753,7 +757,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, semi_stoch_in)
+    subroutine distribute_input(sys, qmc_in, semi_stoch_in)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -764,14 +768,16 @@ contains
         ! In/Out:
         !    sys: object describing the system.  All parameters which can be set
         !       in the input file are distributed to other processors.
+        !    qmc_in: Input options for QMC calculations.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
 #ifndef PARALLEL
 
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
 #else
@@ -780,10 +786,11 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         integer :: i, ierr, occ_list_size
@@ -865,8 +872,8 @@ contains
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)

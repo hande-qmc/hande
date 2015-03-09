@@ -49,7 +49,7 @@ contains
 
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(nspawn_events, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine update_energy_estimators(qmc_in, nspawn_events, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -57,6 +57,7 @@ contains
         ! Should be called every report loop in an FCIQMC/iFCIQMC calculation.
 
         ! In:
+        !    qmc_in: input options relating to QMC methods.
         !    nspawn_events: The total number of spawning events to this process.
         ! In/Out:
         !    ntot_particles_old: total number (across all processors) of
@@ -73,9 +74,11 @@ contains
 
         use bloom_handler, only: bloom_stats_t
         use fciqmc_data, only: sampling_size
+        use qmc_data, only: qmc_in_t
 
         use parallel
 
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: nspawn_events
         real(p), intent(inout) :: ntot_particles_old(sampling_size)
         logical, intent(inout) :: comms_found
@@ -97,7 +100,7 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators
 
@@ -124,10 +127,12 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine update_energy_estimators_recv(qmc_in, rep_request_s, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
         ! Receive report loop quantities from all other processors and reduce.
 
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
         ! In/Out:
         !    rep_request_s: array of requests initialised during non-blocking send of
         !        information.
@@ -142,10 +147,12 @@ contains
         !    comms_found: whether HANDE.COMM exists
         !    update_tau: if true, tau should be automatically rescaled.
 
-        use fciqmc_data, only: sampling_size
         use bloom_handler, only: bloom_stats_t
+        use fciqmc_data, only: sampling_size
+        use qmc_data, only: qmc_in_t
         use parallel
 
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(inout) :: rep_request_s(:)
         real(p), intent(inout) :: ntot_particles_old(:)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
@@ -179,7 +186,7 @@ contains
         forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
-        call communicated_energy_estimators(rep_info_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, rep_info_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators_recv
 
@@ -246,12 +253,13 @@ contains
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
         ! Update report loop quantites with information received from other
         ! processors.
 
         ! In:
+        !    qmc_in: input options relating to QMC methods. 
         !    rep_loop_sum: array containing quantites required for energy
         !        evaluation.
         ! In/Out:
@@ -273,7 +281,9 @@ contains
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc, doing_load_balancing
         use parallel, only: nprocs
+        use qmc_data, only: qmc_in_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
         real(dp), intent(in) :: rep_loop_sum(:)
         real(p), intent(inout) :: ntot_particles_old(sampling_size)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
@@ -320,9 +330,9 @@ contains
         end associate
 
         if (vary_shift(1)) then
-            call update_shift(shift(1), ntot_particles_old(1), ntot_particles(1), ncycles)
+            call update_shift(qmc_in, shift(1), ntot_particles_old(1), ntot_particles(1), ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
-                call update_hf_shift(ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
+                call update_hf_shift(qmc_in, ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
                                      new_hf_signed_pop, ncycles)
             end if
         end if
@@ -354,7 +364,7 @@ contains
 
 !--- Shift updates ---
 
-    subroutine update_shift(loc_shift, nparticles_old, nparticles, nupdate_steps)
+    subroutine update_shift(qmc_in, loc_shift, nparticles_old, nparticles, nupdate_steps)
 
         ! Update the shift according to:
         !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
@@ -365,26 +375,32 @@ contains
         !  * xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations;
         !  * N_w(beta) is the total number of particles at imaginary time beta.
         ! The running average of the shift is also updated.
+
         ! In:
+        !    qmc_in: Input options relating to QMC methods.
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
 
-        use fciqmc_data, only: shift, tau, shift_damping, dmqmc_factor
+        use fciqmc_data, only: shift, shift_damping, dmqmc_factor
+        use qmc_data, only: qmc_in_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
         real(p), intent(inout) :: loc_shift
         real(p), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - log(nparticles/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
+        loc_shift = loc_shift - log(nparticles/nparticles_old)*shift_damping/(dmqmc_factor*qmc_in%tau*nupdate_steps)
 
     end subroutine update_shift
 
-    subroutine update_hf_shift(nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
+    subroutine update_hf_shift(qmc_in, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
 
         ! Update the Hellmann-Feynman shift, \tilde{S}.
+
         ! In:
+        !    qmc_in: Input options relating to QMC methods.
         !    nparticles_old: N_w(beta-A*tau); total Hamiltonian population at beta-Atau.
         !    nparticles: N_w(beta); total Hamiltonian population at beta.
         !    nhf_particles_old: N_w(beta-A*tau); total Hellmann-Feynman (signed) population at beta-Atau.
@@ -395,9 +411,11 @@ contains
         ! Hellmann-Feynman walkers but also involves the Hamiltonian walkers and
         ! *must* be calculated using calculate_hf_signed_pop.
 
-        use fciqmc_data, only: tau, shift_damping
+        use fciqmc_data, only: shift_damping
         use hfs_data, only: hf_shift
+        use qmc_data, only: qmc_in_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
         real(p), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
 
@@ -411,7 +429,7 @@ contains
         ! The latter quantity is calculated in calculate_hf_signed fpop.
 
         hf_shift = hf_shift - &
-                 (shift_damping/(tau*nupdate_steps)) &
+                 (shift_damping/(qmc_in%tau*nupdate_steps)) &
                  *(nhf_particles/nparticles - nhf_particles_old/nparticles_old)
 
     end subroutine update_hf_shift

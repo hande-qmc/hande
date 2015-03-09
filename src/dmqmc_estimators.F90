@@ -233,20 +233,23 @@ contains
 
     end subroutine communicate_inst_rdms
 
-    subroutine update_shift_dmqmc(loc_tot_nparticles, loc_tot_nparticles_old, ireport)
+    subroutine update_shift_dmqmc(qmc_in, loc_tot_nparticles, loc_tot_nparticles_old, ireport)
 
+        ! In:
+        !    qmc_in: input options relating to qmc methods.
+        !    ireport: The number of the report loop currently being performed.
         ! In/Out:
         !    loc_tot_nparticles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !    loc_tot_nparticles_old: total number (across all processors) of
         !        particles in the simulation currently.
-        ! In:
-        !    ireport: The number of the report loop currently being performed.
 
         use energy_evaluation, only: update_shift
         use fciqmc_data, only: shift, ncycles, target_particles, vary_shift
         use fciqmc_data, only: nreport, sampling_size
+        use qmc_data, only: qmc_in_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
         real(p), intent(in) :: loc_tot_nparticles(:)
         real(p), intent(in) :: loc_tot_nparticles_old(:)
         integer, intent(in) :: ireport
@@ -254,7 +257,7 @@ contains
 
         do ireplica = 1, sampling_size
             if (vary_shift(ireplica)) then
-                call update_shift(shift(ireplica), loc_tot_nparticles_old(ireplica), &
+                call update_shift(qmc_in, shift(ireplica), loc_tot_nparticles_old(ireplica), &
                     loc_tot_nparticles(ireplica), ncycles)
             end if
             if (loc_tot_nparticles(ireplica) > target_particles .and. (.not. vary_shift(ireplica))) &
