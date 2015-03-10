@@ -5,6 +5,7 @@ lattice
 electrons 2
 simple_fciqmc
 init_pop 1
+varyshift_target 10000
 mc_cycles 50
 nreports 220
 tau 0.05
