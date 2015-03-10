@@ -26,10 +26,6 @@ integer :: spawned_walker_length
 ! Number of particles before which varyshift mode is turned on.
 real(p) :: target_particles = 10000.0_p
 
-! probability of attempting single or double excitations...
-! set to be nonsense value so can easily detect if it's given as an input option
-real(p) :: pattempt_single = -1, pattempt_double = -1
-
 !--- Input data: initiator-FCIQMC ---
 
 ! Value of cluster%amplitude/cluster%pselect above which spawns are split up

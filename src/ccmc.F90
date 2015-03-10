@@ -591,7 +591,7 @@ contains
                                           gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
                             else
-                                call spawner_ccmc(rng(it), sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
+                                call spawner_ccmc(rng(it), sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
                                           gen_excit_ptr, nspawned, connection, nspawnings_total)
                             end if
 
@@ -1231,7 +1231,7 @@ contains
 
     end subroutine select_cluster_non_composite
 
-    subroutine spawner_ccmc(rng, sys, tau, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
+    subroutine spawner_ccmc(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
                             nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
@@ -1261,7 +1261,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    tau: timestep being used.
+        !    qmc_in: input options related to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -1297,9 +1297,10 @@ contains
         use parallel, only: iproc
         use calc, only: linked_ccmc
         use const, only: depsilon
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: tau
+        type(qmc_in_t), intent(in) :: qmc_in
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -1323,7 +1324,7 @@ contains
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
 
         if (linked_ccmc .and. abs(hmatel) > depsilon) then
             ! For Linked Coupled Cluster we reject any spawning where the
@@ -1350,7 +1351,7 @@ contains
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_in%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
         if (nspawn /= 0_int_p) then
             ! 4. Convert the random excitation from a determinant into an
@@ -2101,7 +2102,7 @@ contains
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then
             call decoder_ptr(sys, rdet%f, rdet)
-            call gen_excit_ptr%full(rng, sys, rdet, pgen, connection, hmatel)
+            call gen_excit_ptr%full(rng, sys, qmc_in, rdet, pgen, connection, hmatel)
             ! If hmatel is 0 then the excitation generator returned an invalid excitor
             if (hmatel /= 0.0_p) then
                 ! check that left_cluster can be applied to the resulting excitor to
@@ -2318,7 +2319,6 @@ contains
                                  calc_pgen_single_mol, calc_pgen_double_mol
         use point_group_symmetry, only: gamma_sym, cross_product_pg_basis, pg_sym_conj
         use determinants, only: det_info_t
-        use fciqmc_data, only: pattempt_single, pattempt_double
         use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
@@ -2334,21 +2334,21 @@ contains
         case(read_in)
             if (qmc_in%no_renorm) then
                 if (connection%nexcit == 1) then
-                    pgen = pattempt_single * calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+                    pgen = qmc_in%pattempt_single * calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
                 else
                     spin = sys%basis%basis_fns(connection%to_orb(1))%ms + sys%basis%basis_fns(connection%to_orb(2))%ms
-                    pgen = pattempt_double * calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), connection%to_orb(2), spin)
+                    pgen = qmc_in%pattempt_double * calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), connection%to_orb(2), spin)
                 end if
             else
                 if (connection%nexcit == 1) then
-                    pgen = pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, parent_det%symunocc, &
+                    pgen = qmc_in%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, parent_det%symunocc, &
                         connection%to_orb(1))
                 else
                     a = connection%to_orb(1)
                     b = connection%to_orb(2)
                     spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
                     ij_sym = pg_sym_conj(cross_product_pg_basis(a, b, sys%basis%basis_fns))
-                    pgen = pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
+                    pgen = qmc_in%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
                 end if
             end if
             ! [todo] - model hamiltonians

@@ -441,8 +441,8 @@ contains
                 if (item /= nitems) call readi(select_ref_det_every_nreports)
                 if (item /= nitems) call readf(ref_det_factor)
             case('ATTEMPT_SPAWN_PROB')
-                call readf(pattempt_single)
-                call readf(pattempt_double)
+                call readf(qmc_in%pattempt_single)
+                call readf(qmc_in%pattempt_double)
 
             ! Calculation options: CCMC.
             case('move_freq')
@@ -985,8 +985,8 @@ contains
         call mpi_bcast(cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 

@@ -155,7 +155,7 @@ contains
                     do iparticle = 1, abs(walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
                                          gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
@@ -164,7 +164,7 @@ contains
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         ! [todo] - JSS: real populations for HFS spawner.
-                        call spawner_hfs_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                        call spawner_hfs_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
                                              gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
@@ -178,7 +178,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet, walker_population(2,idet), &
+                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_population(2,idet), &
                                          gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &

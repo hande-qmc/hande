@@ -453,7 +453,7 @@ contains
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, &
+                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, init_beta, npsips_this_proc, &
                                                                                sym_in, ireplica, qmc_spawn)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
@@ -612,7 +612,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica, qmc_spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_in, beta, npsips, sym, ireplica, qmc_spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -630,6 +630,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    beta: (inverse) temperature at which we're looking to sample the
         !        trial density matrix.
         !    sym: symmetry index of determinant space we wish to sample.
@@ -650,10 +651,12 @@ contains
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
+        use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         real(dp), intent(in) :: beta
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
@@ -700,7 +703,7 @@ contains
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
                     else
-                        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+                        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
                         if (hmatel == 0) cycle

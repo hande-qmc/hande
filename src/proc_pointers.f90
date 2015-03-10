@@ -63,24 +63,28 @@ abstract interface
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: walker_pop
     end subroutine i_update_dmqmc_estimators
-    subroutine i_gen_excit(rng, sys, d, pgen, connection, hmatel)
+    subroutine i_gen_excit(rng, sys, qmc_in, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
     end subroutine i_gen_excit
-    subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
+    subroutine i_gen_excit_finalise(rng, sys, qmc_in, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(in) :: d
         type(excit_t), intent(inout) :: connection
         real(p), intent(out) :: hmatel
@@ -176,14 +180,15 @@ end type gen_excit_ptr_t
 type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
-    subroutine i_spawner(rng, sys, tau, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, nspawned, connection)
+    subroutine i_spawner(rng, sys, qmc_in, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, nspawned, connection)
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
-        import :: det_info_t, excit_t, gen_excit_ptr_t, int_p, p
+        import :: det_info_t, excit_t, gen_excit_ptr_t, int_p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: tau
+        type(qmc_in_t), intent(in) :: qmc_in
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: d

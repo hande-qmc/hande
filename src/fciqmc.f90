@@ -174,7 +174,7 @@ contains
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
                                          gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
@@ -347,7 +347,7 @@ contains
             do iparticle = 1, nattempts_current_det
 
                 ! Attempt to spawn.
-                call spawner_ptr(rng, sys, qmc_in%tau, qmc_spawn%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
+                call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
                                  nspawned, connection)
 
                 ! Spawn if attempt was successful.

@@ -459,12 +459,12 @@ contains
         ! excitations based upon the reference determinant and assume other
         ! determinants have a roughly similar ratio of single:double
         ! excitations.
-        if (pattempt_single < 0 .or. pattempt_double < 0) then
-            call find_single_double_prob(sys, occ_list0, pattempt_single, pattempt_double)
+        if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
+            call find_single_double_prob(sys, occ_list0, qmc_in%pattempt_single, qmc_in%pattempt_double)
         else
             ! renormalise just in case input wasn't
-            pattempt_single = pattempt_single/(pattempt_single+pattempt_double)
-            pattempt_double = 1.0_p - pattempt_single
+            qmc_in%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
+            qmc_in%pattempt_double = 1.0_p - qmc_in%pattempt_single
         end if
 
         ! Calculate all the possible different amplitudes for the Neel singlet state
@@ -500,8 +500,8 @@ contains
             case default
                 write(6,'(i2)') ref_sym
             end select
-            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', pattempt_single
-            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', pattempt_double
+            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', qmc_in%pattempt_single
+            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', qmc_in%pattempt_double
             if (doing_calc(dmqmc_calc)) then
                 write (6,'(1X,a54,'//int_fmt(int(D0_population,int_64),1)//')') &
                               'Initial population on the trace of the density matrix:', int(D0_population,int_64)
