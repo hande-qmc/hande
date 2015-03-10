@@ -272,9 +272,9 @@ contains
         ! Out (optional):
         !     update_tau: if true, tau should be automatically rescaled.
 
-        use fciqmc_data, only: sampling_size, target_particles, rspawn,                        &
-                               proj_energy, shift, vary_shift, vary_shift_from,                &
-                               vary_shift_from_proje, D0_population, nparticles_proc, par_info,&
+        use fciqmc_data, only: sampling_size, target_particles, rspawn,  &
+                               proj_energy, shift, vary_shift,           &
+                               D0_population, nparticles_proc, par_info, &
                                tot_nocc_states, tot_nspawn_events
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
@@ -340,13 +340,13 @@ contains
         hf_signed_pop = new_hf_signed_pop
         if (ntot_particles(1) > target_particles .and. .not.vary_shift(1)) then
             vary_shift(1) = .true.
-            if (vary_shift_from_proje) then
+            if (qmc_in%vary_shift_from_proje) then
               ! Set shift to be instantaneous projected energy.
               shift = proj_energy/D0_population
               hf_shift = proj_hf_O_hpsip/D0_population + proj_hf_H_hfpsip/D0_population &
                                                        - (proj_energy*D0_hf_population)/D0_population**2
             else
-                shift = vary_shift_from
+                shift = qmc_in%vary_shift_from
             end if
         end if
 

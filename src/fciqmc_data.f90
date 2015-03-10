@@ -162,15 +162,7 @@ integer :: ccmc_move_freq = 5
 ! vary_shift is true. When the replica_tricks option is used, the elements
 ! of the shift array refer to the shifts in the corresponding replica systems.
 ! When replica_tricks is not being used, only the first element is used.
-! vary_shift_from_proje: if true, then the when variable shift mode is entered
-! the shift is set to be the current projected energy.
-! vary_shift_from: if vary_shift_from_proje is false, then the shift is set to
-! this value when variable shift mode is entered.
-! warning: if both initial_shift and vary_shift_from are set, then we expect the
-! user to have been sensible.
 real(p), allocatable, target :: shift(:) ! (sampling_size)
-real(p) :: vary_shift_from = 0.0_p
-logical :: vary_shift_from_proje = .false.
 
 ! projected energy
 ! This stores during an FCIQMC report loop
