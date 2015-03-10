@@ -126,7 +126,7 @@ type ccmc_in_t
     ! Use the full non-composite algorithm?
     logical :: full_nc = .false.
     ! Sample only linked clusters in CCMC?
-    logical :: linked_ccmc = .false.
+    logical :: linked = .false.
 end type ccmc_in_t
 
 type restart_in_t

@@ -44,13 +44,6 @@ integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
 integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
-! [review] - AJWT: Both these options only refer to CCMC, so should they be in calc?
-! [review] - JSS: calc is a bit of a dumping ground until the purication/lua-ification
-! [review] - JSS: hits it.  I'd say it's fine to leave it here for now.
-
-! Sample only linked clusters in CCMC?
-logical :: linked_ccmc = .false.
-
 ! Ms of determinants.  If not set, then all possible values of Ms are considered
 ! in FCI.  FCIQMC assumes ms = 0 if not given in input.
 integer :: ms_in = huge(1)

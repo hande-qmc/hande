@@ -245,7 +245,7 @@ contains
             case('CCMC_FULL_NC')
                 ccmc_in%full_nc = .true.
             case('CCMC_LINKED')
-                linked_ccmc = .true.
+                ccmc_in%linked = .true.
 
             case('REAL_AMPLITUDES')
                 qmc_in%real_amplitudes = .true.
@@ -833,7 +833,7 @@ contains
         call mpi_bcast(semi_stoch_in%write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%separate_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_in%full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(linked_ccmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%linked, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%real_lattice%finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
