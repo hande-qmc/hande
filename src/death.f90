@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, Kii, loc_shift, population, tot_population, ndeath)
+    subroutine stochastic_death(rng, tau, Kii, loc_shift, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -18,6 +18,7 @@ contains
         !  K_ii =  < D_i | H | D_i > - E_0.
 
         ! In:
+        !    tau: timestep being used.
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
         !    loc_shift: The value of the shift to be used in the death step.
@@ -38,7 +39,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        real(p), intent(in) :: Kii
+        real(p), intent(in) :: tau, Kii
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
         integer(int_p), intent(inout) :: population, ndeath
@@ -102,7 +103,7 @@ contains
 
     end subroutine stochastic_death
 
-    subroutine stochastic_hf_cloning(rng, Oii, hamiltonian_pop, ncloned)
+    subroutine stochastic_hf_cloning(rng, tau, Oii, hamiltonian_pop, ncloned)
 
         ! Clone Hellmann--Feynman particles from Hamiltonian particles.
         ! HF particles are created from Hamiltonian particles on the same
@@ -115,6 +116,7 @@ contains
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    tau: timestep being used.
         !    Oii: < D_i | O | D_i > (stored in the appropriate element of
         !        walker_enegies).
         !    hamiltonian_pop: number of Hamiltonian particles on determinant
@@ -127,7 +129,7 @@ contains
         use hfs_data, only: hf_shift
 
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: Oii
+        real(p), intent(in) :: tau, Oii
         integer(int_p), intent(in) :: hamiltonian_pop
         integer(int_p), intent(out) :: ncloned
 

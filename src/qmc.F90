@@ -10,7 +10,7 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc(sys, semi_stoch_in)
+    subroutine do_qmc(sys, qmc_in, semi_stoch_in)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -18,6 +18,7 @@ contains
         !    sys: system being studied.  This should(!) be returned unaltered on
         !         output from each procedure, but might be varied during the
         !         run if needed.
+        !    qmc_in: Input options relating to QMC methods.
         ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
@@ -29,41 +30,42 @@ contains
         use fciqmc, only: do_fciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         real(p) :: hub_matel
         type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers
-        call init_proc_pointers(sys)
+        call init_proc_pointers(sys, qmc_in)
 
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         ! Initialise data
-        call init_qmc(sys)
+        call init_qmc(sys, qmc_in)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
         if (doing_calc(dmqmc_calc)) then
-            call do_dmqmc(sys)
+            call do_dmqmc(sys, qmc_in)
         else if (doing_calc(ct_fciqmc_calc)) then
-            call do_ct_fciqmc(sys, hub_matel)
+            call do_ct_fciqmc(sys, qmc_in, hub_matel)
         else if (doing_calc(ccmc_calc)) then
-            call do_ccmc(sys, semi_stoch_in)
+            call do_ccmc(sys, qmc_in, semi_stoch_in)
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
             if (doing_calc(hfs_fciqmc_calc)) then
-                call do_hfs_fciqmc(sys)
+                call do_hfs_fciqmc(sys, qmc_in)
             else
-                call do_fciqmc(sys, semi_stoch_in)
+                call do_fciqmc(sys, qmc_in, semi_stoch_in)
             end if
         end if
 
@@ -74,7 +76,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys)
+    subroutine init_qmc(sys, qmc_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -83,6 +85,8 @@ contains
 
         ! In:
         !    sys: system being studied.
+        ! In/Out:
+        !    qmc_in: input options relating to QMC methods.
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -106,7 +110,10 @@ contains
         use utils, only: factorial_combination_1
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
+        use qmc_data, only: qmc_in_t
+
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
@@ -159,7 +166,7 @@ contains
         end if
 
         ! Each spawned_walker occupies spawned_size kind=int_s integers.
-        if (initiator_approximation) then
+        if (qmc_in%initiator_approx) then
             size_spawned_walker = (sys%basis%tensor_label_len+sampling_size+1)*int_s_length/8
         else
             size_spawned_walker = (sys%basis%tensor_label_len+sampling_size)*int_s_length/8
@@ -210,7 +217,7 @@ contains
         ! Allocate the shift.
         allocate(shift(sampling_size), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
-        shift = initial_shift
+        shift = qmc_in%initial_shift
 
         allocate(vary_shift(sampling_size), stat=ierr)
         call check_allocate('vary_shift', size(vary_shift), ierr)
@@ -222,7 +229,7 @@ contains
 
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers
         ! are being used.
-        if (real_amplitudes) then
+        if (qmc_in%real_amplitudes) then
             if (bit_size(0_int_p) == 64) then
                 ! Allow a maximum population of 2^32, and a minimum fractional
                 ! part of 2^-31.
@@ -241,12 +248,12 @@ contains
 
         ! If not using real amplitudes then we always want spawn_cutoff to be
         ! equal to 1.0, so overwrite the default.
-        if (.not. real_amplitudes) spawn_cutoff = 0.0_p
+        if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
-        call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
+        call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
         if (non_blocking_comm) then
-            call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, initiator_approximation, &
+            call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                                spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
@@ -262,7 +269,7 @@ contains
         ! When using the propagate_to_beta option the number of iterations in imaginary
         ! time we want to do depends on what value of beta we are seeking. It's
         ! annoying to have to modify this in the input file, so just do it here.
-        if (propagate_to_beta) nreport = int(ceiling(init_beta/(ncycles*tau)))
+        if (propagate_to_beta) qmc_in%nreport = int(ceiling(init_beta/(qmc_in%ncycles*qmc_in%tau)))
 
         ! --- Initial walker distributions ---
         ! Note occ_list could be set and allocated in the input.
@@ -321,7 +328,7 @@ contains
                 ! Zero all populations...
                 walker_population(:,tot_walkers) = 0_int_p
                 ! Set initial population of Hamiltonian walkers.
-                walker_population(1,tot_walkers) = nint(D0_population)*real_factor
+                walker_population(1,tot_walkers) = nint(qmc_in%D0_population)*real_factor
                 ! Set the bitstring of this psip to be that of the
                 ! reference state.
                 walker_dets(:,tot_walkers) = f0
@@ -391,7 +398,7 @@ contains
                     ! Zero all populations for this determinant.
                     walker_population(:,tot_walkers) = 0_int_p
                     ! Set the population for this basis function.
-                    walker_population(1,tot_walkers) = nint(D0_population)*real_factor
+                    walker_population(1,tot_walkers) = nint(qmc_in%D0_population)*real_factor
                     walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                     select case(sys%system)
                     case(heisenberg)
@@ -434,7 +441,7 @@ contains
 #endif
 
         ! Decide whether the shift should be turned on from the start.
-        vary_shift = tot_nparticles >= target_particles
+        vary_shift = tot_nparticles >= qmc_in%target_particles
 
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
@@ -452,12 +459,12 @@ contains
         ! excitations based upon the reference determinant and assume other
         ! determinants have a roughly similar ratio of single:double
         ! excitations.
-        if (pattempt_single < 0 .or. pattempt_double < 0) then
-            call find_single_double_prob(sys, occ_list0, pattempt_single, pattempt_double)
+        if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
+            call find_single_double_prob(sys, occ_list0, qmc_in%pattempt_single, qmc_in%pattempt_double)
         else
             ! renormalise just in case input wasn't
-            pattempt_single = pattempt_single/(pattempt_single+pattempt_double)
-            pattempt_double = 1.0_p - pattempt_single
+            qmc_in%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
+            qmc_in%pattempt_double = 1.0_p - qmc_in%pattempt_single
         end if
 
         ! Calculate all the possible different amplitudes for the Neel singlet state
@@ -478,7 +485,7 @@ contains
         ! arrays, ie to store thermal quantities, and to initalise reduced density matrix
         ! quantities if necessary.
         if (doing_calc(dmqmc_calc)) then
-            call init_dmqmc(sys)
+            call init_dmqmc(sys, qmc_in)
         end if
 
         if (parent) then
@@ -493,20 +500,20 @@ contains
             case default
                 write(6,'(i2)') ref_sym
             end select
-            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', pattempt_single
-            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', pattempt_double
+            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', qmc_in%pattempt_single
+            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', qmc_in%pattempt_double
             if (doing_calc(dmqmc_calc)) then
-                write (6,'(1X,a54,'//int_fmt(int(D0_population,int_64),1)//')') &
-                              'Initial population on the trace of the density matrix:', int(D0_population,int_64)
+                write (6,'(1X,a54,'//int_fmt(int(qmc_in%D0_population,int_64),1)//')') &
+                              'Initial population on the trace of the density matrix:', int(qmc_in%D0_population,int_64)
             else
                 write (6,'(1X,a44,1X,f11.4,/)') &
-                              'Initial population on reference determinant:',D0_population
+                              'Initial population on reference determinant:',qmc_in%D0_population
                 write (6,'(1X,a53,/)') 'Note that the correlation energy is relative to |D0>.'
             end if
-            if (initiator_approximation) then
+            if (qmc_in%initiator_approx) then
                 write (6,'(1X,a24)') 'Initiator method in use.'
                 write (6,'(1X,a48,1X,f3.1,/)') &
-                    'Population for a determinant to be an initiator:', initiator_population
+                    'Population for a determinant to be an initiator:', qmc_in%initiator_pop
             end if
             write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
             write (6,'(1X,a69)') 'Note that all particle populations are averaged over the report loop.'
@@ -574,18 +581,20 @@ contains
 
     end subroutine init_qmc
 
-    subroutine init_proc_pointers(sys)
+    subroutine init_proc_pointers(sys, qmc_in)
 
         ! Set function pointers for QMC calculations.
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
 
         ! System and calculation data
         use calc
         use hfs_data
         use system
         use parallel, only: parent
+        use qmc_data, only: qmc_in_t
 
         ! Procedures to be pointed to.
         use death, only: stochastic_death
@@ -618,6 +627,7 @@ contains
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
 
         ! 0. In general, use the default spawning routine.
         spawner_ptr => spawn_standard
@@ -634,7 +644,7 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
             spawner_ptr => spawn_lattice_split_gen
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_hub_k_no_renorm
                 gen_excit_ptr%init => gen_excit_init_hub_k_no_renorm
                 gen_excit_ptr%finalise => gen_excit_finalise_hub_k_no_renorm
@@ -660,7 +670,7 @@ contains
                 sc0_ptr => slater_condon0_chung_landau
             end if
 
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_hub_real_no_renorm
             else
                 gen_excit_ptr%full => gen_excit_hub_real
@@ -686,7 +696,7 @@ contains
             end if
 
             ! Set which guiding wavefunction to use, if requested.
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_heisenberg_no_renorm
             else
                     gen_excit_ptr%full => gen_excit_heisenberg
@@ -702,7 +712,7 @@ contains
             update_proj_energy_ptr => update_proj_energy_mol
             sc0_ptr => slater_condon0_mol
 
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             else
@@ -715,7 +725,7 @@ contains
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
 
-            if (no_renorm) then
+            if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
                 decoder_ptr => decode_det_occ
             else
@@ -734,7 +744,7 @@ contains
         ! 2. Set calculation-specific procedure pointers
 
         ! 2: initiator-approximation
-        if (initiator_approximation) then
+        if (qmc_in%initiator_approx) then
             set_parent_flag_ptr => set_parent_flag
             if (all(ras > 0)) then
                 create_spawned_particle_ptr => create_spawned_particle_initiator_ras
@@ -849,7 +859,7 @@ contains
                     op0_ptr => one_body0_mol
                     update_proj_hfs_ptr => update_proj_hfs_one_body_mol
                     spawner_hfs_ptr => spawner_ptr
-                    if (no_renorm) then
+                    if (qmc_in%no_renorm) then
                         gen_excit_hfs_ptr%full => gen_excit_one_body_mol_no_renorm
                     else
                         gen_excit_hfs_ptr%full => gen_excit_one_body_mol

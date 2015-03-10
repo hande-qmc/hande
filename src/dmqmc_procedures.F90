@@ -5,10 +5,12 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys)
+    subroutine init_dmqmc(sys, qmc_in)
 
         ! In:
         !    sys: system being studied.
+        ! In/Out:
+        !    qmc_in: Input options relating to QMC methods.
 
         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
@@ -17,7 +19,10 @@ contains
         use fciqmc_data
         use system, only: sys_t
 
+        use qmc_data, only: qmc_in_t
+
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
 
         integer :: ierr, i, bit_position, bit_element
 
@@ -58,7 +63,7 @@ contains
             ! probability. To avoid having to multiply by an extra variable in
             ! every spawning routine to account for this, we multiply the time
             ! step by 0.5 instead, then correct this in the death step (see below).
-            tau = tau*0.5_p
+            qmc_in%tau = qmc_in%tau*0.5_p
             ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
             ! multiplied by this factor it cancels the factor of 0.5 introduced
             ! into the timestep in DMQMC.cThis factor is also used in updated the
@@ -70,7 +75,7 @@ contains
         ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
         ! to set the appropriate beta = Beta / T_F.
         if (fermi_temperature) then
-            tau = tau / sys%ueg%ef
+            qmc_in%tau = qmc_in%tau / sys%ueg%ef
             init_beta = init_beta / sys%ueg%ef
         end if
 
@@ -356,7 +361,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, target_nparticles_tot, nparticles_tot)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, target_nparticles_tot, nparticles_tot)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -368,6 +373,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
         ! Out:
@@ -375,8 +381,7 @@ contains
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: initiator_approximation, sym_in, propagate_to_beta, &
-                        grand_canonical_initialisation
+        use calc, only: sym_in, propagate_to_beta, grand_canonical_initialisation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
         use fciqmc_data, only: sampling_size, all_spin_sectors, f0, init_beta, &
@@ -387,11 +392,14 @@ contains
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
+        use qmc_data, only: qmc_in_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
+
         real(p) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
         integer(int_64) :: npsips_this_proc, npsips
@@ -445,7 +453,7 @@ contains
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, init_beta, npsips_this_proc, &
+                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, init_beta, npsips_this_proc, &
                                                                                sym_in, ireplica, qmc_spawn)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
@@ -470,7 +478,7 @@ contains
         end if
 
 
-        call direct_annihilation(sys, rng, initiator_approximation)
+        call direct_annihilation(sys, rng, qmc_in)
 
         if (propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -481,7 +489,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                                tot_walkers, nparticles, qmc_spawn)
-            call direct_annihilation(sys, rng, initiator_approximation)
+            call direct_annihilation(sys, rng, qmc_in)
         end if
 
     end subroutine create_initial_density_matrix
@@ -604,7 +612,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, beta, npsips, sym, ireplica, qmc_spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_in, beta, npsips, sym, ireplica, qmc_spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -622,6 +630,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    beta: (inverse) temperature at which we're looking to sample the
         !        trial density matrix.
         !    sym: symmetry index of determinant space we wish to sample.
@@ -642,10 +651,12 @@ contains
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
+        use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         real(dp), intent(in) :: beta
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
@@ -692,7 +703,7 @@ contains
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
                     else
-                        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+                        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
                         if (hmatel == 0) cycle
@@ -1022,7 +1033,7 @@ contains
 
     end subroutine decode_dm_bitstring
 
-    subroutine update_sampling_weights(rng, basis)
+    subroutine update_sampling_weights(rng, basis, qmc_in)
 
         ! This routine updates the values of the weights used in importance
         ! sampling. It also removes or adds psips from the various excitation
@@ -1035,14 +1046,17 @@ contains
 
         use annihilation, only: remove_unoccupied_dets
         use basis_types, only: basis_t
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: get_excitation_level
         use fciqmc_data, only: accumulated_probs, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
         use fciqmc_data, only: nparticles, sampling_size, real_factor
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use qmc_data, only: qmc_in_t 
 
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
+        type(qmc_in_t), intent(in) :: qmc_in
+
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
         real(p) :: new_population_target(sampling_size)
         integer(int_p) :: old_population(sampling_size), new_population(sampling_size)
@@ -1094,7 +1108,7 @@ contains
         ! Call the annihilation routine to update the main walker list, as some
         ! sites will have become unoccupied and so need removing from the
         ! simulation.
-        call remove_unoccupied_dets(rng)
+        call remove_unoccupied_dets(rng, qmc_in%real_amplitudes)
 
     end subroutine update_sampling_weights
 

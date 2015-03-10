@@ -44,9 +44,6 @@ integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
 integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
-! Using the initiator approximation in FCIQMC or CCMC?
-logical :: initiator_approximation = .false.
-
 ! [review] - AJWT: Both these options only refer to CCMC, so should they be in calc?
 ! [review] - JSS: calc is a bit of a dumping ground until the purication/lua-ification
 ! [review] - JSS: hits it.  I'd say it's fine to leave it here for now.
@@ -154,12 +151,6 @@ integer :: ras1_min
 integer :: ras3_max
 ! Bit masks for showing only orbitals in RAS1 and RAS3 spaces.
 integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
-
-!--- Info for stocastic calculations ---
-
-! Seed used to initialise the dSFMT random number generator.
-! Default: hash of global UUID and time.
-integer :: seed
 
 ! --- QMC reference state and trial (importance-sampling) functions ---
 
@@ -280,7 +271,7 @@ end type parallel_t
 
 contains
 
-    subroutine init_calc_defaults(git_sha1, uuid)
+    subroutine init_calc_defaults(git_sha1, uuid, seed)
 
         ! Initialise calculation defaults which cannot be set at compile-time.
 
@@ -288,6 +279,8 @@ contains
         !    git_sha1: git SHA1 hash of the calculation.  Note that only the first 40
         !       characters (the length of the SHA1 hash) are actually used.
         !    uuid: UUID of the calculation.
+        ! Out:
+        !    seed: seed used to initialise the dSFMT random number generator.
 
         use iso_c_binding, only: c_loc, c_ptr, c_char, c_int
         use hashing, only: MurmurHash2
@@ -295,6 +288,8 @@ contains
 
         character(*), intent(in) :: git_sha1
         character(36), intent(in) :: uuid
+        integer, intent(out) :: seed
+
         character(len=len(uuid)+10) :: seed_data
         character(kind=c_char), target :: cseed_data(len(seed_data)+1)
         type(c_ptr) :: cseed_data_ptr

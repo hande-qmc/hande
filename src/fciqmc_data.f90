@@ -13,22 +13,9 @@ implicit none
 
 !--- Input data: FCIQMC ---
 
-! number of monte carlo cycles/report loop
-integer :: ncycles
-! number of report cycles
-! the shift is updated and the calculation information printed out
-! at the end of each report cycle.
-integer :: nreport
-
 ! For DMQMC, beta_loops specifies the number of times
 ! the program will loop over each value of beta in the main loop.
 integer :: beta_loops = 100
-
-! timestep
-real(p) :: tau
-
-! Are we doing a timestep search
-logical :: tau_search = .false.
 
 ! Array sizes
 ! If these are < 0, then the values represent the number of MB to be used to
@@ -36,21 +23,7 @@ logical :: tau_search = .false.
 integer :: walker_length
 integer :: spawned_walker_length
 
-! Number of particles before which varyshift mode is turned on.
-real(p) :: target_particles = 10000.0_p
-
-! Don't bother renormalising generation probabilities; instead allow forbidden
-! excitations to be generated and then rejected.
-logical :: no_renorm = .false.
-
-! probability of attempting single or double excitations...
-! set to be nonsense value so can easily detect if it's given as an input option
-real(p) :: pattempt_single = -1, pattempt_double = -1
-
 !--- Input data: initiator-FCIQMC ---
-
-! Population above which a determinant is an initiator.
-real(p) :: initiator_population = 3.0_p
 
 ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
 ! The default value corresponds to off.
@@ -70,8 +43,6 @@ real(p) :: cluster_multispawn_threshold = huge(1.0_p)
 ! [todo] - be to hide the details in a class.  (From AJWT.)
 !
 ! [todo] - real_bit_shift and real_factor really should be compile-time constants.
-! True if allowing non-integer values for psip populations.
-logical :: real_amplitudes = .false.
 ! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
 ! encoded as integers by multiplying them by 2**(real_bit_shift).
 integer :: real_bit_shift
@@ -188,23 +159,7 @@ integer :: ccmc_move_freq = 5
 ! vary_shift is true. When the replica_tricks option is used, the elements
 ! of the shift array refer to the shifts in the corresponding replica systems.
 ! When replica_tricks is not being used, only the first element is used.
-! vary_shift_from_proje: if true, then the when variable shift mode is entered
-! the shift is set to be the current projected energy.
-! vary_shift_from: if vary_shift_from_proje is false, then the shift is set to
-! this value when variable shift mode is entered.
-! warning: if both initial_shift and vary_shift_from are set, then we expect the
-! user to have been sensible.
 real(p), allocatable, target :: shift(:) ! (sampling_size)
-real(p) :: vary_shift_from = 0.0_p
-logical :: vary_shift_from_proje = .false.
-
-! Initial shift, needed in DMQMC to reset the shift at the start of each
-! beta loop.
-real(p) :: initial_shift = 0.0_p
-
-! Factor by which the changes in the population are damped when updating the
-! shift.
-real(p) :: shift_damping = 0.050_p
 
 ! projected energy
 ! This stores during an FCIQMC report loop
@@ -698,10 +653,12 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(ireport, ntot_particles, elapsed_time, comment)
+    subroutine write_fciqmc_report(qmc_in, ireport, ntot_particles, elapsed_time, comment)
 
         ! Write the report line at the end of a report loop.
+
         ! In:
+        !    qmc_in: input options relating to QMC methods.
         !    ireport: index of the report loop.
         !    ntot_particles: total number of particles in main walker list.
         !    elapsed_time: time taken for the report loop.
@@ -711,7 +668,9 @@ contains
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, non_blocking_comm
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
+        use qmc_data, only: qmc_in_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: ireport
         real(p), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
@@ -721,9 +680,9 @@ contains
         ! For non-blocking communications we print out the nth report loop
         ! after the (n+1)st iteration. Adjust mc_cycles accordingly
         if (.not. non_blocking_comm) then
-            mc_cycles = ireport*ncycles
+            mc_cycles = ireport*qmc_in%ncycles
         else
-            mc_cycles = (ireport-1)*ncycles
+            mc_cycles = (ireport-1)*qmc_in%ncycles
         end if
 
         if (comment) then
@@ -737,7 +696,7 @@ contains
         ! DMQMC output.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
-                (mc_cycles_done+mc_cycles-ncycles), shift(1), trace(1)
+                (mc_cycles_done+mc_cycles-qmc_in%ncycles), shift(1), trace(1)
             ! The trace on the second replica.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
                 write(6, '(3X,es17.10)',advance = 'no') trace(2)
@@ -808,7 +767,7 @@ contains
                                              proj_energy, D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') tot_nocc_states, tot_nspawn_events, rspawn, elapsed_time/ncycles
+        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') tot_nocc_states, tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
 
     end subroutine write_fciqmc_report
 

@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, ndets, dets, ref_det)
+    subroutine init_simple_fciqmc(sys, qmc_in, ndets, dets, ref_det)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -28,6 +28,8 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
         ! Out:
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space.
@@ -39,9 +41,11 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(out) :: ref_det
 
         integer, allocatable :: sym_space_size(:)
@@ -105,7 +109,7 @@ contains
 
         allocate(shift(1), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
-        shift = initial_shift
+        shift = qmc_in%initial_shift
 
         allocate(vary_shift(1), stat=ierr)
         call check_allocate('vary_shift', size(vary_shift), ierr)
@@ -153,7 +157,7 @@ contains
             end if
             f0 = dets(:,ref_det)
             call decode_det(sys%basis, f0, occ_list0)
-            walker_population(1,ref_det) = nint(D0_population)
+            walker_population(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
@@ -168,21 +172,25 @@ contains
 
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc(sys)
+    subroutine do_simple_fciqmc(sys, qmc_in)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
 
-        use calc, only: seed
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+
         integer :: ireport, icycle, idet, ipart, j
         real(p) :: nparticles, nparticles_old
         integer :: nattempts
@@ -192,10 +200,10 @@ contains
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
 
-        call init_simple_fciqmc(sys, ndets, dets, ref_det)
+        call init_simple_fciqmc(sys, qmc_in, ndets, dets, ref_det)
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         nparticles = real(sum(abs(walker_population(1,:))),p)
         nparticles_old = nparticles
@@ -204,14 +212,14 @@ contains
 
         call cpu_time(t1)
 
-        do ireport = 1, nreport
+        do ireport = 1, qmc_in%nreport
 
             ! Zero report cycle quantities.
             proj_energy = 0.0_p
             rspawn = 0.0_p
             D0_population = 0.0_p
 
-            do icycle = 1, ncycles
+            do icycle = 1, qmc_in%ncycles
 
                 ! Zero spawning arrays.
                 qmc_spawn%sdata = 0_int_s
@@ -242,17 +250,17 @@ contains
                     if (use_sparse_hamil) then
                         associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
                             do ipart = 1, abs(walker_population(1,idet))
-                                call attempt_spawn(rng, idet, walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                                call attempt_spawn(rng, qmc_in%tau, idet, walker_population(1,idet), hamil_csr%mat(hstart:hend), &
                                                    hamil_csr%col_ind(hstart:hend))
                             end do
                         end associate
                     else
                         do ipart = 1, abs(walker_population(1,idet))
-                            call attempt_spawn(rng, idet, walker_population(1,idet), hamil(:,idet))
+                            call attempt_spawn(rng, qmc_in%tau, idet, walker_population(1,idet), hamil(:,idet))
                         end do
                     end if
 
-                    call simple_death(rng, Hii, walker_population(1,idet))
+                    call simple_death(rng, qmc_in%tau, Hii, walker_population(1,idet))
 
                 end do
 
@@ -267,26 +275,26 @@ contains
             ! Update the shift
             nparticles = real(sum(abs(walker_population(1,:))),p)
             if (vary_shift(1)) then
-                call update_shift(shift(1), nparticles_old, nparticles, ncycles)
+                call update_shift(qmc_in, shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
             nparticles_old = nparticles
-            if (nparticles > target_particles .and. .not.vary_shift(1)) then
+            if (nparticles > qmc_in%target_particles .and. .not.vary_shift(1)) then
                 vary_shift(1) = .true.
             end if
 
             ! Average these quantities over the report cycle.
-            proj_energy = proj_energy/ncycles
-            D0_population = D0_population/ncycles
-            rspawn = rspawn/ncycles
+            proj_energy = proj_energy/qmc_in%ncycles
+            D0_population = D0_population/qmc_in%ncycles
+            rspawn = rspawn/qmc_in%ncycles
 
             call cpu_time(t2)
 
             ! Output stats
-            call write_fciqmc_report(ireport, (/nparticles/), t2-t1, .false.)
+            call write_fciqmc_report(qmc_in, ireport, (/nparticles/), t2-t1, .false.)
 
             ! Write restart file if required.
             if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, (/nparticles_old/))
+                call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, (/nparticles_old/))
 
             t1 = t2
 
@@ -295,7 +303,7 @@ contains
         if (parent) write (6,'()')
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*nreport, (/nparticles_old/))
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, (/nparticles_old/))
             if (parent) write (6,'()')
         end if
 
@@ -303,14 +311,16 @@ contains
 
     end subroutine do_simple_fciqmc
 
-    subroutine attempt_spawn(rng, idet, pop, hrow, det_indx)
+    subroutine attempt_spawn(rng, tau, idet, pop, hrow, det_indx)
 
         ! Simulate spawning part of FCIQMC algorithm.
         ! We attempt to spawn on all determinants connected to the current
         ! determinant (given by iwalker) with probability tau|K_ij|.  Note this
         ! is different from the optimised FCIQMC algorithm where each walker
         ! only gets one opportunity per FCIQMC cycle to spawn.
+
         ! In:
+        !    tau: timestep being used.
         !    iwalker: walker whose particles attempt to clone/die.
         ! In/Out:
         !    rng: random number generator.
@@ -318,7 +328,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: idet
         integer(int_p), intent(in) :: pop
-        real(p), intent(in) :: hrow(:)
+        real(p), intent(in) :: tau, hrow(:)
         integer, intent(in), optional :: det_indx(:)
 
         integer :: j, jdet
@@ -345,7 +355,7 @@ contains
             ! Spawn with probability tau|K_ij|.
             ! As K_ij = H_ij for off-diagonal elements, we can just use the
             ! stored Hamiltonian matrix directly.
-            rate = abs(Tau*hrow(j))
+            rate = abs(tau*hrow(j))
             nspawn = int(rate, int_s)
             rate = rate - nspawn
             r = get_rand_close_open(rng)
@@ -374,10 +384,12 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(rng, Hii, pop)
+    subroutine simple_death(rng, tau, Hii, pop)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
+
         ! In:
+        !    tau: timestep being used.
         !    Hii: diagonal matrix element, <D_i|H|D_i>
         ! In/Out:
         !    rng: random number generator.
@@ -385,7 +397,7 @@ contains
         !         the death step.
 
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: Hii
+        real(p), intent(in) :: tau, Hii
         integer(int_p), intent(inout) :: pop
 
         integer :: nkill

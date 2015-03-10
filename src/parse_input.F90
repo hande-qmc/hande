@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, semi_stoch_in)
+    subroutine read_input(sys, qmc_in, semi_stoch_in)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -29,6 +29,7 @@ contains
         !    sys: system being studied.  Parameters specified in the input file
         !         are set directly in the system object, components which are not
         !         mentioned in the input file are not altered.
+        !    qmc_in: Input options for QMC calculations.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
 ! nag doesn't automatically bring in command-line option handling.
@@ -36,7 +37,7 @@ contains
         use f90_unix_env
 #endif
 
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system
 
         use input
@@ -50,6 +51,7 @@ contains
 #endif
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         character(255) :: cInp
@@ -197,7 +199,7 @@ contains
                 calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
                 calc_type = calc_type + fciqmc_calc
-                initiator_approximation = .true.
+                qmc_in%initiator_approx = .true.
             case('CT_FCIQMC')
                 calc_type = calc_type + ct_fciqmc_calc
             case('DMQMC')
@@ -206,7 +208,7 @@ contains
                 calc_type = calc_type + ccmc_calc
             case('ICCMC')
                 calc_type = calc_type + ccmc_calc
-                initiator_approximation = .true.
+                qmc_in%initiator_approx = .true.
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
@@ -242,18 +244,18 @@ contains
                 linked_ccmc = .true.
 
             case('REAL_AMPLITUDES')
-                real_amplitudes = .true.
+                qmc_in%real_amplitudes = .true.
             case('SPAWN_CUTOFF')
                 call readf(spawn_cutoff)
 
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
                 call readi(semi_stoch_in%start_iter)
-                real_amplitudes = .true.
+                qmc_in%real_amplitudes = .true.
             case('SEMI_STOCH_SHIFT_START')
                 call readi(semi_stoch_in%shift_iter)
                 semi_stoch_in%start_iter = -1
-                real_amplitudes = .true.
+                qmc_in%real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
                 semi_stoch_in%determ_space_type = high_pop_determ_space
@@ -363,10 +365,10 @@ contains
 
             ! Calculation options: fciqmc.
             case('MC_CYCLES')
-                call readi(ncycles)
+                call readi(qmc_in%ncycles)
             case('NREPORTS')
-                call readi(nreport)
-                if (nreport < 0) nreport = huge(nreport)
+                call readi(qmc_in%nreport)
+                if (qmc_in%nreport < 0) qmc_in%nreport = huge(qmc_in%nreport)
             case('BETA_LOOPS')
                 call readi(beta_loops)
             case('WALKER_LENGTH')
@@ -400,26 +402,26 @@ contains
                     end if
                 end if
             case('TAU')
-                call readf(tau)
+                call readf(qmc_in%tau)
             case('TAU_SEARCH')
-                tau_search = .true.
+                qmc_in%tau_search = .true.
             case('INITIAL_SHIFT')
-                call readf(initial_shift)
+                call readf(qmc_in%initial_shift)
                 ! We assume the user is sensible/knows what he/she is doing if
                 ! initial_shift and vary_shift_from are set.
-                vary_shift_from = initial_shift
+                qmc_in%vary_shift_from = qmc_in%initial_shift
             case('VARY_SHIFT_FROM')
                 call readu(w)
                 if (w == 'PROJE') then
-                    vary_shift_from_proje = .true.
+                    qmc_in%vary_shift_from_proje = .true.
                 else
                     call reread(0)
-                    call readf(vary_shift_from)
+                    call readf(qmc_in%vary_shift_from)
                 end if
             case('VARYSHIFT_TARGET')
-                call readf(target_particles)
+                call readf(qmc_in%target_particles)
             case('INIT_POP')
-                call readf(D0_population)
+                call readf(qmc_in%D0_population)
             case('REFERENCE_DET')
                 allocate(occ_list0(nitems-1), stat=ierr)
                 call check_allocate('occ_list0',nitems-1,ierr)
@@ -433,14 +435,14 @@ contains
                     call readi(hs_occ_list0(i))
                 end do
             case('NO_RENORM')
-                no_renorm = .true.
+                qmc_in%no_renorm = .true.
             case('SELECT_REFERENCE_DET')
                 select_ref_det_every_nreports = 20
                 if (item /= nitems) call readi(select_ref_det_every_nreports)
                 if (item /= nitems) call readf(ref_det_factor)
             case('ATTEMPT_SPAWN_PROB')
-                call readf(pattempt_single)
-                call readf(pattempt_double)
+                call readf(qmc_in%pattempt_single)
+                call readf(qmc_in%pattempt_double)
 
             ! Calculation options: CCMC.
             case('move_freq')
@@ -482,9 +484,9 @@ contains
             case('DUMP_RESTART_FREQUENCY')
                 call readi(restart_info_global%write_restart_freq)
             case('SEED')
-                call readi(seed)
+                call readi(qmc_in%seed)
             case('SHIFT_DAMPING')
-                call readf(shift_damping)
+                call readf(qmc_in%shift_damping)
             case('CLUSTER_MULTISPAWN_THRESHOLD')
                 call readf(cluster_multispawn_threshold)
             case('INIT_SPIN_INVERSE_REFERENCE_DET')
@@ -492,7 +494,7 @@ contains
 
             ! Calculation options: initiator-fciqmc.
             case('INITIATOR_POPULATION')
-                call readf(initiator_population)
+                call readf(qmc_in%initiator_pop)
 
             ! Calculation options: operators sampled using Hellmann--Feynman.
             case('OPERATOR')
@@ -565,21 +567,23 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, semi_stoch_in)
+    subroutine check_input(sys, qmc_in, semi_stoch_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
 
         ! In/Out:
         !    sys: system object, as set in read_input (invalid settings are overridden).
+        !    qmc_in: Input options for QMC calculations.
         ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use const
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: ivec, jvec
@@ -648,7 +652,7 @@ contains
         end if
 
         ! Real amplitude checks.
-        if (real_amplitudes) then
+        if (qmc_in%real_amplitudes) then
             if (doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc)) then
                 call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
             end if
@@ -693,8 +697,8 @@ contains
                 if (spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
             if (calc_inst_rdm .and. spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
-            if (tau <= 0) call stop_all(this,'Tau not positive.')
-            if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
+            if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
+            if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(occ_list0)) then
                 if (size(occ_list0) /= sys%nel) then
                     if (sys%system /= heisenberg) then
@@ -709,7 +713,7 @@ contains
                 call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
             if (par_info%load%max_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
         end if
-        if (doing_calc(ct_fciqmc_calc)) ncycles = 1
+        if (doing_calc(ct_fciqmc_calc)) qmc_in%ncycles = 1
 
         if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. replica_tricks)) call stop_all(this,&
                     'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
@@ -753,7 +757,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, semi_stoch_in)
+    subroutine distribute_input(sys, qmc_in, semi_stoch_in)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -764,14 +768,16 @@ contains
         ! In/Out:
         !    sys: object describing the system.  All parameters which can be set
         !       in the input file are distributed to other processors.
+        !    qmc_in: Input options for QMC calculations.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
 #ifndef PARALLEL
 
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
 #else
@@ -780,10 +786,11 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        use qmc_data, only: semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         integer :: i, ierr, occ_list_size
@@ -803,7 +810,7 @@ contains
             end if
             call mpi_bcast(sys%lattice%lattice, sys%lattice%ndim*sys%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
-        call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -859,18 +866,18 @@ contains
         call mpi_bcast(print_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(analyse_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
@@ -973,19 +980,19 @@ contains
         call mpi_bcast(restart_info_global%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_restart_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global_shift%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%initiator_pop, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%initiator_approx, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(alpha0, 1, mpi_integer, 0, mpi_comm_world, ierr)

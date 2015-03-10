@@ -11,7 +11,7 @@ public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space, ge
 
 contains
 
-    subroutine estimate_hilbert_space(sys)
+    subroutine estimate_hilbert_space(sys, seed)
 
         ! Based on Appendix A in George Booth's thesis.
 
@@ -29,9 +29,11 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        ! In:
+        !    seed: seed for the dSFMT random number generator.
 
         use basis, only: write_basis_fn
-        use calc, only: sym_in, ms_in, truncate_space, truncation_level, seed
+        use calc, only: sym_in, ms_in, truncate_space, truncation_level
         use const, only: dp
         use checking, only: check_allocate, check_deallocate
         use determinants, only: encode_det, det_info_t, alloc_det_info_t,  &
@@ -45,6 +47,7 @@ contains
         use utils, only: binom_r, rng_init_info
 
         type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: seed
 
         integer :: icycle, i, ierr, a
         integer :: ref_sym, det_sym

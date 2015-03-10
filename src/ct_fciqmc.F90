@@ -10,17 +10,18 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(sys, matel)
+    subroutine do_ct_fciqmc(sys, qmc_in, matel)
 
         ! In:
         !    sys: system being studied
         !    matel: off-diagonal Hamiltonian matrix element (ignoring sign due
         !       to permutations).  Either U (Bloch orbitals) or
         !       t (atomic/real-space orbitals).
+        ! In/Out:
+        !    qmc_in: Input options relating to QMC methods.
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: bloom_stats_t
-        use calc, only: seed, initiator_approximation
         use determinants, only: det_info_t, alloc_det_info_t
         use excitations, only: excit_t, get_excitation
         use qmc_common
@@ -34,7 +35,10 @@ contains
         use utils, only: rng_init_info
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
+        use qmc_data, only: qmc_in_t
+
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer(int_p) :: nspawned, ndeath
@@ -59,8 +63,8 @@ contains
         type(bloom_stats_t) :: bloom_stats
         integer :: unused_int_1 = -1, unused_int_2 = 0
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         ! index of spawning array which contains population
         spawned_pop = sys%basis%string_len + 1
@@ -84,19 +88,19 @@ contains
 
         nparticles_old = tot_nparticles
 
-        t_barrier = tau ! or we could just not bother with the t_barrier var...
+        t_barrier = qmc_in%tau ! or we could just not bother with the t_barrier var...
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys)
+        call initial_fciqmc_status(sys, qmc_in)
 
         ! time the report loop
         call cpu_time(t1)
 
         ! Main fciqmc loop
-        do ireport = 1, nreport
+        do ireport = 1, qmc_in%nreport
 
             call init_report_loop(bloom_stats)
-            call init_mc_cycle(rng, sys, real_factor, nattempts, ndeath)
+            call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
@@ -231,11 +235,11 @@ contains
 
             end do
 
-            call direct_annihilation(sys, rng, initiator_approximation, nspawn_events)
+            call direct_annihilation(sys, rng, qmc_in, nspawn_events)
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
-            call end_report_loop(sys, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
+            call end_report_loop(sys, qmc_in, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
                                  unused_int_1, unused_int_2, soft_exit)
 
             if (soft_exit) exit
@@ -246,9 +250,9 @@ contains
         call load_balancing_report(qmc_spawn%mpi_time)
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + ncycles*ireport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + ncycles*nreport
+            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
         if (dump_restart_file) then

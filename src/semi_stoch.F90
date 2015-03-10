@@ -638,7 +638,7 @@ contains
 
     end function check_if_determ
 
-    subroutine determ_projection(rng, spawn, determ)
+    subroutine determ_projection(rng, qmc_in, spawn, determ)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -648,20 +648,23 @@ contains
         !    rng: random number generator.
         !    spawn: spawn_t object to which deterministic spawning will occur.
         ! In:
-        !    determ: Deterministic space being used.
+        !    qmc_in: input options relating to QMC methods.
+        !    determ: deterministic space being used.
 
-        use calc, only: initiator_approximation
         use csr, only: csrpgemv_single_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: shift, tau, real_factor
+        use fciqmc_data, only: shift, real_factor
         use omp_lib
         use parallel, only: nprocs, iproc, nthreads
+        use qmc_data, only: qmc_in_t
         use spawn_data, only: spawn_t
         use spawning, only: add_spawned_particle, add_flagged_spawned_particle
 
         type(dSFMT_t), intent(inout) :: rng
+        type(qmc_in_t), intent(in) :: qmc_in
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
+
         integer :: i, proc, row
         real(p) :: out_vec
 
@@ -678,23 +681,23 @@ contains
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
                     out_vec = -out_vec + shift(1)*determ%vector(i)
-                    out_vec = out_vec*tau
-                    call create_spawned_particle_determ(out_vec, row, proc)
+                    out_vec = out_vec*qmc_in%tau
+                    call create_spawned_particle_determ(out_vec, row, proc, qmc_in%initiator_approx)
                 end do
             else
                 do i = 1, determ%sizes(proc)
                     ! The same as above, but without the shift contribution.
                     row = row + 1
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
-                    out_vec = -out_vec*tau
-                    call create_spawned_particle_determ(out_vec, row, proc)
+                    out_vec = -out_vec*qmc_in%tau
+                    call create_spawned_particle_determ(out_vec, row, proc, qmc_in%initiator_approx)
                 end do
             end if
         end do
 
         contains
 
-            subroutine create_spawned_particle_determ(target_nspawn, idet, proc)
+            subroutine create_spawned_particle_determ(target_nspawn, idet, proc, initiator_approx)
 
                 ! Add a deterministic spawning to the spawning array. Before
                 ! this can be done, the target population must be encoded as an
@@ -708,9 +711,12 @@ contains
                 !        determ%dets array.
                 !    proc: The processor to which the determinant to be added
                 !        belongs.
+                !    initiator_approx: is the initiator approximation
+                !        in use?
 
                 real(p), intent(in) :: target_nspawn
                 integer, intent(in) :: idet, proc
+                logical, intent(in) :: initiator_approx
 
                 integer(int_p) :: nspawn
                 real(p) :: sgn, target_nspawn_scaled
@@ -729,7 +735,7 @@ contains
                 nspawn = int(abs(target_nspawn_scaled), int_p)
                 if (abs(target_nspawn_scaled) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
                 nspawn = nspawn*nint(sgn, int_p)
-                if (initiator_approximation) then
+                if (initiator_approx) then
                     call add_flagged_spawned_particle(determ%dets(:,idet), nspawn, 1, 0, proc, spawn)
                 else
                     call add_spawned_particle(determ%dets(:,idet), nspawn, 1, proc, spawn)
@@ -739,7 +745,7 @@ contains
 
     end subroutine determ_projection
 
-    subroutine determ_projection_separate_annihil(determ)
+    subroutine determ_projection_separate_annihil(determ, tau)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
@@ -758,10 +764,11 @@ contains
         !       amplitudes across all processes, on output.
 
         use csr, only: csrpgemv
-        use fciqmc_data, only: shift, tau
+        use fciqmc_data, only: shift
         use parallel
 
         type(semi_stoch_t), intent(inout) :: determ
+        real(p), intent(in) :: tau
 
         integer :: i, ierr
         integer :: send_counts(0:nprocs-1), receive_counts(0:nprocs-1)
