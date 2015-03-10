@@ -10,7 +10,7 @@ contains
 
 ! --- Utility routines ---
 
-    subroutine select_ref_det(sys)
+    subroutine select_ref_det(sys, ref_det_factor)
 
         ! Change the reference determinant to be the determinant with the
         ! greatest population if it exceeds some threshold relative to the
@@ -25,6 +25,9 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    ref_det_factor: factor by which population on a determinant must
+        !        exceed the reference population in order to be accepted as
+        !        the new reference.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det, write_det
@@ -34,6 +37,7 @@ contains
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: ref_det_factor
 
         integer, parameter :: particle_type = 1
         integer :: i, D0_proc

@@ -441,7 +441,7 @@ contains
             case('SELECT_REFERENCE_DET')
                 fciqmc_in%select_ref_det_every_nreports = 20
                 if (item /= nitems) call readi(fciqmc_in%select_ref_det_every_nreports)
-                if (item /= nitems) call readf(ref_det_factor)
+                if (item /= nitems) call readf(fciqmc_in%ref_det_factor)
             case('ATTEMPT_SPAWN_PROB')
                 call readf(qmc_in%pattempt_single)
                 call readf(qmc_in%pattempt_double)
@@ -851,7 +851,7 @@ contains
         call mpi_bcast(sys%ueg%ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%read_in%dipole_int_file, len(sys%read_in%dipole_int_file), mpi_character, 0, mpi_comm_world, ierr)
         call mpi_bcast(fciqmc_in%select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%cas, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras3_max, 1, mpi_integer, 0, mpi_comm_world, ierr)

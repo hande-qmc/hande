@@ -503,11 +503,6 @@ real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 ! Energy of reference determinant.
 real(p) :: H00
 
-! Factor by which the population on a determinant must exceed the reference
-! determinant's population in order to be accepted as the new reference
-! determinant.
-real(p) :: ref_det_factor = 1.50_p
-
 !--- Calculation modes ---
 
 ! The shift is updated at the end of each report loop when vary_shift is true.

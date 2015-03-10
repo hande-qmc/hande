@@ -250,7 +250,7 @@ contains
             if (soft_exit) exit
 
             ! Should we try and update the reference determinant now?
-            if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) call select_ref_det(sys)
+            if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) call select_ref_det(sys, fciqmc_in%ref_det_factor)
 
         end do
 
