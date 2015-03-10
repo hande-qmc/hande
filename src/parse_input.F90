@@ -492,7 +492,7 @@ contains
             case('SHIFT_DAMPING')
                 call readf(qmc_in%shift_damping)
             case('CLUSTER_MULTISPAWN_THRESHOLD')
-                call readf(cluster_multispawn_threshold)
+                call readf(ccmc_in%cluster_multispawn_threshold)
             case('INIT_SPIN_INVERSE_REFERENCE_DET')
                 fciqmc_in%init_spin_inv_D0 = .true.
 
@@ -996,7 +996,7 @@ contains
         call mpi_bcast(restart_info_global_shift%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)

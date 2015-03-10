@@ -256,8 +256,7 @@ contains
         use fciqmc_data, only: sampling_size, walker_dets, walker_population,                        &
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
-                               write_fciqmc_report_header, nparticles, real_factor,                  &
-                               cluster_multispawn_threshold
+                               write_fciqmc_report_header, nparticles, real_factor
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles
@@ -508,15 +507,15 @@ contains
                 !$omp         nspawnings_left, nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
-                !$omp        max_cluster_size, cdet, cluster, truncation_level, &
-                !$omp        D0_normalisation, D0_pos, nD0_select,              &
-                !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
-                !$omp        proj_energy, real_factor, min_cluster_size,        &
-                !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
-                !$omp        nsingle_excitors, cluster_multispawn_threshold,    &
-                !$omp        linked_ccmc, ldet, rdet, left_cluster,             &
-                !$omp        right_cluster, nprocs, ccmc_full_nc, ms_stats,     &
-                !$omp        walker_population, tot_walkers, walker_data,       &
+                !$omp        max_cluster_size, cdet, cluster, truncation_level,      &
+                !$omp        D0_normalisation, D0_pos, nD0_select,                   &
+                !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,       &
+                !$omp        proj_energy, real_factor, min_cluster_size,             &
+                !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
+                !$omp        nsingle_excitors, ccmc_in%cluster_multispawn_threshold, &
+                !$omp        linked_ccmc, ldet, rdet, left_cluster,                  &
+                !$omp        right_cluster, nprocs, ccmc_full_nc, ms_stats,          &
+                !$omp        walker_population, tot_walkers, walker_data,            &
                 !$omp        walker_dets, nparticles_change, ndeath, D0_population)
                 it = get_thread_id()
                 iexcip_pos = 0
@@ -580,7 +579,7 @@ contains
                         ! greater than cluster_multispawn_threshold, then nspawnings is
                         ! increased to the ratio of these.
                         nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
-                                                         cluster_multispawn_threshold))
+                                                         ccmc_in%cluster_multispawn_threshold))
                         call ms_stats_update(nspawnings_total, ms_stats(it))
                         nattempts_spawn = nattempts_spawn + nspawnings_total
 
