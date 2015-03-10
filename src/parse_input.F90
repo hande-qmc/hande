@@ -419,7 +419,7 @@ contains
                     call readf(qmc_in%vary_shift_from)
                 end if
             case('VARYSHIFT_TARGET')
-                call readf(target_particles)
+                call readf(qmc_in%target_particles)
             case('INIT_POP')
                 call readf(D0_population)
             case('REFERENCE_DET')
@@ -877,7 +877,7 @@ contains
         call mpi_bcast(qmc_in%initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)

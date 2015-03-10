@@ -279,7 +279,7 @@ contains
                 call update_shift(qmc_in, shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
             nparticles_old = nparticles
-            if (nparticles > target_particles .and. .not.vary_shift(1)) then
+            if (nparticles > qmc_in%target_particles .and. .not.vary_shift(1)) then
                 vary_shift(1) = .true.
             end if
 

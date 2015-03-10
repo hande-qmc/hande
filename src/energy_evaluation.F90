@@ -206,7 +206,7 @@ contains
         !    rep_loop_loc: array containing local quantities required for energy
         !       evaluation.
 
-        use fciqmc_data, only: nparticles, sampling_size, target_particles, rspawn, &
+        use fciqmc_data, only: nparticles, sampling_size, rspawn, &
                                proj_energy, D0_population, tot_walkers
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
         use bloom_handler, only: bloom_stats_t
@@ -272,7 +272,7 @@ contains
         ! Out (optional):
         !     update_tau: if true, tau should be automatically rescaled.
 
-        use fciqmc_data, only: sampling_size, target_particles, rspawn,  &
+        use fciqmc_data, only: sampling_size, rspawn,                    &
                                proj_energy, shift, vary_shift,           &
                                D0_population, nparticles_proc, par_info, &
                                tot_nocc_states, tot_nspawn_events
@@ -338,7 +338,7 @@ contains
         end if
         ntot_particles_old = ntot_particles
         hf_signed_pop = new_hf_signed_pop
-        if (ntot_particles(1) > target_particles .and. .not.vary_shift(1)) then
+        if (ntot_particles(1) > qmc_in%target_particles .and. .not.vary_shift(1)) then
             vary_shift(1) = .true.
             if (qmc_in%vary_shift_from_proje) then
               ! Set shift to be instantaneous projected energy.

@@ -247,7 +247,7 @@ contains
         !        particles in the simulation currently.
 
         use energy_evaluation, only: update_shift
-        use fciqmc_data, only: shift, target_particles, vary_shift, sampling_size
+        use fciqmc_data, only: shift, vary_shift, sampling_size
         use qmc_data, only: qmc_in_t
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -261,7 +261,7 @@ contains
                 call update_shift(qmc_in, shift(ireplica), loc_tot_nparticles_old(ireplica), &
                     loc_tot_nparticles(ireplica), qmc_in%ncycles)
             end if
-            if (loc_tot_nparticles(ireplica) > target_particles .and. (.not. vary_shift(ireplica))) &
+            if (loc_tot_nparticles(ireplica) > qmc_in%target_particles .and. (.not. vary_shift(ireplica))) &
                 vary_shift(ireplica) = .true.
         end do
 

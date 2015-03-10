@@ -441,7 +441,7 @@ contains
 #endif
 
         ! Decide whether the shift should be turned on from the start.
-        vary_shift = tot_nparticles >= target_particles
+        vary_shift = tot_nparticles >= qmc_in%target_particles
 
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL

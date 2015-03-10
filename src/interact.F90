@@ -25,7 +25,7 @@ contains
         use utils, only: get_free_unit
         use parallel
 
-        use fciqmc_data, only: target_particles, vary_shift, shift, sampling_size
+        use fciqmc_data, only: vary_shift, shift, sampling_size
         use qmc_data, only: qmc_in_t
 
         logical, intent(in) :: comms_found
@@ -97,8 +97,8 @@ contains
                             ! Change timestep.
                             if (present(qmc_in)) call readf(qmc_in%tau)
                         case('VARYSHIFT_TARGET')
-                            call readf(target_particles)
-                            if (target_particles < 0) then
+                            call readf(qmc_in%target_particles)
+                            if (qmc_in%target_particles < 0) then
                                 ! start varying the shift now.
                                 vary_shift = .true.
                             end if
@@ -129,7 +129,7 @@ contains
             call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
             if (present(qmc_in)) call mpi_bcast(qmc_in%tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(shift, sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
 #endif
 

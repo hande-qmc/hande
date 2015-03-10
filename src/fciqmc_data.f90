@@ -23,9 +23,6 @@ integer :: beta_loops = 100
 integer :: walker_length
 integer :: spawned_walker_length
 
-! Number of particles before which varyshift mode is turned on.
-real(p) :: target_particles = 10000.0_p
-
 !--- Input data: initiator-FCIQMC ---
 
 ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
