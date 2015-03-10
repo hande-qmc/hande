@@ -31,25 +31,29 @@ end enum
 
 contains
 
-    subroutine estimate_kinetic_energy(sys)
+    subroutine estimate_kinetic_energy(sys, qmc_in)
 
         ! From the Fermi factors calculated in the grand canonical ensemble we can
         ! estimate the total energy in the canonical ensemble by generating determinants
         ! with arbitrary particle number and only keeping those with <N> = nel.
 
         ! In:
+        !    qmc_in: input options relating to QMC methods.
+        ! In/Out:
         !    sys: system being studied.
 
         use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
-        use calc, only: ms_in, seed, fermi_temperature
+        use calc, only: ms_in, fermi_temperature
         use fciqmc_data, only: init_beta, D0_population
-        use utils, only: rng_init_info
         use hamiltonian_ueg, only: sum_sp_eigenvalues, potential_energy_ueg
         use interact, only: calc_interact, check_comms_file
+        use qmc_data, only: qmc_in_t
+        use utils, only: rng_init_info
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         real(dp) :: r
@@ -65,8 +69,8 @@ contains
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 

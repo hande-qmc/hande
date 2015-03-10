@@ -49,7 +49,7 @@ contains
 
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(qmc_in, nspawn_events, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine update_energy_estimators(qmc_in, nspawn_events, ntot_particles_old, doing_lb, comms_found, update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -59,6 +59,7 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    nspawn_events: The total number of spawning events to this process.
+        !    doing_lb (optional): true if performing load balancing.
         ! In/Out:
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -81,6 +82,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: nspawn_events
         real(p), intent(inout) :: ntot_particles_old(sampling_size)
+        logical, optional, intent(in) :: doing_lb
         logical, intent(inout) :: comms_found
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
@@ -100,7 +102,8 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, doing_lb, &
+                                            comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators
 
@@ -127,7 +130,8 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(qmc_in, rep_request_s, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine update_energy_estimators_recv(qmc_in, rep_request_s, ntot_particles_old, doing_lb, comms_found, &
+                                             update_tau, bloom_stats)
 
         ! Receive report loop quantities from all other processors and reduce.
 
@@ -140,6 +144,8 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        ! In (optional):
+        !    doing_lb: true if performing load balancing.
         ! In/Out (optional):
         !    bloom_stats: Bloom stats.  The report loop quantities are accumulated into
         !       their respective components.
@@ -155,6 +161,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(inout) :: rep_request_s(:)
         real(p), intent(inout) :: ntot_particles_old(:)
+        logical, optional, intent(in) :: doing_lb
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found
         logical, intent(out), optional :: update_tau
@@ -186,7 +193,7 @@ contains
         forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
-        call communicated_energy_estimators(qmc_in, rep_info_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, rep_info_sum, ntot_particles_old, doing_lb, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators_recv
 
@@ -253,7 +260,8 @@ contains
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, doing_lb, &
+                                              comms_found, update_tau, bloom_stats)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -269,6 +277,8 @@ contains
         !        next report loop.
         ! Out:
         !     comms_found: whether a HANDE.COMM file exists
+        ! In (optional):
+        !    doing_lb: true if performing load balancing.
         ! Out (optional):
         !     update_tau: if true, tau should be automatically rescaled.
 
@@ -279,13 +289,14 @@ contains
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
-        use calc, only: doing_calc, hfs_fciqmc_calc, doing_load_balancing
+        use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs
         use qmc_data, only: qmc_in_t
 
         type(qmc_in_t), intent(in) :: qmc_in
         real(dp), intent(in) :: rep_loop_sum(:)
         real(p), intent(inout) :: ntot_particles_old(sampling_size)
+        logical, optional, intent(in) :: doing_lb
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found
         logical, intent(out), optional :: update_tau
@@ -322,10 +333,12 @@ contains
         end do 
 
         associate(lb=>par_info%load)
-            if(doing_load_balancing .and. ntot_particles(1) > lb%pop .and. lb%nattempts < lb%max_attempts) then
-                pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
-                ! Check if there is at least one processor with load imbalance.
-                call check_imbalance(nparticles_proc, pop_av, lb%percent, lb%needed)
+            if (present(doing_lb)) then
+                if (doing_lb .and. ntot_particles(1) > lb%pop .and. lb%nattempts < lb%max_attempts) then
+                    pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
+                    ! Check if there is at least one processor with load imbalance.
+                    call check_imbalance(nparticles_proc, pop_av, lb%percent, lb%needed)
+                end if
             end if
         end associate
 

@@ -113,13 +113,6 @@ integer, parameter :: distribute_cols = 2
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
 
-! Flag for using non-blocking communications.
-! Default: False.
-logical :: non_blocking_comm = .false.
-! Flag for using load balancing.
-! Default: False.
-logical :: doing_load_balancing = .false.
-
 !--- Input data: Hilbert space truncation ---
 
 ! CI/CIQMC:
@@ -384,16 +377,19 @@ contains
 
     end subroutine init_parallel_t
 
-    subroutine dealloc_parallel_t(par_calc)
+    subroutine dealloc_parallel_t(non_blocking_comm, par_calc)
 
         ! Deallocate parallel_t object.
 
+        ! In:
+        !    non_blocking_comm: true if using non-blocking communications
         ! In/Out:
         !    par_calc: type containing parallel information for calculation
         !        see definitions above.
 
         use checking, only: check_deallocate
 
+        logical, intent(in) :: non_blocking_comm
         type(parallel_t), intent(inout) :: par_calc
 
         integer :: ierr

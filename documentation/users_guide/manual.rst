@@ -1071,6 +1071,8 @@ The following options are valid for FCIQMC calculations.
 **select_reference_det** [*N* [*pop_fac*]]
     Default: off, 20 and 1.5.
 
+    This option is only available when using the *fciqmc* method.
+
     Set the reference determinant to be the determinant with the largest
     population every *N* cycles if that population is greater than the
     population on the current reference determinant by a factor larger than

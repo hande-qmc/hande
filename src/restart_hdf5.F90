@@ -203,7 +203,7 @@ module restart_hdf5
         end subroutine init_restart_hdf5
 #endif
 
-        subroutine dump_restart_hdf5(ri, ncycles, total_population)
+        subroutine dump_restart_hdf5(ri, ncycles, total_population, nb_comm)
 
             ! Write out a restart file.
 
@@ -211,6 +211,7 @@ module restart_hdf5
             !    ri: restart information.  ri%restart_stem and ri%write_id are used.
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
+            !    nb_comm: true is using non-blocking communications.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -224,12 +225,13 @@ module restart_hdf5
             use fciqmc_data, only: walker_dets, walker_population, walker_data, &
                                    shift, f0, hs_f0, tot_walkers,               &
                                    D0_population, par_info, received_list
-            use calc, only: calc_type, non_blocking_comm, GLOBAL_META
+            use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
 
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: ncycles
             real(p), intent(in) :: total_population(:)
+            logical, intent(in) :: nb_comm
 #ifndef DISABLE_HDF5
             character(255) :: restart_file
 
@@ -299,7 +301,7 @@ module restart_hdf5
 
                 call hdf5_write(subgroup_id, ddata, kinds, shape(walker_data(:,:tot_walkers)), &
                                  walker_data(:,:tot_walkers))
-                if (non_blocking_comm) then
+                if (nb_comm) then
                     call hdf5_write(subgroup_id, dspawn, kinds, shape(received_list%sdata(:,:received_list%head(0,0))), &
                                     received_list%sdata(:,:received_list%head(0,0)))
                     call hdf5_write(subgroup_id, dnspawn, received_list%head(0,0))
@@ -353,12 +355,13 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri)
+        subroutine read_restart_hdf5(ri, nb_comm)
 
             ! Read QMC data from restart file.
 
             ! In:
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
+            !    nb_comm: true if using non-blocking communications.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -371,11 +374,11 @@ module restart_hdf5
                                    shift, tot_nparticles, f0, hs_f0,             &
                                    D0_population, mc_cycles_done, tot_walkers,   &
                                    par_info, received_list
-            use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space, &
-                            non_blocking_comm
+            use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
 
             type(restart_info_t), intent(in) :: ri
+            logical, intent(in) :: nb_comm
 
 #ifndef DISABLE_HDF5
             ! HDF5 kinds
@@ -476,7 +479,7 @@ module restart_hdf5
 
                 call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
 
-                if (non_blocking_comm) then
+                if (nb_comm) then
 
                     call hdf5_read(subgroup_id, dspawn, kinds, shape(received_list%sdata), received_list%sdata)
 

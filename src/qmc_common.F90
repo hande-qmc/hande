@@ -10,7 +10,7 @@ contains
 
 ! --- Utility routines ---
 
-    subroutine select_ref_det(sys)
+    subroutine select_ref_det(sys, ref_det_factor)
 
         ! Change the reference determinant to be the determinant with the
         ! greatest population if it exceeds some threshold relative to the
@@ -25,6 +25,9 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    ref_det_factor: factor by which population on a determinant must
+        !        exceed the reference population in order to be accepted as
+        !        the new reference.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det, write_det
@@ -34,6 +37,7 @@ contains
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: ref_det_factor
 
         integer, parameter :: particle_type = 1
         integer :: i, D0_proc
@@ -550,7 +554,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, rep_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, nb_comm, rep_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -560,10 +564,11 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         ! In (optional):
+        !    nb_comm: true if using non-blocking communications.
         ! Out (Optional):
         !    rep_comm: nb_rep_t object containg report loop information.
 
-        use calc, only: non_blocking_comm, nb_rep_t
+        use calc, only: nb_rep_t
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
@@ -574,6 +579,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        logical, optional, intent(in) :: nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
         integer, optional, intent(in) :: spawn_elsewhere
 
@@ -583,6 +589,7 @@ contains
         type(det_info_t) :: cdet
         real(p) :: hmatel
         type(excit_t) :: D0_excit
+        logical :: nb_comm_local
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum, D0_population_sum
@@ -629,11 +636,15 @@ contains
         ntot_particles = nparticles
 #endif
 
-        if (.not. non_blocking_comm .and. parent) then
+        ! Using non blocking communications?
+        nb_comm_local = .false.
+        if (present(nb_comm)) nb_comm_local = nb_comm
+
+        if (.not. nb_comm_local .and. parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            call write_fciqmc_report(qmc_in, 0, ntot_particles, 0.0, .true.)
+            call write_fciqmc_report(qmc_in, 0, ntot_particles, 0.0, .true., .false.)
         end if
 
     end subroutine initial_fciqmc_status
@@ -662,7 +673,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, min_attempts, determ)
+    subroutine init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, min_attempts, doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -674,18 +685,20 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    min_attempts (optional): if present, set nattempts to be at least this value.
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
         !        processor) this cycle.
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
+        ! In (optional):
+        !    min_attempts: if present, set nattempts to be at least this value.
+        !    doing_lb: true if doing load balancing.
+        !    nb_comm: true if using non-blocking communications.
         ! In/Out (optional):
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
 
-        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, doing_load_balancing
-        use calc, only: non_blocking_comm
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
         use qmc_data, only: qmc_in_t
@@ -698,7 +711,14 @@ contains
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
+        logical, optional, intent(in) :: doing_lb, nb_comm
         type(semi_stoch_t), optional, intent(inout) :: determ
+
+        logical :: nb_comm_local
+
+        ! Using non-blocking communications?
+        nb_comm_local = .false.
+        if (present(nb_comm)) nb_comm_local = nb_comm
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
@@ -727,13 +747,15 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
-        if (doing_load_balancing .and. par_info%load%needed) then
-            call do_load_balancing(real_factor, par_info)
-            call redistribute_load_balancing_dets(rng, sys, qmc_in, walker_dets, real_factor, determ, walker_population, &
-                                                  tot_walkers, nparticles, qmc_spawn)
-            ! If using non-blocking communications we still need this flag to
-            ! be set.
-            if (.not. non_blocking_comm) par_info%load%needed = .false.
+        if (present(doing_lb)) then
+            if (doing_lb .and. par_info%load%needed) then
+                call do_load_balancing(real_factor, par_info)
+                call redistribute_load_balancing_dets(rng, sys, qmc_in, walker_dets, real_factor, determ, walker_population, &
+                                                      tot_walkers, nparticles, qmc_spawn)
+                ! If using non-blocking communications we still need this flag to
+                ! be set.
+                if (.not. nb_comm_local) par_info%load%needed = .false.
+            end if
         end if
 
     end subroutine init_mc_cycle
@@ -741,7 +763,8 @@ contains
 ! --- QMC loop and cycle termination routines ---
 
     subroutine end_report_loop(sys, qmc_in, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
-                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, update_estimators, bloom_stats, rep_comm)
+                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, update_estimators, bloom_stats, &
+                               doing_lb, nb_comm, rep_comm)
 
         ! In:
         !    sys: system being studied.
@@ -768,6 +791,9 @@ contains
         ! Out:
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
+        ! In (optional):
+        !    doing_lb: true if doing load balancing.
+        !    nb_comm: true if using non-blocking communications.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    rep_comm: nb_rep_t object containing report loop info. Used for
@@ -782,7 +808,7 @@ contains
         use parallel, only: parent, nprocs
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
         use system, only: sys_t
-        use calc, only: non_blocking_comm, nb_rep_t
+        use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
         use qmc_data, only: qmc_in_t
 
@@ -798,14 +824,19 @@ contains
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
+        logical, optional, intent(in) :: doing_lb, nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
-        logical :: update, update_tau_now, vary_shift_before, comms_found
+        logical :: update, update_tau_now, vary_shift_before, nb_comm_local, comms_found
         real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
         update_tau_now = update_tau .and. .not. vary_shift(1) .and. qmc_in%tau_search
+
+        ! Using non-blocking communications?
+        nb_comm_local = .false.
+        if (present(nb_comm)) nb_comm_local = nb_comm
 
         ! Are all the shifts currently varying?
         vary_shift_before = all(vary_shift)
@@ -817,8 +848,9 @@ contains
         ! Update the energy estimators (shift & projected energy).
         update = .true.
         if (present(update_estimators)) update = update_estimators
-        if (update .and. .not. non_blocking_comm) then
-            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, comms_found, update_tau_now, bloom_stats)
+        if (update .and. .not. nb_comm_local) then
+            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, doing_lb, comms_found, &
+                                          update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
@@ -826,7 +858,8 @@ contains
             call local_energy_estimators(rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, comms_found, update_tau_now, bloom_stats)
+            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, doing_lb, comms_found, &
+                                               update_tau_now, bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(rep_comm)
@@ -847,21 +880,20 @@ contains
         ! curr_time - report_time is thus the time taken by this report loop.
         if (parent) then
             if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-            call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false.)
+            call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false., nb_comm_local)
         end if
 
         ! Write restart file if required.
         if (dump_restart_file_shift .and. any(vary_shift)) then
             dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+qmc_in%ncycles*ireport, ntot_particles)
+            call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+qmc_in%ncycles*ireport, ntot_particles, nb_comm_local)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, ntot_particles)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, ntot_particles, nb_comm_local)
         end if
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time
 
         call calc_interact(comms_found, soft_exit, qmc_in)
-        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
 
         if (update_tau_now) call rescale_tau(qmc_in%tau)
 

@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, qmc_in, semi_stoch_in)
+    subroutine read_input(sys, qmc_in, fciqmc_in, semi_stoch_in)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -29,7 +29,8 @@ contains
         !    sys: system being studied.  Parameters specified in the input file
         !         are set directly in the system object, components which are not
         !         mentioned in the input file are not altered.
-        !    qmc_in: Input options for QMC calculations.
+        !    qmc_in: input options relating to QMC methods.
+        !    fciqmc_in: input options relating to FCIQMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
 ! nag doesn't automatically bring in command-line option handling.
@@ -37,7 +38,7 @@ contains
         use f90_unix_env
 #endif
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
         use system
 
         use input
@@ -52,6 +53,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         character(255) :: cInp
@@ -437,9 +439,9 @@ contains
             case('NO_RENORM')
                 qmc_in%no_renorm = .true.
             case('SELECT_REFERENCE_DET')
-                select_ref_det_every_nreports = 20
-                if (item /= nitems) call readi(select_ref_det_every_nreports)
-                if (item /= nitems) call readf(ref_det_factor)
+                fciqmc_in%select_ref_det_every_nreports = 20
+                if (item /= nitems) call readi(fciqmc_in%select_ref_det_every_nreports)
+                if (item /= nitems) call readf(fciqmc_in%ref_det_factor)
             case('ATTEMPT_SPAWN_PROB')
                 call readf(qmc_in%pattempt_single)
                 call readf(qmc_in%pattempt_double)
@@ -490,7 +492,7 @@ contains
             case('CLUSTER_MULTISPAWN_THRESHOLD')
                 call readf(cluster_multispawn_threshold)
             case('INIT_SPIN_INVERSE_REFERENCE_DET')
-                init_spin_inv_D0 = .true.
+                fciqmc_in%init_spin_inv_D0 = .true.
 
             ! Calculation options: initiator-fciqmc.
             case('INITIATOR_POPULATION')
@@ -525,9 +527,9 @@ contains
             case('BLOCK_SIZE')
                 call readi(block_size)
             case('NON_BLOCKING_COMM')
-                non_blocking_comm = .true.
+                fciqmc_in%non_blocking_comm = .true.
             case('LOAD_BALANCING')
-                doing_load_balancing = .true.
+                fciqmc_in%doing_load_balancing = .true.
             case('LOAD_BALANCING_SLOTS')
                 call readi(par_info%load%nslots)
             case('LOAD_BALANCING_POP')
@@ -567,23 +569,25 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, qmc_in, semi_stoch_in)
+    subroutine check_input(sys, qmc_in, fciqmc_in, semi_stoch_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
 
         ! In/Out:
         !    sys: system object, as set in read_input (invalid settings are overridden).
-        !    qmc_in: Input options for QMC calculations.
+        !    qmc_in: input options relating to QMC methods.
+        !    fciqmc_in: input options relating to FCIQMC.
         ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use const
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: ivec, jvec
@@ -671,10 +675,10 @@ contains
               doing_calc(hfs_fciqmc_calc))) &
               call stop_all(this, 'Semi-stochastic is only implemented with the FCIQMC method.')
 
-        if (init_spin_inv_D0 .and. ms_in /= 0) then
+        if (fciqmc_in%init_spin_inv_D0 .and. ms_in /= 0) then
             if (parent) call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
-            init_spin_inv_D0 = .false.
+            fciqmc_in%init_spin_inv_D0 = .false.
         end if
 
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
@@ -757,7 +761,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, qmc_in, semi_stoch_in)
+    subroutine distribute_input(sys, qmc_in, fciqmc_in, semi_stoch_in)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -768,16 +772,19 @@ contains
         ! In/Out:
         !    sys: object describing the system.  All parameters which can be set
         !       in the input file are distributed to other processors.
+        !    fciqmc_in: input options relating to FCIQMC.
         !    qmc_in: Input options for QMC calculations.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
+
 #ifndef PARALLEL
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in), intent(inout) :: qmc_in
+        type(fciqmc_in), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
 #else
@@ -786,11 +793,11 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         integer :: i, ierr, occ_list_size
@@ -843,8 +850,8 @@ contains
         call mpi_bcast(sys%ueg%r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%read_in%dipole_int_file, len(sys%read_in%dipole_int_file), mpi_character, 0, mpi_comm_world, ierr)
-        call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%cas, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras3_max, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -990,7 +997,7 @@ contains
 
         call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%initiator_pop, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%initiator_approx, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
@@ -1001,8 +1008,8 @@ contains
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%nslots, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)

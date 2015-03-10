@@ -10,7 +10,7 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc(sys, qmc_in, semi_stoch_in)
+    subroutine do_qmc(sys, qmc_in, fciqmc_in, semi_stoch_in)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -18,8 +18,9 @@ contains
         !    sys: system being studied.  This should(!) be returned unaltered on
         !         output from each procedure, but might be varied during the
         !         run if needed.
-        !    qmc_in: Input options relating to QMC methods.
+        !    qmc_in: input options relating to QMC methods.
         ! In:
+        !    qmc_in: input options relating to FCIQMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use calc
@@ -30,26 +31,27 @@ contains
         use fciqmc, only: do_fciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         real(p) :: hub_matel
         type(sys_t) :: sys_bak
 
-        ! Initialise procedure pointers
+        ! Initialise procedure pointers.
         call init_proc_pointers(sys, qmc_in)
 
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
-        ! Initialise data
-        call init_qmc(sys, qmc_in)
+        ! Initialise data.
+        call init_qmc(sys, qmc_in, fciqmc_in)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
@@ -65,7 +67,7 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) then
                 call do_hfs_fciqmc(sys, qmc_in)
             else
-                call do_fciqmc(sys, qmc_in, semi_stoch_in)
+                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in)
             end if
         end if
 
@@ -76,7 +78,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in)
+    subroutine init_qmc(sys, qmc_in, fciqmc_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -85,6 +87,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    fciqmc_in: input options relating to FCIQMC.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -110,10 +113,11 @@ contains
         use utils, only: factorial_combination_1
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
@@ -252,13 +256,13 @@ contains
 
         call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
-        if (non_blocking_comm) then
+        if (fciqmc_in%non_blocking_comm) then
             call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                                spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
-        if (nprocs == 1 .or. .not. doing_load_balancing) par_info%load%nslots = 1
-        call init_parallel_t(sampling_size, nparticles_start_ind-1, non_blocking_comm, par_info)
+        if (nprocs == 1 .or. .not. fciqmc_in%doing_load_balancing) par_info%load%nslots = 1
+        call init_parallel_t(sampling_size, nparticles_start_ind-1, fciqmc_in%non_blocking_comm, par_info)
 
         allocate(f0(sys%basis%string_len), stat=ierr)
         call check_allocate('f0',sys%basis%string_len,ierr)
@@ -279,7 +283,7 @@ contains
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
-            call read_restart_hdf5(restart_info_global)
+            call read_restart_hdf5(restart_info_global, fciqmc_in%non_blocking_comm)
             ! Need to re-calculate the reference determinant data
             call decode_det(sys%basis, f0, occ_list0)
             if (trial_function == neel_singlet) then
@@ -358,7 +362,7 @@ contains
 
             ! For the Heisenberg model and open shell systems, it is often useful to
             ! have psips start on both the reference state and the spin-flipped version.
-            if (init_spin_inv_D0) then
+            if (fciqmc_in%init_spin_inv_D0) then
 
                 ! Need to handle the Heisenberg model (consisting of spinors on
                 ! lattice sites) and electron systems differently, as the
@@ -572,7 +576,7 @@ contains
                 write (6,'(1X,a68)') '# HF psips: current total population of Hellmann--Feynman particles.'
             end if
             write (6,'(1X,"# states: number of many-particle states occupied.")')
-            if (.not. non_blocking_comm) then
+            if (.not. fciqmc_in%non_blocking_comm) then
                 write (6,'(1X,"# spawn_events: number of successful spawning events across all processors.")')
             end if
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'

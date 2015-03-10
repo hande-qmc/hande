@@ -290,11 +290,11 @@ contains
             call cpu_time(t2)
 
             ! Output stats
-            call write_fciqmc_report(qmc_in, ireport, (/nparticles/), t2-t1, .false.)
+            call write_fciqmc_report(qmc_in, ireport, (/nparticles/), t2-t1, .false., .false.)
 
             ! Write restart file if required.
             if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, (/nparticles_old/))
+                call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, (/nparticles_old/), .false.)
 
             t1 = t2
 
@@ -303,7 +303,7 @@ contains
         if (parent) write (6,'()')
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, (/nparticles_old/))
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, (/nparticles_old/), .false.)
             if (parent) write (6,'()')
         end if
 
