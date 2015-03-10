@@ -306,7 +306,7 @@ contains
 
         if (parent) write (6,'()')
 
-        if (dump_restart_file) then
+        if (restart_in%dump_restart) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, (/nparticles_old/), .false.)
             if (parent) write (6,'()')
         end if

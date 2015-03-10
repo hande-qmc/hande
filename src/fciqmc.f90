@@ -259,7 +259,8 @@ contains
         end do
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, ireport, received_list, &
-                                                          req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1))
+                                                          req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1), &
+                                                          restart_in%dump_restart)
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
@@ -275,7 +276,7 @@ contains
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (dump_restart_file) then
+        if (restart_in%dump_restart) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
             if (parent) write (6,'()')
         end if

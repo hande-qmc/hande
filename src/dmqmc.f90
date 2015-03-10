@@ -8,12 +8,14 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in)
+    subroutine do_dmqmc(sys, qmc_in, restart_in)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
         ! times, to accumulate statistics for each value for beta.
 
+        ! In:
+        !    restart_in: input options for HDF5 restart files.
         ! In/Out:
         !    sys: system being studied.  NOTE: if modified inside a procedure,
         !         it should be returned in its original (ie unmodified state)
@@ -36,10 +38,11 @@ contains
         use calc, only: propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(restart_in_t), intent(in) :: restart_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
@@ -252,7 +255,7 @@ contains
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (dump_restart_file) then
+        if (restart_in%dump_restart) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done, tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if

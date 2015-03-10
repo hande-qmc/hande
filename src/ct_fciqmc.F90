@@ -10,10 +10,11 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(sys, qmc_in, matel)
+    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, matel)
 
         ! In:
         !    sys: system being studied
+        !    restart_in: input options for HDF5 restart files.
         !    matel: off-diagonal Hamiltonian matrix element (ignoring sign due
         !       to permutations).  Either U (Bloch orbitals) or
         !       t (atomic/real-space orbitals).
@@ -35,10 +36,11 @@ contains
         use utils, only: rng_init_info
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(restart_in_t), intent(in) :: restart_in
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer(int_p) :: nspawned, ndeath
@@ -255,7 +257,7 @@ contains
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (dump_restart_file) then
+        if (restart_in%dump_restart) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, .false.)
             write (6,'()')
         end if

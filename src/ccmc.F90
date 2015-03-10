@@ -224,7 +224,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -236,6 +236,7 @@ contains
         !    sys: system being studied.
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    restart_in: input options for HDF5 restart files.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -254,7 +255,7 @@ contains
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use fciqmc_data, only: sampling_size, walker_dets, walker_population,                        &
-                               walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
+                               walker_data, proj_energy, D0_population, f0,                          &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
                                write_fciqmc_report_header, nparticles, real_factor
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
@@ -264,12 +265,13 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t
 
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
+        type(restart_in_t), intent(in) :: restart_in
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
@@ -676,7 +678,7 @@ contains
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (dump_restart_file) then
+        if (restart_in%dump_restart) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if

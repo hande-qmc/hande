@@ -479,10 +479,10 @@ contains
                         call reread(0)
                         call readi(restart_info_global%write_id)
                         restart_info_global%write_id = -restart_info_global%write_id-1
-                        dump_restart_file = .true.
+                        restart_in%dump_restart = .true.
                     end if
                 else
-                dump_restart_file = .true.
+                restart_in%dump_restart = .true.
                 end if
                 
                 ! If semi-stochastic is being used then a semi-stoch file will
@@ -995,7 +995,7 @@ contains
             call mpi_bcast(hs_occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(restart_in%read_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%dump_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
