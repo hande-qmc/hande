@@ -861,7 +861,6 @@ contains
         report_time = curr_time
 
         call calc_interact(comms_found, soft_exit, qmc_in)
-        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
 
         if (update_tau_now) call rescale_tau(qmc_in%tau)
 

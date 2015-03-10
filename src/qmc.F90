@@ -10,7 +10,7 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc(sys, qmc_in, semi_stoch_in)
+    subroutine do_qmc(sys, qmc_in, fciqmc_in, semi_stoch_in)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -18,8 +18,9 @@ contains
         !    sys: system being studied.  This should(!) be returned unaltered on
         !         output from each procedure, but might be varied during the
         !         run if needed.
-        !    qmc_in: Input options relating to QMC methods.
+        !    qmc_in: input options relating to QMC methods.
         ! In:
+        !    qmc_in: input options relating to FCIQMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use calc
@@ -30,25 +31,26 @@ contains
         use fciqmc, only: do_fciqmc
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         real(p) :: hub_matel
         type(sys_t) :: sys_bak
 
-        ! Initialise procedure pointers
+        ! Initialise procedure pointers.
         call init_proc_pointers(sys, qmc_in)
 
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
-        ! Initialise data
+        ! Initialise data.
         call init_qmc(sys, qmc_in)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
@@ -65,7 +67,7 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) then
                 call do_hfs_fciqmc(sys, qmc_in)
             else
-                call do_fciqmc(sys, qmc_in, semi_stoch_in)
+                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in)
             end if
         end if
 

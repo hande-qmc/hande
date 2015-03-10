@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, qmc_in, semi_stoch_in)
+    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -20,6 +20,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    fciqmc_in: input options relating to FCIQMC.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -44,10 +45,11 @@ contains
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         type(det_info_t) :: cdet
@@ -241,10 +243,14 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, semi_stoch_in%shift_iter, &
-                                  semi_stoch_iter, soft_exit, bloom_stats=bloom_stats, rep_comm=par_info%report_comm)
+            call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
+                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, bloom_stats=bloom_stats, &
+                                 rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
+
+            ! Should we try and update the reference determinant now?
+            if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) call select_ref_det(sys)
 
         end do
 
