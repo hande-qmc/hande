@@ -289,9 +289,20 @@ real(p) :: dmqmc_factor = 1.0_p
 ! the DMQMC algorithm calculates stochastically.
 real(p), allocatable :: trace(:) ! (sampling_size)
 
+! The following indicies are used to access components of DMQMC numerators.
+enum, bind(c)
+    enumerator :: energy_ind = 1
+    enumerator :: energy_squared_ind
+    enumerator :: correlation_fn_ind
+    enumerator :: staggered_mag_ind
+    enumerator :: full_r2_ind
+    enumerator :: terminator ! unused except in num_dmqmc_operators
+   ! NOTE: if you add a new estimator then you must insert it before terminator.
+end enum
+
 ! This variable holds the total number of operators which are implemented
-! for DMQMC. It must be updated if more operators are added.
-integer, parameter :: num_dmqmc_operators = 5
+! for DMQMC.
+integer, parameter :: num_dmqmc_operators = terminator - 1
 
 ! numerators stores the numerators for the estimators in DMQMC. These
 ! are, for a general operator O which we wish to find the thermal average of:
@@ -302,17 +313,6 @@ integer, parameter :: num_dmqmc_operators = 5
 ! processor. This is then output, and the values of numerators
 ! are reset on each processor to start the next report loop.
 real(p) :: numerators(num_dmqmc_operators)
-
-! The following indicies are used to access components of numerators.
-enum, bind(c)
-    enumerator :: energy_ind = 1
-    enumerator :: energy_squared_ind
-    enumerator :: correlation_fn_ind
-    enumerator :: staggered_mag_ind
-    enumerator :: full_r2_ind
-    ! NOTE: If you add a new estimator then the must increase the size of
-    ! num_dmqmc_operators to account for this.
-end enum
 
 ! When using the replica_tricks option, if the rdm in the first
 ! simulation if denoted \rho^1 and the ancillary rdm is denoted

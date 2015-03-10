@@ -8,20 +8,20 @@ implicit none
 
 ! [todo] - update kinds following Ruth's single precision work.  Check kind when removing each variable from fciqmc_data.
 
-! This variable holds the total number of operators which are implemented
-! for DMQMC. It must be updated if more operators are added.
-integer, parameter :: num_dmqmc_operators = 5
-
-! The following indicies are used to access components of numerators.
+! The following indicies are used to access components of DMQMC numerators.
 enum, bind(c)
     enumerator :: energy_ind = 1
     enumerator :: energy_squared_ind
     enumerator :: correlation_fn_ind
     enumerator :: staggered_mag_ind
     enumerator :: full_r2_ind
-    ! NOTE: If you add a new estimator then the must increase the size of
-    ! num_dmqmc_operators to account for this.
+    enumerator :: terminator ! unused except in num_dmqmc_operators
+   ! NOTE: if you add a new estimator then you must insert it before terminator.
 end enum
+
+! This variable holds the total number of operators which are implemented
+! for DMQMC.
+integer, parameter :: num_dmqmc_operators = terminator - 1
 
 type dmqmc_in_t
     ! The number of times the program will loop over each value of beta in the main loop.
