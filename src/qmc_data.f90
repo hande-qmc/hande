@@ -124,7 +124,7 @@ type ccmc_in_t
     ! The default value corresponds to off.
     real(p) :: cluster_multispawn_threshold = huge(1.0_p)
     ! Use the full non-composite algorithm?
-    logical :: ccmc_full_nc = .false.
+    logical :: full_nc = .false.
     ! Sample only linked clusters in CCMC?
     logical :: linked_ccmc = .false.
 end type ccmc_in_t

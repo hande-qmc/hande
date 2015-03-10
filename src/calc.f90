@@ -48,9 +48,6 @@ integer, parameter :: mc_canonical_kinetic_energy = 2**10
 ! [review] - JSS: calc is a bit of a dumping ground until the purication/lua-ification
 ! [review] - JSS: hits it.  I'd say it's fine to leave it here for now.
 
-! Use the full non-composite algorithm in CCMC?
-logical :: ccmc_full_nc = .false.
-
 ! Sample only linked clusters in CCMC?
 logical :: linked_ccmc = .false.
 

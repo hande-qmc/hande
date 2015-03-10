@@ -249,7 +249,7 @@ contains
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
-        use calc, only: truncation_level, truncate_space, linked_ccmc, ccmc_full_nc
+        use calc, only: truncation_level, truncate_space, linked_ccmc
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -478,7 +478,7 @@ contains
                 !         of composite clusters, choosing nattempts samples.  For convenience
                 !         nattempts = # excitors not on the reference (i.e. the number of
                 !         excitors which can actually be involved in a composite cluster).
-                if (ccmc_full_nc) then
+                if (ccmc_in%full_nc) then
                     ! Note that nattempts /= tot_abs_nint_pop+D0_normalisation if the
                     ! reference is not on the current processor.  Instead work
                     ! out how many clusters of each type we will sample
@@ -514,7 +514,7 @@ contains
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
                 !$omp        nsingle_excitors, ccmc_in%cluster_multispawn_threshold, &
                 !$omp        linked_ccmc, ldet, rdet, left_cluster,                  &
-                !$omp        right_cluster, nprocs, ccmc_full_nc, ms_stats,          &
+                !$omp        right_cluster, nprocs, ccmc_in%full_nc, ms_stats,       &
                 !$omp        walker_population, tot_walkers, walker_data,            &
                 !$omp        walker_dets, nparticles_change, ndeath, D0_population)
                 it = get_thread_id()
@@ -609,12 +609,12 @@ contains
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
-                        ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_full_nc.
+                        ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
                         if (cluster(it)%excitation_level <= truncation_level) then
                             ! Clusters above size 2 can't die in linked ccmc.
                             if ((.not. linked_ccmc) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
-                                if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_full_nc) then
+                                if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), real_factor, sys, qmc_in%tau, cdet(it), cluster(it))
                                 end if
                             end if
@@ -625,7 +625,7 @@ contains
                 end do
                 !$omp end do
 
-                if (ccmc_full_nc .and. tot_walkers > 0) then
+                if (ccmc_in%full_nc .and. tot_walkers > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) reduction(+:ndeath,nparticles_change)
                     do iattempt = 1, tot_walkers
