@@ -256,13 +256,13 @@ contains
 
         call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                          spawned_walker_length, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
-        if (non_blocking_comm) then
+        if (fciqmc_in%non_blocking_comm) then
             call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
                                spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
         if (nprocs == 1 .or. .not. doing_load_balancing) par_info%load%nslots = 1
-        call init_parallel_t(sampling_size, nparticles_start_ind-1, non_blocking_comm, par_info)
+        call init_parallel_t(sampling_size, nparticles_start_ind-1, fciqmc_in%non_blocking_comm, par_info)
 
         allocate(f0(sys%basis%string_len), stat=ierr)
         call check_allocate('f0',sys%basis%string_len,ierr)
@@ -283,7 +283,7 @@ contains
                 allocate(occ_list0(sys%nel), stat=ierr)
                 call check_allocate('occ_list0',sys%nel,ierr)
             end if
-            call read_restart_hdf5(restart_info_global)
+            call read_restart_hdf5(restart_info_global, fciqmc_in%non_blocking_comm)
             ! Need to re-calculate the reference determinant data
             call decode_det(sys%basis, f0, occ_list0)
             if (trial_function == neel_singlet) then
@@ -576,7 +576,7 @@ contains
                 write (6,'(1X,a68)') '# HF psips: current total population of Hellmann--Feynman particles.'
             end if
             write (6,'(1X,"# states: number of many-particle states occupied.")')
-            if (.not. non_blocking_comm) then
+            if (.not. fciqmc_in%non_blocking_comm) then
                 write (6,'(1X,"# spawn_events: number of successful spawning events across all processors.")')
             end if
             write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'

@@ -256,7 +256,7 @@ contains
         end if
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, .false.)
             write (6,'()')
         end if
 

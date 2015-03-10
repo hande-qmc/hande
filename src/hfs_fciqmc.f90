@@ -240,7 +240,7 @@ contains
 
             ! t1 was the time at the previous iteration, t2 the current time.
             ! t2-t1 is thus the time taken by this report loop.
-            if (parent) call write_fciqmc_report(qmc_in, ireport, nparticles_old, t2-t1, .false.)
+            if (parent) call write_fciqmc_report(qmc_in, ireport, nparticles_old, t2-t1, .false., .false.)
 
             ! Write restart file if required.
 !            if (mod(ireport,write_restart_file_every_nreports) == 0) &
@@ -264,7 +264,7 @@ contains
         end if
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if
 

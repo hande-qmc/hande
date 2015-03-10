@@ -639,7 +639,7 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(qmc_in, ireport, ntot_particles, elapsed_time, comment)
+    subroutine write_fciqmc_report(qmc_in, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm)
 
         ! Write the report line at the end of a report loop.
 
@@ -649,10 +649,11 @@ contains
         !    ntot_particles: total number of particles in main walker list.
         !    elapsed_time: time taken for the report loop.
         !    comment: if true, then prefix the line with a #.
+        !    non_blocking_comm: true if using non-blocking communications
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
-        use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, non_blocking_comm
+        use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
         use qmc_data, only: qmc_in_t
 
@@ -660,7 +661,7 @@ contains
         integer, intent(in) :: ireport
         real(p), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
-        logical :: comment
+        logical, intent(in) :: comment, non_blocking_comm
         integer :: mc_cycles, i, j
 
         ! For non-blocking communications we print out the nth report loop
@@ -757,13 +758,18 @@ contains
 
     end subroutine write_fciqmc_report
 
-    subroutine end_fciqmc()
+    subroutine end_fciqmc(nb_comm)
 
         ! Deallocate fciqmc data arrays.
 
+        ! In (optional):
+        !    nb_comm: true if using non-blocking communications.
+
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
-        use calc, only: non_blocking_comm, dealloc_parallel_t
+        use calc, only: dealloc_parallel_t
+
+        logical, intent(in) :: nb_comm
 
         integer :: ierr
 
@@ -799,7 +805,7 @@ contains
             deallocate(nparticles_proc, stat=ierr)
             call check_deallocate('nparticles_proc', ierr)
         end if
-        call dealloc_parallel_t(par_info)
+        call dealloc_parallel_t(nb_comm, par_info)
         call dealloc_spawn_t(qmc_spawn)
 
     end subroutine end_fciqmc

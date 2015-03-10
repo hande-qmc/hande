@@ -32,7 +32,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
-        use calc, only: doing_calc, non_blocking_comm, doing_load_balancing, use_mpi_barriers
+        use calc, only: doing_calc, doing_load_balancing, use_mpi_barriers
         use death, only: stochastic_death
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
@@ -111,9 +111,9 @@ contains
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
 
-        if (non_blocking_comm) then
+        if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart)
-            call initial_fciqmc_status(sys, qmc_in, par_info%report_comm, send_counts(iproc)/received_list%element_len)
+            call initial_fciqmc_status(sys, qmc_in, .true., par_info%report_comm, send_counts(iproc)/received_list%element_len)
         else
             call initial_fciqmc_status(sys, qmc_in)
         end if
@@ -137,7 +137,7 @@ contains
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, determ=determ)
+                call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
@@ -206,7 +206,7 @@ contains
 
                 end do
 
-                if (non_blocking_comm) then
+                if (fciqmc_in%non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
                     call evolve_spawned_walkers(sys, qmc_in, received_list, cdet, rng, ndeath)
                     call direct_annihilation_received_list(sys, rng, qmc_in)
@@ -245,7 +245,7 @@ contains
 
             call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, bloom_stats=bloom_stats, &
-                                 rep_comm=par_info%report_comm)
+                                 nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 
@@ -254,7 +254,7 @@ contains
 
         end do
 
-        if (non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, ireport, received_list, &
+        if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, ireport, received_list, &
                                                           req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1))
 
         if (parent) write (6,'()')
@@ -272,7 +272,7 @@ contains
         end if
 
         if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old)
+            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
             if (parent) write (6,'()')
         end if
 
