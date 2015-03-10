@@ -294,8 +294,6 @@ contains
         type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(inout) :: ndeath
 
-        ! [todo] - Check types with Nick's real coefficient work (which will probably be
-        ! [todo] - merged before this).
         real(p), target :: tmp_data(sampling_size)
         type(excit_t) :: connection
         real(p) :: hmatel
@@ -316,8 +314,6 @@ contains
             ! Need to generate spawned walker data to perform evolution.
             tmp_data(1) = sc0_ptr(sys, cdet%f) - H00
             cdet%data => tmp_data
-
-            ! [todo] - Population encoding and decoding when merged with the real coefficient work.
 
             call decoder_ptr(sys, cdet%f, cdet)
 

@@ -698,8 +698,6 @@ contains
         integer(int_s), pointer :: tmp_data(:,:)
         integer :: ierr
 
-        ! [todo] - JSS: update the MPI types before merging in with real coefficients work.
-
         ! We want to copy the spawned walker list to another store for communication.
         ! This is to avoid any potential accesses of the send buffer. Potentially need
         ! different spawn_t type. I'm not sure if there is an issue because they
