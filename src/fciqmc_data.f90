@@ -256,7 +256,6 @@ real(p), allocatable :: nparticles(:) ! (sampling_size)
 ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
 real(p), allocatable, target :: tot_nparticles(:) ! (sampling_size)
 ! Total number of particles on all determinants for each processor
-! [todo] - JSS: check type with Nick when merging due to the reals work.
 real(p), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
 
 ! Walker information: main list.
