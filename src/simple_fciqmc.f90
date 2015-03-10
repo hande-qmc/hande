@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, qmc_in, ndets, dets, ref_det)
+    subroutine init_simple_fciqmc(sys, qmc_in, restart, ndets, dets, ref_det)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -30,6 +30,7 @@ contains
         !    sys: system being studied.  Unaltered on output.
         ! In:
         !    qmc_in: input options relating to QMC methods.
+        !    restart: true is restarting from a HDF5 file.
         ! Out:
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space.
@@ -46,6 +47,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        logical, intent(in) :: restart
         integer, intent(out) :: ref_det
 
         integer, allocatable :: sym_space_size(:)
@@ -172,7 +174,7 @@ contains
 
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc(sys, qmc_in)
+    subroutine do_simple_fciqmc(sys, qmc_in, restart_in)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
@@ -180,16 +182,18 @@ contains
         !    sys: system being studied.  Unaltered on output.
         ! In:
         !    qmc_in: input options relating to QMC methods.
+        !    restart_in: input options for HDF5 restart files.
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(restart_in_t), intent(in) :: restart_in
 
         integer :: ireport, icycle, idet, ipart, j
         real(p) :: nparticles, nparticles_old
@@ -200,7 +204,7 @@ contains
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
 
-        call init_simple_fciqmc(sys, qmc_in, ndets, dets, ref_det)
+        call init_simple_fciqmc(sys, qmc_in, restart_in%read_restart, ndets, dets, ref_det)
 
         if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)

@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in)
+    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -21,6 +21,7 @@ contains
         !    sys: system being studied.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    restart_in: input options for HDF5 restart files.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -45,12 +46,13 @@ contains
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
+        type(restart_in_t), intent(in) :: restart_in
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -112,7 +114,7 @@ contains
         if (parent) call write_fciqmc_report_header()
 
         if (fciqmc_in%non_blocking_comm) then
-            call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart)
+            call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart_in%read_restart)
             call initial_fciqmc_status(sys, qmc_in, .true., par_info%report_comm, send_counts(iproc)/received_list%element_len)
         else
             call initial_fciqmc_status(sys, qmc_in)

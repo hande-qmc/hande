@@ -498,9 +498,6 @@ logical, allocatable :: vary_shift(:) ! (sampling_size)
 
 !--- Restart data ---
 
-! Restart calculation from file.
-logical :: restart = .false.
-
 ! Print out restart file.
 logical :: dump_restart_file = .false.
 

@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
+    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -33,6 +33,7 @@ contains
         !    fciqmc_in: input options relating to FCIQMC.
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    restart_in: input options for HDF5 restart files.
 
 ! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
@@ -40,6 +41,7 @@ contains
 #endif
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
+        use qmc_data, only: restart_in_t
         use system
 
         use input
@@ -57,6 +59,7 @@ contains
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
+        type(restart_in_t), intent(inout) :: restart_in
 
         character(255) :: cInp
         character(100) :: w
@@ -455,7 +458,7 @@ contains
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
             case('RESTART')
-                restart = .true.
+                restart_in%read_restart = .true.
                 if (item /= nitems) then
                     call readi(restart_info_global%read_id)
                     restart_info_global%read_id = -restart_info_global%read_id -1
@@ -765,7 +768,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
+    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -778,10 +781,12 @@ contains
         !       in the input file are distributed to other processors.
         !    fciqmc_in: input options relating to FCIQMC.
         !    ccmc_in: input options relating to CCMC.
-        !    qmc_in: Input options for QMC calculations.
+        !    qmc_in: input options relating to QMC methods.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    restart_in: input options for HDF5 restart files.
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
+        use qmc_data, only: restart_in_t
 
 #ifndef PARALLEL
 
@@ -792,6 +797,7 @@ contains
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
+        type(restart_in_t), intent(inout) :: restart_in
 
 #else
 
@@ -806,6 +812,7 @@ contains
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
+        type(restart_in_t), intent(inout) :: restart_in
 
         integer :: i, ierr, occ_list_size
         logical :: option_set
@@ -987,7 +994,7 @@ contains
             end if
             call mpi_bcast(hs_occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
-        call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%read_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dump_restart_file_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
