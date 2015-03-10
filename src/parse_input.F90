@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, qmc_in, fciqmc_in, semi_stoch_in)
+    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -31,6 +31,7 @@ contains
         !         mentioned in the input file are not altered.
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
 ! nag doesn't automatically bring in command-line option handling.
@@ -38,7 +39,7 @@ contains
         use f90_unix_env
 #endif
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use system
 
         use input
@@ -54,6 +55,7 @@ contains
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         character(255) :: cInp
@@ -241,9 +243,9 @@ contains
                 fermi_temperature = .true.
 
             case('CCMC_FULL_NC')
-                ccmc_full_nc = .true.
+                ccmc_in%full_nc = .true.
             case('CCMC_LINKED')
-                linked_ccmc = .true.
+                ccmc_in%linked = .true.
 
             case('REAL_AMPLITUDES')
                 qmc_in%real_amplitudes = .true.
@@ -448,7 +450,7 @@ contains
 
             ! Calculation options: CCMC.
             case('move_freq')
-                call readi(ccmc_move_freq)
+                call readi(ccmc_in%move_freq)
 
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
@@ -490,7 +492,7 @@ contains
             case('SHIFT_DAMPING')
                 call readf(qmc_in%shift_damping)
             case('CLUSTER_MULTISPAWN_THRESHOLD')
-                call readf(cluster_multispawn_threshold)
+                call readf(ccmc_in%cluster_multispawn_threshold)
             case('INIT_SPIN_INVERSE_REFERENCE_DET')
                 fciqmc_in%init_spin_inv_D0 = .true.
 
@@ -569,7 +571,7 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, qmc_in, fciqmc_in, semi_stoch_in)
+    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
@@ -578,16 +580,18 @@ contains
         !    sys: system object, as set in read_input (invalid settings are overridden).
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    ccmc_in: input options relating to CCMC.
         ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use const
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: ivec, jvec
@@ -761,7 +765,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, qmc_in, fciqmc_in, semi_stoch_in)
+    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -773,18 +777,20 @@ contains
         !    sys: object describing the system.  All parameters which can be set
         !       in the input file are distributed to other processors.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    ccmc_in: input options relating to CCMC.
         !    qmc_in: Input options for QMC calculations.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
 
 #ifndef PARALLEL
 
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
-        type(qmc_in), intent(inout) :: qmc_in
-        type(fciqmc_in), intent(inout) :: fciqmc_in
+        type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
 #else
@@ -798,6 +804,7 @@ contains
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
 
         integer :: i, ierr, occ_list_size
@@ -825,8 +832,8 @@ contains
         call mpi_bcast(semi_stoch_in%target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%separate_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(ccmc_full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(linked_ccmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%linked, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%real_lattice%finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
@@ -989,13 +996,13 @@ contains
         call mpi_bcast(restart_info_global_shift%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(fciqmc_in%init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%initiator_pop, 1, mpi_preal, 0, mpi_comm_world, ierr)

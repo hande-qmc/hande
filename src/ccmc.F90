@@ -224,7 +224,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, semi_stoch_in)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -234,6 +234,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
@@ -248,15 +249,14 @@ contains
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
-        use calc, only: truncation_level, truncate_space, linked_ccmc, ccmc_full_nc
+        use calc, only: truncation_level, truncate_space
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use fciqmc_data, only: sampling_size, walker_dets, walker_population,                        &
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
-                               write_fciqmc_report_header, nparticles, ccmc_move_freq, real_factor,  &
-                               cluster_multispawn_threshold
+                               write_fciqmc_report_header, nparticles, real_factor
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
                               redistribute_particles
@@ -264,10 +264,11 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(ccmc_in_t), intent(in) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
@@ -329,7 +330,7 @@ contains
         call check_allocate('ms_stats', size(ms_stats), ierr)
         if (parent) call rng_init_info(qmc_in%seed+iproc)
 
-        if (linked_ccmc) then
+        if (ccmc_in%linked) then
             call init_cluster(sys, 4, cdet, cluster)
             call init_cluster(sys, 4, ldet, left_cluster)
             call init_cluster(sys, 4, rdet, right_cluster)
@@ -369,7 +370,7 @@ contains
         ! Initialise hash shift if restarting...
         qmc_spawn%hash_shift = mc_cycles_done
         ! Hard code how frequently (ie 2^10) a determinant can move.
-        qmc_spawn%move_freq = ccmc_move_freq
+        qmc_spawn%move_freq = ccmc_in%move_freq
 
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = semi_stoch_in%start_iter
@@ -409,7 +410,7 @@ contains
 
                 end if
 
-                if (linked_ccmc) then
+                if (ccmc_in%linked) then
                     ! The BCH expansion of the Hamiltonian terminates at fourth
                     ! order in T so at most four excitors needed in the cluster
                     if (tot_walkers == nD0_proc) then
@@ -477,7 +478,7 @@ contains
                 !         of composite clusters, choosing nattempts samples.  For convenience
                 !         nattempts = # excitors not on the reference (i.e. the number of
                 !         excitors which can actually be involved in a composite cluster).
-                if (ccmc_full_nc) then
+                if (ccmc_in%full_nc) then
                     ! Note that nattempts /= tot_abs_nint_pop+D0_normalisation if the
                     ! reference is not on the current processor.  Instead work
                     ! out how many clusters of each type we will sample
@@ -506,15 +507,15 @@ contains
                 !$omp         nspawnings_left, nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
-                !$omp        max_cluster_size, cdet, cluster, truncation_level, &
-                !$omp        D0_normalisation, D0_pos, nD0_select,              &
-                !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,  &
-                !$omp        proj_energy, real_factor, min_cluster_size,        &
-                !$omp        nclusters, nstochastic_clusters, nattempts_spawn,  &
-                !$omp        nsingle_excitors, cluster_multispawn_threshold,    &
-                !$omp        linked_ccmc, ldet, rdet, left_cluster,             &
-                !$omp        right_cluster, nprocs, ccmc_full_nc, ms_stats,     &
-                !$omp        walker_population, tot_walkers, walker_data,       &
+                !$omp        max_cluster_size, cdet, cluster, truncation_level,      &
+                !$omp        D0_normalisation, D0_pos, nD0_select,                   &
+                !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,       &
+                !$omp        proj_energy, real_factor, min_cluster_size,             &
+                !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
+                !$omp        nsingle_excitors, ccmc_in%cluster_multispawn_threshold, &
+                !$omp        ccmc_in%linked, ldet, rdet, left_cluster,               &
+                !$omp        right_cluster, nprocs, ccmc_in%full_nc, ms_stats,       &
+                !$omp        walker_population, tot_walkers, walker_data,            &
                 !$omp        walker_dets, nparticles_change, ndeath, D0_population)
                 it = get_thread_id()
                 iexcip_pos = 0
@@ -525,7 +526,7 @@ contains
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                     if (iattempt <= nstochastic_clusters) then
-                        call select_cluster(rng(it), sys, real_factor, nstochastic_clusters, D0_normalisation, &
+                        call select_cluster(rng(it), sys, real_factor, ccmc_in%linked, nstochastic_clusters, D0_normalisation, &
                                             qmc_in%initiator_pop, D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, &
                                             min_cluster_size, max_cluster_size, cdet(it), cluster(it))
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
@@ -550,7 +551,7 @@ contains
                     end if
 
                     if (cluster(it)%excitation_level <= truncation_level+2 .or. &
-                            (linked_ccmc .and. cluster(it)%excitation_level == huge(0))) then
+                            (ccmc_in%linked .and. cluster(it)%excitation_level == huge(0))) then
                         ! cluster%excitation_level == huge(0) indicates a cluster
                         ! where two excitors share an elementary operator
 
@@ -578,7 +579,7 @@ contains
                         ! greater than cluster_multispawn_threshold, then nspawnings is
                         ! increased to the ratio of these.
                         nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
-                                                         cluster_multispawn_threshold))
+                                                         ccmc_in%cluster_multispawn_threshold))
                         call ms_stats_update(nspawnings_total, ms_stats(it))
                         nattempts_spawn = nattempts_spawn + nspawnings_total
 
@@ -591,8 +592,8 @@ contains
                                           gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
                             else
-                                call spawner_ccmc(rng(it), sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet(it), cluster(it), &
-                                          gen_excit_ptr, nspawned, connection, nspawnings_total)
+                                call spawner_ccmc(rng(it), sys, qmc_in, qmc_spawn%cutoff, real_factor, ccmc_in%linked, &
+                                          cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total)
                             end if
 
                            if (nspawned /= 0_int_p) then
@@ -608,13 +609,14 @@ contains
                         ! Does the cluster collapsed onto D0 produce
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
-                        ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_full_nc.
+                        ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
                         if (cluster(it)%excitation_level <= truncation_level) then
                             ! Clusters above size 2 can't die in linked ccmc.
-                            if ((.not. linked_ccmc) .or. cluster(it)%nexcitors <= 2) then
+                            if ((.not. ccmc_in%linked) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
-                                if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_full_nc) then
-                                    call stochastic_ccmc_death(rng(it), real_factor, sys, qmc_in%tau, cdet(it), cluster(it))
+                                if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
+                                    call stochastic_ccmc_death(rng(it), real_factor, ccmc_in%linked, sys, qmc_in%tau, &
+                                                               cdet(it), cluster(it))
                                 end if
                             end if
                         end if
@@ -624,15 +626,16 @@ contains
                 end do
                 !$omp end do
 
-                if (ccmc_full_nc .and. tot_walkers > 0) then
+                if (ccmc_in%full_nc .and. tot_walkers > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) reduction(+:ndeath,nparticles_change)
                     do iattempt = 1, tot_walkers
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
-                        call stochastic_ccmc_death_nc(rng(it), real_factor, qmc_in%tau, iattempt==D0_pos, walker_data(1,iattempt), &
-                            walker_population(1, iattempt), nparticles_change(1), ndeath)
+                        call stochastic_ccmc_death_nc(rng(it), real_factor, ccmc_in%linked, qmc_in%tau, iattempt==D0_pos, &
+                                                      walker_data(1,iattempt), walker_population(1, iattempt), &
+                                                      nparticles_change(1), ndeath)
                     end do
                     !$omp end do
                 end if
@@ -767,8 +770,8 @@ contains
 
     end subroutine find_D0
 
-    subroutine select_cluster(rng, sys, real_factor, nattempts, normalisation, initiator_pop, D0_pos, cumulative_excip_pop, &
-                              tot_excip_pop, min_size, max_size, cdet, cluster)
+    subroutine select_cluster(rng, sys, real_factor, linked_ccmc, nattempts, normalisation, initiator_pop, D0_pos, &
+                              cumulative_excip_pop, tot_excip_pop, min_size, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -782,6 +785,7 @@ contains
         !        of excitors is generated in the current timestep.
         !    real_factor: the encoding factor by which the stored populations are multiplied
         !       to enable non-integer populations.
+        !    linked_ccmc: if true then only sample linked clusters.
         !    normalisation: intermediate normalisation factor, N_0, where we use the
         !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
         !    initiator_pop: the population above which a determinant is an initiator.
@@ -813,7 +817,7 @@ contains
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
 
-        use calc, only: truncation_level, linked_ccmc
+        use calc, only: truncation_level
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
@@ -829,6 +833,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: nattempts
         integer(int_p), intent(in) :: real_factor
+        logical, intent(in) :: linked_ccmc
         integer, intent(in) :: D0_pos
         real(p), intent(in) :: normalisation, initiator_pop
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
@@ -963,7 +968,7 @@ contains
                     call collapse_cluster(sys%basis, walker_dets(:,pos), excitor_pop, cdet%f, &
                                           cluster_population, allowed)
                     if (.not.allowed) then
-                        if (.not.linked_ccmc) exit
+                        if (.not. linked_ccmc) exit
                         all_allowed = .false.
                     end if
                     ! Each excitor spends the same amount of time on each processor on
@@ -1231,8 +1236,8 @@ contains
 
     end subroutine select_cluster_non_composite
 
-    subroutine spawner_ccmc(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, cluster, gen_excit_ptr, nspawn, connection, &
-                            nspawnings_total)
+    subroutine spawner_ccmc(rng, sys, qmc_in, spawn_cutoff, real_factor, linked_ccmc, cdet, cluster, gen_excit_ptr, &
+                            nspawn, connection, nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability
@@ -1267,6 +1272,7 @@ contains
         !        stochastically rounded up to this value or down to zero.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
+        !    linked_ccmc: if true then only sample linked clusters.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.  In
@@ -1295,7 +1301,6 @@ contains
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
         use parallel, only: iproc
-        use calc, only: linked_ccmc
         use const, only: depsilon
         use qmc_data, only: qmc_in_t
 
@@ -1303,6 +1308,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
+        logical, intent(in) :: linked_ccmc
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
@@ -1367,7 +1373,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, real_factor, sys, tau, cdet, cluster)
+    subroutine stochastic_ccmc_death(rng, real_factor, linked_ccmc, sys, tau, cdet, cluster)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1390,6 +1396,7 @@ contains
         !    tau: timestep being used.
         !    real_factor: the encoding factor by which the stored populations are multiplied
         !       to enable non-integer populations.
+        !    linked_ccmc: if true then only sample linked clusters.
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.
@@ -1404,11 +1411,11 @@ contains
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
-        use calc, only: linked_ccmc
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: tau
         integer(int_p), intent(in) :: real_factor
+        logical, intent(in) :: linked_ccmc
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
@@ -1497,7 +1504,7 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    subroutine stochastic_ccmc_death_nc(rng, real_factor, tau, D0, Hii, population, tot_population, ndeath)
+    subroutine stochastic_ccmc_death_nc(rng, real_factor, linked_ccmc, tau, D0, Hii, population, tot_population, ndeath)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1522,6 +1529,7 @@ contains
         ! In:
         !    real_factor: the encoding factor by which the stored populations are multiplied
         !       to enable non-integer populations.
+        !    linked_ccmc: if true then only sample linked clusters.
         !    tau: timestep being used.
         !    D0: true if the current excip is the null (reference) excitor
         !    Hii: the diagonal matrix element of the determinant formed by applying the excip to the
@@ -1534,9 +1542,9 @@ contains
 
         use fciqmc_data, only: shift, qmc_spawn
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use calc, only: linked_ccmc
 
         integer(int_p), intent(in) :: real_factor
+        logical, intent(in) :: linked_ccmc
         real(p), intent(in) :: tau
         logical, intent(in) :: D0
         real(p), intent(in) :: Hii

@@ -119,14 +119,14 @@ type ccmc_in_t
     ! [todo] - rename components: no need for ccmc_ stem.
     ! How frequently (in log_2) an excitor can be moved to a different processor.
     ! See comments in spawn_t and assign_particle_processor.
-    integer :: ccmc_move_freq = 5
+    integer :: move_freq = 5
     ! Value of cluster%amplitude/cluster%pselect above which spawns are split up
     ! The default value corresponds to off.
     real(p) :: cluster_multispawn_threshold = huge(1.0_p)
     ! Use the full non-composite algorithm?
-    logical :: ccmc_full_nc = .false.
+    logical :: full_nc = .false.
     ! Sample only linked clusters in CCMC?
-    logical :: linked_ccmc = .false.
+    logical :: linked = .false.
 end type ccmc_in_t
 
 type restart_in_t

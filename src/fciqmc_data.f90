@@ -23,12 +23,6 @@ integer :: beta_loops = 100
 integer :: walker_length
 integer :: spawned_walker_length
 
-!--- Input data: initiator-FCIQMC ---
-
-! Value of cluster%amplitude/cluster%pselect above which spawns are split up
-! The default value corresponds to off.
-real(p) :: cluster_multispawn_threshold = huge(1.0_p)
-
 ! [todo] - It is somewhat inelegant to store/pass around real_factor or real_bit_shift separately,
 ! [todo] - when really they are variables telling us about the representation of the population data.
 ! [todo] - As such, the separation is not entrely helpful.  It would make more sense encoded with the
@@ -146,12 +140,6 @@ type semi_stoch_t
     ! communicaton.
     type(parallel_timing_t) :: mpi_time
 end type semi_stoch_t
-
-!--- Input data: CCMC ---
-
-! How frequently (in log_2) an excitor can be moved to a different processor.
-! See comments in spawn_t and assign_particle_processor.
-integer :: ccmc_move_freq = 5
 
 !--- Energy data ---
 
