@@ -224,7 +224,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, semi_stoch_in)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -234,6 +234,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
@@ -255,7 +256,7 @@ contains
         use fciqmc_data, only: sampling_size, walker_dets, walker_population,                        &
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
-                               write_fciqmc_report_header, nparticles, ccmc_move_freq, real_factor,  &
+                               write_fciqmc_report_header, nparticles, real_factor,                  &
                                cluster_multispawn_threshold
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
@@ -264,10 +265,11 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(ccmc_in_t), intent(in) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
@@ -369,7 +371,7 @@ contains
         ! Initialise hash shift if restarting...
         qmc_spawn%hash_shift = mc_cycles_done
         ! Hard code how frequently (ie 2^10) a determinant can move.
-        qmc_spawn%move_freq = ccmc_move_freq
+        qmc_spawn%move_freq = ccmc_in%move_freq
 
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = semi_stoch_in%start_iter

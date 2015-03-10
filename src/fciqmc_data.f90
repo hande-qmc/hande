@@ -147,12 +147,6 @@ type semi_stoch_t
     type(parallel_timing_t) :: mpi_time
 end type semi_stoch_t
 
-!--- Input data: CCMC ---
-
-! How frequently (in log_2) an excitor can be moved to a different processor.
-! See comments in spawn_t and assign_particle_processor.
-integer :: ccmc_move_freq = 5
-
 !--- Energy data ---
 
 ! shift: the shift is held constant at the initial value (from input) unless
