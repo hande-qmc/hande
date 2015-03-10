@@ -72,7 +72,7 @@ contains
         real(p) :: real_population
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
 
-        logical :: soft_exit
+        logical :: soft_exit, dump_restart_file_shift
         logical :: semi_stochastic, determ_parent, determ_child
 
         real :: t1
@@ -90,6 +90,9 @@ contains
 
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = semi_stoch_in%start_iter
+
+        ! Should we dump a restart file just before the shift is turned on?
+        dump_restart_file_shift = restart_in%dump_restart_file_shift
 
         ! Create the semi_stoch_t object, determ.
         ! If the user has asked to use semi-stochastic from the first iteration
@@ -247,9 +250,9 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
-                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, bloom_stats=bloom_stats, &
-                                 doing_lb=fciqmc_in%doing_load_balancing, nb_comm=fciqmc_in%non_blocking_comm, &
-                                 rep_comm=par_info%report_comm)
+                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
+                                 bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
+                                 nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 

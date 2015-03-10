@@ -289,7 +289,7 @@ contains
         type(dSFMT_t), allocatable :: rng(:)
         real(p) :: junk, bloom_threshold
 
-        logical :: soft_exit
+        logical :: soft_exit, dump_restart_file_shift
 
         integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
@@ -376,6 +376,9 @@ contains
 
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = semi_stoch_in%start_iter
+
+        ! Should we dump a restart file just before the shift is turned on?
+        dump_restart_file_shift = restart_in%dump_restart_file_shift
 
         do ireport = 1, qmc_in%nreport
 
@@ -661,7 +664,8 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
-                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, bloom_stats=bloom_stats)
+                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
+                                  bloom_stats=bloom_stats)
 
             if (soft_exit) exit
 

@@ -56,7 +56,7 @@ contains
         type(det_info_t) :: cdet
         type(excit_t) :: connection
         type(excit_t), allocatable :: connection_list(:)
-        logical :: soft_exit
+        logical :: soft_exit, dump_restart_file_shift
         real(p):: hmatel
         type(excit_t) :: D0_excit
         type(dSFMT_t) :: rng
@@ -91,6 +91,9 @@ contains
         nparticles_old = tot_nparticles
 
         t_barrier = qmc_in%tau ! or we could just not bother with the t_barrier var...
+
+        ! Should we dump a restart file just before the shift is turned on?
+        dump_restart_file_shift = restart_in%dump_restart_file_shift
 
         if (parent) call write_fciqmc_report_header()
         call initial_fciqmc_status(sys, qmc_in)
@@ -242,7 +245,7 @@ contains
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
             call end_report_loop(sys, qmc_in, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
-                                 unused_int_1, unused_int_2, soft_exit)
+                                 unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift)
 
             if (soft_exit) exit
 

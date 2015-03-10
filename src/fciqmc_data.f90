@@ -498,9 +498,6 @@ logical, allocatable :: vary_shift(:) ! (sampling_size)
 
 !--- Restart data ---
 
-! Print out a restart file before the shift turns on.
-logical :: dump_restart_file_shift = .false.
-
 ! Restart data.
 integer :: mc_cycles_done = 0
 

@@ -63,7 +63,7 @@ contains
 
         call init_system(sys)
 
-        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
+        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
 
         ! Initialise basis functions.
         if (sys%system == read_in) then

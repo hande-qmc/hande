@@ -468,7 +468,7 @@ contains
                     call readu(w)
                     ! Do we want to dump a restart file, when the shift turns on.
                     if(w == 'SHIFT') then
-                        dump_restart_file_shift = .true.
+                        restart_in%dump_restart_file_shift = .true.
                         ! Do we have a restart number for when the shift turns on.
                         if (item /= nitems) then
                             call readi(restart_info_global_shift%write_id)
@@ -574,7 +574,7 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
+    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
@@ -586,9 +586,11 @@ contains
         !    ccmc_in: input options relating to CCMC.
         ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    restart_in: input options for HDF5 restart files.
 
         use const
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
+        use qmc_data, only: restart_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
@@ -596,6 +598,7 @@ contains
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
+        type(restart_in_t), intent(in) :: restart_in
 
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
@@ -750,7 +753,7 @@ contains
                                                       & used together.')
         end if
 
-        if (dump_restart_file_shift) then
+        if (restart_in%dump_restart_file_shift) then
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_id<0 &
                  .and. restart_info_global%write_id == restart_info_global_shift%write_id) &
                  call stop_all(this, 'The ids of the restart files are the same.')
@@ -996,7 +999,7 @@ contains
         end if
         call mpi_bcast(restart_in%read_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_in%dump_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dump_restart_file_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%dump_restart_file_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_restart_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)

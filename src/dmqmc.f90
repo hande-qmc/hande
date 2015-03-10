@@ -56,7 +56,7 @@ contains
         integer(int_p) :: nspawned, ndeath
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
-        logical :: soft_exit
+        logical :: soft_exit, dump_restart_file_shift
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
@@ -87,6 +87,9 @@ contains
 
         if (all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
+
+        ! Should we dump a restart file just before the shift is turned on?
+        dump_restart_file_shift = restart_in%dump_restart_file_shift
 
         do beta_cycle = 1, beta_loops
 
@@ -228,7 +231,8 @@ contains
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
                 call end_report_loop(sys, qmc_in, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
-                                     unused_int_1, unused_int_2, soft_exit, .false., bloom_stats=bloom_stats)
+                                     unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, .false., &
+                                     bloom_stats=bloom_stats)
 
                 if (soft_exit) exit
 
