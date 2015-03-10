@@ -33,7 +33,7 @@ contains
         use qmc_common
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
-        use calc, only: seed, propagate_to_beta
+        use calc, only: propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t
@@ -68,7 +68,7 @@ contains
 
         ! Main DMQMC loop.
         if (parent) then
-            call rng_init_info(seed+iproc)
+            call rng_init_info(qmc_in%seed+iproc)
             call write_fciqmc_report_header()
         end if
         ! Initialise timer.
@@ -87,7 +87,7 @@ contains
 
         do beta_cycle = 1, beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in%initial_shift, beta_cycle)
+            call init_dmqmc_beta_loop(rng, qmc_in, beta_cycle)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
@@ -262,7 +262,7 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, initial_shift, beta_cycle)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, beta_cycle)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -272,13 +272,13 @@ contains
         !    initial_shift: the initial shift used for population control.
         !    beta_cycle: The index of the beta loop about to be started.
 
-        use calc, only: seed
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
+        use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
 
         type(dSFMT_t) :: rng
-        real(p), intent(in) :: initial_shift
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: beta_cycle
         integer :: new_seed
 
@@ -288,13 +288,13 @@ contains
 
         ! Set all quantities back to their starting values.
         tot_walkers = 0
-        shift = initial_shift
+        shift = qmc_in%initial_shift
         nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
         if (vary_weights) accumulated_probs = 1.0_p
         if (find_weights) excit_dist = 0.0_p
 
-        new_seed = seed+iproc+(beta_cycle-1)*nprocs
+        new_seed = qmc_in%seed+iproc+(beta_cycle-1)*nprocs
 
         if (beta_cycle /= 1 .and. parent) then
             write (6,'(a32,'//int_fmt(beta_cycle,1)//')') " # Resetting beta... Beta loop =", beta_cycle

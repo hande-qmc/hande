@@ -22,7 +22,6 @@ contains
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: bloom_stats_t
-        use calc, only: seed
         use determinants, only: det_info_t, alloc_det_info_t
         use excitations, only: excit_t, get_excitation
         use qmc_common
@@ -64,8 +63,8 @@ contains
         type(bloom_stats_t) :: bloom_stats
         integer :: unused_int_1 = -1, unused_int_2 = 0
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         ! index of spawning array which contains population
         spawned_pop = sys%basis%string_len + 1

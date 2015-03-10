@@ -39,7 +39,6 @@ contains
         use parallel
 
         use annihilation, only: direct_annihilation
-        use calc, only: seed
         use death, only: stochastic_death, stochastic_hf_cloning
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
@@ -75,8 +74,8 @@ contains
 
         real :: t1, t2
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         ! Allocate det_info_t components.
         call alloc_det_info_t(sys, cdet, .false.)

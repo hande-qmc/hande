@@ -31,7 +31,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
-        use calc, only: doing_calc, seed, non_blocking_comm, doing_load_balancing, use_mpi_barriers
+        use calc, only: doing_calc, non_blocking_comm, doing_load_balancing, use_mpi_barriers
         use death, only: stochastic_death
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
@@ -75,8 +75,8 @@ contains
 
         logical :: update_tau
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=real_factor)

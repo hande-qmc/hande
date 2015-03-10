@@ -53,7 +53,7 @@ contains
         end if
         call comm_global_uuid()
 
-        call init_calc_defaults(VCS_VERSION, GLOBAL_UUID)
+        call init_calc_defaults(VCS_VERSION, GLOBAL_UUID, qmc_in%seed)
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
@@ -118,7 +118,7 @@ contains
         if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys)
 
         if (doing_calc(mc_hilbert_space)) then
-            call estimate_hilbert_space(sys)
+            call estimate_hilbert_space(sys, qmc_in%seed)
         end if
 
         if (doing_calc(mc_canonical_kinetic_energy)) then

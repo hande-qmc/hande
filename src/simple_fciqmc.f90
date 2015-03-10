@@ -181,7 +181,6 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
 
-        use calc, only: seed
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
         use qmc_data, only: qmc_in_t
@@ -203,8 +202,8 @@ contains
 
         call init_simple_fciqmc(sys, qmc_in, ndets, dets, ref_det)
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         nparticles = real(sum(abs(walker_population(1,:))),p)
         nparticles_old = nparticles

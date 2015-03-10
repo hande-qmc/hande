@@ -248,7 +248,7 @@ contains
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report
-        use calc, only: seed, truncation_level, truncate_space, linked_ccmc, ccmc_full_nc
+        use calc, only: truncation_level, truncate_space, linked_ccmc, ccmc_full_nc
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -327,7 +327,7 @@ contains
         call check_allocate('rng', size(rng), ierr)
         allocate(ms_stats(0:nthreads-1), stat=ierr)
         call check_allocate('ms_stats', size(ms_stats), ierr)
-        if (parent) call rng_init_info(seed+iproc)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
 
         if (linked_ccmc) then
             call init_cluster(sys, 4, cdet, cluster)
@@ -339,7 +339,7 @@ contains
 
         do i = 0, nthreads-1
             ! Initialise and allocate RNG store.
-            call dSFMT_init(seed+iproc+i*nprocs, 50000, rng(i))
+            call dSFMT_init(qmc_in%seed+iproc+i*nprocs, 50000, rng(i))
         end do
 
         ! Whilst cluster data can be accessed from cdet, I recommend explicitly
