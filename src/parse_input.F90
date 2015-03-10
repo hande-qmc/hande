@@ -486,7 +486,7 @@ contains
             case('SEED')
                 call readi(seed)
             case('SHIFT_DAMPING')
-                call readf(shift_damping)
+                call readf(qmc_in%shift_damping)
             case('CLUSTER_MULTISPAWN_THRESHOLD')
                 call readf(cluster_multispawn_threshold)
             case('INIT_SPIN_INVERSE_REFERENCE_DET')
@@ -698,7 +698,7 @@ contains
             end if
             if (calc_inst_rdm .and. spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
             if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
-            if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
+            if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(occ_list0)) then
                 if (size(occ_list0) /= sys%nel) then
                     if (sys%system /= heisenberg) then
@@ -981,7 +981,7 @@ contains
         call mpi_bcast(restart_info_global%write_restart_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global_shift%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)

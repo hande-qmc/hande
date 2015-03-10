@@ -381,7 +381,7 @@ contains
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
 
-        use fciqmc_data, only: shift, shift_damping, dmqmc_factor
+        use fciqmc_data, only: shift, dmqmc_factor
         use qmc_data, only: qmc_in_t
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -391,7 +391,7 @@ contains
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - log(nparticles/nparticles_old)*shift_damping/(dmqmc_factor*qmc_in%tau*nupdate_steps)
+        loc_shift = loc_shift - log(nparticles/nparticles_old)*qmc_in%shift_damping/(dmqmc_factor*qmc_in%tau*nupdate_steps)
 
     end subroutine update_shift
 
@@ -411,7 +411,6 @@ contains
         ! Hellmann-Feynman walkers but also involves the Hamiltonian walkers and
         ! *must* be calculated using calculate_hf_signed_pop.
 
-        use fciqmc_data, only: shift_damping
         use hfs_data, only: hf_shift
         use qmc_data, only: qmc_in_t
 
@@ -429,7 +428,7 @@ contains
         ! The latter quantity is calculated in calculate_hf_signed fpop.
 
         hf_shift = hf_shift - &
-                 (shift_damping/(qmc_in%tau*nupdate_steps)) &
+                 (qmc_in%shift_damping/(qmc_in%tau*nupdate_steps)) &
                  *(nhf_particles/nparticles - nhf_particles_old/nparticles_old)
 
     end subroutine update_hf_shift

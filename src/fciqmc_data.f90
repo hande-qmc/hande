@@ -172,10 +172,6 @@ real(p), allocatable, target :: shift(:) ! (sampling_size)
 real(p) :: vary_shift_from = 0.0_p
 logical :: vary_shift_from_proje = .false.
 
-! Factor by which the changes in the population are damped when updating the
-! shift.
-real(p) :: shift_damping = 0.050_p
-
 ! projected energy
 ! This stores during an FCIQMC report loop
 !   \sum_{i/=0} <D_0|H|D_i> N_i
