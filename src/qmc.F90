@@ -51,7 +51,7 @@ contains
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in)
+        call init_qmc(sys, qmc_in, fciqmc_in)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
@@ -78,7 +78,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in)
+    subroutine init_qmc(sys, qmc_in, fciqmc_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -87,6 +87,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    fciqmc_in: input options relating to FCIQMC.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -112,10 +113,11 @@ contains
         use utils, only: factorial_combination_1
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
@@ -360,7 +362,7 @@ contains
 
             ! For the Heisenberg model and open shell systems, it is often useful to
             ! have psips start on both the reference state and the spin-flipped version.
-            if (init_spin_inv_D0) then
+            if (fciqmc_in%init_spin_inv_D0) then
 
                 ! Need to handle the Heisenberg model (consisting of spinors on
                 ! lattice sites) and electron systems differently, as the

@@ -492,7 +492,7 @@ contains
             case('CLUSTER_MULTISPAWN_THRESHOLD')
                 call readf(cluster_multispawn_threshold)
             case('INIT_SPIN_INVERSE_REFERENCE_DET')
-                init_spin_inv_D0 = .true.
+                fciqmc_in%init_spin_inv_D0 = .true.
 
             ! Calculation options: initiator-fciqmc.
             case('INITIATOR_POPULATION')
@@ -569,23 +569,25 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, qmc_in, semi_stoch_in)
+    subroutine check_input(sys, qmc_in, fciqmc_in, semi_stoch_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
 
         ! In/Out:
         !    sys: system object, as set in read_input (invalid settings are overridden).
-        !    qmc_in: Input options for QMC calculations.
+        !    qmc_in: input options relating to QMC methods.
+        !    fciqmc_in: input options relating to FCIQMC.
         ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
 
         use const
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
 
         integer :: ivec, jvec
@@ -673,10 +675,10 @@ contains
               doing_calc(hfs_fciqmc_calc))) &
               call stop_all(this, 'Semi-stochastic is only implemented with the FCIQMC method.')
 
-        if (init_spin_inv_D0 .and. ms_in /= 0) then
+        if (fciqmc_in%init_spin_inv_D0 .and. ms_in /= 0) then
             if (parent) call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
-            init_spin_inv_D0 = .false.
+            fciqmc_in%init_spin_inv_D0 = .false.
         end if
 
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
@@ -995,7 +997,7 @@ contains
 
         call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%initiator_pop, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%initiator_approx, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

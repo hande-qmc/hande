@@ -267,11 +267,6 @@ integer, allocatable :: hs_occ_list0(:)
 ! randomly distributed along the diagonal elements of the density matrix.
 real(p) :: D0_population = 10.0_p
 
-! Also start with D0_population on i_s|D_0>, where i_s is the spin-version
-! operator.  This is only done if no restart file is used *and* |D_0> is not
-! a closed shell determinant.
-logical :: init_spin_inv_D0 = .false.
-
 ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
 ! required because in DMQMC calculations, instead of spawning from one end with
 ! the full probability, we spawn from two different ends with half probability each.
