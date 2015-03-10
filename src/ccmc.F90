@@ -1261,7 +1261,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options related to QMC methods.
+        !    qmc_in: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.

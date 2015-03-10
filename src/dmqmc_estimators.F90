@@ -238,7 +238,7 @@ contains
     subroutine update_shift_dmqmc(qmc_in, loc_tot_nparticles, loc_tot_nparticles_old, ireport)
 
         ! In:
-        !    qmc_in: input options relating to qmc methods.
+        !    qmc_in: input options relating to QMC methods.
         !    ireport: The number of the report loop currently being performed.
         ! In/Out:
         !    loc_tot_nparticles: total number (across all processors) of
