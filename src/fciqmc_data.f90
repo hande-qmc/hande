@@ -172,10 +172,6 @@ real(p), allocatable, target :: shift(:) ! (sampling_size)
 real(p) :: vary_shift_from = 0.0_p
 logical :: vary_shift_from_proje = .false.
 
-! Initial shift, needed in DMQMC to reset the shift at the start of each
-! beta loop.
-real(p) :: initial_shift = 0.0_p
-
 ! Factor by which the changes in the population are damped when updating the
 ! shift.
 real(p) :: shift_damping = 0.050_p

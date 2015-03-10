@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, ndets, dets, ref_det)
+    subroutine init_simple_fciqmc(sys, qmc_in, ndets, dets, ref_det)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -28,6 +28,8 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
         ! Out:
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space.
@@ -39,9 +41,11 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(out) :: ref_det
 
         integer, allocatable :: sym_space_size(:)
@@ -105,7 +109,7 @@ contains
 
         allocate(shift(1), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
-        shift = initial_shift
+        shift = qmc_in%initial_shift
 
         allocate(vary_shift(1), stat=ierr)
         call check_allocate('vary_shift', size(vary_shift), ierr)
@@ -197,7 +201,7 @@ contains
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
 
-        call init_simple_fciqmc(sys, ndets, dets, ref_det)
+        call init_simple_fciqmc(sys, qmc_in, ndets, dets, ref_det)
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)

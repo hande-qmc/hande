@@ -217,7 +217,7 @@ contains
         ! Allocate the shift.
         allocate(shift(sampling_size), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
-        shift = initial_shift
+        shift = qmc_in%initial_shift
 
         allocate(vary_shift(sampling_size), stat=ierr)
         call check_allocate('vary_shift', size(vary_shift), ierr)

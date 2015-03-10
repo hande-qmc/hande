@@ -87,7 +87,7 @@ contains
 
         do beta_cycle = 1, beta_loops
 
-            call init_dmqmc_beta_loop(rng, beta_cycle)
+            call init_dmqmc_beta_loop(rng, qmc_in%initial_shift, beta_cycle)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
@@ -262,13 +262,14 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, beta_cycle)
+    subroutine init_dmqmc_beta_loop(rng, initial_shift, beta_cycle)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
         ! In/Out:
         !    rng: random number generator.
         ! In:
+        !    initial_shift: the initial shift used for population control.
         !    beta_cycle: The index of the beta loop about to be started.
 
         use calc, only: seed
@@ -277,6 +278,7 @@ contains
         use utils, only: int_fmt
 
         type(dSFMT_t) :: rng
+        real(p), intent(in) :: initial_shift
         integer, intent(in) :: beta_cycle
         integer :: new_seed
 
