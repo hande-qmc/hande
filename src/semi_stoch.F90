@@ -464,11 +464,11 @@ contains
 
         use checking, only: check_allocate
         use csr, only: init_csrp
-        use fciqmc_data, only: H00
         use hamiltonian, only: get_hmatel
         use parallel
         use system, only: sys_t
         use utils, only: int_fmt
+        use qmc_data, only: reference_t, reference
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
@@ -497,7 +497,7 @@ contains
                         hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
-                        if (diag_elem) hmatel = hmatel - H00
+                        if (diag_elem) hmatel = hmatel - reference%H00
                         if (abs(hmatel) > depsilon) then
                             nnz = nnz + 1
                             if (imode == 2) then

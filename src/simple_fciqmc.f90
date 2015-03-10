@@ -42,7 +42,7 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t, reference
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
@@ -63,15 +63,15 @@ contains
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
-        if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=occ_list0)
+        if (allocated(reference%occ_list0)) then
+            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=reference%occ_list0)
         else
             call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets)
         end if
 
         ! Find all determinants with desired spin and symmetry.
-        if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, occ_list0)
+        if (allocated(reference%occ_list0)) then
+            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, reference%occ_list0)
         else
             call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in)
         end if
@@ -120,19 +120,19 @@ contains
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then
-            allocate(occ_list0(sys%nel), stat=ierr)
-            call check_allocate('occ_list0',sys%nel,ierr)
-            allocate(f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('f0',sys%basis%string_len,ierr)
+            allocate(reference%occ_list0(sys%nel), stat=ierr)
+            call check_allocate('reference%occ_list0',sys%nel,ierr)
+            allocate(reference%f0(sys%basis%string_len), stat=ierr)
+            call check_allocate('reference%f0',sys%basis%string_len,ierr)
         else
             if (use_sparse_hamil) then
-                H00 = huge(1.0_p)
+                reference%H00 = huge(1.0_p)
                 do i = 1, ndets
                     ! mat(k) is M_{ij}, so row_ptr(i) <= k < row_ptr(i+1) and col_ind(k) = j
                     do j = hamil_csr%row_ptr(i), hamil_csr%row_ptr(i+1)-1
                         if (hamil_csr%col_ind(j) == i) then
-                            if (hamil_csr%mat(j) < H00) then
-                                H00 = hamil_csr%mat(j)
+                            if (hamil_csr%mat(j) < reference%H00) then
+                                reference%H00 = hamil_csr%mat(j)
                                 ref_det = i
                             end if
                         end if
@@ -140,31 +140,31 @@ contains
                 end do
             else
                 ref_det = 1
-                H00 = hamil(1,1)
+                reference%H00 = hamil(1,1)
                 do i = 2, ndets
-                    if (hamil(i,i) < H00) then
+                    if (hamil(i,i) < reference%H00) then
                         ref_det = i
-                        H00 = hamil(ref_det,ref_det)
+                        reference%H00 = hamil(ref_det,ref_det)
                     end if
                 end do
             end if
 
-            if (.not.allocated(f0)) then
-                allocate(f0(sys%basis%string_len), stat=ierr)
-                call check_allocate('f0',sys%basis%string_len,ierr)
+            if (.not.allocated(reference%f0)) then
+                allocate(reference%f0(sys%basis%string_len), stat=ierr)
+                call check_allocate('reference%f0',sys%basis%string_len,ierr)
             end if
-            if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(sys%nel), stat=ierr)
-                call check_allocate('occ_list0',sys%nel,ierr)
+            if (.not.allocated(reference%occ_list0)) then
+                allocate(reference%occ_list0(sys%nel), stat=ierr)
+                call check_allocate('reference%occ_list0',sys%nel,ierr)
             end if
-            f0 = dets(:,ref_det)
-            call decode_det(sys%basis, f0, occ_list0)
+            reference%f0 = dets(:,ref_det)
+            call decode_det(sys%basis, reference%f0, reference%occ_list0)
             walker_population(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(sys%basis, sys%nel, dets(:,ref_det), new_line=.true.)
-        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',reference%H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 
         ! Return sys in an unaltered state.
@@ -400,6 +400,8 @@ contains
         !    pop: population on |D_i>.  On output, the population is updated from applying
         !         the death step.
 
+        use qmc_data, only: reference_t, reference
+
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: tau, Hii
         integer(int_p), intent(inout) :: pop
@@ -415,7 +417,7 @@ contains
         ! We store the Hamiltonian matrix rather than the K matrix.
         ! It is efficient to allow all particles on a given determinant to
         ! attempt to die in one go (like lemmings) in a stochastic process.
-        rate = abs(pop)*tau*(Hii-H00-shift(1))
+        rate = abs(pop)*tau*(Hii-reference%H00-shift(1))
         ! Number to definitely kill.
         nkill = int(rate)
         rate = rate - nkill
@@ -432,7 +434,7 @@ contains
 
         ! Don't allow creation of anti-particles in simple_fciqmc.
         if (nkill > abs(pop)) then
-            write (6,*) pop, abs(pop)*tau*(Hii-H00-shift(1))
+            write (6,*) pop, abs(pop)*tau*(Hii-reference%H00-shift(1))
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 

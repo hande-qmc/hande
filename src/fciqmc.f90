@@ -46,7 +46,7 @@ contains
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, reference_t, reference
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -170,8 +170,8 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    connection = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-                    call update_proj_energy_ptr(sys, f0, cdet, real_population, D0_population, &
+                    connection = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
+                    call update_proj_energy_ptr(sys, reference%f0, cdet, real_population, D0_population, &
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
@@ -310,7 +310,7 @@ contains
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t, reference
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
 
@@ -339,7 +339,7 @@ contains
             real_pop = real(int_pop(1),p) / real_factor
             ftmp = int(spawn%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
-            tmp_data(1) = sc0_ptr(sys, cdet%f) - H00
+            tmp_data(1) = sc0_ptr(sys, cdet%f) - reference%H00
             cdet%data => tmp_data
 
             call decoder_ptr(sys, cdet%f, cdet)
@@ -347,8 +347,8 @@ contains
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
-            connection = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-            call update_proj_energy_ptr(sys, f0, cdet, real_pop, D0_population, &
+            connection = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
+            call update_proj_energy_ptr(sys, reference%f0, cdet, real_pop, D0_population, &
                                         proj_energy, connection, hmatel)
 
             ! Is this determinant an initiator?

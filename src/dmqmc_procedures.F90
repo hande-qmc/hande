@@ -384,7 +384,7 @@ contains
         use calc, only: sym_in, propagate_to_beta, grand_canonical_initialisation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_spin_sectors, f0, init_beta, &
+        use fciqmc_data, only: sampling_size, all_spin_sectors, init_beta, &
                                walker_dets, nparticles, real_factor, &
                                walker_population, tot_walkers, qmc_spawn, &
                                metropolis_attempts
@@ -646,7 +646,7 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, all_sym_sectors, f0, sampling_size, metropolis_attempts, &
+        use fciqmc_data, only: real_factor, all_sym_sectors, sampling_size, metropolis_attempts, &
                                max_metropolis_move
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
@@ -751,11 +751,12 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: f0, real_factor, all_sym_sectors, metropolis_attempts
+        use fciqmc_data, only: real_factor, all_sym_sectors, metropolis_attempts
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: npsips
@@ -773,12 +774,12 @@ contains
         ! [todo] - Include all psips.
         psips_per_level = int(npsips/sys%max_number_excitations)
         call alloc_det_info_t(sys, det0)
-        call decode_det_spinocc_spinunocc(sys, f0, det0)
-        det0%f = f0
+        call decode_det_spinocc_spinunocc(sys, reference%f0, det0)
+        det0%f = reference%f0
         ! gen_random_det_truncate_space does not produce determinants at
         ! excitation level zero, so take care of this explicitly.
         do idet = 1, psips_per_level
-            call create_diagonal_density_matrix_particle(f0, sys%basis%string_len, &
+            call create_diagonal_density_matrix_particle(reference%f0, sys%basis%string_len, &
                                                          sys%basis%tensor_label_len, real_factor, ireplica)
         end do
 

@@ -233,22 +233,6 @@ real(p) :: rspawn
 ! The total number of successful spawning events, across all processes.
 integer :: tot_nspawn_events
 
-!--- Reference determinant ---
-
-! Bit string of reference determinant.
-integer(i0), allocatable, target :: f0(:)
-
-! List of occupied orbitals in reference determinant.
-integer, allocatable :: occ_list0(:)
-
-! Bit string of reference determinant used to generate the Hilbert space.
-! This is usually identical to f0, but not necessarily (e.g. if we're doing
-! a spin-flip calculation).
-integer(i0), allocatable, target :: hs_f0(:)
-
-! hs_f0:hs_occ_list0 as f0:occ_list0.
-integer, allocatable :: hs_occ_list0(:)
-
 ! Population of walkers on reference determinant.
 ! The initial value can be overridden by a restart file or input option.
 ! For DMQMC, this variable stores the initial number of psips to be
@@ -488,8 +472,6 @@ integer :: max_metropolis_move = 2
 ! there are relativley few of them and they are expensive to calculate
 real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
-! Energy of reference determinant.
-real(p) :: H00
 
 !--- Calculation modes ---
 
@@ -747,14 +729,15 @@ contains
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
         use calc, only: dealloc_parallel_t
+        use qmc_data, only: reference_t, reference
 
         logical, intent(in) :: nb_comm
 
         integer :: ierr
 
-        if (allocated(occ_list0)) then
-            deallocate(occ_list0, stat=ierr)
-            call check_deallocate('occ_list0',ierr)
+        if (allocated(reference%occ_list0)) then
+            deallocate(reference%occ_list0, stat=ierr)
+            call check_deallocate('reference%occ_list0',ierr)
         end if
         if (allocated(nparticles)) then
             deallocate(nparticles, stat=ierr)
@@ -772,9 +755,9 @@ contains
             deallocate(walker_data, stat=ierr)
             call check_deallocate('walker_data',ierr)
         end if
-        if (allocated(f0)) then
-            deallocate(f0, stat=ierr)
-            call check_deallocate('f0',ierr)
+        if (allocated(reference%f0)) then
+            deallocate(reference%f0, stat=ierr)
+            call check_deallocate('reference%f0',ierr)
         end if
         if (allocated(neel_singlet_amp)) then
             deallocate(neel_singlet_amp, stat=ierr)

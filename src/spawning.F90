@@ -865,8 +865,8 @@ contains
         use calc, only: truncation_level
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t, reference
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
@@ -888,7 +888,7 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
+        if (get_excitation_level(reference%hs_f0, f_new) <= truncation_level) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
                                            spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
@@ -926,8 +926,8 @@ contains
         use calc, only: truncation_level
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t, reference
 
         type(basis_t), intent(in) :: basis
         type(det_info_t), intent(in) :: cdet
@@ -949,7 +949,7 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
+        if (get_excitation_level(reference%hs_f0, f_new) <= truncation_level) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)

@@ -39,12 +39,12 @@ contains
         use determinants, only: encode_det, det_info_t, alloc_det_info_t,  &
                                 dealloc_det_info_t, decode_det_spinocc_spinunocc
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
-        use fciqmc_data, only: occ_list0
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
         use system
         use parallel
         use utils, only: binom_r, rng_init_info
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: seed
@@ -107,14 +107,14 @@ contains
                 ! Perform a Monte Carlo sampling of the space.
 
                 if (sym_in < sys%sym_max) then
-                    call set_reference_det(sys, occ_list0, .false., sym_in)
+                    call set_reference_det(sys, reference%occ_list0, .false., sym_in)
                 else
-                    call set_reference_det(sys, occ_list0, .false.)
+                    call set_reference_det(sys, reference%occ_list0, .false.)
                 end if
-                call encode_det(sys%basis, occ_list0, f0)
+                call encode_det(sys%basis, reference%occ_list0, f0)
 
                 ! Symmetry of the reference determinant.
-                ref_sym = symmetry_orb_list(sys, occ_list0)
+                ref_sym = symmetry_orb_list(sys, reference%occ_list0)
 
                 if (truncate_space) then
                     ! Generate a determinant with a given excitation level up to

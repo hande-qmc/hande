@@ -35,6 +35,7 @@ contains
 
         use parallel
         use errors, only: stop_all
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: ref_det_factor
@@ -52,7 +53,7 @@ contains
 
         allocate(fmax(lbound(walker_dets, dim=1):ubound(walker_dets, dim=1)))
 
-        H00_old = H00
+        H00_old = reference%H00
 
         updated = .false.
         ! Find determinant with largest population.
@@ -75,7 +76,7 @@ contains
 
 #ifdef PARALLEL
 
-        if (all(fmax == f0)) then
+        if (all(fmax == reference%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
             in_data = (/ 0_int_p, int(iproc,int_p) /)
         else if (abs(max_pop) > ref_det_factor*abs(D0_population)) then
@@ -92,44 +93,44 @@ contains
             max_pop = out_data(1)
             updated = .true.
             D0_proc = out_data(2)
-            f0 = fmax
-            H00 = H00_max
+            reference%f0 = fmax
+            reference%H00 = H00_max
             ! Broadcast updated data
-            call mpi_bcast(f0, size(f0), mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
-            call mpi_bcast(H00, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(reference%f0, size(reference%f0), mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(reference%H00, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
         end if
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. any(fmax /= f0)) then
+        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. any(fmax /= reference%f0)) then
             updated = .true.
-            f0 = fmax
-            H00 = H00_max
+            reference%f0 = fmax
+            reference%H00 = H00_max
         end if
 
 #endif
 
         if (updated) then
             ! Update occ_list.
-            call decode_det(sys%basis, f0, occ_list0)
+            call decode_det(sys%basis, reference%f0, reference%occ_list0)
             ! walker_data(1,i) holds <D_i|H|D_i> - H00_old.  Update.
             ! H00 is currently <D_0|H|D_0> - H00_old.
             ! Want walker_data(1,i) to be <D_i|H|D_i> - <D_0|H|D_0>
             ! We'll fix H00 later and avoid an extra tot_walkers*additions.
             do i = 1, tot_walkers
-                walker_data(1,i) = walker_data(1,i) - H00
+                walker_data(1,i) = walker_data(1,i) - reference%H00
             end do
             ! Now set H00 = <D_0|H|D_0> so that future references to it are
             ! correct.
-            H00 = H00 + H00_old
+            reference%H00 = reference%H00 + H00_old
             if (doing_calc(hfs_fciqmc_calc)) call stop_all('select_ref_det', 'Not implemented for HFS.')
             if (parent) then
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
-                call write_det(sys%basis, sys%nel, f0, new_line=.true.)
+                call write_det(sys%basis, sys%nel, reference%f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
-                write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') H00
+                write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') reference%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
                 write (6,'(1X,"#",1X,62("-"))')
             end if
@@ -574,7 +575,7 @@ contains
         use excitations, only: excit_t, get_excitation
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t, reference
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -608,8 +609,8 @@ contains
             real_population = real(walker_population(:,idet),p)/real_factor
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
-            D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-            call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &
+            D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
+            call update_proj_energy_ptr(sys, reference%f0, cdet, real_population(1), &
                                         D0_population, proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info_t(cdet)

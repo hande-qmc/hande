@@ -53,7 +53,7 @@ contains
         use proc_pointers
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use qmc_data, only: qmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, reference
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -133,8 +133,8 @@ contains
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    connection = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-                    call update_proj_energy_ptr(sys, f0, cdet, real_population(1),  &
+                    connection = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
+                    call update_proj_energy_ptr(sys, reference%f0, cdet, real_population(1),  &
                                                 D0_population, proj_energy, connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(walker_population(1,idet)),&

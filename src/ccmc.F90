@@ -255,7 +255,7 @@ contains
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use fciqmc_data, only: sampling_size, walker_dets, walker_population,                        &
-                               walker_data, proj_energy, D0_population, f0,                          &
+                               walker_data, proj_energy, D0_population, &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
                                write_fciqmc_report_header, nparticles, real_factor
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
@@ -265,7 +265,7 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t
 
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t, reference
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -388,7 +388,7 @@ contains
 
                 iter = mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                call assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                call assign_particle_processor(reference%f0, sys%basis%string_len, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
                                                qmc_spawn%move_freq, nprocs, D0_proc, slot)
 
                 ! Update the shift of the excitor locations to be the end of this
@@ -513,13 +513,12 @@ contains
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, truncation_level,      &
-                !$omp        D0_normalisation, D0_pos, nD0_select,                   &
-                !$omp        f0, qmc_spawn, sys, bloom_threshold, bloom_stats,       &
+                !$omp        D0_normalisation, D0_pos, nD0_select, reference,        &
+                !$omp        qmc_spawn, sys, bloom_threshold, bloom_stats,           &
                 !$omp        proj_energy, real_factor, min_cluster_size,             &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
-                !$omp        nsingle_excitors, ccmc_in%cluster_multispawn_threshold, &
-                !$omp        ccmc_in%linked, ldet, rdet, left_cluster,               &
-                !$omp        right_cluster, nprocs, ccmc_in%full_nc, ms_stats,       &
+                !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
+                !$omp        right_cluster, nprocs, ms_stats,                        &
                 !$omp        walker_population, tot_walkers, walker_data,            &
                 !$omp        walker_dets, nparticles_change, ndeath, D0_population)
                 it = get_thread_id()
@@ -570,8 +569,8 @@ contains
                             ! estimator.  See comments in spawning.F90 for why we
                             ! must divide through by the probability of selecting
                             ! the cluster.
-                            connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, f0)
-                            call update_proj_energy_ptr(sys, f0, cdet(it), &
+                            connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, reference%f0)
+                            call update_proj_energy_ptr(sys, reference%f0, cdet(it), &
                                      cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                      D0_population, proj_energy, connection, junk)
                         end if
@@ -747,8 +746,9 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use search, only: binary_search
-        use fciqmc_data, only: walker_dets, tot_walkers, f0
+        use fciqmc_data, only: walker_dets, tot_walkers
         use errors, only: stop_all
+        use qmc_data, only: reference_t, reference
 
         integer, intent(inout) :: D0_pos
 
@@ -756,20 +756,20 @@ contains
 
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
-            call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
+            call binary_search(walker_dets, reference%f0, 1, tot_walkers, hit, D0_pos)
         else
-            select case(bit_str_cmp(f0, walker_dets(:,D0_pos)))
+            select case(bit_str_cmp(reference%f0, walker_dets(:,D0_pos)))
             case(0)
                 ! D0 hasn't moved.
                 hit = .true.
             case(1)
                 ! D0 < walker_dets(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
-                call binary_search(walker_dets, f0, 1, D0_pos, hit, D0_pos)
+                call binary_search(walker_dets, reference%f0, 1, D0_pos, hit, D0_pos)
             case(-1)
                 ! D0 > walker_dets(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
-                call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
+                call binary_search(walker_dets, reference%f0, D0_pos, tot_walkers, hit, D0_pos)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
@@ -828,13 +828,14 @@ contains
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data
+        use fciqmc_data, only: tot_walkers, walker_population, walker_dets, walker_data
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
         use search, only: binary_search
         use sort, only: insert_sort
         use parallel, only: nprocs
         use system, only: sys_t
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: nattempts
@@ -993,7 +994,7 @@ contains
                 prev_pos = pos
             end do
 
-            if (allowed) cluster%excitation_level = get_excitation_level(f0, cdet%f)
+            if (allowed) cluster%excitation_level = get_excitation_level(reference%f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
             ! the maximum excitation included in the CC wavefunction.
             if (cluster%excitation_level > truncation_level+2) allowed = .false.
@@ -1015,7 +1016,7 @@ contains
 
                 ! Sign change due to difference between determinant
                 ! representation and excitors and excitation level.
-                call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
+                call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, reference%f0)
                 call decoder_ptr(sys, cdet%f, cdet)
 
                 ! Normalisation factor for cluster%amplitudes...
@@ -1060,8 +1061,8 @@ contains
         use system, only: sys_t
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-        use fciqmc_data, only: f0
         use proc_pointers, only: decoder_ptr
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: prob, D0_normalisation, initiator_pop
@@ -1082,7 +1083,7 @@ contains
         cdet%initiator_flag = 0
 
         ! Must be the reference.
-        cdet%f = f0
+        cdet%f = reference%f0
         cluster%excitation_level = 0
         cluster%amplitude = D0_normalisation
         cluster%cluster_to_det_sign = 1
@@ -1147,9 +1148,10 @@ contains
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: f0, tot_walkers, walker_population, walker_dets, walker_data
+        use fciqmc_data, only: tot_walkers, walker_population, walker_dets, walker_data
         use search, only: binary_search
         use proc_pointers, only: decoder_ptr
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         integer(int_p), intent(in) :: real_factor
@@ -1231,12 +1233,12 @@ contains
             if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
             ! pclust = |population|/total_population, as just a single excitor in the cluster..
             cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
-            cluster%excitation_level = get_excitation_level(f0, cdet%f)
+            cluster%excitation_level = get_excitation_level(reference%f0, cdet%f)
             cluster%amplitude = excitor_pop
 
             ! Sign change due to difference between determinant
             ! representation and excitors and excitation level.
-            call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
+            call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, reference%f0)
             call decoder_ptr(sys, cdet%f, cdet)
         end if
 
@@ -1302,13 +1304,12 @@ contains
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
         use parallel, only: iproc
         use const, only: depsilon
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t, reference
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -1372,8 +1373,8 @@ contains
             ! This is the same process as excitor to determinant and hence we
             ! can reuse code...
             call create_excited_det(sys%basis, cdet%f, connection, fexcit)
-            excitor_level = get_excitation_level(f0, fexcit)
-            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, f0)
+            excitor_level = get_excitation_level(reference%f0, fexcit)
+            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, reference%f0)
             if (excitor_sign < 0) nspawn = -nspawn
         end if
 
@@ -1412,11 +1413,12 @@ contains
         use const, only: dp
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
-        use fciqmc_data, only: shift, H00, qmc_spawn
+        use fciqmc_data, only: shift, qmc_spawn
         use excitations, only: excit_t
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: tau
@@ -1451,7 +1453,7 @@ contains
                 ! a1 a2 D0 = D3) so the commutator gives:
                 ! <D3|[[H,a1],a2]|D0> = <D3|H|D3> - <D2|H|D2> - <D1|H|D1> + <D0|H|D0>
                 KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
-                    - sc0_ptr(sys, cluster%excitors(2)%f) + H00)*cluster%amplitude
+                    - sc0_ptr(sys, cluster%excitors(2)%f) + reference%H00)*cluster%amplitude
             case default
                 ! At most two cluster operators can be linked to the diagonal
                 ! part of H so this must be an unlinked cluster
@@ -1464,7 +1466,7 @@ contains
             case(1)
                 KiiAi = (cdet%data(1) - shift(1))*cluster%amplitude
             case default
-                KiiAi = (sc0_ptr(sys, cdet%f) - H00 - shift(1))*cluster%amplitude
+                KiiAi = (sc0_ptr(sys, cdet%f) - reference%H00 - shift(1))*cluster%amplitude
             end select
         end if
 
@@ -1628,7 +1630,7 @@ contains
         ! ***WARNING***: if allowed is false then cluster_excitor is *not* updated.
 
         use basis_types, only: basis_t
-        use fciqmc_data, only: f0
+        use qmc_data, only: reference_t, reference
 
         use bit_utils, only: count_set_bits
         use const, only: i0_end
@@ -1652,11 +1654,11 @@ contains
         ! Apply excitor to the cluster of excitors.
 
         ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(f0, excitor)
-        cluster_excitation = ieor(f0, cluster_excitor)
+        excitor_excitation = ieor(reference%f0, excitor)
+        cluster_excitation = ieor(reference%f0, cluster_excitor)
         ! annihilation operators (relative to the reference)
-        excitor_annihilation = iand(excitor_excitation, f0)
-        cluster_annihilation = iand(cluster_excitation, f0)
+        excitor_annihilation = iand(excitor_excitation, reference%f0)
+        cluster_annihilation = iand(cluster_excitation, reference%f0)
         ! creation operators (relative to the reference)
         excitor_creation = iand(excitor_excitation, excitor)
         cluster_creation = iand(cluster_excitation, cluster_excitor)
@@ -1693,7 +1695,7 @@ contains
             do ibasis = 1, basis%string_len
                 do ibit = 0, i0_end
                     if (btest(excitor_excitation(ibasis),ibit)) then
-                        if (btest(f0(ibasis),ibit)) then
+                        if (btest(reference%f0(ibasis),ibit)) then
                             ! Exciting from this orbital.
                             cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
                             ! We need to swap it with every annihilation
@@ -1866,10 +1868,10 @@ contains
         !    excitor: if single_unlinked is true, this is the bit string of the
         !       excitor not linked to connection (otherwise 0)
 
-        use fciqmc_data, only: f0
         use excitations, only: excit_t, create_excited_det
         use basis_types, only: basis_t
         use ccmc_data, only: cluster_t
+        use qmc_data, only: reference_t, reference
 
         type(basis_t), intent(in) :: basis
         type(excit_t), intent(in) :: connection
@@ -1904,7 +1906,7 @@ contains
         do i = 1, cluster%nexcitors
             ! check each cluster operator shares an index with connection
             ! orbitals involved in cluster operator excitation (from reference)
-            excitor_excitation = ieor(cluster%excitors(i)%f, f0)
+            excitor_excitation = ieor(cluster%excitors(i)%f, reference%f0)
             if (all(iand(h_excitation, excitor_excitation) == 0)) then
                 ! no orbitals in common between H and cluster
                 unconnected = unconnected + 1
@@ -1955,7 +1957,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use ccmc_data, only: cluster_t
         use hamiltonian, only: get_hmatel
-        use fciqmc_data, only: f0
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(in) :: connection
@@ -1989,7 +1991,7 @@ contains
             end do
         else
             ! Only the unlinked excitor
-            deti = f0
+            deti = reference%f0
         end if
 
         ! Now we want to evaluate <D_i^a|H_i^a|D> ...
@@ -2009,8 +2011,8 @@ contains
 
         ! Possible sign changes from <D|a|D_0> ...
         if (cluster%nexcitors > 1) then
-            excitor_level = get_excitation_level(f0, deti)
-            call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, f0)
+            excitor_level = get_excitation_level(reference%f0, deti)
+            call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, reference%f0)
             if (excitor_sign < 0) hmatel = -hmatel
         end if
 
@@ -2067,14 +2069,13 @@ contains
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use fciqmc_data, only: f0
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
         use parallel, only: iproc
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t, reference
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -2184,8 +2185,8 @@ contains
 
                     if (mod(left_cluster%nexcitors,2) /= 0) delta_h = -delta_h
 
-                    excitor_level = get_excitation_level(f0, rdet%f)
-                    call convert_excitor_to_determinant(rdet%f, excitor_level, excitor_sign, f0)
+                    excitor_level = get_excitation_level(reference%f0, rdet%f)
+                    call convert_excitor_to_determinant(rdet%f, excitor_level, excitor_sign, reference%f0)
                     if (excitor_sign < 0) delta_h = -delta_h
 
                     excitor_level = get_excitation_level(fexcit, new_det)
@@ -2203,8 +2204,8 @@ contains
 
             ! correct hmatel for cluster amplitude
             hmatel = hmatel*cluster%amplitude
-            excitor_level = get_excitation_level(fexcit, f0)
-            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, f0)
+            excitor_level = get_excitation_level(fexcit, reference%f0)
+            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, reference%f0)
             if (excitor_sign < 0) hmatel = -hmatel
 
             ! 4) Attempt to spawn

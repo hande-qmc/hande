@@ -223,10 +223,11 @@ module restart_hdf5
             use utils, only: get_unique_filename, int_fmt
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data, &
-                                   shift, f0, hs_f0, tot_walkers,               &
+                                   shift, tot_walkers,               &
                                    D0_population, par_info, received_list
             use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
+        use qmc_data, only: reference_t, reference
 
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: ncycles
@@ -330,9 +331,9 @@ module restart_hdf5
                 call h5gcreate_f(group_id, gref, subgroup_id, ierr)
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    call hdf5_write(subgroup_id, dref, kinds, shape(f0), f0)
+                    call hdf5_write(subgroup_id, dref, kinds, shape(reference%f0), reference%f0)
 
-                    call hdf5_write(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
+                    call hdf5_write(subgroup_id, dhsref, kinds, shape(reference%hs_f0), reference%hs_f0)
 
                     tmp = D0_population
                     call hdf5_write(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
@@ -371,11 +372,12 @@ module restart_hdf5
             use const
 
             use fciqmc_data, only: walker_dets, walker_population, walker_data,  &
-                                   shift, tot_nparticles, f0, hs_f0,             &
+                                   shift, tot_nparticles, &
                                    D0_population, mc_cycles_done, tot_walkers,   &
                                    par_info, received_list
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
+        use qmc_data, only: reference_t, reference
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
@@ -504,9 +506,9 @@ module restart_hdf5
                 ! --- qmc/reference group ---
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    call hdf5_read(subgroup_id, dref, kinds, shape(f0), f0)
+                    call hdf5_read(subgroup_id, dref, kinds, shape(reference%f0), reference%f0)
 
-                    call hdf5_read(subgroup_id, dhsref, kinds, shape(hs_f0), hs_f0)
+                    call hdf5_read(subgroup_id, dhsref, kinds, shape(reference%hs_f0), reference%hs_f0)
 
                     call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
                     D0_population = tmp(1)

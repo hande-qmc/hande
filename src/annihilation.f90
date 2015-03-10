@@ -712,6 +712,7 @@ contains
         use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr
         use system, only: sys_t
+        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: pos
@@ -723,7 +724,7 @@ contains
         ! Insert the new population.
         walker_population(:,pos) = population
         ! Calculate and insert all new components of walker_data.
-        walker_data(1,pos) = sc0_ptr(sys, det) - H00
+        walker_data(1,pos) = sc0_ptr(sys, det) - reference%H00
         if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = neel_singlet_data(sys, det)
         if (doing_calc(hfs_fciqmc_calc)) then
             ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
@@ -733,12 +734,12 @@ contains
                 ! Store H^T_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj),
                 ! where H^T_ii is the "trial" Hamiltonian.
                 associate(bl=>sys%basis%string_len)
-                    walker_data(1,pos) = -trial_dm_ptr(sys, walker_dets((bl+1):(2*bl),pos)) + (walker_data(1,pos) + H00)
+                    walker_data(1,pos) = -trial_dm_ptr(sys, walker_dets((bl+1):(2*bl),pos)) + (walker_data(1,pos) + reference%H00)
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.
                 associate(bl=>sys%basis%string_len)
-                    walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - H00)/2
+                    walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - reference%H00)/2
                 end associate
                 if (replica_tricks) then
                     walker_data(2:sampling_size,pos) = walker_data(1,pos)

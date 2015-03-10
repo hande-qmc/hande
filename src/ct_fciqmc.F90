@@ -36,7 +36,7 @@ contains
         use utils, only: rng_init_info
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
-        use qmc_data, only: qmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, reference
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -119,8 +119,8 @@ contains
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-                call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
+                D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
+                call update_proj_energy_ptr(sys, reference%f0, cdet, real(walker_population(1,idet),p), &
                                             D0_population, proj_energy, D0_excit, hmatel)
 
                 ! Loop over each walker on the determinant.
@@ -191,7 +191,7 @@ contains
 
                         ! decode the spawned walker bitstring
                         cdet%f = int(qmc_spawn%sdata(:sys%basis%string_len,current_pos(thread_id,proc_id)), i0)
-                        K_ii = sc0_ptr(sys, cdet%f) - H00
+                        K_ii = sc0_ptr(sys, cdet%f) - reference%H00
                         call decoder_ptr(sys, cdet%f,cdet)
 
                         ! Spawn from this walker & append to the spawned array until

@@ -38,7 +38,7 @@ contains
         use calc, only: propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
-        use qmc_data, only: qmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, reference
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -145,7 +145,7 @@ contains
                         ! Note DMQMC averages over multiple loops over
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
-                        if (icycle == 1) call update_dmqmc_estimators(sys, idet, iteration, cdet1)
+                        if (icycle == 1) call update_dmqmc_estimators(sys, idet, iteration, cdet1, reference%H00)
 
                         do ireplica = 1, sampling_size
 

@@ -41,7 +41,7 @@ contains
 #endif
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t
+        use qmc_data, only: restart_in_t, reference_t, reference
         use system
 
         use input
@@ -430,16 +430,16 @@ contains
             case('INIT_POP')
                 call readf(qmc_in%D0_population)
             case('REFERENCE_DET')
-                allocate(occ_list0(nitems-1), stat=ierr)
-                call check_allocate('occ_list0',nitems-1,ierr)
+                allocate(reference%occ_list0(nitems-1), stat=ierr)
+                call check_allocate('reference%occ_list0',nitems-1,ierr)
                 do i = 1, nitems-1
-                    call readi(occ_list0(i))
+                    call readi(reference%occ_list0(i))
                 end do
             case('HS_REFERENCE_DET')
-                allocate(hs_occ_list0(nitems-1), stat=ierr)
-                call check_allocate('hs_occ_list0',nitems-1,ierr)
+                allocate(reference%hs_occ_list0(nitems-1), stat=ierr)
+                call check_allocate('reference%hs_occ_list0',nitems-1,ierr)
                 do i = 1, nitems-1
-                    call readi(hs_occ_list0(i))
+                    call readi(reference%hs_occ_list0(i))
                 end do
             case('NO_RENORM')
                 qmc_in%no_renorm = .true.
@@ -590,7 +590,7 @@ contains
 
         use const
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t
+        use qmc_data, only: restart_in_t, reference_t, reference
         use system
 
         type(sys_t), intent(inout) :: sys
@@ -713,8 +713,8 @@ contains
             if (calc_inst_rdm .and. spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
             if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
             if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
-            if (allocated(occ_list0)) then
-                if (size(occ_list0) /= sys%nel) then
+            if (allocated(reference%occ_list0)) then
+                if (size(reference%occ_list0) /= sys%nel) then
                     if (sys%system /= heisenberg) then
                         call stop_all(this,'Number of electrons specified is different from &
                         &number of electrons used in the reference determinant.')
@@ -789,7 +789,7 @@ contains
         !    restart_in: input options for HDF5 restart files.
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t
+        use qmc_data, only: restart_in_t, reference_t, reference
 
 #ifndef PARALLEL
 
@@ -973,29 +973,29 @@ contains
         option_set = .false.
         call mpi_bcast(truncate_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(truncation_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        if (parent) option_set = allocated(occ_list0)
+        if (parent) option_set = allocated(reference%occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             ! Have not yet set sys%nel in the Heisenberg model.
-            occ_list_size = size(occ_list0)
+            occ_list_size = size(reference%occ_list0)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(occ_list0(occ_list_size), stat=ierr)
-                call check_allocate('occ_list0', occ_list_size, ierr)
+                allocate(reference%occ_list0(occ_list_size), stat=ierr)
+                call check_allocate('reference%occ_list0', occ_list_size, ierr)
             end if
-            call mpi_bcast(occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(reference%occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
-        if (parent) option_set = allocated(hs_occ_list0)
+        if (parent) option_set = allocated(reference%hs_occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             ! Have not yet set sys%nel in the Heisenberg model.
-            occ_list_size = size(hs_occ_list0)
+            occ_list_size = size(reference%hs_occ_list0)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(hs_occ_list0(occ_list_size), stat=ierr)
-                call check_allocate('hs_occ_list0', occ_list_size, ierr)
+                allocate(reference%hs_occ_list0(occ_list_size), stat=ierr)
+                call check_allocate('reference%hs_occ_list0', occ_list_size, ierr)
             end if
-            call mpi_bcast(hs_occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(reference%hs_occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(restart_in%read_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_in%dump_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
