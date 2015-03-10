@@ -113,10 +113,6 @@ integer, parameter :: distribute_cols = 2
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
 
-! Flag for using load balancing.
-! Default: False.
-logical :: doing_load_balancing = .false.
-
 !--- Input data: Hilbert space truncation ---
 
 ! CI/CIQMC:

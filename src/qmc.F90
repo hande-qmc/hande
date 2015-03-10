@@ -261,7 +261,7 @@ contains
                                spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
-        if (nprocs == 1 .or. .not. doing_load_balancing) par_info%load%nslots = 1
+        if (nprocs == 1 .or. .not. fciqmc_in%doing_load_balancing) par_info%load%nslots = 1
         call init_parallel_t(sampling_size, nparticles_start_ind-1, fciqmc_in%non_blocking_comm, par_info)
 
         allocate(f0(sys%basis%string_len), stat=ierr)

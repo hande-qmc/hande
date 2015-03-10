@@ -673,7 +673,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, min_attempts, nb_comm, determ)
+    subroutine init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, min_attempts, doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -685,19 +685,20 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    min_attempts (optional): if present, set nattempts to be at least this value.
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
         !        processor) this cycle.
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
         ! In (optional):
+        !    min_attempts: if present, set nattempts to be at least this value.
+        !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
         ! In/Out (optional):
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
 
-        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, doing_load_balancing
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
         use qmc_data, only: qmc_in_t
@@ -710,7 +711,7 @@ contains
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
-        logical, optional, intent(in) :: nb_comm
+        logical, optional, intent(in) :: doing_lb, nb_comm
         type(semi_stoch_t), optional, intent(inout) :: determ
 
         logical :: nb_comm_local
@@ -746,13 +747,15 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
-        if (doing_load_balancing .and. par_info%load%needed) then
-            call do_load_balancing(real_factor, par_info)
-            call redistribute_load_balancing_dets(rng, sys, qmc_in, walker_dets, real_factor, determ, walker_population, &
-                                                  tot_walkers, nparticles, qmc_spawn)
-            ! If using non-blocking communications we still need this flag to
-            ! be set.
-            if (.not. nb_comm_local) par_info%load%needed = .false.
+        if (present(doing_lb)) then
+            if (doing_lb .and. par_info%load%needed) then
+                call do_load_balancing(real_factor, par_info)
+                call redistribute_load_balancing_dets(rng, sys, qmc_in, walker_dets, real_factor, determ, walker_population, &
+                                                      tot_walkers, nparticles, qmc_spawn)
+                ! If using non-blocking communications we still need this flag to
+                ! be set.
+                if (.not. nb_comm_local) par_info%load%needed = .false.
+            end if
         end if
 
     end subroutine init_mc_cycle
@@ -761,7 +764,7 @@ contains
 
     subroutine end_report_loop(sys, qmc_in, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
                                semi_stoch_shift_it, semi_stoch_start_it, soft_exit, update_estimators, bloom_stats, &
-                               nb_comm, rep_comm)
+                               doing_lb, nb_comm, rep_comm)
 
         ! In:
         !    sys: system being studied.
@@ -789,6 +792,7 @@ contains
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
         ! In (optional):
+        !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
@@ -820,7 +824,7 @@ contains
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
-        logical, optional, intent(in) :: nb_comm
+        logical, optional, intent(in) :: doing_lb, nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
@@ -845,7 +849,8 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
-            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, comms_found, update_tau_now, bloom_stats)
+            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, doing_lb, comms_found, &
+                                          update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
@@ -853,7 +858,8 @@ contains
             call local_energy_estimators(rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, comms_found, update_tau_now, bloom_stats)
+            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, doing_lb, comms_found, &
+                                               update_tau_now, bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(rep_comm)

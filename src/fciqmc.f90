@@ -32,7 +32,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
-        use calc, only: doing_calc, doing_load_balancing, use_mpi_barriers
+        use calc, only: doing_calc, use_mpi_barriers
         use death, only: stochastic_death
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
@@ -137,7 +137,8 @@ contains
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
+                call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, doing_lb=fciqmc_in%doing_load_balancing, &
+                                   nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
@@ -245,7 +246,8 @@ contains
 
             call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, bloom_stats=bloom_stats, &
-                                 nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
+                                 doing_lb=fciqmc_in%doing_load_balancing, nb_comm=fciqmc_in%non_blocking_comm, &
+                                 rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 

@@ -529,7 +529,7 @@ contains
             case('NON_BLOCKING_COMM')
                 fciqmc_in%non_blocking_comm = .true.
             case('LOAD_BALANCING')
-                doing_load_balancing = .true.
+                fciqmc_in%doing_load_balancing = .true.
             case('LOAD_BALANCING_SLOTS')
                 call readi(par_info%load%nslots)
             case('LOAD_BALANCING_POP')
@@ -1009,7 +1009,7 @@ contains
 
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(fciqmc_in%non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%nslots, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)

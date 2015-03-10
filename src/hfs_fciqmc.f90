@@ -234,7 +234,7 @@ contains
             ! energy_estimators communication
             comms_found = check_comms_file()
             ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(qmc_in, nspawn_events, nparticles_old, comms_found)
+            call update_energy_estimators(qmc_in, nspawn_events, nparticles_old, comms_found=comms_found)
 
             call cpu_time(t2)
 
