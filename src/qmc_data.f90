@@ -47,7 +47,8 @@ type qmc_in_t
 
     ! The initial population on the reference determinant/trace of the density matrix.
     ! Overridden by a restart file.
-    real(p) :: D0_population
+    ! [todo] - remove default?
+    real(p) :: D0_population = 10.0_p
     ! Number of particles before which varyshift mode is turned on.
     real(dp) :: target_particles = huge(1.0_dp)
 

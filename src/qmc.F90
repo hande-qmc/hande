@@ -328,7 +328,7 @@ contains
                 ! Zero all populations...
                 walker_population(:,tot_walkers) = 0_int_p
                 ! Set initial population of Hamiltonian walkers.
-                walker_population(1,tot_walkers) = nint(D0_population)*real_factor
+                walker_population(1,tot_walkers) = nint(qmc_in%D0_population)*real_factor
                 ! Set the bitstring of this psip to be that of the
                 ! reference state.
                 walker_dets(:,tot_walkers) = f0
@@ -398,7 +398,7 @@ contains
                     ! Zero all populations for this determinant.
                     walker_population(:,tot_walkers) = 0_int_p
                     ! Set the population for this basis function.
-                    walker_population(1,tot_walkers) = nint(D0_population)*real_factor
+                    walker_population(1,tot_walkers) = nint(qmc_in%D0_population)*real_factor
                     walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
                     select case(sys%system)
                     case(heisenberg)
@@ -503,11 +503,11 @@ contains
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', qmc_in%pattempt_single
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', qmc_in%pattempt_double
             if (doing_calc(dmqmc_calc)) then
-                write (6,'(1X,a54,'//int_fmt(int(D0_population,int_64),1)//')') &
-                              'Initial population on the trace of the density matrix:', int(D0_population,int_64)
+                write (6,'(1X,a54,'//int_fmt(int(qmc_in%D0_population,int_64),1)//')') &
+                              'Initial population on the trace of the density matrix:', int(qmc_in%D0_population,int_64)
             else
                 write (6,'(1X,a44,1X,f11.4,/)') &
-                              'Initial population on reference determinant:',D0_population
+                              'Initial population on reference determinant:',qmc_in%D0_population
                 write (6,'(1X,a53,/)') 'Note that the correlation energy is relative to |D0>.'
             end if
             if (qmc_in%initiator_approx) then

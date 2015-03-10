@@ -157,7 +157,7 @@ contains
             end if
             f0 = dets(:,ref_det)
             call decode_det(sys%basis, f0, occ_list0)
-            walker_population(1,ref_det) = nint(D0_population)
+            walker_population(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='

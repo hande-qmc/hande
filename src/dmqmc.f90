@@ -83,7 +83,7 @@ contains
         qmc_in%nreport = qmc_in%nreport+1
 
         if (all_spin_sectors) nel_temp = sys%nel
-        init_tot_nparticles = nint(D0_population, int_64)
+        init_tot_nparticles = nint(qmc_in%D0_population, int_64)
 
         do beta_cycle = 1, beta_loops
 
