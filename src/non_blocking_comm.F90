@@ -96,7 +96,7 @@ contains
     end subroutine init_non_blocking_comm
 
     subroutine end_non_blocking_comm(sys, rng, qmc_in, ireport, spawn, request_s, request_rep, report_time, &
-                                     ntot_particles, shift)
+                                     ntot_particles, shift, dump_restart_file)
 
         ! Subroutine dealing with the last iteration when using non-blocking communications.
 
@@ -108,6 +108,7 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    ireport: index of current report loop.
+        !    dump_restart_file: if true then output an HDF5 restart file.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object containing spawned walkers from final
@@ -130,7 +131,7 @@ contains
         use system, only: sys_t
         use qmc_common, only: write_fciqmc_report
         use parallel, only: parent
-        use fciqmc_data, only: dump_restart_file, sampling_size
+        use fciqmc_data, only: sampling_size
         use qmc_data, only: qmc_in_t
 
         use const, only: p, dp
@@ -145,6 +146,7 @@ contains
         real, intent(inout) :: report_time
         real(p), intent(inout) :: ntot_particles(sampling_size)
         real(p), intent(inout) :: shift
+        logical, intent(in) :: dump_restart_file
 
         real :: curr_time
         real(p) :: shift_save

@@ -763,8 +763,8 @@ contains
 ! --- QMC loop and cycle termination routines ---
 
     subroutine end_report_loop(sys, qmc_in, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
-                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, update_estimators, bloom_stats, &
-                               doing_lb, nb_comm, rep_comm)
+                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, &
+                               update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm)
 
         ! In:
         !    sys: system being studied.
@@ -776,7 +776,6 @@ contains
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
-        !    update_estimators (optional): update the (FCIQMC/CCMC) energy estimators.  Default: true.
         ! In/Out:
         !    qmc_in: input optons relating to QMC methods.
         !    ntot_particles: total number (across all processors) of
@@ -788,10 +787,13 @@ contains
         !    report_time: time at the start of the current report loop.  Returns
         !        the current time (ie the time for the start of the next report
         !        loop.
+        !    dump_restart_file_shift: should we dump a restart file just before
+        !        the shift turns on?
         ! Out:
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
         ! In (optional):
+        !    update_estimators: update the (FCIQMC/CCMC) energy estimators.  Default: true.
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
         ! In/Out (optional):
@@ -824,6 +826,7 @@ contains
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
+        logical, intent(inout) :: dump_restart_file_shift
         logical, optional, intent(in) :: doing_lb, nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 

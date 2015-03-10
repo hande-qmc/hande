@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine do_hfs_fciqmc(sys, qmc_in)
+    subroutine do_hfs_fciqmc(sys, qmc_in, restart_in)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -33,6 +33,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    restart_in: input options for HDF5 restart files.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -52,10 +53,11 @@ contains
         use proc_pointers
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(restart_in_t), intent(in) :: restart_in
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(int_64) :: nattempts
@@ -263,7 +265,7 @@ contains
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (dump_restart_file) then
+        if (restart_in%dump_restart) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if

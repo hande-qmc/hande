@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in)
+    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -21,6 +21,7 @@ contains
         !    sys: system being studied.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    restart_in: input options for HDF5 restart files.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -45,12 +46,13 @@ contains
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
+        type(restart_in_t), intent(in) :: restart_in
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -70,7 +72,7 @@ contains
         real(p) :: real_population
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
 
-        logical :: soft_exit
+        logical :: soft_exit, dump_restart_file_shift
         logical :: semi_stochastic, determ_parent, determ_child
 
         real :: t1
@@ -88,6 +90,9 @@ contains
 
         ! The iteration on which to start performing semi-stochastic.
         semi_stoch_iter = semi_stoch_in%start_iter
+
+        ! Should we dump a restart file just before the shift is turned on?
+        dump_restart_file_shift = restart_in%dump_restart_file_shift
 
         ! Create the semi_stoch_t object, determ.
         ! If the user has asked to use semi-stochastic from the first iteration
@@ -112,7 +117,7 @@ contains
         if (parent) call write_fciqmc_report_header()
 
         if (fciqmc_in%non_blocking_comm) then
-            call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart)
+            call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart_in%read_restart)
             call initial_fciqmc_status(sys, qmc_in, .true., par_info%report_comm, send_counts(iproc)/received_list%element_len)
         else
             call initial_fciqmc_status(sys, qmc_in)
@@ -245,9 +250,9 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
-                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, bloom_stats=bloom_stats, &
-                                 doing_lb=fciqmc_in%doing_load_balancing, nb_comm=fciqmc_in%non_blocking_comm, &
-                                 rep_comm=par_info%report_comm)
+                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
+                                 bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
+                                 nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 
@@ -257,7 +262,8 @@ contains
         end do
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, ireport, received_list, &
-                                                          req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1))
+                                                          req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1), &
+                                                          restart_in%dump_restart)
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
@@ -273,7 +279,7 @@ contains
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (dump_restart_file) then
+        if (restart_in%dump_restart) then
             call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
             if (parent) write (6,'()')
         end if

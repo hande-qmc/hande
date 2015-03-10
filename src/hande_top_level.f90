@@ -34,7 +34,7 @@ contains
         use real_lattice, only: init_real_space
         use momentum_symmetry, only: init_momentum_symmetry
         use point_group_symmetry, only: print_pg_symmetry_info
-        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in
+        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in
         use read_in_system, only: read_in_integrals
         use ueg_system, only: init_ueg_proc_pointers
 
@@ -57,13 +57,13 @@ contains
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
-        if (parent) call read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
+        if (parent) call read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
 
-        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
+        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
 
         call init_system(sys)
 
-        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
+        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
 
         ! Initialise basis functions.
         if (sys%system == read_in) then
@@ -109,7 +109,7 @@ contains
         use hilbert_space, only: estimate_hilbert_space
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
-        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in
+        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in
         use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
@@ -127,9 +127,9 @@ contains
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call do_simple_fciqmc(sys, qmc_in)
+                call do_simple_fciqmc(sys, qmc_in, restart_in)
             else 
-                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in)
+                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
             end if
         end if
 
