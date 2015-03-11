@@ -23,7 +23,7 @@ contains
         use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
-        use calc, only: ms_in, seed
+        use calc, only: ms_in, seed, fermi_temperature
         use fciqmc_data, only: init_beta, D0_population
         use utils, only: rng_init_info
         use hamiltonian_ueg, only: sum_sp_eigenvalues
@@ -46,6 +46,10 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+
+        if (fermi_temperature) then
+            init_beta = init_beta / sys%ueg%ef
+        end if
 
         if (parent) write (6,'(1X,a12,3X,a19)') '# iterations', 'E_0'
 
