@@ -42,26 +42,27 @@ abstract interface
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
     end subroutine i_update_proj_hfs
-    subroutine i_update_dmqmc_energy_and_trace(sys, excitation, d, walker_pop, diag, trace, energy)
+    subroutine i_update_dmqmc_energy_and_trace(sys, excitation, d, H00, walker_pop, diag, trace, energy)
         use system, only: sys_t
         import :: excit_t, p, det_info_t
         implicit none
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
         type(det_info_t), intent(in) :: d
-        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: H00, walker_pop
         real(p), intent(in) :: diag
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
     end subroutine i_update_dmqmc_energy_and_trace
-    subroutine i_update_dmqmc_estimators(sys, idet,excitation,walker_pop)
+    subroutine i_update_dmqmc_estimators(sys, idet, excitation, H00, walker_pop)
         use system, only: sys_t
+        use qmc_data, only: reference_t
         import :: excit_t, p
         implicit none
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: H00, walker_pop
     end subroutine i_update_dmqmc_estimators
     subroutine i_gen_excit(rng, sys, qmc_in, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
@@ -105,12 +106,14 @@ abstract interface
         integer, intent(in) :: determ_flag
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
-    subroutine i_create_spawned_particle(basis, d, connection, nspawned, particle_indx, spawn, f)
+    subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
         import :: excit_t, det_info_t, int_p, i0
         implicit none
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: d
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned

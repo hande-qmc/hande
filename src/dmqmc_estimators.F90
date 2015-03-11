@@ -267,7 +267,7 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, idet, iteration, cdet)
+    subroutine update_dmqmc_estimators(sys, idet, iteration, cdet, H00)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -282,6 +282,7 @@ contains
         !    iteration: current Monte Carlo cycle.
         !    cdet: det_info_t object containing information of current density
         !        matrix element.
+        !    H00: diagonal Hamiltonian element for the reference.
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
@@ -299,6 +300,8 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet, iteration
         type(det_info_t), intent(inout) :: cdet
+        real(p), intent(in) :: H00
+
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(sampling_size)
 
@@ -323,17 +326,17 @@ contains
             ! corresponding procedures.
             ! Energy
             If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
-                    &(sys, excitation, cdet, unweighted_walker_pop(1), walker_data(1, idet), trace, &
+                    &(sys, excitation, cdet, H00, unweighted_walker_pop(1), walker_data(1, idet), trace, &
                     numerators(energy_ind))
             ! Energy squared.
             if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
-                &(sys, idet, excitation, unweighted_walker_pop(1))
+                &(sys, idet, excitation, H00, unweighted_walker_pop(1))
             ! Spin-spin correlation function.
             if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-                &(sys, idet, excitation, unweighted_walker_pop(1))
+                &(sys, idet, excitation, H00, unweighted_walker_pop(1))
             ! Staggered magnetisation.
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
-                &(sys, idet, excitation, unweighted_walker_pop(1))
+                &(sys, idet, excitation, H00, unweighted_walker_pop(1))
             ! Excitation distribution.
             if (calc_excit_dist) excit_dist(excitation%nexcit) = &
                 excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
@@ -358,7 +361,7 @@ contains
 
     end subroutine update_dmqmc_estimators
 
-    subroutine dmqmc_energy_and_trace(sys, excitation, cdet, pop, diagonal_contribution, trace, energy)
+    subroutine dmqmc_energy_and_trace(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, energy)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! energy estimate.
@@ -368,6 +371,7 @@ contains
         !    excitation: excit_t type variable which stores information on
         !        the excitation between the two bitstring ends, corresponding
         !        to the two labels for the density matrix element.
+        !    H00: diagonal Hamiltonian element for the reference.
         !    pop: number of particles on the current density matrix
         !        element.
         !    cdet: det_info_t object containing bit strings of densitry matrix
@@ -380,13 +384,12 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use fciqmc_data, only: H00
         use proc_pointers, only: update_proj_energy_ptr
 
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
+        real(p), intent(in) :: H00, pop
         real(p), intent(in) :: diagonal_contribution
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
@@ -401,7 +404,7 @@ contains
 
     end subroutine dmqmc_energy_and_trace
 
-    subroutine dmqmc_energy_and_trace_propagate(sys, excitation, cdet, pop, diagonal_contribution, trace, energy)
+    subroutine dmqmc_energy_and_trace_propagate(sys, excitation, cdet, H00, pop, diagonal_contribution, trace, energy)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! energy estimate. Routine is specific to when using propagate_to_beta
@@ -412,6 +415,7 @@ contains
         !    excitation: excit_t type variable which stores information on
         !        the excitation between the two bitstring ends, corresponding
         !        to the two labels for the density matrix element.
+        !    H00: diagonal Hamiltonian element for the reference.
         !    pop: number of particles on the current density matrix
         !        element.
         !    cdet: det_info_t object containing bit strings of densitry matrix
@@ -424,13 +428,12 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use fciqmc_data, only: H00
         use proc_pointers, only: update_proj_energy_ptr, sc0_ptr
 
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pop
+        real(p), intent(in) :: H00, pop
         real(p), intent(in) :: diagonal_contribution
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
@@ -445,7 +448,7 @@ contains
 
     end subroutine dmqmc_energy_and_trace_propagate
 
-    subroutine dmqmc_energy_squared_heisenberg(sys, idet, excitation, walker_pop)
+    subroutine dmqmc_energy_squared_heisenberg(sys, idet, excitation, H00, walker_pop)
 
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
@@ -457,19 +460,20 @@ contains
         !    excitation: excit_t type variable which stores information on the
         !        excitation between the two bitstring ends, corresponding to the
         !        two labels for the density matrix element.
+        !    H00: diagonal Hamiltonian element for the reference.
         !    walker_pop: number of particles on the current density matrix
         !        element.
 
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data, H00
+        use fciqmc_data, only: walker_data
         use fciqmc_data, only: numerators, energy_squared_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: H00, walker_pop
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
         real(p) :: sum_H1_H2, J_coupling_squared
 
@@ -557,7 +561,7 @@ contains
 
     end subroutine dmqmc_energy_squared_heisenberg
 
-    subroutine dmqmc_correlation_function_heisenberg(sys, idet, excitation, walker_pop)
+    subroutine dmqmc_correlation_function_heisenberg(sys, idet, excitation, H00, walker_pop)
 
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
@@ -569,20 +573,21 @@ contains
         !    excitation: excit_t type variable which stores information on
         !        the excitation between the two bitstring ends, corresponding to
         !        the two labels for the density matrix element.
+        !    H00: diagonal Hamiltonian element for the reference.
         !    walker_pop: number of particles on the current density matrix
         !        element.
 
         use bit_utils, only: count_set_bits
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data, H00, correlation_mask
+        use fciqmc_data, only: walker_data, correlation_mask
         use fciqmc_data, only: numerators, correlation_fn_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: H00, walker_pop
         integer(i0) :: f(sys%basis%string_len)
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
         integer :: sign_factor
@@ -623,7 +628,7 @@ contains
 
     end subroutine dmqmc_correlation_function_heisenberg
 
-    subroutine dmqmc_stag_mag_heisenberg(sys, idet, excitation, walker_pop)
+    subroutine dmqmc_stag_mag_heisenberg(sys, idet, excitation, H00, walker_pop)
 
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
@@ -635,6 +640,7 @@ contains
         !    excitation: excit_t type variable which stores information on
         !        the excitation between the two bitstring ends, corresponding
         !        to the two labels for the density matrix element.
+        !    H00: diagonal Hamiltonian element for the reference.
         !    walker_pop: number of particles on the current density matrix
         !        element.
 
@@ -647,7 +653,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: H00, walker_pop
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
         integer(i0) :: f(sys%basis%string_len)
         integer :: n_up_plus

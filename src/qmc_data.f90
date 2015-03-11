@@ -221,8 +221,6 @@ type reference_t
     integer(i0), allocatable :: hs_f0(:)
     ! hs_f0:hs_occ_list0 as f0:occ_list0.
     integer, allocatable :: hs_occ_list0(:)
-    ! Population of walkers on reference determinant/trace of density matrix.
-    real(p) :: D0_population
     ! Energy of reference determinant.
     real(p) :: H00
 end type reference_t
@@ -424,6 +422,8 @@ type qmc_state_t
     real(p) :: dmqmc_factor = 1.0_p
     ! timestep
     real(p) :: tau
+    ! Population of walkers on reference determinant/trace of density matrix.
+    real(p) :: D0_population
     ! projected energy
     ! This stores during an FCIQMC report loop
     !   \sum_{i/=0} <D_0|H|D_i> N_i

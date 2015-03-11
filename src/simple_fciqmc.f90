@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, qmc_in, restart, ndets, dets, ref_det)
+    subroutine init_simple_fciqmc(sys, qmc_in, reference, restart, ndets, dets, ref_det)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -28,6 +28,7 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: reference determinant. Set on output.
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    restart: true is restarting from a HDF5 file.
@@ -42,11 +43,12 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(inout) :: reference
         logical, intent(in) :: restart
         integer, intent(out) :: ref_det
 
@@ -63,15 +65,15 @@ contains
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
-        if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=occ_list0)
+        if (allocated(reference%occ_list0)) then
+            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=reference%occ_list0)
         else
             call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets)
         end if
 
         ! Find all determinants with desired spin and symmetry.
-        if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, occ_list0)
+        if (allocated(reference%occ_list0)) then
+            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, reference%occ_list0)
         else
             call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in)
         end if
@@ -120,19 +122,19 @@ contains
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then
-            allocate(occ_list0(sys%nel), stat=ierr)
-            call check_allocate('occ_list0',sys%nel,ierr)
-            allocate(f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('f0',sys%basis%string_len,ierr)
+            allocate(reference%occ_list0(sys%nel), stat=ierr)
+            call check_allocate('reference%occ_list0',sys%nel,ierr)
+            allocate(reference%f0(sys%basis%string_len), stat=ierr)
+            call check_allocate('reference%f0',sys%basis%string_len,ierr)
         else
             if (use_sparse_hamil) then
-                H00 = huge(1.0_p)
+                reference%H00 = huge(1.0_p)
                 do i = 1, ndets
                     ! mat(k) is M_{ij}, so row_ptr(i) <= k < row_ptr(i+1) and col_ind(k) = j
                     do j = hamil_csr%row_ptr(i), hamil_csr%row_ptr(i+1)-1
                         if (hamil_csr%col_ind(j) == i) then
-                            if (hamil_csr%mat(j) < H00) then
-                                H00 = hamil_csr%mat(j)
+                            if (hamil_csr%mat(j) < reference%H00) then
+                                reference%H00 = hamil_csr%mat(j)
                                 ref_det = i
                             end if
                         end if
@@ -140,31 +142,31 @@ contains
                 end do
             else
                 ref_det = 1
-                H00 = hamil(1,1)
+                reference%H00 = hamil(1,1)
                 do i = 2, ndets
-                    if (hamil(i,i) < H00) then
+                    if (hamil(i,i) < reference%H00) then
                         ref_det = i
-                        H00 = hamil(ref_det,ref_det)
+                        reference%H00 = hamil(ref_det,ref_det)
                     end if
                 end do
             end if
 
-            if (.not.allocated(f0)) then
-                allocate(f0(sys%basis%string_len), stat=ierr)
-                call check_allocate('f0',sys%basis%string_len,ierr)
+            if (.not.allocated(reference%f0)) then
+                allocate(reference%f0(sys%basis%string_len), stat=ierr)
+                call check_allocate('reference%f0',sys%basis%string_len,ierr)
             end if
-            if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(sys%nel), stat=ierr)
-                call check_allocate('occ_list0',sys%nel,ierr)
+            if (.not.allocated(reference%occ_list0)) then
+                allocate(reference%occ_list0(sys%nel), stat=ierr)
+                call check_allocate('reference%occ_list0',sys%nel,ierr)
             end if
-            f0 = dets(:,ref_det)
-            call decode_det(sys%basis, f0, occ_list0)
+            reference%f0 = dets(:,ref_det)
+            call decode_det(sys%basis, reference%f0, reference%occ_list0)
             walker_population(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(sys%basis, sys%nel, dets(:,ref_det), new_line=.true.)
-        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',reference%H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 
         ! Return sys in an unaltered state.
@@ -174,19 +176,20 @@ contains
 
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc(sys, qmc_in, restart_in)
+    subroutine do_simple_fciqmc(sys, qmc_in, restart_in, reference)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: current reference determinant. May be set on input, will be on output.
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    restart_in: input options for HDF5 restart files.
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
-        use qmc_data, only: qmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
@@ -194,6 +197,7 @@ contains
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         integer :: ireport, icycle, idet, ipart, j
         real(p) :: nparticles, nparticles_old
@@ -204,7 +208,7 @@ contains
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
 
-        call init_simple_fciqmc(sys, qmc_in, restart_in%read_restart, ndets, dets, ref_det)
+        call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det)
 
         if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
@@ -264,7 +268,7 @@ contains
                         end do
                     end if
 
-                    call simple_death(rng, qmc_in%tau, Hii, walker_population(1,idet))
+                    call simple_death(rng, qmc_in%tau, Hii, reference%H00, walker_population(1,idet))
 
                 end do
 
@@ -298,7 +302,8 @@ contains
 
             ! Write restart file if required.
             if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, (/nparticles_old/), .false.)
+                call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+                                       (/nparticles_old/), .false.)
 
             t1 = t2
 
@@ -307,7 +312,8 @@ contains
         if (parent) write (6,'()')
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, (/nparticles_old/), .false.)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
+                                   (/nparticles_old/), .false.)
             if (parent) write (6,'()')
         end if
 
@@ -388,20 +394,21 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(rng, tau, Hii, pop)
+    subroutine simple_death(rng, tau, Hii, H00, pop)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
 
         ! In:
         !    tau: timestep being used.
         !    Hii: diagonal matrix element, <D_i|H|D_i>
+        !    H00: energy of the reference.
         ! In/Out:
         !    rng: random number generator.
         !    pop: population on |D_i>.  On output, the population is updated from applying
         !         the death step.
 
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: tau, Hii
+        real(p), intent(in) :: tau, Hii, H00
         integer(int_p), intent(inout) :: pop
 
         integer :: nkill

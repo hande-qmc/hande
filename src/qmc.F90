@@ -10,7 +10,7 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -20,6 +20,7 @@ contains
         !         run if needed.
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    reference: the reference determinant.
         ! In:
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
@@ -34,7 +35,7 @@ contains
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t
+        use qmc_data, only: restart_in_t, reference_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use parallel, only: nprocs
 
@@ -44,6 +45,7 @@ contains
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         real(p) :: hub_matel
         type(sys_t) :: sys_bak
@@ -56,23 +58,23 @@ contains
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, fciqmc_in, restart_in)
+        call init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
         if (doing_calc(dmqmc_calc)) then
-            call do_dmqmc(sys, qmc_in, restart_in)
+            call do_dmqmc(sys, qmc_in, restart_in, reference)
         else if (doing_calc(ct_fciqmc_calc)) then
-            call do_ct_fciqmc(sys, qmc_in, restart_in, hub_matel)
+            call do_ct_fciqmc(sys, qmc_in, restart_in, reference, hub_matel)
         else if (doing_calc(ccmc_calc)) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
             if (doing_calc(hfs_fciqmc_calc)) then
-                call do_hfs_fciqmc(sys, qmc_in, restart_in)
+                call do_hfs_fciqmc(sys, qmc_in, restart_in, reference)
             else
-                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in)
+                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, reference)
             end if
         end if
 
@@ -83,7 +85,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in, fciqmc_in, restart_in)
+    subroutine init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -96,6 +98,7 @@ contains
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    reference: current reference determinant.
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -119,12 +122,13 @@ contains
         use utils, only: factorial_combination_1
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
@@ -271,10 +275,10 @@ contains
         if (nprocs == 1 .or. .not. fciqmc_in%doing_load_balancing) par_info%load%nslots = 1
         call init_parallel_t(sampling_size, nparticles_start_ind-1, fciqmc_in%non_blocking_comm, par_info)
 
-        allocate(f0(sys%basis%string_len), stat=ierr)
-        call check_allocate('f0',sys%basis%string_len,ierr)
-        allocate(hs_f0(sys%basis%string_len), stat=ierr)
-        call check_allocate('hs_f0', size(hs_f0), ierr)
+        allocate(reference%f0(sys%basis%string_len), stat=ierr)
+        call check_allocate('reference%f0',sys%basis%string_len,ierr)
+        allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
+        call check_allocate('reference%hs_f0', size(reference%hs_f0), ierr)
 
         ! --- Number of reports ---
         ! When using the propagate_to_beta option the number of iterations in imaginary
@@ -286,20 +290,20 @@ contains
         ! Note occ_list could be set and allocated in the input.
 
         if (restart_in%read_restart) then
-            if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(sys%nel), stat=ierr)
-                call check_allocate('occ_list0',sys%nel,ierr)
+            if (.not.allocated(reference%occ_list0)) then
+                allocate(reference%occ_list0(sys%nel), stat=ierr)
+                call check_allocate('reference%occ_list0',sys%nel,ierr)
             end if
-            call read_restart_hdf5(restart_info_global, fciqmc_in%non_blocking_comm)
+            call read_restart_hdf5(restart_info_global, fciqmc_in%non_blocking_comm, reference)
             ! Need to re-calculate the reference determinant data
-            call decode_det(sys%basis, f0, occ_list0)
+            call decode_det(sys%basis, reference%f0, reference%occ_list0)
             if (trial_function == neel_singlet) then
                 ! Set the Neel state data for the reference state, if it is being used.
-                H00 = 0.0_p
+                reference%H00 = 0.0_p
             else
-                H00 = sc0_ptr(sys, f0)
+                reference%H00 = sc0_ptr(sys, reference%f0)
             end if
-            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, reference%f0)
         else
 
             ! Reference det
@@ -309,25 +313,25 @@ contains
             ! Note: this is for testing only!  The symmetry input is currently
             ! ignored.
             if (sym_in < sys%sym_max) then
-                call set_reference_det(sys, occ_list0, .false., sym_in)
+                call set_reference_det(sys, reference%occ_list0, .false., sym_in)
             else
-                call set_reference_det(sys, occ_list0, .false.)
+                call set_reference_det(sys, reference%occ_list0, .false.)
             end if
 
-            call encode_det(sys%basis, occ_list0, f0)
+            call encode_det(sys%basis, reference%occ_list0, reference%f0)
 
-            if (allocated(hs_occ_list0)) then
-                call encode_det(sys%basis, hs_occ_list0, hs_f0)
+            if (allocated(reference%hs_occ_list0)) then
+                call encode_det(sys%basis, reference%hs_occ_list0, reference%hs_f0)
             else
-                allocate(hs_occ_list0(sys%nel), stat=ierr)
-                call check_allocate('hs_occ_list0', size(hs_occ_list0), ierr)
-                hs_occ_list0 = occ_list0
-                hs_f0 = f0
+                allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
+                call check_allocate('reference%hs_occ_list0', size(reference%hs_occ_list0), ierr)
+                reference%hs_occ_list0 = reference%occ_list0
+                reference%hs_f0 = reference%f0
             end if
 
             ! Energy of reference determinant.
-            H00 = sc0_ptr(sys, f0)
-            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, f0)
+            reference%H00 = sc0_ptr(sys, reference%f0)
+            if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, reference%f0)
 
             ! In general FCIQMC, we start with psips only on the
             ! reference determinant, so set tot_walkers = 1 and
@@ -342,7 +346,7 @@ contains
                 walker_population(1,tot_walkers) = nint(qmc_in%D0_population)*real_factor
                 ! Set the bitstring of this psip to be that of the
                 ! reference state.
-                walker_dets(:,tot_walkers) = f0
+                walker_dets(:,tot_walkers) = reference%f0
 
                 ! Determine and set properties for the reference state which we start on.
                 ! By definition, when using a single determinant as a reference state:
@@ -350,8 +354,8 @@ contains
                 ! Or if not using a single determinant:
                 if (trial_function == neel_singlet) then
                     ! Set the Neel state data for the reference state, if it is being used.
-                    walker_data(1,tot_walkers) = H00
-                    H00 = 0.0_p
+                    walker_data(1,tot_walkers) = reference%H00
+                    reference%H00 = 0.0_p
 
                     walker_data(sampling_size+1,tot_walkers) = sys%lattice%nsites/2
                     ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
@@ -362,7 +366,7 @@ contains
                 ! Finally, we need to check if the reference determinant actually
                 ! belongs on this processor.
                 ! If it doesn't, set the walkers array to be empty.
-                call assign_particle_processor(f0, sys%basis%string_len, qmc_spawn%hash_seed, &
+                call assign_particle_processor(reference%f0, sys%basis%string_len, qmc_spawn%hash_seed, &
                                                     qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, D0_proc, slot)
                 if (D0_proc /= iproc) tot_walkers = 0
             end if
@@ -378,7 +382,7 @@ contains
                 select case (sys%system)
                 case (heisenberg)
                     ! Flip all spins in f0 to get f0_inv
-                    f0_inv = not(f0)
+                    f0_inv = not(reference%f0)
                     ! In general, the basis bit string has some padding at the
                     ! end which must be unset.  We need to clear this...
                     ! Loop over all bits after the last basis function.
@@ -391,10 +395,10 @@ contains
                     ! This looks somewhat odd, but relies upon basis
                     ! functions alternating down (Ms=-1) and up (Ms=1).
                     do i = 1, sys%nel
-                        if (mod(occ_list0(i),2) == 1) then
-                            occ_list0_inv(i) = occ_list0(i) + 1
+                        if (mod(reference%occ_list0(i),2) == 1) then
+                            occ_list0_inv(i) = reference%occ_list0(i) + 1
                         else
-                            occ_list0_inv(i) = occ_list0(i) - 1
+                            occ_list0_inv(i) = reference%occ_list0(i) - 1
                         end if
                     end do
                     call encode_det(sys%basis, occ_list0_inv, f0_inv)
@@ -404,22 +408,22 @@ contains
                                                         qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, D0_inv_proc, slot)
 
                 ! Store if not identical to reference det.
-                if (D0_inv_proc == iproc .and. any(f0 /= f0_inv)) then
+                if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then
                     tot_walkers = tot_walkers + 1
                     ! Zero all populations for this determinant.
                     walker_population(:,tot_walkers) = 0_int_p
                     ! Set the population for this basis function.
                     walker_population(1,tot_walkers) = nint(qmc_in%D0_population)*real_factor
-                    walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
+                    walker_data(1,tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
                     select case(sys%system)
                     case(heisenberg)
                         if (trial_function /= single_basis) then
                             walker_data(1,tot_walkers) = 0
                         else
-                            walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
+                            walker_data(1,tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
                         end if
                     case default
-                        walker_data(1,tot_walkers) = sc0_ptr(sys, f0) - H00
+                        walker_data(1,tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
                     end select
                     walker_dets(:,tot_walkers) = f0_inv
                     ! If we are using the Neel state as a reference in the
@@ -464,14 +468,14 @@ contains
         end if
 
         ! calculate the reference determinant symmetry
-        ref_sym = symmetry_orb_list(sys, occ_list0)
+        ref_sym = symmetry_orb_list(sys, reference%occ_list0)
 
         ! If not set at input, set probability of selecting single or double
         ! excitations based upon the reference determinant and assume other
         ! determinants have a roughly similar ratio of single:double
         ! excitations.
         if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-            call find_single_double_prob(sys, occ_list0, qmc_in%pattempt_single, qmc_in%pattempt_double)
+            call find_single_double_prob(sys, reference%occ_list0, qmc_in%pattempt_single, qmc_in%pattempt_double)
         else
             ! renormalise just in case input wasn't
             qmc_in%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
@@ -501,8 +505,8 @@ contains
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-            call write_det(sys%basis, sys%nel, f0, new_line=.true.)
-            write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+            call write_det(sys%basis, sys%nel, reference%f0, new_line=.true.)
+            write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',reference%H00
             if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =',O00
             write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
             select case(sys%system)

@@ -734,13 +734,14 @@ contains
 
     end subroutine add_spawned_particles
 
-    subroutine create_spawned_particle(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -759,8 +760,10 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -786,13 +789,14 @@ contains
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -811,8 +815,10 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -838,7 +844,7 @@ contains
 
     end subroutine create_spawned_particle_initiator
 
-    subroutine create_spawned_particle_truncated(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_truncated(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -865,10 +871,11 @@ contains
         use calc, only: truncation_level
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -888,7 +895,7 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
+        if (get_excitation_level(reference%hs_f0, f_new) <= truncation_level) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
                                            spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
@@ -899,7 +906,7 @@ contains
 
     end subroutine create_spawned_particle_truncated
 
-    subroutine create_spawned_particle_initiator_truncated(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_truncated(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -908,6 +915,7 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -926,10 +934,11 @@ contains
         use calc, only: truncation_level
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -949,7 +958,7 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
+        if (get_excitation_level(reference%hs_f0, f_new) <= truncation_level) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
                 spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
@@ -960,7 +969,7 @@ contains
 
     end subroutine create_spawned_particle_initiator_truncated
 
-    subroutine create_spawned_particle_ras(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -969,6 +978,7 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -989,8 +999,10 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -1021,7 +1033,7 @@ contains
 
     end subroutine create_spawned_particle_ras
 
-    subroutine create_spawned_particle_initiator_ras(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1030,6 +1042,7 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -1050,8 +1063,10 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn

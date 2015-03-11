@@ -10,20 +10,20 @@ implicit none
 
 contains
 
-    subroutine diagonalise(sys)
+    subroutine diagonalise(sys, reference)
 
         ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
         ! exact diagonalisation.
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: reference determinant to specify symmetry block to consider.
 
         use checking, only: check_allocate, check_deallocate
         use errors
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
         use determinant_enumeration, only: enumerate_determinants
         use determinants, only: spin_orb_list
-        use fciqmc_data, only: occ_list0
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
         use fciqmc_data, only: doing_exact_rdm_eigv, reduced_density_matrix
@@ -35,8 +35,10 @@ contains
         use errors, only: stop_all
         use utils, only: int_fmt, get_free_unit
         use ranking, only: insertion_rank
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
 
         type soln
             integer :: ms
@@ -110,17 +112,17 @@ contains
         end if
 
         spin_flip = .false.
-        if (allocated(occ_list0)) then
+        if (allocated(reference%occ_list0)) then
             ! If a reference determinant was supplied, then we need to only
             ! consider that spin and symmetry.
             if (isym_min /= isym_max) then
-                isym_min = symmetry_orb_list(sys, occ_list0)
+                isym_min = symmetry_orb_list(sys, reference%occ_list0)
                 isym_max = isym_min
             else
                 spin_flip = .true.
             end if
             if (ms_min /= ms_max) then
-                ms_min = spin_orb_list(sys%basis%basis_fns, occ_list0)
+                ms_min = spin_orb_list(sys%basis%basis_fns, reference%occ_list0)
                 ms_max = ms_min
             else
                 spin_flip = .true.
@@ -128,7 +130,7 @@ contains
         endif
 
         if (truncate_space) then
-            if (.not. allocated(occ_list0)) then
+            if (.not. allocated(reference%occ_list0)) then
                 if (isym_min /= isym_max .or. ms_min /= ms_max) then
                     call stop_all('diagonalise', 'Symmetry and spin must be &
                         &specified or a reference determinant supplied for &
@@ -136,9 +138,9 @@ contains
                 end if
                 ! Create reference det based upon symmetry labels.
                 call set_spin_polarisation(sys%basis%nbasis, ms_min, sys)
-                allocate(occ_list0(sys%nel), stat=ierr)
-                call check_allocate('occ_list0', sys%nel, ierr)
-                call set_reference_det(sys, occ_list0, .true., isym_min)
+                allocate(reference%occ_list0(sys%nel), stat=ierr)
+                call check_allocate('reference%occ_list0', sys%nel, ierr)
+                call set_reference_det(sys, reference%occ_list0, .true., isym_min)
             end if
         end if
 
@@ -157,8 +159,8 @@ contains
 
             ! Find and set information about the space.
             call set_spin_polarisation(sys%basis%nbasis, ms, sys)
-            if (allocated(occ_list0)) then
-                call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets, occ_list0=occ_list0)
+            if (allocated(reference%occ_list0)) then
+                call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets, occ_list0=reference%occ_list0)
             else
                 call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets)
             end if
@@ -196,8 +198,8 @@ contains
                 end if
 
                 ! Find all determinants with this spin.
-                if (allocated(occ_list0)) then
-                    call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, isym, occ_list0)
+                if (allocated(reference%occ_list0)) then
+                    call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, isym, reference%occ_list0)
                 else
                     call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, isym)
                 end if

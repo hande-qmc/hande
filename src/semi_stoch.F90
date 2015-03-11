@@ -99,7 +99,8 @@ implicit none
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, spawn, space_type, target_size, separate_annihilation, mpi_barriers, write_determ_in)
+    subroutine init_semi_stoch_t(determ, sys, reference, spawn, space_type, target_size, separate_annihilation, &
+                                 mpi_barriers, write_determ_in)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -109,6 +110,7 @@ contains
         !    determ: Deterministic space being used.
         ! In:
         !    sys: system being studied
+        !    reference: current reference determinant.
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    space_type: Integer parameter specifying which type of
         !        deterministic space to use.
@@ -131,9 +133,11 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: int_fmt
+        use qmc_data, only: reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: space_type
         integer, intent(in) :: target_size
@@ -277,12 +281,12 @@ contains
 
         call create_determ_hash_table(determ, print_info)
 
-        call create_determ_hamil(determ, sys, displs, dets_this_proc, print_info)
+        call create_determ_hamil(determ, sys, reference%H00, displs, dets_this_proc, print_info)
 
         ! All deterministic states on this processor are always stored in
         ! walker_dets, even if they have a population of zero, so they are
         ! added in here.
-        call add_determ_dets_to_walker_dets(determ, sys, dets_this_proc)
+        call add_determ_dets_to_walker_dets(determ, sys, reference, dets_this_proc)
 
         ! We don't need this temporary space anymore. All deterministic states
         ! from all processors are stored in determ%dets.
@@ -448,7 +452,7 @@ contains
 
     end subroutine create_determ_hash_table
 
-    subroutine create_determ_hamil(determ, sys, displs, dets_this_proc, print_info)
+    subroutine create_determ_hamil(determ, sys, H00, displs, dets_this_proc, print_info)
 
         ! In/Out:
         !    determ: Deterministic space being used. On input, determ%sizes,
@@ -456,6 +460,7 @@ contains
         !        output, determ%hamil will have been created.
         ! In:
         !    sys: system being studied
+        !    H00: energy of the reference determinant (subtracted from diagonal elements)
         !    displs: displs(i) holds the cumulative sum of the number of
         !        deterministic states belonging to processor numbers 0 to i-1.
         !    dets_this_proc: The deterministic states belonging to this
@@ -464,7 +469,6 @@ contains
 
         use checking, only: check_allocate
         use csr, only: init_csrp
-        use fciqmc_data, only: H00
         use hamiltonian, only: get_hmatel
         use parallel
         use system, only: sys_t
@@ -472,6 +476,7 @@ contains
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: H00
         integer, intent(in) :: displs(0:nprocs-1)
         integer(i0), intent(in) :: dets_this_proc(:,:)
         logical, intent(in) :: print_info
@@ -549,7 +554,7 @@ contains
 
     end subroutine create_determ_hamil
 
-    subroutine add_determ_dets_to_walker_dets(determ, sys, dets_this_proc)
+    subroutine add_determ_dets_to_walker_dets(determ, sys, reference, dets_this_proc)
 
         ! Also set the deterministic flags of any deterministic states already
         ! in walker_dets, and add deterministic data to walker_populations and
@@ -560,6 +565,7 @@ contains
         !    determ: Deterministic space being used.
         ! In:
         !    sys: system being studied
+        !    reference: current reference determinant.
         !    dets_this_proc: The deterministic states belonging to this
         !        processor.
 
@@ -569,9 +575,11 @@ contains
         use parallel, only: iproc
         use search, only: binary_search
         use system, only: sys_t
+        use qmc_data, only: reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: dets_this_proc(:,:)
 
         integer :: i, istart, iend, pos
@@ -594,7 +602,7 @@ contains
                 walker_data(:,pos+1:tot_walkers+1) = walker_data(:,pos:tot_walkers)
 
                 ! Insert a determinant with population zero into the walker arrays.
-                call insert_new_walker(sys, pos, dets_this_proc(:,i), zero_population)
+                call insert_new_walker(sys, pos, dets_this_proc(:,i), zero_population, reference%H00)
 
                 tot_walkers = tot_walkers + 1
             end if

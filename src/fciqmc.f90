@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in)
+    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, reference)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -24,6 +24,7 @@ contains
         !    restart_in: input options for HDF5 restart files.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
+        !    reference: reference determinant. May change during the calculation.
 
         use parallel
 
@@ -46,13 +47,14 @@ contains
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -98,10 +100,10 @@ contains
         ! If the user has asked to use semi-stochastic from the first iteration
         ! then turn it on now. Otherwise, use an empty deterministic space.
         if (semi_stoch_iter == 0) then
-            call init_semi_stoch_t(determ, sys, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
+            call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
                                     semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
         else
-            call init_semi_stoch_t(determ, sys, qmc_spawn, empty_determ_space, 0, .false., .false., .false.)
+            call init_semi_stoch_t(determ, sys, reference, qmc_spawn, empty_determ_space, 0, .false., .false., .false.)
         end if
 
         ! In case this is not set.
@@ -118,9 +120,10 @@ contains
 
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart_in%read_restart)
-            call initial_fciqmc_status(sys, qmc_in, .true., par_info%report_comm, send_counts(iproc)/received_list%element_len)
+            call initial_fciqmc_status(sys, qmc_in, reference, .true., par_info%report_comm, &
+                                       send_counts(iproc)/received_list%element_len)
         else
-            call initial_fciqmc_status(sys, qmc_in)
+            call initial_fciqmc_status(sys, qmc_in, reference)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -137,12 +140,14 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter) then
                     call dealloc_semi_stoch_t(determ, .false.)
-                    call init_semi_stoch_t(determ, sys, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
+                    call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, &
+                                            semi_stoch_in%target_size, &
                                             semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, doing_lb=fciqmc_in%doing_load_balancing, &
+                call init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath, &
+                                   doing_lb=fciqmc_in%doing_load_balancing, &
                                    nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
                 ideterm = 0
 
@@ -170,8 +175,8 @@ contains
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
-                    connection = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-                    call update_proj_energy_ptr(sys, f0, cdet, real_population, D0_population, &
+                    connection = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
+                    call update_proj_energy_ptr(sys, reference%f0, cdet, real_population, D0_population, &
                                                 proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
@@ -193,12 +198,13 @@ contains
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
-                                    call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn, f_child)
+                                    call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, &
+                                            qmc_spawn, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
-                                call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
+                                call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn)
                             end if
                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -214,15 +220,15 @@ contains
 
                 if (fciqmc_in%non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
-                    call evolve_spawned_walkers(sys, qmc_in, received_list, cdet, rng, ndeath)
-                    call direct_annihilation_received_list(sys, rng, qmc_in)
+                    call evolve_spawned_walkers(sys, qmc_in, reference, received_list, cdet, rng, ndeath)
+                    call direct_annihilation_received_list(sys, rng, qmc_in, reference)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
                     if (par_info%load%needed) then
                         call redistribute_particles(walker_dets, real_factor,  walker_population, tot_walkers, &
                                                     nparticles, qmc_spawn)
                         par_info%load%needed = .false.
                     end if
-                    call direct_annihilation_spawned_list(sys, rng, qmc_in, send_counts, req_data_s, &
+                    call direct_annihilation_spawned_list(sys, rng, qmc_in, reference, send_counts, req_data_s, &
                                                           par_info%report_comm%nb_spawn, nspawn_events)
                     call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
                 else
@@ -238,9 +244,9 @@ contains
                     end if
 
                     if (semi_stochastic) then
-                        call direct_annihilation(sys, rng, qmc_in, nspawn_events, determ)
+                        call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events, determ)
                     else
-                        call direct_annihilation(sys, rng, qmc_in, nspawn_events)
+                        call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events)
                     end if
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
                 end if
@@ -249,7 +255,7 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
+            call end_report_loop(sys, qmc_in, reference, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
                                  bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
@@ -257,11 +263,12 @@ contains
             if (soft_exit) exit
 
             ! Should we try and update the reference determinant now?
-            if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) call select_ref_det(sys, fciqmc_in%ref_det_factor)
+            if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) &
+                    call select_ref_det(sys, fciqmc_in%ref_det_factor, reference)
 
         end do
 
-        if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, ireport, received_list, &
+        if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, reference, ireport, received_list, &
                                                           req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1), &
                                                           restart_in%dump_restart)
 
@@ -280,7 +287,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
             if (parent) write (6,'()')
         end if
 
@@ -290,7 +297,7 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, qmc_in, spawn, cdet, rng, ndeath)
+    subroutine evolve_spawned_walkers(sys, qmc_in, reference, spawn, cdet, rng, ndeath)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
@@ -298,6 +305,7 @@ contains
         ! In:
         !   sys: system being studied.
         !   qmc_in: input options relating to QMC methods.
+        !   reference: current reference determinant.
         ! In/Out:
         !   spawn: spawn_t object containing walkers spawned onto this processor during previous time step.
         !   cdet: type containing information about determinant. (easier to take this in as it is allocated
@@ -310,12 +318,13 @@ contains
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
@@ -339,7 +348,7 @@ contains
             real_pop = real(int_pop(1),p) / real_factor
             ftmp = int(spawn%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
-            tmp_data(1) = sc0_ptr(sys, cdet%f) - H00
+            tmp_data(1) = sc0_ptr(sys, cdet%f) - reference%H00
             cdet%data => tmp_data
 
             call decoder_ptr(sys, cdet%f, cdet)
@@ -347,8 +356,8 @@ contains
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
-            connection = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-            call update_proj_energy_ptr(sys, f0, cdet, real_pop, D0_population, &
+            connection = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
+            call update_proj_energy_ptr(sys, reference%f0, cdet, real_pop, D0_population, &
                                         proj_energy, connection, hmatel)
 
             ! Is this determinant an initiator?
@@ -366,7 +375,7 @@ contains
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then
-                    call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
+                    call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn)
                 end if
 
             end do

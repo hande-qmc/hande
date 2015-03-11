@@ -10,11 +10,12 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, matel)
+    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, reference, matel)
 
         ! In:
         !    sys: system being studied
         !    restart_in: input options for HDF5 restart files.
+        !    reference: reference determinant.
         !    matel: off-diagonal Hamiltonian matrix element (ignoring sign due
         !       to permutations).  Either U (Bloch orbitals) or
         !       t (atomic/real-space orbitals).
@@ -36,11 +37,12 @@ contains
         use utils, only: rng_init_info
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
-        use qmc_data, only: qmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(in) :: reference
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
 
         integer(int_p) :: nspawned, ndeath
@@ -96,7 +98,7 @@ contains
         dump_restart_file_shift = restart_in%dump_restart_file_shift
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys, qmc_in)
+        call initial_fciqmc_status(sys, qmc_in, reference)
 
         ! time the report loop
         call cpu_time(t1)
@@ -105,7 +107,7 @@ contains
         do ireport = 1, qmc_in%nreport
 
             call init_report_loop(bloom_stats)
-            call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath)
+            call init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
@@ -119,8 +121,8 @@ contains
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
-                D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-                call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
+                D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
+                call update_proj_energy_ptr(sys, reference%f0, cdet, real(walker_population(1,idet),p), &
                                             D0_population, proj_energy, D0_excit, hmatel)
 
                 ! Loop over each walker on the determinant.
@@ -191,7 +193,7 @@ contains
 
                         ! decode the spawned walker bitstring
                         cdet%f = int(qmc_spawn%sdata(:sys%basis%string_len,current_pos(thread_id,proc_id)), i0)
-                        K_ii = sc0_ptr(sys, cdet%f) - H00
+                        K_ii = sc0_ptr(sys, cdet%f) - reference%H00
                         call decoder_ptr(sys, cdet%f,cdet)
 
                         ! Spawn from this walker & append to the spawned array until
@@ -240,11 +242,11 @@ contains
 
             end do
 
-            call direct_annihilation(sys, rng, qmc_in, nspawn_events)
+            call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events)
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
-            call end_report_loop(sys, qmc_in, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
+            call end_report_loop(sys, qmc_in, reference, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
                                  unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift)
 
             if (soft_exit) exit
@@ -261,7 +263,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, .false.)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, nparticles_old, .false.)
             write (6,'()')
         end if
 

@@ -361,7 +361,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, qmc_in, target_nparticles_tot, nparticles_tot)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, reference, target_nparticles_tot, nparticles_tot)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -374,6 +374,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
         ! Out:
@@ -384,7 +385,7 @@ contains
         use calc, only: sym_in, propagate_to_beta, grand_canonical_initialisation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_spin_sectors, f0, init_beta, &
+        use fciqmc_data, only: sampling_size, all_spin_sectors, init_beta, &
                                walker_dets, nparticles, real_factor, &
                                walker_population, tot_walkers, qmc_spawn, &
                                metropolis_attempts
@@ -392,11 +393,12 @@ contains
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
 
@@ -449,7 +451,7 @@ contains
                     if (grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, init_beta, qmc_spawn, rng)
                     else
-                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, ireplica, rng, qmc_spawn)
+                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, rng, qmc_spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
@@ -478,7 +480,7 @@ contains
         end if
 
 
-        call direct_annihilation(sys, rng, qmc_in)
+        call direct_annihilation(sys, rng, qmc_in, reference)
 
         if (propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -489,7 +491,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                                tot_walkers, nparticles, qmc_spawn)
-            call direct_annihilation(sys, rng, qmc_in)
+            call direct_annihilation(sys, rng, qmc_in, reference)
         end if
 
     end subroutine create_initial_density_matrix
@@ -646,7 +648,7 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, all_sym_sectors, f0, sampling_size, metropolis_attempts, &
+        use fciqmc_data, only: real_factor, all_sym_sectors, sampling_size, metropolis_attempts, &
                                max_metropolis_move
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
@@ -732,7 +734,7 @@ contains
 
     end subroutine initialise_dm_metropolis
 
-    subroutine init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
+    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, rng, qmc_spawn)
 
         ! Create an initital distribution of psips along the diagonal.
         ! This subroutine will return a list of occupied determinants in
@@ -743,6 +745,7 @@ contains
         !    sys: system being studied.
         !    npsips: number of psips to distribute on the diagonal.
         !    sym: symmetry of determinants being occupied.
+        !    f0: bit string of reference determinant
         !    ireplica: replica index.
         ! In/Out:
         !    rng: random number generator.
@@ -751,7 +754,7 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: f0, real_factor, all_sym_sectors, metropolis_attempts
+        use fciqmc_data, only: real_factor, all_sym_sectors, metropolis_attempts
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
@@ -760,6 +763,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: sym
+        integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer, intent(in) :: ireplica
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: qmc_spawn
