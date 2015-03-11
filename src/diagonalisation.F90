@@ -10,13 +10,14 @@ implicit none
 
 contains
 
-    subroutine diagonalise(sys)
+    subroutine diagonalise(sys, reference)
 
         ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
         ! exact diagonalisation.
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: reference determinant to specify symmetry block to consider.
 
         use checking, only: check_allocate, check_deallocate
         use errors
@@ -34,9 +35,10 @@ contains
         use errors, only: stop_all
         use utils, only: int_fmt, get_free_unit
         use ranking, only: insertion_rank
-        use qmc_data, only: reference_t, reference
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
 
         type soln
             integer :: ms

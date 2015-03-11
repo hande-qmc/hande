@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine do_hfs_fciqmc(sys, qmc_in, restart_in)
+    subroutine do_hfs_fciqmc(sys, qmc_in, restart_in, reference)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -34,6 +34,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    restart_in: input options for HDF5 restart files.
+        !    reference: current reference determinant.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -53,11 +54,12 @@ contains
         use proc_pointers
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, reference
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(in) :: reference
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(int_64) :: nattempts
@@ -88,7 +90,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys, qmc_in)
+        call initial_fciqmc_status(sys, qmc_in, reference)
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -160,7 +162,7 @@ contains
                                          gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
-                            call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 1, qmc_spawn)
+                            call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
@@ -169,7 +171,7 @@ contains
                                              gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
-                            call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 2, qmc_spawn)
+                            call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 2, qmc_spawn)
 
                     end do
 
@@ -183,7 +185,7 @@ contains
                                          gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
-                            call create_spawned_particle_ptr(sys%basis, cdet, connection, nspawned, 2, qmc_spawn)
+                            call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 2, qmc_spawn)
 
                     end do
 
@@ -220,7 +222,8 @@ contains
                     cdet%initiator_flag = h_initiator_flag
                     ! [todo] - JSS: real populations for HFS spawner.
                     call stochastic_hf_cloning(rng, qmc_in%tau, walker_data(2,idet), walker_population(1,idet), nspawned)
-                    if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nspawned, 2, qmc_spawn)
+                    if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, reference, cdet, null_excit, nspawned, &
+                                                                        2, qmc_spawn)
 
                     ! Clone or die: Hamiltonian walkers.
                     call stochastic_death(rng, qmc_in%tau, walker_data(1,idet), shift(1), walker_population(1,idet), &
@@ -228,7 +231,7 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, rng, qmc_in, nspawn_events)
+                call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events)
 
             end do
 
@@ -266,7 +269,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, .false.)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if
 

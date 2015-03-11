@@ -361,7 +361,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, qmc_in, target_nparticles_tot, nparticles_tot)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, reference, target_nparticles_tot, nparticles_tot)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -374,6 +374,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
         ! Out:
@@ -392,11 +393,12 @@ contains
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
 
@@ -449,7 +451,7 @@ contains
                     if (grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, init_beta, qmc_spawn, rng)
                     else
-                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, ireplica, rng, qmc_spawn)
+                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, rng, qmc_spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
@@ -478,7 +480,7 @@ contains
         end if
 
 
-        call direct_annihilation(sys, rng, qmc_in)
+        call direct_annihilation(sys, rng, qmc_in, reference)
 
         if (propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -489,7 +491,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                                tot_walkers, nparticles, qmc_spawn)
-            call direct_annihilation(sys, rng, qmc_in)
+            call direct_annihilation(sys, rng, qmc_in, reference)
         end if
 
     end subroutine create_initial_density_matrix
@@ -732,7 +734,7 @@ contains
 
     end subroutine initialise_dm_metropolis
 
-    subroutine init_uniform_ensemble(sys, npsips, sym, ireplica, rng, qmc_spawn)
+    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, rng, qmc_spawn)
 
         ! Create an initital distribution of psips along the diagonal.
         ! This subroutine will return a list of occupied determinants in
@@ -743,6 +745,7 @@ contains
         !    sys: system being studied.
         !    npsips: number of psips to distribute on the diagonal.
         !    sym: symmetry of determinants being occupied.
+        !    f0: bit string of reference determinant
         !    ireplica: replica index.
         ! In/Out:
         !    rng: random number generator.
@@ -756,11 +759,11 @@ contains
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: sym
+        integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer, intent(in) :: ireplica
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: qmc_spawn
@@ -774,12 +777,12 @@ contains
         ! [todo] - Include all psips.
         psips_per_level = int(npsips/sys%max_number_excitations)
         call alloc_det_info_t(sys, det0)
-        call decode_det_spinocc_spinunocc(sys, reference%f0, det0)
-        det0%f = reference%f0
+        call decode_det_spinocc_spinunocc(sys, f0, det0)
+        det0%f = f0
         ! gen_random_det_truncate_space does not produce determinants at
         ! excitation level zero, so take care of this explicitly.
         do idet = 1, psips_per_level
-            call create_diagonal_density_matrix_particle(reference%f0, sys%basis%string_len, &
+            call create_diagonal_density_matrix_particle(f0, sys%basis%string_len, &
                                                          sys%basis%tensor_label_len, real_factor, ireplica)
         end do
 

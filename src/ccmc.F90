@@ -224,7 +224,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -237,6 +237,7 @@ contains
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
+        !    reference: current reference determinant.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -265,13 +266,14 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t
 
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t, reference
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(in) :: reference
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
@@ -365,7 +367,7 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys, qmc_in)
+        call initial_fciqmc_status(sys, qmc_in, reference)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -401,7 +403,7 @@ contains
                     ! As we might select the reference determinant multiple times in
                     ! a cycle, the running total of D0_population is incorrect (by
                     ! a factor of the number of times it was selected).
-                    call find_D0(D0_pos)
+                    call find_D0(reference%f0, D0_pos)
                     D0_normalisation = real(walker_population(1,D0_pos),p)/real_factor
 
                     nD0_proc = 1
@@ -443,7 +445,7 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(rng(0), sys, qmc_in, real_factor, nattempts, ndeath, nint(D0_normalisation,int_64))
+                call init_mc_cycle(rng(0), sys, qmc_in, reference, real_factor, nattempts, ndeath, nint(D0_normalisation,int_64))
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
@@ -530,9 +532,9 @@ contains
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                     if (iattempt <= nstochastic_clusters) then
-                        call select_cluster(rng(it), sys, real_factor, ccmc_in%linked, nstochastic_clusters, D0_normalisation, &
-                                            qmc_in%initiator_pop, D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, &
-                                            min_cluster_size, max_cluster_size, cdet(it), cluster(it))
+                        call select_cluster(rng(it), sys, reference%f0, real_factor, ccmc_in%linked, nstochastic_clusters, &
+                                            D0_normalisation, qmc_in%initiator_pop, D0_pos, cumulative_abs_nint_pops, &
+                                            tot_abs_nint_pop, min_cluster_size, max_cluster_size, cdet(it), cluster(it))
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
@@ -544,12 +546,13 @@ contains
                             ! needs to be converted into a det_info_t object for the excitation
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
-                            call create_null_cluster(sys, nprocs*real(nD0_select,p), D0_normalisation, qmc_in%initiator_pop, &
-                                                     cdet(it), cluster(it))
+                            call create_null_cluster(sys, reference%f0, nprocs*real(nD0_select,p), D0_normalisation, &
+                                                     qmc_in%initiator_pop, cdet(it), cluster(it))
                         end if
                     else
                         ! Deterministically select each excip as a non-composite cluster.
-                        call select_cluster_non_composite(sys, real_factor, iattempt-nstochastic_clusters-nD0_select, &
+                        call select_cluster_non_composite(sys, reference%f0, real_factor, &
+                                                          iattempt-nstochastic_clusters-nD0_select, &
                                                           iexcip_pos, nsingle_excitors, D0_normalisation, qmc_in%initiator_pop, &
                                                           D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
                     end if
@@ -592,19 +595,21 @@ contains
                                 ! When sampling e^-T H e^T, the cluster operators in e^-T
                                 ! and e^T can excite to/from the same orbital, requiring
                                 ! a different spawning routine
-                                call linked_spawner_ccmc(rng(it), sys, qmc_in, qmc_spawn%cutoff, real_factor, cluster(it), &
-                                          gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
+                                call linked_spawner_ccmc(rng(it), sys, qmc_in, reference, qmc_spawn%cutoff, real_factor, &
+                                          cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
                             else
-                                call spawner_ccmc(rng(it), sys, qmc_in, qmc_spawn%cutoff, real_factor, ccmc_in%linked, &
+                                call spawner_ccmc(rng(it), sys, qmc_in, reference, qmc_spawn%cutoff, real_factor, ccmc_in%linked, &
                                           cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total)
                             end if
 
                            if (nspawned /= 0_int_p) then
                                if (cluster(it)%excitation_level == huge(0)) then
-                                   call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn, fexcit)
+                                   call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, nspawned, 1, &
+                                            qmc_spawn, fexcit)
                                else
-                                   call create_spawned_particle_ptr(sys%basis, cdet(it), connection, nspawned, 1, qmc_spawn)
+                                   call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, nspawned, 1, &
+                                            qmc_spawn)
                                end if
                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
                            end if
@@ -619,7 +624,7 @@ contains
                             if ((.not. ccmc_in%linked) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-                                    call stochastic_ccmc_death(rng(it), real_factor, ccmc_in%linked, sys, qmc_in%tau, &
+                                    call stochastic_ccmc_death(rng(it), real_factor, ccmc_in%linked, sys, reference, qmc_in%tau, &
                                                                cdet(it), cluster(it))
                                 end if
                             end if
@@ -654,7 +659,7 @@ contains
                 if (nprocs > 1) call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                              tot_walkers, nparticles, qmc_spawn)
 
-                call direct_annihilation(sys, rng(0), qmc_in, nspawn_events)
+                call direct_annihilation(sys, rng(0), qmc_in, reference, nspawn_events)
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 
@@ -662,7 +667,7 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
+            call end_report_loop(sys, qmc_in, reference, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
                                   semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
                                   bloom_stats=bloom_stats)
 
@@ -682,7 +687,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, nparticles_old, .false.)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if
 
@@ -735,10 +740,12 @@ contains
 
     end subroutine init_cluster
 
-    subroutine find_D0(D0_pos)
+    subroutine find_D0(f0, D0_pos)
 
         ! Find the reference determinant in the list of walkers
 
+        ! In:
+        !    f0: bit string representing the reference.
         ! In/Out:
         !    D0_pos: on input, the position of the reference in walker_dets in
         !       the previous iteration (or -1 if it was not on this processor).
@@ -748,35 +755,35 @@ contains
         use search, only: binary_search
         use fciqmc_data, only: walker_dets, tot_walkers
         use errors, only: stop_all
-        use qmc_data, only: reference_t, reference
 
+        integer(i0), intent(in) :: f0(:)
         integer, intent(inout) :: D0_pos
 
         logical :: hit
 
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
-            call binary_search(walker_dets, reference%f0, 1, tot_walkers, hit, D0_pos)
+            call binary_search(walker_dets, f0, 1, tot_walkers, hit, D0_pos)
         else
-            select case(bit_str_cmp(reference%f0, walker_dets(:,D0_pos)))
+            select case(bit_str_cmp(f0, walker_dets(:,D0_pos)))
             case(0)
                 ! D0 hasn't moved.
                 hit = .true.
             case(1)
                 ! D0 < walker_dets(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
-                call binary_search(walker_dets, reference%f0, 1, D0_pos, hit, D0_pos)
+                call binary_search(walker_dets, f0, 1, D0_pos, hit, D0_pos)
             case(-1)
                 ! D0 > walker_dets(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
-                call binary_search(walker_dets, reference%f0, D0_pos, tot_walkers, hit, D0_pos)
+                call binary_search(walker_dets, f0, D0_pos, tot_walkers, hit, D0_pos)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
 
     end subroutine find_D0
 
-    subroutine select_cluster(rng, sys, real_factor, linked_ccmc, nattempts, normalisation, initiator_pop, D0_pos, &
+    subroutine select_cluster(rng, sys, f0, real_factor, linked_ccmc, nattempts, normalisation, initiator_pop, D0_pos, &
                               cumulative_excip_pop, tot_excip_pop, min_size, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
@@ -786,7 +793,8 @@ contains
         ! cluster is formed.
 
         ! In:
-        !    basis: information about the single-particle basis.
+        !    sys: system being studied
+        !    f0: bit string of the reference
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
         !    real_factor: the encoding factor by which the stored populations are multiplied
@@ -835,9 +843,9 @@ contains
         use sort, only: insert_sort
         use parallel, only: nprocs
         use system, only: sys_t
-        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer(int_64), intent(in) :: nattempts
         integer(int_p), intent(in) :: real_factor
         logical, intent(in) :: linked_ccmc
@@ -928,7 +936,7 @@ contains
 
         select case(cluster%nexcitors)
         case(0)
-            call create_null_cluster(sys, cluster%pselect, normalisation, initiator_pop, cdet, cluster)
+            call create_null_cluster(sys, f0, cluster%pselect, normalisation, initiator_pop, cdet, cluster)
         case default
             ! Select cluster from the excitors on the current processor with
             ! probability for choosing an excitor proportional to the excip
@@ -972,7 +980,7 @@ contains
                     ! Counter the additional *nprocs above.
                     cluster%pselect = cluster%pselect/nprocs
                 else
-                    call collapse_cluster(sys%basis, walker_dets(:,pos), excitor_pop, cdet%f, &
+                    call collapse_cluster(sys%basis, f0, walker_dets(:,pos), excitor_pop, cdet%f, &
                                           cluster_population, allowed)
                     if (.not.allowed) then
                         if (.not. linked_ccmc) exit
@@ -994,7 +1002,7 @@ contains
                 prev_pos = pos
             end do
 
-            if (allowed) cluster%excitation_level = get_excitation_level(reference%f0, cdet%f)
+            if (allowed) cluster%excitation_level = get_excitation_level(f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
             ! the maximum excitation included in the CC wavefunction.
             if (cluster%excitation_level > truncation_level+2) allowed = .false.
@@ -1016,7 +1024,7 @@ contains
 
                 ! Sign change due to difference between determinant
                 ! representation and excitors and excitation level.
-                call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, reference%f0)
+                call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
                 call decoder_ptr(sys, cdet%f, cdet)
 
                 ! Normalisation factor for cluster%amplitudes...
@@ -1033,13 +1041,14 @@ contains
 
     end subroutine select_cluster
 
-    subroutine create_null_cluster(sys, prob, D0_normalisation, initiator_pop, cdet, cluster)
+    subroutine create_null_cluster(sys, f0, prob, D0_normalisation, initiator_pop, cdet, cluster)
 
         ! Create a cluster with no excitors in it, and set it to have
         ! probability of generation prob.
 
         ! In:
         !    sys: system being studied
+        !    f0: bit string of the reference
         !    prob: The probability we set in it of having been generated
         !    D0_normalisation:  The number of excips at the reference (which
         !        will become the amplitude of this cluster)
@@ -1062,9 +1071,9 @@ contains
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use proc_pointers, only: decoder_ptr
-        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f0(sys%basis%string_len)
         real(p), intent(in) :: prob, D0_normalisation, initiator_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
@@ -1083,7 +1092,7 @@ contains
         cdet%initiator_flag = 0
 
         ! Must be the reference.
-        cdet%f = reference%f0
+        cdet%f = f0
         cluster%excitation_level = 0
         cluster%amplitude = D0_normalisation
         cluster%cluster_to_det_sign = 1
@@ -1098,7 +1107,7 @@ contains
 
     end subroutine create_null_cluster
 
-    subroutine select_cluster_non_composite(sys, real_factor, iexcip, iexcip_pos, nattempts, normalisation, initiator_pop, &
+    subroutine select_cluster_non_composite(sys, f0, real_factor, iexcip, iexcip_pos, nattempts, normalisation, initiator_pop, &
                                             D0_pos, cumulative_excip_pop, tot_excip_pop, cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
@@ -1106,6 +1115,7 @@ contains
 
         ! In:
         !    sys: system being studied
+        !    f0: bit string of the reference
         !    real_factor: the encoding factor by which the stored populations are multiplied
         !       to enable non-integer populations.
         !    iexcip: the index (in range [1,tot_excip_pop]) of the excip to select.
@@ -1151,9 +1161,9 @@ contains
         use fciqmc_data, only: tot_walkers, walker_population, walker_dets, walker_data
         use search, only: binary_search
         use proc_pointers, only: decoder_ptr
-        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in) :: iexcip, nattempts
         integer, intent(inout) :: iexcip_pos
@@ -1233,18 +1243,18 @@ contains
             if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
             ! pclust = |population|/total_population, as just a single excitor in the cluster..
             cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
-            cluster%excitation_level = get_excitation_level(reference%f0, cdet%f)
+            cluster%excitation_level = get_excitation_level(f0, cdet%f)
             cluster%amplitude = excitor_pop
 
             ! Sign change due to difference between determinant
             ! representation and excitors and excitation level.
-            call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, reference%f0)
+            call convert_excitor_to_determinant(cdet%f, cluster%excitation_level, cluster%cluster_to_det_sign, f0)
             call decoder_ptr(sys, cdet%f, cdet)
         end if
 
     end subroutine select_cluster_non_composite
 
-    subroutine spawner_ccmc(rng, sys, qmc_in, spawn_cutoff, real_factor, linked_ccmc, cdet, cluster, gen_excit_ptr, &
+    subroutine spawner_ccmc(rng, sys, qmc_in, reference, spawn_cutoff, real_factor, linked_ccmc, cdet, cluster, gen_excit_ptr, &
                             nspawn, connection, nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
@@ -1275,6 +1285,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -1309,10 +1320,11 @@ contains
         use system, only: sys_t
         use parallel, only: iproc
         use const, only: depsilon
-        use qmc_data, only: qmc_in_t, reference_t, reference
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         logical, intent(in) :: linked_ccmc
@@ -1347,14 +1359,14 @@ contains
             if (cluster%nexcitors > 0) then
                 ! Check whether this is an unlinked diagram - if so, the matrix element is 0 and
                 ! no spawning is attempted
-                call linked_excitation(sys%basis, connection, cluster, linked, single_unlinked, funlinked)
+                call linked_excitation(sys%basis, reference%f0, connection, cluster, linked, single_unlinked, funlinked)
                 if (.not. linked) then
                     hmatel = 0.0_p
                 else if (single_unlinked) then
                     ! Single excitation: need to modify the matrix element
                     ! Subtract off the matrix element from the cluster without
                     ! the unlinked a_i operator
-                    hmatel = hmatel - unlinked_commutator(sys, connection, cluster, cdet%f, funlinked)
+                    hmatel = hmatel - unlinked_commutator(sys, reference%f0, connection, cluster, cdet%f, funlinked)
                 end if
             end if
         end if
@@ -1380,7 +1392,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, real_factor, linked_ccmc, sys, tau, cdet, cluster)
+    subroutine stochastic_ccmc_death(rng, real_factor, linked_ccmc, sys, reference, tau, cdet, cluster)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1400,6 +1412,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    reference: current reference determinant.
         !    tau: timestep being used.
         !    real_factor: the encoding factor by which the stored populations are multiplied
         !       to enable non-integer populations.
@@ -1418,10 +1431,11 @@ contains
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
-        use qmc_data, only: reference_t, reference
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: tau
+        type(reference_t), intent(in) :: reference
         integer(int_p), intent(in) :: real_factor
         logical, intent(in) :: linked_ccmc
         type(det_info_t), intent(in) :: cdet
@@ -1507,7 +1521,7 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            call create_spawned_particle_ptr(sys%basis, cdet, null_excit, nkill, 1, qmc_spawn)
+            call create_spawned_particle_ptr(sys%basis, reference, cdet, null_excit, nkill, 1, qmc_spawn)
         end if
 
     end subroutine stochastic_ccmc_death
@@ -1606,7 +1620,7 @@ contains
 
     end subroutine stochastic_ccmc_death_nc
 
-    pure subroutine collapse_cluster(basis, excitor, excitor_population, cluster_excitor, cluster_population, allowed)
+    pure subroutine collapse_cluster(basis, f0, excitor, excitor_population, cluster_excitor, cluster_population, allowed)
 
         ! Collapse two excitors.  The result is returned in-place.
 
@@ -1630,12 +1644,12 @@ contains
         ! ***WARNING***: if allowed is false then cluster_excitor is *not* updated.
 
         use basis_types, only: basis_t
-        use qmc_data, only: reference_t, reference
 
         use bit_utils, only: count_set_bits
         use const, only: i0_end
 
         type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f0(basis%string_len)
         integer(i0), intent(in) :: excitor(basis%string_len)
         real(p), intent(in) :: excitor_population
         integer(i0), intent(inout) :: cluster_excitor(basis%string_len)
@@ -1654,11 +1668,11 @@ contains
         ! Apply excitor to the cluster of excitors.
 
         ! orbitals involved in excitation from reference
-        excitor_excitation = ieor(reference%f0, excitor)
-        cluster_excitation = ieor(reference%f0, cluster_excitor)
+        excitor_excitation = ieor(f0, excitor)
+        cluster_excitation = ieor(f0, cluster_excitor)
         ! annihilation operators (relative to the reference)
-        excitor_annihilation = iand(excitor_excitation, reference%f0)
-        cluster_annihilation = iand(cluster_excitation, reference%f0)
+        excitor_annihilation = iand(excitor_excitation, f0)
+        cluster_annihilation = iand(cluster_excitation, f0)
         ! creation operators (relative to the reference)
         excitor_creation = iand(excitor_excitation, excitor)
         cluster_creation = iand(cluster_excitation, cluster_excitor)
@@ -1695,7 +1709,7 @@ contains
             do ibasis = 1, basis%string_len
                 do ibit = 0, i0_end
                     if (btest(excitor_excitation(ibasis),ibit)) then
-                        if (btest(reference%f0(ibasis),ibit)) then
+                        if (btest(f0(ibasis),ibit)) then
                             ! Exciting from this orbital.
                             cluster_excitor(ibasis) = ibclr(cluster_excitor(ibasis),ibit)
                             ! We need to swap it with every annihilation
@@ -1845,7 +1859,7 @@ contains
 
     end subroutine convert_excitor_to_determinant
 
-    pure subroutine linked_excitation(basis, connection, cluster, linked, single_unlinked, excitor)
+    pure subroutine linked_excitation(basis, f0, connection, cluster, linked, single_unlinked, excitor)
 
         ! For Linked Coupled Cluster, the only terms of H that need to
         ! be sampled are those which are connected to (ie have a
@@ -1855,6 +1869,7 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis
+        !    f0: bit string of the reference
         !    connection: the excitation connecting the current excitor and the
         !       child excitor
         !    cluster: the cluster of excitation operators
@@ -1871,9 +1886,9 @@ contains
         use excitations, only: excit_t, create_excited_det
         use basis_types, only: basis_t
         use ccmc_data, only: cluster_t
-        use qmc_data, only: reference_t, reference
 
         type(basis_t), intent(in) :: basis
+        integer(i0), intent(in) :: f0(basis%string_len)
         type(excit_t), intent(in) :: connection
         type(cluster_t), intent(in) :: cluster
         logical, intent(out) :: linked, single_unlinked
@@ -1906,7 +1921,7 @@ contains
         do i = 1, cluster%nexcitors
             ! check each cluster operator shares an index with connection
             ! orbitals involved in cluster operator excitation (from reference)
-            excitor_excitation = ieor(cluster%excitors(i)%f, reference%f0)
+            excitor_excitation = ieor(cluster%excitors(i)%f, f0)
             if (all(iand(h_excitation, excitor_excitation) == 0)) then
                 ! no orbitals in common between H and cluster
                 unconnected = unconnected + 1
@@ -1931,7 +1946,7 @@ contains
 
     end subroutine linked_excitation
 
-    pure function unlinked_commutator(sys, connection, cluster, cdet, funlinked) result(hmatel)
+    pure function unlinked_commutator(sys, f0, connection, cluster, cdet, funlinked) result(hmatel)
 
         ! When H is a single excitation, it can be connected to one of the
         ! excitors in a cluster (a1) by the creation / annihilation operators
@@ -1944,6 +1959,7 @@ contains
 
         ! In:
         !    sys: the system being studied
+        !    f0: bit string of the reference
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
         !    cluster: the cluster of excitors
@@ -1957,9 +1973,9 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use ccmc_data, only: cluster_t
         use hamiltonian, only: get_hmatel
-        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f0(sys%basis%string_len)
         type(excit_t), intent(in) :: connection
         type(cluster_t), intent(in) :: cluster
         integer(i0), intent(in) :: cdet(sys%basis%string_len)
@@ -1984,14 +2000,14 @@ contains
                     if (found == 1) then
                         deti = cluster%excitors(i)%f
                     else
-                        call collapse_cluster(sys%basis, cluster%excitors(i)%f, 1.0_p, &
+                        call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, 1.0_p, &
                             deti, population, allowed)
                     end if
                 end if
             end do
         else
             ! Only the unlinked excitor
-            deti = reference%f0
+            deti = f0
         end if
 
         ! Now we want to evaluate <D_i^a|H_i^a|D> ...
@@ -2006,13 +2022,13 @@ contains
         ! Multiplying excitors can give a sign change, which is absorbed into cluster%amplitude
         population = 1.0_p
         temp = deti
-        call collapse_cluster(sys%basis, funlinked, 1.0_p, temp, population, allowed)
+        call collapse_cluster(sys%basis, f0, funlinked, 1.0_p, temp, population, allowed)
         hmatel = population*hmatel
 
         ! Possible sign changes from <D|a|D_0> ...
         if (cluster%nexcitors > 1) then
-            excitor_level = get_excitation_level(reference%f0, deti)
-            call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, reference%f0)
+            excitor_level = get_excitation_level(f0, deti)
+            call convert_excitor_to_determinant(deti, excitor_level, excitor_sign, f0)
             if (excitor_sign < 0) hmatel = -hmatel
         end if
 
@@ -2024,8 +2040,8 @@ contains
 
     end function unlinked_commutator
 
-    subroutine linked_spawner_ccmc(rng, sys, qmc_in, spawn_cutoff, real_factor, cluster, gen_excit_ptr, nspawn, connection, &
-                            nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster)
+    subroutine linked_spawner_ccmc(rng, sys, qmc_in, reference, spawn_cutoff, real_factor, cluster, gen_excit_ptr, nspawn, &
+                            connection, nspawnings_total, fexcit, ldet, rdet, left_cluster, right_cluster)
 
         ! When sampling e^-T H e^T, clusters need to be considered where two
         ! operators excite from/to the same orbital (one in the "left cluster"
@@ -2039,6 +2055,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -2075,10 +2092,11 @@ contains
         use parallel, only: iproc
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
-        use qmc_data, only: qmc_in_t, reference_t, reference
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(cluster_t), intent(in) :: cluster
@@ -2111,7 +2129,7 @@ contains
         ! we select one at random  to excite from and only evaluate the full contribution
         ! (from all partitions) if the randomly-selected partition has a non-zero contribution,
         ! with an appropriately rescaled pgen.
-        call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change)
+        call partition_cluster(rng, sys, reference%f0, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change)
         pop = 1
 
         ! 2) Choose excitation from right_cluster|D_0>
@@ -2123,7 +2141,7 @@ contains
                 ! check that left_cluster can be applied to the resulting excitor to
                 ! give a cluster to spawn on to
                 call create_excited_det(sys%basis, rdet%f, connection, fexcit)
-                call collapse_cluster(sys%basis, ldet%f, 1.0_p, fexcit, pop, allowed)
+                call collapse_cluster(sys%basis, reference%f0, ldet%f, 1.0_p, fexcit, pop, allowed)
             else
                 allowed = .false.
             end if
@@ -2132,7 +2150,7 @@ contains
         if (allowed) then
             ! If the excitation is not linked to the cluster, the matrix element
             ! is 0 and we can reject the spawning attempt.
-            call linked_excitation(sys%basis, connection, cluster, linked, single_unlinked, excitor)
+            call linked_excitation(sys%basis, reference%f0, connection, cluster, linked, single_unlinked, excitor)
         else
             linked = .false.
         end if
@@ -2146,7 +2164,7 @@ contains
             do i = 1, npartitions
                 ! Iterate over all allowed partitions and get contribution to
                 ! hmatel and pgen
-                call partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, &
+                call partition_cluster(rng, sys, reference%f0, cluster, left_cluster, right_cluster, ppart, &
                                        ldet%f, rdet%f, allowed, sign_change, i)
                 if (allowed) then
                     ! need to check that the excitation is valid!
@@ -2217,7 +2235,7 @@ contains
 
     end subroutine linked_spawner_ccmc
 
-    subroutine partition_cluster(rng, sys, cluster, left_cluster, right_cluster, ppart, &
+    subroutine partition_cluster(rng, sys, f0, cluster, left_cluster, right_cluster, ppart, &
                                  ldet, rdet, allowed, sign_change, part_number)
 
         ! Divides a cluster into two halves such that any excitors that share an
@@ -2226,6 +2244,7 @@ contains
         ! In:
         !    cluster: the cluster of excitors
         !    sys: the system being studied
+        !    f0: bit string of the reference
         !    part_number: (optional) use to enumerate partitions rather than
         !            choosing a random one
         ! In/Out:
@@ -2244,6 +2263,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f0(sys%basis%string_len)
         type(cluster_t), intent(in) :: cluster
         type(cluster_t), intent(inout) :: left_cluster, right_cluster
         type(dSFMT_t), intent(inout) :: rng
@@ -2288,7 +2308,7 @@ contains
                 if (in_left == 1) then
                     ldet = cluster%excitors(i)%f
                 else
-                    call collapse_cluster(sys%basis, cluster%excitors(i)%f, 1.0_p, ldet, population, allowed)
+                    call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, 1.0_p, ldet, population, allowed)
                     if (.not.allowed) exit
                 end if
             else
@@ -2298,7 +2318,7 @@ contains
                 if (in_right == 1) then
                     rdet = cluster%excitors(i)%f
                 else
-                    call collapse_cluster(sys%basis, cluster%excitors(i)%f, 1.0_p, rdet, population, allowed)
+                    call collapse_cluster(sys%basis, f0, cluster%excitors(i)%f, 1.0_p, rdet, population, allowed)
                     if (.not.allowed) exit
                 end if
             end if

@@ -11,7 +11,7 @@ public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space, ge
 
 contains
 
-    subroutine estimate_hilbert_space(sys, seed)
+    subroutine estimate_hilbert_space(sys, reference, seed)
 
         ! Based on Appendix A in George Booth's thesis.
 
@@ -29,6 +29,7 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: reference determinant.
         ! In:
         !    seed: seed for the dSFMT random number generator.
 
@@ -44,9 +45,10 @@ contains
         use system
         use parallel
         use utils, only: binom_r, rng_init_info
-        use qmc_data, only: reference_t, reference
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
         integer, intent(in) :: seed
 
         integer :: icycle, i, ierr, a

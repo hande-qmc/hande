@@ -6,7 +6,7 @@ implicit none
 
 contains
 
-    subroutine init_calc(sys, start_cpu_time, start_wall_time)
+    subroutine init_calc(sys, reference, start_cpu_time, start_wall_time)
 
         ! Initialise the calculation.
         ! Print out information about the compiled executable,
@@ -17,6 +17,8 @@ contains
         !     sys: system to be studied.  On input sys has default values.  On
         !          output, its values have been updated according to the input file
         !          and allocatable components have been appropriately allocated.
+        !    reference: current reference determinant. If specified as input, it has been
+        !          allocated and set on exit.
         ! Out:
         !     start_cpu_time: cpu_time at the start of the calculation.
         !     start_wall_time: system_clock at the start of the calculation.
@@ -34,11 +36,12 @@ contains
         use real_lattice, only: init_real_space
         use momentum_symmetry, only: init_momentum_symmetry
         use point_group_symmetry, only: print_pg_symmetry_info
-        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in
+        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in, reference_t
         use read_in_system, only: read_in_integrals
         use ueg_system, only: init_ueg_proc_pointers
 
         type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
         real, intent(out) :: start_cpu_time
         integer, intent(out) :: start_wall_time
 
@@ -57,13 +60,13 @@ contains
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
-        if (parent) call read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+        if (parent) call read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
-        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
         call init_system(sys)
 
-        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
         ! Initialise basis functions.
         if (sys%system == read_in) then
@@ -94,7 +97,7 @@ contains
 
     end subroutine init_calc
 
-    subroutine run_calc(sys)
+    subroutine run_calc(sys, reference)
 
         ! Run the calculation based upon the input options.
 
@@ -102,6 +105,8 @@ contains
         !    sys: system to be studied.  Note: sys may be altered during the
         !    calculation procedure but should be unaltered on exit of each
         !    calculation procedure.
+        !    reference: reference determinant. If given as input, that is used, otherwise it is set
+        !    during initialisation.
 
         use calc
         use diagonalisation, only: diagonalise
@@ -109,16 +114,17 @@ contains
         use hilbert_space, only: estimate_hilbert_space
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
-        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in
+        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in, reference_t
         use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
 
-        if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys)
+        if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys, reference)
 
         if (doing_calc(mc_hilbert_space)) then
-            call estimate_hilbert_space(sys, qmc_in%seed)
+            call estimate_hilbert_space(sys, reference, qmc_in%seed)
         end if
 
         if (doing_calc(mc_canonical_kinetic_energy)) then
@@ -127,15 +133,15 @@ contains
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call do_simple_fciqmc(sys, qmc_in, restart_in)
+                call do_simple_fciqmc(sys, qmc_in, restart_in, reference)
             else 
-                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
             end if
         end if
 
     end subroutine run_calc
 
-    subroutine end_calc(sys, start_cpu_time, start_wall_time)
+    subroutine end_calc(sys, reference, start_cpu_time, start_wall_time)
 
         ! Clean up time!
 
@@ -144,6 +150,8 @@ contains
         !     start_wall_time: system_clock at the start of the calculation.
         ! In/Out:
         !     sys: main system object.  All allocatable components are
+        !          deallocated on exit.
+        !     reference: defines the reference state. Allocatable components are
         !          deallocated on exit.
 
         use basis_types, only: dealloc_basis_t
@@ -160,8 +168,10 @@ contains
         use qmc_data, only: fciqmc_in
         use report, only: end_report
         use ueg_system, only: end_ueg_indexing
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
         real, intent(in) :: start_cpu_time
         integer, intent(in) :: start_wall_time
         real :: end_cpu_time, wall_time
@@ -184,7 +194,7 @@ contains
         call end_determinants()
         call end_hamil()
         call end_real_space(sys%heisenberg)
-        call end_fciqmc(fciqmc_in%non_blocking_comm)
+        call end_fciqmc(fciqmc_in%non_blocking_comm, reference)
 
         ! Calculation time.
         call cpu_time(end_cpu_time)

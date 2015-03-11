@@ -719,25 +719,32 @@ contains
 
     end subroutine write_fciqmc_report
 
-    subroutine end_fciqmc(nb_comm)
+    subroutine end_fciqmc(nb_comm, reference)
 
         ! Deallocate fciqmc data arrays.
 
-        ! In (optional):
+        ! In:
         !    nb_comm: true if using non-blocking communications.
+        ! In/Out:
+        !   reference: reference state. On exit, allocatable components are deallocated.
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
         use calc, only: dealloc_parallel_t
-        use qmc_data, only: reference_t, reference
+        use qmc_data, only: reference_t
 
         logical, intent(in) :: nb_comm
+        type(reference_t), intent(inout) :: reference
 
         integer :: ierr
 
         if (allocated(reference%occ_list0)) then
             deallocate(reference%occ_list0, stat=ierr)
             call check_deallocate('reference%occ_list0',ierr)
+        end if
+        if (allocated(reference%hs_occ_list0)) then
+            deallocate(reference%hs_occ_list0, stat=ierr)
+            call check_deallocate('reference%hs_occ_list0',ierr)
         end if
         if (allocated(nparticles)) then
             deallocate(nparticles, stat=ierr)
@@ -757,6 +764,10 @@ contains
         end if
         if (allocated(reference%f0)) then
             deallocate(reference%f0, stat=ierr)
+            call check_deallocate('reference%f0',ierr)
+        end if
+        if (allocated(reference%hs_f0)) then
+            deallocate(reference%hs_f0, stat=ierr)
             call check_deallocate('reference%f0',ierr)
         end if
         if (allocated(neel_singlet_amp)) then

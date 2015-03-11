@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, qmc_in, nspawn_events, determ)
+    subroutine direct_annihilation(sys, rng, qmc_in, reference, nspawn_events, determ)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -20,6 +20,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         ! In/Out:
         !    rng: random number generator.
         !    determ (optional): Derived type containing information on the
@@ -32,11 +33,12 @@ contains
         use spawn_data, only: annihilate_wrapper_spawn_t, calc_events_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
 
@@ -54,15 +56,15 @@ contains
                 call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx, determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, qmc_spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, qmc_spawn, determ_flags=determ%flags)
         else
             call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx)
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, qmc_spawn)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, qmc_spawn)
         end if
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_received_list(sys, rng, qmc_in)
+    subroutine direct_annihilation_received_list(sys, rng, qmc_in, reference)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -87,6 +89,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         ! In/Out:
         !    rng: random number generator.
 
@@ -96,10 +99,11 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         type(dSFMT_t), intent(inout) :: rng
 
         integer, parameter :: thread_id = 0
@@ -111,11 +115,11 @@ contains
         ! First annihilate within the received_list.
         call annihilate_wrapper_non_blocking_spawn(received_list, qmc_in%initiator_approx)
         ! Annihilate with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, received_list)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, received_list)
 
     end subroutine direct_annihilation_received_list
 
-    subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, send_counts, req_data_s, non_block_spawn,&
+    subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, reference, send_counts, req_data_s, non_block_spawn,&
                                                 nspawn_events)
 
         ! Annihilation algorithm for non-blocking communications.
@@ -129,6 +133,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         ! In/Out:
         !    rng: random number generator.
         !    send_counts: array of messages sizes. Will be allocated in
@@ -146,11 +151,12 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer, intent(inout) :: send_counts(0:)
         integer, intent(inout) :: req_data_s(0:)
         integer, intent(out) :: non_block_spawn(:)
@@ -168,14 +174,14 @@ contains
         ! list which needs to be annihilated with the main list on this processor.
         call annihilate_wrapper_non_blocking_spawn(qmc_spawn, qmc_in%initiator_approx, iproc)
         ! Annihilate portion of spawned list with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+nthreads)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+nthreads)
         ! Communicate walkers spawned onto other processors during this
         ! evolution step to their new processors.
         call non_blocking_send(qmc_spawn, send_counts, req_data_s)
 
     end subroutine direct_annihilation_spawned_list
 
-    subroutine annihilate_main_list_wrapper(sys, rng, qmc_in, spawn, lower_bound, determ_flags)
+    subroutine annihilate_main_list_wrapper(sys, rng, qmc_in, reference, spawn, lower_bound, determ_flags)
 
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process during non-blocking
@@ -184,6 +190,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object containing spawned particles. For non-blocking
@@ -197,11 +204,12 @@ contains
         use system, only: sys_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer, optional, intent(in) :: lower_bound
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
@@ -233,7 +241,7 @@ contains
             if (qmc_in%real_amplitudes) call round_low_population_spawns(rng, lower_bound)
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers(sys, spawn, determ_flags, lower_bound)
+            call insert_new_walkers(sys, reference%H00, spawn, determ_flags, lower_bound)
 
         else
 
@@ -593,7 +601,7 @@ contains
 
     end subroutine round_low_population_spawns
 
-    subroutine insert_new_walkers(sys, spawn, determ_flags, lower_bound)
+    subroutine insert_new_walkers(sys, H00, spawn, determ_flags, lower_bound)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -601,6 +609,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    H00: energy of reference determinant
         ! In/Out:
         !    spawn: spawn_t object containing list of spawned particles.
         ! In (optional):
@@ -612,6 +621,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: H00
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
         integer, intent(in), optional :: lower_bound
@@ -671,7 +681,7 @@ contains
             ! The encoded spawned walker sign.
             associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i), &
                     tbl=>sys%basis%tensor_label_len)
-                call insert_new_walker(sys, k, int(spawn%sdata(:tbl,i), i0), int(spawned_population, int_p))
+                call insert_new_walker(sys, k, int(spawn%sdata(:tbl,i), i0), int(spawned_population, int_p), H00)
                 ! Extract the real sign from the encoded sign.
                 real_population = real(spawned_population,p)/real_factor
                 nparticles = nparticles + abs(real_population)
@@ -691,7 +701,7 @@ contains
 
     end subroutine insert_new_walkers
 
-    subroutine insert_new_walker(sys, pos, det, population)
+    subroutine insert_new_walker(sys, pos, det, population, H00)
 
         ! Insert a new determinant, det, at position pos in walker_dets. Also
         ! insert a new population at position pos in walker_population and
@@ -705,6 +715,7 @@ contains
         !        data.
         !    det: The determinant to insert into walker_dets.
         !    population: The population to insert into walker_population.
+        !    H00: energy of the reference determinant.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use calc, only: trial_function, neel_singlet, propagate_to_beta
@@ -712,19 +723,19 @@ contains
         use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr
         use system, only: sys_t
-        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: pos
         integer(i0), intent(in) :: det(sys%basis%tensor_label_len)
         integer(int_p), intent(in) :: population(sampling_size)
+        real(p), intent(in) :: H00
 
         ! Insert the new determinant.
         walker_dets(:,pos) = det
         ! Insert the new population.
         walker_population(:,pos) = population
         ! Calculate and insert all new components of walker_data.
-        walker_data(1,pos) = sc0_ptr(sys, det) - reference%H00
+        walker_data(1,pos) = sc0_ptr(sys, det) - H00
         if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = neel_singlet_data(sys, det)
         if (doing_calc(hfs_fciqmc_calc)) then
             ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
@@ -734,12 +745,12 @@ contains
                 ! Store H^T_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj),
                 ! where H^T_ii is the "trial" Hamiltonian.
                 associate(bl=>sys%basis%string_len)
-                    walker_data(1,pos) = -trial_dm_ptr(sys, walker_dets((bl+1):(2*bl),pos)) + (walker_data(1,pos) + reference%H00)
+                    walker_data(1,pos) = -trial_dm_ptr(sys, walker_dets((bl+1):(2*bl),pos)) + (walker_data(1,pos) + H00)
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.
                 associate(bl=>sys%basis%string_len)
-                    walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - reference%H00)/2
+                    walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - H00)/2
                 end associate
                 if (replica_tricks) then
                     walker_data(2:sampling_size,pos) = walker_data(1,pos)

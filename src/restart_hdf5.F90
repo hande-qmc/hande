@@ -203,12 +203,13 @@ module restart_hdf5
         end subroutine init_restart_hdf5
 #endif
 
-        subroutine dump_restart_hdf5(ri, ncycles, total_population, nb_comm)
+        subroutine dump_restart_hdf5(ri, reference, ncycles, total_population, nb_comm)
 
             ! Write out a restart file.
 
             ! In:
             !    ri: restart information.  ri%restart_stem and ri%write_id are used.
+            !    reference: current reference determinant.
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
             !    nb_comm: true is using non-blocking communications.
@@ -227,9 +228,10 @@ module restart_hdf5
                                    D0_population, par_info, received_list
             use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
-        use qmc_data, only: reference_t, reference
+            use qmc_data, only: reference_t
 
             type(restart_info_t), intent(in) :: ri
+            type(reference_t), intent(in) :: reference
             integer, intent(in) :: ncycles
             real(p), intent(in) :: total_population(:)
             logical, intent(in) :: nb_comm
@@ -356,13 +358,15 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nb_comm)
+        subroutine read_restart_hdf5(ri, nb_comm, reference)
 
             ! Read QMC data from restart file.
 
             ! In:
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
             !    nb_comm: true if using non-blocking communications.
+            ! In/Out:
+            !    reference: reference determinant. Set from the value in the restart file
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -377,10 +381,11 @@ module restart_hdf5
                                    par_info, received_list
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
-        use qmc_data, only: reference_t, reference
+            use qmc_data, only: reference_t
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
+            type(reference_t), intent(inout) :: reference
 
 #ifndef DISABLE_HDF5
             ! HDF5 kinds

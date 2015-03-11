@@ -469,7 +469,6 @@ contains
         use fciqmc_data, only: walker_data
         use fciqmc_data, only: numerators, energy_squared_ind
         use system, only: sys_t
-        use qmc_data, only: reference_t, reference
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet

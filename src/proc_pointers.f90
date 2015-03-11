@@ -56,6 +56,7 @@ abstract interface
     end subroutine i_update_dmqmc_energy_and_trace
     subroutine i_update_dmqmc_estimators(sys, idet, excitation, H00, walker_pop)
         use system, only: sys_t
+        use qmc_data, only: reference_t
         import :: excit_t, p
         implicit none
         type(sys_t), intent(in) :: sys
@@ -105,12 +106,14 @@ abstract interface
         integer, intent(in) :: determ_flag
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
-    subroutine i_create_spawned_particle(basis, d, connection, nspawned, particle_indx, spawn, f)
+    subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
         import :: excit_t, det_info_t, int_p, i0
         implicit none
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: d
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned

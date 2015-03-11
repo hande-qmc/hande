@@ -10,7 +10,7 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -20,6 +20,7 @@ contains
         !         run if needed.
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    reference: the reference determinant.
         ! In:
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
@@ -34,7 +35,7 @@ contains
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t
+        use qmc_data, only: restart_in_t, reference_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use parallel, only: nprocs
 
@@ -44,6 +45,7 @@ contains
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         real(p) :: hub_matel
         type(sys_t) :: sys_bak
@@ -56,23 +58,23 @@ contains
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, fciqmc_in, restart_in)
+        call init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
         if (doing_calc(dmqmc_calc)) then
-            call do_dmqmc(sys, qmc_in, restart_in)
+            call do_dmqmc(sys, qmc_in, restart_in, reference)
         else if (doing_calc(ct_fciqmc_calc)) then
-            call do_ct_fciqmc(sys, qmc_in, restart_in, hub_matel)
+            call do_ct_fciqmc(sys, qmc_in, restart_in, reference, hub_matel)
         else if (doing_calc(ccmc_calc)) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
             if (doing_calc(hfs_fciqmc_calc)) then
-                call do_hfs_fciqmc(sys, qmc_in, restart_in)
+                call do_hfs_fciqmc(sys, qmc_in, restart_in, reference)
             else
-                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in)
+                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, reference)
             end if
         end if
 
@@ -83,7 +85,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in, fciqmc_in, restart_in)
+    subroutine init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -96,6 +98,7 @@ contains
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
+        !    reference: current reference determinant.
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -119,12 +122,13 @@ contains
         use utils, only: factorial_combination_1
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, reference_t, reference
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
@@ -290,7 +294,7 @@ contains
                 allocate(reference%occ_list0(sys%nel), stat=ierr)
                 call check_allocate('reference%occ_list0',sys%nel,ierr)
             end if
-            call read_restart_hdf5(restart_info_global, fciqmc_in%non_blocking_comm)
+            call read_restart_hdf5(restart_info_global, fciqmc_in%non_blocking_comm, reference)
             ! Need to re-calculate the reference determinant data
             call decode_det(sys%basis, reference%f0, reference%occ_list0)
             if (trial_function == neel_singlet) then

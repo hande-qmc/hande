@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, qmc_in, restart, ndets, dets, ref_det)
+    subroutine init_simple_fciqmc(sys, qmc_in, reference, restart, ndets, dets, ref_det)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -28,6 +28,7 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: reference determinant. Set on output.
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    restart: true is restarting from a HDF5 file.
@@ -42,11 +43,12 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use qmc_data, only: qmc_in_t, reference_t, reference
+        use qmc_data, only: qmc_in_t, reference_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(inout) :: reference
         logical, intent(in) :: restart
         integer, intent(out) :: ref_det
 
@@ -174,19 +176,20 @@ contains
 
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc(sys, qmc_in, restart_in)
+    subroutine do_simple_fciqmc(sys, qmc_in, restart_in, reference)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: current reference determinant. May be set on input, will be on output.
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    restart_in: input options for HDF5 restart files.
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
-        use qmc_data, only: qmc_in_t, restart_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
@@ -194,6 +197,7 @@ contains
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         integer :: ireport, icycle, idet, ipart, j
         real(p) :: nparticles, nparticles_old
@@ -204,7 +208,7 @@ contains
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
 
-        call init_simple_fciqmc(sys, qmc_in, restart_in%read_restart, ndets, dets, ref_det)
+        call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det)
 
         if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
@@ -264,7 +268,7 @@ contains
                         end do
                     end if
 
-                    call simple_death(rng, qmc_in%tau, Hii, walker_population(1,idet))
+                    call simple_death(rng, qmc_in%tau, Hii, reference%H00, walker_population(1,idet))
 
                 end do
 
@@ -298,7 +302,8 @@ contains
 
             ! Write restart file if required.
             if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, (/nparticles_old/), .false.)
+                call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+                                       (/nparticles_old/), .false.)
 
             t1 = t2
 
@@ -307,7 +312,8 @@ contains
         if (parent) write (6,'()')
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, (/nparticles_old/), .false.)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
+                                   (/nparticles_old/), .false.)
             if (parent) write (6,'()')
         end if
 
@@ -388,22 +394,21 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(rng, tau, Hii, pop)
+    subroutine simple_death(rng, tau, Hii, H00, pop)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
 
         ! In:
         !    tau: timestep being used.
         !    Hii: diagonal matrix element, <D_i|H|D_i>
+        !    H00: energy of the reference.
         ! In/Out:
         !    rng: random number generator.
         !    pop: population on |D_i>.  On output, the population is updated from applying
         !         the death step.
 
-        use qmc_data, only: reference_t, reference
-
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: tau, Hii
+        real(p), intent(in) :: tau, Hii, H00
         integer(int_p), intent(inout) :: pop
 
         integer :: nkill
@@ -417,7 +422,7 @@ contains
         ! We store the Hamiltonian matrix rather than the K matrix.
         ! It is efficient to allow all particles on a given determinant to
         ! attempt to die in one go (like lemmings) in a stochastic process.
-        rate = abs(pop)*tau*(Hii-reference%H00-shift(1))
+        rate = abs(pop)*tau*(Hii-H00-shift(1))
         ! Number to definitely kill.
         nkill = int(rate)
         rate = rate - nkill
@@ -434,7 +439,7 @@ contains
 
         ! Don't allow creation of anti-particles in simple_fciqmc.
         if (nkill > abs(pop)) then
-            write (6,*) pop, abs(pop)*tau*(Hii-reference%H00-shift(1))
+            write (6,*) pop, abs(pop)*tau*(Hii-H00-shift(1))
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 

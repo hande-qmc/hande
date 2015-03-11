@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -34,6 +34,7 @@ contains
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
+        !    reference: reference determinant.
 
 ! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
@@ -41,7 +42,7 @@ contains
 #endif
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t, reference_t, reference
+        use qmc_data, only: restart_in_t, reference_t
         use system
 
         use input
@@ -60,6 +61,7 @@ contains
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
         type(restart_in_t), intent(inout) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         character(255) :: cInp
         character(100) :: w
@@ -574,7 +576,7 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
@@ -587,10 +589,11 @@ contains
         ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
+        !    reference: reference determinant.
 
         use const
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t, reference_t, reference
+        use qmc_data, only: restart_in_t, reference_t
         use system
 
         type(sys_t), intent(inout) :: sys
@@ -599,6 +602,7 @@ contains
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(in) :: reference
 
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
@@ -771,7 +775,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in)
+    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -787,9 +791,10 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
+        !    reference: current reference determinant.
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t, reference_t, reference
+        use qmc_data, only: restart_in_t, reference_t
 
 #ifndef PARALLEL
 
@@ -801,6 +806,7 @@ contains
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
         type(restart_in_t), intent(inout) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
 #else
 
@@ -816,6 +822,7 @@ contains
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
         type(restart_in_t), intent(inout) :: restart_in
+        type(reference_t), intent(inout) :: reference
 
         integer :: i, ierr, occ_list_size
         logical :: option_set

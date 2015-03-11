@@ -10,7 +10,7 @@ contains
 
 ! --- Utility routines ---
 
-    subroutine select_ref_det(sys, ref_det_factor)
+    subroutine select_ref_det(sys, ref_det_factor, reference)
 
         ! Change the reference determinant to be the determinant with the
         ! greatest population if it exceeds some threshold relative to the
@@ -28,6 +28,8 @@ contains
         !    ref_det_factor: factor by which population on a determinant must
         !        exceed the reference population in order to be accepted as
         !        the new reference.
+        ! In/Out:
+        !    reference: reference determinant.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det, write_det
@@ -35,10 +37,11 @@ contains
 
         use parallel
         use errors, only: stop_all
-        use qmc_data, only: reference_t, reference
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: ref_det_factor
+        type(reference_t), intent(inout) :: reference
 
         integer, parameter :: particle_type = 1
         integer :: i, D0_proc
@@ -513,14 +516,12 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, spawn, determ)
+    subroutine redistribute_semi_stoch_t(sys, reference, spawn, determ)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
         ! and recreating the related objects, such as the deterministic
         ! Hamiltonian.
-
-        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
 
         ! In:
         !    sys: system being studied.
@@ -530,10 +531,14 @@ contains
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
 
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
+
         use spawn_data, only: spawn_t
         use system, only: sys_t
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
 
@@ -548,14 +553,14 @@ contains
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, sys, spawn, reuse_determ_space, 0, sep_annihil_copy, .false., .true.)
+            call init_semi_stoch_t(determ, sys, reference, spawn, reuse_determ_space, 0, sep_annihil_copy, .false., .true.)
         end if
 
     end subroutine redistribute_semi_stoch_t
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, nb_comm, rep_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, reference, nb_comm, rep_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -564,6 +569,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         ! In (optional):
         !    nb_comm: true if using non-blocking communications.
         ! Out (Optional):
@@ -575,11 +581,12 @@ contains
         use excitations, only: excit_t, get_excitation
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_in_t, reference_t, reference
+        use qmc_data, only: qmc_in_t, reference_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         logical, optional, intent(in) :: nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
         integer, optional, intent(in) :: spawn_elsewhere
@@ -674,7 +681,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath, min_attempts, doing_lb, nb_comm, determ)
+    subroutine init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath, min_attempts, doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -684,6 +691,7 @@ contains
         ! In:
         !    sys: system being studied
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! Out:
@@ -702,12 +710,13 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
@@ -751,8 +760,8 @@ contains
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
                 call do_load_balancing(real_factor, par_info)
-                call redistribute_load_balancing_dets(rng, sys, qmc_in, walker_dets, real_factor, determ, walker_population, &
-                                                      tot_walkers, nparticles, qmc_spawn)
+                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, &
+                                                      walker_population, tot_walkers, nparticles, qmc_spawn)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.
@@ -763,12 +772,13 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, qmc_in, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
+    subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
                                semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, &
                                update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm)
 
         ! In:
         !    sys: system being studied.
+        !    reference: current reference determinant.
         !    ireport: index of current report loop.
         !    iteration: The current iteration of the simulation.
         !    update_tau: true if the processor thinks the timestep should be rescaled.
@@ -813,9 +823,10 @@ contains
         use system, only: sys_t
         use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
 
         type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference
         type(qmc_in_t), intent(inout) :: qmc_in
         integer, intent(in) :: ireport, iteration
         logical, intent(in) :: update_tau
@@ -890,9 +901,11 @@ contains
         ! Write restart file if required.
         if (dump_restart_file_shift .and. any(vary_shift)) then
             dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+qmc_in%ncycles*ireport, ntot_particles, nb_comm_local)
+            call dump_restart_hdf5(restart_info_global_shift, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+                                   ntot_particles, nb_comm_local)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+qmc_in%ncycles*ireport, ntot_particles, nb_comm_local)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+                                   ntot_particles, nb_comm_local)
         end if
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time
@@ -948,7 +961,7 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, walker_dets, real_factor, &
+    subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, &
                                                 determ, walker_populations, tot_walkers, &
                                                 nparticles, spawn)
 
@@ -964,6 +977,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
         !    walker_dets: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
@@ -982,13 +996,14 @@ contains
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: walker_dets(:,:)
         integer(int_p), intent(in) :: real_factor
         type(semi_stoch_t), optional, intent(inout) :: determ
@@ -1001,10 +1016,10 @@ contains
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
-        call direct_annihilation(sys, rng, qmc_in)
+        call direct_annihilation(sys, rng, qmc_in, reference)
         spawn%head = spawn%head_start
 
-        if (present(determ)) call redistribute_semi_stoch_t(sys, spawn, determ)
+        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, spawn, determ)
 
     end subroutine redistribute_load_balancing_dets
 

@@ -460,6 +460,4 @@ type(semi_stoch_in_t) :: semi_stoch_in
 type(ccmc_in_t) :: ccmc_in
 type(restart_in_t) :: restart_in
 
-type(reference_t) :: reference
-
 end module qmc_data

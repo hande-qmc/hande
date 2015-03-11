@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, restart_in)
+    subroutine do_dmqmc(sys, qmc_in, restart_in, reference)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -16,6 +16,7 @@ contains
 
         ! In:
         !    restart_in: input options for HDF5 restart files.
+        !    reference: reference determinant.
         ! In/Out:
         !    sys: system being studied.  NOTE: if modified inside a procedure,
         !         it should be returned in its original (ie unmodified state)
@@ -38,11 +39,12 @@ contains
         use calc, only: propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, reference
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(in) :: reference
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
@@ -97,7 +99,7 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, qmc_in, init_tot_nparticles, tot_nparticles)
+            call create_initial_density_matrix(rng, sys, qmc_in, reference, init_tot_nparticles, tot_nparticles)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
@@ -110,7 +112,7 @@ contains
 
                 do icycle = 1, qmc_in%ncycles
 
-                    call init_mc_cycle(rng, sys, qmc_in, real_factor, nattempts, ndeath)
+                    call init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
@@ -211,7 +213,7 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, qmc_in, nspawn_events)
+                    call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
@@ -230,7 +232,7 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, qmc_in, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
+                call end_report_loop(sys, qmc_in, reference, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
                                      unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, .false., &
                                      bloom_stats=bloom_stats)
 
@@ -260,7 +262,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done, tot_nparticles, .false.)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
 
