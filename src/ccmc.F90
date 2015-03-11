@@ -2378,8 +2378,8 @@ contains
                 end if
             else
                 if (connection%nexcit == 1) then
-                    pgen = qmc_in%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, parent_det%symunocc, &
-                        connection%to_orb(1))
+                    pgen = qmc_in%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, &
+                                                                         parent_det%symunocc, connection%to_orb(1))
                 else
                     a = connection%to_orb(1)
                     b = connection%to_orb(2)
