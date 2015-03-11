@@ -50,7 +50,7 @@ type qmc_in_t
     ! [todo] - remove default?
     real(p) :: D0_population = 10.0_p
     ! Number of particles before which varyshift mode is turned on.
-    real(dp) :: target_particles = huge(1.0_dp)
+    real(p) :: target_particles = huge(1.0_p)
 
     ! Using the initiator approximation?
     logical :: initiator_approx = .false.
@@ -333,11 +333,11 @@ type walker_t
     ! Updated during death and annihilation and merging.
     ! The first element is the number of normal (Hamiltonian) particles.
     ! Subsequent elements are the number of Hellmann--Feynamnn particles.
-    real(dp), allocatable :: nparticles(:) ! (sampling_size)
+    real(p), allocatable :: nparticles(:) ! (sampling_size)
     ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
-    real(dp), allocatable :: tot_nparticles(:) ! (sampling_size)
+    real(p), allocatable :: tot_nparticles(:) ! (sampling_size)
     ! Total number of particles on all determinants for each processor
-    real(dp), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
+    real(p), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
     ! Walker information: main list.
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
     ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
@@ -354,7 +354,7 @@ type walker_t
     !   When using the real_amplitudes option, walker_population stores encoded
     !   representations of the true walker populations. To convert
     !   walker_population(:,i) to the actual population on determinant i, one must
-    !   take real(walker_population(:,i),dp)/real_factor. Thus, the resolution
+    !   take real(walker_population(:,i),p)/real_factor. Thus, the resolution
     !   in the true walker populations is 1/real_factor. This is how
     !   non-integers populations are implemented. When not using the real_amplitudes
     !   option, real_factor will be equal to 1, allowing only integer
