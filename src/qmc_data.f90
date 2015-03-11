@@ -459,5 +459,6 @@ type(fciqmc_in_t) :: fciqmc_in
 type(semi_stoch_in_t) :: semi_stoch_in
 type(ccmc_in_t) :: ccmc_in
 type(restart_in_t) :: restart_in
+type(load_bal_in_t) :: load_bal_in
 
 end module qmc_data

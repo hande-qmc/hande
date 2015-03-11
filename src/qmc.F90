@@ -10,7 +10,7 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
+    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -25,6 +25,7 @@ contains
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
+        !    load_bal_in: input options for load balancing.
 
         use calc
 
@@ -35,7 +36,7 @@ contains
         use hellmann_feynman_sampling, only: do_hfs_fciqmc
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t, reference_t
+        use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use parallel, only: nprocs
 
@@ -46,6 +47,7 @@ contains
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(inout) :: reference
+        type(load_bal_in_t), intent(inout) :: load_bal_in
 
         real(p) :: hub_matel
         type(sys_t) :: sys_bak
@@ -58,7 +60,7 @@ contains
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference)
+        call init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference, load_bal_in)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
@@ -74,7 +76,7 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) then
                 call do_hfs_fciqmc(sys, qmc_in, restart_in, reference)
             else
-                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, reference)
+                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
             end if
         end if
 
@@ -85,7 +87,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference)
+    subroutine init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference, load_bal_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -95,6 +97,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    restart_in: input options for HDF5 restart files.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
@@ -122,13 +125,14 @@ contains
         use utils, only: factorial_combination_1
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, reference_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, reference_t, load_bal_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(inout) :: reference
+        type(load_bal_in_t), intent(inout) :: load_bal_in
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
@@ -272,8 +276,9 @@ contains
                                spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
-        if (nprocs == 1 .or. .not. fciqmc_in%doing_load_balancing) par_info%load%nslots = 1
-        call init_parallel_t(sampling_size, nparticles_start_ind-1, fciqmc_in%non_blocking_comm, par_info)
+        if (nprocs == 1 .or. .not. fciqmc_in%doing_load_balancing) load_bal_in%nslots = 1
+        call init_parallel_t(sampling_size, nparticles_start_ind-1, fciqmc_in%non_blocking_comm, par_info, &
+                             load_bal_in%nslots)
 
         allocate(reference%f0(sys%basis%string_len), stat=ierr)
         call check_allocate('reference%f0',sys%basis%string_len,ierr)

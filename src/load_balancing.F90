@@ -97,7 +97,7 @@ end type dbin_t
 
 contains
 
-    subroutine do_load_balancing(real_factor, parallel_info)
+    subroutine do_load_balancing(real_factor, parallel_info, nload_slots)
 
         ! Main subroutine in module, carries out load balancing as follows:
         ! 1. If doing load balancing then:
@@ -112,6 +112,7 @@ contains
         ! In:
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
+        !    nload_slots: number of load balancing slots.
         ! In/Out:
         !    parallel_info: parallel_t type object containing information for
         !       parallel calculation see calc.f90 for description.
@@ -123,9 +124,11 @@ contains
         use ranking, only: insertion_rank
         use calc, only: parallel_t
         use checking, only: check_allocate, check_deallocate
+        use qmc_data, only: load_bal_in_t
 
         integer(int_p), intent(in) :: real_factor
         type(parallel_t), intent(inout) :: parallel_info
+        integer, intent(in) :: nload_slots
 
         real(p) :: slot_pop(0:size(parallel_info%load%proc_map)-1)
         real(p) :: slot_list(0:size(parallel_info%load%proc_map)-1)
@@ -141,7 +144,7 @@ contains
         associate(lb=>parallel_info%load)
 
         ! Find slot populations.
-        call initialise_slot_pop(lb%proc_map, lb%nslots, qmc_spawn, real_factor, slot_pop)
+        call initialise_slot_pop(lb%proc_map, nload_slots, qmc_spawn, real_factor, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)

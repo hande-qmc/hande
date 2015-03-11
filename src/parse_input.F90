@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
+    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -34,7 +34,7 @@ contains
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
-        !    reference: reference determinant.
+        !    load_bal_in: input options for load balancing.
 
 ! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
@@ -42,7 +42,7 @@ contains
 #endif
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t, reference_t
+        use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
         use system
 
         use input
@@ -62,6 +62,7 @@ contains
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
         type(restart_in_t), intent(inout) :: restart_in
         type(reference_t), intent(inout) :: reference
+        type(load_bal_in_t), intent(inout) :: load_bal_in
 
         character(255) :: cInp
         character(100) :: w
@@ -538,7 +539,7 @@ contains
             case('LOAD_BALANCING')
                 fciqmc_in%doing_load_balancing = .true.
             case('LOAD_BALANCING_SLOTS')
-                call readi(par_info%load%nslots)
+                call readi(load_bal_in%nslots)
             case('LOAD_BALANCING_POP')
                 call readli(par_info%load%pop)
             case('PERCENT_IMBAL')
@@ -576,7 +577,7 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
+    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
@@ -586,6 +587,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
         !    ccmc_in: input options relating to CCMC.
+        !    load_bal_in: input options for load balancing.
         ! In:
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
@@ -593,7 +595,7 @@ contains
 
         use const
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t, reference_t
+        use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
@@ -603,6 +605,7 @@ contains
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
+        type(load_bal_in_t), intent(in) :: load_bal_in
 
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
@@ -725,7 +728,7 @@ contains
                     end if
                 end if
             end if
-            if (par_info%load%nslots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
+            if (load_bal_in%nslots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
             if (par_info%load%pop < 0) call stop_all(this, 'Load balancing population must be positive.')
             if (par_info%load%percent < 0 .or. par_info%load%percent > 1.0) &
                 call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
@@ -1034,7 +1037,7 @@ contains
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(fciqmc_in%non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(fciqmc_in%doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(par_info%load%nslots, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(load_bal_in%nslots, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)

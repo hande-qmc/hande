@@ -327,7 +327,7 @@ contains
 
     end function doing_dmqmc_calc
 
-    subroutine init_parallel_t(ntypes, ndata, non_blocking_comm, par_calc)
+    subroutine init_parallel_t(ntypes, ndata, non_blocking_comm, par_calc, nslots)
 
         ! Allocate parallel_t object.
 
@@ -337,6 +337,7 @@ contains
         !        processors (nparticles_start_ind-1).
         !    non_blocking_comm: true if using non-blocking communications
         !    load_balancing: true if attempting load balancing.
+        !    nslots: number of slots we divide proc_map into
         ! In/Out:
         !    par_calc: type containing parallel information for calculation
         !        see definitions above.
@@ -346,6 +347,7 @@ contains
 
         integer, intent(in) :: ntypes, ndata
         logical, intent(in) :: non_blocking_comm
+        integer, intent(in) :: nslots
         type(parallel_t), intent(inout) :: par_calc
 
         integer :: i, ierr
@@ -360,9 +362,9 @@ contains
         end associate
 
         associate(lb=>par_calc%load)
-            allocate(lb%proc_map(0:lb%nslots*nprocs-1), stat=ierr)
+            allocate(lb%proc_map(0:nslots*nprocs-1), stat=ierr)
             call check_allocate('lb%proc_map', size(lb%proc_map), ierr)
-            forall (i=0:lb%nslots*nprocs-1) lb%proc_map(i) = modulo(i,nprocs)
+            forall (i=0:nslots*nprocs-1) lb%proc_map(i) = modulo(i,nprocs)
         end associate
 
     end subroutine init_parallel_t

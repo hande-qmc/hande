@@ -9,7 +9,8 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, reference)
+    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, &
+                         load_bal_in, reference)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -22,6 +23,7 @@ contains
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    fciqmc_in: input options relating to FCIQMC.
         !    restart_in: input options for HDF5 restart files.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    reference: reference determinant. May change during the calculation.
@@ -47,13 +49,15 @@ contains
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
+        type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(inout) :: reference
 
         type(det_info_t) :: cdet
@@ -147,8 +151,8 @@ contains
                 end if
 
                 call init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath, &
-                                   doing_lb=fciqmc_in%doing_load_balancing, &
-                                   nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
+                                   doing_lb=fciqmc_in%doing_load_balancing,  nb_comm=fciqmc_in%non_blocking_comm, &
+                                   determ=determ, nload_slots=load_bal_in%nslots)
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets

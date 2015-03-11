@@ -681,7 +681,8 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath, min_attempts, doing_lb, nb_comm, determ)
+    subroutine init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath, min_attempts, &
+                             doing_lb, nb_comm, determ, nload_slots)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -703,6 +704,8 @@ contains
         !    min_attempts: if present, set nattempts to be at least this value.
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
+        !    nload_slots: number of load balancing slots proc_map is divided
+        !        into.
         ! In/Out (optional):
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
@@ -723,6 +726,7 @@ contains
         integer(int_p), intent(out) :: ndeath
         logical, optional, intent(in) :: doing_lb, nb_comm
         type(semi_stoch_t), optional, intent(inout) :: determ
+        integer, optional, intent(in) :: nload_slots
 
         logical :: nb_comm_local
 
@@ -759,9 +763,9 @@ contains
 
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
-                call do_load_balancing(real_factor, par_info)
-                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, &
-                                                      walker_population, tot_walkers, nparticles, qmc_spawn)
+                call do_load_balancing(real_factor, par_info, nload_slots)
+                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, &
+                                                      determ, walker_population, tot_walkers, nparticles, qmc_spawn)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.
