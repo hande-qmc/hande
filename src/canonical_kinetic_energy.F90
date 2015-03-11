@@ -27,6 +27,7 @@ contains
         use fciqmc_data, only: init_beta, D0_population
         use utils, only: rng_init_info
         use hamiltonian_ueg, only: sum_sp_eigenvalues
+        use interact, only: fciqmc_interact
 
         type(sys_t), intent(inout) :: sys
 
@@ -39,6 +40,7 @@ contains
 
         type(sys_t) :: sys_bak
         type (dSFMT_t) :: rng
+        logical :: soft_exit
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -73,6 +75,8 @@ contains
             ke = ke_proc
 #endif
             if (parent) write(6,'(3X,i10,5X,es17.10)') ireport, ke / (nprocs*D0_population)
+            call fciqmc_interact(soft_exit)
+            if (soft_exit) exit
         end do
 
         if (parent) write(6, '()')
