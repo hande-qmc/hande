@@ -65,16 +65,16 @@ contains
         ! Calculation-specifc initialisation and then run QMC calculation.
 
         if (doing_calc(dmqmc_calc)) then
-            call do_dmqmc(sys, qmc_in, restart_in, reference)
+            call do_dmqmc(sys, qmc_in, restart_in, reference, load_bal_in)
         else if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(sys, qmc_in, restart_in, reference, hub_matel)
         else if (doing_calc(ccmc_calc)) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
             if (doing_calc(hfs_fciqmc_calc)) then
-                call do_hfs_fciqmc(sys, qmc_in, restart_in, reference)
+                call do_hfs_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in)
             else
                 call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
             end if
@@ -372,7 +372,8 @@ contains
                 ! belongs on this processor.
                 ! If it doesn't, set the walkers array to be empty.
                 call assign_particle_processor(reference%f0, sys%basis%string_len, qmc_spawn%hash_seed, &
-                                                    qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, D0_proc, slot)
+                                               qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, &
+                                               D0_proc, slot, load_bal_in%nslots)
                 if (D0_proc /= iproc) tot_walkers = 0
             end if
 
@@ -410,7 +411,8 @@ contains
                 end select
 
                 call assign_particle_processor(f0_inv, sys%basis%string_len, qmc_spawn%hash_seed, &
-                                                        qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, D0_inv_proc, slot)
+                                               qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, &
+                                               D0_inv_proc, slot, load_bal_in%nslots)
 
                 ! Store if not identical to reference det.
                 if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then

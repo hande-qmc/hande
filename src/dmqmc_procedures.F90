@@ -362,6 +362,7 @@ contains
     end subroutine find_rdm_masks
 
     subroutine create_initial_density_matrix(rng, sys, qmc_in, reference, target_nparticles_tot, nparticles_tot)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, reference, target_nparticles_tot, nparticles_tot, nload_slots)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -377,6 +378,7 @@ contains
         !    reference: current reference determinant.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
+        !    nload_slots: number of load balancing slots (per processor).
         ! Out:
         !    nparticles_tot: The total number of psips in the generated density
         !        matrix across all processes, for all replicas.
@@ -401,6 +403,7 @@ contains
         type(reference_t), intent(in) :: reference
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
+        integer, intent(in) :: nload_slots
 
         real(p) :: nparticles_temp(sampling_size)
         integer :: nel, ireplica, ierr
@@ -490,7 +493,7 @@ contains
             ! new determinants being accepted. So we need to reorganise the
             ! determinants appropriately.
             call redistribute_particles(walker_dets, real_factor, walker_population, &
-                                                               tot_walkers, nparticles, qmc_spawn)
+                                        tot_walkers, nparticles, qmc_spawn, nload_slots)
             call direct_annihilation(sys, rng, qmc_in, reference)
         end if
 

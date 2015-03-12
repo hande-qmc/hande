@@ -437,7 +437,8 @@ contains
 
     end subroutine load_balancing_report
 
-    subroutine redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+    subroutine redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn, &
+                                      nload_slots)
 
         ! [todo] JSS: - update comments to be more general than just for CCMC.
 
@@ -455,6 +456,7 @@ contains
         !    walker_dets: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
+        !    nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !    nparticles: number of excips on the current processor.
         !    walker_populations: Population on occupied excitors.  On output the
@@ -476,6 +478,7 @@ contains
         integer, intent(inout) :: tot_walkers
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: nload_slots
 
         real(p) :: nsent(size(nparticles))
 
@@ -490,7 +493,7 @@ contains
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
             call assign_particle_processor(walker_dets(:,iexcitor), string_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot)
+                                           spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot, nload_slots)
             if (pproc /= iproc) then
                 ! Need to move.
                 ! Add to spawned array so it will be sent to the correct
@@ -516,7 +519,7 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, reference, spawn, determ)
+    subroutine redistribute_semi_stoch_t(sys, reference, spawn, determ, nload_slots)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
@@ -527,6 +530,7 @@ contains
         !    sys: system being studied.
         !    spawn: spawn_t object, required for determining the new processes
         !        labels for deterministic states.
+        !    nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
@@ -541,6 +545,7 @@ contains
         type(reference_t), intent(in) :: reference
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
+        integer, intent(in) :: nload_slots
 
         logical :: sep_annihil_copy
 
@@ -553,7 +558,8 @@ contains
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, sys, reference, spawn, reuse_determ_space, 0, sep_annihil_copy, .false., .true.)
+            call init_semi_stoch_t(determ, sys, reference, spawn, reuse_determ_space, 0, sep_annihil_copy, &
+                                   .false., .true., nload_slots)
         end if
 
     end subroutine redistribute_semi_stoch_t
@@ -764,8 +770,8 @@ contains
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
                 call do_load_balancing(real_factor, par_info, nload_slots)
-                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, &
-                                                      determ, walker_population, tot_walkers, nparticles, qmc_spawn)
+                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, walker_population, &
+                                                      tot_walkers, nparticles, qmc_spawn, nload_slots)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.
@@ -967,7 +973,7 @@ contains
 
     subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, &
                                                 determ, walker_populations, tot_walkers, &
-                                                nparticles, spawn)
+                                                nparticles, spawn, nload_slots)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -985,6 +991,7 @@ contains
         !    walker_dets: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
+        !    nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !    rng: random number generator.
         !    determ (optional): The deterministic space being used, as required for
@@ -1015,15 +1022,17 @@ contains
         integer, intent(inout) :: tot_walkers
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: nload_slots
 
-        call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+        call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, &
+                                    nparticles, spawn, nload_slots)
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
         call direct_annihilation(sys, rng, qmc_in, reference)
         spawn%head = spawn%head_start
 
-        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, spawn, determ)
+        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, spawn, determ, nload_slots)
 
     end subroutine redistribute_load_balancing_dets
 

@@ -267,7 +267,7 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, idet, iteration, cdet, H00)
+    subroutine update_dmqmc_estimators(sys, idet, iteration, cdet, H00, nload_slots)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -283,6 +283,7 @@ contains
         !    cdet: det_info_t object containing information of current density
         !        matrix element.
         !    H00: diagonal Hamiltonian element for the reference.
+        !    nload_slots: number of load balancing slots (per processor).
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
@@ -301,6 +302,7 @@ contains
         integer, intent(in) :: idet, iteration
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: H00
+        integer, intent(in) :: nload_slots
 
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(sampling_size)
@@ -355,7 +357,7 @@ contains
 
         ! Reduced density matrices.
         if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
-            &(sys%basis, idet, excitation, walker_population(:,idet), iteration)
+            &(sys%basis, idet, excitation, walker_population(:,idet), iteration, nload_slots)
 
         accumulated_probs_old = accumulated_probs
 
@@ -733,7 +735,8 @@ contains
 
     end subroutine update_full_renyi_2
 
-    subroutine update_reduced_density_matrix_heisenberg(basis, idet, excitation, walker_pop, iteration)
+    subroutine update_reduced_density_matrix_heisenberg(basis, idet, excitation, walker_pop, &
+                                                        iteration, nload_slots)
 
         ! Add the contribution from the current walker to the reduced density
         ! matrices being sampled. This is performed by 'tracing out' the
@@ -758,6 +761,7 @@ contains
         !        removed before any estimates can be calculated.
         !    iteration: interation number.  No accumulation of the RDM is
         !        performed if iteration <= start_averaging.
+        !    nload_slots: number of load balancing slots (per processor).
 
         use basis_types, only: basis_t
         use dmqmc_procedures, only: decode_dm_bitstring
@@ -772,6 +776,8 @@ contains
         integer, intent(in) :: idet, iteration
         integer(int_p), intent(in) :: walker_pop(sampling_size)
         type(excit_t), intent(in) :: excitation
+        integer, intent(in) :: nload_slots
+
         real(p) :: unweighted_walker_pop(sampling_size)
         integer :: irdm, isym, ireplica
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
@@ -820,7 +826,7 @@ contains
                 do ireplica = 1, sampling_size
                 if (abs(walker_pop(ireplica)) > 0) then
                     call create_spawned_particle_rdm(rdms(irdm), walker_pop(ireplica), &
-                        ireplica, rdm_spawn(irdm))
+                        ireplica, rdm_spawn(irdm), nload_slots)
                 end if
                 end do
             end if

@@ -144,7 +144,7 @@ contains
         associate(lb=>parallel_info%load)
 
         ! Find slot populations.
-        call initialise_slot_pop(lb%proc_map, nload_slots, qmc_spawn, real_factor, slot_pop)
+        call initialise_slot_pop(lb%proc_map, nload_slots, qmc_spawn, real_factor, slot_pop, nload_slots)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -503,7 +503,7 @@ contains
 
     end subroutine find_processors
 
-    subroutine initialise_slot_pop(proc_map, load_balancing_slots, spawn, real_factor, slot_pop)
+    subroutine initialise_slot_pop(proc_map, load_balancing_slots, spawn, real_factor, slot_pop, nslots)
 
         ! In:
         !   proc_map: array which maps determinants to processors.
@@ -525,6 +525,7 @@ contains
         integer(int_p), intent(in) :: real_factor
         integer, intent(in) :: proc_map(0:)
         real(p), intent(out) :: slot_pop(0:)
+        integer, intent(in) :: nslots
 
         integer :: i, det_pos, iproc_slot, tensor_label_len
 
@@ -533,7 +534,7 @@ contains
         slot_pop = 0.0_p
         do i = 1, tot_walkers
             call assign_particle_processor(walker_dets(:,i), tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                           nprocs, iproc_slot, det_pos)
+                                           nprocs, iproc_slot, det_pos, nslots)
             slot_pop(det_pos) = slot_pop(det_pos) + abs(real(walker_population(1,i),p))
         end do
 

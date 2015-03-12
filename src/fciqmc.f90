@@ -105,9 +105,11 @@ contains
         ! then turn it on now. Otherwise, use an empty deterministic space.
         if (semi_stoch_iter == 0) then
             call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
-                                    semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
+                                   semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
+                                   load_bal_in%nslots)
         else
-            call init_semi_stoch_t(determ, sys, reference, qmc_spawn, empty_determ_space, 0, .false., .false., .false.)
+            call init_semi_stoch_t(determ, sys, reference, qmc_spawn, empty_determ_space, 0, .false., .false., &
+                                   .false., load_bal_in%nslots)
         end if
 
         ! In case this is not set.
@@ -144,9 +146,9 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter) then
                     call dealloc_semi_stoch_t(determ, .false.)
-                    call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, &
-                                            semi_stoch_in%target_size, &
-                                            semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
+                    call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
+                                           semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
+                                           load_bal_in%nslots)
                     semi_stochastic = .true.
                 end if
 
@@ -202,13 +204,15 @@ contains
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
-                                    call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, &
-                                            qmc_spawn, f_child)
+                                    call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn, &
+                                                                     load_bal_in%nslots, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
                                 call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn)
+                                call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn, &
+                                                                 load_bal_in%nslots)
                             end if
                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -224,12 +228,12 @@ contains
 
                 if (fciqmc_in%non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
-                    call evolve_spawned_walkers(sys, qmc_in, reference, received_list, cdet, rng, ndeath)
+                    call evolve_spawned_walkers(sys, qmc_in, reference, received_list, cdet, rng, ndeath, load_bal_in%nslots)
                     call direct_annihilation_received_list(sys, rng, qmc_in, reference)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
                     if (par_info%load%needed) then
                         call redistribute_particles(walker_dets, real_factor,  walker_population, tot_walkers, &
-                                                    nparticles, qmc_spawn)
+                                                    nparticles, qmc_spawn, load_bal_in%nslots)
                         par_info%load%needed = .false.
                     end if
                     call direct_annihilation_spawned_list(sys, rng, qmc_in, reference, send_counts, req_data_s, &
@@ -301,7 +305,7 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, qmc_in, reference, spawn, cdet, rng, ndeath)
+    subroutine evolve_spawned_walkers(sys, qmc_in, reference, spawn, cdet, rng, ndeath, nload_slots)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
@@ -310,6 +314,7 @@ contains
         !   sys: system being studied.
         !   qmc_in: input options relating to QMC methods.
         !   reference: current reference determinant.
+        !   nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !   spawn: spawn_t object containing walkers spawned onto this processor during previous time step.
         !   cdet: type containing information about determinant. (easier to take this in as it is allocated
@@ -333,6 +338,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(inout) :: ndeath
+        integer, intent(in) :: nload_slots
 
         real(p), target :: tmp_data(sampling_size)
         type(excit_t) :: connection
@@ -379,7 +385,8 @@ contains
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then
-                    call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn)
+                    call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn, &
+                                                     nload_slots)
                 end if
 
             end do

@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, restart_in, reference)
+    subroutine do_dmqmc(sys, qmc_in, restart_in, reference, load_bal_in)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -17,6 +17,7 @@ contains
         ! In:
         !    restart_in: input options for HDF5 restart files.
         !    reference: reference determinant.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    sys: system being studied.  NOTE: if modified inside a procedure,
         !         it should be returned in its original (ie unmodified state)
@@ -39,12 +40,13 @@ contains
         use calc, only: propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
+        type(load_bal_in_t), intent(in) :: load_bal_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
@@ -99,7 +101,8 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, qmc_in, reference, init_tot_nparticles, tot_nparticles)
+            call create_initial_density_matrix(rng, sys, qmc_in, reference, init_tot_nparticles, tot_nparticles, &
+                                               load_bal_in%nslots)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
@@ -147,7 +150,7 @@ contains
                         ! Note DMQMC averages over multiple loops over
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
-                        if (icycle == 1) call update_dmqmc_estimators(sys, idet, iteration, cdet1, reference%H00)
+                        if (icycle == 1) call update_dmqmc_estimators(sys, idet, iteration, cdet1, reference%H00, load_bal_in%nslots)
 
                         do ireplica = 1, sampling_size
 
@@ -168,7 +171,7 @@ contains
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
-                                                                            spawning_end, ireplica, qmc_spawn)
+                                                                            spawning_end, ireplica, qmc_spawn, load_bal_in%nslots)
 
                                         if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -181,7 +184,8 @@ contains
                                                          walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
-                                                                                spawning_end, ireplica, qmc_spawn)
+                                                                                spawning_end, ireplica, qmc_spawn, &
+                                                                                load_bal_in%nslots)
 
                                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                                 call accumulate_bloom_stats(bloom_stats, nspawned)
