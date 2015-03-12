@@ -685,8 +685,8 @@ contains
         if (semi_stoch_in%start_iter /= 0 .and. semi_stoch_in%determ_space_type == empty_determ_space .and. parent) &
             call warning(this,'You have specified an iteration to turn semi-stochastic on but have not &
                          &specified a deterministic space to use.')
-        if (semi_stoch_in%determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. &
-              doing_calc(hfs_fciqmc_calc))) &
+        if (semi_stoch_in%determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. &
+                                   doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc))) &
               call stop_all(this, 'Semi-stochastic is only implemented with the FCIQMC method.')
 
         if (fciqmc_in%init_spin_inv_D0 .and. ms_in /= 0) then

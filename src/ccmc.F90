@@ -2129,7 +2129,8 @@ contains
         ! we select one at random  to excite from and only evaluate the full contribution
         ! (from all partitions) if the randomly-selected partition has a non-zero contribution,
         ! with an appropriately rescaled pgen.
-        call partition_cluster(rng, sys, reference%f0, cluster, left_cluster, right_cluster, ppart, ldet%f, rdet%f, allowed, sign_change)
+        call partition_cluster(rng, sys, reference%f0, cluster, left_cluster, right_cluster, ppart, ldet%f, &
+                               rdet%f, allowed, sign_change)
         pop = 1
 
         ! 2) Choose excitation from right_cluster|D_0>
@@ -2372,7 +2373,8 @@ contains
                     pgen = qmc_in%pattempt_single * calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
                 else
                     spin = sys%basis%basis_fns(connection%to_orb(1))%ms + sys%basis%basis_fns(connection%to_orb(2))%ms
-                    pgen = qmc_in%pattempt_double * calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), connection%to_orb(2), spin)
+                    pgen = qmc_in%pattempt_double * calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), &
+                                                                                    connection%to_orb(2), spin)
                 end if
             else
                 if (connection%nexcit == 1) then

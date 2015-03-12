@@ -89,7 +89,8 @@ contains
 
     end subroutine spawn_standard
 
-    subroutine spawn_importance_sampling(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_importance_sampling(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, &
+                                         gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -154,7 +155,8 @@ contains
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, &
+                                       gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
