@@ -545,7 +545,7 @@ contains
             case('PERCENT_IMBAL')
                 call readf(load_bal_in%percent)
             case('MAX_LOAD_ATTEMPTS')
-                call readi(par_info%load%max_attempts)
+                call readi(load_bal_in%max_attempts)
             case('WRITE_LOAD_INFO')
                 par_info%load%write_info = .true.
             case('USE_MPI_BARRIERS')
@@ -732,7 +732,7 @@ contains
             if (load_bal_in%pop < 0) call stop_all(this, 'Load balancing population must be positive.')
             if (load_bal_in%percent < 0 .or. par_info%load%percent > 1.0) &
                 call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
-            if (par_info%load%max_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
+            if (load_bal_in%max_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
         end if
         if (doing_calc(ct_fciqmc_calc)) qmc_in%ncycles = 1
 
@@ -1040,7 +1040,7 @@ contains
         call mpi_bcast(load_bal_in%nslots, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_bal_in%pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_bal_in%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(par_info%load%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(load_bal_in%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(par_info%load%write_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(use_mpi_barriers, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

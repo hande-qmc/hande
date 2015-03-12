@@ -338,11 +338,11 @@ contains
         do i = 1, sampling_size
             nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)
             ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
-        end do 
+        end do
 
         associate(lb=>par_info%load)
             if (present(doing_lb)) then
-                if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < lb%max_attempts) then
+                if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
                     pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
                     ! Check if there is at least one processor with load imbalance.
                     call check_imbalance(nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
