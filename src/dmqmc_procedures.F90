@@ -455,7 +455,7 @@ contains
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, init_beta, npsips_this_proc, &
+                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, real(init_beta,dp), npsips_this_proc, &
                                                                                sym_in, ireplica, qmc_spawn)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
@@ -675,7 +675,7 @@ contains
         real(dp) :: r
         type(det_info_t) :: cdet
         type(excit_t) :: connection
-        real(p) :: move_prob(0:sys%nalpha, sys%max_number_excitations)
+        real(dp) :: move_prob(0:sys%nalpha, sys%max_number_excitations)
 
         naccept = 0 ! Number of metropolis moves which are accepted.
         nsuccess = 0 ! Number of successful proposal steps i.e. excluding null excitations.
@@ -772,7 +772,7 @@ contains
         integer(i0) :: f(sys%basis%string_len)
         type(det_info_t) :: det0
         integer(int_64) :: psips_per_level
-        real(p) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
+        real(dp) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
 
         ! [todo] - Include all psips.
         psips_per_level = int(npsips/sys%max_number_excitations)
@@ -899,10 +899,10 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: max_excit
-        real(p), intent(inout) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
+        real(dp), intent(inout) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
 
         integer :: ialpha, ilevel
-        real(p) :: offset
+        real(dp) :: offset
 
         ! Set up the probabilities for creating a determinant on a given
         ! excitation level.
@@ -911,7 +911,7 @@ contains
         ! alpha spins (and (ilevel-ialpha) beta spins). We give each possible
         ! realisation of an excitation equal probability and allow each
         ! excitation to occur with equal probability.
-        ptrunc_level = 0.0_p
+        ptrunc_level = 0.0_dp
         do ilevel = 1, max_excit
             do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
                 ! Number of ways of exciting ialpha electrons such that
@@ -923,7 +923,7 @@ contains
         ! Normalisation for the distribution at this excitation level.
         forall(ilevel=1:max_excit) ptrunc_level(:,ilevel) = ptrunc_level(:,ilevel) / (max_excit*sum(ptrunc_level(:,ilevel)))
 
-        offset = 0.0_p
+        offset = 0.0_dp
         do ilevel = 1, max_excit
             do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
                 ptrunc_level(ialpha, ilevel) = offset + ptrunc_level(ialpha, ilevel)
