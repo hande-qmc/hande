@@ -49,7 +49,8 @@ contains
 
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(qmc_in, nspawn_events, ntot_particles_old, doing_lb, comms_found, update_tau, bloom_stats)
+    subroutine update_energy_estimators(qmc_in, nspawn_events, ntot_particles_old, load_bal_in, doing_lb, comms_found, &
+                                        update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -60,6 +61,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    nspawn_events: The total number of spawning events to this process.
         !    doing_lb (optional): true if performing load balancing.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -75,7 +77,7 @@ contains
 
         use bloom_handler, only: bloom_stats_t
         use fciqmc_data, only: sampling_size
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, load_bal_in_t
 
         use parallel
 
@@ -86,6 +88,7 @@ contains
         logical, intent(inout) :: comms_found
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
+        type(load_bal_in_t), intent(in) :: load_bal_in
 
         real(dp) :: rep_loop_loc(sampling_size*nprocs+nparticles_start_ind-1)
         real(dp) :: rep_loop_sum(sampling_size*nprocs+nparticles_start_ind-1)
@@ -102,8 +105,8 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, doing_lb, &
-                                            comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, load_bal_in, &
+                                            doing_lb, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators
 
@@ -130,13 +133,14 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(qmc_in, rep_request_s, ntot_particles_old, doing_lb, comms_found, &
+    subroutine update_energy_estimators_recv(qmc_in, rep_request_s, ntot_particles_old, load_bal_in, doing_lb, comms_found, &
                                              update_tau, bloom_stats)
 
         ! Receive report loop quantities from all other processors and reduce.
 
         ! In:
         !    qmc_in: input options relating to QMC methods.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    rep_request_s: array of requests initialised during non-blocking send of
         !        information.
@@ -155,16 +159,17 @@ contains
 
         use bloom_handler, only: bloom_stats_t
         use fciqmc_data, only: sampling_size
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, load_bal_in_t
         use parallel
 
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(inout) :: rep_request_s(:)
         real(p), intent(inout) :: ntot_particles_old(:)
+        type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb
-        type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found
         logical, intent(out), optional :: update_tau
+        type(bloom_stats_t), intent(inout), optional :: bloom_stats
 
         real(dp) :: rep_info_sum(nprocs*sampling_size+nparticles_start_ind-1)
         real(dp) :: rep_loop_reduce(nprocs*(nprocs*sampling_size+nparticles_start_ind-1))
@@ -193,7 +198,8 @@ contains
         forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
-        call communicated_energy_estimators(qmc_in, rep_info_sum, ntot_particles_old, doing_lb, comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
+                                            comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators_recv
 
@@ -260,16 +266,17 @@ contains
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, doing_lb, &
-                                              comms_found, update_tau, bloom_stats)
+    subroutine communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, load_bal_in, &
+                                              doing_lb, comms_found, update_tau, bloom_stats)
 
         ! Update report loop quantites with information received from other
         ! processors.
 
         ! In:
-        !    qmc_in: input options relating to QMC methods. 
+        !    qmc_in: input options relating to QMC methods.
         !    rep_loop_sum: array containing quantites required for energy
         !        evaluation.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -291,11 +298,12 @@ contains
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, load_bal_in_t
 
         type(qmc_in_t), intent(in) :: qmc_in
         real(dp), intent(in) :: rep_loop_sum(:)
         real(p), intent(inout) :: ntot_particles_old(sampling_size)
+        type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found
@@ -330,14 +338,14 @@ contains
         do i = 1, sampling_size
             nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)
             ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
-        end do 
+        end do
 
         associate(lb=>par_info%load)
             if (present(doing_lb)) then
-                if (doing_lb .and. ntot_particles(1) > lb%pop .and. lb%nattempts < lb%max_attempts) then
+                if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
                     pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
                     ! Check if there is at least one processor with load imbalance.
-                    call check_imbalance(nparticles_proc, pop_av, lb%percent, lb%needed)
+                    call check_imbalance(nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
                 end if
             end if
         end associate

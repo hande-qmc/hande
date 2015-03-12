@@ -224,7 +224,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -238,6 +238,7 @@ contains
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
         !    reference: current reference determinant.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -267,6 +268,7 @@ contains
         use system, only: sys_t
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
+        use qmc_data, only: load_bal_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -274,6 +276,7 @@ contains
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
+        type(load_bal_in_t), intent(in) :: load_bal_in
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
@@ -391,7 +394,7 @@ contains
                 iter = mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                 call assign_particle_processor(reference%f0, sys%basis%string_len, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
-                                               qmc_spawn%move_freq, nprocs, D0_proc, slot)
+                                               qmc_spawn%move_freq, nprocs, D0_proc, slot, load_bal_in%nslots)
 
                 ! Update the shift of the excitor locations to be the end of this
                 ! current iteration.
@@ -445,7 +448,8 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(rng(0), sys, qmc_in, reference, real_factor, nattempts, ndeath, nint(D0_normalisation,int_64))
+                call init_mc_cycle(rng(0), sys, qmc_in, reference, load_bal_in, real_factor, &
+                                   nattempts, ndeath, nint(D0_normalisation,int_64))
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
@@ -605,11 +609,11 @@ contains
 
                            if (nspawned /= 0_int_p) then
                                if (cluster(it)%excitation_level == huge(0)) then
-                                   call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, nspawned, 1, &
-                                            qmc_spawn, fexcit)
+                                   call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, &
+                                                                    nspawned, 1, qmc_spawn, load_bal_in%nslots, fexcit)
                                else
                                    call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, nspawned, 1, &
-                                            qmc_spawn)
+                                                                    qmc_spawn, load_bal_in%nslots)
                                end if
                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
                            end if
@@ -625,7 +629,7 @@ contains
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), real_factor, ccmc_in%linked, sys, reference, qmc_in%tau, &
-                                                               cdet(it), cluster(it))
+                                                               cdet(it), cluster(it), load_bal_in%nslots)
                                 end if
                             end if
                         end if
@@ -657,7 +661,7 @@ contains
                 ! the current hash shift, so it's just those in the main list
                 ! that we need to deal with.
                 if (nprocs > 1) call redistribute_particles(walker_dets, real_factor, walker_population, &
-                                                             tot_walkers, nparticles, qmc_spawn)
+                                                             tot_walkers, nparticles, qmc_spawn, load_bal_in%nslots)
 
                 call direct_annihilation(sys, rng(0), qmc_in, reference, nspawn_events)
 
@@ -668,8 +672,8 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             call end_report_loop(sys, qmc_in, reference, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
-                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
-                                  bloom_stats=bloom_stats)
+                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
+                                 load_bal_in, bloom_stats=bloom_stats)
 
             if (soft_exit) exit
 
@@ -1392,7 +1396,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, real_factor, linked_ccmc, sys, reference, tau, cdet, cluster)
+    subroutine stochastic_ccmc_death(rng, real_factor, linked_ccmc, sys, reference, tau, cdet, cluster, nload_slots)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1420,6 +1424,7 @@ contains
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.
+        !    nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !    rng: random number generator.
 
@@ -1440,6 +1445,7 @@ contains
         logical, intent(in) :: linked_ccmc
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
+        integer, intent(in) :: nload_slots
         type(dSFMT_t), intent(inout) :: rng
 
         real(p) :: pdeath, KiiAi
@@ -1521,7 +1527,7 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            call create_spawned_particle_ptr(sys%basis, reference, cdet, null_excit, nkill, 1, qmc_spawn)
+            call create_spawned_particle_ptr(sys%basis, reference, cdet, null_excit, nkill, 1, qmc_spawn, nload_slots)
         end if
 
     end subroutine stochastic_ccmc_death
@@ -2378,8 +2384,8 @@ contains
                 end if
             else
                 if (connection%nexcit == 1) then
-                    pgen = qmc_in%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, parent_det%symunocc, &
-                        connection%to_orb(1))
+                    pgen = qmc_in%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, &
+                                                                         parent_det%symunocc, connection%to_orb(1))
                 else
                     a = connection%to_orb(1)
                     b = connection%to_orb(2)

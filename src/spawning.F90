@@ -555,7 +555,8 @@ contains
 
 !--- Assuming spawning is successful, create new particle appropriately ---
 
-    subroutine assign_particle_processor(particle_label, length, seed, shift, freq, np, particle_proc, slot_pos)
+    subroutine assign_particle_processor(particle_label, length, seed, shift, freq, np, particle_proc, slot_pos, &
+                                         nslots)
 
         ! In:
         !    particle_label: bit string which describes the location/basis
@@ -569,6 +570,7 @@ contains
         !       than 32.
         !    np: number of processors over which the particles are to be
         !       distributed.
+        !    nslots: number of slots proc_map is divided into.
         ! Out:
         !    particle_proc: processor where determinant resides
         !    slot_pos: position in proc_map for this determinant
@@ -578,6 +580,7 @@ contains
 
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np
+        integer, intent(in) :: nslots
         integer, intent(out) :: particle_proc, slot_pos
 
         integer :: hash, offset
@@ -590,7 +593,7 @@ contains
         hash = murmurhash_bit_string(particle_label, length, seed)
         if (shift == 0) then
             ! p = hash(label) % np
-            slot_pos = modulo(hash, np*par_info%load%nslots)
+            slot_pos = modulo(hash, np*nslots)
             particle_proc = par_info%load%proc_map(slot_pos)
         else
             ! o = [ hash(label) + shift ] >> freq
@@ -608,7 +611,7 @@ contains
             offset = ishft(hash+shift, -freq)
             mod_label = particle_label + offset
             hash = murmurhash_bit_string(mod_label, length, seed)
-            slot_pos = modulo(hash, np*par_info%load%nslots)
+            slot_pos = modulo(hash, np*nslots)
             particle_proc = par_info%load%proc_map(slot_pos)
         end if
 
@@ -736,7 +739,7 @@ contains
 
     end subroutine add_spawned_particles
 
-    subroutine create_spawned_particle(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle(basis, reference, cdet, connection, nspawn, particle_type, spawn, nslots, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -752,6 +755,7 @@ contains
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
@@ -770,6 +774,7 @@ contains
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer, intent(in) :: nslots
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
@@ -785,13 +790,13 @@ contains
         end if
 
         call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
         call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator(basis, reference, cdet, connection, nspawn, particle_type, spawn, nslots, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -807,6 +812,7 @@ contains
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
@@ -825,6 +831,7 @@ contains
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer, intent(in) :: nslots
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
@@ -840,13 +847,13 @@ contains
         end if
 
         call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
         call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
     end subroutine create_spawned_particle_initiator
 
-    subroutine create_spawned_particle_truncated(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_truncated(basis, reference, cdet, connection, nspawn, particle_type, spawn, nslots, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -863,6 +870,7 @@ contains
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
@@ -882,6 +890,7 @@ contains
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer, intent(in) :: nslots
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
@@ -900,7 +909,7 @@ contains
         if (get_excitation_level(reference%hs_f0, f_new) <= truncation_level) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -908,7 +917,8 @@ contains
 
     end subroutine create_spawned_particle_truncated
 
-    subroutine create_spawned_particle_initiator_truncated(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_truncated(basis, reference, cdet, connection, nspawn, particle_type, &
+                                                           spawn, nslots, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -926,6 +936,7 @@ contains
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
@@ -945,6 +956,7 @@ contains
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer, intent(in) :: nslots
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
@@ -963,7 +975,7 @@ contains
         if (get_excitation_level(reference%hs_f0, f_new) <= truncation_level) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
@@ -971,7 +983,7 @@ contains
 
     end subroutine create_spawned_particle_initiator_truncated
 
-    subroutine create_spawned_particle_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, nslots, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -989,6 +1001,7 @@ contains
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
@@ -1009,6 +1022,7 @@ contains
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer, intent(in) :: nslots
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
@@ -1027,7 +1041,7 @@ contains
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -1035,7 +1049,8 @@ contains
 
     end subroutine create_spawned_particle_ras
 
-    subroutine create_spawned_particle_initiator_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_ras(basis, reference, cdet, connection, nspawn, particle_type, &
+                                                     spawn, nslots, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1053,6 +1068,7 @@ contains
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
@@ -1073,6 +1089,7 @@ contains
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
+        integer, intent(in) :: nslots
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
 
@@ -1091,7 +1108,7 @@ contains
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
@@ -1099,7 +1116,8 @@ contains
 
     end subroutine create_spawned_particle_initiator_ras
 
-    subroutine create_spawned_particle_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, &
+                                                      particle_type, spawn, nslots)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1118,6 +1136,7 @@ contains
         !        currently, ie, if the elements of the density matrix are
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -1134,6 +1153,7 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
+        integer, intent(in) :: nslots
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1157,7 +1177,7 @@ contains
         end if
 
         call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_spawned_particle_density_matrix',&
@@ -1167,7 +1187,8 @@ contains
 
     end subroutine create_spawned_particle_density_matrix
 
-    subroutine create_spawned_particle_half_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_half_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, &
+                                                           particle_type, spawn, nslots)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! If walker tries to spawn in the lower triangle of density matrix
@@ -1188,6 +1209,7 @@ contains
         !        currently, ie, if the elements of the density matrix are
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -1206,6 +1228,7 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
+        integer, intent(in) :: nslots
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1234,7 +1257,7 @@ contains
         end if
 
         call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_spawned_particle_half_density_matrix',&
@@ -1245,7 +1268,7 @@ contains
     end subroutine create_spawned_particle_half_density_matrix
 
     subroutine create_spawned_particle_truncated_half_density_matrix(basis, f1, f2, connection, nspawn, &
-                                                                          spawning_end, particle_type, spawn)
+                                                                          spawning_end, particle_type, spawn, nslots)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1273,6 +1296,7 @@ contains
         !        currently, ie, if the elements of the density matrix are
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -1291,6 +1315,7 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
+        integer, intent(in) :: nslots
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1321,7 +1346,7 @@ contains
             end if
 
             call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_half_density_matrix',&
@@ -1334,7 +1359,7 @@ contains
     end subroutine create_spawned_particle_truncated_half_density_matrix
 
     subroutine create_spawned_particle_truncated_density_matrix(basis, f1, f2, connection, &
-            nspawn, spawning_end, particle_type, spawn)
+            nspawn, spawning_end, particle_type, spawn, nslots)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1357,6 +1382,7 @@ contains
         !        currently, ie, if the elements of the density matrix are
         !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
@@ -1374,6 +1400,7 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
+        integer, intent(in) :: nslots
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1399,7 +1426,7 @@ contains
             end if
 
             call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot, nslots)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_density_matrix', &
@@ -1411,7 +1438,7 @@ contains
 
     end subroutine create_spawned_particle_truncated_density_matrix
 
-    subroutine create_spawned_particle_rdm(rdm, nspawn_in, particle_type, rdm_spawn)
+    subroutine create_spawned_particle_rdm(rdm, nspawn_in, particle_type, rdm_spawn, nslots)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1421,6 +1448,7 @@ contains
         !    nspawn: the (signed) number of particles to create on the
         !        spawned determinant.
         !    particle_type: the index of particle type to be created.
+        !    nslots: number of slots proc_map is divided into.
         ! In/Out:
         !    rdm_spawn: rdm_spawn_t object to which the spanwed particle
         !    will be added.
@@ -1436,6 +1464,7 @@ contains
         type(rdm_t), intent(in) :: rdm
         integer(int_p), intent(in) :: nspawn_in
         integer, intent(in) :: particle_type
+        integer, intent(in) :: nslots
         type(rdm_spawn_t), intent(inout) :: rdm_spawn
         integer(int_p) :: nspawn
 
@@ -1475,7 +1504,7 @@ contains
             end if
 
             call assign_particle_processor(f_new_tot, 2*rdm_bl, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                          nprocs, iproc_spawn, slot)
+                                          nprocs, iproc_spawn, slot, nslots)
 
             call lookup_hash_table_entry(ht, f_new_tot, pos, hit)
 

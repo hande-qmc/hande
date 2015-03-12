@@ -437,7 +437,8 @@ contains
 
     end subroutine load_balancing_report
 
-    subroutine redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+    subroutine redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn, &
+                                      nload_slots)
 
         ! [todo] JSS: - update comments to be more general than just for CCMC.
 
@@ -455,6 +456,7 @@ contains
         !    walker_dets: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
+        !    nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !    nparticles: number of excips on the current processor.
         !    walker_populations: Population on occupied excitors.  On output the
@@ -476,6 +478,7 @@ contains
         integer, intent(inout) :: tot_walkers
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: nload_slots
 
         real(p) :: nsent(size(nparticles))
 
@@ -490,7 +493,7 @@ contains
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
             call assign_particle_processor(walker_dets(:,iexcitor), string_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot)
+                                           spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot, nload_slots)
             if (pproc /= iproc) then
                 ! Need to move.
                 ! Add to spawned array so it will be sent to the correct
@@ -516,7 +519,7 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, reference, spawn, determ)
+    subroutine redistribute_semi_stoch_t(sys, reference, spawn, determ, nload_slots)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
@@ -527,6 +530,7 @@ contains
         !    sys: system being studied.
         !    spawn: spawn_t object, required for determining the new processes
         !        labels for deterministic states.
+        !    nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
@@ -541,6 +545,7 @@ contains
         type(reference_t), intent(in) :: reference
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
+        integer, intent(in) :: nload_slots
 
         logical :: sep_annihil_copy
 
@@ -553,7 +558,8 @@ contains
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, sys, reference, spawn, reuse_determ_space, 0, sep_annihil_copy, .false., .true.)
+            call init_semi_stoch_t(determ, sys, reference, spawn, reuse_determ_space, 0, sep_annihil_copy, &
+                                   .false., .true., nload_slots)
         end if
 
     end subroutine redistribute_semi_stoch_t
@@ -681,7 +687,8 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath, min_attempts, doing_lb, nb_comm, determ)
+    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath, min_attempts, &
+                             doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -692,6 +699,7 @@ contains
         !    sys: system being studied
         !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
+        !    load_bal_in: input options for load balancing.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! Out:
@@ -703,6 +711,8 @@ contains
         !    min_attempts: if present, set nattempts to be at least this value.
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
+        !    nload_slots: number of load balancing slots proc_map is divided
+        !        into.
         ! In/Out (optional):
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
@@ -710,13 +720,14 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        type(load_bal_in_t), intent(in) :: load_bal_in
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
@@ -759,9 +770,9 @@ contains
 
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
-                call do_load_balancing(real_factor, par_info)
+                call do_load_balancing(real_factor, par_info, load_bal_in)
                 call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, &
-                                                      walker_population, tot_walkers, nparticles, qmc_spawn)
+                                                      walker_population, tot_walkers, nparticles, qmc_spawn, load_bal_in%nslots)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.
@@ -773,7 +784,7 @@ contains
 ! --- QMC loop and cycle termination routines ---
 
     subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
-                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, &
+                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, load_bal_in, &
                                update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm)
 
         ! In:
@@ -787,6 +798,7 @@ contains
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    qmc_in: input optons relating to QMC methods.
         !    ntot_particles: total number (across all processors) of
@@ -807,6 +819,7 @@ contains
         !    update_estimators: update the (FCIQMC/CCMC) energy estimators.  Default: true.
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
+        !    load_bal_in: input options for load balancing.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    rep_comm: nb_rep_t object containing report loop info. Used for
@@ -823,7 +836,7 @@ contains
         use system, only: sys_t
         use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
@@ -839,6 +852,7 @@ contains
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
         logical, intent(inout) :: dump_restart_file_shift
+        type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb, nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
@@ -864,7 +878,7 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
-            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, doing_lb, comms_found, &
+            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, doing_bal_in, doing_lb, comms_found, &
                                           update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
@@ -873,7 +887,7 @@ contains
             call local_energy_estimators(rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, doing_lb, comms_found, &
+            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, load_bal_in, doing_lb, comms_found, &
                                                update_tau_now, bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
@@ -963,7 +977,7 @@ contains
 
     subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, &
                                                 determ, walker_populations, tot_walkers, &
-                                                nparticles, spawn)
+                                                nparticles, spawn, nload_slots)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -981,6 +995,7 @@ contains
         !    walker_dets: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
+        !    nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !    rng: random number generator.
         !    determ (optional): The deterministic space being used, as required for
@@ -1011,15 +1026,17 @@ contains
         integer, intent(inout) :: tot_walkers
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: nload_slots
 
-        call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+        call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, &
+                                    nparticles, spawn, nload_slots)
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
         call direct_annihilation(sys, rng, qmc_in, reference)
         spawn%head = spawn%head_start
 
-        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, spawn, determ)
+        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, spawn, determ, nload_slots)
 
     end subroutine redistribute_load_balancing_dets
 

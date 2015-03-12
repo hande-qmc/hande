@@ -10,7 +10,8 @@ implicit none
 
 contains
 
-    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, reference, matel)
+
+    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, matel)
 
         ! In:
         !    sys: system being studied
@@ -19,6 +20,7 @@ contains
         !    matel: off-diagonal Hamiltonian matrix element (ignoring sign due
         !       to permutations).  Either U (Bloch orbitals) or
         !       t (atomic/real-space orbitals).
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    qmc_in: Input options relating to QMC methods.
 
@@ -37,13 +39,14 @@ contains
         use utils, only: rng_init_info
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
+        type(load_bal_in_t), intent(in) :: load_bal_in
 
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events
@@ -107,7 +110,7 @@ contains
         do ireport = 1, qmc_in%nreport
 
             call init_report_loop(bloom_stats)
-            call init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath)
+            call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
@@ -246,8 +249,8 @@ contains
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
-            call end_report_loop(sys, qmc_in, reference, ireport, ireport, .false., nparticles_old, nspawn_events, t1, &
-                                 unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift)
+            call end_report_loop(sys, qmc_in, reference, ireport, ireport, .false., nparticles_old, nspawn_events, &
+                                 t1, unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, load_bal_in)
 
             if (soft_exit) exit
 
