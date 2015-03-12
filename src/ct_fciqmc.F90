@@ -11,7 +11,7 @@ implicit none
 contains
 
 
-    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, load_bal_in, matel)
+    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, matel)
 
         ! In:
         !    sys: system being studied

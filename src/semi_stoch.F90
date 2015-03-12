@@ -209,7 +209,7 @@ contains
         if (space_type == high_pop_determ_space) then
             call create_high_pop_space(dets_this_proc, spawn, target_size, determ%sizes(iproc), nload_slots)
         else if (space_type == read_determ_space) then
-            call read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
+            call read_determ_from_file(dets_this_proc, determ, spawn, sys, nload_slots, print_info)
         else if (space_type == reuse_determ_space) then
             call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc), nload_slots)
         end if
@@ -839,6 +839,7 @@ contains
         !    f: det to be added to the determ object.
         !    check_proc: If true then first check if f belongs to this
         !        processor. If not then don't add it.
+        !    nload_slots: number of slots proc map is divided into.
 
         use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs
@@ -883,7 +884,7 @@ contains
         !    target_size: Size of deterministic space to use if possible. If
         !        not then use the largest space possible (all determinants in
         !        walker_dets).
-        !    nload_slots: number of slots load balancing slots (per processor).
+        !    nload_slots: number of slots proc map is divided into.
         ! Out:
         !    determ_size_this_proc: Size of the deterministic space created,
         !        on this processor only.
@@ -1121,7 +1122,7 @@ contains
 
     end subroutine find_indices_of_most_populated_dets
 
-    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
+    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, nload_slots, print_info)
 
         ! Use states read in from a HDF5 file to form the deterministic space.
 
@@ -1137,6 +1138,7 @@ contains
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    sys: system being studied.
+        !    nload_slots: number of slots proc map is divided into.
         !    print_info: Should we print information to the screen?
 
 #ifndef DISABLE_HDF5
@@ -1154,6 +1156,7 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: nload_slots
         logical, intent(in) :: print_info
 
         type(hdf5_kinds_t) :: kinds
@@ -1201,7 +1204,7 @@ contains
             determ%sizes = 0
             do i = 1, ndeterm
                 call assign_particle_processor(determ%dets(:,i), size(determ%dets,1), spawn%hash_seed, &
-                                                spawn%hash_shift, spawn%move_freq, nprocs, proc, slot)
+                                                spawn%hash_shift, spawn%move_freq, nprocs, proc, slot, nload_slots)
                 determ%sizes(proc) = determ%sizes(proc) + 1
             end do
 

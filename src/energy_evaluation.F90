@@ -105,7 +105,7 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, load_bal_in, 
+        call communicated_energy_estimators(qmc_in, rep_loop_sum, ntot_particles_old, load_bal_in, &
                                             doing_lb, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators
@@ -198,7 +198,7 @@ contains
         forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
-        call communicated_energy_estimators(qmc_in, rep_info_sum, ntot_particles_old, load_bal_in doing_lb, &
+        call communicated_energy_estimators(qmc_in, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
                                             comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators_recv

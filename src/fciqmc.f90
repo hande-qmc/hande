@@ -146,8 +146,9 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter) then
                     call dealloc_semi_stoch_t(determ, .false.)
-                    call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
-                                           semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
+                    call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, &
+                                           semi_stoch_in%target_size, semi_stoch_in%separate_annihil, &
+                                           use_mpi_barriers, semi_stoch_in%write_determ_space, &
                                            load_bal_in%nslots)
                     semi_stochastic = .true.
                 end if
@@ -204,13 +205,12 @@ contains
                                 ! If the spawning is both from and to the
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
-                                    call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn, &
-                                                                     load_bal_in%nslots, f_child)
+                                    call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, &
+                                                                     1, qmc_spawn, load_bal_in%nslots, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
-                                call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn)
                                 call create_spawned_particle_ptr(sys%basis, reference, cdet, connection, nspawned, 1, qmc_spawn, &
                                                                  load_bal_in%nslots)
                             end if

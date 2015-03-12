@@ -609,11 +609,11 @@ contains
 
                            if (nspawned /= 0_int_p) then
                                if (cluster(it)%excitation_level == huge(0)) then
-                                   call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, nspawned, 1, qmc_spawn, &
-                                                                    load_bal_in%nslots, fexcit)
+                                   call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, &
+                                                                    nspawned, 1, qmc_spawn, load_bal_in%nslots, fexcit)
                                else
-                                   call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, nspawned, 1, qmc_spawn, &
-                                                                    load_bal_in%nslots)
+                                   call create_spawned_particle_ptr(sys%basis, reference, cdet(it), connection, nspawned, 1, &
+                                                                    qmc_spawn, load_bal_in%nslots)
                                end if
                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
                            end if
@@ -1527,7 +1527,6 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            call create_spawned_particle_ptr(sys%basis, reference, cdet, null_excit, nkill, 1, qmc_spawn)
             call create_spawned_particle_ptr(sys%basis, reference, cdet, null_excit, nkill, 1, qmc_spawn, nload_slots)
         end if
 

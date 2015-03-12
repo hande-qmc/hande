@@ -361,7 +361,6 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, qmc_in, reference, target_nparticles_tot, nparticles_tot)
     subroutine create_initial_density_matrix(rng, sys, qmc_in, reference, target_nparticles_tot, nparticles_tot, nload_slots)
 
         ! Create a starting density matrix by sampling the elements of the
@@ -458,7 +457,7 @@ contains
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, real(init_beta,dp), npsips_this_proc, &
+                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, init_beta, npsips_this_proc, &
                                                                                sym_in, ireplica, qmc_spawn)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
@@ -662,7 +661,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        real(dp), intent(in) :: beta
+        real(p), intent(in) :: beta
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica

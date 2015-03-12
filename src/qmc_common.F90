@@ -771,8 +771,8 @@ contains
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
                 call do_load_balancing(real_factor, par_info, load_bal_in)
-                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, walker_population, &
-                                                      tot_walkers, nparticles, qmc_spawn, load_bal_in%nslots)
+                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, &
+                                                      walker_population, tot_walkers, nparticles, qmc_spawn, load_bal_in%nslots)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.

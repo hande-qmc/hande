@@ -138,7 +138,7 @@ contains
             if (doing_calc(simple_fciqmc_calc)) then
                 call do_simple_fciqmc(sys, qmc_in, restart_in, reference)
             else
-                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
+                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
             end if
         end if
 
