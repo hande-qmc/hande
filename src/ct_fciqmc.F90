@@ -110,7 +110,7 @@ contains
         do ireport = 1, qmc_in%nreport
 
             call init_report_loop(bloom_stats)
-            call init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath)
+            call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers

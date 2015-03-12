@@ -448,7 +448,8 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(rng(0), sys, qmc_in, reference, real_factor, nattempts, ndeath, nint(D0_normalisation,int_64))
+                call init_mc_cycle(rng(0), sys, qmc_in, reference, load_bal_in, real_factor, &
+                                   nattempts, ndeath, nint(D0_normalisation,int_64))
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns

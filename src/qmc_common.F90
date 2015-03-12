@@ -687,8 +687,8 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath, min_attempts, &
-                             doing_lb, nb_comm, determ, nload_slots)
+    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath, min_attempts, &
+                             doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -699,6 +699,7 @@ contains
         !    sys: system being studied
         !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
+        !    load_bal_in: input options for load balancing.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! Out:
@@ -719,20 +720,20 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        type(load_bal_in_t), intent(in) :: load_bal_in
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
         logical, optional, intent(in) :: doing_lb, nb_comm
         type(semi_stoch_t), optional, intent(inout) :: determ
-        integer, optional, intent(in) :: nload_slots
 
         logical :: nb_comm_local
 
@@ -769,9 +770,9 @@ contains
 
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
-                call do_load_balancing(real_factor, par_info, nload_slots)
+                call do_load_balancing(real_factor, par_info, load_bal_in)
                 call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, walker_population, &
-                                                      tot_walkers, nparticles, qmc_spawn, nload_slots)
+                                                      tot_walkers, nparticles, qmc_spawn, load_bal_in%nslots)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.

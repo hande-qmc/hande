@@ -152,9 +152,9 @@ contains
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath, &
+                call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath, &
                                    doing_lb=fciqmc_in%doing_load_balancing,  nb_comm=fciqmc_in%non_blocking_comm, &
-                                   determ=determ, nload_slots=load_bal_in%nslots)
+                                   determ=determ)
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets

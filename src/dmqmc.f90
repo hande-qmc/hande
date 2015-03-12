@@ -115,7 +115,7 @@ contains
 
                 do icycle = 1, qmc_in%ncycles
 
-                    call init_mc_cycle(rng, sys, qmc_in, reference, real_factor, nattempts, ndeath)
+                    call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 

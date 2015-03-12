@@ -97,7 +97,7 @@ end type dbin_t
 
 contains
 
-    subroutine do_load_balancing(real_factor, parallel_info, nload_slots)
+    subroutine do_load_balancing(real_factor, parallel_info, load_bal_in)
 
         ! Main subroutine in module, carries out load balancing as follows:
         ! 1. If doing load balancing then:
@@ -112,7 +112,7 @@ contains
         ! In:
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    nload_slots: number of load balancing slots.
+        !    load_bal_in: number of load balancing slots.
         ! In/Out:
         !    parallel_info: parallel_t type object containing information for
         !       parallel calculation see calc.f90 for description.
@@ -128,7 +128,7 @@ contains
 
         integer(int_p), intent(in) :: real_factor
         type(parallel_t), intent(inout) :: parallel_info
-        integer, intent(in) :: nload_slots
+        type(load_bal_in_t), intent(in) :: load_bal_in
 
         real(p) :: slot_pop(0:size(parallel_info%load%proc_map)-1)
         real(p) :: slot_list(0:size(parallel_info%load%proc_map)-1)
@@ -144,7 +144,7 @@ contains
         associate(lb=>parallel_info%load)
 
         ! Find slot populations.
-        call initialise_slot_pop(lb%proc_map, nload_slots, qmc_spawn, real_factor, slot_pop, nload_slots)
+        call initialise_slot_pop(lb%proc_map, load_bal_in%nslots, qmc_spawn, real_factor, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -503,12 +503,12 @@ contains
 
     end subroutine find_processors
 
-    subroutine initialise_slot_pop(proc_map, load_balancing_slots, spawn, real_factor, slot_pop, nslots)
+    subroutine initialise_slot_pop(proc_map, nslots, spawn, real_factor, slot_pop)
 
         ! In:
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor
-        !   load_balancing_slots: number of slots which we divide slot_pop (and similar arrays) into.
+        !   nslots: number of slots which we divide slot_pop (and similar arrays) into.
         !   spawn: spawn_t object.
         !   real_factor: The factor by which populations are multiplied to
         !       enable non-integer populations.
@@ -520,12 +520,11 @@ contains
         use spawning, only: assign_particle_processor
         use spawn_data, only: spawn_t
 
-        integer, intent(in):: load_balancing_slots
+        integer, intent(in) :: nslots
         type(spawn_t), intent(in) :: spawn
         integer(int_p), intent(in) :: real_factor
         integer, intent(in) :: proc_map(0:)
         real(p), intent(out) :: slot_pop(0:)
-        integer, intent(in) :: nslots
 
         integer :: i, det_pos, iproc_slot, tensor_label_len
 
@@ -533,8 +532,8 @@ contains
 
         slot_pop = 0.0_p
         do i = 1, tot_walkers
-            call assign_particle_processor(walker_dets(:,i), tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                           nprocs, iproc_slot, det_pos, nslots)
+            call assign_particle_processor(walker_dets(:,i), tensor_label_len, spawn%hash_seed, &
+                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_slot, det_pos, nslots)
             slot_pop(det_pos) = slot_pop(det_pos) + abs(real(walker_population(1,i),p))
         end do
 
