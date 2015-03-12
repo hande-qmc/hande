@@ -547,7 +547,7 @@ contains
             case('MAX_LOAD_ATTEMPTS')
                 call readi(load_bal_in%max_attempts)
             case('WRITE_LOAD_INFO')
-                par_info%load%write_info = .true.
+                load_bal_in%write_info = .true.
             case('USE_MPI_BARRIERS')
                 use_mpi_barriers = .true.
 
@@ -1041,7 +1041,7 @@ contains
         call mpi_bcast(load_bal_in%pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_bal_in%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_bal_in%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(par_info%load%write_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(load_bal_in%write_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(use_mpi_barriers, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
 #endif

@@ -186,13 +186,13 @@ contains
         call reduce_slots(donors, slot_list, lb%proc_map, donor_bins%index, donor_bins%pop)
         call insertion_rank(donor_bins%pop, donor_bins%rank, 1.0e-8_p)
 
-        if (lb%write_info .and. parent) call write_load_balancing_info(nparticles_proc, donor_bins%pop)
+        if (load_bal_in%write_info .and. parent) call write_load_balancing_info(nparticles_proc, donor_bins%pop)
 
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(donor_bins, donors, receivers, up_thresh, low_thresh, lb%proc_map, nparticles_proc(1,:nprocs))
         lb%nattempts = lb%nattempts + 1
 
-        if (lb%write_info .and. parent) call write_load_balancing_info(nparticles_proc, donor_bins%pop)
+        if (load_bal_in%write_info .and. parent) call write_load_balancing_info(nparticles_proc, donor_bins%pop)
 
         deallocate(donors, stat=ierr)
         call check_deallocate('donors', ierr)
