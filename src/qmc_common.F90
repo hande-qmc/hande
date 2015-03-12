@@ -783,7 +783,7 @@ contains
 ! --- QMC loop and cycle termination routines ---
 
     subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
-                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, &
+                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, load_bal_in, &
                                update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm)
 
         ! In:
@@ -797,6 +797,7 @@ contains
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    qmc_in: input optons relating to QMC methods.
         !    ntot_particles: total number (across all processors) of
@@ -817,6 +818,7 @@ contains
         !    update_estimators: update the (FCIQMC/CCMC) energy estimators.  Default: true.
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
+        !    load_bal_in: input options for load balancing.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    rep_comm: nb_rep_t object containing report loop info. Used for
@@ -833,7 +835,7 @@ contains
         use system, only: sys_t
         use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
@@ -849,6 +851,7 @@ contains
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
         logical, intent(inout) :: dump_restart_file_shift
+        type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb, nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
@@ -874,7 +877,7 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
-            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, doing_lb, comms_found, &
+            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, doing_bal_in, doing_lb, comms_found, &
                                           update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
@@ -883,7 +886,7 @@ contains
             call local_energy_estimators(rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, doing_lb, comms_found, &
+            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, load_bal_in, doing_lb, comms_found, &
                                                update_tau_now, bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy

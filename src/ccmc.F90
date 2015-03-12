@@ -671,8 +671,8 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             call end_report_loop(sys, qmc_in, reference, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
-                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
-                                  bloom_stats=bloom_stats)
+                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
+                                 load_bal_in, bloom_stats=bloom_stats)
 
             if (soft_exit) exit
 

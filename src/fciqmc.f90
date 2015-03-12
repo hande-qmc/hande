@@ -265,7 +265,7 @@ contains
 
             call end_report_loop(sys, qmc_in, reference, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
-                                 bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
+                                 load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
@@ -278,7 +278,7 @@ contains
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, reference, ireport, received_list, &
                                                           req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1), &
-                                                          restart_in%dump_restart)
+                                                          restart_in%dump_restart, load_bal_in)
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)

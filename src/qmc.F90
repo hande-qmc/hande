@@ -67,7 +67,7 @@ contains
         if (doing_calc(dmqmc_calc)) then
             call do_dmqmc(sys, qmc_in, restart_in, reference, load_bal_in)
         else if (doing_calc(ct_fciqmc_calc)) then
-            call do_ct_fciqmc(sys, qmc_in, restart_in, reference, hub_matel)
+            call do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, hub_matel)
         else if (doing_calc(ccmc_calc)) then
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
         else
