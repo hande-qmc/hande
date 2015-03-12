@@ -345,7 +345,7 @@ contains
                 if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < lb%max_attempts) then
                     pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
                     ! Check if there is at least one processor with load imbalance.
-                    call check_imbalance(nparticles_proc, pop_av, lb%percent, lb%needed)
+                    call check_imbalance(nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
                 end if
             end if
         end associate

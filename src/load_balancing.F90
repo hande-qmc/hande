@@ -170,11 +170,11 @@ contains
         ! taken this first load balancing into account. As a result the decision
         ! to attempt load balancing will be a bad one, so we potentially need to
         ! exit the subroutine now.
-        call check_imbalance(nparticles_proc, pop_av, lb%percent, lb%needed)
+        call check_imbalance(nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
         if (.not. lb%needed) return
 
-        up_thresh = pop_av + int(pop_av*lb%percent)
-        low_thresh = pop_av - int(pop_av*lb%percent)
+        up_thresh = pop_av + int(pop_av*load_bal_in%percent)
+        low_thresh = pop_av - int(pop_av*load_bal_in%percent)
 
         ! Find donor/receiver processors.
         call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, lb%proc_map, receivers, donors, donor_bins%nslots)
