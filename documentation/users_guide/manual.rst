@@ -788,8 +788,8 @@ Note that multiple calculations can be specified within a single input, but are 
 
     Estimate the free-electron thermal kinetic energy in the canonical ensemble
     in all momentum symmetry sectors by performing nkinetic_cycles*init_pop cycles of a
-    Monte Carlo algorithm. The error can be estimated using the
-    average_thermal_kinetic_energy.py script in /tools.
+    Monte Carlo algorithm. Also estimate <H>_0, which is a form of Hartree-Fock energy.
+    Estimates for mean and variance are printed out every init_pop cycles.
 
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
