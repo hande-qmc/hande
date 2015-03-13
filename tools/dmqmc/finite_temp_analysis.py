@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''finite_temp_analysis.py [options] file_1 file_2 ... file_N
 
 Analyse the output of a HANDE DMQMC calculation by averaging
