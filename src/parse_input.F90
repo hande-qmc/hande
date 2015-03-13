@@ -778,7 +778,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
+    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -797,7 +797,7 @@ contains
         !    reference: current reference determinant.
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t, reference_t
+        use qmc_data, only: restart_in_t, load_bal_in_t, reference_t
 
 #ifndef PARALLEL
 
@@ -809,6 +809,7 @@ contains
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
         type(restart_in_t), intent(inout) :: restart_in
+        type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(inout) :: reference
 
 #else
@@ -825,6 +826,7 @@ contains
         type(ccmc_in_t), intent(inout) :: ccmc_in
         type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
         type(restart_in_t), intent(inout) :: restart_in
+        type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(inout) :: reference
 
         integer :: i, ierr, occ_list_size

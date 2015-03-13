@@ -64,7 +64,7 @@ contains
         if (parent) call read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, &
                                     load_bal_in)
 
-        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference)
+        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
 
         call init_system(sys)
 

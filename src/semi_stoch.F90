@@ -1138,7 +1138,7 @@ contains
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    sys: system being studied.
-        !    nload_slots: number of slots proc map is divided into.
+        !    nload_slots: number of slots in proc_map
         !    print_info: Should we print information to the screen?
 
 #ifndef DISABLE_HDF5
