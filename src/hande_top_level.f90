@@ -6,45 +6,20 @@ implicit none
 
 contains
 
-    subroutine init_calc(sys, reference, start_cpu_time, start_wall_time)
+    subroutine init_hande(start_cpu_time, start_wall_time)
 
-        ! Initialise the calculation.
-        ! Print out information about the compiled executable,
-        ! read input options and initialse the system and basis functions
-        ! to be used.
+        ! Initialise HANDE (minimum global state).
+        ! Print out information about the compiled executable.
 
-        ! In/Out:
-        !     sys: system to be studied.  On input sys has default values.  On
-        !          output, its values have been updated according to the input file
-        !          and allocatable components have been appropriately allocated.
-        !    reference: current reference determinant. If specified as input, it has been
-        !          allocated and set on exit.
         ! Out:
         !     start_cpu_time: cpu_time at the start of the calculation.
         !     start_wall_time: system_clock at the start of the calculation.
 
         use report, only: environment_report, comm_global_uuid, VCS_VERSION, GLOBAL_UUID
-        use parse_input, only: read_input, check_input, distribute_input
-        use system
-        use basis, only: init_model_basis_fns
-        use basis_types, only: copy_basis_t, dealloc_basis_t, init_basis_strings, print_basis_metadata
-        use calc
-        use determinants, only: init_determinants
-        use determinant_enumeration, only: init_determinant_enumeration
-        use excitations, only: init_excitations
+        use calc, only: init_calc_defaults
         use parallel, only: init_parallel, parallel_report, iproc, nprocs, nthreads, parent
-        use real_lattice, only: init_real_space
-        use momentum_symmetry, only: init_momentum_symmetry
-        use point_group_symmetry, only: print_pg_symmetry_info
-        use qmc_data, only: qmc_in_global, semi_stoch_in_global, fciqmc_in_global, &
-                            ccmc_in_global, restart_in_global, load_bal_in_global
-        use qmc_data, only: reference_t
-        use dmqmc_data, only: dmqmc_in_global, dmqmc_estimates_global
-        use read_in_system, only: read_in_integrals
-        use ueg_system, only: init_ueg_proc_pointers
+        use qmc_data, only: qmc_in_global
 
-        type(sys_t), intent(inout) :: sys
-        type(reference_t), intent(inout) :: reference
         real, intent(out) :: start_cpu_time
         integer, intent(out) :: start_wall_time
 
@@ -63,6 +38,43 @@ contains
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
+    end subroutine init_hande
+
+    subroutine init_calc(sys, reference)
+
+        ! Initialise the calculation, read input options and initialse the system and
+        ! basis functions to be used.
+
+        ! In/Out:
+        !     sys: system to be studied.  On input sys has default values.  On
+        !          output, its values have been updated according to the input file
+        !          and allocatable components have been appropriately allocated.
+        !    reference: current reference determinant. If specified as input, it has been
+        !          allocated and set on exit.
+
+        use parse_input, only: read_input, check_input, distribute_input
+        use system
+        use basis, only: init_model_basis_fns
+        use basis_types, only: copy_basis_t, dealloc_basis_t, init_basis_strings, print_basis_metadata
+        use determinants, only: init_determinants
+        use determinant_enumeration, only: init_determinant_enumeration
+        use dmqmc_data, only: dmqmc_in_global, dmqmc_estimates_global
+        use excitations, only: init_excitations
+        use parallel, only: parent
+        use real_lattice, only: init_real_space
+        use momentum_symmetry, only: init_momentum_symmetry
+        use point_group_symmetry, only: print_pg_symmetry_info
+        use read_in_system, only: read_in_integrals
+        use calc
+        use ueg_system, only: init_ueg_proc_pointers
+        use qmc_data, only: qmc_in_global, semi_stoch_in_global, fciqmc_in_global, &
+                            ccmc_in_global, restart_in_global, load_bal_in_global
+        use qmc_data, only: reference_t
+
+
+        type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
+        
         if (parent) call read_input(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, &
                                     semi_stoch_in_global, restart_in_global, reference, &
                                     load_bal_in_global, dmqmc_in_global, dmqmc_estimates_global%rdm_info)
@@ -157,13 +169,10 @@ contains
 
     end subroutine run_calc
 
-    subroutine end_calc(sys, reference, start_cpu_time, start_wall_time)
+    subroutine end_calc(sys, reference)
 
         ! Clean up time!
 
-        ! In:
-        !     start_cpu_time: cpu_time at the start of the calculation.
-        !     start_wall_time: system_clock at the start of the calculation.
         ! In/Out:
         !     sys: main system object.  All allocatable components are
         !          deallocated on exit.
@@ -177,7 +186,6 @@ contains
         use excitations, only: end_excitations
         use diagonalisation, only: end_hamil
         use fciqmc_data, only: end_fciqmc
-        use parallel, only: parent, end_parallel
         use real_lattice, only: end_real_space
         use momentum_symmetry, only: end_momentum_symmetry
         use molecular_integrals, only: end_one_body_t, end_two_body_t
@@ -188,10 +196,6 @@ contains
 
         type(sys_t), intent(inout) :: sys
         type(reference_t), intent(inout) :: reference
-        real, intent(in) :: start_cpu_time
-        integer, intent(in) :: start_wall_time
-        real :: end_cpu_time, wall_time
-        integer :: end_wall_time, count_rate, count_max
 
         ! Deallocation routines.
         ! NOTE:
@@ -212,6 +216,24 @@ contains
         call end_real_space(sys%heisenberg)
         call end_fciqmc(fciqmc_in_global%non_blocking_comm, reference)
 
+    end subroutine end_calc
+
+    subroutine end_hande(start_cpu_time, start_wall_time)
+
+        ! Terminate HANDE: print timing report and terminate MPI stack...
+
+        ! In:
+        !     start_cpu_time: cpu_time at the start of the calculation.
+        !     start_wall_time: system_clock at the start of the calculation.
+
+        use parallel, only: parent, end_parallel
+        use report, only: end_report
+
+        real, intent(in) :: start_cpu_time
+        integer, intent(in) :: start_wall_time
+        real :: end_cpu_time, wall_time
+        integer :: end_wall_time, count_rate, count_max
+
         ! Calculation time.
         call cpu_time(end_cpu_time)
         call system_clock(end_wall_time, count_rate, count_max)
@@ -226,7 +248,7 @@ contains
 
         call end_parallel()
 
-    end subroutine end_calc
+    end subroutine end_hande
 
 ! --- QMC wrapper ---
 

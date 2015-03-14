@@ -12,10 +12,12 @@ program hubbard_fciqmc
     type(sys_t) :: sys
     type(reference_t) :: reference
 
-    call init_calc(sys, reference, start_cpu_time, start_wall_time)
+    call init_hande(start_cpu_time, start_wall_time)
+    call init_calc(sys, reference)
 
     call run_calc(sys, reference)
 
-    call end_calc(sys, reference, start_cpu_time, start_wall_time)
+    call end_calc(sys, reference)
+    call end_hande(start_cpu_time, start_wall_time)
 
 end program hubbard_fciqmc
