@@ -100,7 +100,7 @@ contains
 
         do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, beta_cycle)
+            call init_dmqmc_beta_loop(rng, qmc_in, beta_cycle, dmqmc_in%vary_weights)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
@@ -228,7 +228,8 @@ contains
                     ! the trial function, call a routine to update these weights
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
-                    if (vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng, sys%basis, qmc_in)
+                    if (dmqmc_in%vary_weights .and. iteration <= finish_varying_weights) &
+                                                                    call update_sampling_weights(rng, sys%basis, qmc_in)
 
                 end do
 
@@ -254,7 +255,7 @@ contains
             if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
-            if (find_weights) call output_and_alter_weights(sys%max_number_excitations)
+            if (find_weights) call output_and_alter_weights(sys%max_number_excitations, dmqmc_in%vary_weights)
 
         end do
 
@@ -278,7 +279,7 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, beta_cycle)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, beta_cycle, vary_weights)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -287,6 +288,7 @@ contains
         ! In:
         !    initial_shift: the initial shift used for population control.
         !    beta_cycle: The index of the beta loop about to be started.
+        !    vary_weights: vary importance sampling weights with beta?
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
@@ -296,6 +298,7 @@ contains
         type(dSFMT_t) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: beta_cycle
+        logical, intent(in) :: vary_weights
         integer :: new_seed
 
         ! Reset the current position in the spawning array to be the slot

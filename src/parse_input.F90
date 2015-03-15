@@ -310,7 +310,7 @@ contains
                 end do
             case('DMQMC_VARY_WEIGHTS')
                 call readi(finish_varying_weights)
-                vary_weights = .true.
+                dmqmc_in%vary_weights = .true.
             case('DMQMC_FIND_WEIGHTS')
                 find_weights = .true.
                 dmqmc_in%weighted_sampling = .true.
@@ -773,8 +773,8 @@ contains
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
                  call stop_all(this, 'The ids of the restart files could be the same')
         end if   
-        if (vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
-            call stop_all(this, 'The vary_weights option can only be used together with the dmqmc_in%weighted_sampling option.')
+        if (dmqmc_in%vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
+            call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
         if (sys%system /= heisenberg .and. dmqmc_calc_type > dmqmc_energy) then
             call stop_all(this, 'The observable requested is not currently implemented for this Hamiltonian.')
@@ -934,7 +934,7 @@ contains
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)

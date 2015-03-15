@@ -111,7 +111,7 @@ contains
             end do
             accumulated_probs(size(sampling_probs)+1:sys%max_number_excitations) = &
                 accumulated_probs(size(sampling_probs))
-            if (vary_weights) then
+            if (dmqmc_in%vary_weights) then
                 ! Allocate an array to store the factors by which the weights
                 ! will change each iteration.
                 allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
@@ -1121,7 +1121,7 @@ contains
 
     end subroutine update_sampling_weights
 
-    subroutine output_and_alter_weights(max_number_excitations)
+    subroutine output_and_alter_weights(max_number_excitations, vary_weights)
 
         ! This routine will alter and output the sampling weights used in
         ! importance sampling. It uses the excitation distribution, calculated
@@ -1137,13 +1137,15 @@ contains
         ! In:
         !    max_number_excitations: maximum number of excitations possible (see
         !       sys_t type in system for details).
+        !    vary_weights: vary weights with beta?
 
         use fciqmc_data, only: sampling_probs, accumulated_probs
         use fciqmc_data, only: excit_dist, finish_varying_weights
-        use fciqmc_data, only: vary_weights, weight_altering_factors
+        use fciqmc_data, only: weight_altering_factors
         use parallel
 
         integer, intent(in) :: max_number_excitations
+        logical, intent(in) :: vary_weights
 
         integer :: i, ierr
 #ifdef PARALLEL
