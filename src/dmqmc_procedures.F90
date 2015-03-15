@@ -364,7 +364,8 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, qmc_in, reference, target_nparticles_tot, nparticles_tot, nload_slots)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, target_nparticles_tot, &
+                                             nparticles_tot, nload_slots)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -377,6 +378,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
         !    reference: current reference determinant.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
@@ -386,7 +388,7 @@ contains
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: sym_in, propagate_to_beta, grand_canonical_initialisation
+        use calc, only: sym_in, propagate_to_beta
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
         use fciqmc_data, only: sampling_size, all_spin_sectors, init_beta, &
@@ -398,10 +400,12 @@ contains
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
         use qmc_data, only: qmc_in_t, reference_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(reference_t), intent(in) :: reference
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
@@ -453,7 +457,7 @@ contains
                 if (propagate_to_beta) then
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
-                    if (grand_canonical_initialisation) then
+                    if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, init_beta, qmc_spawn, rng)
                     else
                         call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, rng, qmc_spawn)
