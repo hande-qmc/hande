@@ -79,7 +79,7 @@ contains
         ! to set the appropriate beta = Beta / T_F.
         if (dmqmc_in%fermi_temperature) then
             qmc_in%tau = qmc_in%tau / sys%ueg%ef
-            init_beta = init_beta / sys%ueg%ef
+            dmqmc_in%init_beta = dmqmc_in%init_beta / sys%ueg%ef
         end if
 
 
@@ -391,7 +391,7 @@ contains
         use calc, only: sym_in, propagate_to_beta
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_spin_sectors, init_beta, &
+        use fciqmc_data, only: sampling_size, all_spin_sectors, &
                                walker_dets, nparticles, real_factor, &
                                walker_population, tot_walkers, qmc_spawn, &
                                metropolis_attempts
@@ -458,14 +458,14 @@ contains
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, init_beta, qmc_spawn, rng)
+                        call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, dmqmc_in%init_beta, qmc_spawn, rng)
                     else
                         call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, rng, qmc_spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, init_beta, npsips_this_proc, &
-                                                                               sym_in, ireplica, qmc_spawn)
+                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in%init_beta, &
+                                                                               npsips_this_proc, sym_in, ireplica, qmc_spawn)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
                 end if
