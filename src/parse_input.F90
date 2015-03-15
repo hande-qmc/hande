@@ -241,7 +241,7 @@ contains
             case('METROPOLIS_ATTEMPTS')
                 call readi(dmqmc_in%metropolis_attempts)
             case('MAX_METROPOLIS_MOVE')
-                call readi(max_metropolis_move)
+                call readi(dmqmc_in%max_metropolis_move)
             case('FREE_ELECTRON_TRIAL')
                 dmqmc_in%free_electron_trial = .true.
             case('CHEM_POT')
@@ -945,7 +945,7 @@ contains
         call mpi_bcast(dmqmc_in%half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%grand_canonical_initialisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
