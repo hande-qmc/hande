@@ -267,7 +267,7 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, idet, iteration, cdet, H00, nload_slots)
+    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, nload_slots)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -278,6 +278,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    dmqmc_in: input options for DMQMC.
         !    idet: Current position in the main bitstring list.
         !    iteration: current Monte Carlo cycle.
         !    cdet: det_info_t object containing information of current density
@@ -289,7 +290,7 @@ contains
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
         use excitations, only: get_excitation, excit_t
         use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
-        use fciqmc_data, only: accumulated_probs, start_averaging, find_weights
+        use fciqmc_data, only: accumulated_probs, start_averaging
         use fciqmc_data, only: calc_excit_dist, excit_dist
         use fciqmc_data, only: sampling_size, accumulated_probs_old, real_factor
         use fciqmc_data, only: replica_tricks, energy_ind, walker_data, numerators
@@ -297,8 +298,11 @@ contains
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
+        use qmc_data, only: reference_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: idet, iteration
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: H00
@@ -343,7 +347,7 @@ contains
             if (calc_excit_dist) excit_dist(excitation%nexcit) = &
                 excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
             ! Excitation distribtuion for calculating importance sampling weights.
-            if (find_weights .and. iteration > start_averaging) excit_dist(excitation%nexcit) = &
+            if (dmqmc_in%find_weights .and. iteration > start_averaging) excit_dist(excitation%nexcit) = &
                 excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
         end if
 

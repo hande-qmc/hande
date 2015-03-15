@@ -100,7 +100,7 @@ contains
 
         do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, beta_cycle, dmqmc_in%vary_weights)
+            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
@@ -153,7 +153,7 @@ contains
                         ! Note DMQMC averages over multiple loops over
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
-                        if (icycle == 1) call update_dmqmc_estimators(sys, idet, iteration, cdet1, reference%H00, load_bal_in%nslots)
+                        if (icycle == 1) call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, reference%H00, load_bal_in%nslots)
 
                         do ireplica = 1, sampling_size
 
@@ -255,7 +255,7 @@ contains
             if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
-            if (find_weights) call output_and_alter_weights(sys%max_number_excitations, dmqmc_in%vary_weights)
+            if (dmqmc_in%find_weights) call output_and_alter_weights(sys%max_number_excitations, dmqmc_in%vary_weights)
 
         end do
 
@@ -279,7 +279,7 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, beta_cycle, vary_weights)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -288,17 +288,18 @@ contains
         ! In:
         !    initial_shift: the initial shift used for population control.
         !    beta_cycle: The index of the beta loop about to be started.
-        !    vary_weights: vary importance sampling weights with beta?
+        !    dmqmc_in: input options for DMQMC.
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
         use qmc_data, only: qmc_in_t
+        use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
 
         type(dSFMT_t) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: beta_cycle
-        logical, intent(in) :: vary_weights
         integer :: new_seed
 
         ! Reset the current position in the spawning array to be the slot
@@ -310,8 +311,8 @@ contains
         shift = qmc_in%initial_shift
         nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
-        if (vary_weights) accumulated_probs = 1.0_p
-        if (find_weights) excit_dist = 0.0_p
+        if (dmqmc_in%vary_weights) accumulated_probs = 1.0_p
+        if (dmqmc_in%find_weights) excit_dist = 0.0_p
 
         new_seed = qmc_in%seed+iproc+(beta_cycle-1)*nprocs
 

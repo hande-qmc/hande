@@ -312,7 +312,7 @@ contains
                 call readi(finish_varying_weights)
                 dmqmc_in%vary_weights = .true.
             case('DMQMC_FIND_WEIGHTS')
-                find_weights = .true.
+                dmqmc_in%find_weights = .true.
                 dmqmc_in%weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 calc_excit_dist = .true.
@@ -707,7 +707,7 @@ contains
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
                &sites for the correlation function option.')
 
-          if (find_weights .and. calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
+          if (dmqmc_in%find_weights .and. calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
               &_DISTRIBUTION options cannot be used together.')
 
         ! Calculation specific checking.
@@ -935,7 +935,7 @@ contains
         call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
