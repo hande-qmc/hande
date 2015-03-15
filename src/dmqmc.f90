@@ -98,7 +98,7 @@ contains
         ! Should we dump a restart file just before the shift is turned on?
         dump_restart_file_shift = restart_in%dump_restart_file_shift
 
-        do beta_cycle = 1, beta_loops
+        do beta_cycle = 1, dmqmc_in%beta_loops
 
             call init_dmqmc_beta_loop(rng, qmc_in, beta_cycle)
 

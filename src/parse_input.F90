@@ -383,7 +383,7 @@ contains
                 call readi(qmc_in%nreport)
                 if (qmc_in%nreport < 0) qmc_in%nreport = huge(qmc_in%nreport)
             case('BETA_LOOPS')
-                call readi(beta_loops)
+                call readi(dmqmc_in%beta_loops)
             case('WALKER_LENGTH')
                 call readi(walker_length)
                 if (item /= nitems) then
@@ -914,7 +914,7 @@ contains
 
         call mpi_bcast(qmc_in%ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
