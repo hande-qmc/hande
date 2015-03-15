@@ -309,7 +309,7 @@ contains
                     call readf(dmqmc_in%sampling_probs(i))
                 end do
             case('DMQMC_VARY_WEIGHTS')
-                call readi(finish_varying_weights)
+                call readi(dmqmc_in%finish_varying_weights)
                 dmqmc_in%vary_weights = .true.
             case('DMQMC_FIND_WEIGHTS')
                 dmqmc_in%find_weights = .true.
@@ -938,7 +938,7 @@ contains
         call mpi_bcast(dmqmc_in%find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)

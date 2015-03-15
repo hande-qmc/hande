@@ -228,7 +228,7 @@ contains
                     ! the trial function, call a routine to update these weights
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
-                    if (dmqmc_in%vary_weights .and. iteration <= finish_varying_weights) &
+                    if (dmqmc_in%vary_weights .and. iteration <= dmqmc_in%finish_varying_weights) &
                                                                     call update_sampling_weights(rng, sys%basis, qmc_in)
 
                 end do

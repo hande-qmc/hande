@@ -116,7 +116,7 @@ contains
                 ! will change each iteration.
                 allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
                 call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
-                weight_altering_factors = real(accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
+                weight_altering_factors = real(accumulated_probs,dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
                 ! If varying the weights, start the accumulated probabilties
                 ! as all 1.0 initially, and then alter them gradually later.
                 accumulated_probs = 1.0_p
@@ -1057,7 +1057,7 @@ contains
         use basis_types, only: basis_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: accumulated_probs, finish_varying_weights
+        use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
         use fciqmc_data, only: nparticles, sampling_size, real_factor
         use qmc_data, only: qmc_in_t 
@@ -1141,7 +1141,7 @@ contains
         !    vary_weights: vary weights with beta?
 
         use fciqmc_data, only: accumulated_probs
-        use fciqmc_data, only: excit_dist, finish_varying_weights
+        use fciqmc_data, only: excit_dist
         use fciqmc_data, only: weight_altering_factors
         use dmqmc_data, only: dmqmc_in_t
         use parallel
@@ -1179,7 +1179,7 @@ contains
         ! gradually at the start of each beta loop. This requires redefining
         ! weight_altering_factors to coincide with the new sampling weights.
         if (dmqmc_in%vary_weights) then
-            weight_altering_factors = real(accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
+            weight_altering_factors = real(accumulated_probs,dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
             ! Reset the weights for the next loop.
             accumulated_probs = 1.0_p
         end if
