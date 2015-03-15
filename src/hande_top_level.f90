@@ -55,7 +55,7 @@ contains
         use parse_input, only: read_input, check_input, distribute_input
         use system
         use basis, only: init_model_basis_fns
-        use basis_types, only: copy_basis_t, dealloc_basis_t, init_basis_strings, print_basis_metadata
+        use basis_types, only: init_basis_strings, print_basis_metadata
         use determinants, only: init_determinants
         use determinant_enumeration, only: init_determinant_enumeration
         use dmqmc_data, only: dmqmc_in_global, dmqmc_estimates_global

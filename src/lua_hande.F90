@@ -147,6 +147,8 @@ contains
         call flu_register(lua_state, 'test_lua_api', test_lua_api)
         call flu_register(lua_state, 'mpi_root', mpi_root)
 
+        call flu_register(lua_state, 'ueg', lua_ueg)
+
     end subroutine register_lua_hande_api
 
     ! --- Helper functions ---
@@ -155,6 +157,11 @@ contains
 
         ! In/Out:
         !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    mpi_root()
+        ! Returns:
+        !    True if on the MPI root processor.
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use parallel, only: parent
@@ -169,5 +176,187 @@ contains
         nreturn = 1
 
     end function mpi_root
+
+    subroutine get_sys_t(lua_state, sys, new)
+
+        ! Get or create a sys_t object as necessary.
+        ! If two arguments were passed from lua, then the first is an existing sys_t
+        ! object and the other the table of variables.  If only one argument is passed,
+        ! then this is just the table and we create new sys_t object.
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! Out:
+        !    sys: sys_t object (created/from Lua stack as appropriate).
+        !    new: true if a new sys_t object was created.
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer
+        use flu_binding, only: flu_State, flu_gettop, flu_insert
+        use aot_top_module, only: aot_top_get_val
+
+        use system, only: sys_t
+
+        type(flu_State), intent(inout) :: lua_state
+        type(sys_t), pointer, intent(out) :: sys
+        logical, intent(out) :: new
+
+        type(c_ptr) :: sys_ptr
+        integer :: i, err
+
+        select case(flu_gettop(lua_state))
+        case(1)
+            ! Create a new system.
+            ! The only argument passed is a dictionary of values...
+            allocate(sys)
+            new = .true.
+        case default
+            ! Been passed an existing system object.
+            ! It is syntactically convenient to have this as the first argument (and hence bottom of stack) but we need it before
+            ! parsing the options...
+            do i = 1, flu_gettop(lua_state)-1
+                call flu_insert(lua_state, 1) ! lua_rotate only available in lua 5.3...
+            end do
+            call aot_top_get_val(sys_ptr, err, lua_state)
+            call c_f_pointer(sys_ptr, sys)
+            new = .false.
+        end select
+
+    end subroutine get_sys_t
+
+    subroutine init_generic_system_basis(sys)
+
+        ! A wrapper for initialsing parts of sys_t common to many/all systems.
+
+        ! In/Out:
+        !    sys_t: Only registed with init_system and the relevant basis creation before
+        !       entry.  On exit, the basis strings and determinants parsing has been
+        !       performed.
+
+        use basis_types, only: init_basis_strings, print_basis_metadata
+        use determinants, only: init_determinants
+        use determinant_enumeration, only: init_determinant_enumeration
+        use excitations, only: init_excitations
+
+        use system, only: sys_t, heisenberg
+
+        type(sys_t), intent(inout) :: sys
+
+        ! [todo] - check_input with lua interface?  Should be able to be made simpler now...
+        ! call check_input(sys)
+
+        call init_basis_strings(sys%basis)
+        call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
+        call init_determinants(sys)
+        call init_determinant_enumeration()
+
+        call init_excitations(sys%basis)
+
+    end subroutine init_generic_system_basis
+
+    ! --- System wrappers ---
+
+    function lua_ueg(L) result(nreturn) bind(c)
+
+        ! Create/modify a UEG system.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    ueg(
+        !        [sys_t, ] -- optional.  New sys_t object is created if not passed.
+        !        {
+        !           electrons = N,
+        !           dim = D,           -- default: 3
+        !           rs = density,
+        !           cutoff = ecutoff,
+        !           ms = Ms,
+        !           sym = sym_index,
+        !           ktwist = {...},    -- D-dimensional vector.
+        !        }
+        !        )
+        !    Returns: sys_t object.
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+        use aot_vector_module, only: aot_get_val
+
+        use const, only: p
+        use errors, only: stop_all
+
+        use calc, only: sym_in, ms_in
+        use system, only: sys_t, ueg, init_system
+        use basis, only: init_model_basis_fns
+        use momentum_symmetry, only: init_momentum_symmetry
+        use ueg_system, only: init_ueg_proc_pointers
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+        type(flu_State) :: lua_state
+
+        type(sys_t), pointer :: sys
+        type(c_ptr) :: sys_ptr
+        integer :: opts
+        logical :: new, new_basis
+        integer :: err
+        real(p), allocatable :: tmp(:)
+        integer, allocatable :: err_arr(:)
+
+        lua_state = flu_copyptr(L)
+
+        call get_sys_t(lua_state, sys, new)
+
+        ! Get a handle to the table...
+        opts = aot_table_top(lua_state)
+
+        sys%system = ueg
+        sys%lattice%ndim = 3
+
+        ! Parse table for options...
+        call aot_get_val(sys%nel, err, lua_state, opts, 'electrons')
+        call aot_get_val(sys%nel, err, lua_state, opts, 'nel')
+
+        new_basis = aot_exists(lua_state, opts, 'cutoff') .or. &
+                    aot_exists(lua_state, opts, 'dim')    .or. &
+                    aot_exists(lua_state, opts, 'rs')    .or. &
+                    aot_exists(lua_state, opts, 'nel')    .or. &
+                    aot_exists(lua_state, opts, 'electrons')
+
+        call aot_get_val(sys%ueg%ecutoff, err, lua_state, opts, 'cutoff')
+        call aot_get_val(sys%ueg%r_s, err, lua_state, opts, 'rs')
+        call aot_get_val(sys%lattice%ndim, err, lua_state, opts, 'dim')
+
+        call aot_get_val(tmp, err_arr, 3, lua_state, opts, key='twist')
+
+        call aot_get_val(ms_in, err, lua_state, opts, 'ms')
+        call aot_get_val(sym_in, err, lua_state, opts, 'sym')
+
+        if (size(tmp) > 0) then
+            if (size(tmp) /= sys%lattice%ndim) &
+                call stop_all('ueg_system', 'twist vector not consistent with the dim parameter.')
+            allocate(sys%k_lattice%ktwist(sys%lattice%ndim))
+            sys%k_lattice%ktwist = tmp
+        end if
+        deallocate(tmp)
+
+        if (new_basis) then
+            ! [todo] - deallocate existing basis info and start afresh.
+
+            call init_system(sys)
+            call init_model_basis_fns(sys)
+            call init_generic_system_basis(sys)
+            call init_momentum_symmetry(sys)
+            call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
+        end if
+
+        call aot_table_close(lua_state, opts)
+
+        sys_ptr = c_loc(sys)
+        call flu_pushlightuserdata(lua_state, sys_ptr)
+        nreturn = 1
+
+    end function lua_ueg
 
 end module lua_hande
