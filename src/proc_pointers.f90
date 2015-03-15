@@ -64,16 +64,15 @@ abstract interface
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, walker_pop
     end subroutine i_update_dmqmc_estimators
-    subroutine i_update_dmqmc_correlation_function(sys, reference, idet, excitation, walker_pop, mask)
+    subroutine i_update_dmqmc_correlation_function(sys, idet, excitation, H00, walker_pop, mask)
         use system, only: sys_t
         use qmc_data, only: reference_t
         import :: excit_t, p, i0
         implicit none
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(in) :: reference
         integer, intent(in) :: idet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: H00, walker_pop
         integer(i0), allocatable, intent(in) :: mask(:)
     end subroutine i_update_dmqmc_correlation_function
     subroutine i_gen_excit(rng, sys, qmc_in, d, pgen, connection, hmatel)

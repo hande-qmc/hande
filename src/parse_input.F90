@@ -243,7 +243,7 @@ contains
             case('MAX_METROPOLIS_MOVE')
                 call readi(max_metropolis_move)
             case('FREE_ELECTRON_TRIAL')
-                free_electron_trial = .true.
+                dmqmc_in%free_electron_trial = .true.
             case('CHEM_POT')
                 call readf(sys%ueg%chem_pot)
             case('GRAND_CANONICAL_INITIALISATION')
@@ -940,7 +940,7 @@ contains
         call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
