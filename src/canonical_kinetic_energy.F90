@@ -83,9 +83,7 @@ contains
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
                                                           (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
-        ! iaccept is analogous to mc_cycles in the normal qmc algorithms so we
-        ! do nkinetic_cycles*init_pop iterations in total.
-        iaccept = 0
+        iaccept = 0 ! running total number of samples.
         delta = 0.0_p
         mean = 0.0_p
         estimators = 0.0_p
@@ -123,15 +121,15 @@ contains
             ! Average means over processors.
             mean = estimators(ke_idx:hf_idx) / nprocs
             ! Find variance in average over processors (denoted var(\sum_i^nprocs)).
-            ! Assuming are samples are uncorrelated and the number of samples
+            ! Assuming the samples are uncorrelated and the number of samples
             ! contributing to each estimate is the same, then:
             ! var(\sum_i^nprocs) = 1/nprocs (\sum_i^nprocs var(i) + \sum_i^nprocs mean^2(i))
             !                      - mean(\sum_i^nprocs).
             ! This follows from the fact that (var + mean) = 1/m \sum_i^m x_i^2
             ! and mean = 1/m \sum_i^m x_i.
+            ! The standard deviation of the mean is then sqrt(var/(nprocs*iaccept)).
             std = sqrt(((estimators(ke_var_idx:hf_var_idx)/(real(iaccept-1,p)) + &
-                  estimators(ke_sq_idx:hf_sq_idx))/nprocs - mean**2.0_p)/real(iaccept, p))
-            ! Print mean and standard deviation of the mean.
+                  estimators(ke_sq_idx:hf_sq_idx))/nprocs - mean**2.0_p)/(nprocs*real(iaccept, p)))
             if (parent) write(6,'(3X,i10,5X,4(es17.10,5X))') ireport, mean(ke_idx), std(ke_idx), mean(hf_idx), std(hf_idx)
             call fciqmc_interact(soft_exit)
             if (soft_exit) exit
