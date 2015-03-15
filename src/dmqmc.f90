@@ -15,7 +15,6 @@ contains
         ! times, to accumulate statistics for each value for beta.
 
         ! In:
-        !    dmqmc_in: input options relating to DMQMC.
         !    restart_in: input options for HDF5 restart files.
         !    reference: reference determinant.
         !    load_bal_in: input options for load balancing.
@@ -24,6 +23,7 @@ contains
         !         it should be returned in its original (ie unmodified state)
         !         at the end of the procedure.
         !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
 
         use parallel
         use annihilation, only: direct_annihilation
@@ -49,7 +49,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
-        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
@@ -255,7 +255,7 @@ contains
             if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
-            if (dmqmc_in%find_weights) call output_and_alter_weights(sys%max_number_excitations, dmqmc_in%vary_weights)
+            if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations)
 
         end do
 

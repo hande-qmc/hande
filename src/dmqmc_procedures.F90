@@ -95,10 +95,10 @@ contains
             ! deallocated. Also, the user may have only input factors for the
             ! first few excitation levels, but we need to store factors for all
             ! levels, as done below.
-            if (.not.allocated(sampling_probs)) then
-                allocate(sampling_probs(1:sys%max_number_excitations), stat=ierr)
-                call check_allocate('sampling_probs',sys%max_number_excitations,ierr)
-                sampling_probs = 1.0_p
+            if (.not.allocated(dmqmc_in%sampling_probs)) then
+                allocate(dmqmc_in%sampling_probs(1:sys%max_number_excitations), stat=ierr)
+                call check_allocate('dmqmc_in%sampling_probs',sys%max_number_excitations,ierr)
+                dmqmc_in%sampling_probs = 1.0_p
             end if
             allocate(accumulated_probs(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('accumulated_probs',sys%max_number_excitations+1,ierr)
@@ -106,11 +106,11 @@ contains
             call check_allocate('accumulated_probs_old',sys%max_number_excitations+1,ierr)
             accumulated_probs(0) = 1.0_p
             accumulated_probs_old = 1.0_p
-            do i = 1, size(sampling_probs)
-            accumulated_probs(i) = accumulated_probs(i-1)*sampling_probs(i)
+            do i = 1, size(dmqmc_in%sampling_probs)
+            accumulated_probs(i) = accumulated_probs(i-1)*dmqmc_in%sampling_probs(i)
             end do
-            accumulated_probs(size(sampling_probs)+1:sys%max_number_excitations) = &
-                accumulated_probs(size(sampling_probs))
+            accumulated_probs(size(dmqmc_in%sampling_probs)+1:sys%max_number_excitations) = &
+                accumulated_probs(size(dmqmc_in%sampling_probs))
             if (dmqmc_in%vary_weights) then
                 ! Allocate an array to store the factors by which the weights
                 ! will change each iteration.
@@ -1121,7 +1121,7 @@ contains
 
     end subroutine update_sampling_weights
 
-    subroutine output_and_alter_weights(max_number_excitations, vary_weights)
+    subroutine output_and_alter_weights(dmqmc_in, max_number_excitations)
 
         ! This routine will alter and output the sampling weights used in
         ! importance sampling. It uses the excitation distribution, calculated
@@ -1135,17 +1135,19 @@ contains
         ! weights are output and can then be used in future DMQMC runs.
 
         ! In:
+        !    dmqmc_in: input options relating to DMQMC.
         !    max_number_excitations: maximum number of excitations possible (see
         !       sys_t type in system for details).
         !    vary_weights: vary weights with beta?
 
-        use fciqmc_data, only: sampling_probs, accumulated_probs
+        use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: excit_dist, finish_varying_weights
         use fciqmc_data, only: weight_altering_factors
+        use dmqmc_data, only: dmqmc_in_t
         use parallel
 
         integer, intent(in) :: max_number_excitations
-        logical, intent(in) :: vary_weights
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: i, ierr
 #ifdef PARALLEL
@@ -1162,21 +1164,21 @@ contains
             if (excit_dist(i-1) > 10.0_p .and. excit_dist(i) > 10.0_p) then
                 ! Alter the sampling weights using the relevant excitation
                 ! distribution.
-                sampling_probs(i) = sampling_probs(i)*&
+                dmqmc_in%sampling_probs(i) = dmqmc_in%sampling_probs(i)*&
                     (excit_dist(i)/excit_dist(i-1))
-                sampling_probs(max_number_excitations+1-i) = sampling_probs(i)**(-1)
+                dmqmc_in%sampling_probs(max_number_excitations+1-i) = dmqmc_in%sampling_probs(i)**(-1)
             end if
         end do
 
         ! Recalculate accumulated_probs with the new weights.
         do i = 1, max_number_excitations
-            accumulated_probs(i) = accumulated_probs(i-1)*sampling_probs(i)
+            accumulated_probs(i) = accumulated_probs(i-1)*dmqmc_in%sampling_probs(i)
         end do
 
         ! If vary_weights is true then the weights are to be introduced
         ! gradually at the start of each beta loop. This requires redefining
         ! weight_altering_factors to coincide with the new sampling weights.
-        if (vary_weights) then
+        if (dmqmc_in%vary_weights) then
             weight_altering_factors = real(accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
             ! Reset the weights for the next loop.
             accumulated_probs = 1.0_p
@@ -1187,7 +1189,7 @@ contains
             ! file.
             write(6, '(a31,2X)', advance = 'no') ' # Importance sampling weights:'
             do i = 1, max_number_excitations
-                write (6, '(es12.4,2X)', advance = 'no') sampling_probs(i)
+                write (6, '(es12.4,2X)', advance = 'no') dmqmc_in%sampling_probs(i)
             end do
             write (6, '()', advance = 'yes')
         end if

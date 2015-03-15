@@ -300,13 +300,13 @@ contains
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             case('DMQMC_WEIGHTED_SAMPLING')
                 call readi(nweights)
-                allocate(sampling_probs(nweights), stat=ierr)
-                call check_allocate('sampling_probs', nweights, ierr)
+                allocate(dmqmc_in%sampling_probs(nweights), stat=ierr)
+                call check_allocate('dmqmc_in%sampling_probs', nweights, ierr)
                 dmqmc_in%weighted_sampling = .true.
                 call read_line(eof)
                 if (eof) call stop_all('read_input', 'Unexpected end of file reading DMQMC weights.')
                 do i = 1, nweights
-                    call readf(sampling_probs(i))
+                    call readf(dmqmc_in%sampling_probs(i))
                 end do
             case('DMQMC_VARY_WEIGHTS')
                 call readi(finish_varying_weights)
@@ -950,16 +950,16 @@ contains
         call mpi_bcast(grand_canonical_initialisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.
-        if (parent) option_set = allocated(sampling_probs)
+        if (parent) option_set = allocated(dmqmc_in%sampling_probs)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(sampling_probs)
+            occ_list_size = size(dmqmc_in%sampling_probs)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(sampling_probs(occ_list_size), stat=ierr)
-                call check_allocate('sampling_probs',occ_list_size,ierr)
+                allocate(dmqmc_in%sampling_probs(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_in%sampling_probs',occ_list_size,ierr)
             end if
-            call mpi_bcast(sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
+            call mpi_bcast(dmqmc_in%sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
         if (parent) option_set = allocated(rdms)
