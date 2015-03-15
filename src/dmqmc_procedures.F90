@@ -393,8 +393,7 @@ contains
         use errors
         use fciqmc_data, only: sampling_size, all_spin_sectors, &
                                walker_dets, nparticles, real_factor, &
-                               walker_population, tot_walkers, qmc_spawn, &
-                               metropolis_attempts
+                               walker_population, tot_walkers, qmc_spawn
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
@@ -464,7 +463,7 @@ contains
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in%init_beta, &
+                    if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, &
                                                                                npsips_this_proc, sym_in, ireplica, qmc_spawn)
                 else
                     call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
@@ -623,7 +622,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, qmc_in, beta, npsips, sym, ireplica, qmc_spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, sym, ireplica, qmc_spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -642,6 +641,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
         !    beta: (inverse) temperature at which we're looking to sample the
         !        trial density matrix.
         !    sym: symmetry index of determinant space we wish to sample.
@@ -657,18 +657,18 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, all_sym_sectors, sampling_size, metropolis_attempts, &
-                               max_metropolis_move
+        use fciqmc_data, only: real_factor, all_sym_sectors, sampling_size, max_metropolis_move
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
         use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: beta
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
@@ -701,7 +701,7 @@ contains
         if (all_sym_sectors) call set_level_probabilities(sys, move_prob, max_metropolis_move)
 
         ! Visit every psip metropolis_attempts times.
-        do iattempt = 1, metropolis_attempts
+        do iattempt = 1, dmqmc_in%metropolis_attempts
             do proc = 0, nprocs-1
                 do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
                     cdet%f = qmc_spawn%sdata(:sys%basis%string_len,idet)
@@ -723,7 +723,7 @@ contains
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
                     E_new = trial_dm_ptr(sys, f_new)
-                    prob = exp(-1.0_p*beta*(E_new-E_old))
+                    prob = exp(-1.0_p*dmqmc_in%init_beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
                         ! Accept the new determinant by modifying the entry
@@ -737,7 +737,8 @@ contains
         end do
 
         if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", f8.7)') &
-                           real(naccept)/nsuccess, real(metropolis_attempts*npsips-nsuccess)/(metropolis_attempts*npsips)
+                           real(naccept)/nsuccess, real(dmqmc_in%metropolis_attempts*npsips-nsuccess)/&
+                                                   &(dmqmc_in%metropolis_attempts*npsips)
 
         call dealloc_det_info_t(cdet)
 
@@ -763,7 +764,7 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: real_factor, all_sym_sectors, metropolis_attempts
+        use fciqmc_data, only: real_factor, all_sym_sectors
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
