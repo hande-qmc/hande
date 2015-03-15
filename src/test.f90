@@ -45,6 +45,7 @@ contains
 
         use flu_binding, only: flu_State, flu_copyptr
         use iso_c_binding, only: c_ptr, c_int
+        use parallel, only: iproc
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -61,7 +62,7 @@ contains
         ! Get arguments passed to us by lua (if appropriate).
 
         ! Now do our work...
-        write (6,'(1X,"Hello from fortran!",/)')
+        write (6,'(1X,"Hello from fortran! Processor: ",i2,/)'), iproc
 
     end function test_lua_api
 

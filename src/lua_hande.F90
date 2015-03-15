@@ -84,11 +84,6 @@ contains
         type(flu_State) :: lua_state
         logical :: t_exists
 
-        ! [todo] - MPI communication.  It is probably easiest if we just read the lua
-        ! [todo] - input file into a string and broadcast that than parsing only on the
-        ! [todo] - parent process and then having to figure out which function is being
-        ! [todo] - called from the lua script.
-
         if (command_argument_count() > 0) then
             ! Input file specified on the command line.
             call get_command_argument(1, inp_file)
@@ -108,6 +103,12 @@ contains
                 write (6,'(/,1X,13("-"),/)')
             end if
 
+#ifdef PARALLEL
+            call mpi_bcast(buf_len, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
+            if (.not.parent) allocate(character(len=buf_len) :: buffer)
+            call mpi_bcast(buffer, buf_len, MPI_CHARACTER, 0, mpi_comm_world, ierr)
+#endif
+
             ! Attempt to run script.  If it fails (ie ierr is non-zero) then try
             ! parsing it as traditional input file for now.
             call open_config_file(lua_state, inp_file, ierr, err_string)
@@ -117,6 +118,10 @@ contains
             else
                 call warning('run_lua_hande', trim(err_string)//'.  Assuming traditional input file...', 2)
             end if
+
+#ifdef PARALLEL
+            call mpi_barrier(mpi_comm_world, ierr)
+#endif
 
         else
             ! Maybe read via STDIN?  Only in traditional mode for now...
@@ -140,7 +145,29 @@ contains
         type(flu_State), intent(inout) :: lua_state
 
         call flu_register(lua_state, 'test_lua_api', test_lua_api)
+        call flu_register(lua_state, 'mpi_root', mpi_root)
 
     end subroutine register_lua_hande_api
+
+    ! --- Helper functions ---
+
+    function mpi_root(L) result(nreturn) bind(c)
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use parallel, only: parent
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushboolean
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+        type(flu_State) :: lua_state
+
+        lua_state = flu_copyptr(L)
+        call flu_pushboolean(lua_state, parent)
+        nreturn = 1
+
+    end function mpi_root
 
 end module lua_hande
