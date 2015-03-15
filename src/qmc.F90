@@ -800,7 +800,7 @@ contains
         if (doing_calc(dmqmc_calc)) then
 
             ! Spawned particle creation. 
-            if (half_density_matrix) then
+            if (dmqmc_in%half_density_matrix) then
                 if (truncate_space) then
                     create_spawned_particle_dm_ptr => create_spawned_particle_truncated_half_density_matrix
                 else

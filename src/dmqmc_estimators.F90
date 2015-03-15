@@ -361,7 +361,8 @@ contains
         end if
 
         ! Full Renyi entropy (S_2).
-        if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit)
+        if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit, &
+                                                                      dmqmc_in%half_density_matrix)
 
         ! Update the contribution to the trace from other replicas
         if (replica_tricks .and. excitation%nexcit == 0) then
@@ -719,7 +720,7 @@ contains
 
     end subroutine dmqmc_stag_mag_heisenberg
 
-    subroutine update_full_renyi_2(walker_pop, excit_level)
+    subroutine update_full_renyi_2(walker_pop, excit_level, half_density_matrix)
 
         ! Add the contribution from the current density matrix element to the
         ! Renyi entropy (S_2) of the full density matrix.
@@ -729,11 +730,14 @@ contains
         !        element, for both replicas.
         !    excit_level: The excitation level between the two bitstrings
         !        contributing to the full density matrix bitstring.
+        !    half_density_matrix: reflect psips spawned from lower triangle into
+        !        the upper one?
 
-        use fciqmc_data, only: numerators, full_r2_ind, half_density_matrix
+        use fciqmc_data, only: numerators, full_r2_ind
 
         real(p), intent(in) :: walker_pop(:)
         integer, intent(in) :: excit_level
+        logical, intent(in) :: half_density_matrix
 
         if (half_density_matrix .and. excit_level /= 0) then
             ! With the half-density matrix option, only the upper-half of the

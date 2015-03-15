@@ -357,7 +357,7 @@ contains
                 truncate_space = .true.
                 call readi(truncation_level)
             case('HALF_DENSITY_MATRIX')
-                half_density_matrix = .true.
+                dmqmc_in%half_density_matrix = .true.
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -942,7 +942,7 @@ contains
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
