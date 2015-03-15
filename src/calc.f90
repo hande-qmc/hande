@@ -203,20 +203,33 @@ contains
         ! Out:
         !    seed: seed used to initialise the dSFMT random number generator.
 
+        character(*), intent(in) :: git_sha1
+        character(36), intent(in) :: uuid
+        integer, intent(out) :: seed
+
+        GLOBAL_META = metadata_t(git_sha1, uuid)
+        seed = gen_seed(uuid)
+
+    end subroutine init_calc_defaults
+
+    function gen_seed(uuid) result(randish_seed)
+
+        ! In:
+        !    uuid: UUID of the calculation.
+        ! Returns:
+        !    A random(ish) seed based upon the hash of the time and the calculation UUID.
+
         use iso_c_binding, only: c_loc, c_ptr, c_char, c_int
         use hashing, only: MurmurHash2
         use utils, only: fstring_to_carray
 
-        character(*), intent(in) :: git_sha1
+        integer :: randish_seed
         character(36), intent(in) :: uuid
-        integer, intent(out) :: seed
 
         character(len=len(uuid)+10) :: seed_data
         character(kind=c_char), target :: cseed_data(len(seed_data)+1)
         type(c_ptr) :: cseed_data_ptr
         integer(c_int) :: n
-
-        GLOBAL_META = metadata_t(git_sha1, uuid)
 
         call date_and_time(time=seed_data(:10))
         seed_data(11:) = uuid
@@ -225,9 +238,9 @@ contains
         cseed_data_ptr = c_loc(cseed_data)
         n = size(cseed_data)-1 ! Don't hash terminating null character.
 
-        seed = int(MurmurHash2(cseed_data_ptr, n, 12345_c_int))
+        randish_seed = int(MurmurHash2(cseed_data_ptr, n, 12345_c_int))
 
-    end subroutine init_calc_defaults
+    end function gen_seed
 
     function doing_calc(calc_param) result(doing)
 
