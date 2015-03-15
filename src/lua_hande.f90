@@ -71,11 +71,16 @@ contains
 
         use aotus_module, only: open_config_file
         use flu_binding, only: flu_State, fluL_newstate, flu_close
+
         use errors, only: stop_all, warning
+        use parallel
+        use utils, only: read_file_to_buffer
 
         integer, intent(out) :: ierr
 
         character(255) :: inp_file, err_string
+        character(:), allocatable :: buffer
+        integer :: buf_len
         type(flu_State) :: lua_state
         logical :: t_exists
 
@@ -94,6 +99,14 @@ contains
 
             lua_state = fluL_newstate()
             call register_lua_hande_api(lua_state)
+
+            if (parent) then
+                write (6,'(a14,/,1X,13("-"),/)') 'Input options'
+                call read_file_to_buffer(buffer, inp_file)
+                write (6,'(A)') buffer
+                buf_len = len(buffer)
+                write (6,'(/,1X,13("-"),/)')
+            end if
 
             ! Attempt to run script.  If it fails (ie ierr is non-zero) then try
             ! parsing it as traditional input file for now.

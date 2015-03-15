@@ -81,8 +81,7 @@ contains
             ios = 0
         end if
 
-        if (parent) write (6,'(a14,/,1X,13("-"),/)') 'Input options'
-        call input_options(echo_lines=parent, skip_blank_lines=.true.)
+        call input_options(echo_lines=.false., skip_blank_lines=.true.)
 
         do ! loop over lines in input file.
             call read_line(eof)
