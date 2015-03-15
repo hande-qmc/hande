@@ -283,4 +283,5 @@ type dmqmc_weighted_sampling_t
     real(dp), allocatable :: weight_altering_factors(:)
 end type dmqmc_weighted_sampling_t
 
+type (dmqmc_in_t) :: dmqmc_in
 end module dmqmc_data

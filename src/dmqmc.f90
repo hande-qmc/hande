@@ -8,13 +8,14 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, restart_in, reference, load_bal_in)
+    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, reference, load_bal_in)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
         ! times, to accumulate statistics for each value for beta.
 
         ! In:
+        !    dmqmc_in: input options relating to DMQMC.
         !    restart_in: input options for HDF5 restart files.
         !    reference: reference determinant.
         !    load_bal_in: input options for load balancing.
@@ -41,12 +42,14 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
