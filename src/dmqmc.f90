@@ -234,7 +234,7 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(nspawn_events, sys%max_number_excitations, qmc_in%ncycles)
+                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles)
 
                 call update_shift_dmqmc(qmc_in, tot_nparticles, tot_nparticles_old, ireport)
 

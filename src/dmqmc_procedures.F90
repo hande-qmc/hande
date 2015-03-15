@@ -51,7 +51,7 @@ contains
             end do
         end if
 
-        if (calc_excit_dist .or. dmqmc_in%find_weights) then
+        if (dmqmc_in%calc_excit_dist .or. dmqmc_in%find_weights) then
             allocate(excit_dist(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('excit_dist',sys%max_number_excitations+1,ierr)
             excit_dist = 0.0_p

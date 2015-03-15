@@ -315,7 +315,7 @@ contains
                 dmqmc_in%find_weights = .true.
                 dmqmc_in%weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
-                calc_excit_dist = .true.
+                dmqmc_in%calc_excit_dist = .true.
             case('USE_ALL_SYM_SECTORS')
                 all_sym_sectors = .true.
             case('USE_ALL_SPIN_SECTORS')
@@ -707,7 +707,7 @@ contains
         if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
                &sites for the correlation function option.')
 
-          if (dmqmc_in%find_weights .and. calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
+          if (dmqmc_in%find_weights .and. dmqmc_in%calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
               &_DISTRIBUTION options cannot be used together.')
 
         ! Calculation specific checking.
@@ -943,7 +943,7 @@ contains
         call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)

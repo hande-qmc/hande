@@ -681,7 +681,7 @@ contains
         D0_population = 0.0_p
 
         ! DMQMC-specific...
-        if (calc_excit_dist) excit_dist = 0.0_p
+        if (allocated(excit_dist)) excit_dist = 0.0_p
         if (allocated(trace)) trace = 0.0_p
         numerators = 0.0_p
 
