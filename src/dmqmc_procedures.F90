@@ -41,13 +41,13 @@ contains
         ! mask. This has a bit set for each of the two sites/orbitals being
         ! considered in the correlation function.
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
-            call check_allocate('correlation_mask',sys%basis%string_len,ierr)
-            correlation_mask = 0_i0
+            allocate(dmqmc_in%correlation_mask(1:sys%basis%string_len), stat=ierr)
+            call check_allocate('dmqmc_in%correlation_mask',sys%basis%string_len,ierr)
+            dmqmc_in%correlation_mask = 0_i0
             do i = 1, 2
                 bit_position = sys%basis%bit_lookup(1,dmqmc_in%correlation_sites(i))
                 bit_element = sys%basis%bit_lookup(2,dmqmc_in%correlation_sites(i))
-                correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
+                dmqmc_in%correlation_mask(bit_element) = ibset(dmqmc_in%correlation_mask(bit_element), bit_position)
             end do
         end if
 

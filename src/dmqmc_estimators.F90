@@ -348,7 +348,7 @@ contains
                 &(sys, idet, excitation, H00, unweighted_walker_pop(1))
             ! Spin-spin correlation function.
             if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-                &(sys, idet, excitation, H00, unweighted_walker_pop(1))
+                &(sys, idet, excitation, H00, unweighted_walker_pop(1), dmqmc_in%correlation_mask)
             ! Staggered magnetisation.
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
                 &(sys, idet, excitation, H00, unweighted_walker_pop(1))
@@ -577,7 +577,7 @@ contains
 
     end subroutine dmqmc_energy_squared_heisenberg
 
-    subroutine dmqmc_correlation_function_heisenberg(sys, idet, excitation, H00, walker_pop)
+    subroutine dmqmc_correlation_function_heisenberg(sys, idet, excitation, H00, walker_pop, correlation_mask)
 
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
@@ -592,11 +592,13 @@ contains
         !    H00: diagonal Hamiltonian element for the reference.
         !    walker_pop: number of particles on the current density matrix
         !        element.
+        !    correlation_mask: masks for calculating spin-spin correlation
+        !        function.
 
         use bit_utils, only: count_set_bits
         use excitations, only: excit_t
         use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data, correlation_mask
+        use fciqmc_data, only: walker_data
         use fciqmc_data, only: numerators, correlation_fn_ind
         use system, only: sys_t
 
@@ -604,6 +606,7 @@ contains
         integer, intent(in) :: idet
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, walker_pop
+        integer(i0), allocatable, intent(in) :: correlation_mask(:)
         integer(i0) :: f(sys%basis%string_len)
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
         integer :: sign_factor
