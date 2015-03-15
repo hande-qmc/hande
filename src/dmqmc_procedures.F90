@@ -15,7 +15,7 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
-        use calc, only: propagate_to_beta, fermi_temperature
+        use calc, only: propagate_to_beta
         use checking, only: check_allocate
         use fciqmc_data
         use system, only: sys_t
@@ -77,7 +77,7 @@ contains
         ! are at temperatures commensurate(ish) with the reduced (inverse) temperature
         ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
         ! to set the appropriate beta = Beta / T_F.
-        if (fermi_temperature) then
+        if (dmqmc_in%fermi_temperature) then
             qmc_in%tau = qmc_in%tau / sys%ueg%ef
             init_beta = init_beta / sys%ueg%ef
         end if

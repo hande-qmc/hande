@@ -249,7 +249,7 @@ contains
             case('GRAND_CANONICAL_INITIALISATION')
                 dmqmc_in%grand_canonical_initialisation = .true.
             case('FERMI_TEMPERATURE')
-                fermi_temperature = .true.
+                dmqmc_in%fermi_temperature = .true.
 
             case('CCMC_FULL_NC')
                 ccmc_in%full_nc = .true.
@@ -948,7 +948,7 @@ contains
         call mpi_bcast(max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%grand_canonical_initialisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.
         if (parent) option_set = allocated(dmqmc_in%sampling_probs)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
