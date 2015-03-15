@@ -291,10 +291,10 @@ contains
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy_squared
             case('DMQMC_CORRELATION_FUNCTION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
-                allocate(correlation_sites(nitems-1), stat=ierr)
-                call check_allocate('correlation_sites',nitems-1,ierr)
+                allocate(dmqmc_in%correlation_sites(nitems-1), stat=ierr)
+                call check_allocate('dmqmc_in%correlation_sites',nitems-1,ierr)
                 do i = 1, nitems-1
-                    call readi(correlation_sites(i))
+                    call readi(dmqmc_in%correlation_sites(i))
                 end do
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
@@ -704,8 +704,8 @@ contains
             fciqmc_in%init_spin_inv_D0 = .false.
         end if
 
-        if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
-               &sites for the correlation function option.')
+        if (allocated(dmqmc_in%correlation_sites) .and. size(dmqmc_in%correlation_sites) /= 2) &
+                            call stop_all(this, 'You must enter exactly two sites for the correlation function option.')
 
           if (dmqmc_in%find_weights .and. dmqmc_in%calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
               &_DISTRIBUTION options cannot be used together.')
@@ -981,16 +981,16 @@ contains
             end do
         end if
         option_set = .false.
-        if (parent) option_set = allocated(correlation_sites)
+        if (parent) option_set = allocated(dmqmc_in%correlation_sites)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(correlation_sites)
+            occ_list_size = size(dmqmc_in%correlation_sites)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(correlation_sites(occ_list_size), stat=ierr)
-                call check_allocate('correlation_sites',occ_list_size,ierr)
+                allocate(dmqmc_in%correlation_sites(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_in%correlation_sites',occ_list_size,ierr)
             end if
-            call mpi_bcast(correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(dmqmc_in%correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
         call mpi_bcast(truncate_space, 1, mpi_logical, 0, mpi_comm_world, ierr)

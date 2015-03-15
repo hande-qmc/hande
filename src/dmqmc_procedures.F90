@@ -45,8 +45,8 @@ contains
             call check_allocate('correlation_mask',sys%basis%string_len,ierr)
             correlation_mask = 0_i0
             do i = 1, 2
-                bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
-                bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
+                bit_position = sys%basis%bit_lookup(1,dmqmc_in%correlation_sites(i))
+                bit_element = sys%basis%bit_lookup(2,dmqmc_in%correlation_sites(i))
                 correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
             end do
         end if
