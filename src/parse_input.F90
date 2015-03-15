@@ -302,7 +302,7 @@ contains
                 call readi(nweights)
                 allocate(sampling_probs(nweights), stat=ierr)
                 call check_allocate('sampling_probs', nweights, ierr)
-                weighted_sampling = .true.
+                dmqmc_in%weighted_sampling = .true.
                 call read_line(eof)
                 if (eof) call stop_all('read_input', 'Unexpected end of file reading DMQMC weights.')
                 do i = 1, nweights
@@ -313,7 +313,7 @@ contains
                 vary_weights = .true.
             case('DMQMC_FIND_WEIGHTS')
                 find_weights = .true.
-                weighted_sampling = .true.
+                dmqmc_in%weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 calc_excit_dist = .true.
             case('USE_ALL_SYM_SECTORS')
@@ -773,8 +773,8 @@ contains
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
                  call stop_all(this, 'The ids of the restart files could be the same')
         end if   
-        if (vary_weights .and. (.not. weighted_sampling)) then
-            call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
+        if (vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
+            call stop_all(this, 'The vary_weights option can only be used together with the dmqmc_in%weighted_sampling option.')
         end if
         if (sys%system /= heisenberg .and. dmqmc_calc_type > dmqmc_energy) then
             call stop_all(this, 'The observable requested is not currently implemented for this Hamiltonian.')
@@ -933,7 +933,7 @@ contains
         call mpi_bcast(doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)

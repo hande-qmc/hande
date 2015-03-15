@@ -57,7 +57,7 @@ contains
         type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers.
-        call init_proc_pointers(sys, qmc_in)
+        call init_proc_pointers(sys, qmc_in, dmqmc_in)
 
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
@@ -514,7 +514,7 @@ contains
         ! arrays, ie to store thermal quantities, and to initalise reduced density matrix
         ! quantities if necessary.
         if (doing_calc(dmqmc_calc)) then
-            call init_dmqmc(sys, qmc_in)
+            call init_dmqmc(sys, qmc_in, dmqmc_in)
         end if
 
         if (parent) then
@@ -610,13 +610,14 @@ contains
 
     end subroutine init_qmc
 
-    subroutine init_proc_pointers(sys, qmc_in)
+    subroutine init_proc_pointers(sys, qmc_in, dmqmc_in)
 
         ! Set function pointers for QMC calculations.
 
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
 
         ! System and calculation data
         use calc
@@ -624,6 +625,7 @@ contains
         use system
         use parallel, only: parent
         use qmc_data, only: qmc_in_t
+        use dmqmc_data, only: dmqmc_in_t
 
         ! Procedures to be pointed to.
         use death, only: stochastic_death
@@ -657,6 +659,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
 
         ! 0. In general, use the default spawning routine.
         spawner_ptr => spawn_standard
@@ -812,7 +815,7 @@ contains
             end if
 
             ! Weighted importance sampling routines.
-            if (weighted_sampling) then
+            if (dmqmc_in%weighted_sampling) then
                 spawner_ptr => spawn_importance_sampling
                 gen_excit_ptr%trial_fn => dmqmc_weighting_fn
             end if

@@ -5,12 +5,13 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys, qmc_in)
+    subroutine init_dmqmc(sys, qmc_in, dmqmc_in)
 
         ! In:
         !    sys: system being studied.
         ! In/Out:
         !    qmc_in: Input options relating to QMC methods.
+        !    dmqmc_in: Input options relating to DMQMC.
 
         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
@@ -20,9 +21,11 @@ contains
         use system, only: sys_t
 
         use qmc_data, only: qmc_in_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: ierr, i, bit_position, bit_element
 
@@ -80,7 +83,7 @@ contains
         end if
 
 
-        if (weighted_sampling) then
+        if (dmqmc_in%weighted_sampling) then
             ! sampling_probs stores the factors by which probabilities
             ! are to be reduced when spawning away from the diagonal. The trial
             ! function required from these probabilities, for use in importance
