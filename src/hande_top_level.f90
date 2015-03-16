@@ -133,7 +133,7 @@ contains
 
         use calc
         use diagonalisation, only: diagonalise
-        use hilbert_space, only: estimate_hilbert_space
+        use hilbert_space, only: estimate_hilbert_space, nhilbert_cycles
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
         use qmc_data, only: qmc_in_global, semi_stoch_in_global, fciqmc_in_global, &
@@ -150,7 +150,8 @@ contains
         if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys, reference)
 
         if (doing_calc(mc_hilbert_space)) then
-            call estimate_hilbert_space(sys, reference, qmc_in_global%seed)
+            if (.not. truncate_space) truncation_level = -1
+            call estimate_hilbert_space(sys, truncation_level, nhilbert_cycles, reference%occ_list0, qmc_in_global%seed)
         end if
 
         if (doing_calc(mc_canonical_kinetic_energy)) then

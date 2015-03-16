@@ -145,9 +145,15 @@ contains
         type(flu_State), intent(inout) :: lua_state
 
         call flu_register(lua_state, 'test_lua_api', test_lua_api)
+
+        ! Utilities
         call flu_register(lua_state, 'mpi_root', mpi_root)
 
+        ! Systems
         call flu_register(lua_state, 'ueg', lua_ueg)
+
+        ! Calculations
+        call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)
 
     end subroutine register_lua_hande_api
 
@@ -358,5 +364,69 @@ contains
         nreturn = 1
 
     end function lua_ueg
+
+    ! --- Calculation wrappers ---
+
+    function lua_hilbert_space(L) result(nresult) bind(c)
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
+
+        use flu_binding!, only: flu_State, flu_copyptr, flu_insert
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+        use aot_vector_module, only: aot_get_val
+
+        use errors, only: stop_all
+        use system, only: sys_t
+
+        use hilbert_space, only: estimate_hilbert_space
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+
+        type(c_ptr) :: sys_ptr
+        type(sys_t), pointer :: sys
+        integer :: truncation_level, ncycles, rng_seed
+        integer, allocatable :: ref_det(:)
+        integer :: opts, err
+        integer, allocatable :: err_arr(:)
+        logical :: have_seed
+
+        lua_state = flu_copyptr(L)
+
+        opts = aot_table_top(lua_state)
+
+        call aot_get_val(ncycles, err, lua_state, opts, 'ncycles')
+        if (err /= 0) call stop_all('lua_hilbert_space', 'Number of cycles not supplied.')
+        call aot_get_val(truncation_level, err, lua_state, opts, 'truncation_level', -1)
+        call aot_get_val(ref_det, err_arr, sys%nel, lua_state, opts, key='reference')
+        have_seed = aot_exists(lua_state, opts, 'rng_seed')
+        call aot_get_val(rng_seed, err, lua_state, opts, 'rng_seed')
+
+        call aot_table_close(lua_state, opts)
+
+        call aot_top_get_val(sys_ptr, err, lua_state)
+        if (err /= 0) call stop_all('lua_hilbert_space', 'Problem receiving sys_t object.')
+        call c_f_pointer(sys_ptr, sys)
+
+        ! AOTUS returns a vector of size 0 to denote a non-existent vector.
+        if (size(ref_det) == 0) deallocate(ref_det)
+        if (allocated(ref_det)) then
+            if (size(ref_det) /= sys%nel) call stop_all('lua_hilbert_space', &
+                            'Reference determinant does not match the number of electrons in system.')
+        end if
+
+        if (have_seed) then
+            call estimate_hilbert_space(sys, truncation_level, ncycles, ref_det, rng_seed)
+        else
+            call estimate_hilbert_space(sys, truncation_level, ncycles, ref_det)
+        end if
+
+        ! [todo] - return estimate of space and error to lua.
+        nresult = 0
+
+    end function lua_hilbert_space
 
 end module lua_hande
