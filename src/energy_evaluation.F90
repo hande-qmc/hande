@@ -458,8 +458,8 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
-        ! Out:
         !    excitation: excitation connecting the determinant to the reference determinant.
+        ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
         !       determinant and the reference determinant.
 
@@ -467,7 +467,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit_t, get_excitation
+        use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k
         use system, only: sys_t
 
@@ -476,10 +476,8 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit_t), intent(out) :: excitation
+        type(excit_t), intent(inout) :: excitation
         real(p), intent(out) :: hmatel
-
-        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -516,8 +514,8 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
-        ! Out:
         !    excitation: excitation connecting the determinant to the reference determinant.
+        ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
         !       determinant and the reference determinant.
 
@@ -525,7 +523,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit_t, get_excitation
+        use excitations, only: excit_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
 
@@ -534,10 +532,8 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit_t), intent(out) :: excitation
+        type(excit_t), intent(inout) :: excitation
         real(p), intent(out) :: hmatel
-
-        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -574,8 +570,8 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
-        ! Out:
         !    excitation: excitation connecting the determinant to the reference determinant.
+        ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
         !       determinant and the reference determinant.
 
@@ -583,7 +579,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit_t, get_excitation
+        use excitations, only: excit_t
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: cross_product_pg_basis
         use system, only: sys_t
@@ -593,12 +589,11 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit_t), intent(out) :: excitation
+        type(excit_t), intent(inout) :: excitation
         real(p), intent(out) :: hmatel
 
         integer :: ij_sym, ab_sym
 
-        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
         hmatel = 0.0_p
 
         select case(excitation%nexcit)
@@ -655,8 +650,8 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
-        ! Out:
         !    excitation: excitation connecting the determinant to the reference determinant.
+        ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
         !       determinant and the reference determinant.
 
@@ -664,7 +659,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit_t, get_excitation
+        use excitations, only: excit_t
         use hamiltonian_ueg, only: slater_condon2_ueg
         use system, only: sys_t
 
@@ -673,10 +668,9 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit_t), intent(out) :: excitation
+        type(excit_t), intent(inout) :: excitation
         real(p), intent(out) :: hmatel
 
-        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
         hmatel = 0.0_p
 
         if (excitation%nexcit == 0) then

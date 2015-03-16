@@ -249,7 +249,7 @@ contains
                               linked_ccmc, ccmc_full_nc
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
-        use excitations, only: excit_t, get_excitation_level
+        use excitations, only: excit_t, get_excitation_level, get_excitation
         use fciqmc_data, only: sampling_size, nreport, ncycles, walker_dets, walker_population,      &
                                walker_data, proj_energy, D0_population, f0, dump_restart_file,       &
                                tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
@@ -555,6 +555,7 @@ contains
                             ! estimator.  See comments in spawning.F90 for why we
                             ! must divide through by the probability of selecting
                             ! the cluster.
+                            connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, f0)
                             call update_proj_energy_ptr(sys, f0, cdet(it), &
                                      cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                      D0_population, proj_energy, connection, junk)

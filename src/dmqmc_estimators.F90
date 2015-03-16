@@ -270,7 +270,7 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, idet, iteration)
+    subroutine update_dmqmc_estimators(sys, idet, iteration, cdet)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -283,6 +283,8 @@ contains
         !    sys: system being studied.
         !    idet: Current position in the main bitstring list.
         !    iteration: current Monte Carlo cycle.
+        !    cdet: det_info_t object containing information of current density
+        !        matrix element.
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
@@ -291,18 +293,21 @@ contains
         use fciqmc_data, only: dmqmc_accumulated_probs, start_averaging, dmqmc_find_weights
         use fciqmc_data, only: calculate_excit_distribution, excit_distribution
         use fciqmc_data, only: sampling_size, dmqmc_accumulated_probs_old, real_factor
-        use proc_pointers, only: update_dmqmc_energy_ptr, update_dmqmc_stag_mag_ptr
+        use fciqmc_data, only: replica_tricks, energy_ind, walker_data, estimator_numerators
+        use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
+        use determinants, only: det_info_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: idet, iteration
+        type(det_info_t), intent(inout) :: cdet
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(sampling_size)
 
         ! Get excitation.
         excitation = get_excitation(sys%nel, sys%basis, walker_dets(:sys%basis%string_len,idet), &
-            walker_dets((1+sys%basis%string_len):sys%basis%tensor_label_len,idet))
+                         walker_dets((1+sys%basis%string_len):sys%basis%tensor_label_len,idet))
 
         ! When performing importance sampling the result is that certain
         ! excitation levels have smaller psips populations than the true density
@@ -314,17 +319,15 @@ contains
         unweighted_walker_pop = real(walker_population(:,idet),p)*dmqmc_accumulated_probs(excitation%nexcit)/&
             real_factor
 
-        ! If diagonal element, add to the trace.
-        if (excitation%nexcit == 0) trace = trace + real(walker_population(:,idet),p)/real_factor
-
         ! The following only use the populations with ireplica = 1, so only call
         ! them if the determinant is occupied in the first replica.
         if (abs(unweighted_walker_pop(1)) > 0) then
             ! See which estimators are to be calculated, and call the
             ! corresponding procedures.
             ! Energy
-            If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_ptr&
-                &(sys, idet, excitation, unweighted_walker_pop(1))
+            If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
+                    &(sys, excitation, cdet, unweighted_walker_pop(1), walker_data(1, idet), trace, &
+                    estimator_numerators(energy_ind))
             ! Energy squared.
             if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
                 &(sys, idet, excitation, unweighted_walker_pop(1))
@@ -345,6 +348,11 @@ contains
         ! Full Renyi entropy (S_2).
         if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit)
 
+        ! Update the contribution to the trace from other replicas
+        if (replica_tricks .and. excitation%nexcit == 0) then
+            trace(2) = trace(2) + unweighted_walker_pop(2)
+        end if
+
         ! Reduced density matrices.
         if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
             &(sys%basis, idet, excitation, walker_population(:,idet), iteration)
@@ -353,263 +361,92 @@ contains
 
     end subroutine update_dmqmc_estimators
 
-    subroutine dmqmc_energy_heisenberg(sys, idet, excitation, walker_pop)
+    subroutine dmqmc_energy_and_trace(sys, excitation, cdet, pop, diagonal_contribution, trace, energy)
 
-        ! For the Heisenberg model only.
-        ! Add the contribution from the current density matrix element to the 
-        ! thermal energy estimate.
+        ! Add the contribution for the current density matrix element to the thermal
+        ! energy estimate.
 
         ! In:
         !    sys: system being studied.
-        !    idet: Current position in the main bitstring (density matrix) list.
         !    excitation: excit_t type variable which stores information on
         !        the excitation between the two bitstring ends, corresponding
         !        to the two labels for the density matrix element.
-        !    walker_pop: number of particles on the current density matrix
+        !    pop: number of particles on the current density matrix
         !        element.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !    element under consideration.
+        !    diagonal_contribution: <D_i|H|D_i>-<D0|H|D0>
+        ! In/Out:
+        !    trace: total population on diagonal elements of density matrix
+        !    energy: current thermal energy estimate.
 
-        use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_ind
+        use determinants, only: det_info_t
         use system, only: sys_t
+        use excitations, only: excit_t
+        use fciqmc_data, only: H00
+        use proc_pointers, only: update_proj_energy_ptr
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: idet
-        type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
-        integer :: bit_element, bit_position
+        type(excit_t), intent(inout) :: excitation
+        type(det_info_t), intent(in) :: cdet
+        real(p), intent(in) :: pop
+        real(p), intent(in) :: diagonal_contribution
+        real(p), intent(inout) :: trace(:)
+        real(p), intent(inout) :: energy
 
-        ! If no excitation, we have a diagonal element, so add elements which
-        ! involve the diagonal element of the Hamiltonian.
-        if (excitation%nexcit == 0) then
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                (walker_data(1,idet)+H00)*walker_pop
-        else if (excitation%nexcit == 1) then
-            ! If not a diagonal element, but only a single excitation, then the
-            ! corresponding Hamiltonian element may be non-zero. Calculate if the
-            ! flipped spins are neighbours on the lattice, and if so, add the
-            ! contribution from this site.
-            bit_position = sys%basis%bit_lookup(1,excitation%from_orb(1))
-            bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
-            if (btest(sys%real_lattice%connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) &
-                estimator_numerators(energy_ind) = estimator_numerators(energy_ind) - &
-                (sys%heisenberg%J*walker_pop/2)
-        end if
-
-    end subroutine dmqmc_energy_heisenberg
-
-    subroutine dmqmc_energy_ueg(sys, idet, excitation, walker_pop)
-
-        ! For the UEG model only.
-        ! Add the contribution from the current density matrix element to the
-        ! thermal energy estimate.
-
-        ! In:
-        !    sys: system being studied.
-        !    idet: Current position in the main bitstring (density matrix) list.
-        !    excitation: excit type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding
-        !        to the two labels for the density matrix element.
-        !    walker_pop: number of particles on the current density matrix
-        !        element.
-
-        use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_ind
-        use hamiltonian_ueg, only: slater_condon2_ueg
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: idet
-        type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
-        integer :: bit_element, bit_position
-
-        ! If no excitation, we have a diagonal element, so add elements which
-        ! involve the diagonal element of the Hamiltonian.
-        if (excitation%nexcit == 0) then
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                (walker_data(1,idet)+H00)*walker_pop
-        else if (excitation%nexcit == 2) then
-            ! Have a determinant connected to the reference determinant: add to
-            ! projected energy.
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
-                & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)*walker_pop
-        end if
-
-    end subroutine dmqmc_energy_ueg
-
-    subroutine dmqmc_energy_ueg_propagate(sys, idet, excitation, walker_pop)
-
-        ! For the UEG model only.
-        ! Add the contribution from the current density matrix element to the
-        ! thermal energy estimate.
-        ! When propagating to specific beta value / using importance sampling we
-        ! need to recalculate the diagonal contributions due to the change in
-        ! definition of walker_data.
-
-        ! In:
-        !    sys: system being studied.
-        !    idet: Current position in the main bitstring (density matrix) list.
-        !    excitation: excit type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding
-        !        to the two labels for the density matrix element.
-        !    walker_pop: number of particles on the current density matrix
-        !        element.
-
-        use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets, f0
-        use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_ind
-        use hamiltonian_ueg, only: slater_condon2_ueg, slater_condon0_ueg
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: idet
-        type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
-
-        ! If no excitation, we have a diagonal element, so add elements which
-        ! involve the diagonal element of the Hamiltonian.
-        if (excitation%nexcit == 0) then
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                slater_condon0_ueg(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
-        else if (excitation%nexcit == 2) then
-            ! Have a determinant connected to the reference determinant: add to
-            ! projected energy.
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
-                & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)*walker_pop
-        end if
-
-    end subroutine dmqmc_energy_ueg_propagate
-
-    subroutine dmqmc_energy_hub_k(sys, idet, excitation, walker_pop)
-
-        ! Add the contribution from the current density matrix element to the
-        ! thermal energy estimate.
-
-        ! In:
-        !    sys: system being studied.
-        !    idet: Current position in the main bitstring (density matrix) list.
-        !    excitation: excit_t type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding to
-        !        the two labels for the density matrix element.
-        !    walker_pop: number of particles on the current density matrix
-        !        element.
-
-        use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_ind
-        use hamiltonian_hub_k, only: slater_condon2_hub_k
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: idet
-        type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
         real(p) :: hmatel
 
-        ! If no excitation, we have a diagonal element, so add elements which
-        ! involve the diagonal element of the Hamiltonian.
-        if (excitation%nexcit == 0) then
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                (walker_data(1,idet)+H00)*walker_pop
-        else if (excitation%nexcit == 2) then
-            ! Have a determinant connected to the reference determinant: add to
-            ! projected energy.
-            hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
-                excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                (hmatel*walker_pop)
-        end if
+        ! Update trace and off-diagonal contributions to the total enegy
+        call update_proj_energy_ptr(sys, cdet%f2, cdet, pop, trace(1), energy, excitation, hmatel)
 
-    end subroutine dmqmc_energy_hub_k
+        ! Update diagaonal contribution to the total energy
+        if (excitation%nexcit == 0) energy = energy + (diagonal_contribution+H00)*pop
 
-    subroutine dmqmc_energy_hub_k_propagate(sys, idet, excitation, walker_pop)
+    end subroutine dmqmc_energy_and_trace
 
-        ! Add the contribution from the current density matrix element to the
-        ! thermal energy estimate.
+    subroutine dmqmc_energy_and_trace_propagate(sys, excitation, cdet, pop, diagonal_contribution, trace, energy)
+
+        ! Add the contribution for the current density matrix element to the thermal
+        ! energy estimate. Routine is specific to when using propagate_to_beta
+        ! option.
 
         ! In:
         !    sys: system being studied.
-        !    idet: Current position in the main bitstring (density matrix) list.
         !    excitation: excit_t type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding to
-        !        the two labels for the density matrix element.
-        !    walker_pop: Number of particles on the current density matrix
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    pop: number of particles on the current density matrix
         !        element.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !    element under consideration.
+        !    diagonal_contribution: <D_i|H|D_i>-<D0|H|D0>
+        ! In/Out:
+        !    trace: total population on diagonal elements of density matrix
+        !    energy: current thermal energy estimate.
 
-        use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets, H00
-        use fciqmc_data, only: estimator_numerators, energy_ind
-        use hamiltonian_hub_k, only: slater_condon2_hub_k, slater_condon0_hub_k
+        use determinants, only: det_info_t
         use system, only: sys_t
+        use excitations, only: excit_t
+        use fciqmc_data, only: H00
+        use proc_pointers, only: update_proj_energy_ptr, sc0_ptr
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: idet
-        type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
+        type(excit_t), intent(inout) :: excitation
+        type(det_info_t), intent(in) :: cdet
+        real(p), intent(in) :: pop
+        real(p), intent(in) :: diagonal_contribution
+        real(p), intent(inout) :: trace(:)
+        real(p), intent(inout) :: energy
+
         real(p) :: hmatel
 
-        ! if no excitation, we have a diagonal element, so add elements which
-        ! involve the diagonal element of the hamiltonian.
-        if (excitation%nexcit == 0) then
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                slater_condon0_hub_k(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
-        else if (excitation%nexcit == 2) then
-            ! Have a determinant connected to the reference determinant: add to
-            ! projected energy.
-            hmatel = slater_condon2_hub_k(sys, excitation%from_orb(1), excitation%from_orb(2), &
-                excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                (hmatel*walker_pop)
-        end if
+        ! Update trace and off-diagonal contributions to the total enegy
+        call update_proj_energy_ptr(sys, cdet%f2, cdet, pop, trace(1), energy, excitation, hmatel)
 
-    end subroutine dmqmc_energy_hub_k_propagate
+        ! Update diagaonal contribution to the total energy
+        if (excitation%nexcit == 0) energy = energy + sc0_ptr(sys, cdet%f)*pop
 
-    subroutine dmqmc_energy_ueg_free(sys, idet, excitation, walker_pop)
-
-        ! For the UEG model only.
-        ! Add the contribution from the current density matrix element to the
-        ! thermal energy estimate.
-        ! When propagating to specific beta value / using importance sampling we
-        ! need to recalculate the diagonal contributions due to the change in
-        ! definition of walker_data.
-
-        ! In:
-        !    sys: system being studied.
-        !    idet: Current position in the main bitstring (density matrix) list.
-        !    excitation: excit_t type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding to
-        !        the two labels for the density matrix element.
-        !    walker_pop: number of particles on the current density matrix
-        !        element.
-
-        use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets, f0
-        use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_ind
-        use hamiltonian_ueg, only: kinetic_energy_ueg
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: idet
-        type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
-
-        ! If no excitation, we have a diagonal element, so add elements which
-        ! involve the diagonal element of the Hamiltonian.
-        if (excitation%nexcit == 0) then
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                kinetic_energy_ueg(sys, walker_dets(:sys%basis%string_len,idet))*walker_pop
-        end if
-
-    end subroutine dmqmc_energy_ueg_free
+    end subroutine dmqmc_energy_and_trace_propagate
 
     subroutine dmqmc_energy_squared_heisenberg(sys, idet, excitation, walker_pop)
 
@@ -722,50 +559,6 @@ contains
             sum_H1_H2*walker_pop
 
     end subroutine dmqmc_energy_squared_heisenberg
-
-    subroutine dmqmc_energy_hub_real(sys, idet, excitation, walker_pop)
-
-        ! Add the contribution from the current density matrix element to the
-        ! thermal energy estimate.
-
-        ! In:
-        !    sys: system being studied.
-        !    idet: Current position in the main bitstring (density matrix) list.
-        !    excitation: excit_t type variable which stores information on
-        !        the excitation between the two bitstring ends, corresponding to
-        !        the two labels for the density matrix element.
-        !    walker_pop: number of particles on the current density matrix
-        !        element.
-
-        use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data, H00
-        use fciqmc_data, only: estimator_numerators, energy_ind
-        use hamiltonian_hub_real, only: slater_condon1_hub_real
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: idet
-        type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
-        real(p) :: hmatel
-
-        ! If no excitation, we have a diagonal element, so add elements which
-        ! involve the diagonal element of the Hamiltonian.
-        if (excitation%nexcit == 0) then
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                (walker_data(1,idet)+H00)*walker_pop
-        else if (excitation%nexcit == 1) then
-            ! If not a diagonal element, but only a single excitation, then the
-            ! corresponding Hamiltonian element may be non-zero. Calculate if the
-            ! flipped spins are neighbours on the lattice, and if so, add the
-            ! contribution from this site.
-            hmatel = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
-            estimator_numerators(energy_ind) = estimator_numerators(energy_ind) + &
-                (hmatel*walker_pop)
-        end if
-
-    end subroutine dmqmc_energy_hub_real
 
     subroutine dmqmc_correlation_function_heisenberg(sys, idet, excitation, walker_pop)
 

@@ -28,8 +28,8 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
-        ! Out:
         !    excitation: excitation connecting the spin product to the trial wavefunction.
+        ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
         !       spin product and the trial wavefunction.
 
@@ -37,7 +37,7 @@ contains
         ! proj_energy_sum are zero before the first call.
 
         use determinants, only: det_info_t
-        use excitations, only: excit_t, get_excitation
+        use excitations, only: excit_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -45,13 +45,12 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit_t), intent(out) :: excitation
+        type(excit_t), intent(inout) :: excitation
         real(p), intent(out) :: hmatel
 
         integer :: bit_position, bit_element
 
         hmatel = 0.0_p
-        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -95,10 +94,10 @@ contains
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
-        ! Out:
         !    excitation: excitation connecting the spin product to the trial wavefunction.
         !       As each spin product is in the trial wavefunction, this is
         !       simply null, but included for interface compatibility.
+        ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
         !       spin product and the trial wavefunction.
 
@@ -116,7 +115,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
-        type(excit_t), intent(out) :: excitation
+        type(excit_t), intent(inout) :: excitation
         real(p), intent(out) :: hmatel
 
         integer :: n, lattice_1_up, lattice_2_up
