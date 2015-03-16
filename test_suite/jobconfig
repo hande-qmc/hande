@@ -13,8 +13,8 @@ max_nprocs = 1
 max_nprocs = 1
 
 # Canonical energy estimation.
-[mc_canonical_kinetic_energy]
-max_nprocs = 1
+[mc_canonical_kinetic_energy/serial/*/]
+[mc_canonical_kinetic_energy/np?/*/]
 
 # Toy FCIQMC algorithm
 [simple_fciqmc/*/]
@@ -60,11 +60,11 @@ max_nprocs = 1
 max_nprocs = 1
 
 # force MC jobs to run on the same number of cores as the benchmarks in order to have the same Markov chains...
-[*_mpi/np2/*/]
+[*/np2/*/]
 nprocs = 2
 min_nprocs = 2
 max_nprocs = 2
-[*_mpi/np4/*/]
+[*/np4/*/]
 nprocs = 4
 min_nprocs = 4
 max_nprocs = 4
