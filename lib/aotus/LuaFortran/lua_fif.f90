@@ -53,7 +53,7 @@ module lua_fif
     subroutine lua_insert(L, index) bind(c, name="lua_insert")
       use, intrinsic :: iso_c_binding
       type(c_ptr), value :: L
-      integer(kind=c_int) :: index
+      integer(kind=c_int), value :: index
     end subroutine lua_insert
 
     function lua_isNumber(L, index) bind(c, name="lua_isnumber")
