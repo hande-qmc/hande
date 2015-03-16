@@ -61,12 +61,12 @@ implicit none
 
 contains
 
-    subroutine run_lua_hande(ierr)
+    subroutine run_lua_hande(lua_err)
 
         ! Generic entry point from which a lua script is run.
 
         ! Out:
-        !    ierr: error code.  Non-zero if there was any problem reading or running
+        !    lua_err: error code.  Non-zero if there was any problem reading or running
         !          the lua script.
 
         use aotus_module, only: open_config_file
@@ -76,11 +76,11 @@ contains
         use parallel
         use utils, only: read_file_to_buffer
 
-        integer, intent(out) :: ierr
+        integer, intent(out) :: lua_err
 
         character(255) :: inp_file, err_string
         character(:), allocatable :: buffer
-        integer :: buf_len
+        integer :: buf_len, ierr
         type(flu_State) :: lua_state
         logical :: t_exists
 
@@ -109,9 +109,9 @@ contains
             call mpi_bcast(buffer, buf_len, MPI_CHARACTER, 0, mpi_comm_world, ierr)
 #endif
 
-            ! Attempt to run script.  If it fails (ie ierr is non-zero) then try
+            ! Attempt to run script.  If it fails (ie lua_err is non-zero) then try
             ! parsing it as traditional input file for now.
-            call open_config_file(lua_state, inp_file, ierr, err_string)
+            call open_config_file(lua_state, inp_file, lua_err, err_string)
             ! [todo] - Change to stop once traditional input mode has been removed.
             if (ierr == 0) then
                 call flu_close(lua_state)
@@ -126,7 +126,7 @@ contains
         else
             ! Maybe read via STDIN?  Only in traditional mode for now...
             ! [todo] - STDIN functionality with lua?
-            ierr = 1
+            lua_err = 1
         end if
 
     end subroutine run_lua_hande
