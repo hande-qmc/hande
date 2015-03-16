@@ -12,6 +12,10 @@ max_nprocs = 1
 [mc_hilbert_space/*/]
 max_nprocs = 1
 
+# Canonical energy estimation.
+[mc_canonical_kinetic_energy/serial/*/]
+[mc_canonical_kinetic_energy/np?/*/]
+
 # Toy FCIQMC algorithm
 [simple_fciqmc/*/]
 
@@ -56,11 +60,11 @@ max_nprocs = 1
 max_nprocs = 1
 
 # force MC jobs to run on the same number of cores as the benchmarks in order to have the same Markov chains...
-[*_mpi/np2/*/]
+[*/np2/*/]
 nprocs = 2
 min_nprocs = 2
 max_nprocs = 2
-[*_mpi/np4/*/]
+[*/np4/*/]
 nprocs = 4
 min_nprocs = 4
 max_nprocs = 4
@@ -69,10 +73,10 @@ max_nprocs = 4
 [categories]
 
 # By default, run serial MC tests (with POP_SIZE=32) + deterministic tests.
-_default_ = fci lanczos mc_hilbert_space *mc *mc_real_32
+_default_ = fci lanczos mc_hilbert_space mc_canonical_kinetic_energy *mc *mc_real_32
 
 mpi = _default_ *mc_mpi *mc_real_32_mpi
 
-pop64 = fci lanczos mc_hilbert_space *mc *mc_real_64
+pop64 = fci lanczos mc_hilbert_space mc_canonical_kinetic_energy *mc *mc_real_64
 
 pop64_mpi = pop64 *mc_mpi *mc_real_64_mpi

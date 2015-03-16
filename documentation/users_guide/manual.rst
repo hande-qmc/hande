@@ -784,6 +784,13 @@ Note that multiple calculations can be specified within a single input, but are 
     model, the exact size of the space (at least to the first 8 significant
     figures) is found by simple combinatorics.
 
+**estimate_canonical_kinetic_energy**
+
+    Estimate the free-electron thermal kinetic energy in the canonical ensemble
+    in all momentum symmetry sectors by performing nkinetic_cycles*init_pop cycles of a
+    Monte Carlo algorithm. Also estimate <H>_0, which is a form of Hartree-Fock energy.
+    Estimates for mean and variance are printed out every init_pop cycles.
+
 Calculation options: symmetry options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1665,6 +1672,17 @@ the result but can have a significant impact on performance.
     processors take longer to perform their work than others. This is turned
     off by default because such calls may have an initialisation time which
     scales badly to many processors.
+
+
+Calculation options: estimate canonical kinetic energy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    **nkinetic_cycles**
+    Integer.
+
+    Default 1.
+
+    Perform nkinetic_cycles * init_pop Mote Carlo iterations for estimating the
+    canonical kinetic energy.
 
 Output options
 ^^^^^^^^^^^^^^

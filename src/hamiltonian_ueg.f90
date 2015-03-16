@@ -92,22 +92,10 @@ contains
         hmatel = 0.0_p
 
         ! One electron operator: kinetic term
-        do i = 1, sys%nel
-            hmatel = hmatel + sys%basis%basis_fns(occ_list(i))%sp_eigv
-        end do
+        hmatel = sum_sp_eigenvalues(sys, occ_list)
 
         ! Two electron operator: Coulomb term.
-        do i = 1, sys%nel
-            do j = i+1, sys%nel
-                ! Coulomb term is infinite but cancels exactly with the
-                ! infinities in the electron-background and
-                ! background-background interactions.
-                if (mod(occ_list(i),2) == mod(occ_list(j),2)) then
-                    ! Have an exchange term
-                    hmatel = hmatel - sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, occ_list(i), occ_list(j))
-                end if
-            end do
-        end do
+        hmatel = hmatel + potential_energy_ueg(sys, occ_list)
 
     end function slater_condon0_ueg
 
@@ -134,14 +122,65 @@ contains
         call decode_det(sys%basis, f, occ_list)
 
         ! < D | T | D > = \sum_i < i | h(i) | i >
-        hmatel = 0.0_p
-
         ! One electron operator: kinetic term
-        do i = 1, sys%nel
-            hmatel = hmatel + sys%basis%basis_fns(occ_list(i))%sp_eigv
-        end do
+        hmatel = sum_sp_eigenvalues(sys, occ_list)
 
     end function kinetic_energy_ueg
+
+    pure function potential_energy_ueg(sys, occ_list) result(hmatel)
+
+        ! Cacluate Coloumbic contribution from orbital list.
+
+        ! In:
+        !    sys: system being studied.
+        !    occ_list: list of occupied orbitals.
+
+        use system, only: sys_t
+
+        integer :: i, j
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(:)
+        real(p) :: hmatel
+
+        hmatel = 0.0_p
+
+        do i = 1, sys%nel
+            do j = i+1, sys%nel
+                ! Coulomb term is infinite but cancels exactly with the
+                ! infinities in the electron-background and
+                ! background-background interactions.
+                if (mod(occ_list(i),2) == mod(occ_list(j),2)) then
+                    ! Have an exchange term
+                    hmatel = hmatel - sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, occ_list(i), occ_list(j))
+                end if
+            end do
+        end do
+
+    end function potential_energy_ueg
+
+    pure function sum_sp_eigenvalues(sys, occ_list) result(ke)
+
+        ! Calculate the kinetic energy from the single particle energies.
+
+        ! In:
+        !    sys: system being studied.
+        !    occ_list: list of occupied orbitals.
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(sys%nel)
+
+        integer :: iorb
+        real(p) :: ke
+
+        ke = 0.0_p
+
+        do iorb = 1, sys%nel
+            ke = ke + sys%basis%basis_fns(occ_list(iorb))%sp_eigv
+        end do
+
+    end function sum_sp_eigenvalues
 
     pure function slater_condon2_ueg(sys, i, j, a, b, perm) result(hmatel)
 

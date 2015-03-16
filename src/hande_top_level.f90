@@ -106,6 +106,7 @@ contains
         use diagonalisation, only: diagonalise
         use qmc, only: do_qmc
         use hilbert_space, only: estimate_hilbert_space
+        use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
         use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
@@ -116,6 +117,10 @@ contains
 
         if (doing_calc(mc_hilbert_space)) then
             call estimate_hilbert_space(sys)
+        end if
+
+        if (doing_calc(mc_canonical_kinetic_energy)) then
+            call estimate_kinetic_energy(sys)
         end if
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then

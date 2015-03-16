@@ -41,6 +41,8 @@ integer, parameter :: mc_hilbert_space = 2**6
 integer, parameter :: dmqmc_calc = 2**8
 ! Doing Coupled Cluster Monte Carlo?
 integer, parameter :: ccmc_calc = 2**9
+! Monte Carlo estimate of thermal kinetic energy?
+integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
 ! Using the initiator approximation in FCIQMC or CCMC?
 logical :: initiator_approximation = .false.
