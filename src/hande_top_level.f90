@@ -38,6 +38,7 @@ contains
         use point_group_symmetry, only: print_pg_symmetry_info
         use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in, load_bal_in
         use qmc_data, only: reference_t
+        use dmqmc_data, only: dmqmc_in
         use read_in_system, only: read_in_integrals
         use ueg_system, only: init_ueg_proc_pointers
 
@@ -62,13 +63,15 @@ contains
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
         if (parent) call read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, &
-                                    load_bal_in)
+                                    load_bal_in, dmqmc_in)
 
-        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
+        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, &
+                              reference, dmqmc_in)
 
-        call init_system(sys)
+        call init_system(sys, dmqmc_in)
 
-        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
+        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, &
+                         dmqmc_in)
 
         ! Initialise basis functions.
         if (sys%system == read_in) then
@@ -118,6 +121,7 @@ contains
         use parallel, only: iproc, parent
         use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in, load_bal_in
         use qmc_data, only: reference_t
+        use dmqmc_data, only: dmqmc_in
         use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
@@ -138,7 +142,8 @@ contains
             if (doing_calc(simple_fciqmc_calc)) then
                 call do_simple_fciqmc(sys, qmc_in, restart_in, reference)
             else
-                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
+                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, &
+                            dmqmc_in)
             end if
         end if
 

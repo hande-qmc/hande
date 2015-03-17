@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, restart_in, reference, load_bal_in)
+    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, reference, load_bal_in)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -23,6 +23,7 @@ contains
         !         it should be returned in its original (ie unmodified state)
         !         at the end of the procedure.
         !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
 
         use parallel
         use annihilation, only: direct_annihilation
@@ -41,12 +42,14 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
         integer :: beta_cycle
@@ -89,20 +92,20 @@ contains
         ! report loop, asimplemented in the line of code below.
         qmc_in%nreport = qmc_in%nreport+1
 
-        if (all_spin_sectors) nel_temp = sys%nel
+        if (dmqmc_in%all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
 
         ! Should we dump a restart file just before the shift is turned on?
         dump_restart_file_shift = restart_in%dump_restart_file_shift
 
-        do beta_cycle = 1, beta_loops
+        do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, beta_cycle)
+            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, qmc_in, reference, init_tot_nparticles, tot_nparticles, &
-                                               load_bal_in%nslots)
+            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, init_tot_nparticles, &
+                                               tot_nparticles, load_bal_in%nslots)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
@@ -130,7 +133,7 @@ contains
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
-                        if (all_spin_sectors) then
+                        if (dmqmc_in%all_spin_sectors) then
                             sys%nel = sum(count_set_bits(cdet1%f))
                             sys%nvirt = sys%lattice%nsites - sys%nel
                         end if
@@ -150,7 +153,7 @@ contains
                         ! Note DMQMC averages over multiple loops over
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
-                        if (icycle == 1) call update_dmqmc_estimators(sys, idet, iteration, cdet1, reference%H00, load_bal_in%nslots)
+                        if (icycle == 1) call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, reference%H00, load_bal_in%nslots)
 
                         do ireplica = 1, sampling_size
 
@@ -209,7 +212,7 @@ contains
                     ! Now we have finished looping over all determinants, set
                     ! the symmetry labels back to their default value, if
                     ! necessary.
-                    if (all_spin_sectors) then
+                    if (dmqmc_in%all_spin_sectors) then
                         sys%nel = nel_temp
                         sys%nvirt = sys%lattice%nsites - sys%nel
                     end if
@@ -225,12 +228,13 @@ contains
                     ! the trial function, call a routine to update these weights
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
-                    if (vary_weights .and. iteration <= finish_varying_weights) call update_sampling_weights(rng, sys%basis, qmc_in)
+                    if (dmqmc_in%vary_weights .and. iteration <= dmqmc_in%finish_varying_weights) &
+                                                                    call update_sampling_weights(rng, sys%basis, qmc_in)
 
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(nspawn_events, sys%max_number_excitations, qmc_in%ncycles)
+                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles)
 
                 call update_shift_dmqmc(qmc_in, tot_nparticles, tot_nparticles_old, ireport)
 
@@ -251,7 +255,7 @@ contains
             if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
-            if (find_weights) call output_and_alter_weights(sys%max_number_excitations)
+            if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations)
 
         end do
 
@@ -275,7 +279,7 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, beta_cycle)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -284,14 +288,17 @@ contains
         ! In:
         !    initial_shift: the initial shift used for population control.
         !    beta_cycle: The index of the beta loop about to be started.
+        !    dmqmc_in: input options for DMQMC.
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
         use qmc_data, only: qmc_in_t
+        use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
 
         type(dSFMT_t) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: beta_cycle
         integer :: new_seed
 
@@ -304,8 +311,8 @@ contains
         shift = qmc_in%initial_shift
         nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
-        if (vary_weights) accumulated_probs = 1.0_p
-        if (find_weights) excit_dist = 0.0_p
+        if (dmqmc_in%vary_weights) accumulated_probs = 1.0_p
+        if (dmqmc_in%find_weights) excit_dist = 0.0_p
 
         new_seed = qmc_in%seed+iproc+(beta_cycle-1)*nprocs
 

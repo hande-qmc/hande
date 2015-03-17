@@ -20,7 +20,7 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
+    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, dmqmc_in)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -35,6 +35,7 @@ contains
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
+        !    dmqmc_in: input options relating to DMQMC.
 
 ! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
@@ -43,6 +44,7 @@ contains
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
+        use dmqmc_data, only: dmqmc_in_t
         use system
 
         use input
@@ -63,6 +65,7 @@ contains
         type(restart_in_t), intent(inout) :: restart_in
         type(reference_t), intent(inout) :: reference
         type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         character(255) :: cInp
         character(100) :: w
@@ -234,19 +237,19 @@ contains
             case('PROPAGATE_TO_BETA')
                 propagate_to_beta = .true.
             case('INIT_BETA')
-                call readf(init_beta)
+                call readf(dmqmc_in%init_beta)
             case('METROPOLIS_ATTEMPTS')
-                call readi(metropolis_attempts)
+                call readi(dmqmc_in%metropolis_attempts)
             case('MAX_METROPOLIS_MOVE')
-                call readi(max_metropolis_move)
+                call readi(dmqmc_in%max_metropolis_move)
             case('FREE_ELECTRON_TRIAL')
-                free_electron_trial = .true.
+                dmqmc_in%free_electron_trial = .true.
             case('CHEM_POT')
                 call readf(sys%ueg%chem_pot)
             case('GRAND_CANONICAL_INITIALISATION')
-                grand_canonical_initialisation = .true.
+                dmqmc_in%grand_canonical_initialisation = .true.
             case('FERMI_TEMPERATURE')
-                fermi_temperature = .true.
+                dmqmc_in%fermi_temperature = .true.
 
             case('CCMC_FULL_NC')
                 ccmc_in%full_nc = .true.
@@ -288,35 +291,35 @@ contains
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy_squared
             case('DMQMC_CORRELATION_FUNCTION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
-                allocate(correlation_sites(nitems-1), stat=ierr)
-                call check_allocate('correlation_sites',nitems-1,ierr)
+                allocate(dmqmc_in%correlation_sites(nitems-1), stat=ierr)
+                call check_allocate('dmqmc_in%correlation_sites',nitems-1,ierr)
                 do i = 1, nitems-1
-                    call readi(correlation_sites(i))
+                    call readi(dmqmc_in%correlation_sites(i))
                 end do
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             case('DMQMC_WEIGHTED_SAMPLING')
                 call readi(nweights)
-                allocate(sampling_probs(nweights), stat=ierr)
-                call check_allocate('sampling_probs', nweights, ierr)
-                weighted_sampling = .true.
+                allocate(dmqmc_in%sampling_probs(nweights), stat=ierr)
+                call check_allocate('dmqmc_in%sampling_probs', nweights, ierr)
+                dmqmc_in%weighted_sampling = .true.
                 call read_line(eof)
                 if (eof) call stop_all('read_input', 'Unexpected end of file reading DMQMC weights.')
                 do i = 1, nweights
-                    call readf(sampling_probs(i))
+                    call readf(dmqmc_in%sampling_probs(i))
                 end do
             case('DMQMC_VARY_WEIGHTS')
-                call readi(finish_varying_weights)
-                vary_weights = .true.
+                call readi(dmqmc_in%finish_varying_weights)
+                dmqmc_in%vary_weights = .true.
             case('DMQMC_FIND_WEIGHTS')
-                find_weights = .true.
-                weighted_sampling = .true.
+                dmqmc_in%find_weights = .true.
+                dmqmc_in%weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
-                calc_excit_dist = .true.
+                dmqmc_in%calc_excit_dist = .true.
             case('USE_ALL_SYM_SECTORS')
-                all_sym_sectors = .true.
+                dmqmc_in%all_sym_sectors = .true.
             case('USE_ALL_SPIN_SECTORS')
-                all_spin_sectors = .true.
+                dmqmc_in%all_spin_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
                 call readi(nrdms)
                 allocate(rdms(nrdms), stat=ierr)
@@ -347,14 +350,16 @@ contains
                 doing_vn_entropy = .true.
             case('RENYI_ENTROPY_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
-            case('START_AVERAGING')
-                call readi(start_averaging)
+            case('START_AVERAGING_EXCITATION_DIST')
+                call readi(dmqmc_in%start_av_excit_dist)
+            case('START_AVERAGING_RDM')
+                call readi(dmqmc_in%start_av_rdm)
             ! calculation options: DMQMC
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
                 call readi(truncation_level)
             case('HALF_DENSITY_MATRIX')
-                half_density_matrix = .true.
+                dmqmc_in%half_density_matrix = .true.
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -380,7 +385,7 @@ contains
                 call readi(qmc_in%nreport)
                 if (qmc_in%nreport < 0) qmc_in%nreport = huge(qmc_in%nreport)
             case('BETA_LOOPS')
-                call readi(beta_loops)
+                call readi(dmqmc_in%beta_loops)
             case('WALKER_LENGTH')
                 call readi(walker_length)
                 if (item /= nitems) then
@@ -577,7 +582,7 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
+    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, dmqmc_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
@@ -592,10 +597,12 @@ contains
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
         !    reference: reference determinant.
+        !    dmqmc_in: input options relating to DMQMC.
 
         use const
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
+        use dmqmc_data, only: dmqmc_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
@@ -606,6 +613,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
 
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
@@ -617,7 +625,7 @@ contains
             if (guiding_function /= no_guiding) &
                 call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
                                          & currently.')
-            if (all_spin_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
+            if (dmqmc_in%all_spin_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
                                          & available for the Heisenberg model.')
         end if
 
@@ -645,7 +653,7 @@ contains
             end if
 
             if (sys%system == heisenberg) then
-                if (ms_in > sys%lattice%nsites .and. (.not. all_spin_sectors)) call stop_all(this,'Value of Ms given is&
+                if (ms_in > sys%lattice%nsites .and. (.not. dmqmc_in%all_spin_sectors)) call stop_all(this,'Value of Ms given is&
                                                                              & too large for this lattice.')
                 if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
                 if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
@@ -698,10 +706,10 @@ contains
             fciqmc_in%init_spin_inv_D0 = .false.
         end if
 
-        if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
-               &sites for the correlation function option.')
+        if (allocated(dmqmc_in%correlation_sites) .and. size(dmqmc_in%correlation_sites) /= 2) &
+                            call stop_all(this, 'You must enter exactly two sites for the correlation function option.')
 
-          if (find_weights .and. calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
+          if (dmqmc_in%find_weights .and. dmqmc_in%calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
               &_DISTRIBUTION options cannot be used together.')
 
         ! Calculation specific checking.
@@ -750,7 +758,7 @@ contains
             sys%real_lattice%finite_cluster = .false.
         end if
 
-        if (all_spin_sectors) then
+        if (dmqmc_in%all_spin_sectors) then
             if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_spin_sectors option can only be used in&
                                                                    & DMQMC calculations.')
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
@@ -767,7 +775,7 @@ contains
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
                  call stop_all(this, 'The ids of the restart files could be the same')
         end if   
-        if (vary_weights .and. (.not. weighted_sampling)) then
+        if (dmqmc_in%vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
             call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
         if (sys%system /= heisenberg .and. dmqmc_calc_type > dmqmc_energy) then
@@ -778,7 +786,7 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
+    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, dmqmc_in)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -795,9 +803,11 @@ contains
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
         !    reference: current reference determinant.
+        !    dmqmc_in: input options relating to DMQMC.
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, load_bal_in_t, reference_t
+        use dmqmc_data, only: dmqmc_in_t
 
 #ifndef PARALLEL
 
@@ -811,6 +821,7 @@ contains
         type(restart_in_t), intent(inout) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(inout) :: reference
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
 #else
 
@@ -828,6 +839,7 @@ contains
         type(restart_in_t), intent(inout) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(inout) :: reference
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: i, ierr, occ_list_size
         logical :: option_set
@@ -904,7 +916,7 @@ contains
 
         call mpi_bcast(qmc_in%ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -922,34 +934,35 @@ contains
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%start_av_excit_dist, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%start_av_rdm, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(grand_canonical_initialisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%grand_canonical_initialisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.
-        if (parent) option_set = allocated(sampling_probs)
+        if (parent) option_set = allocated(dmqmc_in%sampling_probs)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(sampling_probs)
+            occ_list_size = size(dmqmc_in%sampling_probs)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(sampling_probs(occ_list_size), stat=ierr)
-                call check_allocate('sampling_probs',occ_list_size,ierr)
+                allocate(dmqmc_in%sampling_probs(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_in%sampling_probs',occ_list_size,ierr)
             end if
-            call mpi_bcast(sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
+            call mpi_bcast(dmqmc_in%sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
         if (parent) option_set = allocated(rdms)
@@ -971,16 +984,16 @@ contains
             end do
         end if
         option_set = .false.
-        if (parent) option_set = allocated(correlation_sites)
+        if (parent) option_set = allocated(dmqmc_in%correlation_sites)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(correlation_sites)
+            occ_list_size = size(dmqmc_in%correlation_sites)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(correlation_sites(occ_list_size), stat=ierr)
-                call check_allocate('correlation_sites',occ_list_size,ierr)
+                allocate(dmqmc_in%correlation_sites(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_in%correlation_sites',occ_list_size,ierr)
             end if
-            call mpi_bcast(correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(dmqmc_in%correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
         call mpi_bcast(truncate_space, 1, mpi_logical, 0, mpi_comm_world, ierr)

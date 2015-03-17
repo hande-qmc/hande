@@ -368,17 +368,23 @@ end type sys_t
 
 contains
 
-    subroutine init_system(sys)
+    subroutine init_system(sys, dmqmc_in)
 
         ! Initialise system based upon input parameters.
+        ! In/Out:
+        !    sys: system being studied.
+        ! In:
+        !    dmqmc_in: input options for dmqmc.
 
         use calc, only: ms_in
         use fciqmc_data, only: all_spin_sectors
+        use dmqmc_data, only: dmqmc_in_t
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
 
         integer :: i, ivec, ierr, counter
 
@@ -429,7 +435,7 @@ contains
 
                     ! If performing a calculation in all symmetry sectors, set ms_in to be its maximum value
                     ! so that the necessary arrays will be allocated to their maximum size.
-                    if (all_spin_sectors) ms_in = sl%nsites
+                    if (dmqmc_in%all_spin_sectors) ms_in = sl%nsites
 
                 end select
 
@@ -483,7 +489,7 @@ contains
 
             select case(sys%system)
             case(heisenberg)
-                if (all_spin_sectors) then
+                if (dmqmc_in%all_spin_sectors) then
                     sys%max_number_excitations = sl%nsites/2
                 else
                     sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))

@@ -681,7 +681,7 @@ contains
         D0_population = 0.0_p
 
         ! DMQMC-specific...
-        if (calc_excit_dist) excit_dist = 0.0_p
+        if (allocated(excit_dist)) excit_dist = 0.0_p
         if (allocated(trace)) trace = 0.0_p
         numerators = 0.0_p
 
@@ -878,7 +878,7 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
-            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, doing_bal_in, doing_lb, comms_found, &
+            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, load_bal_in, doing_lb, comms_found, &
                                           update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.

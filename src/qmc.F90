@@ -10,7 +10,8 @@ contains
 
 ! --- QMC wrapper ---
 
-    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
+    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, &
+                      dmqmc_in)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -21,6 +22,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
         !    reference: the reference determinant.
+        !    dmqmc_in: input options relating to DMQMC.
         ! In:
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
@@ -37,6 +39,7 @@ contains
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
+        use dmqmc_data, only: dmqmc_in_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
         use parallel, only: nprocs
 
@@ -48,24 +51,25 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(inout) :: reference
         type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         real(p) :: hub_matel
         type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers.
-        call init_proc_pointers(sys, qmc_in)
+        call init_proc_pointers(sys, qmc_in, dmqmc_in)
 
         ! Set spin variables.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference, load_bal_in)
+        call init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference, load_bal_in, dmqmc_in)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 
         if (doing_calc(dmqmc_calc)) then
-            call do_dmqmc(sys, qmc_in, restart_in, reference, load_bal_in)
+            call do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, reference, load_bal_in)
         else if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, hub_matel)
         else if (doing_calc(ccmc_calc)) then
@@ -87,7 +91,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference, load_bal_in)
+    subroutine init_qmc(sys, qmc_in, fciqmc_in, restart_in, reference, load_bal_in, dmqmc_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -102,6 +106,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    fciqmc_in: input options relating to FCIQMC.
         !    reference: current reference determinant.
+        !    dmqmc_in: input options relating to DMQMC.
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -126,6 +131,7 @@ contains
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, reference_t, load_bal_in_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -133,6 +139,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(inout) :: reference
         type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
@@ -289,7 +296,7 @@ contains
         ! When using the propagate_to_beta option the number of iterations in imaginary
         ! time we want to do depends on what value of beta we are seeking. It's
         ! annoying to have to modify this in the input file, so just do it here.
-        if (propagate_to_beta) qmc_in%nreport = int(ceiling(init_beta/(qmc_in%ncycles*qmc_in%tau)))
+        if (propagate_to_beta) qmc_in%nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
 
         ! --- Initial walker distributions ---
         ! Note occ_list could be set and allocated in the input.
@@ -507,7 +514,7 @@ contains
         ! arrays, ie to store thermal quantities, and to initalise reduced density matrix
         ! quantities if necessary.
         if (doing_calc(dmqmc_calc)) then
-            call init_dmqmc(sys, qmc_in)
+            call init_dmqmc(sys, qmc_in, dmqmc_in)
         end if
 
         if (parent) then
@@ -584,7 +591,7 @@ contains
                     write (6, '(1x,a83)') 'RDM(n) trace m: The current total population on the diagonal of replica m &
                                           &of RDM n.'
                 end if
-                if (calc_excit_dist) then
+                if (dmqmc_in%calc_excit_dist) then
                     write (6, '(1x,a86)') 'Excit. level n: The fraction of particles on excitation level n of the &
                                           &density matrix.'
                 end if
@@ -603,13 +610,14 @@ contains
 
     end subroutine init_qmc
 
-    subroutine init_proc_pointers(sys, qmc_in)
+    subroutine init_proc_pointers(sys, qmc_in, dmqmc_in)
 
         ! Set function pointers for QMC calculations.
 
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
 
         ! System and calculation data
         use calc
@@ -617,6 +625,7 @@ contains
         use system
         use parallel, only: parent
         use qmc_data, only: qmc_in_t
+        use dmqmc_data, only: dmqmc_in_t
 
         ! Procedures to be pointed to.
         use death, only: stochastic_death
@@ -650,6 +659,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
 
         ! 0. In general, use the default spawning routine.
         spawner_ptr => spawn_standard
@@ -790,7 +800,7 @@ contains
         if (doing_calc(dmqmc_calc)) then
 
             ! Spawned particle creation. 
-            if (half_density_matrix) then
+            if (dmqmc_in%half_density_matrix) then
                 if (truncate_space) then
                     create_spawned_particle_dm_ptr => create_spawned_particle_truncated_half_density_matrix
                 else
@@ -805,7 +815,7 @@ contains
             end if
 
             ! Weighted importance sampling routines.
-            if (weighted_sampling) then
+            if (dmqmc_in%weighted_sampling) then
                 spawner_ptr => spawn_importance_sampling
                 gen_excit_ptr%trial_fn => dmqmc_weighting_fn
             end if

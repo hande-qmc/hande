@@ -64,6 +64,17 @@ abstract interface
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, walker_pop
     end subroutine i_update_dmqmc_estimators
+    subroutine i_update_dmqmc_correlation_function(sys, idet, excitation, H00, walker_pop, mask)
+        use system, only: sys_t
+        use qmc_data, only: reference_t
+        import :: excit_t, p, i0
+        implicit none
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: idet
+        type(excit_t), intent(in) :: excitation
+        real(p), intent(in) :: H00, walker_pop
+        integer(i0), allocatable, intent(in) :: mask(:)
+    end subroutine i_update_dmqmc_correlation_function
     subroutine i_gen_excit(rng, sys, qmc_in, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t
@@ -159,7 +170,7 @@ procedure(i_update_proj_hfs), pointer :: update_proj_hfs_ptr => null()
 procedure(i_update_dmqmc_energy_and_trace), pointer :: update_dmqmc_energy_and_trace_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
-procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_correlation_ptr => null()
+procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlation_ptr => null()
 
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()

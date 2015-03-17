@@ -5,24 +5,27 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys, qmc_in)
+    subroutine init_dmqmc(sys, qmc_in, dmqmc_in)
 
         ! In:
         !    sys: system being studied.
         ! In/Out:
         !    qmc_in: Input options relating to QMC methods.
+        !    dmqmc_in: Input options relating to DMQMC.
 
         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
-        use calc, only: propagate_to_beta, fermi_temperature
+        use calc, only: propagate_to_beta
         use checking, only: check_allocate
         use fciqmc_data
         use system, only: sys_t
 
         use qmc_data, only: qmc_in_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: ierr, i, bit_position, bit_element
 
@@ -38,17 +41,17 @@ contains
         ! mask. This has a bit set for each of the two sites/orbitals being
         ! considered in the correlation function.
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            allocate(correlation_mask(1:sys%basis%string_len), stat=ierr)
-            call check_allocate('correlation_mask',sys%basis%string_len,ierr)
-            correlation_mask = 0_i0
+            allocate(dmqmc_in%correlation_mask(1:sys%basis%string_len), stat=ierr)
+            call check_allocate('dmqmc_in%correlation_mask',sys%basis%string_len,ierr)
+            dmqmc_in%correlation_mask = 0_i0
             do i = 1, 2
-                bit_position = sys%basis%bit_lookup(1,correlation_sites(i))
-                bit_element = sys%basis%bit_lookup(2,correlation_sites(i))
-                correlation_mask(bit_element) = ibset(correlation_mask(bit_element), bit_position)
+                bit_position = sys%basis%bit_lookup(1,dmqmc_in%correlation_sites(i))
+                bit_element = sys%basis%bit_lookup(2,dmqmc_in%correlation_sites(i))
+                dmqmc_in%correlation_mask(bit_element) = ibset(dmqmc_in%correlation_mask(bit_element), bit_position)
             end do
         end if
 
-        if (calc_excit_dist .or. find_weights) then
+        if (dmqmc_in%calc_excit_dist .or. dmqmc_in%find_weights) then
             allocate(excit_dist(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('excit_dist',sys%max_number_excitations+1,ierr)
             excit_dist = 0.0_p
@@ -74,13 +77,13 @@ contains
         ! are at temperatures commensurate(ish) with the reduced (inverse) temperature
         ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
         ! to set the appropriate beta = Beta / T_F.
-        if (fermi_temperature) then
+        if (dmqmc_in%fermi_temperature) then
             qmc_in%tau = qmc_in%tau / sys%ueg%ef
-            init_beta = init_beta / sys%ueg%ef
+            dmqmc_in%init_beta = dmqmc_in%init_beta / sys%ueg%ef
         end if
 
 
-        if (weighted_sampling) then
+        if (dmqmc_in%weighted_sampling) then
             ! sampling_probs stores the factors by which probabilities
             ! are to be reduced when spawning away from the diagonal. The trial
             ! function required from these probabilities, for use in importance
@@ -92,10 +95,10 @@ contains
             ! deallocated. Also, the user may have only input factors for the
             ! first few excitation levels, but we need to store factors for all
             ! levels, as done below.
-            if (.not.allocated(sampling_probs)) then
-                allocate(sampling_probs(1:sys%max_number_excitations), stat=ierr)
-                call check_allocate('sampling_probs',sys%max_number_excitations,ierr)
-                sampling_probs = 1.0_p
+            if (.not.allocated(dmqmc_in%sampling_probs)) then
+                allocate(dmqmc_in%sampling_probs(1:sys%max_number_excitations), stat=ierr)
+                call check_allocate('dmqmc_in%sampling_probs',sys%max_number_excitations,ierr)
+                dmqmc_in%sampling_probs = 1.0_p
             end if
             allocate(accumulated_probs(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('accumulated_probs',sys%max_number_excitations+1,ierr)
@@ -103,17 +106,17 @@ contains
             call check_allocate('accumulated_probs_old',sys%max_number_excitations+1,ierr)
             accumulated_probs(0) = 1.0_p
             accumulated_probs_old = 1.0_p
-            do i = 1, size(sampling_probs)
-            accumulated_probs(i) = accumulated_probs(i-1)*sampling_probs(i)
+            do i = 1, size(dmqmc_in%sampling_probs)
+            accumulated_probs(i) = accumulated_probs(i-1)*dmqmc_in%sampling_probs(i)
             end do
-            accumulated_probs(size(sampling_probs)+1:sys%max_number_excitations) = &
-                accumulated_probs(size(sampling_probs))
-            if (vary_weights) then
+            accumulated_probs(size(dmqmc_in%sampling_probs)+1:sys%max_number_excitations) = &
+                accumulated_probs(size(dmqmc_in%sampling_probs))
+            if (dmqmc_in%vary_weights) then
                 ! Allocate an array to store the factors by which the weights
                 ! will change each iteration.
                 allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
                 call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
-                weight_altering_factors = real(accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
+                weight_altering_factors = real(accumulated_probs,dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
                 ! If varying the weights, start the accumulated probabilties
                 ! as all 1.0 initially, and then alter them gradually later.
                 accumulated_probs = 1.0_p
@@ -361,7 +364,8 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, qmc_in, reference, target_nparticles_tot, nparticles_tot, nload_slots)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, target_nparticles_tot, &
+                                             nparticles_tot, nload_slots)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -374,6 +378,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
         !    reference: current reference determinant.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
@@ -383,22 +388,22 @@ contains
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: sym_in, propagate_to_beta, grand_canonical_initialisation
+        use calc, only: sym_in, propagate_to_beta
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_spin_sectors, init_beta, &
-                               walker_dets, nparticles, real_factor, &
-                               walker_population, tot_walkers, qmc_spawn, &
-                               metropolis_attempts
+        use fciqmc_data, only: sampling_size, walker_dets, nparticles, real_factor, &
+                               walker_population, tot_walkers, qmc_spawn
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
         use qmc_data, only: qmc_in_t, reference_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(reference_t), intent(in) :: reference
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
@@ -421,7 +426,7 @@ contains
         do ireplica = 1, sampling_size
             select case(sys%system)
             case(heisenberg)
-                if (all_spin_sectors) then
+                if (dmqmc_in%all_spin_sectors) then
                     ! The size (number of configurations) of all symmetry
                     ! sectors combined.
                     total_size = 2.0_dp**(real(sys%lattice%nsites,dp))
@@ -450,27 +455,28 @@ contains
                 if (propagate_to_beta) then
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
-                    if (grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, init_beta, qmc_spawn, rng)
+                    if (dmqmc_in%grand_canonical_initialisation) then
+                        call init_grand_canonical_ensemble(sys, dmqmc_in, sym_in, npsips_this_proc, qmc_spawn, rng)
                     else
-                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, rng, qmc_spawn)
+                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, &
+                                                   dmqmc_in%all_sym_sectors, rng, qmc_spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    if (metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, init_beta, npsips_this_proc, &
-                                                                               sym_in, ireplica, qmc_spawn)
+                    if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, &
+                                                                               npsips_this_proc, sym_in, ireplica, qmc_spawn)
                 else
-                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
+                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors)
                 end if
             case(hub_real)
-                call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
+                call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
             end select
         end do
 
         ! Finally, count the total number of particles across all processes.
-        if (all_spin_sectors) then
+        if (dmqmc_in%all_spin_sectors) then
 #ifdef PARALLEL
             call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_PREAL, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
@@ -567,7 +573,7 @@ contains
 
     end subroutine random_distribution_heisenberg
 
-    subroutine random_distribution_electronic(rng, sys, sym, npsips, ireplica)
+    subroutine random_distribution_electronic(rng, sys, sym, npsips, ireplica, all_sym_sectors)
 
         ! For the electronic Hamiltonians only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -582,6 +588,7 @@ contains
         !    npsips: The total number of psips to be created.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
+        !    all_sym_sectors: create determinants in all symmetry sectors?
         ! In/Out:
         !    rng: random number generator
 
@@ -589,13 +596,14 @@ contains
         use symmetry, only: symmetry_orb_list
         use hilbert_space, only: gen_random_det_full_space
         use system, only: sys_t
-        use fciqmc_data, only: real_factor, all_sym_sectors
+        use fciqmc_data, only: real_factor
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
+        logical, intent(in) :: all_sym_sectors
 
         integer(int_64) :: i
         integer(i0) :: f(sys%basis%string_len)
@@ -616,7 +624,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, qmc_in, beta, npsips, sym, ireplica, qmc_spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, sym, ireplica, qmc_spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -635,6 +643,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
         !    beta: (inverse) temperature at which we're looking to sample the
         !        trial density matrix.
         !    sym: symmetry index of determinant space we wish to sample.
@@ -650,18 +659,18 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, all_sym_sectors, sampling_size, metropolis_attempts, &
-                               max_metropolis_move
+        use fciqmc_data, only: real_factor,  sampling_size
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
         use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: beta
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
@@ -691,10 +700,10 @@ contains
         ! among the available levels. In the latter case we need to set the
         ! probabilities of a particular move (e.g. move two alpha spins),
         ! so do this here.
-        if (all_sym_sectors) call set_level_probabilities(sys, move_prob, max_metropolis_move)
+        if (dmqmc_in%all_sym_sectors) call set_level_probabilities(sys, move_prob, dmqmc_in%max_metropolis_move)
 
         ! Visit every psip metropolis_attempts times.
-        do iattempt = 1, metropolis_attempts
+        do iattempt = 1, dmqmc_in%metropolis_attempts
             do proc = 0, nprocs-1
                 do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
                     cdet%f = qmc_spawn%sdata(:sys%basis%string_len,idet)
@@ -702,8 +711,8 @@ contains
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
                     call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
-                    if (all_sym_sectors) then
-                        call gen_random_det_truncate_space(rng, sys, max_metropolis_move, cdet, move_prob, occ_list)
+                    if (dmqmc_in%all_sym_sectors) then
+                        call gen_random_det_truncate_space(rng, sys, dmqmc_in%max_metropolis_move, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
                     else
@@ -716,7 +725,7 @@ contains
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
                     E_new = trial_dm_ptr(sys, f_new)
-                    prob = exp(-1.0_p*beta*(E_new-E_old))
+                    prob = exp(-1.0_p*dmqmc_in%init_beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
                         ! Accept the new determinant by modifying the entry
@@ -730,13 +739,14 @@ contains
         end do
 
         if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", f8.7)') &
-                           real(naccept)/nsuccess, real(metropolis_attempts*npsips-nsuccess)/(metropolis_attempts*npsips)
+                           real(naccept)/nsuccess, real(dmqmc_in%metropolis_attempts*npsips-nsuccess)/&
+                                                   &(dmqmc_in%metropolis_attempts*npsips)
 
         call dealloc_det_info_t(cdet)
 
     end subroutine initialise_dm_metropolis
 
-    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, rng, qmc_spawn)
+    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, all_sym_sectors, rng, qmc_spawn)
 
         ! Create an initital distribution of psips along the diagonal.
         ! This subroutine will return a list of occupied determinants in
@@ -749,6 +759,7 @@ contains
         !    sym: symmetry of determinants being occupied.
         !    f0: bit string of reference determinant
         !    ireplica: replica index.
+        !    all_sym_sectors: create determinants in all symmetry sectors?
         ! In/Out:
         !    rng: random number generator.
         !    qmc_spawn: spawn_t object containing list of occupied determinants.
@@ -756,7 +767,7 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: real_factor, all_sym_sectors, metropolis_attempts
+        use fciqmc_data, only: real_factor
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
@@ -767,6 +778,7 @@ contains
         integer, intent(in) :: sym
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer, intent(in) :: ireplica
+        logical, intent(in) :: all_sym_sectors
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: qmc_spawn
 
@@ -809,32 +821,33 @@ contains
 
     end subroutine init_uniform_ensemble
 
-    subroutine init_grand_canonical_ensemble(sys, sym, npsips, beta, spawn, rng)
+    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, sym, npsips, spawn, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
 
         ! In:
         !    sys: system being studied.
+        !    dmqmc_in: input options for dmqmc.
         !    sym: symmetry sector under consideration.
         !    npsips: number of psips to create on the diagonal.
-        !    beta: inverse temperature.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
 
         use system, only: sys_t
         use spawn_data, only: spawn_t
-        use fciqmc_data, only: real_factor, all_sym_sectors
+        use fciqmc_data, only: real_factor
         use symmetry, only: symmetry_orb_list
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
         use canonical_kinetic_energy, only: generate_allowed_orbital_list
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: sym
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
-        real(p), intent(in) :: beta
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
@@ -853,7 +866,7 @@ contains
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
+                                          (1+exp(dmqmc_in%init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
         ! In the grand canoical ensemble the probability of occupying a
         ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the
@@ -873,7 +886,7 @@ contains
             if (sys%nbeta > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
             if (.not. gen) cycle
             ! Create the determinant.
-            if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+            if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                             sys%basis%tensor_label_len, real_factor, ireplica)
@@ -1054,7 +1067,7 @@ contains
         use basis_types, only: basis_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: accumulated_probs, finish_varying_weights
+        use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
         use fciqmc_data, only: nparticles, sampling_size, real_factor
         use qmc_data, only: qmc_in_t 
@@ -1118,7 +1131,7 @@ contains
 
     end subroutine update_sampling_weights
 
-    subroutine output_and_alter_weights(max_number_excitations)
+    subroutine output_and_alter_weights(dmqmc_in, max_number_excitations)
 
         ! This routine will alter and output the sampling weights used in
         ! importance sampling. It uses the excitation distribution, calculated
@@ -1132,15 +1145,19 @@ contains
         ! weights are output and can then be used in future DMQMC runs.
 
         ! In:
+        !    dmqmc_in: input options relating to DMQMC.
         !    max_number_excitations: maximum number of excitations possible (see
         !       sys_t type in system for details).
+        !    vary_weights: vary weights with beta?
 
-        use fciqmc_data, only: sampling_probs, accumulated_probs
-        use fciqmc_data, only: excit_dist, finish_varying_weights
-        use fciqmc_data, only: vary_weights, weight_altering_factors
+        use fciqmc_data, only: accumulated_probs
+        use fciqmc_data, only: excit_dist
+        use fciqmc_data, only: weight_altering_factors
+        use dmqmc_data, only: dmqmc_in_t
         use parallel
 
         integer, intent(in) :: max_number_excitations
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: i, ierr
 #ifdef PARALLEL
@@ -1157,22 +1174,22 @@ contains
             if (excit_dist(i-1) > 10.0_p .and. excit_dist(i) > 10.0_p) then
                 ! Alter the sampling weights using the relevant excitation
                 ! distribution.
-                sampling_probs(i) = sampling_probs(i)*&
+                dmqmc_in%sampling_probs(i) = dmqmc_in%sampling_probs(i)*&
                     (excit_dist(i)/excit_dist(i-1))
-                sampling_probs(max_number_excitations+1-i) = sampling_probs(i)**(-1)
+                dmqmc_in%sampling_probs(max_number_excitations+1-i) = dmqmc_in%sampling_probs(i)**(-1)
             end if
         end do
 
         ! Recalculate accumulated_probs with the new weights.
         do i = 1, max_number_excitations
-            accumulated_probs(i) = accumulated_probs(i-1)*sampling_probs(i)
+            accumulated_probs(i) = accumulated_probs(i-1)*dmqmc_in%sampling_probs(i)
         end do
 
         ! If vary_weights is true then the weights are to be introduced
         ! gradually at the start of each beta loop. This requires redefining
         ! weight_altering_factors to coincide with the new sampling weights.
-        if (vary_weights) then
-            weight_altering_factors = real(accumulated_probs,dp)**(1/real(finish_varying_weights,dp))
+        if (dmqmc_in%vary_weights) then
+            weight_altering_factors = real(accumulated_probs,dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
             ! Reset the weights for the next loop.
             accumulated_probs = 1.0_p
         end if
@@ -1182,7 +1199,7 @@ contains
             ! file.
             write(6, '(a31,2X)', advance = 'no') ' # Importance sampling weights:'
             do i = 1, max_number_excitations
-                write (6, '(es12.4,2X)', advance = 'no') sampling_probs(i)
+                write (6, '(es12.4,2X)', advance = 'no') dmqmc_in%sampling_probs(i)
             end do
             write (6, '()', advance = 'yes')
         end if
