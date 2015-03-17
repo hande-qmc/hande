@@ -30,7 +30,7 @@ max_nprocs = 1
 ## Processor options.
 # force MC jobs to run on the same number of cores as the benchmarks in order to have the same Markov chains...
 [*/np1/*/]
-max_nprocs = 2
+max_nprocs = 1
 [*/np2/*/]
 nprocs = 2
 min_nprocs = 2
