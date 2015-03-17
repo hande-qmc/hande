@@ -1,0 +1,260 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Mar 17 2015 at 10:47:29
+ Compiled using cmth.mpi.(optimised)
+ VCS BASE repository version:
+     272538c2a61db67ae0af926ad3cf65fd12bace4c
+ Hostname:
+     tycpc31
+ Working directory: 
+     /home/jspencer/projects/hande.clean/test_suite/fciqmc/np2/ueg_n10_rs2_e4_tau_search
+ Started running on 17/03/2015 at 11:45:15
+ Calculation UUID: 99ff29f4-a843-4956-8d94-d6b86e638951.
+ ================================================================
+
+ Number of MPI processes running on: 2
+ Running with 1 thread per MPI process.
+
+ Input options
+ -------------
+
+( Correlation energy (from HANDE FCI) is -0.176123766865 )
+( Do not follow this as an example: the timestep is deliberately too large so to have sufficiently )
+( large blooms in order to trigger tau_search. Even after the timestep is rescaled, it is still )
+( too large for a sane production calculation )
+ueg
+3d
+electrons 6
+rs 2.0
+ecutoff 2
+sym 15
+ms 0
+
+fciqmc
+seed 122
+reference_det 1  2  3 10 11 14
+varyshift_target 90000
+
+walker_length 500000
+spawned_walker_length 50000
+
+tau 0.1
+tau_search
+
+nreports 50
+mc_cycles 10
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms     <i|h|i>
+     1   (  0,  0,  0)      1      0.00000000
+     2   (  0,  0,  0)     -1      0.00000000
+     3   (  0,  0, -1)      1      0.57514389
+     4   (  0,  0, -1)     -1      0.57514389
+     5   (  0, -1,  0)      1      0.57514389
+     6   (  0, -1,  0)     -1      0.57514389
+     7   ( -1,  0,  0)      1      0.57514389
+     8   ( -1,  0,  0)     -1      0.57514389
+     9   (  1,  0,  0)      1      0.57514389
+    10   (  1,  0,  0)     -1      0.57514389
+    11   (  0,  1,  0)      1      0.57514389
+    12   (  0,  1,  0)     -1      0.57514389
+    13   (  0,  0,  1)      1      0.57514389
+    14   (  0,  0,  1)     -1      0.57514389
+    15   (  0, -1, -1)      1      1.15028778
+    16   (  0, -1, -1)     -1      1.15028778
+    17   ( -1,  0, -1)      1      1.15028778
+    18   ( -1,  0, -1)     -1      1.15028778
+    19   (  1,  0, -1)      1      1.15028778
+    20   (  1,  0, -1)     -1      1.15028778
+    21   (  0,  1, -1)      1      1.15028778
+    22   (  0,  1, -1)     -1      1.15028778
+    23   ( -1, -1,  0)      1      1.15028778
+    24   ( -1, -1,  0)     -1      1.15028778
+    25   (  1, -1,  0)      1      1.15028778
+    26   (  1, -1,  0)     -1      1.15028778
+    27   ( -1,  1,  0)      1      1.15028778
+    28   ( -1,  1,  0)     -1      1.15028778
+    29   (  1,  1,  0)      1      1.15028778
+    30   (  1,  1,  0)     -1      1.15028778
+    31   (  0, -1,  1)      1      1.15028778
+    32   (  0, -1,  1)     -1      1.15028778
+    33   ( -1,  0,  1)      1      1.15028778
+    34   ( -1,  0,  1)     -1      1.15028778
+    35   (  1,  0,  1)      1      1.15028778
+    36   (  1,  0,  1)     -1      1.15028778
+    37   (  0,  1,  1)      1      1.15028778
+    38   (  0,  1,  1)     -1      1.15028778
+    39   ( -1, -1, -1)      1      1.72543167
+    40   ( -1, -1, -1)     -1      1.72543167
+    41   (  1, -1, -1)      1      1.72543167
+    42   (  1, -1, -1)     -1      1.72543167
+    43   ( -1,  1, -1)      1      1.72543167
+    44   ( -1,  1, -1)     -1      1.72543167
+    45   (  1,  1, -1)      1      1.72543167
+    46   (  1,  1, -1)     -1      1.72543167
+    47   ( -1, -1,  1)      1      1.72543167
+    48   ( -1, -1,  1)     -1      1.72543167
+    49   (  1, -1,  1)      1      1.72543167
+    50   (  1, -1,  1)     -1      1.72543167
+    51   ( -1,  1,  1)      1      1.72543167
+    52   ( -1,  1,  1)     -1      1.72543167
+    53   (  1,  1,  1)      1      1.72543167
+    54   (  1,  1,  1)     -1      1.72543167
+    55   (  0,  0, -2)      1      2.30057556
+    56   (  0,  0, -2)     -1      2.30057556
+    57   (  0, -2,  0)      1      2.30057556
+    58   (  0, -2,  0)     -1      2.30057556
+    59   ( -2,  0,  0)      1      2.30057556
+    60   ( -2,  0,  0)     -1      2.30057556
+    61   (  2,  0,  0)      1      2.30057556
+    62   (  2,  0,  0)     -1      2.30057556
+    63   (  0,  2,  0)      1      2.30057556
+    64   (  0,  2,  0)     -1      2.30057556
+    65   (  0,  0,  2)      1      2.30057556
+    66   (  0,  0,  2)     -1      2.30057556
+
+ Number of electrons: 6
+ Number of basis functions: 66
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 3
+
+ WARNING: renormalised excitation generators not implemented.
+ WARNING: If this upsets you, please send patches (or bribe James with beer).
+
+ Fermi Energy: 0.46039607
+
+ FCIQMC
+ ------
+
+ Memory allocated per core for main walker list (MB):   14.00
+ Memory allocated per core for spawned walker lists (MB):    1.60
+ Number of elements per core in main walker list: 500000
+ Number of elements per core in spawned walker list: 50000
+
+ Reference determinant, |D0> = |  1  2  3 10 11 14 >
+ E0 = <D0|H|D0> =      2.028904410407
+ Symmetry of reference determinant:15
+ Probability of attempting a single excitation:  -1.0000
+ Probability of attempting a double excitation:  -1.0000
+ Initial population on reference determinant:     10.0000
+
+ Note that the correlation energy is relative to |D0>.
+
+ Information printed out every QMC report loop:
+
+ Note that all particle populations are averaged over the report loop.
+ Shift: the shift calculated at the end of the report loop.
+
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ # spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+
+ time: average time per Monte Carlo cycle.
+
+ RNG
+ ^^^
+
+ Initialised random number generator with a seed of: 122.
+
+
+ # iterations   Shift              \sum H_0j N_j      N_0                  # H psips           # states  # spawn_events  R_spawn   time
+ #          0   0.0000000000E+00   0.0000000000E+00   1.0000000000E+01     1.0000000000E+01           0               0   0.0000   0.000
+ # WARNING: more than 3 particles spawned in a single event 4 times in the last report loop.
+ # Mean number of particles created in blooms:      3.0
+ # This warning only prints  1 time(s). You may wish to reduce the time step.
+           10   0.0000000000E+00  -5.7141497883E-01   1.0200000000E+01     1.2000000000E+02         102              39   0.3152   0.000
+ # Warning timestep changed to: 0.09500
+           20   0.0000000000E+00  -1.1180776976E+00   1.3600000000E+01     4.8700000000E+02         436             178   0.3431   0.000
+ # Warning timestep changed to: 0.09025
+           30   0.0000000000E+00  -1.5183700396E+00   1.7700000000E+01     8.9400000000E+02         831             313   0.3270   0.000
+ # Warning timestep changed to: 0.08574
+           40   0.0000000000E+00  -2.0059291911E+00   1.8800000000E+01     1.3510000000E+03        1246             431   0.3093   0.001
+ # Warning timestep changed to: 0.08145
+           50   0.0000000000E+00  -2.4665023421E+00   1.9600000000E+01     1.8520000000E+03        1740             555   0.2950   0.002
+           60   0.0000000000E+00  -2.4261138982E+00   2.2900000000E+01     2.3790000000E+03        2226             711   0.3002   0.002
+           70   0.0000000000E+00  -2.7707740265E+00   2.3900000000E+01     2.8760000000E+03        2665             899   0.2990   0.003
+           80   0.0000000000E+00  -3.2057799039E+00   2.4200000000E+01     3.1960000000E+03        2908             983   0.2972   0.003
+           90   0.0000000000E+00  -3.3635000975E+00   2.6000000000E+01     3.7230000000E+03        3413            1150   0.3002   0.003
+          100   0.0000000000E+00  -3.7141671767E+00   2.8300000000E+01     4.1700000000E+03        3793            1292   0.2996   0.002
+          110   0.0000000000E+00  -4.6681253160E+00   3.5900000000E+01     4.4250000000E+03        3977            1370   0.2991   0.002
+          120   0.0000000000E+00  -5.7229640077E+00   4.3600000000E+01     4.6330000000E+03        4185            1442   0.3013   0.002
+          130   0.0000000000E+00  -5.4801201881E+00   4.4800000000E+01     4.9880000000E+03        4452            1532   0.2979   0.002
+          140   0.0000000000E+00  -6.0146180767E+00   4.4400000000E+01     5.1200000000E+03        4582            1622   0.3011   0.003
+          150   0.0000000000E+00  -6.8696275471E+00   4.8100000000E+01     5.3410000000E+03        4697            1687   0.3035   0.003
+          160   0.0000000000E+00  -8.2291001515E+00   5.4800000000E+01     5.7330000000E+03        4967            1775   0.2974   0.003
+          170   0.0000000000E+00  -9.3845175390E+00   6.0700000000E+01     6.0420000000E+03        5259            1869   0.3012   0.003
+          180   0.0000000000E+00  -9.7816705700E+00   6.8000000000E+01     6.4450000000E+03        5503            2001   0.2979   0.003
+          190   0.0000000000E+00  -1.0979257357E+01   7.5700000000E+01     6.9960000000E+03        5908            2185   0.2979   0.003
+          200   0.0000000000E+00  -1.3307780942E+01   8.5200000000E+01     7.5180000000E+03        6219            2327   0.2965   0.004
+          210   0.0000000000E+00  -1.5358083087E+01   9.3600000000E+01     8.0400000000E+03        6632            2492   0.2953   0.004
+          220   0.0000000000E+00  -1.7395405388E+01   1.1260000000E+02     8.9390000000E+03        7153            2796   0.2943   0.004
+          230   0.0000000000E+00  -2.1634833635E+01   1.3340000000E+02     9.6230000000E+03        7590            3177   0.2949   0.005
+          240   0.0000000000E+00  -2.4477117544E+01   1.5250000000E+02     1.0035000000E+04        7840            3196   0.2931   0.005
+          250   0.0000000000E+00  -2.6719642118E+01   1.7130000000E+02     1.0776000000E+04        8156            3342   0.2944   0.005
+          260   0.0000000000E+00  -3.0091352722E+01   1.9040000000E+02     1.1790000000E+04        8681            3763   0.2922   0.005
+          270   0.0000000000E+00  -3.4730439411E+01   2.2220000000E+02     1.3274000000E+04        9593            4315   0.2936   0.006
+          280   0.0000000000E+00  -3.8778852655E+01   2.5240000000E+02     1.4030000000E+04        9949            4604   0.2907   0.006
+          290   0.0000000000E+00  -4.5044766542E+01   2.8710000000E+02     1.5444000000E+04       10534            4940   0.2903   0.007
+          300   0.0000000000E+00  -5.2007728221E+01   3.2520000000E+02     1.6652000000E+04       11122            5230   0.2875   0.007
+          310   0.0000000000E+00  -5.9981789537E+01   3.6530000000E+02     1.8424000000E+04       11985            5880   0.2886   0.008
+          320   0.0000000000E+00  -6.5837721479E+01   4.1540000000E+02     1.9933000000E+04       12546            6525   0.2868   0.009
+          330   0.0000000000E+00  -7.6504104231E+01   4.6480000000E+02     2.2035000000E+04       13471            7147   0.2873   0.010
+          340   0.0000000000E+00  -8.7881782417E+01   5.2560000000E+02     2.4183000000E+04       14220            7830   0.2844   0.010
+          350   0.0000000000E+00  -1.0336429089E+02   6.0840000000E+02     2.7083000000E+04       15205            8812   0.2833   0.011
+          360   0.0000000000E+00  -1.1968725933E+02   6.8540000000E+02     3.0070000000E+04       16379            9994   0.2824   0.014
+          370   0.0000000000E+00  -1.3097969315E+02   7.8160000000E+02     3.2862000000E+04       17287           10919   0.2808   0.013
+          380   0.0000000000E+00  -1.4705556159E+02   8.9140000000E+02     3.5943000000E+04       18042           11717   0.2797   0.015
+          390   0.0000000000E+00  -1.6684034490E+02   1.0197000000E+03     3.9700000000E+04       19115           13118   0.2781   0.016
+          400   0.0000000000E+00  -1.9204901247E+02   1.1693000000E+03     4.4067000000E+04       20088           14744   0.2785   0.017
+          410   0.0000000000E+00  -2.2138122545E+02   1.3399000000E+03     4.9558000000E+04       21460           16469   0.2768   0.019
+          420   0.0000000000E+00  -2.5486547913E+02   1.5248000000E+03     5.5608000000E+04       23070           18612   0.2750   0.038
+          430   0.0000000000E+00  -2.9178335424E+02   1.7515000000E+03     6.1859000000E+04       24357           20759   0.2750   0.045
+          440   0.0000000000E+00  -3.3633404153E+02   1.9976000000E+03     7.0105000000E+04       26010           23472   0.2737   0.046
+          450   0.0000000000E+00  -3.8851576002E+02   2.2989000000E+03     7.8526000000E+04       27396           26487   0.2723   0.029
+          460   0.0000000000E+00  -4.4316319604E+02   2.6521000000E+03     8.8289000000E+04       29204           29874   0.2716   0.032
+          470   0.0000000000E+00  -5.1167648590E+02   3.0571000000E+03     9.8459000000E+04       30331           33314   0.2705   0.035
+          480  -7.3231612407E-03  -5.8764156439E+02   3.4831000000E+03     1.1093400000E+05       32130           37693   0.2695   0.039
+          490  -1.4820128121E-02  -6.7281523826E+02   3.9610000000E+03     1.2534400000E+05       33573           42781   0.2692   0.043
+          500  -2.2046543466E-02  -7.7368175444E+02   4.5317000000E+03     1.4100300000E+05       35761           48202   0.2680   0.048
+
+ Blooming events occured: a more efficent calulation may be possible with a smaller timestep.
+ Total number of blooming events: 24
+ Maxium number of particles spawned in a blooming event:       3.00
+ Mean number of particles spawned in a blooming event:         3.00
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Min # of particles on a processor:      6.574200E+04
+ Max # of particles on a processor:      7.526100E+04
+ Mean # of particles on a processor:     7.050150E+04
+
+ Min # of determinants on a processor:   17842
+ Max # of determinants on a processor:   17919
+ Mean # of determinants on a processor:  1.788050E+04
+
+ Min time taken by walker communication:         0.34s
+ Max time taken by walker communication:         0.67s
+ Mean time taken by walker communication:        0.51s
+
+ ================================================================
+ Finished running on 17/03/2015 at 11:45:21
+ Wall time (seconds):                           6.00
+ CPU time (per processor, seconds):             5.96
+ ================================================================
+
