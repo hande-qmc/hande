@@ -41,7 +41,7 @@ contains
         use death, only: stochastic_death, stochastic_hf_cloning
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
-        use excitations, only: excit_t
+        use excitations, only: excit_t, get_excitation
         use fciqmc_data, only: tau, real_factor
         use hfs_data
         use interact, only: fciqmc_interact
@@ -128,6 +128,7 @@ contains
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
+                    connection = get_excitation(sys%nel, sys%basis, cdet%f, f0)
                     call update_proj_energy_ptr(sys, f0, cdet, real_population(1),  &
                                                 D0_population, proj_energy, connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update

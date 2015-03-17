@@ -22,7 +22,7 @@ contains
         use bloom_handler, only: bloom_stats_t
         use calc, only: seed, initiator_approximation
         use determinants, only: det_info_t, alloc_det_info_t
-        use excitations, only: excit_t
+        use excitations, only: excit_t, get_excitation
         use qmc_common
         use proc_pointers
         use system, only: sys_t, hub_real, hub_k
@@ -109,6 +109,7 @@ contains
                 tmp_pop = walker_population(1,idet)
 
                 ! Evaluate the projected energy.
+                D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, f0)
                 call update_proj_energy_ptr(sys, f0, cdet, real(walker_population(1,idet),p), &
                                             D0_population, proj_energy, D0_excit, hmatel)
 

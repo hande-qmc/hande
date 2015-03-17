@@ -563,7 +563,7 @@ contains
         !    rep_comm: nb_rep_t object containg report loop information.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
-        use excitations, only: excit_t
+        use excitations, only: excit_t, get_excitation
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         use system, only: sys_t
@@ -598,6 +598,7 @@ contains
             real_population = real(walker_population(:,idet),p)/real_factor
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
+            D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, f0)
             call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &
                                         D0_population, proj_energy, D0_excit, hmatel)
         end do
