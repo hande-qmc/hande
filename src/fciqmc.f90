@@ -285,7 +285,7 @@ contains
         use death, only: stochastic_death
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
-        use excitations, only: excit_t
+        use excitations, only: excit_t, get_excitation
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
 
@@ -321,6 +321,7 @@ contains
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
+            connection = get_excitation(sys%nel, sys%basis, cdet%f, f0)
             call update_proj_energy_ptr(sys, f0, cdet, real_pop, D0_population, &
                                         proj_energy, connection, hmatel)
 
