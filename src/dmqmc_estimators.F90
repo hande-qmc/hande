@@ -299,7 +299,7 @@ contains
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
         use excitations, only: get_excitation, excit_t
         use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
-        use fciqmc_data, only: accumulated_probs, start_averaging
+        use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: excit_dist
         use fciqmc_data, only: sampling_size, accumulated_probs_old, real_factor
         use fciqmc_data, only: replica_tricks, energy_ind, walker_data, numerators
@@ -356,7 +356,7 @@ contains
             if (dmqmc_in%calc_excit_dist) excit_dist(excitation%nexcit) = &
                 excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
             ! Excitation distribtuion for calculating importance sampling weights.
-            if (dmqmc_in%find_weights .and. iteration > start_averaging) excit_dist(excitation%nexcit) = &
+            if (dmqmc_in%find_weights .and. iteration > dmqmc_in%start_av_excit_dist) excit_dist(excitation%nexcit) = &
                 excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
         end if
 
@@ -371,7 +371,7 @@ contains
 
         ! Reduced density matrices.
         if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
-            &(sys%basis, idet, excitation, walker_population(:,idet), iteration, nload_slots)
+            &(sys%basis, idet, excitation, walker_population(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm)
 
         accumulated_probs_old = accumulated_probs
 
@@ -756,7 +756,7 @@ contains
     end subroutine update_full_renyi_2
 
     subroutine update_reduced_density_matrix_heisenberg(basis, idet, excitation, walker_pop, &
-                                                        iteration, nload_slots)
+                                                        iteration, nload_slots, start_av_rdm)
 
         ! Add the contribution from the current walker to the reduced density
         ! matrices being sampled. This is performed by 'tracing out' the
@@ -780,15 +780,16 @@ contains
         !        by the importance sampling factors. These factors must be
         !        removed before any estimates can be calculated.
         !    iteration: interation number.  No accumulation of the RDM is
-        !        performed if iteration <= start_averaging.
+        !        performed if iteration <= start_av_rdm.
         !    nload_slots: number of load balancing slots (per processor).
+        !    start_av_rdm: iteration we start averaging the rdm on.
 
         use basis_types, only: basis_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
         use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
         use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, rdms, nrdms
-        use fciqmc_data, only: start_averaging, rdm_spawn, accumulated_probs
+        use fciqmc_data, only: rdm_spawn, accumulated_probs
         use fciqmc_data, only: nsym_vec, real_factor
         use spawning, only: create_spawned_particle_rdm
 
@@ -797,12 +798,13 @@ contains
         integer(int_p), intent(in) :: walker_pop(sampling_size)
         type(excit_t), intent(in) :: excitation
         integer, intent(in) :: nload_slots
+        integer, intent(in) :: start_av_rdm
 
         real(p) :: unweighted_walker_pop(sampling_size)
         integer :: irdm, isym, ireplica
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
 
-        if (.not. (iteration > start_averaging .or. calc_inst_rdm)) return
+        if (.not. (iteration > start_av_rdm .or. calc_inst_rdm)) return
 
         ! Loop over all RDMs to be calculated.
         do irdm = 1, nrdms

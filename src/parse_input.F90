@@ -350,8 +350,10 @@ contains
                 doing_vn_entropy = .true.
             case('RENYI_ENTROPY_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
-            case('START_AVERAGING')
-                call readi(start_averaging)
+            case('START_AVERAGING_EXCITATION_DIST')
+                call readi(dmqmc_in%start_av_excit_dist)
+            case('START_AVERAGING_RDM')
+                call readi(dmqmc_in%start_av_rdm)
             ! calculation options: DMQMC
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
@@ -932,7 +934,8 @@ contains
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%start_av_excit_dist, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%start_av_rdm, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
