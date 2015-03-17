@@ -23,7 +23,7 @@ max_nprocs = 1
 
 # QMC: real weights
 # _32 indicates POP_SIZE=32 preprocessor flag was used.
-# _64 indicates POP_SIZE=32 preprocessor flag was used.
+# _64 indicates POP_SIZE=64 preprocessor flag was used.
 [*mc_real_32/np?/*/]
 [*mc_real_64/np?/*/]
 
