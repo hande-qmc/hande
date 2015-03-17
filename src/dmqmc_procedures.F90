@@ -457,19 +457,20 @@ contains
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, sym_in, npsips_this_proc, dmqmc_in%init_beta, qmc_spawn, rng)
+                        call init_grand_canonical_ensemble(sys, dmqmc_in, sym_in, npsips_this_proc, qmc_spawn, rng)
                     else
-                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, rng, qmc_spawn)
+                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, &
+                                                   dmqmc_in%all_sym_sectors, rng, qmc_spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
                     if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, &
                                                                                npsips_this_proc, sym_in, ireplica, qmc_spawn)
                 else
-                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
+                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors)
                 end if
             case(hub_real)
-                call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica)
+                call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
             end select
@@ -573,7 +574,7 @@ contains
 
     end subroutine random_distribution_heisenberg
 
-    subroutine random_distribution_electronic(rng, sys, sym, npsips, ireplica)
+    subroutine random_distribution_electronic(rng, sys, sym, npsips, ireplica, all_sym_sectors)
 
         ! For the electronic Hamiltonians only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -588,6 +589,7 @@ contains
         !    npsips: The total number of psips to be created.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
+        !    all_sym_sectors: create determinants in all symmetry sectors?
         ! In/Out:
         !    rng: random number generator
 
@@ -595,13 +597,14 @@ contains
         use symmetry, only: symmetry_orb_list
         use hilbert_space, only: gen_random_det_full_space
         use system, only: sys_t
-        use fciqmc_data, only: real_factor, all_sym_sectors
+        use fciqmc_data, only: real_factor
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
+        logical, intent(in) :: all_sym_sectors
 
         integer(int_64) :: i
         integer(i0) :: f(sys%basis%string_len)
@@ -657,7 +660,7 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor, all_sym_sectors, sampling_size
+        use fciqmc_data, only: real_factor,  sampling_size
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
@@ -698,7 +701,7 @@ contains
         ! among the available levels. In the latter case we need to set the
         ! probabilities of a particular move (e.g. move two alpha spins),
         ! so do this here.
-        if (all_sym_sectors) call set_level_probabilities(sys, move_prob, dmqmc_in%max_metropolis_move)
+        if (dmqmc_in%all_sym_sectors) call set_level_probabilities(sys, move_prob, dmqmc_in%max_metropolis_move)
 
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, dmqmc_in%metropolis_attempts
@@ -709,7 +712,7 @@ contains
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
                     call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
-                    if (all_sym_sectors) then
+                    if (dmqmc_in%all_sym_sectors) then
                         call gen_random_det_truncate_space(rng, sys, dmqmc_in%max_metropolis_move, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
@@ -744,7 +747,7 @@ contains
 
     end subroutine initialise_dm_metropolis
 
-    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, rng, qmc_spawn)
+    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, all_sym_sectors, rng, qmc_spawn)
 
         ! Create an initital distribution of psips along the diagonal.
         ! This subroutine will return a list of occupied determinants in
@@ -757,6 +760,7 @@ contains
         !    sym: symmetry of determinants being occupied.
         !    f0: bit string of reference determinant
         !    ireplica: replica index.
+        !    all_sym_sectors: create determinants in all symmetry sectors?
         ! In/Out:
         !    rng: random number generator.
         !    qmc_spawn: spawn_t object containing list of occupied determinants.
@@ -764,7 +768,7 @@ contains
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
                                 det_info_t, alloc_det_info_t
-        use fciqmc_data, only: real_factor, all_sym_sectors
+        use fciqmc_data, only: real_factor
         use hilbert_space, only: gen_random_det_truncate_space
         use symmetry, only: symmetry_orb_list
         use system, only: sys_t
@@ -775,6 +779,7 @@ contains
         integer, intent(in) :: sym
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer, intent(in) :: ireplica
+        logical, intent(in) :: all_sym_sectors
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: qmc_spawn
 
@@ -817,32 +822,33 @@ contains
 
     end subroutine init_uniform_ensemble
 
-    subroutine init_grand_canonical_ensemble(sys, sym, npsips, beta, spawn, rng)
+    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, sym, npsips, spawn, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
 
         ! In:
         !    sys: system being studied.
+        !    dmqmc_in: input options for dmqmc.
         !    sym: symmetry sector under consideration.
         !    npsips: number of psips to create on the diagonal.
-        !    beta: inverse temperature.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
 
         use system, only: sys_t
         use spawn_data, only: spawn_t
-        use fciqmc_data, only: real_factor, all_sym_sectors
+        use fciqmc_data, only: real_factor
         use symmetry, only: symmetry_orb_list
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
         use canonical_kinetic_energy, only: generate_allowed_orbital_list
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: sym
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
-        real(p), intent(in) :: beta
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
@@ -861,7 +867,7 @@ contains
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
+                                          (1+exp(dmqmc_in%init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
         ! In the grand canoical ensemble the probability of occupying a
         ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the
@@ -881,7 +887,7 @@ contains
             if (sys%nbeta > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
             if (.not. gen) cycle
             ! Create the determinant.
-            if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+            if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                             sys%basis%tensor_label_len, real_factor, ireplica)

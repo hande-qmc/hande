@@ -70,6 +70,10 @@ type dmqmc_in_t
     ! If true then the simulation will start with walkers uniformly distributed
     ! along the diagonal of the entire density matrix, including all symmetry
     ! sectors.
+    logical :: all_sym_sectors = .false.
+    ! If true then the simulation will start with walkers distributed in all
+    ! spin symmetry sectors of the Hamiltonian i.e. all 2S+1 blocks between
+    ! -ms...ms.
     logical :: all_spin_sectors = .false.
     ! If half_density_matrix is true then half the density matrix will be
     ! calculated by reflecting spawning onto the lower triangle into the

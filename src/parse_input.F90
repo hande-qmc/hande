@@ -317,7 +317,7 @@ contains
             case('OUTPUT_EXCITATION_DISTRIBUTION')
                 dmqmc_in%calc_excit_dist = .true.
             case('USE_ALL_SYM_SECTORS')
-                all_sym_sectors = .true.
+                dmqmc_in%all_sym_sectors = .true.
             case('USE_ALL_SPIN_SECTORS')
                 all_spin_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
@@ -939,7 +939,7 @@ contains
         call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
