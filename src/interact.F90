@@ -25,7 +25,7 @@ contains
 
         logical, intent(out) :: soft_exit
 
-        logical :: comms_exists, comms_found, comms_read, eof
+        logical :: comms_exists, comms_read, eof
         integer :: proc, i
 #ifdef PARALLEL
         integer :: ierr
@@ -39,102 +39,118 @@ contains
 
         soft_exit = .false.
 
+        ! Check if file is on *this* process
         inquire(file='FCIQMC.COMM', exist=comms_exists)
 
-#ifdef PARALLEL
-        call mpi_allreduce(comms_exists, comms_found, 1, mpi_logical, mpi_lor, mpi_comm_world, ierr)
-#else
-        comms_found = comms_exists
-#endif
-
-        if (comms_found) then
-            ! Read in the FCIQMC.COMM file.
-            ! This should be a very rare event, so we don't worry too much
-            ! about optimised communications in this section.
-            if (parent) then
-                write (6,'(1X,"#",1X,62("-"))')
-                write (6,'(1X,"#",1X,a21)') 'FCIQMC.COMM detected.'
-                write (6,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of FCIQMC.COMM:'
-                ! Flush output from parent processor so that processor which
-                ! has the FCIQMC.COMM file can print out the contents without
-                ! mixing the output.
-                flush(6)
-            end if
-            ! Quick pause to ensure output is all done by this point.
-#ifdef PARALLEL
-            call mpi_barrier(mpi_comm_world, ierr)
-#endif
-            ! Slightly tricky bit: need to take into account multi-core
-            ! machines where multiple processors can share the same disk and so
-            ! be picking up the same FCIQMC.COMM file.  We want to ensure that
-            ! only one processor reads it in (avoid race conditions!).
-            ! Solution: loop over processors and place a blocking comms call at
-            ! the end of each iteration.
-            ! proc will end up holding the processor id that read in
-            ! FCIQMC.COMM.
-            comms_read = .false.
-            do proc = 0, nprocs-1
-                if (proc == iproc .and. comms_exists) then
-                    ! Read in file.
-                    ir = get_free_unit()
-                    open(ir, file='FCIQMC.COMM', status='old')
-                    ! Will do our own echoing as want to prepend lines with '#'
-                    call input_options(echo_lines=.false., skip_blank_lines=.true.)
-
-                    do ! loop over lines in FCIQMC.COMM.
-                        call read_line(eof)
-                        if (eof) exit
-                        write (6,'(1X,"#",1X,a)') trim(line)
-
-                        call readu(w)
-                        select case(w)
-                        case('SOFTEXIT')
-                            ! Exit FCIQMC immediately.
-                            soft_exit = .true.
-                        case('TAU')
-                            ! Change timestep.
-                            call readf(tau)
-                        case('VARYSHIFT_TARGET')
-                            call readf(target_particles)
-                            if (target_particles < 0) then
-                                ! start varying the shift now.
-                                vary_shift = .true.
-                            end if
-                        case('SHIFT')
-                            call readf(shift(1))
-                            do i = 2, sampling_size
-                                shift(i) = shift(1)
-                            end do
-                        case default
-                            write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
-                        end select
-
-                    end do ! end reading of FCIQMC.COMM.
-
-                    ! Don't want to keep FCIQMC.COMM around to be detected
-                    ! again on the next FCIQMC iteration.
-                    close(ir, status="delete")
-                    comms_read = .true.
-                end if
-#ifdef PARALLEL
-                call mpi_bcast(comms_read, 1, mpi_logical, proc, mpi_comm_world, ierr)
-#endif
-                if (comms_read) exit
-            end do
-
-#ifdef PARALLEL
-            ! If in parallel need to broadcast data.
-            call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
-            call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(shift, sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
-#endif
-
-            if (parent) write (6,'(1X,"#",/,1X,"#",1X,a59,/,1X,"#",1X,62("-"))')  &
-                   "From now on we use the information provided in FCIQMC.COMM."
+        ! Read in the FCIQMC.COMM file.
+        ! This should be a very rare event, so we don't worry too much
+        ! about optimised communications in this section.
+        if (parent) then
+            write (6,'(1X,"#",1X,62("-"))')
+            write (6,'(1X,"#",1X,a21)') 'FCIQMC.COMM detected.'
+            write (6,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of FCIQMC.COMM:'
+            ! Flush output from parent processor so that processor which
+            ! has the FCIQMC.COMM file can print out the contents without
+            ! mixing the output.
+            flush(6)
         end if
+        ! Quick pause to ensure output is all done by this point.
+#ifdef PARALLEL
+        call mpi_barrier(mpi_comm_world, ierr)
+#endif
+        ! Slightly tricky bit: need to take into account multi-core
+        ! machines where multiple processors can share the same disk and so
+        ! be picking up the same FCIQMC.COMM file.  We want to ensure that
+        ! only one processor reads it in (avoid race conditions!).
+        ! Solution: loop over processors and place a blocking comms call at
+        ! the end of each iteration.
+        ! proc will end up holding the processor id that read in
+        ! FCIQMC.COMM.
+        comms_read = .false.
+        do proc = 0, nprocs-1
+            if (proc == iproc .and. comms_exists) then
+                ! Read in file.
+                ir = get_free_unit()
+                open(ir, file='FCIQMC.COMM', status='old')
+                ! Will do our own echoing as want to prepend lines with '#'
+                call input_options(echo_lines=.false., skip_blank_lines=.true.)
+
+                do ! loop over lines in FCIQMC.COMM.
+                    call read_line(eof)
+                    if (eof) exit
+                    write (6,'(1X,"#",1X,a)') trim(line)
+
+                    call readu(w)
+                    select case(w)
+                    case('SOFTEXIT')
+                        ! Exit FCIQMC immediately.
+                        soft_exit = .true.
+                    case('TAU')
+                        ! Change timestep.
+                        call readf(tau)
+                    case('VARYSHIFT_TARGET')
+                        call readf(target_particles)
+                        if (target_particles < 0) then
+                            ! start varying the shift now.
+                            vary_shift = .true.
+                        end if
+                    case('SHIFT')
+                        call readf(shift(1))
+                        do i = 2, sampling_size
+                            shift(i) = shift(1)
+                        end do
+                    case default
+                        write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
+                    end select
+
+                end do ! end reading of FCIQMC.COMM.
+
+                ! Don't want to keep FCIQMC.COMM around to be detected
+                ! again on the next FCIQMC iteration.
+                close(ir, status="delete")
+                comms_read = .true.
+            end if
+#ifdef PARALLEL
+            call mpi_bcast(comms_read, 1, mpi_logical, proc, mpi_comm_world, ierr)
+#endif
+            if (comms_read) exit
+        end do
+
+#ifdef PARALLEL
+        ! If in parallel need to broadcast data.
+        call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
+        call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
+        call mpi_bcast(shift, sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
+        call mpi_bcast(target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
+        call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
+#endif
+
+        if (parent) write (6,'(1X,"#",/,1X,"#",1X,a59,/,1X,"#",1X,62("-"))')  &
+               "From now on we use the information provided in FCIQMC.COMM."
 
     end subroutine fciqmc_interact
+
+    subroutine check_interact(comms_found)
+
+        ! Checks if there is a FCIQMC.COMM file present to interact with the calculation
+
+        ! In/Out:
+        !   comms_found: on entry, whether FCIQMC.COMM exists on this processor; on exit whether it
+        !   exists on any
+
+        use parallel
+
+        logical, intent(inout) :: comms_found
+
+        logical :: comms_found_any
+        integer :: ierr
+
+#ifdef PARALLEL
+        call mpi_allreduce(comms_found, comms_found_any, 1, mpi_logical, mpi_lor, mpi_comm_world, ierr)
+        comms_found = comms_found_any
+#endif
+
+        end subroutine check_interact
+
 
 end module interact

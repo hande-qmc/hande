@@ -22,6 +22,7 @@ enum, bind(c)
     enumerator :: hf_D0_pop_ind
     enumerator :: nocc_states_ind
     enumerator :: nspawned_ind
+    enumerator :: comms_found_ind
     enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
 end enum
 
@@ -48,7 +49,7 @@ contains
 
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(nspawn_events, ntot_particles_old, update_tau, bloom_stats)
+    subroutine update_energy_estimators(nspawn_events, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -62,6 +63,8 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        !    comms_found: On input, true if FCIQMC.COMM file present on this processor. On output
+        !    true if present on any processor.
         !    update_tau (optional): On input, true if the processor wants to automatically rescale
         !       tau.  On output the logical or of this across all processors (i.e. true if
         !       any one processor wants to rescale tau).
@@ -75,6 +78,7 @@ contains
 
         integer, intent(in) :: nspawn_events
         real(p), intent(inout) :: ntot_particles_old(sampling_size)
+        logical, intent(inout) :: comms_found
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
 
@@ -82,7 +86,7 @@ contains
         real(dp) :: rep_loop_sum(sampling_size*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
-        call local_energy_estimators(rep_loop_loc, nspawn_events, update_tau, bloom_stats)
+        call local_energy_estimators(rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats)
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
 
@@ -93,7 +97,7 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old, update_tau, bloom_stats)
+        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators
 
@@ -120,7 +124,7 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old, update_tau, bloom_stats)
+    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
         ! Receive report loop quantities from all other processors and reduce.
 
@@ -135,6 +139,7 @@ contains
         !    bloom_stats: Bloom stats.  The report loop quantities are accumulated into
         !       their respective components.
         ! Out (optional):
+        !    comms_found: whether FCIQMC.COMM exists
         !    update_tau: if true, tau should be automatically rescaled.
 
         use fciqmc_data, only: sampling_size
@@ -144,6 +149,7 @@ contains
         integer, intent(inout) :: rep_request_s(:)
         real(p), intent(inout) :: ntot_particles_old(:)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
+        logical, intent(out), optional :: comms_found
         logical, intent(out), optional :: update_tau
 
         real(dp) :: rep_info_sum(nprocs*sampling_size+nparticles_start_ind-1)
@@ -173,17 +179,18 @@ contains
         forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
-        call communicated_energy_estimators(rep_info_sum, ntot_particles_old, update_tau, bloom_stats)
+        call communicated_energy_estimators(rep_info_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators_recv
 
-    subroutine local_energy_estimators(rep_loop_loc, nspawn_events, update_tau, bloom_stats, spawn_elsewhere)
+    subroutine local_energy_estimators(rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats, spawn_elsewhere)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
 
         ! In (optional):
         !    nspawn_events: The total number of spawning events to this process.
+        !    comms_found: whether FCIQMC.COMM exists on this processor
         !    update_tau: if true, then the current processor wants to automatically rescale tau.
         !    bloom_stats: Bloom stats.  The report loop quantities must be set.
         !    spawn_elsewhere: number of walkers spawned from current processor
@@ -204,6 +211,7 @@ contains
         integer, intent(in), optional :: nspawn_events
         logical, intent(in), optional :: update_tau
         integer, intent(in) , optional :: spawn_elsewhere
+        logical, intent(in), optional :: comms_found
 
         integer :: offset
 
@@ -232,10 +240,13 @@ contains
         else
             rep_loop_loc(offset+1:offset+sampling_size) = nparticles
         end if
+        if (present(comms_found)) then
+            if (comms_found) rep_loop_loc(comms_found_ind) = 1.0_p
+        end if
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old, update_tau, bloom_stats)
+    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -248,6 +259,8 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        ! Out:
+        !     comms_found: whether a FCIQMC.COMM file exists
         ! Out (optional):
         !     update_tau: if true, tau should be automatically rescaled.
 
@@ -264,6 +277,7 @@ contains
         real(dp), intent(in) :: rep_loop_sum(:)
         real(p), intent(inout) :: ntot_particles_old(sampling_size)
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
+        logical, intent(out), optional :: comms_found
         logical, intent(out), optional :: update_tau
 
         real(p) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
@@ -288,6 +302,11 @@ contains
         D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
         tot_nocc_states = rep_loop_sum(nocc_states_ind)
         tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        if (abs(rep_loop_sum(comms_found_ind)) > depsilon) then
+            comms_found = .true.
+        else
+            comms_found = .false.
+        end if
 
         do i = 1, sampling_size
             nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)

@@ -45,7 +45,7 @@ contains
         use fciqmc_data, only: init_beta, D0_population
         use utils, only: rng_init_info
         use hamiltonian_ueg, only: sum_sp_eigenvalues, potential_energy_ueg
-        use interact, only: fciqmc_interact
+        use interact, only: fciqmc_interact, check_interact
 
         type(sys_t), intent(inout) :: sys
 
@@ -61,7 +61,7 @@ contains
 
         type(sys_t) :: sys_bak
         type (dSFMT_t) :: rng
-        logical :: soft_exit
+        logical :: soft_exit, comms_found
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
@@ -131,8 +131,11 @@ contains
             std = sqrt(((estimators(ke_var_idx:hf_var_idx)/(real(iaccept-1,p)) + &
                   estimators(ke_sq_idx:hf_sq_idx))/nprocs - mean**2.0_p)/(nprocs*real(iaccept, p)))
             if (parent) write(6,'(3X,i10,5X,4(es17.10,5X))') ireport, mean(ke_idx), std(ke_idx), mean(hf_idx), std(hf_idx)
-            call fciqmc_interact(soft_exit)
-            if (soft_exit) exit
+            call check_interact(comms_found)
+            if (comms_found) then
+                call fciqmc_interact(soft_exit)
+                if (soft_exit) exit
+            end if
         end do
 
         if (parent) write(6, '()')

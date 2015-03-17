@@ -771,7 +771,7 @@ contains
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
-        use interact, only: fciqmc_interact
+        use interact, only: fciqmc_interact, check_interact
         use parallel, only: parent, nprocs
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
         use system, only: sys_t
@@ -792,7 +792,7 @@ contains
         type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
-        logical :: update, update_tau_now, vary_shift_before
+        logical :: update, update_tau_now, vary_shift_before, comms_found
         real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
@@ -801,24 +801,29 @@ contains
         ! Are all the shifts currently varying?
         vary_shift_before = all(vary_shift)
 
+        ! Test for a comms file so MPI communication can be combined with
+        ! energy_estimators communication
+        inquire(file='FCIQMC.COMM', exist=comms_found)
+
         ! Update the energy estimators (shift & projected energy).
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. non_blocking_comm) then
-            call update_energy_estimators(nspawn_events, ntot_particles, update_tau_now, bloom_stats)
+            call update_energy_estimators(nspawn_events, ntot_particles, comms_found, update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(rep_info_copy, nspawn_events, update_tau_now, bloom_stats, &
+            call local_energy_estimators(rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(rep_comm%request, ntot_particles, update_tau_now, bloom_stats)
+            call update_energy_estimators_recv(rep_comm%request, ntot_particles, comms_found, update_tau_now, bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(rep_comm)
         else
             update_tau_now = .false.
+            call check_interact(comms_found)
         end if
 
         ! If we have just started varying the shift, then we can calculate the
@@ -846,8 +851,12 @@ contains
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time
 
-        call fciqmc_interact(soft_exit)
-        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
+        if (comms_found) then
+            call fciqmc_interact(soft_exit)
+            if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
+        else
+            soft_exit = .false.
+        end if
 
         if (update_tau_now) call rescale_tau()
 

@@ -67,7 +67,7 @@ contains
         real(p) :: hmatel
         type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
 
-        logical :: soft_exit
+        logical :: soft_exit, comms_found
 
         real :: t1, t2
 
@@ -225,8 +225,11 @@ contains
 
             end do
 
+            ! Test for a comms file so MPI communication can be combined with
+            ! energy_estimators communication
+            inquire(file='FCIQMC.COMM', exist=comms_found)
             ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(nspawn_events, nparticles_old)
+            call update_energy_estimators(nspawn_events, nparticles_old, comms_found)
 
             call cpu_time(t2)
 
@@ -241,8 +244,10 @@ contains
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
 
-            call fciqmc_interact(soft_exit)
-            if (soft_exit) exit
+            if (comms_found) then
+                call fciqmc_interact(soft_exit)
+                if (soft_exit) exit
+            end if
 
         end do
 
