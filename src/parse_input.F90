@@ -319,7 +319,7 @@ contains
             case('USE_ALL_SYM_SECTORS')
                 dmqmc_in%all_sym_sectors = .true.
             case('USE_ALL_SPIN_SECTORS')
-                all_spin_sectors = .true.
+                dmqmc_in%all_spin_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
                 call readi(nrdms)
                 allocate(rdms(nrdms), stat=ierr)
@@ -625,7 +625,7 @@ contains
             if (guiding_function /= no_guiding) &
                 call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
                                          & currently.')
-            if (all_spin_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
+            if (dmqmc_in%all_spin_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
                                          & available for the Heisenberg model.')
         end if
 
@@ -653,7 +653,7 @@ contains
             end if
 
             if (sys%system == heisenberg) then
-                if (ms_in > sys%lattice%nsites .and. (.not. all_spin_sectors)) call stop_all(this,'Value of Ms given is&
+                if (ms_in > sys%lattice%nsites .and. (.not. dmqmc_in%all_spin_sectors)) call stop_all(this,'Value of Ms given is&
                                                                              & too large for this lattice.')
                 if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
                 if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
@@ -758,7 +758,7 @@ contains
             sys%real_lattice%finite_cluster = .false.
         end if
 
-        if (all_spin_sectors) then
+        if (dmqmc_in%all_spin_sectors) then
             if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_spin_sectors option can only be used in&
                                                                    & DMQMC calculations.')
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
@@ -940,7 +940,7 @@ contains
         call mpi_bcast(dmqmc_in%vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)

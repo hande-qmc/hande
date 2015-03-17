@@ -391,8 +391,7 @@ contains
         use calc, only: sym_in, propagate_to_beta
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, all_spin_sectors, &
-                               walker_dets, nparticles, real_factor, &
+        use fciqmc_data, only: sampling_size, walker_dets, nparticles, real_factor, &
                                walker_population, tot_walkers, qmc_spawn
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
@@ -427,7 +426,7 @@ contains
         do ireplica = 1, sampling_size
             select case(sys%system)
             case(heisenberg)
-                if (all_spin_sectors) then
+                if (dmqmc_in%all_spin_sectors) then
                     ! The size (number of configurations) of all symmetry
                     ! sectors combined.
                     total_size = 2.0_dp**(real(sys%lattice%nsites,dp))
@@ -477,7 +476,7 @@ contains
         end do
 
         ! Finally, count the total number of particles across all processes.
-        if (all_spin_sectors) then
+        if (dmqmc_in%all_spin_sectors) then
 #ifdef PARALLEL
             call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_PREAL, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)

@@ -68,7 +68,7 @@ contains
         call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, &
                               reference, dmqmc_in)
 
-        call init_system(sys)
+        call init_system(sys, dmqmc_in)
 
         call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, &
                          dmqmc_in)

@@ -92,7 +92,7 @@ contains
         ! report loop, asimplemented in the line of code below.
         qmc_in%nreport = qmc_in%nreport+1
 
-        if (all_spin_sectors) nel_temp = sys%nel
+        if (dmqmc_in%all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
 
         ! Should we dump a restart file just before the shift is turned on?
@@ -133,7 +133,7 @@ contains
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
-                        if (all_spin_sectors) then
+                        if (dmqmc_in%all_spin_sectors) then
                             sys%nel = sum(count_set_bits(cdet1%f))
                             sys%nvirt = sys%lattice%nsites - sys%nel
                         end if
@@ -212,7 +212,7 @@ contains
                     ! Now we have finished looping over all determinants, set
                     ! the symmetry labels back to their default value, if
                     ! necessary.
-                    if (all_spin_sectors) then
+                    if (dmqmc_in%all_spin_sectors) then
                         sys%nel = nel_temp
                         sys%nvirt = sys%lattice%nsites - sys%nel
                     end if
