@@ -5,63 +5,32 @@
 [lanczos/*/]
 [lanczos/*sparse/]
 max_nprocs = 1
-[lanczos_direct/*/]
+[lanczos/*direct/]
 max_nprocs = 1
-
-# Hilbert space estimation
-[mc_hilbert_space/*/]
-max_nprocs = 1
-
-# Canonical energy estimation.
-[mc_canonical_kinetic_energy/serial/*/]
-[mc_canonical_kinetic_energy/np?/*/]
 
 # Toy FCIQMC algorithm
 [simple_fciqmc/*/]
+max_nprocs = 1
 
-# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - integer weights, serial
-[fciqmc/*/]
-[ifciqmc/*/]
+# Hilbert space estimation
+[mc_hilbert_space/np?/*/]
 
-# DMQMC - integer weights, serial
-[dmqmc/*/]
+# Canonical energy estimation.
+[mc_canonical_kinetic_energy/np?/*/]
 
-# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC - real weights, serial
+# QMC: integer weights
+[*mc/np?/*/]
+
+# QMC: real weights
 # _32 indicates POP_SIZE=32 preprocessor flag was used.
 # _64 indicates POP_SIZE=32 preprocessor flag was used.
-[fciqmc_real_32/*/]
-[fciqmc_real_64/*/]
-[ifciqmc_real_32/*/]
-
-# CCMC - integer weights, serial
-[ccmc/*/]
-
-# CCMC - integer weights, parallel (2 and 4 cores)
-[ccmc_mpi/np?/*/]
-
-# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC/DMQMC - integer weights, parallel (2 and 4 cores)
-[fciqmc_mpi/np?/*/]
-[ifciqmc_mpi/np?/*/]
-[dmqmc_mpi/np?/*/]
-
-# FCIQMC/i-FCIQMC/semi-stochastic-FCIQMC/DMQMC - real weights, parallel (2 and 4 cores)
-[fciqmc_real_32_mpi/np?/*/]
-[fciqmc_real_64_mpi/np?/*/]
-[ifciqmc_real_32_mpi/np?/*/]
-[ifciqmc_real_64_mpi/np?/*/]
-[dmqmc_real_32_mpi/np?/*/]
-[dmqmc_real_64_mpi/np?/*/]
+[*mc_real_32/np?/*/]
+[*mc_real_64/np?/*/]
 
 ## Processor options.
-# force serial jobs to always use 1 processor
-[*mc/*/]
-max_nprocs = 1
-[*/serial/*/]
-max_nprocs = 1
-[*mc_real_??/*/]
-max_nprocs = 1
-
 # force MC jobs to run on the same number of cores as the benchmarks in order to have the same Markov chains...
+[*/np1/*/]
+max_nprocs = 2
 [*/np2/*/]
 nprocs = 2
 min_nprocs = 2
@@ -75,10 +44,10 @@ max_nprocs = 4
 [categories]
 
 # By default, run serial MC tests (with POP_SIZE=32) + deterministic tests.
-_default_ = fci lanczos mc_hilbert_space mc_canonical_kinetic_energy *mc *mc_real_32
+_default_ = fci lanczos mc_hilbert_space/np1 mc_canonical_kinetic_energy/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
 
-mpi = _default_ *mc_mpi *mc_real_32_mpi
+mpi = _default_ mc_hilbert_space/ mc_canonical_kinetic_energy *mc *mc_real_32
 
-pop64 = fci lanczos mc_hilbert_space mc_canonical_kinetic_energy *mc *mc_real_64
+pop64 = fci lanczos mc_hilbert_space/np1 mc_canonical_kinetic_energy/np1 simple_fciqmc *mc/np1 *mc_real_64/np1
 
-pop64_mpi = pop64 *mc_mpi *mc_real_64_mpi
+pop64_mpi = pop64 mc_hilbert_space/ mc_canonical_kinetic_energy *mc/ *mc_real_64
