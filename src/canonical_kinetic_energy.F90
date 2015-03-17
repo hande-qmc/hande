@@ -86,7 +86,7 @@ contains
         iaccept = 0 ! running total number of samples.
         delta = 0.0_p
         mean = 0.0_p
-        estimators = 0.0_p
+        local_estimators = 0.0_p
         do ireport = 1, nkinetic_cycles
             do while (iaccept < ireport*D0_population)
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
