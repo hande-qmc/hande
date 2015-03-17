@@ -303,6 +303,8 @@ contains
         tot_nocc_states = rep_loop_sum(nocc_states_ind)
         tot_nspawn_events = rep_loop_sum(nspawned_ind)
         if (abs(rep_loop_sum(comms_found_ind)) > depsilon) then
+            ! [review] - JSS: comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon is more succinct.  Not sure why it's not
+            ! [review] - JSS: used for update_tau actually...
             comms_found = .true.
         else
             comms_found = .false.

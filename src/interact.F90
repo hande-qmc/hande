@@ -1,11 +1,13 @@
 module interact
 
+! [review] - JSS: outdated comment...
 ! Module for interacting with running FCIQMC calculations.
 
 implicit none
 
 contains
 
+    ! [review] - JSS: a more generic name now we do more than FCIQMC please!
     subroutine fciqmc_interact(soft_exit)
 
         ! Read FCIQMC.COMM if it exists in the working directory of any
@@ -40,6 +42,11 @@ contains
         soft_exit = .false.
 
         ! Check if file is on *this* process
+        ! [review] - JSS: please can:
+        !                 1. a function be created so one can do check_comms_file() rather than inquire (...) throughout the code?
+        !                 2. FCIQMC.COMM be renamed (also in comments, softexit.py and manual though) to something more
+        !                    generic---HANDE.COMM perhaps?
+        !                 3. filename be a parameter declared at module level?
         inquire(file='FCIQMC.COMM', exist=comms_exists)
 
         ! Read in the FCIQMC.COMM file.
