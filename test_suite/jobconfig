@@ -56,6 +56,8 @@ max_nprocs = 1
 # force serial jobs to always use 1 processor
 [*mc/*/]
 max_nprocs = 1
+[*/serial/*/]
+max_nprocs = 1
 [*mc_real_??/*/]
 max_nprocs = 1
 
