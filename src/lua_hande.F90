@@ -666,6 +666,23 @@ contains
 
     function lua_hilbert_space(L) result(nresult) bind(c)
 
+        ! Run a Monte Carlo calculation to estimate the size of the Hilbert
+        ! space.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    hilbert_space(
+        !        sys_t,
+        !        {
+        !           ncycles = n,
+        !           ex_level = level,
+        !           rng_seed = seed,
+        !           reference = { ... },  -- nel-dimensional vector.
+        !        }
+        !       )
+
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
 
         use flu_binding!, only: flu_State, flu_copyptr, flu_insert
@@ -690,6 +707,7 @@ contains
         integer :: opts, err
         integer, allocatable :: err_arr(:)
         logical :: have_seed
+        character(*), parameter :: keys(4) = [character(10) :: 'ncycles', 'ex_level', 'reference', 'rng_seed']
 
         lua_state = flu_copyptr(L)
 
@@ -697,11 +715,12 @@ contains
 
         call aot_get_val(ncycles, err, lua_state, opts, 'ncycles')
         if (err /= 0) call stop_all('lua_hilbert_space', 'Number of cycles not supplied.')
-        call aot_get_val(truncation_level, err, lua_state, opts, 'truncation_level', -1)
+        call aot_get_val(truncation_level, err, lua_state, opts, 'ex_level', -1)
         call aot_get_val(ref_det, err_arr, sys%nel, lua_state, opts, key='reference')
         have_seed = aot_exists(lua_state, opts, 'rng_seed')
         call aot_get_val(rng_seed, err, lua_state, opts, 'rng_seed')
 
+        call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         call aot_top_get_val(sys_ptr, err, lua_state)
