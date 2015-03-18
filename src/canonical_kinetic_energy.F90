@@ -22,6 +22,8 @@ enum, bind(c)
     ! Index for squared means needed for variance estimation in parallel.
     enumerator :: ke_sq_idx
     enumerator :: hf_sq_idx
+    ! Index for checking for interaction with the calculation
+    enumerator :: comms_found_idx
     ! last_idx-1 gives number of estimates.
     enumerator :: last_idx
 end enum
@@ -45,7 +47,7 @@ contains
         use fciqmc_data, only: init_beta, D0_population
         use utils, only: rng_init_info
         use hamiltonian_ueg, only: sum_sp_eigenvalues, potential_energy_ueg
-        use interact, only: calc_interact, check_interact, check_comms_file
+        use interact, only: calc_interact, check_comms_file
 
         type(sys_t), intent(inout) :: sys
 
@@ -112,6 +114,8 @@ contains
                                                         delta*(energy-local_estimators(ke_idx:hf_idx))
             end do
 
+            if (check_comms_file()) local_estimators(comms_found_idx) = 1.0_p
+
 #ifdef PARALLEL
             ! More efficient in parallel.
             call mpi_reduce(local_estimators, estimators, last_idx-1, mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
@@ -131,8 +135,7 @@ contains
             std = sqrt(((estimators(ke_var_idx:hf_var_idx)/(real(iaccept-1,p)) + &
                   estimators(ke_sq_idx:hf_sq_idx))/nprocs - mean**2.0_p)/(nprocs*real(iaccept, p)))
             if (parent) write(6,'(3X,i10,5X,4(es17.10,5X))') ireport, mean(ke_idx), std(ke_idx), mean(hf_idx), std(hf_idx)
-            comms_found = check_comms_file()
-            call check_interact(comms_found)
+            comms_found = abs(estimators(comms_found_idx)) > depsilon
             call calc_interact(comms_found, soft_exit)
             if (soft_exit) exit
         end do
