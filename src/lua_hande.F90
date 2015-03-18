@@ -157,7 +157,7 @@ contains
 
     end subroutine register_lua_hande_api
 
-    ! --- Helper functions ---
+    ! --- Helper functions : lua ---
 
     function mpi_root(L) result(nreturn) bind(c)
 
@@ -182,6 +182,8 @@ contains
         nreturn = 1
 
     end function mpi_root
+
+    ! --- Helper functions : parsing arguments from lua ---
 
     subroutine get_sys_t(lua_state, sys, new)
 
@@ -228,6 +230,35 @@ contains
         end select
 
     end subroutine get_sys_t
+
+    subroutine set_common_sys_options(lua_state, sys, opts)
+
+        ! Parse system settings common to all (or almost all) system definitions.
+
+        ! In:
+        !    opts: handle to the opts table (the main argument passed to the system wrappers).
+        ! In/Out:
+        !    lua_state: flu/Lua state which has the opts table at the top of the stack.
+        !    sys: system (sys_t) object.  On exit the electron number is set, along with symmetry
+        !         and spin indices (currently in calc).
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val
+        use system, only: sys_t
+
+        use calc, only: sym_in, ms_in
+
+        type(flu_State), intent(inout) :: lua_state
+        type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: opts
+        integer :: err
+
+        call aot_get_val(sys%nel, err, lua_state, opts, 'electrons')
+        call aot_get_val(sys%nel, err, lua_state, opts, 'nel')
+        call aot_get_val(ms_in, err, lua_state, opts, 'ms')
+        call aot_get_val(sym_in, err, lua_state, opts, 'sym')
+
+    end subroutine set_common_sys_options
 
     subroutine init_generic_system_basis(sys)
 
@@ -292,7 +323,6 @@ contains
         use const, only: p
         use errors, only: stop_all
 
-        use calc, only: sym_in, ms_in
         use system, only: sys_t, ueg, init_system
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
@@ -321,8 +351,7 @@ contains
         sys%lattice%ndim = 3
 
         ! Parse table for options...
-        call aot_get_val(sys%nel, err, lua_state, opts, 'electrons')
-        call aot_get_val(sys%nel, err, lua_state, opts, 'nel')
+        call set_common_sys_options(lua_state, sys, opts)
 
         new_basis = aot_exists(lua_state, opts, 'cutoff') .or. &
                     aot_exists(lua_state, opts, 'dim')    .or. &
@@ -335,9 +364,6 @@ contains
         call aot_get_val(sys%lattice%ndim, err, lua_state, opts, 'dim')
 
         call aot_get_val(tmp, err_arr, 3, lua_state, opts, key='twist')
-
-        call aot_get_val(ms_in, err, lua_state, opts, 'ms')
-        call aot_get_val(sym_in, err, lua_state, opts, 'sym')
 
         if (size(tmp) > 0) then
             if (size(tmp) /= sys%lattice%ndim) &
