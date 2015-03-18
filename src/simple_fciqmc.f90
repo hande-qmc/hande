@@ -48,10 +48,12 @@ contains
         use utils, only: int_fmt
 
         use determinant_enumeration
-        use diagonalisation, only: generate_hamil
+        use fci_utils, only: generate_hamil
         use qmc_data, only: qmc_in_t, reference_t, particle_t, qmc_state_t
         use spawn_data, only: spawn_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+
+        use calc, only: ms_in, sym_in
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -90,15 +92,10 @@ contains
 
 
         ! Set up hamiltonian matrix.
-        call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_off, .true.)
-        ! generate_hamil fills in only the lower triangle.
-        if (.not.use_sparse_hamil) then
-            ! Fill in upper triangle for easy access.
-            do i = 1,ndets
-                do j = i+1, ndets
-                    hamil(j,i) = hamil(i,j)
-                end do
-            end do
+        if (use_sparse_hamil) then
+            call generate_hamil(sys, ndets, dets, hamil_csr=hamil_csr, full_mat=.true.)
+        else
+            call generate_hamil(sys, ndets, dets, hamil=hamil, full_mat=.true.)
         end if
 
         write (6,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
