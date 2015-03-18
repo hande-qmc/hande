@@ -17,7 +17,7 @@ reduced_density_matrix 1
 1 2
 
 ground_state_rdm
-start_averaging 500
+start_averaging_rdm 500
 
 concurrence
 von_neumann_entropy
