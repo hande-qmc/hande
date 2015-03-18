@@ -26,8 +26,8 @@ contains
         use determinant_enumeration, only: enumerate_determinants
         use determinants, only: spin_orb_list
         use dmqmc_procedures, only: setup_rdm_arrays
-        use lanczos
-        use full_diagonalisation
+        use fci_lanczos
+        use fci_lapack
         use hamiltonian, only: get_hmatel
         use reference_determinant
         use symmetry, only: symmetry_orb_list
@@ -260,7 +260,7 @@ contains
                         ! Construct the Hamiltonian matrix distributed over the processors
                         ! if running in parallel.
                         if (nprocs > 1) call generate_hamil(sys, ndets, dets, use_sparse_hamil, distribute_blocks)
-                        call exact_diagonalisation(sys, dets, exact_eigv)
+                        call lapack_diagonalisation(sys, dets, exact_eigv)
                         exact_solns(nexact+1:nexact+ndets)%energy = exact_eigv
                         exact_solns(nexact+1:nexact+ndets)%ms = ms
                         nexact = nexact + ndets

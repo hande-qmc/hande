@@ -1,16 +1,10 @@
-module lanczos
+module fci_lanczos
 
 use const
 
+use tmp_input_var
+
 implicit none
-
-! Number of Lanczos eigenpairs to find.
-integer :: nlanczos_eigv = 5
-
-! Size of Lanczos basis.
-integer :: lanczos_string_len = 40
-
-logical :: direct_lanczos = .false.
 
 contains
 
@@ -333,4 +327,4 @@ contains
 
     end subroutine lanczos_diagonalisation
 
-end module lanczos
+end module fci_lanczos

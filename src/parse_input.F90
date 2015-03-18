@@ -7,7 +7,7 @@ use parallel, only: parent, block_size
 use errors
 use hilbert_space
 use calc
-use lanczos
+use tmp_input_var
 use determinants
 use determinant_enumeration, only: write_determinants, determinant_file
 use fciqmc_data

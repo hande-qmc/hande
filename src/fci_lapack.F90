@@ -1,4 +1,4 @@
-module full_diagonalisation
+module fci_lapack
 
 ! Complete diagonalisation of Hamiltonian matrix using lapack/scalapack
 ! libraries.
@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine exact_diagonalisation(sys, dets, eigv)
+    subroutine lapack_diagonalisation(sys, dets, eigv)
 
         ! Perform an exact diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
@@ -140,6 +140,6 @@ contains
             call check_deallocate('eigvec',ierr)
         end if
 
-    end subroutine exact_diagonalisation
+    end subroutine lapack_diagonalisation
 
-end module full_diagonalisation
+end module fci_lapack
