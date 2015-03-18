@@ -154,7 +154,7 @@ contains
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
-        use fciqmc_data, only: replica_tricks, renyi_2, sampling_size, real_bit_shift, spawn_cutoff
+        use fciqmc_data, only: renyi_2, sampling_size, real_bit_shift, spawn_cutoff
         use fciqmc_data, only: spawned_length, rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
         use parallel, only: parent

@@ -31,7 +31,7 @@ end enum
 
 contains
 
-    subroutine estimate_kinetic_energy(sys, qmc_in)
+    subroutine estimate_kinetic_energy(sys, qmc_in, dmqmc_in)
 
         ! From the Fermi factors calculated in the grand canonical ensemble we can
         ! estimate the total energy in the canonical ensemble by generating determinants
@@ -41,12 +41,14 @@ contains
         !    qmc_in: input options relating to QMC methods.
         ! In/Out:
         !    sys: system being studied.
+        !    dmqmc_in: input options relating to DMQMC.
 
         use system
+        use dmqmc_data, only: dmqmc_in_t
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
-        use calc, only: ms_in, fermi_temperature
-        use fciqmc_data, only: init_beta, D0_population
+        use calc, only: ms_in
+        use fciqmc_data, only: D0_population
         use hamiltonian_ueg, only: sum_sp_eigenvalues, potential_energy_ueg
         use interact, only: calc_interact, check_comms_file
         use qmc_data, only: qmc_in_t
@@ -54,6 +56,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         real(dp) :: r
@@ -74,8 +77,8 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
-        if (fermi_temperature) then
-            init_beta = init_beta / sys%ueg%ef
+        if (dmqmc_in%fermi_temperature) then
+            dmqmc_in%init_beta = dmqmc_in%init_beta / sys%ueg%ef
         end if
 
         if (parent) then
@@ -87,7 +90,7 @@ contains
         if (parent) write (6,'(1X,a12,6X,a3,19X,a7,15X,a4,18X,a10)') '# iterations', 'E_0', 'E_Error', 'E_HF', 'E_HF-Error'
 
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
+                                            (1+exp(dmqmc_in%init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
         iaccept = 0 ! running total number of samples.
         delta = 0.0_p

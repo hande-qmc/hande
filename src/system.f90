@@ -377,7 +377,6 @@ contains
         !    dmqmc_in: input options for dmqmc.
 
         use calc, only: ms_in
-        use fciqmc_data, only: all_spin_sectors
         use dmqmc_data, only: dmqmc_in_t
 
         use checking, only: check_allocate, check_deallocate

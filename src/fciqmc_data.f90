@@ -13,10 +13,6 @@ implicit none
 
 !--- Input data: FCIQMC ---
 
-! For DMQMC, beta_loops specifies the number of times
-! the program will loop over each value of beta in the main loop.
-integer :: beta_loops = 100
-
 ! Array sizes
 ! If these are < 0, then the values represent the number of MB to be used to
 ! store the main walker and spawned walker data respectively.
@@ -303,45 +299,16 @@ real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
 ! accumulated_probs(i) stores the multiplication of all the elements
 ! of sampling_probs up to the ith element. This quantity is often
 ! needed, so it is stored.
-logical :: weighted_sampling = .false.
-real(p), allocatable :: sampling_probs(:) ! (min(nel, nsites-nel))
 real(p), allocatable :: accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
 real(p), allocatable :: accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
-! If vary_weights is true, then instead of using the final sampling
-! weights for all the iterations, the weights will be gradually increased
-! until finish_varying_weights, at which point they will be held constant.
-! weight_altering_factors stores the factors by which each weight is
-! multiplied at each step. 
-logical :: vary_weights = .false.
-integer :: finish_varying_weights = 0
-real(dp), allocatable :: weight_altering_factors(:)
-! If this logical is true then the program will calculate the ratios
-! of the numbers of the psips on neighbouring excitation levels. These
-! are output so that they can be used when doing importance sampling
-! for DMQMC, so that each level will have roughly equal numbers of psips.
-! The resulting new weights are used in the next beta loop.
-logical :: find_weights = .false.
 
-! If half_density_matrix is true then half the density matrix will be 
-! calculated by reflecting spawning onto the lower triangle into the
-! upper triangle. This is allowed because the exact density matrix is 
-! symmetric.
-logical :: half_density_matrix = .false.
+real(dp), allocatable :: weight_altering_factors(:)
 
 ! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
 ! Currently only implemented for DMQMC.
 logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
-
-! If true then the simulation will start with walkers uniformly distributed
-! along the diagonal of the entire density matrix, including all symmetry
-! sectors.
-logical :: all_sym_sectors = .false.
-! If true then the simulation will start with walkers distributed in all
-! spin symmetry sectors of the Hamiltonian i.e. all 2S+1 blocks between
-! -ms...ms.
-logical :: all_spin_sectors = .false.
 
 ! If true then the reduced density matricies will be calulated for the 'A'
 ! subsystems specified by the user.
@@ -433,33 +400,6 @@ integer :: nsym_vec
 logical :: output_rdm
 ! The unit of the file reduced_dm.
 integer :: rdm_unit
-
-! When calculating certain DMQMC properties, we only want to start
-! averaging once the ground state is reached. The below integer is input
-! by the user, and gives the iteration at which data should start being
-! accumulated for the quantity. This is currently only used for the
-! reduced density matrix and calculating importance sampling weights.
-integer :: start_averaging = 0
-
-! correlation_mask is a bit string with a 1 at positions i and j which
-! are considered when finding the spin correlation function, C(r_{i,j}).
-! All other bits are set to 0. i and j are chosen by the user initially.
-integer(i0), allocatable :: correlation_mask(:) ! (string_len)
-! correlation_sites stores the site positions specified by the users
-! initially (as orbital labels).
-integer, allocatable :: correlation_sites(:)
-
-! Value of beta which we propagate the density matrix to.
-real(p) :: init_beta = 1.0
-! Number of metropolis attempts (per psip) we use when generating
-! the trial density matrix.
-integer :: metropolis_attempts = 0
-! For the metropolis move we generate an excitation of the current determinant
-! up to the max_metropolis_move'th excitation level (excluding zero-fold
-! excitations). Only applicable if all_mom_sym = .true., otherwise the
-! excitation generators are used which conserve momentum symmetry.
-! Default: Single and double excitations (if applicable).
-integer :: max_metropolis_move = 2
 
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since

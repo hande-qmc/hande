@@ -838,7 +838,7 @@ contains
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
                 if (propagate_to_beta) then
-                    if (free_electron_trial) then
+                    if (dmqmc_in%free_electron_trial) then
                         trial_dm_ptr => kinetic_energy_ueg
                     else
                         trial_dm_ptr => slater_condon0_ueg
@@ -846,7 +846,7 @@ contains
                 end if
             case(hub_k)
                 if (propagate_to_beta) then
-                    if (free_electron_trial) then
+                    if (dmqmc_in%free_electron_trial) then
                         trial_dm_ptr => kinetic0_hub_k
                     else
                         trial_dm_ptr => slater_condon0_hub_k

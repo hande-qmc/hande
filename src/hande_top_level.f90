@@ -135,7 +135,7 @@ contains
         end if
 
         if (doing_calc(mc_canonical_kinetic_energy)) then
-            call estimate_kinetic_energy(sys, qmc_in)
+            call estimate_kinetic_energy(sys, qmc_in, dmqmc_in)
         end if
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
