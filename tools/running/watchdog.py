@@ -30,7 +30,7 @@ def signal_handler(signal,frame):
 
 def job_cleanup():
     '''Perform specified operations to perform when the job is approaching the end of its walltime.'''
-    f = open('FCIQMC.COMM','w')
+    f = open('HANDE.COMM','w')
     f.write('softexit')
     f.close()
 

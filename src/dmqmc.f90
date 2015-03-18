@@ -30,7 +30,6 @@ contains
         use dmqmc_procedures
         use excitations, only: excit_t
         use qmc_common
-        use interact, only: fciqmc_interact
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
         use calc, only: seed, initiator_approximation, propagate_to_beta

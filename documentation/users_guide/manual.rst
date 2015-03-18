@@ -397,7 +397,7 @@ correlation length in the data is substantially longer than the length of the
 report loop (typically 20 iterations).
 
 The running averages of the shift and projected energy can be reset using the
-**zero_means** option with :ref:`FCIQMC.COMM`.  However, it should be
+**zero_means** option with :ref:`HANDE.COMM`.  However, it should be
 emphasised that the best estimates of the energy and associated standard error
 are obtained via re-blocking the data as a post-processing step.  Often the
 averaged values printed out are only adequate for (at best) monitoring
@@ -912,7 +912,7 @@ The following options are valid for FCIQMC calculations.
     will effectively loop indefinitely (strictly speaking: *nreports* is set to
     the largest possible number that can be held in the standard integer type).
     In such cases calculations should be cleanly exited using the
-    :ref:`FCIQMC.COMM` functionality.
+    :ref:`HANDE.COMM` functionality.
 
     The total number of Monte Carlo cycles performed in an FCIQMC calculation
     is *nreports* x *mc_cycles*.
@@ -1718,31 +1718,31 @@ Other options
     End of input.  Any subsequent lines in an input file are ignored.  It is
     only strictly required if the input is given via STDIN.
 
-.. _FCIQMC.COMM:
+.. _HANDE.COMM:
 
-Interacting with FCIQMC calculations
+Interacting with running calculations
 ------------------------------------
 
-It is possible to interact with running FCIQMC calculations.
+It is possible to interact with running calculations.
 
-After each FCIQMC update cycle, HANDE checks for the existence of the file
-FCIQMC.COMM in the current working directory for all processors. If FCIQMC.COMM
+After each update cycle, HANDE checks for the existence of the file
+HANDE.COMM in the current working directory for all processors. If HANDE.COMM
 exists, then the file is read and any modified parameters are then used for the
-rest of the calculation.  FCIQMC.COMM is deleted after it is read in to prevent
+rest of the calculation.  HANDE.COMM is deleted after it is read in to prevent
 it from being detected on subsequent update cycles and to enable multiple
 interactions with a running calculation.
 
-FCIQMC.COMM has the same syntax as the input file.  Available options are:
+HANDE.COMM has the same syntax as the input file.  Available options are:
 
 **softexit**
-    End the FCIQMC calculation immediately but still perform any
+    End the calculation immediately but still perform any
     post-processing (e.g. dumping out a restart file).  This is useful for
     cleanly terminating a converged calculation or cleanly stopping
     a calculation before the walltime is reached to allow it to be restarted.
 
     The watchdog.py (for PBS queue systems) and send_softexit.py (for other
     queue systems) scripts in the tools subdirectory are useful for running
-    HANDE on a queueing system as they write **softexit** to FCIQMC.COMM a
+    HANDE on a queueing system as they write **softexit** to HANDE.COMM a
     certain amount of time before the walltime is reached.
 **varyshift_target** *varyshift_target*
     Long integer.
