@@ -1,0 +1,22 @@
+hubbard_k
+
+lattice
+4
+electrons 4
+
+ifciqmc
+initiator_population 1
+
+spawned_walker_length 100
+walker_length 10
+nreports 250
+mc_cycles 10
+
+tau 0.02
+varyshift_target 100
+
+init_pop 2
+
+ms 0
+sym 4
+seed 7

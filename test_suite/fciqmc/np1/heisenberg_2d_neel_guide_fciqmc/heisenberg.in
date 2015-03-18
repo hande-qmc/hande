@@ -1,0 +1,22 @@
+heisenberg
+
+lattice
+4 0
+0 4
+ms 0
+
+J -4
+
+fciqmc
+
+spawned_walker_length 5000
+walker_length 20000
+nreports 750
+mc_cycles 20
+
+tau 0.0005
+varyshift_target 10000
+vary_shift_from -44.0
+
+neel_singlet_guiding
+seed 7

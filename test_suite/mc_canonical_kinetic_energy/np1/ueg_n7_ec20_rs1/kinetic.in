@@ -1,0 +1,18 @@
+ueg
+3d
+rs 1
+
+nel 7
+ecutoff 20
+ms 7
+
+estimate_canonical_kinetic_energy
+
+chem_pot -0.0650329886175
+
+fermi_temperature
+
+seed 7
+init_beta 1
+num_kinetic_cycles 100
+init_pop 1000

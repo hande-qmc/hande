@@ -1,0 +1,39 @@
+dmqmc
+
+real_amplitudes
+spawn_cutoff 0.01
+
+heisenberg
+
+lattice
+4
+
+J -0.25
+ms 0
+
+dmqmc_energy
+
+reduced_density_matrix 1
+1 2
+
+ground_state_rdm
+start_averaging 500
+
+concurrence
+von_neumann_entropy
+
+beta_loops 5
+nreports 100
+mc_cycles 10
+
+spawned_walker_length 3000
+walker_length 3000
+
+tau 0.1
+init_pop 100
+varyshift_target 100
+shift_damping 0.1
+
+seed 7
+
+

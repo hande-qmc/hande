@@ -1,0 +1,28 @@
+heisenberg
+
+lattice
+4 0
+0 4
+ms 0
+
+real_amplitudes
+spawn_cutoff 0.01
+
+semi_stoch_iteration 1500
+semi_stoch_high_pop 50
+semi_stoch_combine_annihil
+
+J -0.0625
+
+fciqmc
+
+spawned_walker_length 40000
+walker_length 40000
+nreports 2500
+mc_cycles 1
+
+tau 0.05
+varyshift_target 10000
+seed 7
+
+write_determ_space

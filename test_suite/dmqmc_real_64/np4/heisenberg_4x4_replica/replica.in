@@ -1,0 +1,45 @@
+dmqmc
+
+real_amplitudes
+spawn_cutoff 0.01
+
+heisenberg
+
+lattice
+4 0
+0 4
+J -0.0625
+ms 0
+
+dmqmc_energy
+dmqmc_energy_squared
+dmqmc_staggered_magnetisation
+dmqmc_correlation_function 1 2
+dmqmc_full_renyi_2
+
+reduced_density_matrix 2
+1 2 3 4
+5 6 7 8 9 10 11 12 13 14 15 16
+
+dmqmc_weighted_sampling 8
+3.8837E+01    9.4896E+00    3.4939E+00    1.4881E+00    6.7201E-01    2.8621E-01    1.0538E-01    2.5749E-02
+dmqmc_vary_weights 300
+
+replica_tricks
+instantaneous_rdm
+renyi_entropy_2
+spawned_rdm_length 5000
+
+beta_loops 4
+nreports 30
+mc_cycles 10
+
+spawned_walker_length 1000
+walker_length 1000
+
+init_pop 500
+tau 0.1
+varyshift_target 400
+shift_damping 0.1
+
+seed 9

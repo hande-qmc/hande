@@ -1,0 +1,28 @@
+heisenberg
+
+dmqmc
+
+lattice
+3 0 0
+0 3 0
+0 0 3
+ms 23
+
+J -0.04
+
+init_pop 10000
+
+dmqmc_energy
+
+spawned_walker_length 100 MB
+walker_length 100 MB
+nreports 1000
+mc_cycles 1
+beta_loops 2
+
+seed 10
+
+tau 0.1
+initial_shift 0.0
+varyshift_target 100000
+shift_damping 0.02

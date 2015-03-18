@@ -1,0 +1,22 @@
+( Estimated ground state energy: -14.71472(2). )
+( Running for longer agrees with no_renorm generator and hubbard_k implementation. )
+hubbard_real
+lattice
+14
+nel 14
+ms 0
+sym 0
+u 1
+
+fciqmc
+tau 0.003
+seed -1976372547
+
+walker_length 500 mb
+spawned_walker_length 100 mb
+
+mc_cycles 10
+nreports 100
+
+varyshift_target 30000
+vary_shift_from -14.7
