@@ -1,22 +1,22 @@
 module interact
 
-! [review] - JSS: outdated comment...
-! Module for interacting with running FCIQMC calculations.
+! Module for interacting with running calculations.
 
 implicit none
 
+character(*), parameter :: comms_file = "HANDE.COMM"
+
 contains
 
-    ! [review] - JSS: a more generic name now we do more than FCIQMC please!
-    subroutine fciqmc_interact(soft_exit)
+    subroutine calc_interact(comms_found, soft_exit)
 
-        ! Read FCIQMC.COMM if it exists in the working directory of any
+        ! Read HANDE.COMM if it exists in the working directory of any
         ! processor and set the variables according to the options defined in
-        ! FCIQMC.COMM.
+        ! HANDE.COMM.
 
         ! Out:
-        !    softexit: true if SOFTEXIT is defined in FCIQMC.COMM, in which case
-        !        any fciqmc calculation should exit immediately and go to the
+        !    softexit: true if SOFTEXIT is defined in HANDE.COMM, in which case
+        !        any calculation should exit immediately and go to the
         !        post-processing steps.
 
         use input, line=>char
@@ -25,6 +25,7 @@ contains
 
         use fciqmc_data, only: target_particles, tau, vary_shift, shift, sampling_size
 
+        logical, intent(in) :: comms_found
         logical, intent(out) :: soft_exit
 
         logical :: comms_exists, comms_read, eof
@@ -41,108 +42,106 @@ contains
 
         soft_exit = .false.
 
-        ! Check if file is on *this* process
-        ! [review] - JSS: please can:
-        !                 1. a function be created so one can do check_comms_file() rather than inquire (...) throughout the code?
-        !                 2. FCIQMC.COMM be renamed (also in comments, softexit.py and manual though) to something more
-        !                    generic---HANDE.COMM perhaps?
-        !                 3. filename be a parameter declared at module level?
-        inquire(file='FCIQMC.COMM', exist=comms_exists)
+        if (comms_found) then
+            ! Check if file is on *this* process
+            comms_exists = check_comms_file()
 
-        ! Read in the FCIQMC.COMM file.
-        ! This should be a very rare event, so we don't worry too much
-        ! about optimised communications in this section.
-        if (parent) then
-            write (6,'(1X,"#",1X,62("-"))')
-            write (6,'(1X,"#",1X,a21)') 'FCIQMC.COMM detected.'
-            write (6,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of FCIQMC.COMM:'
-            ! Flush output from parent processor so that processor which
-            ! has the FCIQMC.COMM file can print out the contents without
-            ! mixing the output.
-            flush(6)
-        end if
-        ! Quick pause to ensure output is all done by this point.
-#ifdef PARALLEL
-        call mpi_barrier(mpi_comm_world, ierr)
-#endif
-        ! Slightly tricky bit: need to take into account multi-core
-        ! machines where multiple processors can share the same disk and so
-        ! be picking up the same FCIQMC.COMM file.  We want to ensure that
-        ! only one processor reads it in (avoid race conditions!).
-        ! Solution: loop over processors and place a blocking comms call at
-        ! the end of each iteration.
-        ! proc will end up holding the processor id that read in
-        ! FCIQMC.COMM.
-        comms_read = .false.
-        do proc = 0, nprocs-1
-            if (proc == iproc .and. comms_exists) then
-                ! Read in file.
-                ir = get_free_unit()
-                open(ir, file='FCIQMC.COMM', status='old')
-                ! Will do our own echoing as want to prepend lines with '#'
-                call input_options(echo_lines=.false., skip_blank_lines=.true.)
-
-                do ! loop over lines in FCIQMC.COMM.
-                    call read_line(eof)
-                    if (eof) exit
-                    write (6,'(1X,"#",1X,a)') trim(line)
-
-                    call readu(w)
-                    select case(w)
-                    case('SOFTEXIT')
-                        ! Exit FCIQMC immediately.
-                        soft_exit = .true.
-                    case('TAU')
-                        ! Change timestep.
-                        call readf(tau)
-                    case('VARYSHIFT_TARGET')
-                        call readf(target_particles)
-                        if (target_particles < 0) then
-                            ! start varying the shift now.
-                            vary_shift = .true.
-                        end if
-                    case('SHIFT')
-                        call readf(shift(1))
-                        do i = 2, sampling_size
-                            shift(i) = shift(1)
-                        end do
-                    case default
-                        write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
-                    end select
-
-                end do ! end reading of FCIQMC.COMM.
-
-                ! Don't want to keep FCIQMC.COMM around to be detected
-                ! again on the next FCIQMC iteration.
-                close(ir, status="delete")
-                comms_read = .true.
+            ! Read in the HANDE.COMM file.
+            ! This should be a very rare event, so we don't worry too much
+            ! about optimised communications in this section.
+            if (parent) then
+                write (6,'(1X,"#",1X,62("-"))')
+                write (6,'(1X,"#",1X,a21)') comms_file//' detected.'
+                write (6,'(1X,"#",/,1X,"#",1X,a24,/,1X,"#")') 'Contents of '//comms_file//':'
+                ! Flush output from parent processor so that processor which
+                ! has the HANDE.COMM file can print out the contents without
+                ! mixing the output.
+                flush(6)
             end if
+            ! Quick pause to ensure output is all done by this point.
 #ifdef PARALLEL
-            call mpi_bcast(comms_read, 1, mpi_logical, proc, mpi_comm_world, ierr)
+            call mpi_barrier(mpi_comm_world, ierr)
 #endif
-            if (comms_read) exit
-        end do
+            ! Slightly tricky bit: need to take into account multi-core
+            ! machines where multiple processors can share the same disk and so
+            ! be picking up the same HANDE.COMM file.  We want to ensure that
+            ! only one processor reads it in (avoid race conditions!).
+            ! Solution: loop over processors and place a blocking comms call at
+            ! the end of each iteration.
+            ! proc will end up holding the processor id that read in
+            ! HANDE.COMM.
+            comms_read = .false.
+            do proc = 0, nprocs-1
+                if (proc == iproc .and. comms_exists) then
+                    ! Read in file.
+                    ir = get_free_unit()
+                    open(ir, file=comms_file, status='old')
+                    ! Will do our own echoing as want to prepend lines with '#'
+                    call input_options(echo_lines=.false., skip_blank_lines=.true.)
+
+                    do ! loop over lines in HANDE.COMM.
+                        call read_line(eof)
+                        if (eof) exit
+                        write (6,'(1X,"#",1X,a)') trim(line)
+
+                        call readu(w)
+                        select case(w)
+                        case('SOFTEXIT')
+                            ! Exit calculation immediately.
+                            soft_exit = .true.
+                        case('TAU')
+                            ! Change timestep.
+                            call readf(tau)
+                        case('VARYSHIFT_TARGET')
+                            call readf(target_particles)
+                            if (target_particles < 0) then
+                                ! start varying the shift now.
+                                vary_shift = .true.
+                            end if
+                        case('SHIFT')
+                            call readf(shift(1))
+                            do i = 2, sampling_size
+                                shift(i) = shift(1)
+                            end do
+                        case default
+                            write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
+                        end select
+
+                    end do ! end reading of HANDE.COMM.
+
+                    ! Don't want to keep HANDE.COMM around to be detected
+                    ! again on the next iteration.
+                    close(ir, status="delete")
+                    comms_read = .true.
+                end if
+#ifdef PARALLEL
+                call mpi_bcast(comms_read, 1, mpi_logical, proc, mpi_comm_world, ierr)
+#endif
+                if (comms_read) exit
+            end do
 
 #ifdef PARALLEL
-        ! If in parallel need to broadcast data.
-        call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
-        call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
-        call mpi_bcast(shift, sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
-        call mpi_bcast(target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
-        call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
+            ! If in parallel need to broadcast data.
+            call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
+            call mpi_bcast(tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(shift, sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
 #endif
 
-        if (parent) write (6,'(1X,"#",/,1X,"#",1X,a59,/,1X,"#",1X,62("-"))')  &
-               "From now on we use the information provided in FCIQMC.COMM."
+            if (parent) write (6,'(1X,"#",/,1X,"#",1X,a59,/,1X,"#",1X,62("-"))')  &
+                   "From now on we use the information provided in "//comms_file//"."
 
-    end subroutine fciqmc_interact
+        end if
+
+    end subroutine calc_interact
 
     subroutine check_interact(comms_found)
 
-        ! Checks if there is a FCIQMC.COMM file present to interact with the calculation
+        ! Checks if there is a HANDE.COMM file present to interact with the calculation
 
         ! In/Out:
-        !   comms_found: on entry, whether FCIQMC.COMM exists on this processor; on exit whether it
+        !   comms_found: on entry, whether HANDE.COMM exists on this processor; on exit whether it
         !   exists on any
 
         use parallel
@@ -159,5 +158,14 @@ contains
 
         end subroutine check_interact
 
+        function check_comms_file()
+
+            ! Test whether HANDE.COMM is present on this processor
+
+            logical :: check_comms_file
+
+            inquire(file=comms_file, exist=check_comms_file)
+            
+        end function check_comms_file
 
 end module interact

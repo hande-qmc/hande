@@ -771,7 +771,7 @@ contains
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
-        use interact, only: fciqmc_interact, check_interact
+        use interact, only: calc_interact, check_interact, check_comms_file
         use parallel, only: parent, nprocs
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
         use system, only: sys_t
@@ -803,7 +803,7 @@ contains
 
         ! Test for a comms file so MPI communication can be combined with
         ! energy_estimators communication
-        inquire(file='FCIQMC.COMM', exist=comms_found)
+        comms_found = check_comms_file()
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
@@ -851,12 +851,8 @@ contains
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time
 
-        if (comms_found) then
-            call fciqmc_interact(soft_exit)
-            if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
-        else
-            soft_exit = .false.
-        end if
+        call calc_interact(comms_found, soft_exit)
+        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
 
         if (update_tau_now) call rescale_tau()
 

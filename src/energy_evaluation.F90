@@ -63,7 +63,7 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
-        !    comms_found: On input, true if FCIQMC.COMM file present on this processor. On output
+        !    comms_found: On input, true if HANDE.COMM file present on this processor. On output
         !    true if present on any processor.
         !    update_tau (optional): On input, true if the processor wants to automatically rescale
         !       tau.  On output the logical or of this across all processors (i.e. true if
@@ -139,7 +139,7 @@ contains
         !    bloom_stats: Bloom stats.  The report loop quantities are accumulated into
         !       their respective components.
         ! Out (optional):
-        !    comms_found: whether FCIQMC.COMM exists
+        !    comms_found: whether HANDE.COMM exists
         !    update_tau: if true, tau should be automatically rescaled.
 
         use fciqmc_data, only: sampling_size
@@ -190,7 +190,7 @@ contains
 
         ! In (optional):
         !    nspawn_events: The total number of spawning events to this process.
-        !    comms_found: whether FCIQMC.COMM exists on this processor
+        !    comms_found: whether HANDE.COMM exists on this processor
         !    update_tau: if true, then the current processor wants to automatically rescale tau.
         !    bloom_stats: Bloom stats.  The report loop quantities must be set.
         !    spawn_elsewhere: number of walkers spawned from current processor
@@ -260,7 +260,7 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
         ! Out:
-        !     comms_found: whether a FCIQMC.COMM file exists
+        !     comms_found: whether a HANDE.COMM file exists
         ! Out (optional):
         !     update_tau: if true, tau should be automatically rescaled.
 
@@ -287,7 +287,7 @@ contains
         D0_population = rep_loop_sum(D0_pop_ind)
         rspawn = rep_loop_sum(rspawn_ind)
         if (present(update_tau)) then
-            if (abs(rep_loop_sum(update_tau_ind)) > depsilon) update_tau = .true.
+            update_tau = abs(rep_loop_sum(update_tau_ind)) > depsilon
         end if
         if (present(bloom_stats)) then
             bloom_stats%tot_bloom_curr = rep_loop_sum(bloom_tot_ind)
@@ -302,12 +302,8 @@ contains
         D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
         tot_nocc_states = rep_loop_sum(nocc_states_ind)
         tot_nspawn_events = rep_loop_sum(nspawned_ind)
-        if (abs(rep_loop_sum(comms_found_ind)) > depsilon) then
-            ! [review] - JSS: comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon is more succinct.  Not sure why it's not
-            ! [review] - JSS: used for update_tau actually...
-            comms_found = .true.
-        else
-            comms_found = .false.
+        if (present(comms_found)) then
+            comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if
 
         do i = 1, sampling_size

@@ -44,7 +44,7 @@ contains
         use excitations, only: excit_t, get_excitation
         use fciqmc_data, only: tau, real_factor
         use hfs_data
-        use interact, only: fciqmc_interact
+        use interact, only: calc_interact, check_comms_file
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
@@ -227,7 +227,7 @@ contains
 
             ! Test for a comms file so MPI communication can be combined with
             ! energy_estimators communication
-            inquire(file='FCIQMC.COMM', exist=comms_found)
+            comms_found = check_comms_file()
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(nspawn_events, nparticles_old, comms_found)
 
@@ -244,10 +244,8 @@ contains
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
 
-            if (comms_found) then
-                call fciqmc_interact(soft_exit)
-                if (soft_exit) exit
-            end if
+            call calc_interact(comms_found, soft_exit)
+            if (soft_exit) exit
 
         end do
 
