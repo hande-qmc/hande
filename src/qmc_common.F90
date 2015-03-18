@@ -785,7 +785,7 @@ contains
 
     subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
                                semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, load_bal_in, &
-                               update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm)
+                               update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm, dmqmc_in)
 
         ! In:
         !    sys: system being studied.
@@ -820,6 +820,7 @@ contains
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
         !    load_bal_in: input options for load balancing.
+        !    dmqmc_in: input options relating to DMQMC.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    rep_comm: nb_rep_t object containing report loop info. Used for
@@ -827,6 +828,7 @@ contains
         !        from previous iteration and communicate the current iterations
         !        estimators.
 
+        use dmqmc_data, only: dmqmc_in_t
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
@@ -855,6 +857,7 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb, nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
+        type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
 
         real :: curr_time
         logical :: update, update_tau_now, vary_shift_before, nb_comm_local, comms_found
@@ -909,7 +912,7 @@ contains
         ! curr_time - report_time is thus the time taken by this report loop.
         if (parent) then
             if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-            call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false., nb_comm_local)
+            call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false., nb_comm_local, dmqmc_in)
         end if
 
         ! Write restart file if required.

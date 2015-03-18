@@ -332,12 +332,6 @@ logical :: half_density_matrix = .false.
 ! Currently only implemented for DMQMC.
 logical :: replica_tricks = .false.
 
-! For DMQMC: If this locial is true then the fraction of psips at each
-! excitation level will be output at each report loop. These fractions
-! will be stored in the array below.
-! The number of excitations for a given system is defined by
-! sys_t%max_number_excitations; see comments in sys_t for more details.
-logical :: calc_excit_dist = .false.
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
 ! If true then the simulation will start with walkers uniformly distributed
@@ -532,12 +526,18 @@ contains
 
     !--- Output procedures ---
 
-    subroutine write_fciqmc_report_header()
+    subroutine write_fciqmc_report_header(dmqmc_in)
+
+        ! In:
+        !    dmqmc_in: input options relating to DMQMC.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2
+        use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
+
+        type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
 
         integer :: i, j
         character(16) :: excit_header
@@ -576,11 +576,13 @@ contains
                     end do
                 end do
             end if
-            if (calc_excit_dist) then
-                do i = 0, ubound(excit_dist,1)
-                    write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
-                    write (6, '(5X,a16)', advance='no') excit_header
-                end do
+            if (present(dmqmc_in)) then
+                if (dmqmc_in%calc_excit_dist) then
+                    do i = 0, ubound(excit_dist,1)
+                        write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
+                        write (6, '(5X,a16)', advance='no') excit_header
+                    end do
+                end if
             end if
 
             write (6, '(3X,a11,6X)', advance='no') '# particles'
@@ -600,7 +602,7 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(qmc_in, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm)
+    subroutine write_fciqmc_report(qmc_in, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, dmqmc_in)
 
         ! Write the report line at the end of a report loop.
 
@@ -611,10 +613,12 @@ contains
         !    elapsed_time: time taken for the report loop.
         !    comment: if true, then prefix the line with a #.
         !    non_blocking_comm: true if using non-blocking communications
+        !    dmqmc_in: input options relating to DMQMC.
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
+        use dmqmc_data, only: dmqmc_in_t
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
         use qmc_data, only: qmc_in_t
 
@@ -623,6 +627,8 @@ contains
         real(p), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
+        type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
+
         integer :: mc_cycles, i, j
 
         ! For non-blocking communications we print out the nth report loop
@@ -693,11 +699,13 @@ contains
 
             ! The distribution of walkers on different excitation levels of the
             ! density matrix.
-            if (calc_excit_dist) then
-                excit_dist = excit_dist/ntot_particles(1)
-                do i = 0, ubound(excit_dist,1)
-                    write (6, '(4X,es17.10)', advance = 'no') excit_dist(i)
-                end do
+            if (present(dmqmc_in)) then
+                if (dmqmc_in%calc_excit_dist) then
+                    excit_dist = excit_dist/ntot_particles(1)
+                    do i = 0, ubound(excit_dist,1)
+                        write (6, '(4X,es17.10)', advance = 'no') excit_dist(i)
+                    end do
+                end if
             end if
 
             write (6, '(2X,es17.10)', advance='no') ntot_particles(1)

@@ -79,7 +79,7 @@ contains
         ! Main DMQMC loop.
         if (parent) then
             call rng_init_info(qmc_in%seed+iproc)
-            call write_fciqmc_report_header()
+            call write_fciqmc_report_header(dmqmc_in)
         end if
         ! Initialise timer.
         call cpu_time(t1)
