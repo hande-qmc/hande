@@ -113,9 +113,10 @@ contains
             ! parsing it as traditional input file for now.
             call open_config_file(lua_state, inp_file, lua_err, err_string)
             ! [todo] - Change to stop once traditional input mode has been removed.
-            if (ierr == 0) then
+            if (lua_err == 0) then
                 call flu_close(lua_state)
             else
+                write (6,*) 'aotus/lua error code:', lua_err
                 call warning('run_lua_hande', trim(err_string)//'.  Assuming traditional input file...', 2)
             end if
 
