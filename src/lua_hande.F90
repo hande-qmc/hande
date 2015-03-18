@@ -390,10 +390,9 @@ contains
         !           electrons = N,
         !           lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
         !           ms = Ms,
-        !           sym = sym_index,
-        !           U = U
-        !           t = t
-        !           ktwist = {...},    -- D-dimensional vector.
+        !           U = U,
+        !           t = t,
+        !           finite = true/false,
         !        }
         !       )
 
@@ -463,8 +462,8 @@ contains
         !           lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
         !           ms = Ms,
         !           sym = sym_index,
-        !           U = U
-        !           t = t
+        !           U = U,
+        !           t = t,
         !           ktwist = {...},    -- D-dimensional vector.
         !        }
         !       )
@@ -498,6 +497,7 @@ contains
         call set_common_sys_options(lua_state, sys, opts)
         call aot_get_val(sys%hubbard%u, err, lua_state, opts, 'U')
         call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
+        call aot_get_val(sys%real_lattice%finite_cluster, err, lua_state, opts, 'finite')
 
         new_basis = aot_exists(lua_state, opts, 'lattice') .or. new
 
