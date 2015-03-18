@@ -151,6 +151,8 @@ contains
 
         ! Systems
         call flu_register(lua_state, 'ueg', lua_ueg)
+        call flu_register(lua_state, 'hubbard_k', lua_hubbard_k)
+        call flu_register(lua_state, 'hubbard_real', lua_hubbard_real)
 
         ! Calculations
         call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)
@@ -266,8 +268,8 @@ contains
         !    opts: handle to the opts table (the main argument passed to the system wrappers).
         ! In/Out:
         !    lua_state: flu/Lua state which has the opts table at the top of the stack.
-        !    sys: system (sys_t) object.  On entry, sys%lattice%ndim must be set.  On exit the sys%k_lattice%ktwist array is set, if
-        !         the option is specified.
+        !    sys: system (sys_t) object.  On entry, sys%lattice%ndim must be set.  On exit the
+        !         sys%k_lattice%ktwist array is set, if the option is specified.
 
         use flu_binding, only: flu_State
         use aot_vector_module, only: aot_get_val
@@ -282,6 +284,7 @@ contains
 
         real(p), allocatable :: tmp(:)
         integer, allocatable :: err_arr(:)
+
         call aot_get_val(tmp, err_arr, 3, lua_state, opts, key='twist')
         if (size(tmp) > 0) then
             if (size(tmp) /= sys%lattice%ndim) &
@@ -292,6 +295,53 @@ contains
         deallocate(tmp)
 
     end subroutine get_ktwist
+
+    subroutine get_lattice(lua_state, sys, opts)
+
+        ! In:
+        !    opts: handle to the opts table (the main argument passed to the system wrappers).
+        ! In/Out:
+        !    lua_state: flu/Lua state which has the opts table at the top of the stack.
+        !    sys: system (sys_t) object.  On exit the sys%lattice%ndim and sys%lattice%lattice are set.
+
+        ! NOTE: if get_lattice is called, it is assumed that the lattice option is required.
+
+        use flu_binding, only: flu_State
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
+        use aot_vector_module, only: aot_get_val
+
+        use const, only: p
+        use errors, only: stop_all
+        use system, only: sys_t
+
+        type(flu_State), intent(inout) :: lua_state
+        type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: opts
+
+        real(p), allocatable :: tmp(:)
+        integer, allocatable :: err_arr(:)
+        integer :: lattice, i
+
+        call aot_table_open(lua_state, opts, lattice, 'lattice')
+        if (lattice == 0) call stop_all('get_lattice', 'No lattice specified.')
+
+        call aot_get_val(tmp, err_arr, 3, lua_state, lattice, pos=1)
+        if (size(tmp) > 0 .and. size(tmp) <= 3) then
+            sys%lattice%ndim = size(tmp)
+            allocate(sys%lattice%lattice(sys%lattice%ndim, sys%lattice%ndim))
+            sys%lattice%lattice(:,1) = tmp
+        else
+            call stop_all('get_lattice', 'Unsupported lattice dimension.')
+        end if
+        deallocate(tmp)
+
+        do i = 2, sys%lattice%ndim
+            call aot_get_val(sys%lattice%lattice(:,i), err_arr, lua_state, lattice, pos=i)
+        end do
+
+        call aot_table_close(lua_state, lattice)
+
+    end subroutine get_lattice
 
     subroutine init_generic_system_basis(sys)
 
@@ -324,6 +374,147 @@ contains
     end subroutine init_generic_system_basis
 
     ! --- System wrappers ---
+
+    function lua_hubbard_k(L) result(nreturn) bind(c)
+
+        ! Create/modify a Hubbard (k-space basis) system.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    hubbard_k(
+        !        [sys_t, ] -- optional.  New sys_t object is created if not passed.
+        !        {
+        !           electrons = N,
+        !           lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
+        !           ms = Ms,
+        !           sym = sym_index,
+        !           U = U
+        !           t = t
+        !           ktwist = {...},    -- D-dimensional vector.
+        !        }
+        !       )
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+
+        use system, only: sys_t, hub_k, init_system
+        use basis, only: init_model_basis_fns
+        use momentum_symmetry, only: init_momentum_symmetry
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+        type(flu_State) :: lua_state
+
+        type(sys_t), pointer :: sys
+        type(c_ptr) :: sys_ptr
+        integer :: opts
+        logical :: new, new_basis
+        integer :: err
+
+        lua_state = flu_copyptr(l)
+        call get_sys_t(lua_state, sys, new)
+
+        ! get a handle to the table...
+        opts = aot_table_top(lua_state)
+
+        sys%system = hub_k
+
+        call set_common_sys_options(lua_state, sys, opts)
+        call aot_get_val(sys%hubbard%u, err, lua_state, opts, 'U')
+        call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
+        call get_ktwist(lua_state, sys, opts)
+
+        new_basis = aot_exists(lua_state, opts, 'lattice') .or. new
+
+        if (new_basis) then
+            call get_lattice(lua_state, sys, opts)
+            ! [todo] - deallocate existing basis info and start afresh.
+            call init_system(sys)
+            call init_model_basis_fns(sys)
+            call init_generic_system_basis(sys)
+            call init_momentum_symmetry(sys)
+        end if
+
+        call aot_table_close(lua_state, opts)
+
+        sys_ptr = c_loc(sys)
+        call flu_pushlightuserdata(lua_state, sys_ptr)
+        nreturn = 1
+
+    end function lua_hubbard_k
+
+    function lua_hubbard_real(L) result(nreturn) bind(c)
+
+        ! Create/modify a Hubbard (real-space basis) system.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    hubbard_real(
+        !        [sys_t, ] -- optional.  New sys_t object is created if not passed.
+        !        {
+        !           electrons = N,
+        !           lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
+        !           ms = Ms,
+        !           sym = sym_index,
+        !           U = U
+        !           t = t
+        !           ktwist = {...},    -- D-dimensional vector.
+        !        }
+        !       )
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+
+        use system, only: sys_t, hub_real, init_system
+        use basis, only: init_model_basis_fns
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+        type(flu_State) :: lua_state
+
+        type(sys_t), pointer :: sys
+        type(c_ptr) :: sys_ptr
+        integer :: opts
+        logical :: new, new_basis
+        integer :: err
+
+        lua_state = flu_copyptr(l)
+        call get_sys_t(lua_state, sys, new)
+
+        ! get a handle to the table...
+        opts = aot_table_top(lua_state)
+
+        sys%system = hub_real
+
+        call set_common_sys_options(lua_state, sys, opts)
+        call aot_get_val(sys%hubbard%u, err, lua_state, opts, 'U')
+        call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
+
+        new_basis = aot_exists(lua_state, opts, 'lattice') .or. new
+
+        if (new_basis) then
+            call get_lattice(lua_state, sys, opts)
+            ! [todo] - deallocate existing basis info and start afresh.
+            call init_system(sys)
+            call init_model_basis_fns(sys)
+            call init_generic_system_basis(sys)
+        end if
+
+        call aot_table_close(lua_state, opts)
+
+        sys_ptr = c_loc(sys)
+        call flu_pushlightuserdata(lua_state, sys_ptr)
+        nreturn = 1
+
+    end function lua_hubbard_real
 
     function lua_ueg(L) result(nreturn) bind(c)
 
