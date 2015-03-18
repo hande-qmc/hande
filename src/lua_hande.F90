@@ -260,6 +260,39 @@ contains
 
     end subroutine set_common_sys_options
 
+    subroutine get_ktwist(lua_state, sys, opts)
+
+        ! In:
+        !    opts: handle to the opts table (the main argument passed to the system wrappers).
+        ! In/Out:
+        !    lua_state: flu/Lua state which has the opts table at the top of the stack.
+        !    sys: system (sys_t) object.  On entry, sys%lattice%ndim must be set.  On exit the sys%k_lattice%ktwist array is set, if
+        !         the option is specified.
+
+        use flu_binding, only: flu_State
+        use aot_vector_module, only: aot_get_val
+
+        use const, only: p
+        use errors, only: stop_all
+        use system, only: sys_t
+
+        type(flu_State), intent(inout) :: lua_state
+        type(sys_t), intent(inout) :: sys
+        integer, intent(in) :: opts
+
+        real(p), allocatable :: tmp(:)
+        integer, allocatable :: err_arr(:)
+        call aot_get_val(tmp, err_arr, 3, lua_state, opts, key='twist')
+        if (size(tmp) > 0) then
+            if (size(tmp) /= sys%lattice%ndim) &
+                call stop_all('ueg_system', 'twist vector not consistent with the dim parameter.')
+            allocate(sys%k_lattice%ktwist(sys%lattice%ndim))
+            sys%k_lattice%ktwist = tmp
+        end if
+        deallocate(tmp)
+
+    end subroutine get_ktwist
+
     subroutine init_generic_system_basis(sys)
 
         ! A wrapper for initialsing parts of sys_t common to many/all systems.
@@ -318,10 +351,6 @@ contains
         use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
-        use aot_vector_module, only: aot_get_val
-
-        use const, only: p
-        use errors, only: stop_all
 
         use system, only: sys_t, ueg, init_system
         use basis, only: init_model_basis_fns
@@ -337,8 +366,6 @@ contains
         integer :: opts
         logical :: new, new_basis
         integer :: err
-        real(p), allocatable :: tmp(:)
-        integer, allocatable :: err_arr(:)
 
         lua_state = flu_copyptr(L)
 
@@ -363,15 +390,7 @@ contains
         call aot_get_val(sys%ueg%r_s, err, lua_state, opts, 'rs')
         call aot_get_val(sys%lattice%ndim, err, lua_state, opts, 'dim')
 
-        call aot_get_val(tmp, err_arr, 3, lua_state, opts, key='twist')
-
-        if (size(tmp) > 0) then
-            if (size(tmp) /= sys%lattice%ndim) &
-                call stop_all('ueg_system', 'twist vector not consistent with the dim parameter.')
-            allocate(sys%k_lattice%ktwist(sys%lattice%ndim))
-            sys%k_lattice%ktwist = tmp
-        end if
-        deallocate(tmp)
+        call get_ktwist(lua_state, sys, opts)
 
         if (new_basis) then
             ! [todo] - deallocate existing basis info and start afresh.
