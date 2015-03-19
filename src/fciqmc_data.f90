@@ -114,9 +114,6 @@ type(spawn_t) :: qmc_spawn
 ! Walker information: received list for non-blocking communications.
 type(spawn_t) :: received_list
 
-! spawn times of the progeny (only used for ct_fciqmc)
-real(p), allocatable :: spawn_times(:) ! (spawned_walker_length)
-
 ! Rate of spawning.  This is a running total over MC cycles on each processor
 ! until it is summed over processors and averaged over cycles in
 ! update_energy_estimators.
