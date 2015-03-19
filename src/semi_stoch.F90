@@ -128,7 +128,7 @@ contains
         !    nload_slots: number of slots proc map is divided into.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: walker_length
+        use fciqmc_data, only: walker_dets
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, &
                             reuse_determ_space, annihilation_flags_t
         use parallel
@@ -150,7 +150,7 @@ contains
         logical, intent(in) :: write_determ_in
         integer, intent(in) :: nload_slots
 
-        integer :: i, ierr, determ_dets_mem
+        integer :: i, ierr, determ_dets_mem, max_nstates
         integer :: displs(0:nprocs-1)
         ! dtes_this_proc will hold deterministic states on this processor only.
         ! This is only needed during initialisation.
@@ -181,8 +181,9 @@ contains
             end if
         end if
 
-        allocate(determ%flags(walker_length), stat=ierr)
-        call check_allocate('determ%flags', walker_length, ierr)
+        max_nstates = size(walker_dets, dim=2)
+        allocate(determ%flags(max_nstates), stat=ierr)
+        call check_allocate('determ%flags', size(determ%flags), ierr)
         allocate(determ%sizes(0:nprocs-1), stat=ierr)
         call check_allocate('determ%sizes', nprocs, ierr)
 
@@ -194,7 +195,7 @@ contains
 
         ! Create temporary space for enumerating the deterministic space
         ! belonging to this processor only.
-        allocate(dets_this_proc(sys%basis%tensor_label_len, walker_length), stat=ierr)
+        allocate(dets_this_proc(sys%basis%tensor_label_len, max_nstates), stat=ierr)
         call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
         dets_this_proc = 0_i0
 

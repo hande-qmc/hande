@@ -13,12 +13,6 @@ implicit none
 
 !--- Input data: FCIQMC ---
 
-! Array sizes
-! If these are < 0, then the values represent the number of MB to be used to
-! store the main walker and spawned walker data respectively.
-integer :: walker_length
-integer :: spawned_walker_length
-
 ! [todo] - It is somewhat inelegant to store/pass around real_factor or real_bit_shift separately,
 ! [todo] - when really they are variables telling us about the representation of the population data.
 ! [todo] - As such, the separation is not entrely helpful.  It would make more sense encoded with the

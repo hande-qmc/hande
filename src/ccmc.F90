@@ -259,7 +259,7 @@ contains
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use fciqmc_data, only: sampling_size, walker_dets, walker_population,                        &
                                walker_data, proj_energy, D0_population, &
-                               tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, walker_length,&
+                               tot_nparticles, mc_cycles_done, qmc_spawn, tot_walkers, &
                                write_fciqmc_report_header, nparticles, real_factor
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
@@ -362,8 +362,8 @@ contains
         end do
 
         ! ...and scratch space for calculative cumulative probabilities.
-        allocate(cumulative_abs_nint_pops(walker_length), stat=ierr)
-        call check_allocate('cumulative_abs_nint_pops', walker_length, ierr)
+        allocate(cumulative_abs_nint_pops(size(walker_dets,dim=2)), stat=ierr)
+        call check_allocate('cumulative_abs_nint_pops', size(cumulative_abs_nint_pops), ierr)
 
         nparticles_old = tot_nparticles
 

@@ -148,7 +148,7 @@ contains
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
-        integer :: step, size_main_walker, size_spawned_walker
+        integer :: step, size_main_walker, size_spawned_walker, max_nstates, max_nspawned_states
         integer :: nwalker_int, nwalker_int_p, nwalker_real
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(sys%basis%string_len)
@@ -193,10 +193,11 @@ contains
         size_main_walker = sys%basis%tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &
                            nwalker_int*4 + nwalker_real*8
 #endif
-        if (walker_length < 0) then
+        max_nstates = qmc_in%walker_length
+        if (max_nstates < 0) then
             ! Given in MB.  Convert.  Note: important to avoid overflow in the
             ! conversion!
-            walker_length = int((-real(walker_length,p)*10**6)/size_main_walker)
+            max_nstates = int((-real(max_nstates,p)*10**6)/size_main_walker)
         end if
 
         ! Each spawned_walker occupies spawned_size kind=int_s integers.
@@ -205,23 +206,24 @@ contains
         else
             size_spawned_walker = (sys%basis%tensor_label_len+sampling_size)*int_s_length/8
         end if
-        if (spawned_walker_length < 0) then
+        max_nspawned_states = qmc_in%spawned_walker_length
+        if (max_nspawned_states < 0) then
             ! Given in MB.  Convert.
             ! Note that we store 2 arrays.
-            spawned_walker_length = int((-real(spawned_walker_length,p)*10**6)/(2*size_spawned_walker))
+            max_nspawned_states = int((-real(max_nspawned_states,p)*10**6)/(2*size_spawned_walker))
         end if
 
         if (parent) then
             write (6,'(1X,a53,f7.2)') &
                 'Memory allocated per core for main walker list (MB): ', &
-                size_main_walker*real(walker_length,p)/10**6
+                size_main_walker*real(max_nstates,p)/10**6
             write (6,'(1X,a57,f7.2)') &
                 'Memory allocated per core for spawned walker lists (MB): ', &
-                size_spawned_walker*real(2*spawned_walker_length,p)/10**6
-            write (6,'(1X,a48,'//int_fmt(walker_length,1)//')') &
-                'Number of elements per core in main walker list:', walker_length
-            write (6,'(1X,a51,'//int_fmt(spawned_walker_length,1)//',/)') &
-                'Number of elements per core in spawned walker list:', spawned_walker_length
+                size_spawned_walker*real(2*max_nspawned_states,p)/10**6
+            write (6,'(1X,a48,'//int_fmt(max_nstates,1)//')') &
+                'Number of elements per core in main walker list:', max_nstates
+            write (6,'(1X,a51,'//int_fmt(max_nspawned_states,1)//',/)') &
+                'Number of elements per core in spawned walker list:', max_nspawned_states
         end if
 
         ! --- Memory allocation ---
@@ -231,21 +233,21 @@ contains
         call check_allocate('nparticles', sampling_size, ierr)
         allocate(tot_nparticles(sampling_size), stat=ierr)
         call check_allocate('tot_nparticles', sampling_size, ierr)
-        allocate(walker_dets(sys%basis%tensor_label_len,walker_length), stat=ierr)
-        call check_allocate('walker_dets', sys%basis%string_len*walker_length, ierr)
-        allocate(walker_population(sampling_size,walker_length), stat=ierr)
-        call check_allocate('walker_population', sampling_size*walker_length, ierr)
-        allocate(walker_data(sampling_size+info_size,walker_length), stat=ierr)
+        allocate(walker_dets(sys%basis%tensor_label_len,max_nstates), stat=ierr)
+        call check_allocate('walker_dets', sys%basis%string_len*max_nstates, ierr)
+        allocate(walker_population(sampling_size,max_nstates), stat=ierr)
+        call check_allocate('walker_population', sampling_size*max_nstates, ierr)
+        allocate(walker_data(sampling_size+info_size,max_nstates), stat=ierr)
         call check_allocate('walker_data', size(walker_data), ierr)
         allocate(nparticles_proc(sampling_size, nprocs), stat=ierr)
         call check_allocate('nparticles_proc', nprocs*sampling_size, ierr)
 
         ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
-        if (mod(spawned_walker_length, nprocs) /= 0) then
+        if (mod(max_nspawned_states, nprocs) /= 0) then
             if (parent) write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
-            spawned_walker_length = ceiling(real(spawned_walker_length)/nprocs)*nprocs
-            if (parent) write (6,'(1X,a35,'//int_fmt(spawned_walker_length,1)//',a1,/)') &
-                                        'Increasing spawned_walker_length to',spawned_walker_length,'.'
+            max_nspawned_states = ceiling(real(max_nspawned_states)/nprocs)*nprocs
+            if (parent) write (6,'(1X,a35,'//int_fmt(max_nspawned_states,1)//',a1,/)') &
+                                        'Increasing spawned_walker_length to',max_nspawned_states,'.'
         end if
 
         ! Allocate the shift.
@@ -257,8 +259,8 @@ contains
         call check_allocate('vary_shift', size(vary_shift), ierr)
 
         if (doing_calc(ct_fciqmc_calc)) then
-            allocate(spawn_times(spawned_walker_length),stat=ierr)
-            call check_allocate('spawn_times',spawned_walker_length,ierr)
+            allocate(spawn_times(max_nspawned_states),stat=ierr)
+            call check_allocate('spawn_times',size(spawn_times),ierr)
         end if
 
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers
@@ -285,10 +287,10 @@ contains
         if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
         call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
-                         spawned_walker_length, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
+                         max_nspawned_states, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
         if (fciqmc_in%non_blocking_comm) then
             call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
-                               spawned_walker_length, spawn_cutoff, real_bit_shift, 7, .false., received_list)
+                               max_nspawned_states, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
         if (nprocs == 1 .or. .not. fciqmc_in%doing_load_balancing) load_bal_in%nslots = 1

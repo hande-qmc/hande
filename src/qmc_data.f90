@@ -46,6 +46,14 @@ type qmc_in_t
     ! shift.
     real(p) :: shift_damping = 0.050_dp
 
+    ! Array sizes: main and spawned particle lists.
+    ! If these are < 0, then the values represent the number of MB to be used.
+    ! CARE: as we don't modify qmc_in_t objects, one should inspect the sizes
+    ! used in walker_t and spawned_walker_t for the exact values used (which may
+    ! be rounded for various reasons).
+    integer :: walker_length = 0
+    integer :: spawned_walker_length = 0
+
     ! The initial population on the reference determinant/trace of the density matrix.
     ! Overridden by a restart file.
     ! [todo] - remove default?
@@ -324,10 +332,6 @@ end type semi_stoch_t
 
 ! [todo] - rename walker -> particle
 type walker_t
-    ! Array sizes
-    ! If these are < 0, then the values represent the number of MB to be used to
-    ! store the main walker and spawned walker data respectively.
-    integer :: walker_length
     ! Current number of walkers stored in the main list (processor dependent).
     ! This is updated during annihilation and merging of the spawned walkers into
     ! the main list.
@@ -382,10 +386,6 @@ type walker_t
 end type walker_t
 
 type spawned_walker_t
-    ! Array sizes
-    ! If these are < 0, then the values represent the number of MB to be used to
-    ! store the main walker and spawned walker data respectively.
-    integer :: spawned_walker_length
     ! The minimum amplitude of a spawning event which can be added to
     ! the spawned list.
     ! If real amplitudes are not used then the following default will be
