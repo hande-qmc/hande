@@ -3,6 +3,7 @@ module qmc_data
 use const
 use spawn_data, only: spawn_t
 use csr, only: csrp_t
+use parallel, only: parallel_timing_t
 
 implicit none
 
@@ -245,6 +246,10 @@ enum, bind(c)
     ! This option generates the deterministic space by reading the states in
     ! from an HDF5 file (named SEMI.STOCH.*.H5).
     enumerator :: read_determ_space
+    ! This option tells the semi-stochastic initialisation routine to use a
+    ! deterministic space which has already been created, and which should
+    ! be stored in the dets array within the semi_stoch_t instance on input.
+    enumerator :: reuse_determ_space
 end enum
 
 
@@ -314,6 +319,11 @@ type semi_stoch_t
     ! equal to 0 then the corresponding state in position i of the main list is
     ! a deterministic state, else it is not.
     integer, allocatable :: flags(:)
+    ! Type for holding information about semi-stochastic MPI timings.
+    ! This is only used if separate_annihilation is .true.. If it is false
+    ! then semi-stochastic communication is performed with the main spawning
+    ! communicaton.
+    type(parallel_timing_t) :: mpi_time
 end type semi_stoch_t
 
 ! --- Estimators ---
