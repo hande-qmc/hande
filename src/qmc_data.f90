@@ -449,12 +449,12 @@ end type qmc_state_t
 integer :: mc_cycles_done = 0
 
 ! Global handle for purity work.
-type(qmc_in_t) :: qmc_in
-type(fciqmc_in_t) :: fciqmc_in
-type(semi_stoch_in_t) :: semi_stoch_in
-type(ccmc_in_t) :: ccmc_in
-type(restart_in_t) :: restart_in
-type(load_bal_in_t) :: load_bal_in
+type(qmc_in_t) :: qmc_in_global
+type(fciqmc_in_t) :: fciqmc_in_global
+type(semi_stoch_in_t) :: semi_stoch_in_global
+type(ccmc_in_t) :: ccmc_in_global
+type(restart_in_t) :: restart_in_global
+type(load_bal_in_t) :: load_bal_in_global
 
 ! [todo] - move to sys_heisenberg_t
 ! When using the Neel singlet trial wavefunction, it is convenient

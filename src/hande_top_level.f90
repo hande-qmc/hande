@@ -36,9 +36,10 @@ contains
         use real_lattice, only: init_real_space
         use momentum_symmetry, only: init_momentum_symmetry
         use point_group_symmetry, only: print_pg_symmetry_info
-        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in, load_bal_in
+        use qmc_data, only: qmc_in_global, semi_stoch_in_global, fciqmc_in_global, &
+                            ccmc_in_global, restart_in_global, load_bal_in_global
         use qmc_data, only: reference_t
-        use dmqmc_data, only: dmqmc_in
+        use dmqmc_data, only: dmqmc_in_global
         use read_in_system, only: read_in_integrals
         use ueg_system, only: init_ueg_proc_pointers
 
@@ -58,20 +59,22 @@ contains
         end if
         call comm_global_uuid()
 
-        call init_calc_defaults(VCS_VERSION, GLOBAL_UUID, qmc_in%seed)
+        call init_calc_defaults(VCS_VERSION, GLOBAL_UUID, qmc_in_global%seed)
 
         if ((nprocs > 1 .or. nthreads > 1) .and. parent) call parallel_report()
 
-        if (parent) call read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, &
-                                    load_bal_in, dmqmc_in)
+        if (parent) call read_input(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, &
+                                    semi_stoch_in_global, restart_in_global, reference, &
+                                    load_bal_in_global, dmqmc_in_global)
 
-        call distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, &
-                              reference, dmqmc_in)
+        call distribute_input(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, &
+                              semi_stoch_in_global, restart_in_global, load_bal_in_global, &
+                              reference, dmqmc_in_global)
 
-        call init_system(sys, dmqmc_in)
+        call init_system(sys, dmqmc_in_global)
 
-        call check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, &
-                         dmqmc_in)
+        call check_input(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, semi_stoch_in_global, &
+                         restart_in_global, reference, load_bal_in_global, dmqmc_in_global)
 
         ! Initialise basis functions.
         if (sys%system == read_in) then
@@ -119,9 +122,10 @@ contains
         use hilbert_space, only: estimate_hilbert_space
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
-        use qmc_data, only: qmc_in, semi_stoch_in, fciqmc_in, ccmc_in, restart_in, load_bal_in
+        use qmc_data, only: qmc_in_global, semi_stoch_in_global, fciqmc_in_global, &
+                            ccmc_in_global, restart_in_global, load_bal_in_global
         use qmc_data, only: reference_t
-        use dmqmc_data, only: dmqmc_in
+        use dmqmc_data, only: dmqmc_in_global
         use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
@@ -131,19 +135,19 @@ contains
         if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys, reference)
 
         if (doing_calc(mc_hilbert_space)) then
-            call estimate_hilbert_space(sys, reference, qmc_in%seed)
+            call estimate_hilbert_space(sys, reference, qmc_in_global%seed)
         end if
 
         if (doing_calc(mc_canonical_kinetic_energy)) then
-            call estimate_kinetic_energy(sys, qmc_in, dmqmc_in)
+            call estimate_kinetic_energy(sys, qmc_in_global, dmqmc_in_global)
         end if
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call do_simple_fciqmc(sys, qmc_in, restart_in, reference)
+                call do_simple_fciqmc(sys, qmc_in_global, restart_in_global, reference)
             else
-                call do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, &
-                            dmqmc_in)
+                call do_qmc(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, semi_stoch_in_global, &
+                            restart_in_global, reference, load_bal_in_global, dmqmc_in_global)
             end if
         end if
 
@@ -173,7 +177,7 @@ contains
         use real_lattice, only: end_real_space
         use momentum_symmetry, only: end_momentum_symmetry
         use molecular_integrals, only: end_one_body_t, end_two_body_t
-        use qmc_data, only: fciqmc_in
+        use qmc_data, only: fciqmc_in_global
         use report, only: end_report
         use ueg_system, only: end_ueg_indexing
         use qmc_data, only: reference_t
@@ -202,7 +206,7 @@ contains
         call end_determinants()
         call end_hamil()
         call end_real_space(sys%heisenberg)
-        call end_fciqmc(fciqmc_in%non_blocking_comm, reference)
+        call end_fciqmc(fciqmc_in_global%non_blocking_comm, reference)
 
         ! Calculation time.
         call cpu_time(end_cpu_time)
