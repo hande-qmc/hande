@@ -18,6 +18,12 @@ type qmc_in_t
 
     ! True if allowing non-integer values for psip populations.
     logical :: real_amplitudes = .false.
+    ! The minimum amplitude of a spawning event which can be added to
+    ! the spawned list.
+    ! If real amplitudes are not used then the following default will be
+    ! overwritten by 0.0_p. In this case it will effectively not be used and all
+    ! spawnings events will be integers.
+    real(p) :: spawn_cutoff = 0.01_p
 
     ! Don't bother renormalising generation probabilities; instead allow forbidden
     ! excitations to be generated and then rejected.
@@ -386,14 +392,6 @@ type walker_t
 end type walker_t
 
 type spawned_walker_t
-    ! The minimum amplitude of a spawning event which can be added to
-    ! the spawned list.
-    ! If real amplitudes are not used then the following default will be
-    ! overwritten by 0.0_p. In this case it will effectively not be used and all
-    ! spawnings events will be integers.
-    ! [review] - JSS: do we need this?  It's repeated in spawn_t as well...
-    ! [review] - JSS: really an input parameter
-    real(p) :: spawn_cutoff = 0.01_p
     ! Walker information: spawned list.
     type(spawn_t) :: qmc_spawn
     ! Walker information: received list for non-blocking communications.

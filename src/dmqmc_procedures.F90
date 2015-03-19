@@ -134,11 +134,11 @@ contains
         ! If doing a reduced density matrix calculation, allocate and define
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
-        if (doing_reduced_dm) call setup_rdm_arrays(sys)
+        if (doing_reduced_dm) call setup_rdm_arrays(sys, qmc_in)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys)
+    subroutine setup_rdm_arrays(sys, qmc_in)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -148,18 +148,24 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: Input options relating to QMC methods.  Only needed for
+        !         spawn_cutoff and if calc_inst_rdm is true.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
-        use fciqmc_data, only: renyi_2, sampling_size, real_bit_shift, spawn_cutoff
+        use fciqmc_data, only: renyi_2, sampling_size, real_bit_shift
         use fciqmc_data, only: spawned_length, rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
         use system, only: sys_t, heisenberg
         use utils, only: int_fmt
+
+        use qmc_data, only: qmc_in_t
+
+        type(qmc_in_t), intent(in), optional :: qmc_in
 
         type(sys_t), intent(in) :: sys
 
@@ -211,6 +217,7 @@ contains
 
             ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
+                if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
                 size_spawned_rdm = (rdms(i)%string_len*2+sampling_size)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_length < 0) then
@@ -225,7 +232,7 @@ contains
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%string_len*2, sampling_size, .false., &
-                                     spawned_length, spawn_cutoff, real_bit_shift, &
+                                     spawned_length, qmc_in%spawn_cutoff, real_bit_shift, &
                                      27, use_mpi_barriers, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
                 ! the table is three times as large as the spawning arrays and

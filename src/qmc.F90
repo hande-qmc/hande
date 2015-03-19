@@ -153,6 +153,7 @@ contains
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(sys%basis%string_len)
         integer(int_64) :: tmp_int_64
+        real(p) :: spawn_cutoff
 
         if (parent) write (6,'(1X,a6,/,1X,6("-"),/)') 'FCIQMC'
 
@@ -284,6 +285,7 @@ contains
 
         ! If not using real amplitudes then we always want spawn_cutoff to be
         ! equal to 1.0, so overwrite the default.
+        spawn_cutoff = qmc_in%spawn_cutoff
         if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
         call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &

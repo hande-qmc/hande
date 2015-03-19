@@ -32,12 +32,6 @@ implicit none
 integer :: real_bit_shift
 ! real_factor = 2**(real_bit_shift)
 integer(int_p) :: real_factor
-! The minimum amplitude of a spawning event which can be added to
-! the spawned list.
-! If real amplitudes are not used then the following default will be
-! overwritten by 0.0_p. In this case it will effectively not be used and all
-! spawning events will be integers.
-real(p) :: spawn_cutoff = 0.01_p
 
 !--- Energy data ---
 

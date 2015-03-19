@@ -260,7 +260,7 @@ contains
             case('REAL_AMPLITUDES')
                 qmc_in%real_amplitudes = .true.
             case('SPAWN_CUTOFF')
-                call readf(spawn_cutoff)
+                call readf(qmc_in%spawn_cutoff)
 
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
@@ -860,7 +860,7 @@ contains
             call mpi_bcast(sys%lattice%lattice, sys%lattice%ndim*sys%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(qmc_in%real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
