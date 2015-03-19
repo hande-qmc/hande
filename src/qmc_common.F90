@@ -37,7 +37,7 @@ contains
 
         use parallel
         use errors, only: stop_all
-        use qmc_data, only: reference_t
+        use qmc_data, only: reference_t, walker_global
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: ref_det_factor
@@ -54,18 +54,18 @@ contains
         real(p) :: H00_max, H00_old
         logical :: updated
 
-        allocate(fmax(lbound(walker_dets, dim=1):ubound(walker_dets, dim=1)))
+        allocate(fmax(lbound(walker_global%walker_dets, dim=1):ubound(walker_global%walker_dets, dim=1)))
 
         H00_old = reference%H00
 
         updated = .false.
         ! Find determinant with largest population.
         max_pop = 0_int_p
-        do i = 1, tot_walkers
-            if (abs(walker_population(particle_type,i)) > abs(max_pop)) then
-                max_pop = walker_population(particle_type,i)
-                fmax = walker_dets(:,i)
-                H00_max = walker_data(particle_type, i)
+        do i = 1, walker_global%tot_walkers
+            if (abs(walker_global%walker_population(particle_type,i)) > abs(max_pop)) then
+                max_pop = walker_global%walker_population(particle_type,i)
+                fmax = walker_global%walker_dets(:,i)
+                H00_max = walker_global%walker_data(particle_type, i)
             end if
         end do
 
@@ -120,8 +120,8 @@ contains
             ! H00 is currently <D_0|H|D_0> - H00_old.
             ! Want walker_data(1,i) to be <D_i|H|D_i> - <D_0|H|D_0>
             ! We'll fix H00 later and avoid an extra tot_walkers*additions.
-            do i = 1, tot_walkers
-                walker_data(1,i) = walker_data(1,i) - reference%H00
+            do i = 1, walker_global%tot_walkers
+                walker_global%walker_data(1,i) = walker_global%walker_data(1,i) - reference%H00
             end do
             ! Now set H00 = <D_0|H|D_0> so that future references to it are
             ! correct.
@@ -362,11 +362,12 @@ contains
         use calc, only: use_mpi_barriers
         use parallel
         use utils, only: int_fmt
+        use qmc_data, only: walker_global
 
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 
-        real(dp) :: load_data(sampling_size, nprocs)
+        real(dp) :: load_data(walker_global%sampling_size, nprocs)
         integer :: load_data_int(nprocs)
         integer :: i, ierr
         real(p) :: barrier_this_proc
@@ -378,17 +379,17 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, sampling_size, mpi_preal, load_data, sampling_size, &
+            call mpi_gather(walker_global%nparticles, walker_global%sampling_size, mpi_preal, load_data, walker_global%sampling_size, &
                             mpi_preal, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                do i = 1, sampling_size
-                    if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
+                do i = 1, walker_global%sampling_size
+                    if (walker_global%sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
                     write (6,'(1X,"Min # of particles on a processor:",6X,es12.6)') minval(load_data(i,:))
                     write (6,'(1X,"Max # of particles on a processor:",6X,es12.6)') maxval(load_data(i,:))
                     write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(walker_global%tot_walkers, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(spawn_mpi_time%comm_time, 1, mpi_preal, spawn_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
 
             if (present(determ_mpi_time)) call mpi_gather(determ_mpi_time%comm_time, 1, mpi_preal, determ_comms, 1, &
@@ -488,7 +489,7 @@ contains
         string_len = size(walker_dets, dim=1)
 
         !$omp parallel do default(none) &
-        !$omp shared(tot_walkers, walker_dets, walker_populations, spawn, iproc, nprocs, string_len) &
+        !$omp shared(tot_walkers, %walker_dets, %walker_populations, spawn, iproc, nprocs, string_len) &
         !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, tot_walkers
             !  - set hash_shift and move_freq
@@ -590,7 +591,7 @@ contains
         use excitations, only: excit_t, get_excitation
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, walker_global
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -601,8 +602,8 @@ contains
         integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet
-        real(p) :: ntot_particles(sampling_size)
-        real(p) :: real_population(sampling_size)
+        real(p) :: ntot_particles(walker_global%sampling_size)
+        real(p) :: real_population(walker_global%sampling_size)
         type(det_info_t) :: cdet
         real(p) :: hmatel
         type(excit_t) :: D0_excit
@@ -618,11 +619,11 @@ contains
         proj_energy = 0.0_p
         D0_population = 0.0_p
         call alloc_det_info_t(sys, cdet)
-        do idet = 1, tot_walkers
-            cdet%f = walker_dets(:,idet)
+        do idet = 1, walker_global%tot_walkers
+            cdet%f = walker_global%walker_dets(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
-            cdet%data => walker_data(:,idet)
-            real_population = real(walker_population(:,idet),p)/real_factor
+            cdet%data => walker_global%walker_data(:,idet)
+            real_population = real(walker_global%walker_population(:,idet),p)/real_factor
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
@@ -642,15 +643,15 @@ contains
             call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
-            call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(proj_energy, proj_energy_sum, walker_global%sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(walker_global%nparticles, ntot_particles, walker_global%sampling_size, MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
             proj_energy = proj_energy_sum
             D0_population = D0_population_sum
             ! TODO: HFS, DMQMC quantities
         end if
 #else
-        ntot_particles = nparticles
+        ntot_particles = walker_global%nparticles
 #endif
 
         ! Using non blocking communications?
@@ -724,7 +725,7 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t, walker_global, annihilation_flags_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
@@ -760,15 +761,15 @@ contains
             ! ct algorithm: kinda poorly defined.
             ! ccmc: number of excitor clusters we'll randomly generate and
             ! attempt to spawn from.
-            nattempts = nparticles(1)
+            nattempts = walker_global%nparticles(1)
         else if (doing_calc(dmqmc_calc)) then
             ! Each particle and each end gets to attempt to spawn onto a
             ! connected determinant and a chance to die/clone.
-            nattempts = nint(4*nparticles(1)*sampling_size)
+            nattempts = nint(4*walker_global%nparticles(1)*walker_global%sampling_size)
         else
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
-            nattempts = nint(2*nparticles(1))
+            nattempts = nint(2*walker_global%nparticles(1))
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
@@ -776,9 +777,9 @@ contains
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
                 call do_load_balancing(real_factor, par_info, load_bal_in)
-                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, &
-                                                      walker_population, tot_walkers, nparticles, qmc_spawn, &
-                                                      load_bal_in%nslots, annihilation_flags)
+                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_global%walker_dets, real_factor, determ, &
+                                                      walker_global%walker_population, walker_global%tot_walkers, walker_global%nparticles, &
+                                                      qmc_spawn, load_bal_in%nslots, annihilation_flags)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.
@@ -844,7 +845,7 @@ contains
         use system, only: sys_t
         use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, walker_global
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
@@ -854,7 +855,7 @@ contains
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
-        real(p), intent(inout) :: ntot_particles(sampling_size)
+        real(p), intent(inout) :: ntot_particles(walker_global%sampling_size)
         real, intent(inout) :: report_time
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
@@ -867,7 +868,7 @@ contains
 
         real :: curr_time
         logical :: update, update_tau_now, vary_shift_before, nb_comm_local, comms_found
-        real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
+        real(dp) :: rep_info_copy(nprocs*walker_global%sampling_size+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
         update_tau_now = update_tau .and. .not. vary_shift(1) .and. qmc_in%tau_search

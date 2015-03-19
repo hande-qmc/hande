@@ -56,7 +56,7 @@ contains
         use proc_pointers
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, walker_global, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -67,8 +67,8 @@ contains
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(int_64) :: nattempts
-        real(p) :: nparticles_old(sampling_size)
-        real(p) :: real_population(sampling_size)
+        real(p) :: nparticles_old(walker_global%sampling_size)
+        real(p) :: real_population(walker_global%sampling_size)
         type(det_info_t) :: cdet
 
         integer(int_p) :: nspawned, ndeath
@@ -89,7 +89,7 @@ contains
         call alloc_det_info_t(sys, cdet, .false.)
 
         ! from restart
-        nparticles_old = tot_nparticles
+        nparticles_old = walker_global%tot_nparticles
 
         ! Main fciqmc loop.
 
@@ -121,20 +121,20 @@ contains
                 ! itself into a Hellmann-Feynman particle.  Each H-F particle
                 ! gets a chance to spawn and a chance to clone/die.
                 ! This is used for accounting later, not for controlling the spawning.
-                nattempts = nint(4*nparticles(1) + 2*nparticles(2))
+                nattempts = nint(4*walker_global%nparticles(1) + 2*walker_global%nparticles(2))
 
                 ! Reset death counter.
                 ndeath = 0_int_p
 
-                do idet = 1, tot_walkers ! loop over walkers/dets
+                do idet = 1, walker_global%tot_walkers ! loop over walkers/dets
 
-                    cdet%f = walker_dets(:,idet)
-                    cdet%data => walker_data(:,idet)
+                    cdet%f = walker_global%walker_dets(:,idet)
+                    cdet%data => walker_global%walker_data(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
 
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(walker_population(1,idet),p)/real_factor
+                    real_population = real(walker_global%walker_population(1,idet),p)/real_factor
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
@@ -143,8 +143,8 @@ contains
                     call update_proj_energy_ptr(sys, reference%f0, cdet, real_population(1),  &
                                                 D0_population, proj_energy, connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
-                    call update_proj_hfs_ptr(sys, cdet%f, int(walker_population(1,idet)),&
-                                             int(walker_population(2,idet)), cdet%data,  &
+                    call update_proj_hfs_ptr(sys, cdet%f, int(walker_global%walker_population(1,idet)),&
+                                             int(walker_global%walker_population(2,idet)), cdet%data,  &
                                              connection, hmatel, D0_hf_population,  &
                                              proj_hf_O_hpsip, proj_hf_H_hfpsip)
 
@@ -159,10 +159,10 @@ contains
                     call set_parent_flag_ptr(real_population(2), qmc_in%initiator_pop, cdet%f, 1, hf_initiator_flag)
                     cdet%initiator_flag = h_initiator_flag
 
-                    do iparticle = 1, abs(walker_population(1,idet))
+                    do iparticle = 1, abs(walker_global%walker_population(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_global%walker_population(1,idet), &
                                          gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
@@ -172,7 +172,7 @@ contains
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         ! [todo] - JSS: real populations for HFS spawner.
-                        call spawner_hfs_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                        call spawner_hfs_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_global%walker_population(1,idet), &
                                              gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
@@ -183,11 +183,11 @@ contains
 
                     cdet%initiator_flag = hf_initiator_flag
 
-                    do iparticle = 1, abs(walker_population(2,idet))
+                    do iparticle = 1, abs(walker_global%walker_population(2,idet))
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_population(2,idet), &
+                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_global%walker_population(2,idet), &
                                          gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
@@ -221,20 +221,20 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call stochastic_death(rng, qmc_in%tau, walker_data(1,idet), shift(1), walker_population(2,idet), &
-                                           nparticles(2), ndeath)
+                    call stochastic_death(rng, qmc_in%tau, walker_global%walker_data(1,idet), shift(1), walker_global%walker_population(2,idet), &
+                                           walker_global%nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
                     ! Not in place, must set initiator flag.
                     cdet%initiator_flag = h_initiator_flag
                     ! [todo] - JSS: real populations for HFS spawner.
-                    call stochastic_hf_cloning(rng, qmc_in%tau, walker_data(2,idet), walker_population(1,idet), nspawned)
+                    call stochastic_hf_cloning(rng, qmc_in%tau, walker_global%walker_data(2,idet), walker_global%walker_population(1,idet), nspawned)
                     if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, reference, cdet, null_excit, nspawned, 2, &
                                                                         qmc_spawn, load_bal_in%nslots)
 
                     ! Clone or die: Hamiltonian walkers.
-                    call stochastic_death(rng, qmc_in%tau, walker_data(1,idet), shift(1), walker_population(1,idet), &
-                                           nparticles(1), ndeath)
+                    call stochastic_death(rng, qmc_in%tau, walker_global%walker_data(1,idet), shift(1), walker_global%walker_population(1,idet), &
+                                           walker_global%nparticles(1), ndeath)
 
                 end do
 

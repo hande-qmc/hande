@@ -19,7 +19,7 @@ contains
         use fciqmc_data
         use system, only: sys_t
 
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, walker_global
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
@@ -28,12 +28,12 @@ contains
 
         integer :: ierr, i, bit_position, bit_element
 
-        allocate(trace(sampling_size), stat=ierr)
-        call check_allocate('trace',sampling_size,ierr)
+        allocate(trace(walker_global%sampling_size), stat=ierr)
+        call check_allocate('trace',walker_global%sampling_size,ierr)
         trace = 0.0_p
 
-        allocate(rdm_traces(sampling_size,nrdms), stat=ierr)
-        call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
+        allocate(rdm_traces(walker_global%sampling_size,nrdms), stat=ierr)
+        call check_allocate('rdm_traces',walker_global%sampling_size*nrdms,ierr)
         rdm_traces = 0.0_p
 
         ! If calculating a correlaton function then set up the necessary bit
@@ -155,7 +155,7 @@ contains
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
-        use fciqmc_data, only: renyi_2, sampling_size, real_bit_shift
+        use fciqmc_data, only: renyi_2, real_bit_shift
         use fciqmc_data, only: spawned_length, rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
@@ -163,7 +163,7 @@ contains
         use system, only: sys_t, heisenberg
         use utils, only: int_fmt
 
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, walker_global
 
         type(qmc_in_t), intent(in), optional :: qmc_in
 
@@ -218,7 +218,7 @@ contains
             ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
                 if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
-                size_spawned_rdm = (rdms(i)%string_len*2+sampling_size)*int_s_length/8
+                size_spawned_rdm = (rdms(i)%string_len*2+walker_global%sampling_size)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_length < 0) then
                     ! Given in MB.  Convert.
@@ -231,7 +231,7 @@ contains
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
-                call alloc_spawn_t(rdms(i)%string_len*2, sampling_size, .false., &
+                call alloc_spawn_t(rdms(i)%string_len*2, walker_global%sampling_size, .false., &
                                      spawned_length, qmc_in%spawn_cutoff, real_bit_shift, &
                                      27, use_mpi_barriers, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
@@ -397,13 +397,12 @@ contains
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, walker_dets, nparticles, real_factor, &
-                               walker_population, tot_walkers, qmc_spawn
+        use fciqmc_data, only: real_factor, qmc_spawn
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
-        use qmc_data, only: qmc_in_t, reference_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, walker_global, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t
         use calc, only: sym_in
 
@@ -414,10 +413,10 @@ contains
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
-        real(p), intent(out) :: nparticles_tot(sampling_size)
+        real(p), intent(out) :: nparticles_tot(walker_global%sampling_size)
         integer, intent(in) :: nload_slots
 
-        real(p) :: nparticles_temp(sampling_size)
+        real(p) :: nparticles_temp(walker_global%sampling_size)
         integer :: nel, ireplica, ierr
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
@@ -431,7 +430,7 @@ contains
 
         nparticles_temp = 0.0_p
 
-        do ireplica = 1, sampling_size
+        do ireplica = 1, walker_global%sampling_size
             select case(sys%system)
             case(heisenberg)
                 if (dmqmc_in%all_spin_sectors) then
@@ -486,7 +485,7 @@ contains
         ! Finally, count the total number of particles across all processes.
         if (dmqmc_in%all_spin_sectors) then
 #ifdef PARALLEL
-            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_PREAL, MPI_SUM, &
+            call mpi_allreduce(nparticles_temp, nparticles_tot, walker_global%sampling_size, MPI_PREAL, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
             nparticles_tot = nparticles_temp
@@ -505,8 +504,8 @@ contains
             ! portions of the spawned walker array are no longer there due to
             ! new determinants being accepted. So we need to reorganise the
             ! determinants appropriately.
-            call redistribute_particles(walker_dets, real_factor, walker_population, &
-                                        tot_walkers, nparticles, qmc_spawn, nload_slots)
+            call redistribute_particles(walker_global%walker_dets, real_factor, walker_global%walker_population, &
+                                        walker_global%tot_walkers, walker_global%nparticles, qmc_spawn, nload_slots)
             call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
         end if
 
@@ -667,11 +666,11 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor,  sampling_size
+        use fciqmc_data, only: real_factor
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, walker_global
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
         use dmqmc_data, only: dmqmc_in_t
@@ -689,7 +688,7 @@ contains
         integer :: idet, iattempt, nsuccess
         integer :: thread_id = 0, proc
         integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
-        real(p), target :: tmp_data(sampling_size)
+        real(p), target :: tmp_data(walker_global%sampling_size)
         real(p) :: pgen, hmatel, E_new, E_old, prob
         real(dp) :: r
         type(det_info_t) :: cdet
@@ -1076,17 +1075,16 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: get_excitation_level
         use fciqmc_data, only: accumulated_probs
-        use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
-        use fciqmc_data, only: nparticles, sampling_size, real_factor
-        use qmc_data, only: qmc_in_t 
+        use fciqmc_data, only: weight_altering_factors, real_factor
+        use qmc_data, only: qmc_in_t, walker_global
 
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
         type(qmc_in_t), intent(in) :: qmc_in
 
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
-        real(p) :: new_population_target(sampling_size)
-        integer(int_p) :: old_population(sampling_size), new_population(sampling_size)
+        real(p) :: new_population_target(walker_global%sampling_size)
+        integer(int_p) :: old_population(walker_global%sampling_size), new_population(walker_global%sampling_size)
         real(dp) :: r, pextra
 
         ! Alter weights for the next iteration.
@@ -1098,22 +1096,22 @@ contains
         ! correct importance sampled wavefunction for the new weights. The code
         ! below loops over every psips and destroys (or creates) it with the
         ! appropriate probability.
-        do idet = 1, tot_walkers
+        do idet = 1, walker_global%tot_walkers
 
-            excit_level = get_excitation_level(walker_dets(1:basis%string_len,idet), &
-                    walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
+            excit_level = get_excitation_level(walker_global%walker_dets(1:basis%string_len,idet), &
+                    walker_global%walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
 
-            old_population = abs(walker_population(:,idet))
+            old_population = abs(walker_global%walker_population(:,idet))
 
             ! The new population that we are aiming for. If this is not an
             ! integer then we will have to round up or down to an integer with
             ! an unbiased probability.
-            new_population_target = abs(real(walker_population(:,idet),p))/weight_altering_factors(excit_level)
+            new_population_target = abs(real(walker_global%walker_population(:,idet),p))/weight_altering_factors(excit_level)
             new_population = int(new_population_target, int_p)
 
             ! If new_population_target is not an integer, round it up or down
             ! with an unbiased probability. Do this for each replica.
-            do ireplica = 1, sampling_size
+            do ireplica = 1, walker_global%sampling_size
 
                 pextra = new_population_target(ireplica) - new_population(ireplica)
 
@@ -1123,12 +1121,12 @@ contains
                 end if
 
                 ! Finally, update the walker population.
-                walker_population(ireplica,idet) = sign(new_population(ireplica), walker_population(ireplica,idet))
+                walker_global%walker_population(ireplica,idet) = sign(new_population(ireplica), walker_global%walker_population(ireplica,idet))
 
             end do
 
             ! Update the total number of walkers.
-            nparticles = nparticles + real(new_population - old_population, p)/real_factor
+            walker_global%nparticles = walker_global%nparticles + real(new_population - old_population, p)/real_factor
 
         end do
 

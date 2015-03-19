@@ -37,7 +37,7 @@ contains
     ! buffer(1:nparticles_start_ind-1)
     !   single-valued data given by the (descriptive) name in the enumerator
     !   above.
-    ! buffer(nparticles_start_ind+iproc*sampling_size:nparticles_start_ind-1+(iproc+1)*sampling_size)
+    ! buffer(nparticles_start_ind+iproc*walker_global%sampling_size:nparticles_start_ind-1+(iproc+1)*walker_global%sampling_size)
     !   the total population of each particle type on processor iproc.  Prior to
     !   communication, each processor only sets its only value.
 
@@ -76,22 +76,21 @@ contains
         !       their respective components.
 
         use bloom_handler, only: bloom_stats_t
-        use fciqmc_data, only: sampling_size
-        use qmc_data, only: qmc_in_t, load_bal_in_t
+        use qmc_data, only: walker_global, qmc_in_t, load_bal_in_t
 
         use parallel
 
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: nspawn_events
-        real(p), intent(inout) :: ntot_particles_old(sampling_size)
+        real(p), intent(inout) :: ntot_particles_old(walker_global%sampling_size)
         logical, optional, intent(in) :: doing_lb
         logical, intent(inout) :: comms_found
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
         type(load_bal_in_t), intent(in) :: load_bal_in
 
-        real(dp) :: rep_loop_loc(sampling_size*nprocs+nparticles_start_ind-1)
-        real(dp) :: rep_loop_sum(sampling_size*nprocs+nparticles_start_ind-1)
+        real(dp) :: rep_loop_loc(walker_global%sampling_size*nprocs+nparticles_start_ind-1)
+        real(dp) :: rep_loop_sum(walker_global%sampling_size*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
         call local_energy_estimators(rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats)
@@ -158,8 +157,7 @@ contains
         !    update_tau: if true, tau should be automatically rescaled.
 
         use bloom_handler, only: bloom_stats_t
-        use fciqmc_data, only: sampling_size
-        use qmc_data, only: qmc_in_t, load_bal_in_t
+        use qmc_data, only: qmc_in_t, load_bal_in_t, walker_global
         use parallel
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -171,15 +169,15 @@ contains
         logical, intent(out), optional :: update_tau
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
 
-        real(dp) :: rep_info_sum(nprocs*sampling_size+nparticles_start_ind-1)
-        real(dp) :: rep_loop_reduce(nprocs*(nprocs*sampling_size+nparticles_start_ind-1))
+        real(dp) :: rep_info_sum(nprocs*walker_global%sampling_size+nparticles_start_ind-1)
+        real(dp) :: rep_loop_reduce(nprocs*(nprocs*walker_global%sampling_size+nparticles_start_ind-1))
         integer :: rep_request_r(0:nprocs-1)
 #ifdef PARALLEL
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
         integer :: i, j, data_size
 
-        data_size = nprocs*sampling_size + nparticles_start_ind-1
+        data_size = nprocs*walker_global%sampling_size + nparticles_start_ind-1
 #ifdef PARALLEL
         do i = 0, nprocs-1
             call MPI_IRecv(rep_loop_reduce(i*data_size+1:(i+1)*data_size), data_size, MPI_REAL8, &
@@ -195,7 +193,7 @@ contains
         do i = 1, nparticles_start_ind-1
             rep_info_sum(i) = sum(rep_loop_reduce(i::data_size))
         end do
-        forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
+        forall (i=nparticles_start_ind:nparticles_start_ind+walker_global%sampling_size-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
         call communicated_energy_estimators(qmc_in, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
@@ -219,12 +217,12 @@ contains
         !    rep_loop_loc: array containing local quantities required for energy
         !       evaluation.
 
-        use fciqmc_data, only: nparticles, sampling_size, rspawn, &
-                               proj_energy, D0_population, tot_walkers
+        use fciqmc_data, only: rspawn, proj_energy, D0_population
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs, iproc
+        use qmc_data, only: walker_global
 
         real(dp), intent(out) :: rep_loop_loc(:)
         type(bloom_stats_t), intent(in), optional :: bloom_stats
@@ -251,14 +249,14 @@ contains
         rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
         rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
         rep_loop_loc(hf_D0_pop_ind) = D0_hf_population
-        rep_loop_loc(nocc_states_ind) = tot_walkers
+        rep_loop_loc(nocc_states_ind) = walker_global%tot_walkers
         if (present(nspawn_events)) rep_loop_loc(nspawned_ind) = nspawn_events
 
-        offset = nparticles_start_ind-1 + iproc*sampling_size
+        offset = nparticles_start_ind-1 + iproc*walker_global%sampling_size
         if (present(spawn_elsewhere)) then
-            rep_loop_loc(offset+1:offset+sampling_size) = nparticles + spawn_elsewhere
+            rep_loop_loc(offset+1:offset+walker_global%sampling_size) = walker_global%nparticles + spawn_elsewhere
         else
-            rep_loop_loc(offset+1:offset+sampling_size) = nparticles
+            rep_loop_loc(offset+1:offset+walker_global%sampling_size) = walker_global%nparticles
         end if
         if (present(comms_found)) then
             if (comms_found) rep_loop_loc(comms_found_ind) = 1.0_p
@@ -289,27 +287,26 @@ contains
         ! Out (optional):
         !     update_tau: if true, tau should be automatically rescaled.
 
-        use fciqmc_data, only: sampling_size, rspawn,                    &
-                               proj_energy, shift, vary_shift,           &
-                               D0_population, nparticles_proc, par_info, &
+        use fciqmc_data, only: rspawn, proj_energy, shift, vary_shift,           &
+                               D0_population, par_info, &
                                tot_nocc_states, tot_nspawn_events
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs
-        use qmc_data, only: qmc_in_t, load_bal_in_t
+        use qmc_data, only: qmc_in_t, load_bal_in_t, walker_global
 
         type(qmc_in_t), intent(in) :: qmc_in
         real(dp), intent(in) :: rep_loop_sum(:)
-        real(p), intent(inout) :: ntot_particles_old(sampling_size)
+        real(p), intent(inout) :: ntot_particles_old(walker_global%sampling_size)
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found
         logical, intent(out), optional :: update_tau
 
-        real(p) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
+        real(p) :: ntot_particles(walker_global%sampling_size), new_hf_signed_pop, pop_av
         integer :: i
 
         proj_energy = rep_loop_sum(proj_energy_ind)
@@ -335,17 +332,17 @@ contains
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if
 
-        do i = 1, sampling_size
-            nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)
-            ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
+        do i = 1, walker_global%sampling_size
+            walker_global%nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::walker_global%sampling_size)
+            ntot_particles(i) = sum(walker_global%nparticles_proc(i,:nprocs))
         end do
 
         associate(lb=>par_info%load)
             if (present(doing_lb)) then
                 if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
-                    pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
+                    pop_av = sum(walker_global%nparticles_proc(1,:nprocs))/nprocs
                     ! Check if there is at least one processor with load imbalance.
-                    call check_imbalance(nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
+                    call check_imbalance(walker_global%nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
                 end if
             end if
         end associate
@@ -462,18 +459,19 @@ contains
         ! \beta and \tilde{N}_j(\beta) is the Hellmann-Feynman population on
         ! j at imaginary time \beta.
 
-        use fciqmc_data, only: walker_population, tot_walkers, real_factor, sampling_size
+        use fciqmc_data, only: real_factor
         use hfs_data, only: alpha0
+        use qmc_data, only: walker_global
 
         real(p) :: hf_signed_pop
-        real(p) :: real_population(sampling_size)
+        real(p) :: real_population(walker_global%sampling_size)
 
         integer :: i
 
         hf_signed_pop = 0.0_dp
-        do i = 1, tot_walkers
-            real_population = real(abs(walker_population(:,i)),p)/real_factor
-            if (walker_population(1,i) == 0_int_p) then
+        do i = 1, walker_global%tot_walkers
+            real_population = real(abs(walker_global%walker_population(:,i)),p)/real_factor
+            if (walker_global%walker_population(1,i) == 0_int_p) then
                 if (alpha0 < 0) then
                     ! letting alpha->0_-
                     hf_signed_pop = hf_signed_pop - real_population(2)

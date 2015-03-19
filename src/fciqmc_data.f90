@@ -39,7 +39,7 @@ integer(int_p) :: real_factor
 ! vary_shift is true. When the replica_tricks option is used, the elements
 ! of the shift array refer to the shifts in the corresponding replica systems.
 ! When replica_tricks is not being used, only the first element is used.
-real(p), allocatable, target :: shift(:) ! (sampling_size)
+real(p), allocatable, target :: shift(:) ! (walker_global%sampling_size)
 
 ! projected energy
 ! This stores during an FCIQMC report loop
@@ -54,59 +54,8 @@ real(p) :: proj_energy
 
 !--- Walker data ---
 
-! Current number of determinants occupied in the main list (processor dependent).
-! This is updated during annihilation and merging of the spawned walkers into
-! the main list.
-! [todo] - change name to be meaningful.  I am very sorry...
-integer :: tot_walkers
 ! Ditto but across all processors.
 integer :: tot_nocc_states
-
-! Total number of particles on all walkers/determinants (processor dependent)
-! Updated during death and annihilation and merging.
-! The first element is the number of normal (Hamiltonian) particles.
-! Subsequent elements are the number of Hellmann--Feynamnn particles.
-real(p), allocatable :: nparticles(:) ! (sampling_size)
-! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
-real(p), allocatable, target :: tot_nparticles(:) ! (sampling_size)
-! Total number of particles on all determinants for each processor
-real(p), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
-
-! Walker information: main list.
-! sampling_size is one for each quantity sampled (i.e. 1 for standard
-! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
-integer :: sampling_size
-! number of additional elements stored for each determinant in walker_data for
-! (e.g.) importance sampling.
-integer :: info_size
-! a) determinants
-integer(i0), allocatable, target :: walker_dets(:,:) ! (string_len, walker_length)
-! b) walker population
-! NOTE:
-!   When using the real_amplitudes option, walker_population stores encoded
-!   representations of the true walker populations. To convert
-!   walker_population(:,i) to the actual population on determinant i, one must
-!   take real(walker_population(:,i),dp)/real_factor. Thus, the resolution
-!   in the true walker populations is 1/real_factor. This is how
-!   non-integers populations are implemented. When not using the real_amplitudes
-!   option, real_factor will be equal to 1, allowing only integer
-!   populations. In general, when one sees that a integer is of kind int_p, it
-!   should be understood that it stores a population in its encoded form.
-integer(int_p), allocatable, target :: walker_population(:,:) ! (sampling_size,walker_length)
-! c) Walker information.  This contains:
-! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
-!   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
-!   reference determinant.  Always the first element.
-! * Diagonal matrix elements for Hellmann--Feynmann sampling in 2:sampling_size
-!   elements.
-! * Further data in sampling_size+1:sampling_size:info_size.  For example, when
-!   calculating the projected energy with various trial wavefunctions, it is
-!   useful to store quantites which are expensive to calculate and which are
-!   instead of recalculating them. For the Neel singlet state, the first component
-!   gives the total number of spins up on the first sublattice. The second
-!   component gives the number of 0-1 bonds where the 1 is on the first
-!   sublattice.
-real(p), allocatable, target :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
 
 ! Walker information: spawned list.
 type(spawn_t) :: qmc_spawn
@@ -143,7 +92,7 @@ real(p) :: dmqmc_factor = 1.0_p
 ! used in calculating all thermal estimators. This quantity stores
 ! the this value, Tr(\rho), where rho is the density matrix which
 ! the DMQMC algorithm calculates stochastically.
-real(p), allocatable :: trace(:) ! (sampling_size)
+real(p), allocatable :: trace(:) ! (walker_global%sampling_size)
 
 ! The following indicies are used to access components of DMQMC numerators.
 enum, bind(c)
@@ -181,7 +130,7 @@ real(p) :: numerators(num_dmqmc_operators)
 real(p), allocatable :: renyi_2(:)
 
 ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
+real(p), allocatable :: rdm_traces(:,:) ! (walker_global%sampling_size, nrdms)
 
 ! If this logical is true then the program runs the DMQMC algorithm with
 ! importance sampling.
@@ -303,7 +252,7 @@ real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 !--- Calculation modes ---
 
 ! The shift is updated at the end of each report loop when vary_shift is true.
-logical, allocatable :: vary_shift(:) ! (sampling_size)
+logical, allocatable :: vary_shift(:) ! (walker_global%sampling_size)
 
 !--- Restart data ---
 
@@ -370,6 +319,8 @@ contains
         use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
 
+        use qmc_data, only: walker_global
+
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
 
         integer :: i, j
@@ -403,7 +354,7 @@ contains
             end if
             if (calc_inst_rdm) then
                 do i = 1, nrdms
-                    do j = 1, sampling_size
+                    do j = 1, walker_global%sampling_size
                         write (6, '(7X,a3,'//int_fmt(i,0)//',1x,a5,1x,'//int_fmt(j,0)//')', advance = 'no') &
                                 'RDM', i, 'trace', j
                     end do
@@ -453,7 +404,7 @@ contains
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
         use dmqmc_data, only: dmqmc_in_t
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, walker_global
 
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: ireport
@@ -524,7 +475,7 @@ contains
             ! Traces for instantaneous RDM estimates.
             if (calc_inst_rdm) then
                 do i = 1, nrdms
-                    do j = 1, sampling_size
+                    do j = 1, walker_global%sampling_size
                         write (6, '(2x,es17.10)', advance = 'no') rdm_traces(j,i)
                     end do
                 end do
@@ -572,7 +523,7 @@ contains
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
         use calc, only: dealloc_parallel_t
-        use qmc_data, only: reference_t
+        use qmc_data, only: reference_t, walker_global
 
         logical, intent(in) :: nb_comm
         type(reference_t), intent(inout) :: reference
@@ -587,21 +538,21 @@ contains
             deallocate(reference%hs_occ_list0, stat=ierr)
             call check_deallocate('reference%hs_occ_list0',ierr)
         end if
-        if (allocated(nparticles)) then
-            deallocate(nparticles, stat=ierr)
-            call check_deallocate('nparticles',ierr)
+        if (allocated(walker_global%nparticles)) then
+            deallocate(walker_global%nparticles, stat=ierr)
+            call check_deallocate('walker_global%nparticles',ierr)
         end if
-        if (allocated(walker_dets)) then
-            deallocate(walker_dets, stat=ierr)
-            call check_deallocate('walker_dets',ierr)
+        if (allocated(walker_global%walker_dets)) then
+            deallocate(walker_global%walker_dets, stat=ierr)
+            call check_deallocate('walker_global%walker_dets',ierr)
         end if
-        if (allocated(walker_population)) then
-            deallocate(walker_population, stat=ierr)
-            call check_deallocate('walker_population',ierr)
+        if (allocated(walker_global%walker_population)) then
+            deallocate(walker_global%walker_population, stat=ierr)
+            call check_deallocate('walker_global%walker_population',ierr)
         end if
-        if (allocated(walker_data)) then
-            deallocate(walker_data, stat=ierr)
-            call check_deallocate('walker_data',ierr)
+        if (allocated(walker_global%walker_data)) then
+            deallocate(walker_global%walker_data, stat=ierr)
+            call check_deallocate('walker_global%walker_data',ierr)
         end if
         if (allocated(reference%f0)) then
             deallocate(reference%f0, stat=ierr)
@@ -615,9 +566,9 @@ contains
             deallocate(neel_singlet_amp, stat=ierr)
             call check_deallocate('neel_singlet_amp',ierr)
         end if
-        if (allocated(nparticles_proc)) then
-            deallocate(nparticles_proc, stat=ierr)
-            call check_deallocate('nparticles_proc', ierr)
+        if (allocated(walker_global%nparticles_proc)) then
+            deallocate(walker_global%nparticles_proc, stat=ierr)
+            call check_deallocate('walker_global%nparticles_proc', ierr)
         end if
         call dealloc_parallel_t(nb_comm, par_info)
         call dealloc_spawn_t(qmc_spawn)

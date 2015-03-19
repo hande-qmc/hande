@@ -106,9 +106,10 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: sampling_size, neel_singlet_amp
+        use fciqmc_data, only: neel_singlet_amp
         use system, only: sys_t
         use calc, only: guiding_function, neel_singlet_guiding
+        use qmc_data, only: walker_global
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
@@ -125,8 +126,8 @@ contains
 
         importance_sampling_factor = 1.0_p
 
-        n = nint(cdet%data(sampling_size+1))
-        lattice_1_up = nint(cdet%data(sampling_size+2))
+        n = nint(cdet%data(walker_global%sampling_size+1))
+        lattice_1_up = nint(cdet%data(walker_global%sampling_size+2))
 
         ! If importance sampling is applied then the psip amplitudes, n_i,
         ! will represent the quantities

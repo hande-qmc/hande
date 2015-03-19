@@ -120,7 +120,7 @@ contains
         use calc
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: decode_det, encode_det, write_det
-        use energy_evaluation, only: calculate_hf_signed_pop, nparticles_start_ind
+        use energy_evaluation, only: nparticles_start_ind, calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det
         use hfs_data, only: O00, hf_signed_pop
@@ -134,7 +134,7 @@ contains
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, reference_t, load_bal_in_t, &
-                            annihilation_flags_t
+                            walker_global, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
@@ -159,26 +159,26 @@ contains
 
         ! --- Array sizes depending upon QMC algorithms ---
 
-        sampling_size = 1
+        walker_global%sampling_size = 1
         if (doing_calc(hfs_fciqmc_calc)) then
-            sampling_size = sampling_size + 1
+            walker_global%sampling_size = walker_global%sampling_size + 1
         else if (dmqmc_in%replica_tricks) then
-            sampling_size = sampling_size + 1
+            walker_global%sampling_size = walker_global%sampling_size + 1
         end if
 
         ! Each determinant occupies string_len kind=i0 integers,
-        ! sampling_size kind=int_p integers, sampling_size kind=p reals and one
+        ! walker_global%sampling_size kind=int_p integers, walker_global%sampling_size kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
         ! the projected estimator, then a further 2 reals are used per
         ! determinant.
         if (trial_function == neel_singlet) then
-            info_size = 2
+            walker_global%info_size = 2
         else
-            info_size = 0
+            walker_global%info_size = 0
         end if
         nwalker_int = 1
-        nwalker_int_p = sampling_size
-        nwalker_real = sampling_size + info_size
+        nwalker_int_p = walker_global%sampling_size
+        nwalker_real = walker_global%sampling_size + walker_global%info_size
 
         annihilation_flags%propagate_to_beta = dmqmc_in%propagate_to_beta
         annihilation_flags%replica_tricks = dmqmc_in%replica_tricks
@@ -203,9 +203,9 @@ contains
 
         ! Each spawned_walker occupies spawned_size kind=int_s integers.
         if (qmc_in%initiator_approx) then
-            size_spawned_walker = (sys%basis%tensor_label_len+sampling_size+1)*int_s_length/8
+            size_spawned_walker = (sys%basis%tensor_label_len+walker_global%sampling_size+1)*int_s_length/8
         else
-            size_spawned_walker = (sys%basis%tensor_label_len+sampling_size)*int_s_length/8
+            size_spawned_walker = (sys%basis%tensor_label_len+walker_global%sampling_size)*int_s_length/8
         end if
         max_nspawned_states = qmc_in%spawned_walker_length
         if (max_nspawned_states < 0) then
@@ -230,18 +230,18 @@ contains
         ! --- Memory allocation ---
 
         ! Allocate main walker lists.
-        allocate(nparticles(sampling_size), stat=ierr)
-        call check_allocate('nparticles', sampling_size, ierr)
-        allocate(tot_nparticles(sampling_size), stat=ierr)
-        call check_allocate('tot_nparticles', sampling_size, ierr)
-        allocate(walker_dets(sys%basis%tensor_label_len,max_nstates), stat=ierr)
-        call check_allocate('walker_dets', sys%basis%string_len*max_nstates, ierr)
-        allocate(walker_population(sampling_size,max_nstates), stat=ierr)
-        call check_allocate('walker_population', sampling_size*max_nstates, ierr)
-        allocate(walker_data(sampling_size+info_size,max_nstates), stat=ierr)
-        call check_allocate('walker_data', size(walker_data), ierr)
-        allocate(nparticles_proc(sampling_size, nprocs), stat=ierr)
-        call check_allocate('nparticles_proc', nprocs*sampling_size, ierr)
+        allocate(walker_global%nparticles(walker_global%sampling_size), stat=ierr)
+        call check_allocate('walker_global%nparticles', walker_global%sampling_size, ierr)
+        allocate(walker_global%tot_nparticles(walker_global%sampling_size), stat=ierr)
+        call check_allocate('walker_global%tot_nparticles', walker_global%sampling_size, ierr)
+        allocate(walker_global%walker_dets(sys%basis%tensor_label_len,max_nstates), stat=ierr)
+        call check_allocate('walker_global%walker_dets', sys%basis%string_len*max_nstates, ierr)
+        allocate(walker_global%walker_population(walker_global%sampling_size,max_nstates), stat=ierr)
+        call check_allocate('walker_global%walker_population', walker_global%sampling_size*max_nstates, ierr)
+        allocate(walker_global%walker_data(walker_global%sampling_size+walker_global%info_size,max_nstates), stat=ierr)
+        call check_allocate('walker_global%walker_data', size(walker_global%walker_data), ierr)
+        allocate(walker_global%nparticles_proc(walker_global%sampling_size, nprocs), stat=ierr)
+        call check_allocate('walker_global%nparticles_proc', nprocs*walker_global%sampling_size, ierr)
 
         ! Allocate spawned walker lists and spawned walker times (ct_fciqmc only)
         if (mod(max_nspawned_states, nprocs) /= 0) then
@@ -252,17 +252,12 @@ contains
         end if
 
         ! Allocate the shift.
-        allocate(shift(sampling_size), stat=ierr)
+        allocate(shift(walker_global%sampling_size), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
         shift = qmc_in%initial_shift
 
-        allocate(vary_shift(sampling_size), stat=ierr)
+        allocate(vary_shift(walker_global%sampling_size), stat=ierr)
         call check_allocate('vary_shift', size(vary_shift), ierr)
-
-        if (doing_calc(ct_fciqmc_calc)) then
-            allocate(spawn_times(max_nspawned_states),stat=ierr)
-            call check_allocate('spawn_times',size(spawn_times),ierr)
-        end if
 
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers
         ! are being used.
@@ -288,15 +283,15 @@ contains
         spawn_cutoff = qmc_in%spawn_cutoff
         if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
-        call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
+        call alloc_spawn_t(sys%basis%tensor_label_len, walker_global%sampling_size, qmc_in%initiator_approx, &
                          max_nspawned_states, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
         if (fciqmc_in%non_blocking_comm) then
-            call alloc_spawn_t(sys%basis%tensor_label_len, sampling_size, qmc_in%initiator_approx, &
+            call alloc_spawn_t(sys%basis%tensor_label_len, walker_global%sampling_size, qmc_in%initiator_approx, &
                                max_nspawned_states, spawn_cutoff, real_bit_shift, 7, .false., received_list)
         end if
 
         if (nprocs == 1 .or. .not. fciqmc_in%doing_load_balancing) load_bal_in%nslots = 1
-        call init_parallel_t(sampling_size, nparticles_start_ind-1, fciqmc_in%non_blocking_comm, par_info, &
+        call init_parallel_t(walker_global%sampling_size, nparticles_start_ind-1, fciqmc_in%non_blocking_comm, par_info, &
                              load_bal_in%nslots)
 
         allocate(reference%f0(sys%basis%string_len), stat=ierr)
@@ -358,33 +353,33 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, reference%f0)
 
             ! In general FCIQMC, we start with psips only on the
-            ! reference determinant, so set tot_walkers = 1 and
-            ! initialise walker_population. For DMQMC, this is
+            ! reference determinant, so set walker_global%tot_walkers = 1 and
+            ! initialise walker_global%walker_population. For DMQMC, this is
             ! not required, as psips are spawned along the diagonal
             ! initially.
             if (.not.doing_calc(dmqmc_calc)) then
-                tot_walkers = 1
+                walker_global%tot_walkers = 1
                 ! Zero all populations...
-                walker_population(:,tot_walkers) = 0_int_p
+                walker_global%walker_population(:,walker_global%tot_walkers) = 0_int_p
                 ! Set initial population of Hamiltonian walkers.
-                walker_population(1,tot_walkers) = nint(qmc_in%D0_population)*real_factor
+                walker_global%walker_population(1,walker_global%tot_walkers) = nint(qmc_in%D0_population)*real_factor
                 ! Set the bitstring of this psip to be that of the
                 ! reference state.
-                walker_dets(:,tot_walkers) = reference%f0
+                walker_global%walker_dets(:,walker_global%tot_walkers) = reference%f0
 
                 ! Determine and set properties for the reference state which we start on.
                 ! By definition, when using a single determinant as a reference state:
-                walker_data(1,tot_walkers) = 0.0_p
+                walker_global%walker_data(1,walker_global%tot_walkers) = 0.0_p
                 ! Or if not using a single determinant:
                 if (trial_function == neel_singlet) then
                     ! Set the Neel state data for the reference state, if it is being used.
-                    walker_data(1,tot_walkers) = reference%H00
+                    walker_global%walker_data(1,walker_global%tot_walkers) = reference%H00
                     reference%H00 = 0.0_p
 
-                    walker_data(sampling_size+1,tot_walkers) = sys%lattice%nsites/2
+                    walker_global%walker_data(walker_global%sampling_size+1,walker_global%tot_walkers) = sys%lattice%nsites/2
                     ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
                     ! The Neel state cannot be used for non-bipartite lattices.
-                    walker_data(sampling_size+2,tot_walkers) = sys%lattice%ndim*sys%lattice%nsites
+                    walker_global%walker_data(walker_global%sampling_size+2,walker_global%tot_walkers) = sys%lattice%ndim*sys%lattice%nsites
                 end if
 
                 ! Finally, we need to check if the reference determinant actually
@@ -393,7 +388,7 @@ contains
                 call assign_particle_processor(reference%f0, sys%basis%string_len, qmc_spawn%hash_seed, &
                                                qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, &
                                                D0_proc, slot, load_bal_in%nslots)
-                if (D0_proc /= iproc) tot_walkers = 0
+                if (D0_proc /= iproc) walker_global%tot_walkers = 0
             end if
 
             ! For the Heisenberg model and open shell systems, it is often useful to
@@ -435,28 +430,28 @@ contains
 
                 ! Store if not identical to reference det.
                 if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then
-                    tot_walkers = tot_walkers + 1
+                    walker_global%tot_walkers = walker_global%tot_walkers + 1
                     ! Zero all populations for this determinant.
-                    walker_population(:,tot_walkers) = 0_int_p
+                    walker_global%walker_population(:,walker_global%tot_walkers) = 0_int_p
                     ! Set the population for this basis function.
-                    walker_population(1,tot_walkers) = nint(qmc_in%D0_population)*real_factor
-                    walker_data(1,tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
+                    walker_global%walker_population(1,walker_global%tot_walkers) = nint(qmc_in%D0_population)*real_factor
+                    walker_global%walker_data(1,walker_global%tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
                     select case(sys%system)
                     case(heisenberg)
                         if (trial_function /= single_basis) then
-                            walker_data(1,tot_walkers) = 0
+                            walker_global%walker_data(1,walker_global%tot_walkers) = 0
                         else
-                            walker_data(1,tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
+                            walker_global%walker_data(1,walker_global%tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
                         end if
                     case default
-                        walker_data(1,tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
+                        walker_global%walker_data(1,walker_global%tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
                     end select
-                    walker_dets(:,tot_walkers) = f0_inv
+                    walker_global%walker_dets(:,walker_global%tot_walkers) = f0_inv
                     ! If we are using the Neel state as a reference in the
                     ! Heisenberg model, then set the required data.
                     if (trial_function == neel_singlet) then
-                        walker_data(sampling_size+1,tot_walkers) = 0
-                        walker_data(sampling_size+2,tot_walkers) = 0
+                        walker_global%walker_data(walker_global%sampling_size+1,walker_global%tot_walkers) = 0
+                        walker_global%walker_data(walker_global%sampling_size+2,walker_global%tot_walkers) = 0
                     end if
                 end if
             end if
@@ -466,28 +461,28 @@ contains
         ! Total number of particles on processor.
         ! Probably should be handled more simply by setting it to be either 0 or
         ! D0_population or obtaining it from the restart file, as appropriate.
-        forall (i=1:sampling_size) nparticles(i) = sum(abs( real(walker_population(i,:tot_walkers),p)/real_factor))
+        forall (i=1:walker_global%sampling_size) walker_global%nparticles(i) = sum(abs( real(walker_global%walker_population(i,:walker_global%tot_walkers),p)/real_factor))
         ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
-        do i=1, sampling_size
-            call mpi_allgather(nparticles(i), 1, MPI_PREAL, nparticles_proc(i,:), 1, MPI_PREAL, MPI_COMM_WORLD, ierr)
+        do i=1, walker_global%sampling_size
+            call mpi_allgather(walker_global%nparticles(i), 1, MPI_PREAL, walker_global%nparticles_proc(i,:), 1, MPI_PREAL, MPI_COMM_WORLD, ierr)
         end do
         ! When restarting a non-blocking calculation this sum will not equal
         ! tot_nparticles as some walkers have been communicated around the report
         ! loop. The correct total is in the restart file so get it from there.
-        if (.not. restart_in%read_restart) forall(i=1:sampling_size) tot_nparticles(i) = sum(nparticles_proc(i,:))
+        if (.not. restart_in%read_restart) forall(i=1:walker_global%sampling_size) walker_global%tot_nparticles(i) = sum(walker_global%nparticles_proc(i,:))
 #else
-        tot_nparticles = nparticles
-        nparticles_proc(:sampling_size,1) = nparticles(:sampling_size)
+        tot_nparticles = walker_global%nparticles
+        walker_global%walker_global%nparticles_proc(:walker_global%sampling_size,1) = walker_global%nparticles(:walker_global%sampling_size)
 #endif
 
         ! Decide whether the shift should be turned on from the start.
-        vary_shift = tot_nparticles >= qmc_in%target_particles
+        vary_shift = walker_global%tot_nparticles >= qmc_in%target_particles
 
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
             tmp_int_64 = calculate_hf_signed_pop()
-            call mpi_allreduce(tmp_int_64, hf_signed_pop, sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(tmp_int_64, hf_signed_pop, walker_global%sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
             hf_signed_pop = calculate_hf_signed_pop()
 #endif

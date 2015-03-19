@@ -41,7 +41,7 @@ contains
         use system
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, walker_global
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(inout) :: sys
@@ -56,8 +56,8 @@ contains
         integer :: beta_cycle
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
-        real(p) :: tot_nparticles_old(sampling_size)
-        real(p) :: real_population(sampling_size)
+        real(p) :: tot_nparticles_old(walker_global%sampling_size)
+        real(p) :: real_population(walker_global%sampling_size)
         integer(int_64) :: nattempts
         integer :: nel_temp, nattempts_current_det
         type(det_info_t) :: cdet1, cdet2
@@ -106,16 +106,16 @@ contains
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags, &
-                                               init_tot_nparticles, tot_nparticles, load_bal_in%nslots)
+                                               init_tot_nparticles, walker_global%tot_nparticles, load_bal_in%nslots)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            vary_shift = tot_nparticles >= qmc_in%target_particles
+            vary_shift = walker_global%tot_nparticles >= qmc_in%target_particles
 
             do ireport = 1, qmc_in%nreport
 
                 call init_report_loop(bloom_stats)
-                tot_nparticles_old = tot_nparticles
+                tot_nparticles_old = walker_global%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
 
@@ -124,14 +124,14 @@ contains
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
-                    do idet = 1, tot_walkers ! loop over walkers/dets
+                    do idet = 1, walker_global%tot_walkers ! loop over walkers/dets
 
                         ! f points to the bitstring that is spawning, f2 to the
                         ! other bit string.
-                        cdet1%f => walker_dets(:sys%basis%string_len,idet)
-                        cdet1%f2 => walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
-                        cdet2%f => walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
-                        cdet2%f2 => walker_dets(:sys%basis%string_len,idet)
+                        cdet1%f => walker_global%walker_dets(:sys%basis%string_len,idet)
+                        cdet1%f2 => walker_global%walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet2%f => walker_global%walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet2%f2 => walker_global%walker_dets(:sys%basis%string_len,idet)
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
@@ -147,7 +147,7 @@ contains
                         call decoder_ptr(sys, cdet2%f, cdet2)
 
                         ! Extract the real signs from the encoded signs.
-                        real_population = real(walker_population(:,idet),p)/real_factor
+                        real_population = real(walker_global%walker_population(:,idet),p)/real_factor
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
@@ -160,7 +160,7 @@ contains
                                                          reference%H00, load_bal_in%nslots)
                         end if
 
-                        do ireplica = 1, sampling_size
+                        do ireplica = 1, walker_global%sampling_size
 
                             ! If this condition is met then there will only be
                             ! one det in this symmetry sector, so don't attempt
@@ -175,7 +175,7 @@ contains
                                     spawning_end = 1
                                     ! Attempt to spawn.
                                     call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet1, &
-                                                     walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                                     walker_global%walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
@@ -189,7 +189,7 @@ contains
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet2, &
-                                                         walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                                         walker_global%walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
                                                                                 spawning_end, ireplica, qmc_spawn, &
@@ -205,12 +205,12 @@ contains
                             ! Clone or die.
                             ! We have contributions to the clone/death step from
                             ! both ends of the current walker. We do both of
-                            ! these at once by using walker_data(:,idet) which,
+                            ! these at once by using walker_global%walker_data(:,idet) which,
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, qmc_in%tau, walker_data(ireplica,idet), shift(ireplica), &
-                                           walker_population(ireplica,idet), nparticles(ireplica), ndeath)
+                            call stochastic_death(rng, qmc_in%tau, walker_global%walker_data(ireplica,idet), shift(ireplica), &
+                                           walker_global%walker_population(ireplica,idet), walker_global%nparticles(ireplica), ndeath)
                         end do
                     end do
 
@@ -241,7 +241,7 @@ contains
                 ! Sum all quantities being considered across all MPI processes.
                 call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles)
 
-                call update_shift_dmqmc(qmc_in, tot_nparticles, tot_nparticles_old, ireport)
+                call update_shift_dmqmc(qmc_in, walker_global%tot_nparticles, tot_nparticles_old, ireport)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
@@ -275,7 +275,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, tot_nparticles, .false.)
+            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, walker_global%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
 
@@ -297,7 +297,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, walker_global
         use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
 
@@ -312,9 +312,9 @@ contains
         qmc_spawn%head = qmc_spawn%head_start
 
         ! Set all quantities back to their starting values.
-        tot_walkers = 0
+        walker_global%tot_walkers = 0
         shift = qmc_in%initial_shift
-        nparticles = 0.0_dp
+        walker_global%nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
         if (dmqmc_in%vary_weights) accumulated_probs = 1.0_p
         if (dmqmc_in%find_weights) excit_dist = 0.0_p

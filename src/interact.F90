@@ -25,8 +25,8 @@ contains
         use utils, only: get_free_unit
         use parallel
 
-        use fciqmc_data, only: vary_shift, shift, sampling_size
-        use qmc_data, only: qmc_in_t
+        use fciqmc_data, only: vary_shift, shift
+        use qmc_data, only: qmc_in_t, walker_global
 
         logical, intent(in) :: comms_found
         logical, intent(out) :: soft_exit
@@ -104,7 +104,7 @@ contains
                             end if
                         case('SHIFT')
                             call readf(shift(1))
-                            do i = 2, sampling_size
+                            do i = 2, walker_global%sampling_size
                                 shift(i) = shift(1)
                             end do
                         case default
@@ -128,7 +128,7 @@ contains
             ! If in parallel need to broadcast data.
             call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
             if (present(qmc_in)) call mpi_bcast(qmc_in%tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(shift, sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(shift, walker_global%sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
 #endif

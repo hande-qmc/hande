@@ -2,6 +2,7 @@ module annihilation
 
 use const
 use fciqmc_data
+use qmc_data, only: walker_global
 
 implicit none
 
@@ -207,7 +208,7 @@ contains
         !       communications a subsection of the spawned walker list will be annihilated
         !       with the main list, otherwise the entire list will be annihilated and merged.
         !    determ_flags (optional): A list of flags specifying whether determinants in
-        !        walker_dets are deterministic or not.
+        !        walker_global%walker_dets are deterministic or not.
         ! In (optional):
         !     lower_bound: starting point we annihiliate from in spawn_t object.
 
@@ -288,7 +289,7 @@ contains
         integer, intent(in), optional :: lower_bound
 
         integer :: i, pos, k, istart, iend, nannihilate, spawn_start
-        integer(int_p) :: old_pop(sampling_size)
+        integer(int_p) :: old_pop(walker_global%sampling_size)
         integer(i0) :: f(tensor_label_len)
 
         logical :: hit
@@ -301,15 +302,15 @@ contains
             spawn_start = 1
         end if
         istart = 1
-        iend = tot_walkers
+        iend = walker_global%tot_walkers
 
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:tensor_label_len,i), i0)
-            call binary_search(walker_dets, f, istart, iend, hit, pos)
+            call binary_search(walker_global%walker_dets, f, istart, iend, hit, pos)
             if (hit) then
                 ! Annihilate!
-                old_pop = walker_population(:,pos)
-                walker_population(:,pos) = walker_population(:,pos) + &
+                old_pop = walker_global%walker_population(:,pos)
+                walker_global%walker_population(:,pos) = walker_global%walker_population(:,pos) + &
                     int(spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,i), int_p)
                 nannihilate = nannihilate + 1
                 ! The change in the number of particles is a bit subtle.
@@ -318,7 +319,9 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),p)/real_factor
+                associate(nparticles=>walker_global%nparticles)
+                    nparticles = nparticles + real(abs(walker_global%walker_population(:,pos)) - abs(old_pop),p)/real_factor
+                end associate
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
                 istart = pos + 1
@@ -358,7 +361,7 @@ contains
         integer, intent(in), optional :: lower_bound
 
         integer :: i, ipart, pos, k, istart, iend, nannihilate, spawn_start
-        integer(int_p) :: old_pop(sampling_size)
+        integer(int_p) :: old_pop(walker_global%sampling_size)
         integer(i0) :: f(tensor_label_len)
         logical :: hit, discard
         integer, parameter :: thread_id = 0
@@ -370,18 +373,18 @@ contains
             spawn_start = 1
         end if
         istart = 1
-        iend = tot_walkers
+        iend = walker_global%tot_walkers
         do i = spawn_start, spawn%head(thread_id,0)
             f = int(spawn%sdata(:tensor_label_len,i), i0)
-            call binary_search(walker_dets, f, istart, iend, hit, pos)
+            call binary_search(walker_global%walker_dets, f, istart, iend, hit, pos)
             if (hit) then
-                old_pop = walker_population(:,pos)
+                old_pop = walker_global%walker_population(:,pos)
                 ! Need to take into account that the determinant might not have
                 ! a non-zero population for all particle types.
-                do ipart = 1, sampling_size
-                    if (walker_population(ipart,pos) /= 0_int_p) then
+                do ipart = 1, walker_global%sampling_size
+                    if (walker_global%walker_population(ipart,pos) /= 0_int_p) then
                         ! Annihilate!
-                        walker_population(ipart,pos) = walker_population(ipart,pos) + &
+                        walker_global%walker_population(ipart,pos) = walker_global%walker_population(ipart,pos) + &
                                                         int(spawn%sdata(ipart+spawn%bit_str_len,i), int_p)
                     else if (.not.btest(spawn%sdata(spawn%flag_indx,i),ipart-1)) then
                         ! Keep only if from a multiple spawning event or an
@@ -390,7 +393,7 @@ contains
                         ! does not have a bit set in corresponding to 2**(ipart-1)
                         ! where ipart+bit_str_len is the index of this walker type
                         ! in the spawn%sdata array.
-                        walker_population(ipart,pos) = int(spawn%sdata(ipart+spawn%bit_str_len,i), int_p)
+                        walker_global%walker_population(ipart,pos) = int(spawn%sdata(ipart+spawn%bit_str_len,i), int_p)
                     end if
                 end do
                 ! The change in the number of particles is a bit subtle.
@@ -399,7 +402,9 @@ contains
                 !  ii) annihilation diminishing the population on a determinant.
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
-                nparticles = nparticles + real(abs(walker_population(:,pos)) - abs(old_pop),p)/real_factor
+                associate(nparticles=>walker_global%nparticles)
+                    nparticles = nparticles + real(abs(walker_global%walker_population(:,pos)) - abs(old_pop),p)/real_factor
+                end associate
                 ! One more entry to be removed from the spawn%sdata array.
                 nannihilate = nannihilate + 1
                 ! Next spawned walker cannot annihilate any determinant prior to
@@ -416,7 +421,7 @@ contains
                     if (btest(spawn%sdata(spawn%flag_indx,i),ipart-1)) then
                         ! discard attempting spawnings from non-initiator walkers
                         ! onto unoccupied determinants.
-                        ! note that the number of particles (nparticles) was not
+                        ! note that the number of particles (walker_global%nparticles) was not
                         ! updated at the time of spawning, so doesn't change.
                         spawn%sdata(spawn%bit_str_len+ipart,i-nannihilate) = 0_int_s
                     else
@@ -460,7 +465,7 @@ contains
         type(semi_stoch_t), intent(in), optional :: determ
 
         integer :: i, ind
-        integer(int_p) :: nspawn, old_pop(sampling_size)
+        integer(int_p) :: nspawn, old_pop(walker_global%sampling_size)
         real(p) :: scaled_amp, spawn_sign
 
         do i = 1, size(determ%vector)
@@ -476,9 +481,9 @@ contains
             if (scaled_amp > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
 
             ! Add in the now-encoded deterministic spawning amplitude.
-            old_pop = walker_population(:,ind)
-            walker_population(1,ind) = walker_population(1,ind) + spawn_sign*nspawn
-            nparticles = nparticles + real(abs(walker_population(:,ind)) - abs(old_pop),p)/real_factor
+            old_pop = walker_global%walker_population(:,ind)
+            walker_global%walker_population(1,ind) = walker_global%walker_population(1,ind) + spawn_sign*nspawn
+            walker_global%nparticles = walker_global%nparticles + real(abs(walker_global%walker_population(:,ind)) - abs(old_pop),p)/real_factor
         end do
 
     end subroutine deterministic_annihilation
@@ -491,14 +496,14 @@ contains
         ! Also, before doing this, stochastically round up or down any
         ! populations which are less than one.
         ! The above steps are not performed for deterministic states which are
-        ! kept in walker_dets whatever their sign.
+        ! kept in walker_global%walker_dets whatever their sign.
 
         ! In:
         !     real_amplitudes: true if using real particle amplitudes.
         ! In/Out:
         !     rng: random number generator.
         !     determ_flags: A list of flags specifying whether determinants in
-        !         walker_dets are deterministic or not.
+        !         walker_global%walker_dets are deterministic or not.
 
         use dSFMT_interface, only: dSFMT_t
         use stoch_utils, only: stochastic_round
@@ -508,12 +513,12 @@ contains
         integer, intent(inout), optional :: determ_flags(:)
 
         integer :: nzero, i, k, itype
-        integer(int_p) :: old_pop(sampling_size)
+        integer(int_p) :: old_pop(walker_global%sampling_size)
         real(dp) :: r
         logical :: determ_det
 
         nzero = 0
-        do i = 1, tot_walkers
+        do i = 1, walker_global%tot_walkers
 
             determ_det = .false.
             if (present(determ_flags)) determ_det = determ_flags(i) == 0
@@ -522,22 +527,24 @@ contains
             ! (which is equal to 1 in the decoded representation) or down to
             ! zero. This is not done for deterministic states.
             if (real_amplitudes .and. (.not. determ_det)) then
-                old_pop = walker_population(:,i)
-                call stochastic_round(rng, walker_population(:,i), real_factor, qmc_spawn%ntypes)
-                nparticles = nparticles + real(abs(walker_population(:,i)) - abs(old_pop),p)/real_factor
+                old_pop = walker_global%walker_population(:,i)
+                call stochastic_round(rng, walker_global%walker_population(:,i), real_factor, qmc_spawn%ntypes)
+                associate(nparticles=>walker_global%nparticles)
+                    nparticles = nparticles + real(abs(walker_global%walker_population(:,i)) - abs(old_pop),p)/real_factor
+                end associate
             end if
 
-            if (all(walker_population(:,i) == 0_int_p) .and. (.not. determ_det)) then
+            if (all(walker_global%walker_population(:,i) == 0_int_p) .and. (.not. determ_det)) then
                 nzero = nzero + 1
             else if (nzero > 0) then
                 k = i - nzero
-                walker_dets(:,k) = walker_dets(:,i)
-                walker_population(:,k) = walker_population(:,i)
-                walker_data(:,k) = walker_data(:,i)
+                walker_global%walker_dets(:,k) = walker_global%walker_dets(:,i)
+                walker_global%walker_population(:,k) = walker_global%walker_population(:,i)
+                walker_global%walker_data(:,k) = walker_global%walker_data(:,i)
                 if (present(determ_flags)) determ_flags(k) = determ_flags(i)
             end if
         end do
-        tot_walkers = tot_walkers - nzero
+        walker_global%tot_walkers = walker_global%tot_walkers - nzero
 
     end subroutine remove_unoccupied_dets
 
@@ -587,7 +594,7 @@ contains
         do i = spawn_start, qmc_spawn%head(thread_id,0)
 
             ! spawned_population holds the spawned population in its encoded
-            ! form (see comments for walker_population).
+            ! form (see comments for walker_global%walker_population).
             associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i))
 
                 ! Stochastically round the walker populations up or down to
@@ -627,7 +634,7 @@ contains
         !    spawn: spawn_t object containing list of spawned particles.
         ! In (optional):
         !    determ_flags: A list of flags specifying whether determinants in
-        !        walker_dets are deterministic or not.
+        !        walker_global%walker_dets are deterministic or not.
         !    lower_bound: starting point we annihiliate from in spawn_t object.
 
         use search, only: binary_search
@@ -642,8 +649,8 @@ contains
         integer, intent(in), optional :: lower_bound
 
         integer :: i, istart, iend, j, k, pos, spawn_start, disp
-        integer(int_p) :: spawned_population(sampling_size)
-        real(p) :: real_population(sampling_size)
+        integer(int_p) :: spawned_population(walker_global%sampling_size)
+        real(p) :: real_population(walker_global%sampling_size)
 
         logical :: hit
         integer, parameter :: thread_id = 0
@@ -674,18 +681,19 @@ contains
             disp = 0
         end if
         istart = 1
-        iend = tot_walkers
+        iend = walker_global%tot_walkers
         do i = spawn%head(thread_id,0), spawn_start, -1
 
             ! spawned det is not in the main walker list.
-            call binary_search(walker_dets, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), istart, iend, hit, pos)
+            call binary_search(walker_global%walker_dets, int(spawn%sdata(:sys%basis%tensor_label_len,i), i0), &
+                               istart, iend, hit, pos)
             ! f should be in slot pos.  Move all determinants above it.
             do j = iend, pos, -1
                 ! i is the number of determinants that will be inserted below j.
                 k = j + i - disp
-                walker_dets(:,k) = walker_dets(:,j)
-                walker_population(:,k) = walker_population(:,j)
-                walker_data(:,k) = walker_data(:,j)
+                walker_global%walker_dets(:,k) = walker_global%walker_dets(:,j)
+                walker_global%walker_population(:,k) = walker_global%walker_population(:,j)
+                walker_global%walker_data(:,k) = walker_global%walker_data(:,j)
                 if (present(determ_flags)) determ_flags(k) = determ_flags(j)
             end do
 
@@ -700,7 +708,7 @@ contains
                                        int(spawned_population, int_p), H00)
                 ! Extract the real sign from the encoded sign.
                 real_population = real(spawned_population,p)/real_factor
-                nparticles = nparticles + abs(real_population)
+                walker_global%nparticles = walker_global%nparticles + abs(real_population)
             end associate
 
             ! A deterministic state can never leave the main list so cannot be
@@ -712,16 +720,16 @@ contains
             iend = pos - 1
         end do
 
-        ! Update tot_walkers.
-        tot_walkers = tot_walkers + spawn%head(thread_id,0) - disp
+        ! Update walker_global%tot_walkers.
+        walker_global%tot_walkers = walker_global%tot_walkers + spawn%head(thread_id,0) - disp
 
     end subroutine insert_new_walkers
 
     subroutine insert_new_walker(sys, annihilation_flags,  pos, det, population, H00)
 
-        ! Insert a new determinant, det, at position pos in walker_dets. Also
-        ! insert a new population at position pos in walker_population and
-        ! calculate and insert all new values of walker_data for the given
+        ! Insert a new determinant, det, at position pos in walker_global%walker_dets. Also
+        ! insert a new population at position pos in walker_global%walker_population and
+        ! calculate and insert all new values of walker_global%walker_data for the given
         ! walker. Note that all data at position pos in these arrays will be
         ! overwritten.
 
@@ -730,8 +738,8 @@ contains
         !    annihilation_flags: calculation specific annihilation flags.
         !    pos: The position in the walker arrays in which to insert the new
         !        data.
-        !    det: The determinant to insert into walker_dets.
-        !    population: The population to insert into walker_population.
+        !    det: The determinant to insert into walker_global%walker_dets.
+        !    population: The population to insert into walker_global%walker_population.
         !    H00: energy of the reference determinant.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
@@ -746,33 +754,36 @@ contains
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer, intent(in) :: pos
         integer(i0), intent(in) :: det(sys%basis%tensor_label_len)
-        integer(int_p), intent(in) :: population(sampling_size)
+        integer(int_p), intent(in) :: population(walker_global%sampling_size)
         real(p), intent(in) :: H00
 
         ! Insert the new determinant.
-        walker_dets(:,pos) = det
+        walker_global%walker_dets(:,pos) = det
         ! Insert the new population.
-        walker_population(:,pos) = population
-        ! Calculate and insert all new components of walker_data.
-        walker_data(1,pos) = sc0_ptr(sys, det) - H00
-        if (trial_function == neel_singlet) walker_data(sampling_size+1:sampling_size+2,pos) = neel_singlet_data(sys, det)
+        walker_global%walker_population(:,pos) = population
+        ! Calculate and insert all new components of walker_global%walker_data.
+        walker_global%walker_data(1,pos) = sc0_ptr(sys, det) - H00
+        associate(wg=>walker_global)
+            if (trial_function == neel_singlet) &
+                wg%walker_data(wg%sampling_size+1:wg%sampling_size+2,pos) = neel_singlet_data(sys, det)
+        end associate
         if (doing_calc(hfs_fciqmc_calc)) then
-            ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
-            walker_data(2,pos) = op0_ptr(sys, det) - O00
+            ! Set walker_global%walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
+            walker_global%walker_data(2,pos) = op0_ptr(sys, det) - O00
         else if (doing_calc(dmqmc_calc)) then
             if (annihilation_flags%propagate_to_beta) then
                 ! Store H^T_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj),
                 ! where H^T_ii is the "trial" Hamiltonian.
-                associate(bl=>sys%basis%string_len)
-                    walker_data(1,pos) = -trial_dm_ptr(sys, walker_dets((bl+1):(2*bl),pos)) + (walker_data(1,pos) + H00)
+                associate(bl=>sys%basis%string_len, wg=>walker_global)
+                    wg%walker_data(1,pos) = -trial_dm_ptr(sys, wg%walker_dets((bl+1):(2*bl),pos)) + (wg%walker_data(1,pos) + H00)
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.
-                associate(bl=>sys%basis%string_len)
-                    walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - H00)/2
+                associate(bl=>sys%basis%string_len, wg=>walker_global)
+                    wg%walker_data(1,pos) = (wg%walker_data(1,pos) + sc0_ptr(sys, wg%walker_dets((bl+1):(2*bl),pos)) - H00)/2
                 end associate
                 if (annihilation_flags%replica_tricks) then
-                    walker_data(2:sampling_size,pos) = walker_data(1,pos)
+                    walker_global%walker_data(2:walker_global%sampling_size,pos) = walker_global%walker_data(1,pos)
                 end if
             end if
         end if

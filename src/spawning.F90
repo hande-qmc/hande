@@ -415,7 +415,7 @@ contains
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
         ! when we later divide this factor back out. (See comments for
-        ! walker_population).
+        ! walker_global%walker_population).
         pspawn = probability*real_factor
 
         if (abs(pspawn) < spawn_cutoff) then
@@ -513,7 +513,7 @@ contains
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
         ! when we later divide this factor back out. (See comments for
-        ! walker_population).
+        ! walker_global%walker_population).
         pspawn = pspawn*real_factor
 
         if (pspawn < spawn_cutoff) then

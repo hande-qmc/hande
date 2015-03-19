@@ -51,7 +51,7 @@ contains
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t
-        use qmc_data, only: reference_t, empty_determ_space, annihilation_flags_t
+        use qmc_data, only: reference_t, empty_determ_space, walker_global, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -70,7 +70,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, ideterm
         integer :: iter, semi_stoch_iter
         integer(int_64) :: nattempts
-        real(p) :: nparticles_old(sampling_size)
+        real(p) :: nparticles_old(walker_global%sampling_size)
 
         integer(i0) :: f_child(sys%basis%string_len)
         integer(int_p) :: nspawned, ndeath
@@ -122,7 +122,7 @@ contains
         semi_stochastic = .not. (determ%space_type == empty_determ_space)
 
         ! from restart
-        nparticles_old = tot_nparticles
+        nparticles_old = walker_global%tot_nparticles
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header()
@@ -161,15 +161,15 @@ contains
                                    nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
                 ideterm = 0
 
-                do idet = 1, tot_walkers ! loop over walkers/dets
+                do idet = 1, walker_global%tot_walkers ! loop over walkers/dets
 
-                    cdet%f => walker_dets(:,idet)
-                    cdet%data => walker_data(:,idet)
+                    cdet%f => walker_global%walker_dets(:,idet)
+                    cdet%data => walker_global%walker_data(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
 
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(walker_population(1,idet),p)/real_factor
+                    real_population = real(walker_global%walker_population(1,idet),p)/real_factor
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array.
@@ -197,7 +197,7 @@ contains
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_population(1,idet), &
+                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, walker_global%walker_population(1,idet), &
                                          gen_excit_ptr, nspawned, connection)
 
                         ! Spawn if attempt was successful.
@@ -224,8 +224,8 @@ contains
                     end do
 
                     ! Clone or die.
-                    if (.not. determ_parent) call stochastic_death(rng, qmc_in%tau, walker_data(1,idet), shift(1), &
-                                                            walker_population(1,idet), nparticles(1), ndeath)
+                    if (.not. determ_parent) call stochastic_death(rng, qmc_in%tau, walker_global%walker_data(1,idet), shift(1), &
+                                                            walker_global%walker_population(1,idet), walker_global%nparticles(1), ndeath)
 
                 end do
 
@@ -235,8 +235,8 @@ contains
                     call direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
                     if (par_info%load%needed) then
-                        call redistribute_particles(walker_dets, real_factor,  walker_population, tot_walkers, &
-                                                    nparticles, qmc_spawn, load_bal_in%nslots)
+                        call redistribute_particles(walker_global%walker_dets, real_factor,  walker_global%walker_population, walker_global%tot_walkers, &
+                                                    walker_global%nparticles, qmc_spawn, load_bal_in%nslots)
                         par_info%load%needed = .false.
                     end if
                     call direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, send_counts, &
@@ -331,7 +331,7 @@ contains
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, walker_global
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
 
@@ -344,7 +344,7 @@ contains
         integer(int_p), intent(inout) :: ndeath
         integer, intent(in) :: nload_slots
 
-        real(p), target :: tmp_data(sampling_size)
+        real(p), target :: tmp_data(walker_global%sampling_size)
         type(excit_t) :: connection
         real(p) :: hmatel
         integer :: idet, iparticle, nattempts_current_det
@@ -396,7 +396,7 @@ contains
             end do
 
             ! Clone or die.
-            ! list_pop is meaningless as nparticles is updated upon annihilation.
+            ! list_pop is meaningless as walker_global%nparticles is updated upon annihilation.
             call stochastic_death(rng, qmc_in%tau, tmp_data(1), shift(1), int_pop(1), list_pop, ndeath)
             ! Update population of walkers on current determinant.
             spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, idet) = int_pop

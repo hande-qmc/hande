@@ -1,4 +1,4 @@
-module restart_hdf5
+Module restart_hdf5
 
     ! Restart functionality based on the HDF5 library.  Note: this is only
     ! for QMC (ie FCIQMC, DMQMC or CCMC) calculations).
@@ -223,12 +223,10 @@ module restart_hdf5
             use parallel, only: nprocs, iproc, parent, nthreads
             use utils, only: get_unique_filename, int_fmt
 
-            use fciqmc_data, only: walker_dets, walker_population, walker_data, &
-                                   shift, tot_walkers,               &
-                                   D0_population, par_info, received_list
+            use fciqmc_data, only: shift, D0_population, par_info, received_list
             use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
-            use qmc_data, only: reference_t
+            use qmc_data, only: reference_t, walker_global
 
             type(restart_info_t), intent(in) :: ri
             type(reference_t), intent(in) :: reference
@@ -296,14 +294,14 @@ module restart_hdf5
 
                 ! Don't write out the entire array for storing particles but
                 ! rather only the slots in use...
-                call hdf5_write(subgroup_id, ddets, kinds, shape(walker_dets(:,:tot_walkers)), &
-                                 walker_dets(:,:tot_walkers))
+                call hdf5_write(subgroup_id, ddets, kinds, shape(walker_global%walker_dets(:,:walker_global%tot_walkers)), &
+                                 walker_global%walker_dets(:,:walker_global%tot_walkers))
 
-                call hdf5_write(subgroup_id, dpops, kinds, shape(walker_population(:,:tot_walkers)), &
-                                 walker_population(:,:tot_walkers))
+                call hdf5_write(subgroup_id, dpops, kinds, shape(walker_global%walker_population(:,:walker_global%tot_walkers)), &
+                                 walker_global%walker_population(:,:walker_global%tot_walkers))
 
-                call hdf5_write(subgroup_id, ddata, kinds, shape(walker_data(:,:tot_walkers)), &
-                                 walker_data(:,:tot_walkers))
+                call hdf5_write(subgroup_id, ddata, kinds, shape(walker_global%walker_data(:,:walker_global%tot_walkers)), &
+                                 walker_global%walker_data(:,:walker_global%tot_walkers))
                 if (nb_comm) then
                     call hdf5_write(subgroup_id, dspawn, kinds, shape(received_list%sdata(:,:received_list%head(0,0))), &
                                     received_list%sdata(:,:received_list%head(0,0)))
@@ -375,13 +373,12 @@ module restart_hdf5
             use errors, only: stop_all
             use const
 
-            use fciqmc_data, only: walker_dets, walker_population, walker_data,  &
-                                   shift, tot_nparticles, &
-                                   D0_population, mc_cycles_done, tot_walkers,   &
+            use fciqmc_data, only: shift, &
+                                   D0_population, mc_cycles_done, &
                                    par_info, received_list
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
-            use qmc_data, only: reference_t
+            use qmc_data, only: reference_t, walker_global
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
@@ -401,7 +398,7 @@ module restart_hdf5
             real(p), target :: tmp(1)
             logical :: exists
 
-            integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
+            integer(HSIZE_T) :: dims(size(shape(walker_global%walker_dets))), maxdims(size(shape(walker_global%walker_dets)))
 
 
             ! Initialise HDF5 and open file.
@@ -467,24 +464,24 @@ module restart_hdf5
                 call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
                 ! Figure out how many determinants we wrote out...
-                ! walker_dets has rank 2, so need not look that up!
+                ! walker_global%walker_dets has rank 2, so need not look that up!
                 call h5dopen_f(subgroup_id, ddets, dset_id, ierr)
                 call h5dget_space_f(dset_id, dspace_id, ierr)
                 call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
                 call h5dclose_f(dset_id, ierr)
                 ! Number of determinants is the last index...
-                tot_walkers = dims(size(dims))
+                walker_global%tot_walkers = dims(size(dims))
 
-                call hdf5_read(subgroup_id, ddets, kinds, shape(walker_dets), walker_dets)
+                call hdf5_read(subgroup_id, ddets, kinds, shape(walker_global%walker_dets), walker_global%walker_dets)
 
                 if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p)) &
                     call stop_all('read_restart_hdf5', &
                                   'Restarting with a different POP_SIZE is not supported.  Please implement.')
-                call hdf5_read(subgroup_id, dpops, kinds, shape(walker_population), walker_population)
+                call hdf5_read(subgroup_id, dpops, kinds, shape(walker_global%walker_population), walker_global%walker_population)
 
-                call hdf5_read(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
+                call hdf5_read(subgroup_id, ddata, kinds, shape(walker_global%walker_data), walker_global%walker_data)
 
-                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
+                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(walker_global%tot_nparticles), walker_global%tot_nparticles)
 
                 if (nb_comm) then
 

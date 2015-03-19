@@ -37,7 +37,8 @@ contains
         !    ncycles: the number of monte carlo cycles.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: sampling_size, num_dmqmc_operators, calc_inst_rdm, nrdms
+        use fciqmc_data, only: num_dmqmc_operators, calc_inst_rdm, nrdms
+        use qmc_data, only: walker_global
         use parallel
         use dmqmc_data, only: dmqmc_in_t
 
@@ -58,11 +59,11 @@ contains
         nelems(rspawn_ind) = 1
         nelems(nocc_states_ind) = 1
         nelems(nspawned_ind) = 1
-        nelems(nparticles_ind) = sampling_size
-        nelems(trace_ind) = sampling_size
+        nelems(nparticles_ind) = walker_global%sampling_size
+        nelems(trace_ind) = walker_global%sampling_size
         nelems(operators_ind) = num_dmqmc_operators 
         nelems(excit_dist_ind) = max_num_excits + 1
-        nelems(rdm_trace_ind) = sampling_size*nrdms
+        nelems(rdm_trace_ind) = walker_global%sampling_size*nrdms
         nelems(rdm_r2_ind) = nrdms
 
         ! The total number of elements in the array to be communicated.
@@ -117,13 +118,14 @@ contains
         !    rep_loop_loc: array containing local quantities to be communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: numerators, rspawn, tot_walkers
-        use fciqmc_data, only: trace, tot_walkers
-        use fciqmc_data, only: excit_dist, tot_nparticles, nparticles
+        use fciqmc_data, only: numerators, rspawn
+        use fciqmc_data, only: trace
+        use fciqmc_data, only: excit_dist
         use fciqmc_data, only: trace, excit_dist, rdm_traces, renyi_2
         use fciqmc_data, only: calc_inst_rdm
-        use fciqmc_data, only: nrdms, sampling_size
+        use fciqmc_data, only: nrdms
         use dmqmc_data, only: dmqmc_in_t
+        use qmc_data, only: walker_global
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: min_ind(:), max_ind(:)
@@ -133,9 +135,9 @@ contains
         rep_loop_loc = 0.0_dp
 
         rep_loop_loc(rspawn_ind) = rspawn
-        rep_loop_loc(nocc_states_ind) = tot_walkers
+        rep_loop_loc(nocc_states_ind) = walker_global%tot_walkers
         rep_loop_loc(nspawned_ind) = nspawn_events
-        rep_loop_loc(min_ind(nparticles_ind):max_ind(nparticles_ind)) = nparticles
+        rep_loop_loc(min_ind(nparticles_ind):max_ind(nparticles_ind)) = walker_global%nparticles
         rep_loop_loc(min_ind(trace_ind):max_ind(trace_ind)) = trace
         rep_loop_loc(min_ind(operators_ind):max_ind(operators_ind)) = numerators
         if (dmqmc_in%calc_excit_dist) then
@@ -143,7 +145,7 @@ contains
         end if
         if (calc_inst_rdm) then
             ! Reshape this 2d array into a 1d array to add it to rep_loop_loc.
-            rep_loop_loc(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)) = reshape(rdm_traces, (/nrdms*sampling_size/))
+            rep_loop_loc(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)) = reshape(rdm_traces, (/nrdms*walker_global%sampling_size/))
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = renyi_2
@@ -169,9 +171,9 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use fciqmc_data, only: rspawn, tot_nocc_states, tot_nspawn_events, nrdms
-        use fciqmc_data, only: tot_nparticles, trace, numerators, excit_dist
+        use fciqmc_data, only: trace, numerators, excit_dist
         use fciqmc_data, only: rdm_traces, renyi_2, calc_inst_rdm
-        use fciqmc_data, only: sampling_size
+        use qmc_data, only: walker_global
         use dmqmc_data, only: dmqmc_in_t
         use parallel, only: nprocs
 
@@ -182,14 +184,14 @@ contains
         rspawn = rep_loop_sum(rspawn_ind)
         tot_nocc_states = rep_loop_sum(nocc_states_ind)
         tot_nspawn_events = rep_loop_sum(nspawned_ind)
-        tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
+        walker_global%tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
         trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
         numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))
         if (dmqmc_in%calc_excit_dist) then
             excit_dist = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
         end if
         if (calc_inst_rdm) then
-            rdm_traces = reshape(rep_loop_sum(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)), (/sampling_size, nrdms/))
+            rdm_traces = reshape(rep_loop_sum(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)), (/walker_global%sampling_size, nrdms/))
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
@@ -244,33 +246,33 @@ contains
 
     end subroutine communicate_inst_rdms
 
-    subroutine update_shift_dmqmc(qmc_in, loc_tot_nparticles, loc_tot_nparticles_old, ireport)
+    subroutine update_shift_dmqmc(qmc_in, loc_totnparticles, loc_totnparticles_old, ireport)
 
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    ireport: The number of the report loop currently being performed.
         ! In/Out:
-        !    loc_tot_nparticles: total number (across all processors) of
+        !    loc_totnparticles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
-        !    loc_tot_nparticles_old: total number (across all processors) of
+        !    loc_totnparticles_old: total number (across all processors) of
         !        particles in the simulation currently.
 
         use energy_evaluation, only: update_shift
-        use fciqmc_data, only: shift, vary_shift, sampling_size
-        use qmc_data, only: qmc_in_t
+        use fciqmc_data, only: shift, vary_shift
+        use qmc_data, only: qmc_in_t, walker_global
 
         type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: loc_tot_nparticles(:)
-        real(p), intent(in) :: loc_tot_nparticles_old(:)
+        real(p), intent(in) :: loc_totnparticles(:)
+        real(p), intent(in) :: loc_totnparticles_old(:)
         integer, intent(in) :: ireport
         integer :: ireplica
 
-        do ireplica = 1, sampling_size
+        do ireplica = 1, walker_global%sampling_size
             if (vary_shift(ireplica)) then
-                call update_shift(qmc_in, shift(ireplica), loc_tot_nparticles_old(ireplica), &
-                    loc_tot_nparticles(ireplica), qmc_in%ncycles)
+                call update_shift(qmc_in, shift(ireplica), loc_totnparticles_old(ireplica), &
+                    loc_totnparticles(ireplica), qmc_in%ncycles)
             end if
-            if (loc_tot_nparticles(ireplica) > qmc_in%target_particles .and. (.not. vary_shift(ireplica))) &
+            if (loc_totnparticles(ireplica) > qmc_in%target_particles .and. (.not. vary_shift(ireplica))) &
                 vary_shift(ireplica) = .true.
         end do
 
@@ -298,16 +300,16 @@ contains
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
         use excitations, only: get_excitation, excit_t
-        use fciqmc_data, only: walker_dets, walker_population, trace, doing_reduced_dm
+        use fciqmc_data, only: trace, doing_reduced_dm
         use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: excit_dist
-        use fciqmc_data, only: sampling_size, accumulated_probs_old, real_factor
-        use fciqmc_data, only: energy_ind, walker_data, numerators
+        use fciqmc_data, only: accumulated_probs_old, real_factor
+        use fciqmc_data, only: energy_ind, numerators
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
-        use qmc_data, only: reference_t
+        use qmc_data, only: reference_t, walker_global
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
@@ -318,11 +320,11 @@ contains
         integer, intent(in) :: nload_slots
 
         type(excit_t) :: excitation
-        real(p) :: unweighted_walker_pop(sampling_size)
+        real(p) :: unweighted_walker_pop(walker_global%sampling_size)
 
         ! Get excitation.
-        excitation = get_excitation(sys%nel, sys%basis, walker_dets(:sys%basis%string_len,idet), &
-                         walker_dets((1+sys%basis%string_len):sys%basis%tensor_label_len,idet))
+        excitation = get_excitation(sys%nel, sys%basis, walker_global%walker_dets(:sys%basis%string_len,idet), &
+                         walker_global%walker_dets((1+sys%basis%string_len):sys%basis%tensor_label_len,idet))
 
         ! When performing importance sampling the result is that certain
         ! excitation levels have smaller psips populations than the true density
@@ -330,8 +332,8 @@ contains
         ! population by this factor to calculate the contribution from these
         ! excitation levels correctly.
 
-        ! In the case of no importance sampling, unweighted_walker_pop = walker_population(1,idet).
-        unweighted_walker_pop = real(walker_population(:,idet),p)*accumulated_probs(excitation%nexcit)/&
+        ! In the case of no importance sampling, unweighted_walker_pop = walker_global%walker_population(1,idet).
+        unweighted_walker_pop = real(walker_global%walker_population(:,idet),p)*accumulated_probs(excitation%nexcit)/&
             real_factor
 
         ! The following only use the populations with ireplica = 1, so only call
@@ -341,7 +343,7 @@ contains
             ! corresponding procedures.
             ! Energy
             If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
-                    &(sys, excitation, cdet, H00, unweighted_walker_pop(1), walker_data(1, idet), trace, &
+                    &(sys, excitation, cdet, H00, unweighted_walker_pop(1), walker_global%walker_data(1, idet), trace, &
                     numerators(energy_ind))
             ! Energy squared.
             if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
@@ -354,10 +356,10 @@ contains
                 &(sys, idet, excitation, H00, unweighted_walker_pop(1))
             ! Excitation distribution.
             if (dmqmc_in%calc_excit_dist) excit_dist(excitation%nexcit) = &
-                excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
+                excit_dist(excitation%nexcit) + real(abs(walker_global%walker_population(1,idet)),p)/real_factor
             ! Excitation distribtuion for calculating importance sampling weights.
             if (dmqmc_in%find_weights .and. iteration > dmqmc_in%start_av_excit_dist) excit_dist(excitation%nexcit) = &
-                excit_dist(excitation%nexcit) + real(abs(walker_population(1,idet)),p)/real_factor
+                excit_dist(excitation%nexcit) + real(abs(walker_global%walker_population(1,idet)),p)/real_factor
         end if
 
         ! Full Renyi entropy (S_2).
@@ -371,7 +373,7 @@ contains
 
         ! Reduced density matrices.
         if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
-            &(sys%basis, idet, excitation, walker_population(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm)
+            &(sys%basis, idet, excitation, walker_global%walker_population(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm)
 
         accumulated_probs_old = accumulated_probs
 
@@ -481,8 +483,7 @@ contains
         !        element.
 
         use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data
+        use qmc_data, only: walker_global
         use fciqmc_data, only: numerators, energy_squared_ind
         use system, only: sys_t
 
@@ -504,9 +505,9 @@ contains
             ! we just need to count the number of such pairs, which can be found 
             ! simply from the diagonal element.
 
-            sum_H1_H2 = (walker_data(1,idet)+H00)**2
+            sum_H1_H2 = (walker_global%walker_data(1,idet)+H00)**2
             associate(sh=>sys%heisenberg)
-                sum_H1_H2 = sum_H1_H2 + 2*J_coupling_squared*sh%nbonds + sh%J*(walker_data(1,idet)+H00)/2
+                sum_H1_H2 = sum_H1_H2 + 2*J_coupling_squared*sh%nbonds + sh%J*(walker_global%walker_data(1,idet)+H00)/2
             end associate
 
         else if (excitation%nexcit == 1) then
@@ -538,7 +539,7 @@ contains
             bit_position1 = sys%basis%bit_lookup(1,excitation%from_orb(1))
             bit_element1 = sys%basis%bit_lookup(2,excitation%from_orb(1))
             if (btest(sys%real_lattice%connected_orbs(bit_element1, excitation%to_orb(1)), bit_position1)) &
-                sum_H1_H2 = sum_H1_H2 - sys%heisenberg%J*(walker_data(1,idet)+H00)
+                sum_H1_H2 = sum_H1_H2 - sys%heisenberg%J*(walker_global%walker_data(1,idet)+H00)
 
         else if (excitation%nexcit == 2) then
             ! If there are two excitations (4 spins flipped) then, once again,
@@ -597,8 +598,7 @@ contains
 
         use bit_utils, only: count_set_bits
         use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets
-        use fciqmc_data, only: walker_data
+        use qmc_data, only: walker_global
         use fciqmc_data, only: numerators, correlation_fn_ind
         use system, only: sys_t
 
@@ -618,10 +618,10 @@ contains
             ! If they are different, the matrix element is -1/4. So we want
             ! sign_factor to be +1 in the former case, and -1 in the latter case.
             ! f as calculated below will have 0's at sites other than i and j,
-            ! and the same values as walker_dets at i and j. Hence, if f has
+            ! and the same values as walker_global%walker_dets at i and j. Hence, if f has
             ! two 1's or no 1's, we want sign_factor = +1. Else if we have one 1,
             ! we want sign_factor = -1.
-            f = iand(walker_dets(:sys%basis%string_len,idet), correlation_mask)
+            f = iand(walker_global%walker_dets(:sys%basis%string_len,idet), correlation_mask)
             ! Count if we have zero, one or two 1's.
             sign_factor = sum(count_set_bits(f))
             ! The operation below will map 0 and 2 to +1, and will map 1 to -1,
@@ -665,7 +665,7 @@ contains
 
         use bit_utils, only: count_set_bits
         use excitations, only: excit_t
-        use fciqmc_data, only: walker_dets
+        use qmc_data, only: walker_global
         use fciqmc_data, only: numerators, staggered_mag_ind
         use system, only: sys_t
 
@@ -693,7 +693,7 @@ contains
             ! are nel spins up in total. Hence the matrix element will be written
             ! only in terms of the number of up spins on sublattice 1, to save
             ! computation.
-            f = iand(walker_dets(:sys%basis%string_len,idet), sys%heisenberg%lattice_mask)
+            f = iand(walker_global%walker_dets(:sys%basis%string_len,idet), sys%heisenberg%lattice_mask)
             n_up_plus = sum(count_set_bits(f))
             ! Below, the term in brackets and middle term come from the z
             ! component (the z operator is diagonal) and one nsites/4 factor
@@ -787,20 +787,21 @@ contains
         use basis_types, only: basis_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
-        use fciqmc_data, only: reduced_density_matrix, walker_dets, walker_population
-        use fciqmc_data, only: sampling_size, calc_inst_rdm, calc_ground_rdm, rdms, nrdms
+        use fciqmc_data, only: reduced_density_matrix
+        use fciqmc_data, only: calc_inst_rdm, calc_ground_rdm, rdms, nrdms
         use fciqmc_data, only: rdm_spawn, accumulated_probs
         use fciqmc_data, only: nsym_vec, real_factor
+        use qmc_data, only: walker_global
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
         integer, intent(in) :: idet, iteration
-        integer(int_p), intent(in) :: walker_pop(sampling_size)
+        integer(int_p), intent(in) :: walker_pop(walker_global%sampling_size)
         type(excit_t), intent(in) :: excitation
         integer, intent(in) :: nload_slots
         integer, intent(in) :: start_av_rdm
 
-        real(p) :: unweighted_walker_pop(sampling_size)
+        real(p) :: unweighted_walker_pop(walker_global%sampling_size)
         integer :: irdm, isym, ireplica
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
 
@@ -813,8 +814,8 @@ contains
 
         ! Apply the mask for the B subsystem to set all sites in the A
         ! subsystem to 0.
-        f1 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(:basis%string_len,idet))
-        f2 = iand(rdms(irdm)%B_masks(:,isym),walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
+        f1 = iand(rdms(irdm)%B_masks(:,isym),walker_global%walker_dets(:basis%string_len,idet))
+        f2 = iand(rdms(irdm)%B_masks(:,isym),walker_global%walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
 
         ! Once this is done, check if the resulting bitstrings (which can
         ! only possibly have 1's in the B subsystem) are identical. If
@@ -826,7 +827,7 @@ contains
         if (sum(abs(f1-f2)) == 0_i0) then
             ! Call a function which maps the subsystem A state to two RDM
             ! bitstrings.
-            call decode_dm_bitstring(basis, walker_dets(:,idet),irdm,isym)
+            call decode_dm_bitstring(basis, walker_global%walker_dets(:,idet),irdm,isym)
 
             if (calc_ground_rdm) then
                 ! The above routine actually maps to numbers between 0
@@ -835,7 +836,7 @@ contains
                 ! so add one.
                 rdms(irdm)%end1 = rdms(irdm)%end1 + 1
                 rdms(irdm)%end2 = rdms(irdm)%end2 + 1
-                unweighted_walker_pop = real(walker_population(:,idet),p)*&
+                unweighted_walker_pop = real(walker_global%walker_population(:,idet),p)*&
                     accumulated_probs(excitation%nexcit)/real_factor
                 ! Note, when storing the entire RDM (as done here), the
                 ! maximum value of rdms(i)%string_len is 1, so we
@@ -845,7 +846,7 @@ contains
             end if
 
             if (calc_inst_rdm) then
-                do ireplica = 1, sampling_size
+                do ireplica = 1, walker_global%sampling_size
                 if (abs(walker_pop(ireplica)) > 0) then
                     call create_spawned_particle_rdm(rdms(irdm), walker_pop(ireplica), &
                         ireplica, rdm_spawn(irdm), nload_slots)
