@@ -226,12 +226,6 @@ type reference_t
     real(p) :: H00
 end type reference_t
 
-! [todo] - move to sys_heisenberg_t
-! When using the Neel singlet trial wavefunction, it is convenient
-! to store all possible amplitudes in the wavefunction, since
-! there are relativley few of them and they are expensive to calculate
-real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
-
 ! --- semi-stochastic ---
 
 ! Types of space.
@@ -387,15 +381,6 @@ type walker_t
     real(p), allocatable :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
 end type walker_t
 
-! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
-! encoded as integers by multiplying them by 2**(real_bit_shift).
-! [todo] - compile-time parameter
-integer :: real_bit_shift
-! real_factor = 2**(real_bit_shift)
-! [todo] - compile-time parameter
-integer(int_p) :: real_factor
-! [todo] - procedures for encoding and decoding the populations.
-
 type spawned_walker_t
     ! Array sizes
     ! If these are < 0, then the values represent the number of MB to be used to
@@ -470,5 +455,20 @@ type(semi_stoch_in_t) :: semi_stoch_in
 type(ccmc_in_t) :: ccmc_in
 type(restart_in_t) :: restart_in
 type(load_bal_in_t) :: load_bal_in
+
+! [todo] - move to sys_heisenberg_t
+! When using the Neel singlet trial wavefunction, it is convenient
+! to store all possible amplitudes in the wavefunction, since
+! there are relativley few of them and they are expensive to calculate
+real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
+
+! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
+! encoded as integers by multiplying them by 2**(real_bit_shift).
+! [todo] - compile-time parameter
+integer :: real_bit_shift
+! real_factor = 2**(real_bit_shift)
+! [todo] - compile-time parameter
+integer(int_p) :: real_factor
+! [todo] - procedures for encoding and decoding the populations.
 
 end module qmc_data
