@@ -299,7 +299,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
+            call dump_restart_hdf5(restart_info_global, walker_global, reference, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
             if (parent) write (6,'()')
         end if
 

@@ -925,10 +925,10 @@ contains
         ! Write restart file if required.
         if (dump_restart_file_shift .and. any(vary_shift)) then
             dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+            call dump_restart_hdf5(restart_info_global_shift, walker_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
                                    ntot_particles, nb_comm_local)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+            call dump_restart_hdf5(restart_info_global, walker_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
                                    ntot_particles, nb_comm_local)
         end if
         ! cpu_time outputs an elapsed time, so update the reference timer.

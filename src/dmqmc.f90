@@ -275,7 +275,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, walker_global%tot_nparticles, .false.)
+            call dump_restart_hdf5(restart_info_global, walker_global, reference, mc_cycles_done, walker_global%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
 

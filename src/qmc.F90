@@ -313,7 +313,7 @@ contains
                 allocate(reference%occ_list0(sys%nel), stat=ierr)
                 call check_allocate('reference%occ_list0',sys%nel,ierr)
             end if
-            call read_restart_hdf5(restart_info_global, fciqmc_in%non_blocking_comm, reference)
+            call read_restart_hdf5(restart_info_global, fciqmc_in%non_blocking_comm, reference, walker_global)
             ! Need to re-calculate the reference determinant data
             call decode_det(sys%basis, reference%f0, reference%occ_list0)
             if (trial_function == neel_singlet) then
