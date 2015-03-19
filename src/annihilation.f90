@@ -33,7 +33,7 @@ contains
         use spawn_data, only: annihilate_wrapper_spawn_t, calc_events_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
@@ -442,6 +442,7 @@ contains
 
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use qmc_data, only: semi_stoch_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng

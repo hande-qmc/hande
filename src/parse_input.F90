@@ -44,6 +44,7 @@ contains
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: read_determ_space, high_pop_determ_space
         use dmqmc_data, only: dmqmc_in_t
         use system
 
@@ -601,7 +602,7 @@ contains
 
         use const
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
-        use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: restart_in_t, reference_t, load_bal_in_t, empty_determ_space
         use dmqmc_data, only: dmqmc_in_t
         use system
 

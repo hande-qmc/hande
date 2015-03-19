@@ -539,7 +539,7 @@ contains
 
         use spawn_data, only: spawn_t
         use system, only: sys_t
-        use qmc_data, only: reference_t
+        use qmc_data, only: reference_t, semi_stoch_t, empty_determ_space, reuse_determ_space
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
@@ -720,7 +720,7 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
@@ -1014,7 +1014,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 

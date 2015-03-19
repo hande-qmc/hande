@@ -93,7 +93,7 @@ module semi_stoch
 ! becomes larger.
 
 use const
-use fciqmc_data, only: semi_stoch_t, determ_hash_t
+use qmc_data, only: semi_stoch_t, determ_hash_t
 
 implicit none
 
@@ -127,8 +127,9 @@ contains
         !    nload_slots: number of slots proc map is divided into.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: walker_length, empty_determ_space, high_pop_determ_space
-        use fciqmc_data, only: read_determ_space, reuse_determ_space
+        use fciqmc_data, only: walker_length
+        use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, &
+                            reuse_determ_space
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -316,7 +317,7 @@ contains
 
         use checking, only: check_deallocate
         use csr, only: end_csrp
-        use fciqmc_data, only: empty_determ_space
+        use qmc_data, only: empty_determ_space
 
         type(semi_stoch_t), intent(inout) :: determ
         logical, intent(in) :: keep_dets
