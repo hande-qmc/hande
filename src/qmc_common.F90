@@ -1022,7 +1022,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, walker_global, annihilation_flags_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 
@@ -1045,7 +1045,7 @@ contains
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
-        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
+        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global)
         spawn%head = spawn%head_start
 
         if (present(determ)) call redistribute_semi_stoch_t(sys, reference, annihilation_flags, spawn, &

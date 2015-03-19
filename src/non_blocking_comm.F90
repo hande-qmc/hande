@@ -134,7 +134,7 @@ contains
         use system, only: sys_t
         use qmc_common, only: write_fciqmc_report
         use parallel, only: parent
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, walker_global, annihilation_flags_t
 
         use const, only: p, dp
         use dSFMT_interface, only: dSFMT_t
@@ -163,7 +163,7 @@ contains
         call receive_spawned_walkers(spawn, request_s)
         if (.not. dump_restart_file) then
             call annihilate_wrapper_non_blocking_spawn(spawn, qmc_in%initiator_approx)
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, spawn)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, walker_global, spawn)
             ! Receive final send of report loop quantities.
         end if
         ntot_particles_save = ntot_particles

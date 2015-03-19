@@ -607,7 +607,7 @@ contains
                 walker_global%walker_data(:,pos+1:walker_global%tot_walkers+1) = walker_global%walker_data(:,pos:walker_global%tot_walkers)
 
                 ! Insert a determinant with population zero into the walker arrays.
-                call insert_new_walker(sys, annihilation_flags, pos, dets_this_proc(:,i), zero_population, reference%H00)
+                call insert_new_walker(sys, walker_global, annihilation_flags, pos, dets_this_proc(:,i), zero_population, reference%H00)
 
                 walker_global%tot_walkers = walker_global%tot_walkers + 1
             end if

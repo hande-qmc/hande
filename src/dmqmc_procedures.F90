@@ -495,7 +495,7 @@ contains
         end if
 
 
-        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
+        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global)
 
         if (dmqmc_in%propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -506,7 +506,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(walker_global%walker_dets, real_factor, walker_global%walker_population, &
                                         walker_global%tot_walkers, walker_global%nparticles, qmc_spawn, nload_slots)
-            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
+            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global)
         end if
 
     end subroutine create_initial_density_matrix
@@ -1133,7 +1133,7 @@ contains
         ! Call the annihilation routine to update the main walker list, as some
         ! sites will have become unoccupied and so need removing from the
         ! simulation.
-        call remove_unoccupied_dets(rng, qmc_in%real_amplitudes)
+        call remove_unoccupied_dets(rng, walker_global, qmc_in%real_amplitudes)
 
     end subroutine update_sampling_weights
 
