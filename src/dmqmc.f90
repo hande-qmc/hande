@@ -153,7 +153,10 @@ contains
                         ! Note DMQMC averages over multiple loops over
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
-                        if (icycle == 1) call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, reference%H00, load_bal_in%nslots)
+                        if (icycle == 1) then
+                            call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
+                                                         reference%H00, load_bal_in%nslots)
+                        end if
 
                         do ireplica = 1, sampling_size
 
