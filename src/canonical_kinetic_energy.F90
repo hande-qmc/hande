@@ -48,7 +48,6 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
         use calc, only: ms_in
-        use fciqmc_data, only: D0_population
         use hamiltonian_ueg, only: sum_sp_eigenvalues, potential_energy_ueg
         use interact, only: calc_interact, check_comms_file
         use qmc_data, only: qmc_in_t
@@ -97,7 +96,7 @@ contains
         mean = 0.0_p
         local_estimators = 0.0_p
         do ireport = 1, nkinetic_cycles
-            do while (iaccept < ireport*D0_population)
+            do while (iaccept < ireport*qmc_in%D0_population)
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
                                                                        1, occ_list(:sys%nalpha), gen)
                 if (.not. gen) cycle
