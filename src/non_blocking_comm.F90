@@ -134,7 +134,7 @@ contains
         use system, only: sys_t
         use qmc_common, only: write_fciqmc_report
         use parallel, only: parent
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, walker_global, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t
 
         use const, only: p, dp
         use dSFMT_interface, only: dSFMT_t
@@ -148,14 +148,14 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout) :: request_s(:), request_rep(:)
         real, intent(inout) :: report_time
-        real(p), intent(inout) :: ntot_particles(walker_global%sampling_size)
+        real(p), intent(inout) :: ntot_particles(:)
         real(p), intent(inout) :: shift
         logical, intent(in) :: dump_restart_file
         type(load_bal_in_t), intent(in) :: load_bal_in
 
         real :: curr_time
         real(p) :: shift_save
-        real(p) :: ntot_particles_save(walker_global%sampling_size)
+        real(p) :: ntot_particles_save(size(ntot_particles))
 
         call cpu_time(curr_time)
 

@@ -26,7 +26,7 @@ contains
         use parallel
 
         use fciqmc_data, only: vary_shift, shift
-        use qmc_data, only: qmc_in_t, walker_global
+        use qmc_data, only: qmc_in_t
 
         logical, intent(in) :: comms_found
         logical, intent(out) :: soft_exit
@@ -103,9 +103,8 @@ contains
                                 vary_shift = .true.
                             end if
                         case('SHIFT')
-                            call readf(shift(1))
-                            do i = 2, walker_global%sampling_size
-                                shift(i) = shift(1)
+                            do i = 1,size(shift)
+                                call readf(shift(i))
                             end do
                         case default
                             write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
@@ -128,7 +127,7 @@ contains
             ! If in parallel need to broadcast data.
             call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
             if (present(qmc_in)) call mpi_bcast(qmc_in%tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(shift, walker_global%sampling_size, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(shift, size(shift), mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
 #endif
