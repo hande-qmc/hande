@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, qmc_in, reference, restart, ndets, dets, ref_det)
+    subroutine init_simple_fciqmc(sys, qmc_in, reference, restart, ndets, dets, ref_det, psip_list)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -36,6 +36,9 @@ contains
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space.
         !    ref_det: location of reference in dets.
+        !    psip_list: walker_t object for storing psips sampling the Hilbert
+        !       space and related information.  Allocated and initialised on
+        !       output.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -43,7 +46,7 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use qmc_data, only: qmc_in_t, reference_t, walker_global
+        use qmc_data, only: qmc_in_t, reference_t, walker_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
@@ -51,6 +54,7 @@ contains
         type(reference_t), intent(inout) :: reference
         logical, intent(in) :: restart
         integer, intent(out) :: ref_det
+        type(walker_t), intent(out) :: psip_list
 
         integer, allocatable :: sym_space_size(:)
         integer :: ndets
@@ -103,12 +107,12 @@ contains
 
         ! Allocate main and spawned lists to hold population of walkers.
         ! Don't need to hold determinants, so can just set spawned_size to be 1.
-        allocate(walker_global%walker_population(1,ndets), stat=ierr)
-        call check_allocate('walker_global%walker_population',ndets,ierr)
+        allocate(psip_list%walker_population(1,ndets), stat=ierr)
+        call check_allocate('psip_list%walker_population',ndets,ierr)
         allocate(qmc_spawn%sdata(1,ndets), stat=ierr)
         call check_allocate('qmc_spawn%sdata',ndets,ierr)
         ! Zero these.
-        walker_global%walker_population = 0_int_p
+        psip_list%walker_population = 0_int_p
         qmc_spawn%sdata = 0_int_s
 
         allocate(shift(1), stat=ierr)
@@ -161,7 +165,7 @@ contains
             end if
             reference%f0 = dets(:,ref_det)
             call decode_det(sys%basis, reference%f0, reference%occ_list0)
-            walker_global%walker_population(1,ref_det) = nint(qmc_in%D0_population)
+            psip_list%walker_population(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
@@ -189,7 +193,7 @@ contains
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, walker_global
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, walker_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
@@ -207,13 +211,14 @@ contains
         integer :: ref_det, ndets
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
+        type(walker_t) :: psip_list
 
-        call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det)
+        call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det, psip_list)
 
         if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
-        nparticles = real(sum(abs(walker_global%walker_population(1,:))),p)
+        nparticles = real(sum(abs(psip_list%walker_population(1,:))),p)
         nparticles_old = nparticles
 
         call write_fciqmc_report_header()
@@ -252,23 +257,23 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det == idet, H0i, walker_global%walker_population(1,idet), proj_energy)
+                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%walker_population(1,idet), proj_energy)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
                     if (use_sparse_hamil) then
                         associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
-                            do ipart = 1, abs(walker_global%walker_population(1,idet))
-                                call attempt_spawn(rng, qmc_in%tau, idet, walker_global%walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                            do ipart = 1, abs(psip_list%walker_population(1,idet))
+                                call attempt_spawn(rng, qmc_in%tau, idet, psip_list%walker_population(1,idet), hamil_csr%mat(hstart:hend), &
                                                    hamil_csr%col_ind(hstart:hend))
                             end do
                         end associate
                     else
-                        do ipart = 1, abs(walker_global%walker_population(1,idet))
-                            call attempt_spawn(rng, qmc_in%tau, idet, walker_global%walker_population(1,idet), hamil(:,idet))
+                        do ipart = 1, abs(psip_list%walker_population(1,idet))
+                            call attempt_spawn(rng, qmc_in%tau, idet, psip_list%walker_population(1,idet), hamil(:,idet))
                         end do
                     end if
 
-                    call simple_death(rng, qmc_in%tau, Hii, reference%H00, walker_global%walker_population(1,idet))
+                    call simple_death(rng, qmc_in%tau, Hii, reference%H00, psip_list%walker_population(1,idet))
 
                 end do
 
@@ -276,12 +281,12 @@ contains
                 ! total.
                 rspawn = rspawn + real(sum(abs(qmc_spawn%sdata(1,:))))/nattempts
 
-                call simple_annihilation()
+                call simple_annihilation(qmc_spawn, psip_list%walker_population)
 
             end do
 
             ! Update the shift
-            walker_global%nparticles = real(sum(abs(walker_global%walker_population(1,:))),p)
+            psip_list%nparticles = real(sum(abs(psip_list%walker_population(1,:))),p)
             if (vary_shift(1)) then
                 call update_shift(qmc_in, shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
@@ -455,17 +460,24 @@ contains
 
     end subroutine simple_death
 
-    subroutine simple_annihilation()
+    subroutine simple_annihilation(spawn, pop)
 
         ! Annihilation: merge main and spawned lists.
 
-        ! This is especially easy as we store the walker populations for all
+        ! This is especially easy as we store the populations for all
         ! determinants for both the main and spawned lists so it just amounts to
         ! adding the two arrays together,
 
-        use qmc_data, only: walker_global
+        ! In:
+        !    spawn: spawn_t object containing the spawned particles.
+        ! In/Out:
+        !    pop: main population on each site before (input) and after (output)
+        !         annihilation.
+ 
+        type(spawn_t), intent(in)  :: spawn
+        integer(int_p), intent(inout) :: pop(:,:)
 
-        walker_global%walker_population = walker_global%walker_population + int(qmc_spawn%sdata, int_p)
+        pop = pop + int(spawn%sdata, int_p)
 
     end subroutine simple_annihilation
 
