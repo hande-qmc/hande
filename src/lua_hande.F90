@@ -243,51 +243,82 @@ contains
 
     end subroutine warn_unused_args
 
-    subroutine get_sys_t(lua_state, sys, new)
+    subroutine get_sys_t(lua_state, sys, pos)
 
-        ! Get or create a sys_t object as necessary.
-        ! If two arguments were passed from lua, then the first is an existing sys_t
-        ! object and the other the table of variables.  If only one argument is passed,
-        ! then this is just the table and we create new sys_t object.
+        ! Get a sys_t object from the lua stack.
 
+        ! It is often convenient (e.g. for semantic ordering of arguments in
+        ! a lua function) to get a sys_t variable from the stack, even if it is
+        ! not topmost.  Obtain sys_t object from an arbitrary position on the
+        ! stack and leave the stack otherwise unchanged.
+
+        ! In:
+        !    pos (optional): position of sys object in the lua stack.  Default 1.
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! Out:
-        !    sys: sys_t object (created/from Lua stack as appropriate).
-        !    new: true if a new sys_t object was created.
+        !    sys: sys_t object.
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer
         use flu_binding, only: flu_State, flu_gettop, flu_insert
         use aot_top_module, only: aot_top_get_val
 
+        use errors, only: stop_all
         use system, only: sys_t
 
         type(flu_State), intent(inout) :: lua_state
         type(sys_t), pointer, intent(out) :: sys
-        logical, intent(out) :: new
+        integer, intent(in), optional :: pos
 
         type(c_ptr) :: sys_ptr
-        integer :: i, err
+        integer :: i, err, pos_loc
 
-        select case(flu_gettop(lua_state))
-        case(1)
-            ! Create a new system.
-            ! The only argument passed is a dictionary of values...
-            allocate(sys)
-            new = .true.
-        case default
-            ! Been passed an existing system object.
-            ! It is syntactically convenient to have this as the first argument (and hence bottom of stack) but we need it before
-            ! parsing the options...
-            do i = 1, flu_gettop(lua_state)-1
-                call flu_insert(lua_state, 1) ! lua_rotate only available in lua 5.3...
-            end do
-            call aot_top_get_val(sys_ptr, err, lua_state)
-            call c_f_pointer(sys_ptr, sys)
-            new = .false.
-        end select
+        pos_loc = 1
+        if (present(pos)) pos_loc = pos
+
+        ! It is syntactically convenient to have this (e.g.) as the first argument (and hence bottom of stack) but we need it before
+        ! parsing the options...
+        do i = 1, flu_gettop(lua_state)-pos_loc
+            call flu_insert(lua_state, 1) ! lua_rotate only available in lua 5.3...
+        end do
+        call aot_top_get_val(sys_ptr, err, lua_state)
+        if (err /= 0) call stop_all('get_sys_t', 'Problem receiving sys_t object.')
+        call c_f_pointer(sys_ptr, sys)
 
     end subroutine get_sys_t
+
+    subroutine get_sys_t_opt(lua_state, nargs, sys, new)
+
+        ! Get (or create, if necessary) a sys_t object from the lua stack.
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    nargs: number of required arguments.  If this is the number of
+        !       items passed, then a new sys_t object is created, otherwise
+        !       a sys_t object is popped from the first position in the stack
+        !       (i.e. the argument list (sys, required_args) is assumed).
+        ! Out:
+        !    sys: sys_t object from stack/created.
+        !    new: true if the sys_t object was allocated rather than passed in.
+
+        use flu_binding, only: flu_State, flu_gettop
+        use system, only: sys_t
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: nargs
+        type(sys_t), pointer, intent(out) :: sys
+        logical, intent(out) :: new
+
+        new = flu_gettop(lua_state) == nargs
+        if (new) then
+            allocate(sys)
+        else
+            ! Passed a system object as the first argument.
+            call get_sys_t(lua_state, sys)
+        end if
+
+    end subroutine get_sys_t_opt
 
     subroutine set_common_sys_options(lua_state, sys, opts)
 
@@ -472,7 +503,7 @@ contains
         character(10), parameter :: keys(8) = [character(10) :: 'nel', 'electrons', 'lattice', 'U', 't', 'ms', 'sym', 'ktwist']
 
         lua_state = flu_copyptr(l)
-        call get_sys_t(lua_state, sys, new)
+        call get_sys_t_opt(lua_state, 1, sys, new)
 
         ! get a handle to the table...
         opts = aot_table_top(lua_state)
@@ -543,7 +574,7 @@ contains
         character(10), parameter :: keys(7) = [character(10) :: 'nel', 'electrons', 'lattice', 'U', 't', 'ms', 'finite']
 
         lua_state = flu_copyptr(l)
-        call get_sys_t(lua_state, sys, new)
+        call get_sys_t_opt(lua_state, 1, sys, new)
 
         ! get a handle to the table...
         opts = aot_table_top(lua_state)
@@ -620,7 +651,7 @@ contains
 
         lua_state = flu_copyptr(L)
 
-        call get_sys_t(lua_state, sys, new)
+        call get_sys_t_opt(lua_state, 1, sys, new)
 
         ! Get a handle to the table...
         opts = aot_table_top(lua_state)
@@ -710,6 +741,7 @@ contains
         character(*), parameter :: keys(4) = [character(10) :: 'ncycles', 'ex_level', 'reference', 'rng_seed']
 
         lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
 
@@ -722,10 +754,6 @@ contains
 
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
-
-        call aot_top_get_val(sys_ptr, err, lua_state)
-        if (err /= 0) call stop_all('lua_hilbert_space', 'Problem receiving sys_t object.')
-        call c_f_pointer(sys_ptr, sys)
 
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
         if (size(ref_det) == 0) deallocate(ref_det)
