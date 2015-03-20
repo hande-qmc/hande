@@ -158,6 +158,7 @@ contains
 
         ! Calculations
         call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)
+        call flu_register(lua_state, 'kinetic_energy', lua_kinetic_energy)
 
     end subroutine register_lua_hande_api
 
@@ -689,7 +690,8 @@ contains
         !           cutoff = ecutoff,
         !           ms = Ms,
         !           sym = sym_index,
-        !           ktwist = {...},    -- D-dimensional vector.
+        !           ktwist = {...},    -- D-dimensional vector
+        !           chem_pot = cp
         !        }
         !        )
         !    Returns: sys_t object.
@@ -714,8 +716,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(8) = [character(10) :: 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
-                                               'ms', 'sym', 'ktwist']
+        character(10), parameter :: keys(9) = [character(10) :: 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+                                               'ms', 'sym', 'ktwist', 'chem_pot']
 
         lua_state = flu_copyptr(L)
 
@@ -738,6 +740,7 @@ contains
 
         call aot_get_val(sys%ueg%ecutoff, err, lua_state, opts, 'cutoff')
         call aot_get_val(sys%ueg%r_s, err, lua_state, opts, 'rs')
+        call aot_get_val(sys%ueg%chem_pot, err, lua_state, opts, 'chem_pot')
         call aot_get_val(sys%lattice%ndim, err, lua_state, opts, 'dim')
 
         call get_ktwist(lua_state, sys, opts)
@@ -840,5 +843,72 @@ contains
         nresult = 0
 
     end function lua_hilbert_space
+
+    function lua_kinetic_energy(L) result(nresult) bind(c)
+
+        ! Run a Monte Carlo calculation to estimate the kinetic energy of a
+        ! system.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    kinetic_energy(
+        !        sys_t,
+        !        {
+        !           ncycles = n,
+        !           rng_seed = seed,
+        !           init_beta = beta,
+        !           fermi_temperature = temp,
+        !           temp_pop = pop
+        !        }
+        !       )
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
+
+        use flu_binding!, only: flu_State, flu_copyptr, flu_insert
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+        use aot_vector_module, only: aot_get_val
+
+        use calc, only: ms_in, seed, fermi_temperature
+        use fciqmc_data, only: init_beta, D0_population
+        use errors, only: stop_all
+        use system, only: sys_t
+
+        use canonical_kinetic_energy, only: estimate_kinetic_energy, nkinetic_cycles
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+
+        type(c_ptr) :: sys_ptr
+        type(sys_t), pointer :: sys
+        integer :: opts, err
+        character(10), parameter :: keys(5) = [character(10) :: 'ncycles', 'rng_seed', 'init_beta', 'fermi_temperature', 'temp_pop']
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys)
+
+        opts = aot_table_top(lua_state)
+
+        call aot_get_val(nkinetic_cycles, err, lua_state, opts, 'ncycles')
+        if (err /= 0) call stop_all('lua_kinetic_energy', 'Number of cycles not supplied.')
+        call aot_get_val(seed, err, lua_state, opts, 'rng_seed')
+        call aot_get_val(init_beta, err, lua_state, opts, 'init_beta')
+        call aot_get_val(fermi_temperature, err, lua_state, opts, 'fermi_temperature')
+        ! TODO: Give a more appropriate name.
+        call aot_get_val(D0_population, err, lua_state, opts, 'temp_pop')
+
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
+
+        call estimate_kinetic_energy(sys)
+
+        ! [todo] - return estimate of space and error to lua.
+        nresult = 0
+
+    end function lua_kinetic_energy
 
 end module lua_hande
