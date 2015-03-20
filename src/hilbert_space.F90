@@ -226,7 +226,7 @@ contains
 
         end select
 
-        if (truncate_space) then
+        if (allocated(ptrunc_level)) then
             deallocate(ptrunc_level, stat=ierr)
             call check_deallocate('ptrunc_level', ierr)
         end if
