@@ -118,7 +118,7 @@ contains
 
 #ifdef PARALLEL
             ! More efficient in parallel.
-            call mpi_reduce(local_estimators, estimators, last_idx-1, mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(local_estimators, estimators, last_idx-1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
             estimators = local_estimators
 #endif
