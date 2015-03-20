@@ -246,17 +246,20 @@ A configuration file does not need to be specified with the --ls option.''')
             help='Add e C preprocessor #define to be passed with -D to the compiler.'
                  ' Can be used multiple times.')
 
-    if len(my_args) == 0:
+    (options, args) = parser.parse_args(my_args)
+
+    #If there are no command line arguments, try and get them from make.inc
+    if len(args) == 0:
         if os.path.exists('./make.inc'):
             with open('./make.inc') as f:
                 for l in f:
                     if '## mkconfig' in l:
-                        my_args=shlex.split(l)[2:]
+                        my_args+=shlex.split(l)[2:]
                         print "Using argumets from "
                         print l
+                        (options, args) = parser.parse_args(my_args)
                         break
-    (options, args) = parser.parse_args(my_args)
-
+                
     config_file = ''
 
     if not options.ls and not options.help_long:
