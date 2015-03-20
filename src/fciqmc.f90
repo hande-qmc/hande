@@ -280,7 +280,7 @@ contains
         end do
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, reference, annihilation_flags, ireport, &
-                                                                    received_list,  req_data_s, par_info%report_comm%request, &
+                                                                    walker_global, received_list,  req_data_s, par_info%report_comm%request, &
                                                                     t1, nparticles_old, shift(1), restart_in%dump_restart, &
                                                                     load_bal_in)
 

@@ -776,7 +776,7 @@ contains
 
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
-                call do_load_balancing(real_factor, par_info, load_bal_in)
+                call do_load_balancing(walker_global, real_factor, par_info, load_bal_in)
                 call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_global%walker_dets, real_factor, determ, &
                                                       walker_global%walker_population, walker_global%tot_walkers, walker_global%nparticles, &
                                                       qmc_spawn, load_bal_in%nslots, annihilation_flags)
