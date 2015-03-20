@@ -635,7 +635,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, sym, ireplica, qmc_spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, sym, ireplica, spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -662,7 +662,7 @@ contains
         !    ireplica: replica index.
         ! In/Out:
         !    rng: random number generator.
-        !    qmc_spawn: spawn_t object containing the initial distribution of
+        !    spawn: spawn_t object containing the initial distribution of
         !        psips on the diagonal.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -686,7 +686,7 @@ contains
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
         type(dSFMT_t), intent(inout) :: rng
-        type(spawn_t), intent(inout) :: qmc_spawn
+        type(spawn_t), intent(inout) :: spawn
 
         integer :: occ_list(sys%nel), naccept
         integer :: idet, iattempt, nsuccess
@@ -716,8 +716,8 @@ contains
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, dmqmc_in%metropolis_attempts
             do proc = 0, nprocs-1
-                do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
-                    cdet%f = qmc_spawn%sdata(:sys%basis%string_len,idet)
+                do idet = spawn%head_start(nthreads-1,proc)+1, spawn%head(thread_id,proc)
+                    cdet%f = spawn%sdata(:sys%basis%string_len,idet)
                     E_old = trial_dm_ptr(sys, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
@@ -742,8 +742,8 @@ contains
                         ! Accept the new determinant by modifying the entry
                         ! in spawned walker list.
                         naccept = naccept + 1
-                        qmc_spawn%sdata(:sys%basis%string_len,idet) = f_new
-                        qmc_spawn%sdata(sys%basis%string_len+1:sys%basis%tensor_label_len,idet) = f_new
+                        spawn%sdata(:sys%basis%string_len,idet) = f_new
+                        spawn%sdata(sys%basis%string_len+1:sys%basis%tensor_label_len,idet) = f_new
                     end if
                 end do
             end do
@@ -757,11 +757,11 @@ contains
 
     end subroutine initialise_dm_metropolis
 
-    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, all_sym_sectors, rng, qmc_spawn)
+    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, all_sym_sectors, rng, spawn)
 
         ! Create an initital distribution of psips along the diagonal.
         ! This subroutine will return a list of occupied determinants in
-        ! qmc_spawn which can then be used for the metropolis initialisation.
+        ! spawn which can then be used for the metropolis initialisation.
         ! Psips are distributed equally among all excitation levels.
 
         ! In:
@@ -773,7 +773,7 @@ contains
         !    all_sym_sectors: create determinants in all symmetry sectors?
         ! In/Out:
         !    rng: random number generator.
-        !    qmc_spawn: spawn_t object containing list of occupied determinants.
+        !    spawn: spawn_t object containing list of occupied determinants.
 
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
@@ -791,7 +791,7 @@ contains
         integer, intent(in) :: ireplica
         logical, intent(in) :: all_sym_sectors
         type(dSFMT_t), intent(inout) :: rng
-        type(spawn_t), intent(inout) :: qmc_spawn
+        type(spawn_t), intent(inout) :: spawn
 
         integer :: occ_list(sys%nel), idet, ilevel
         integer(i0) :: f(sys%basis%string_len)
