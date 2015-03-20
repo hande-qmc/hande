@@ -1045,7 +1045,7 @@ contains
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
-        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global)
+        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, spawn)
         spawn%head = spawn%head_start
 
         if (present(determ)) call redistribute_semi_stoch_t(sys, reference, annihilation_flags, spawn, &

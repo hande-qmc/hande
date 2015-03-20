@@ -1,13 +1,14 @@
 module annihilation
 
 use const
-use fciqmc_data
+
+use fciqmc_data, only: real_factor
 
 implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, nspawn_events, determ)
+    subroutine direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, nspawn_events, determ)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -27,6 +28,7 @@ contains
         !    psip_list: walker_t object containing psip information after the
         !       death step for the current iteration; combined with the spawned
         !       particles on exit.
+        !    spawn: spawn_t object containing the set of spawned particles.
         !    determ (optional): Derived type containing information on the
         !       semi-stochastic part of the simulation.
         ! Out:
@@ -34,7 +36,7 @@ contains
         !       the processor.
 
         use parallel, only: nthreads, nprocs, iproc
-        use spawn_data, only: annihilate_wrapper_spawn_t, calc_events_spawn_t
+        use spawn_data, only: spawn_t, annihilate_wrapper_spawn_t, calc_events_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, walker_t, annihilation_flags_t
@@ -45,32 +47,33 @@ contains
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(walker_t), intent(inout) :: psip_list
+        type(spawn_t), intent(inout) :: spawn
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
 
         integer, parameter :: thread_id = 0
 
-        if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(qmc_spawn)
+        if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(spawn)
 
         ! If performing a semi-stochastic calculation then the annihilation
         ! process is slightly different, so call the correct routines depending
         ! on the situation.
         if (present(determ)) then
             if (determ%separate_annihilation) then
-                call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx)
+                call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx)
             else
-                call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx, determ%sizes(iproc))
+                call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx, determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, qmc_spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, determ_flags=determ%flags)
         else
-            call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx)
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, qmc_spawn)
+            call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         end if
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list)
+    subroutine direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -102,11 +105,11 @@ contains
         !    psip_list: walker_t object containing psip information after the
         !       death step for the current iteration; combined with the spawned
         !       particles on exit.
+        !    spawn_recv: spawn_t object containing spawned particles received
+        !        from other processors.
 
         use parallel, only: nthreads, nprocs, iproc
-        use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
-                              non_blocking_send
-        use sort, only: qsort
+        use spawn_data, only: annihilate_wrapper_non_blocking_spawn, spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, reference_t, walker_t, annihilation_flags_t
@@ -117,6 +120,7 @@ contains
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(dSFMT_t), intent(inout) :: rng
         type(walker_t), intent(inout) :: psip_list
+        type(spawn_t), intent(inout) :: spawn_recv
 
         integer, parameter :: thread_id = 0
 
@@ -125,13 +129,13 @@ contains
         ! (not including the current processor) from  the previous iteration.
         ! They have since been evolved so they can be annihilated with the main list.
         ! First annihilate within the received_list.
-        call annihilate_wrapper_non_blocking_spawn(received_list, qmc_in%initiator_approx)
+        call annihilate_wrapper_non_blocking_spawn(spawn_recv, qmc_in%initiator_approx)
         ! Annihilate with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, received_list)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv)
 
     end subroutine direct_annihilation_received_list
 
-    subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list, send_counts, &
+    subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, send_counts, &
                                                 req_data_s, non_block_spawn, nspawn_events)
 
         ! Annihilation algorithm for non-blocking communications.
@@ -152,6 +156,7 @@ contains
         !    psip_list: walker_t object containing psip information after the
         !       death step for the current iteration; combined with the spawned
         !       particles on exit.
+        !    spawn: spawn_t object containing spawned particles.
         !    send_counts: array of messages sizes. Will be allocated in
         !       calculate_displacements and sent in non_blocking_send.
         !    req_data_s: array of requests for non-blocking send of walkers.
@@ -168,6 +173,7 @@ contains
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, reference_t, walker_t, annihilation_flags_t
+        use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
@@ -175,6 +181,7 @@ contains
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(walker_t), intent(inout) :: psip_list
+        type(spawn_t), intent(inout) :: spawn
         integer, intent(inout) :: send_counts(0:)
         integer, intent(inout) :: req_data_s(0:)
         integer, intent(out) :: non_block_spawn(:)
@@ -184,19 +191,19 @@ contains
 
         ! Need to calculate how many walkers we are going to send to all other
         ! processors. Need to do it now as spawn%head changes meaning upon annihilation.
-        call calculate_displacements(qmc_spawn, send_counts, non_block_spawn)
+        call calculate_displacements(spawn, send_counts, non_block_spawn)
         if (present(nspawn_events)) nspawn_events = non_block_spawn(1)
 
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
         ! list which needs to be annihilated with the main list on this processor.
-        call annihilate_wrapper_non_blocking_spawn(qmc_spawn, qmc_in%initiator_approx, iproc)
+        call annihilate_wrapper_non_blocking_spawn(spawn, qmc_in%initiator_approx, iproc)
         ! Annihilate portion of spawned list with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, qmc_spawn, &
-                                          qmc_spawn%head_start(thread_id, iproc)+nthreads)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, &
+                                          spawn%head_start(thread_id, iproc)+nthreads)
         ! Communicate walkers spawned onto other processors during this
         ! evolution step to their new processors.
-        call non_blocking_send(qmc_spawn, send_counts, req_data_s)
+        call non_blocking_send(spawn, send_counts, req_data_s)
 
     end subroutine direct_annihilation_spawned_list
 
@@ -264,7 +271,7 @@ contains
 
             ! Remove low-population spawned walkers by stochastically
             ! rounding their population up to one or down to zero.
-            if (qmc_in%real_amplitudes) call round_low_population_spawns(rng, lower_bound)
+            if (qmc_in%real_amplitudes) call round_low_population_spawns(rng, spawn, lower_bound)
 
             ! Insert new walkers into main walker list.
             call insert_new_walkers(sys, psip_list, reference%H00, annihilation_flags, spawn, determ_flags, lower_bound)
@@ -380,6 +387,7 @@ contains
 
         use search, only: binary_search
         use qmc_data, only: walker_t
+        use spawn_data, only: spawn_t
 
         type(walker_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
@@ -563,7 +571,7 @@ contains
             ! zero. This is not done for deterministic states.
             if (real_amplitudes .and. (.not. determ_det)) then
                 old_pop = psip_list%walker_population(:,i)
-                call stochastic_round(rng, psip_list%walker_population(:,i), real_factor, qmc_spawn%ntypes)
+                call stochastic_round(rng, psip_list%walker_population(:,i), real_factor, psip_list%sampling_size)
                 associate(nparticles=>psip_list%nparticles)
                     nparticles = nparticles + real(abs(psip_list%walker_population(:,i)) - abs(old_pop),p)/real_factor
                 end associate
@@ -583,7 +591,7 @@ contains
 
     end subroutine remove_unoccupied_dets
 
-    subroutine round_low_population_spawns(rng, lower_bound)
+    subroutine round_low_population_spawns(rng, spawn, lower_bound)
 
         ! Loop over all spawned walkers. For each walker with a population of
         ! less than one, round it up to one with a probability equal to its
@@ -600,14 +608,17 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    spawn: spawn_t object containing the set of spawned particles.
         ! In (optional):
         !    lower_bound: starting point we annihiliate from in spawn_t object.
         !       Default: 1.
 
         use dSFMT_interface, only: dSFMT_t
+        use spawn_data, only: spawn_t
         use stoch_utils, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: spawn
         integer, optional, intent(in) :: lower_bound
 
         integer :: i, k, itype, nremoved, spawn_start
@@ -626,15 +637,15 @@ contains
         nremoved = 0
         ! [note] - It might be more efficient to combine this with insert_new_walkers.
         ! [note] - The number of particles to insert should be small by this point though...
-        do i = spawn_start, qmc_spawn%head(thread_id,0)
+        do i = spawn_start, spawn%head(thread_id,0)
 
             ! spawned_population holds the spawned population in its encoded
             ! form (see comments for psip_list%walker_population).
-            associate(spawned_population => qmc_spawn%sdata(qmc_spawn%bit_str_len+1:qmc_spawn%bit_str_len+qmc_spawn%ntypes, i))
+            associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i))
 
                 ! Stochastically round the walker populations up or down to
                 ! real_factor (which is equal to 1 in the decoded representation).
-                call stochastic_round(rng, spawned_population, real_factor_s, qmc_spawn%ntypes)
+                call stochastic_round(rng, spawned_population, real_factor_s, spawn%ntypes)
 
                 ! If all the amplitudes for this determinant were zeroed then we
                 ! don't want to add it to the main list.
@@ -644,14 +655,14 @@ contains
                     ! Shuffle this determinant down to fill in any newly opened
                     ! slots.
                     k = i - nremoved
-                    qmc_spawn%sdata(:,k) = qmc_spawn%sdata(:,i)
+                    spawn%sdata(:,k) = spawn%sdata(:,i)
                 end if
 
             end associate
 
         end do
 
-        qmc_spawn%head(thread_id,0) = qmc_spawn%head(thread_id,0) - nremoved
+        spawn%head(thread_id,0) = spawn%head(thread_id,0) - nremoved
 
     end subroutine round_low_population_spawns
 
@@ -677,6 +688,8 @@ contains
         use search, only: binary_search
         use system, only: sys_t
         use qmc_data, only: walker_t, annihilation_flags_t
+        use qmc_data, only: walker_t
+        use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
         type(walker_t), intent(inout) :: psip_list
@@ -788,6 +801,8 @@ contains
         use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr
         use system, only: sys_t
         use qmc_data, only: walker_t, annihilation_flags_t
+
+        use fciqmc_data, only: replica_tricks
 
         type(sys_t), intent(in) :: sys
         type(walker_t), intent(inout) :: psip_list

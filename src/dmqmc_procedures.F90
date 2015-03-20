@@ -495,7 +495,7 @@ contains
         end if
 
 
-        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global)
+        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, qmc_spawn)
 
         if (dmqmc_in%propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -506,7 +506,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(walker_global%walker_dets, real_factor, walker_global%walker_population, &
                                         walker_global%tot_walkers, walker_global%nparticles, qmc_spawn, nload_slots)
-            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global)
+            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, qmc_spawn)
         end if
 
     end subroutine create_initial_density_matrix

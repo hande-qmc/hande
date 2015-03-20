@@ -663,7 +663,7 @@ contains
                 if (nprocs > 1) call redistribute_particles(walker_global%walker_dets, real_factor, walker_global%walker_population, &
                                                              walker_global%tot_walkers, walker_global%nparticles, qmc_spawn, load_bal_in%nslots)
 
-                call direct_annihilation(sys, rng(0), qmc_in, reference, annihilation_flags, walker_global, nspawn_events)
+                call direct_annihilation(sys, rng(0), qmc_in, reference, annihilation_flags, walker_global, qmc_spawn, nspawn_events)
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 

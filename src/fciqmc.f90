@@ -232,14 +232,14 @@ contains
                 if (fciqmc_in%non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
                     call evolve_spawned_walkers(sys, qmc_in, reference, received_list, cdet, rng, ndeath, load_bal_in%nslots)
-                    call direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags, walker_global)
+                    call direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags, walker_global, received_list)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
                     if (par_info%load%needed) then
                         call redistribute_particles(walker_global%walker_dets, real_factor,  walker_global%walker_population, walker_global%tot_walkers, &
                                                     walker_global%nparticles, qmc_spawn, load_bal_in%nslots)
                         par_info%load%needed = .false.
                     end if
-                    call direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, walker_global, send_counts, &
+                    call direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, walker_global, qmc_spawn, send_counts, &
                                                           req_data_s, par_info%report_comm%nb_spawn, nspawn_events)
                     call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
                 else
@@ -255,9 +255,9 @@ contains
                     end if
 
                     if (semi_stochastic) then
-                        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, nspawn_events, determ)
+                        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, qmc_spawn, nspawn_events, determ)
                     else
-                        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, nspawn_events)
+                        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, qmc_spawn, nspawn_events)
                     end if
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
                 end if

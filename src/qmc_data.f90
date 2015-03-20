@@ -393,7 +393,7 @@ end type walker_t
 
 type spawned_walker_t
     ! Walker information: spawned list.
-    type(spawn_t) :: qmc_spawn
+    type(spawn_t) :: spawn
     ! Walker information: received list for non-blocking communications.
     type(spawn_t) :: received_list
     ! Rate of spawning.  This is a running total over MC cycles on each processor

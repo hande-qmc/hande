@@ -238,7 +238,7 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, nspawn_events)
+                call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, walker_global, qmc_spawn, nspawn_events)
 
             end do
 
