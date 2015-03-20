@@ -337,6 +337,42 @@ speed, etc.  Please see the testcode documentation for more details.
     Currently there are no QMC tests suitable for OpenMP parallelisation due to
     difficulties with making the scheduler behave deterministically without
     affecting performance of production simulations.
+    It is advised that you make sure to set the shell varialble OMP_NUM_THREADS
+    to 1 when running the test suite - otherwise these will all be marked SKIPPED.
+
+What if the tests fail?
+-----------------------
+A common cause for tests failing is that the configuration causes a different Markov
+Chain to be run, or part of the code has been disabled in your build.
+testcode should determine that some tests are inappropriate and skip them.
+To force testcode to skip some tests, see below.
+
+A second cause of failure is that some floating point values have rounded differently on
+different architectures.
+The tolerances used for the tests can also be adjusted as specified below:
+
+Skipping Tests
+--------------
+If there is a unique line printed out in the output for jobs which are to be skipped, 
+this can be used to tell testcode this, by modifying the skip_args line in the 
+test_suite/userconfig file.  See the testcode documentation for more details
+
+Adjusting Test Tolerances
+-------------------------
+The tolerance for an individual job can be modified as specified in the testcode documentation.
+As an example, to modify the tolerance because of the following failure:
+.. code-block::
+    dmqmc/np1/heisenberg_1d - replica.in: **FAILED**.
+    \sum\rho_{ij}M2{ji}
+        ERROR: absolute error 1.00e-06 greater than 1.00e-10. (Test: 17.378583.  Benchmark: 17.378584.)
+
+The follow section can be inserted into test_suite/jobconfig.  Note the backslash-quoting of the 
+backslashes, as the tolerance value is interpreted as a python tuple containing a python string.
+.. code-block::
+    #Job specific tolerances:                                                                 
+    [dmqmc/np1/heisenberg_1d/]                                                                
+    tolerance = (1e-5,1e-5,'\\sum\\rho_{ij}M2{ji}')          
+
 
 Analysing FCIQMC and iFCIQMC calculations
 -----------------------------------------
