@@ -154,6 +154,7 @@ contains
         call flu_register(lua_state, 'ueg', lua_ueg)
         call flu_register(lua_state, 'hubbard_k', lua_hubbard_k)
         call flu_register(lua_state, 'hubbard_real', lua_hubbard_real)
+        call flu_register(lua_state, 'heisenberg', lua_heisenberg)
 
         ! Calculations
         call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)
@@ -502,7 +503,7 @@ contains
         integer :: err
         character(10), parameter :: keys(8) = [character(10) :: 'nel', 'electrons', 'lattice', 'U', 't', 'ms', 'sym', 'ktwist']
 
-        lua_state = flu_copyptr(l)
+        lua_state = flu_copyptr(L)
         call get_sys_t_opt(lua_state, 1, sys, new)
 
         ! get a handle to the table...
@@ -573,7 +574,7 @@ contains
 
         character(10), parameter :: keys(7) = [character(10) :: 'nel', 'electrons', 'lattice', 'U', 't', 'ms', 'finite']
 
-        lua_state = flu_copyptr(l)
+        lua_state = flu_copyptr(L)
         call get_sys_t_opt(lua_state, 1, sys, new)
 
         ! get a handle to the table...
@@ -603,6 +604,73 @@ contains
         nreturn = 1
 
     end function lua_hubbard_real
+
+    function lua_heisenberg(L) result(nreturn) bind(c)
+
+        ! Create/modify a Heisenberg system.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    heisenberg(
+        !        [sys_t, ] -- optional.  New sys_t object is created if not passed.
+        !        {
+        !           lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
+        !           ms = Ms,
+        !           J = J,
+        !        }
+        !       )
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+
+        use system, only: sys_t, heisenberg, init_system
+        use basis, only: init_model_basis_fns
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+        type(flu_State) :: lua_state
+
+        type(sys_t), pointer :: sys
+        integer :: opts
+        logical :: new, new_basis
+        integer :: err
+
+        character(10), parameter :: keys(5) = [character(10) :: 'ms', 'J', 'lattice', 'magnetic_field', 'staggered_field']
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t_opt(lua_state, 1, sys, new)
+
+        ! get a handle to the table...
+        opts = aot_table_top(lua_state)
+
+        sys%system = heisenberg
+
+        call set_common_sys_options(lua_state, sys, opts)
+        call aot_get_val(sys%heisenberg%J, err, lua_state, opts, 'J')
+        call aot_get_val(sys%heisenberg%magnetic_field, err, lua_state, opts, 'magnetic_field')
+        call aot_get_val(sys%heisenberg%staggered_magnetic_field, err, lua_state, opts, 'staggered_field')
+
+        new_basis = aot_exists(lua_state, opts, 'lattice') .or. new
+
+        if (new_basis) then
+            call get_lattice(lua_state, sys, opts)
+            ! [todo] - deallocate existing basis info and start afresh.
+            call init_system(sys)
+            call init_model_basis_fns(sys)
+            call init_generic_system_basis(sys)
+        end if
+
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
+
+        call flu_pushlightuserdata(lua_state, c_loc(sys))
+        nreturn = 1
+
+    end function lua_heisenberg
 
     function lua_ueg(L) result(nreturn) bind(c)
 
