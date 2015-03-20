@@ -153,7 +153,7 @@ VCS_VERSION = $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 
 # working directory contains changes (or is not under version control) then
 # the _VCS_LOCAL_CHANGES flag is set.
 VCS_LOCAL_CHANGES = $(shell git diff --quiet --cached -- $(SRCDIRS) 2> /dev/null && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_VCS_LOCAL_CHANGES")
-CPPFLAGS = $(VCS_LOCAL_CHANGES) -D_VCS_VERSION='${VCS_VERSION}' -D_CONFIG='"$(CONFIG).($(OPT))"'
+CPPFLAGS = $(VCS_LOCAL_CHANGES) -D_VCS_VERSION='${VCS_VERSION}' -D_CONFIG='"$(CONFIG).($(OPT))"' %(defs)s
 
 #-----
 # Compiler configuration.
@@ -242,6 +242,9 @@ A configuration file does not need to be specified with the --ls option.''')
     parser.add_option('-o', '--out', default='make.inc',
             help='Set the output filename to which the makefile settings are '
                  'written.  Use -o - to write to stdout.  Default: %default.')
+    parser.add_option('-D', '--define', action='append',
+            help='Add e C preprocessor #define to be passed with -D to the compiler.'
+                 ' Can be used multiple times.')
 
     if len(my_args) == 0:
         if os.path.exists('./make.inc'):
@@ -354,7 +357,7 @@ def parse_config(config_file):
 
     return config
 
-def create_makefile(config_file, args, use_debug=False):
+def create_makefile(config_file, args, defs, use_debug=False):
     '''Returns the makefile using the options given in the config_file.
         args is the list of arguments which is re-encoded in the make.inc.
     '''
@@ -376,6 +379,10 @@ def create_makefile(config_file, args, use_debug=False):
     config.update(config=config_name)
 
     config["args"]=" ".join(pipes.quote(s) for s in args)
+    if defs:
+        config["defs"]=" -D".join([""]+defs)
+    else:
+        config["defs"]=""
     return (MAKEFILE_TEMPLATE % config)
 
 def main(args):
@@ -396,7 +403,7 @@ args: list of arguments.'''
             fout = sys.stdout
         else:
             fout = open(options.out, 'w')
-        fout.write(create_makefile(config_file, args, options.debug))
+        fout.write(create_makefile(config_file, args,options.define, options.debug))
         if fout != sys.stdout:
             fout.close()
 
