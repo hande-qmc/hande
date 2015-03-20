@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, qmc_in, reference, restart, ndets, dets, ref_det, psip_list)
+    subroutine init_simple_fciqmc(sys, qmc_in, reference, restart, ndets, dets, ref_det, psip_list, spawn)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -39,6 +39,8 @@ contains
         !    psip_list: walker_t object for storing psips sampling the Hilbert
         !       space and related information.  Allocated and initialised on
         !       output.
+        !    spawn: spawn_t object for holding the spawned psips.  Allocated on
+        !       output, with one slot for each determinant in thie Hilbert space.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -47,6 +49,7 @@ contains
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
         use qmc_data, only: qmc_in_t, reference_t, walker_t
+        use spawn_data, only: spawn_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
@@ -55,6 +58,7 @@ contains
         logical, intent(in) :: restart
         integer, intent(out) :: ref_det
         type(walker_t), intent(out) :: psip_list
+        type(spawn_t), intent(out) :: spawn
 
         integer, allocatable :: sym_space_size(:)
         integer :: ndets
@@ -109,11 +113,11 @@ contains
         ! Don't need to hold determinants, so can just set spawned_size to be 1.
         allocate(psip_list%walker_population(1,ndets), stat=ierr)
         call check_allocate('psip_list%walker_population',ndets,ierr)
-        allocate(qmc_spawn%sdata(1,ndets), stat=ierr)
-        call check_allocate('qmc_spawn%sdata',ndets,ierr)
+        allocate(spawn%sdata(1,ndets), stat=ierr)
+        call check_allocate('spawn%sdata',ndets,ierr)
         ! Zero these.
         psip_list%walker_population = 0_int_p
-        qmc_spawn%sdata = 0_int_s
+        spawn%sdata = 0_int_s
 
         allocate(shift(1), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
@@ -194,6 +198,7 @@ contains
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, walker_t
+        use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
@@ -212,8 +217,9 @@ contains
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
         type(walker_t) :: psip_list
+        type(spawn_t) :: spawn
 
-        call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det, psip_list)
+        call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det, psip_list, spawn)
 
         if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
@@ -235,7 +241,7 @@ contains
             do icycle = 1, qmc_in%ncycles
 
                 ! Zero spawning arrays.
-                qmc_spawn%sdata = 0_int_s
+                spawn%sdata = 0_int_s
 
                 ! Number of spawning attempts that will be made.
                 nattempts = int(nparticles)
@@ -263,13 +269,14 @@ contains
                     if (use_sparse_hamil) then
                         associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
                             do ipart = 1, abs(psip_list%walker_population(1,idet))
-                                call attempt_spawn(rng, qmc_in%tau, idet, psip_list%walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                                call attempt_spawn(rng, spawn, qmc_in%tau, idet, &
+                                                   psip_list%walker_population(1,idet), hamil_csr%mat(hstart:hend), &
                                                    hamil_csr%col_ind(hstart:hend))
                             end do
                         end associate
                     else
                         do ipart = 1, abs(psip_list%walker_population(1,idet))
-                            call attempt_spawn(rng, qmc_in%tau, idet, psip_list%walker_population(1,idet), hamil(:,idet))
+                            call attempt_spawn(rng, spawn, qmc_in%tau, idet, psip_list%walker_population(1,idet), hamil(:,idet))
                         end do
                     end if
 
@@ -279,9 +286,9 @@ contains
 
                 ! Find the spawning rate and add to the running
                 ! total.
-                rspawn = rspawn + real(sum(abs(qmc_spawn%sdata(1,:))))/nattempts
+                rspawn = rspawn + real(sum(abs(spawn%sdata(1,:))))/nattempts
 
-                call simple_annihilation(qmc_spawn, psip_list%walker_population)
+                call simple_annihilation(spawn, psip_list%walker_population)
 
             end do
 
@@ -326,7 +333,7 @@ contains
 
     end subroutine do_simple_fciqmc
 
-    subroutine attempt_spawn(rng, tau, idet, pop, hrow, det_indx)
+    subroutine attempt_spawn(rng, spawn, tau, idet, pop, hrow, det_indx)
 
         ! Simulate spawning part of FCIQMC algorithm.
         ! We attempt to spawn on all determinants connected to the current
@@ -336,14 +343,24 @@ contains
 
         ! In:
         !    tau: timestep being used.
-        !    iwalker: walker whose particles attempt to clone/die.
+        !    idet: determinant index from which we attempt to spawn.
+        !    pop: population on the parent determinant.
+        !    hrow: row of the Hamitlonian matrix i.e. H(:,idet).
+        !    det_indx (optional): list of indices for which hrow contains an
+        !       entry (i.e. if H(j,idet) is present, then an entry in det_indx
+        !       must be set to j.  Must be present if H doesn't contain an entry
+        !       for each determinant (ie is in sparse format).
         ! In/Out:
         !    rng: random number generator.
+        !    spawn: spawn_t object holding the newly spawned particles.
+
+        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: idet
         integer(int_p), intent(in) :: pop
         real(p), intent(in) :: tau, hrow(:)
+        type(spawn_t), intent(inout) :: spawn
         integer, intent(in), optional :: det_indx(:)
 
         integer :: j, jdet
@@ -381,17 +398,17 @@ contains
                 ! Flip child sign.
                 if (pop < 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) - nspawn
                 end if
             else
                 ! Same sign as parent.
                 if (pop > 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) - nspawn
                 end if
             end if
 
