@@ -521,7 +521,7 @@ contains
         ! arrays, ie to store thermal quantities, and to initalise reduced density matrix
         ! quantities if necessary.
         if (doing_calc(dmqmc_calc)) then
-            call init_dmqmc(sys, qmc_in, dmqmc_in)
+            call init_dmqmc(sys, qmc_in, dmqmc_in, walker_global%sampling_size)
         end if
 
         if (parent) then

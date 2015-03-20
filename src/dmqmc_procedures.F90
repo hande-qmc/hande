@@ -5,10 +5,11 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys, qmc_in, dmqmc_in)
+    subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas)
 
         ! In:
         !    sys: system being studied.
+        !    nreplicas: number of replicas being used.
         ! In/Out:
         !    qmc_in: Input options relating to QMC methods.
         !    dmqmc_in: Input options relating to DMQMC.
@@ -19,21 +20,22 @@ contains
         use fciqmc_data
         use system, only: sys_t
 
-        use qmc_data, only: qmc_in_t, walker_global
+        use qmc_data, only: qmc_in_t
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: nreplicas
         type(qmc_in_t), intent(inout) :: qmc_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: ierr, i, bit_position, bit_element
 
-        allocate(trace(walker_global%sampling_size), stat=ierr)
-        call check_allocate('trace',walker_global%sampling_size,ierr)
+        allocate(trace(nreplicas), stat=ierr)
+        call check_allocate('trace',size(trace),ierr)
         trace = 0.0_p
 
-        allocate(rdm_traces(walker_global%sampling_size,nrdms), stat=ierr)
-        call check_allocate('rdm_traces',walker_global%sampling_size*nrdms,ierr)
+        allocate(rdm_traces(nreplicas,nrdms), stat=ierr)
+        call check_allocate('rdm_traces',size(rdm_traces),ierr)
         rdm_traces = 0.0_p
 
         ! If calculating a correlaton function then set up the necessary bit
@@ -134,11 +136,11 @@ contains
         ! If doing a reduced density matrix calculation, allocate and define
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
-        if (doing_reduced_dm) call setup_rdm_arrays(sys, qmc_in)
+        if (doing_reduced_dm) call setup_rdm_arrays(sys, qmc_in, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, qmc_in)
+    subroutine setup_rdm_arrays(sys, qmc_in, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -148,8 +150,10 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: Input options relating to QMC methods.  Only needed for
+        !    qmc_in (optional): Input options relating to QMC methods.  Only needed for
         !         spawn_cutoff and if calc_inst_rdm is true.
+        !    nreplicas (optional): number of replicas being used.  Must be specified if
+        !         qmc_in is.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
@@ -163,11 +167,11 @@ contains
         use system, only: sys_t, heisenberg
         use utils, only: int_fmt
 
-        use qmc_data, only: qmc_in_t, walker_global
-
-        type(qmc_in_t), intent(in), optional :: qmc_in
+        use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in), optional :: qmc_in
+        integer, intent(in), optional :: nreplicas
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
         integer :: bit_position, bit_element, nbytes_int
@@ -218,7 +222,7 @@ contains
             ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
                 if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
-                size_spawned_rdm = (rdms(i)%string_len*2+walker_global%sampling_size)*int_s_length/8
+                size_spawned_rdm = (rdms(i)%string_len*2+nreplicas)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_length < 0) then
                     ! Given in MB.  Convert.
@@ -231,7 +235,7 @@ contains
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
-                call alloc_spawn_t(rdms(i)%string_len*2, walker_global%sampling_size, .false., &
+                call alloc_spawn_t(rdms(i)%string_len*2, nreplicas, .false., &
                                      spawned_length, qmc_in%spawn_cutoff, real_bit_shift, &
                                      27, use_mpi_barriers, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
@@ -670,7 +674,7 @@ contains
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
-        use qmc_data, only: qmc_in_t, walker_global
+        use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
         use dmqmc_data, only: dmqmc_in_t
@@ -688,7 +692,7 @@ contains
         integer :: idet, iattempt, nsuccess
         integer :: thread_id = 0, proc
         integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
-        real(p), target :: tmp_data(walker_global%sampling_size)
+        real(p), target :: tmp_data(1)
         real(p) :: pgen, hmatel, E_new, E_old, prob
         real(dp) :: r
         type(det_info_t) :: cdet
@@ -1059,7 +1063,7 @@ contains
 
     end subroutine decode_dm_bitstring
 
-    subroutine update_sampling_weights(rng, basis, qmc_in)
+    subroutine update_sampling_weights(rng, basis, qmc_in, psip_list)
 
         ! This routine updates the values of the weights used in importance
         ! sampling. It also removes or adds psips from the various excitation
@@ -1067,8 +1071,10 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    psip_list: main particle list.
         ! In:
         !    basis: information about the single-particle basis.
+        !    qmc_in: Input options relating to QMC methods.
 
         use annihilation, only: remove_unoccupied_dets
         use basis_types, only: basis_t
@@ -1076,15 +1082,16 @@ contains
         use excitations, only: get_excitation_level
         use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: weight_altering_factors, real_factor
-        use qmc_data, only: qmc_in_t, walker_global
+        use qmc_data, only: qmc_in_t, walker_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
         type(qmc_in_t), intent(in) :: qmc_in
+        type(walker_t), intent(inout) :: psip_list
 
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
-        real(p) :: new_population_target(walker_global%sampling_size)
-        integer(int_p) :: old_population(walker_global%sampling_size), new_population(walker_global%sampling_size)
+        real(p) :: new_population_target(psip_list%sampling_size)
+        integer(int_p) :: old_population(psip_list%sampling_size), new_population(psip_list%sampling_size)
         real(dp) :: r, pextra
 
         ! Alter weights for the next iteration.
@@ -1096,22 +1103,22 @@ contains
         ! correct importance sampled wavefunction for the new weights. The code
         ! below loops over every psips and destroys (or creates) it with the
         ! appropriate probability.
-        do idet = 1, walker_global%tot_walkers
+        do idet = 1, psip_list%tot_walkers
 
-            excit_level = get_excitation_level(walker_global%walker_dets(1:basis%string_len,idet), &
-                    walker_global%walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
+            excit_level = get_excitation_level(psip_list%walker_dets(1:basis%string_len,idet), &
+                    psip_list%walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
 
-            old_population = abs(walker_global%walker_population(:,idet))
+            old_population = abs(psip_list%walker_population(:,idet))
 
             ! The new population that we are aiming for. If this is not an
             ! integer then we will have to round up or down to an integer with
             ! an unbiased probability.
-            new_population_target = abs(real(walker_global%walker_population(:,idet),p))/weight_altering_factors(excit_level)
+            new_population_target = abs(real(psip_list%walker_population(:,idet),p))/weight_altering_factors(excit_level)
             new_population = int(new_population_target, int_p)
 
             ! If new_population_target is not an integer, round it up or down
             ! with an unbiased probability. Do this for each replica.
-            do ireplica = 1, walker_global%sampling_size
+            do ireplica = 1, psip_list%sampling_size
 
                 pextra = new_population_target(ireplica) - new_population(ireplica)
 
@@ -1121,19 +1128,19 @@ contains
                 end if
 
                 ! Finally, update the walker population.
-                walker_global%walker_population(ireplica,idet) = sign(new_population(ireplica), walker_global%walker_population(ireplica,idet))
+                psip_list%walker_population(ireplica,idet) = sign(new_population(ireplica), psip_list%walker_population(ireplica,idet))
 
             end do
 
             ! Update the total number of walkers.
-            walker_global%nparticles = walker_global%nparticles + real(new_population - old_population, p)/real_factor
+            psip_list%nparticles = psip_list%nparticles + real(new_population - old_population, p)/real_factor
 
         end do
 
         ! Call the annihilation routine to update the main walker list, as some
         ! sites will have become unoccupied and so need removing from the
         ! simulation.
-        call remove_unoccupied_dets(rng, walker_global, qmc_in%real_amplitudes)
+        call remove_unoccupied_dets(rng, psip_list, qmc_in%real_amplitudes)
 
     end subroutine update_sampling_weights
 

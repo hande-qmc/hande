@@ -234,7 +234,7 @@ contains
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
                     if (dmqmc_in%vary_weights .and. iteration <= dmqmc_in%finish_varying_weights) &
-                                                                    call update_sampling_weights(rng, sys%basis, qmc_in)
+                        call update_sampling_weights(rng, sys%basis, qmc_in, walker_global)
 
                 end do
 
