@@ -106,12 +106,12 @@ contains
         ! If the user has asked to use semi-stochastic from the first iteration
         ! then turn it on now. Otherwise, use an empty deterministic space.
         if (semi_stoch_iter == 0) then
-            call init_semi_stoch_t(determ, sys, reference, annihilation_flags, qmc_spawn, &
+            call init_semi_stoch_t(determ, sys, walker_global, reference, annihilation_flags, qmc_spawn, &
                                    semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
                                    semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
                                    load_bal_in%nslots)
         else
-            call init_semi_stoch_t(determ, sys, reference, annihilation_flags, qmc_spawn, empty_determ_space, 0, &
+            call init_semi_stoch_t(determ, sys, walker_global, reference, annihilation_flags, qmc_spawn, empty_determ_space, 0, &
                                    .false., .false., .false., load_bal_in%nslots)
         end if
 
@@ -149,7 +149,7 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter) then
                     call dealloc_semi_stoch_t(determ, .false.)
-                    call init_semi_stoch_t(determ, sys, reference, annihilation_flags, qmc_spawn, semi_stoch_in%determ_space_type, &
+                    call init_semi_stoch_t(determ, sys, walker_global, reference, annihilation_flags, qmc_spawn, semi_stoch_in%determ_space_type, &
                                            semi_stoch_in%target_size, semi_stoch_in%separate_annihil, &
                                            use_mpi_barriers, semi_stoch_in%write_determ_space, &
                                            load_bal_in%nslots)

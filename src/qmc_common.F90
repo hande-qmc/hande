@@ -541,7 +541,7 @@ contains
 
         use spawn_data, only: spawn_t
         use system, only: sys_t
-        use qmc_data, only: reference_t, semi_stoch_t, empty_determ_space, reuse_determ_space
+        use qmc_data, only: reference_t, semi_stoch_t, empty_determ_space, reuse_determ_space, walker_global
         use qmc_data, only: annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
@@ -562,7 +562,7 @@ contains
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, sys, reference, annihilation_flags, spawn, reuse_determ_space, &
+            call init_semi_stoch_t(determ, sys, walker_global, reference, annihilation_flags, spawn, reuse_determ_space, &
                                     0, sep_annihil_copy, .false., .true., nload_slots)
         end if
 
