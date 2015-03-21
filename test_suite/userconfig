@@ -6,7 +6,7 @@ extract_fn = ../tools/ pyhande.testcode.testcode_data
 extract_program = ../tools/tests/extract_test_data.py
 ignore_fields = time R_spawn '# states' '# spawn_events'
 skip_program = grep
-skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support\|Restarting with a different .*_SIZE is not supported.'
+skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support\|Restarting with a different .*_SIZE is not supported.\|Running with .* threads'
 
 [user]
 diff = vimdiff
