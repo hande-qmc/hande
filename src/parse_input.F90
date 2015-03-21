@@ -234,9 +234,9 @@ contains
                 call readi(nkinetic_cycles)
 
             case('REPLICA_TRICKS')
-                replica_tricks = .true.
+                dmqmc_in%replica_tricks = .true.
             case('PROPAGATE_TO_BETA')
-                propagate_to_beta = .true.
+                dmqmc_in%propagate_to_beta = .true.
             case('INIT_BETA')
                 call readf(dmqmc_in%init_beta)
             case('METROPOLIS_ATTEMPTS')
@@ -745,7 +745,7 @@ contains
         end if
         if (doing_calc(ct_fciqmc_calc)) qmc_in%ncycles = 1
 
-        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. replica_tricks)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%replica_tricks)) call stop_all(this,&
                     'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
         if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
                     'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
@@ -869,7 +869,7 @@ contains
         call mpi_bcast(semi_stoch_in%separate_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_in%full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_in%linked, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%real_lattice%finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -943,7 +943,7 @@ contains
         call mpi_bcast(dmqmc_in%all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)

@@ -302,7 +302,7 @@ contains
         use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: excit_dist
         use fciqmc_data, only: sampling_size, accumulated_probs_old, real_factor
-        use fciqmc_data, only: replica_tricks, energy_ind, walker_data, numerators
+        use fciqmc_data, only: energy_ind, walker_data, numerators
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
@@ -365,7 +365,7 @@ contains
                                                                       dmqmc_in%half_density_matrix)
 
         ! Update the contribution to the trace from other replicas
-        if (replica_tricks .and. excitation%nexcit == 0) then
+        if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) then
             trace(2) = trace(2) + unweighted_walker_pop(2)
         end if
 

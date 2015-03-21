@@ -15,7 +15,6 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
-        use calc, only: propagate_to_beta
         use checking, only: check_allocate
         use fciqmc_data
         use system, only: sys_t
@@ -60,7 +59,7 @@ contains
         ! When using an importance sampled initial density matrix we use then
         ! unsymmetrised version of Bloch's equation. This means we don't have
         ! to worry about these factors of 1/2.
-        if (.not. propagate_to_beta) then
+        if (.not. dmqmc_in%propagate_to_beta) then
             ! In DMQMC we want the spawning probabilities to have an extra factor
             ! of a half, because we spawn from two different ends with half
             ! probability. To avoid having to multiply by an extra variable in
@@ -389,7 +388,6 @@ contains
         !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
-        use calc, only: sym_in, propagate_to_beta
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
         use fciqmc_data, only: sampling_size, walker_dets, nparticles, real_factor, &
@@ -400,6 +398,7 @@ contains
         use qmc_common, only: redistribute_particles
         use qmc_data, only: qmc_in_t, reference_t, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t
+        use calc, only: sym_in
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -454,7 +453,7 @@ contains
                     call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica)
                 end if
             case(ueg, hub_k)
-                if (propagate_to_beta) then
+                if (dmqmc_in%propagate_to_beta) then
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
@@ -492,7 +491,7 @@ contains
 
         call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
 
-        if (propagate_to_beta) then
+        if (dmqmc_in%propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
             qmc_spawn%head = qmc_spawn%head_start
             ! During the metropolis steps determinants originally in the correct
