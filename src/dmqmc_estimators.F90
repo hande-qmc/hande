@@ -697,7 +697,7 @@ contains
         end if
 
         estimator_numerators(staggered_mag_ind) = estimator_numerators(staggered_mag_ind) + &
-            (real(total_sum)/real(sys%lattice%nsites**2))*walker_pop
+            (real(total_sum,p)/real(sys%lattice%nsites**2,p))*walker_pop
 
     end subroutine dmqmc_stag_mag_heisenberg
 
