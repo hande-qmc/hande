@@ -10,5 +10,5 @@ skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support\|Restar
 
 [user]
 diff = vimdiff
-benchmark = b93ec9a
+benchmark = cc00373 b93ec9a
 
