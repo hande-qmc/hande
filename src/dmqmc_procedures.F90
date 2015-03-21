@@ -959,6 +959,7 @@ contains
 
     end subroutine set_level_probabilities
 
+    ! [todo]
     subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type)
 
         ! Create a psip on a diagonal element of the density matrix by adding
@@ -978,10 +979,12 @@ contains
         !        to sample.
 
         use hashing
-        use fciqmc_data, only: qmc_spawn
         use parallel
         use errors, only: stop_all
+        use spawn_data, only: spawn_t
         use spawning, only: add_spawned_particle
+
+        use fciqmc_data, only: qmc_spawn
 
         integer, intent(in) :: string_len, tensor_label_len
         integer(i0), intent(in) :: f(string_len)

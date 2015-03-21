@@ -97,7 +97,7 @@ end type dbin_t
 
 contains
 
-    subroutine do_load_balancing(psip_list, real_factor, parallel_info, load_bal_in)
+    subroutine do_load_balancing(psip_list, spawn, real_factor, parallel_info, load_bal_in)
 
         ! Main subroutine in module, carries out load balancing as follows:
         ! 1. If doing load balancing then:
@@ -118,16 +118,17 @@ contains
         !       parallel calculation see calc.f90 for description.
         !    psip_list: psip locations and populations.  On output
         !       nparticles_proc (number of particles on each processor) is updated.
+        !    spawn: spawn_t object which defines processor locations of particles.
 
         use parallel
         use spawn_data, only: spawn_t
-        use fciqmc_data, only: qmc_spawn
         use ranking, only: insertion_rank
         use calc, only: parallel_t
         use checking, only: check_allocate, check_deallocate
         use qmc_data, only: load_bal_in_t, walker_t
 
         type(walker_t), intent(inout) :: psip_list
+        type(spawn_t), intent(in) :: spawn
         integer(int_p), intent(in) :: real_factor
         type(parallel_t), intent(inout) :: parallel_info
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -146,7 +147,7 @@ contains
         associate(lb=>parallel_info%load)
 
         ! Find slot populations.
-        call initialise_slot_pop(psip_list, lb%proc_map, load_bal_in%nslots, qmc_spawn, real_factor, slot_pop)
+        call initialise_slot_pop(psip_list, lb%proc_map, load_bal_in%nslots, spawn, real_factor, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)

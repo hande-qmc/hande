@@ -120,7 +120,7 @@ contains
                 do icycle = 1, qmc_in%ncycles
 
                     call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
-                                       nattempts, ndeath)
+                                       qmc_spawn, nattempts, ndeath)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 

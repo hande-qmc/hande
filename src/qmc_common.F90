@@ -691,7 +691,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, nattempts, &
+    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, spawn, nattempts, &
                             ndeath, min_attempts, doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
@@ -707,6 +707,8 @@ contains
         !    annihilation_flags: calculation specific annihilation flags.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
+        ! In/Out:
+        !    spawn: spawn_t object for holding spawned particles.  Reset on exit.
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
         !        processor) this cycle.
@@ -727,12 +729,14 @@ contains
         use load_balancing, only: do_load_balancing
         use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t, walker_global, annihilation_flags_t
         use system, only: sys_t
+        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
+        type(spawn_t), intent(inout) :: spawn
         type(load_bal_in_t), intent(in) :: load_bal_in
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
@@ -749,7 +753,7 @@ contains
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
-        qmc_spawn%head = qmc_spawn%head_start
+        spawn%head = spawn%head_start
 
         ! Reset death counter
         ndeath = 0_int_p
@@ -776,10 +780,10 @@ contains
 
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
-                call do_load_balancing(walker_global, real_factor, par_info, load_bal_in)
+                call do_load_balancing(walker_global, spawn, real_factor, par_info, load_bal_in)
                 call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_global%walker_dets, real_factor, determ, &
                                                       walker_global%walker_population, walker_global%tot_walkers, walker_global%nparticles, &
-                                                      qmc_spawn, load_bal_in%nslots, annihilation_flags)
+                                                      spawn, load_bal_in%nslots, annihilation_flags)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.

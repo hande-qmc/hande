@@ -157,7 +157,7 @@ contains
                 end if
 
                 call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
-                                   nattempts, ndeath, doing_lb=fciqmc_in%doing_load_balancing, &
+                                   qmc_spawn, nattempts, ndeath, doing_lb=fciqmc_in%doing_load_balancing, &
                                    nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
                 ideterm = 0
 
