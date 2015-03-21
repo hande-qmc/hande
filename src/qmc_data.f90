@@ -442,6 +442,13 @@ type qmc_state_t
     type(parallel_t) :: par_info
 end type qmc_state_t
 
+type annihilation_flags_t
+    ! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
+    ! Currently only implemented for DMQMC.
+    logical :: replica_tricks = .false.
+    ! Propagate a trial density matrix to a specific temeperature.
+    logical :: propagate_to_beta = .false.
+end type annihilation_flags_t
 ! --- GLOBAL STATE (TEMPORARY) ---
 
 ! Restart data.
@@ -455,6 +462,7 @@ type(semi_stoch_in_t) :: semi_stoch_in_global
 type(ccmc_in_t) :: ccmc_in_global
 type(restart_in_t) :: restart_in_global
 type(load_bal_in_t) :: load_bal_in_global
+type(annihilation_flags_t) :: annihilation_flags
 
 ! [todo] - move to sys_heisenberg_t
 ! When using the Neel singlet trial wavefunction, it is convenient

@@ -7,7 +7,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, qmc_in, reference, nspawn_events, determ)
+    subroutine direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, nspawn_events, determ)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -21,6 +21,7 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    rng: random number generator.
         !    determ (optional): Derived type containing information on the
@@ -33,12 +34,13 @@ contains
         use spawn_data, only: annihilate_wrapper_spawn_t, calc_events_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t
+        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
 
@@ -56,15 +58,16 @@ contains
                 call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx, determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, qmc_spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, qmc_spawn, &
+                                              determ_flags=determ%flags)
         else
             call annihilate_wrapper_spawn_t(qmc_spawn, qmc_in%initiator_approx)
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, qmc_spawn)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, qmc_spawn)
         end if
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_received_list(sys, rng, qmc_in, reference)
+    subroutine direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -90,6 +93,7 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    rng: random number generator.
 
@@ -99,11 +103,12 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(dSFMT_t), intent(inout) :: rng
 
         integer, parameter :: thread_id = 0
@@ -115,12 +120,12 @@ contains
         ! First annihilate within the received_list.
         call annihilate_wrapper_non_blocking_spawn(received_list, qmc_in%initiator_approx)
         ! Annihilate with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, received_list)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, received_list)
 
     end subroutine direct_annihilation_received_list
 
-    subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, reference, send_counts, req_data_s, non_block_spawn,&
-                                                nspawn_events)
+    subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, send_counts, &
+                                                req_data_s, non_block_spawn, nspawn_events)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -134,6 +139,7 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    rng: random number generator.
         !    send_counts: array of messages sizes. Will be allocated in
@@ -151,12 +157,13 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer, intent(inout) :: send_counts(0:)
         integer, intent(inout) :: req_data_s(0:)
         integer, intent(out) :: non_block_spawn(:)
@@ -174,14 +181,16 @@ contains
         ! list which needs to be annihilated with the main list on this processor.
         call annihilate_wrapper_non_blocking_spawn(qmc_spawn, qmc_in%initiator_approx, iproc)
         ! Annihilate portion of spawned list with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, qmc_spawn, qmc_spawn%head_start(thread_id, iproc)+nthreads)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, qmc_spawn, &
+                                          qmc_spawn%head_start(thread_id, iproc)+nthreads)
         ! Communicate walkers spawned onto other processors during this
         ! evolution step to their new processors.
         call non_blocking_send(qmc_spawn, send_counts, req_data_s)
 
     end subroutine direct_annihilation_spawned_list
 
-    subroutine annihilate_main_list_wrapper(sys, rng, qmc_in, reference, spawn, lower_bound, determ_flags)
+    subroutine annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, spawn, &
+                                            lower_bound, determ_flags)
 
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process during non-blocking
@@ -191,6 +200,7 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object containing spawned particles. For non-blocking
@@ -204,12 +214,13 @@ contains
         use system, only: sys_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer, optional, intent(in) :: lower_bound
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
@@ -241,7 +252,7 @@ contains
             if (qmc_in%real_amplitudes) call round_low_population_spawns(rng, lower_bound)
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers(sys, reference%H00, spawn, determ_flags, lower_bound)
+            call insert_new_walkers(sys, reference%H00, annihilation_flags, spawn, determ_flags, lower_bound)
 
         else
 
@@ -602,7 +613,7 @@ contains
 
     end subroutine round_low_population_spawns
 
-    subroutine insert_new_walkers(sys, H00, spawn, determ_flags, lower_bound)
+    subroutine insert_new_walkers(sys, H00, annihilation_flags, spawn, determ_flags, lower_bound)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -611,18 +622,21 @@ contains
         ! In:
         !    sys: system being studied.
         !    H00: energy of reference determinant
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    spawn: spawn_t object containing list of spawned particles.
         ! In (optional):
         !    determ_flags: A list of flags specifying whether determinants in
         !        walker_dets are deterministic or not.
         !    lower_bound: starting point we annihiliate from in spawn_t object.
- 
+
         use search, only: binary_search
         use system, only: sys_t
+        use qmc_data, only: annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: H00
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
         integer, intent(in), optional :: lower_bound
@@ -682,7 +696,8 @@ contains
             ! The encoded spawned walker sign.
             associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i), &
                     tbl=>sys%basis%tensor_label_len)
-                call insert_new_walker(sys, k, int(spawn%sdata(:tbl,i), i0), int(spawned_population, int_p), H00)
+                call insert_new_walker(sys, annihilation_flags, k, int(spawn%sdata(:tbl,i), i0), &
+                                       int(spawned_population, int_p), H00)
                 ! Extract the real sign from the encoded sign.
                 real_population = real(spawned_population,p)/real_factor
                 nparticles = nparticles + abs(real_population)
@@ -702,7 +717,7 @@ contains
 
     end subroutine insert_new_walkers
 
-    subroutine insert_new_walker(sys, pos, det, population, H00)
+    subroutine insert_new_walker(sys, annihilation_flags,  pos, det, population, H00)
 
         ! Insert a new determinant, det, at position pos in walker_dets. Also
         ! insert a new population at position pos in walker_population and
@@ -711,7 +726,8 @@ contains
         ! overwritten.
 
         ! In:
-        !    sys: system being studied.
+        !    sys: system being studiede
+        !    annihilation_flags: calculation specific annihilation flags.
         !    pos: The position in the walker arrays in which to insert the new
         !        data.
         !    det: The determinant to insert into walker_dets.
@@ -719,13 +735,15 @@ contains
         !    H00: energy of the reference determinant.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
-        use calc, only: trial_function, neel_singlet, propagate_to_beta
+        use calc, only: trial_function, neel_singlet
         use heisenberg_estimators, only: neel_singlet_data
         use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr
         use system, only: sys_t
+        use qmc_data, only: annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer, intent(in) :: pos
         integer(i0), intent(in) :: det(sys%basis%tensor_label_len)
         integer(int_p), intent(in) :: population(sampling_size)
@@ -742,7 +760,7 @@ contains
             ! Set walker_data(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
             walker_data(2,pos) = op0_ptr(sys, det) - O00
         else if (doing_calc(dmqmc_calc)) then
-            if (propagate_to_beta) then
+            if (annihilation_flags%propagate_to_beta) then
                 ! Store H^T_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj),
                 ! where H^T_ii is the "trial" Hamiltonian.
                 associate(bl=>sys%basis%string_len)
@@ -753,7 +771,7 @@ contains
                 associate(bl=>sys%basis%string_len)
                     walker_data(1,pos) = (walker_data(1,pos) + sc0_ptr(sys, walker_dets((bl+1):(2*bl),pos)) - H00)/2
                 end associate
-                if (replica_tricks) then
+                if (annihilation_flags%replica_tricks) then
                     walker_data(2:sampling_size,pos) = walker_data(1,pos)
                 end if
             end if

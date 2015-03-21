@@ -11,7 +11,7 @@ implicit none
 contains
 
 
-    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, matel)
+    subroutine do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, annihilation_flags, matel)
 
         ! In:
         !    sys: system being studied
@@ -21,6 +21,7 @@ contains
         !       to permutations).  Either U (Bloch orbitals) or
         !       t (atomic/real-space orbitals).
         !    load_bal_in: input options for load balancing.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    qmc_in: Input options relating to QMC methods.
 
@@ -39,7 +40,7 @@ contains
         use utils, only: rng_init_info
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
 
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -47,6 +48,7 @@ contains
         type(reference_t), intent(in) :: reference
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space
         type(load_bal_in_t), intent(in) :: load_bal_in
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
 
         integer(int_p) :: nspawned, ndeath
         integer :: nspawn_events
@@ -110,7 +112,8 @@ contains
         do ireport = 1, qmc_in%nreport
 
             call init_report_loop(bloom_stats)
-            call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath)
+            call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
+                               nattempts, ndeath)
 
             ! Loop over determinants in the walker list.
             do idet = 1, tot_walkers
@@ -228,7 +231,7 @@ contains
                                     call create_spawned_particle_ct(sys%basis, cdet, connection, nspawned, spawned_pop, time)
 
                                 end if
-                            
+
                             end associate
 
                         end do
@@ -245,7 +248,7 @@ contains
 
             end do
 
-            call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events)
+            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, nspawn_events)
 
             call end_mc_cycle(nspawn_events, ndeath, nattempts)
 

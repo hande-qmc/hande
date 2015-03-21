@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, reference, load_bal_in)
+    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, reference, load_bal_in, annihilation_flags)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -18,6 +18,7 @@ contains
         !    restart_in: input options for HDF5 restart files.
         !    reference: reference determinant.
         !    load_bal_in: input options for load balancing.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    sys: system being studied.  NOTE: if modified inside a procedure,
         !         it should be returned in its original (ie unmodified state)
@@ -41,7 +42,7 @@ contains
         use calc, only: propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(inout) :: sys
@@ -49,6 +50,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica
@@ -104,8 +106,8 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, init_tot_nparticles, &
-                                               tot_nparticles, load_bal_in%nslots)
+            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags, &
+                                               init_tot_nparticles, tot_nparticles, load_bal_in%nslots)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
@@ -118,7 +120,8 @@ contains
 
                 do icycle = 1, qmc_in%ncycles
 
-                    call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath)
+                    call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
+                                       nattempts, ndeath)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
@@ -223,7 +226,7 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events)
+                    call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
 

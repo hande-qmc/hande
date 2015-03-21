@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine do_hfs_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in)
+    subroutine do_hfs_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, annihilation_flags)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -36,6 +36,7 @@ contains
         !    restart_in: input options for HDF5 restart files.
         !    reference: current reference determinant.
         !    load_bal_in: input options for load balancing.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -55,13 +56,14 @@ contains
         use proc_pointers
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag
         integer(int_64) :: nattempts
@@ -236,7 +238,7 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events)
+                call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, nspawn_events)
 
             end do
 

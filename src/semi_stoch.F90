@@ -99,8 +99,8 @@ implicit none
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, reference, spawn, space_type, target_size, separate_annihilation, &
-                                 mpi_barriers, write_determ_in, nload_slots)
+    subroutine init_semi_stoch_t(determ, sys, reference, annihilation_flags, spawn, space_type, &
+                                 target_size, separate_annihilation, mpi_barriers, write_determ_in, nload_slots)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -111,6 +111,7 @@ contains
         ! In:
         !    sys: system being studied
         !    reference: current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    space_type: Integer parameter specifying which type of
         !        deterministic space to use.
@@ -129,7 +130,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: walker_length
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, &
-                            reuse_determ_space
+                            reuse_determ_space, annihilation_flags_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -140,6 +141,7 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: space_type
         integer, intent(in) :: target_size
@@ -289,7 +291,7 @@ contains
         ! All deterministic states on this processor are always stored in
         ! walker_dets, even if they have a population of zero, so they are
         ! added in here.
-        call add_determ_dets_to_walker_dets(determ, sys, reference, dets_this_proc)
+        call add_determ_dets_to_walker_dets(determ, sys, reference, annihilation_flags, dets_this_proc)
 
         ! We don't need this temporary space anymore. All deterministic states
         ! from all processors are stored in determ%dets.
@@ -557,7 +559,7 @@ contains
 
     end subroutine create_determ_hamil
 
-    subroutine add_determ_dets_to_walker_dets(determ, sys, reference, dets_this_proc)
+    subroutine add_determ_dets_to_walker_dets(determ, sys, reference, annihilation_flags, dets_this_proc)
 
         ! Also set the deterministic flags of any deterministic states already
         ! in walker_dets, and add deterministic data to walker_populations and
@@ -569,6 +571,7 @@ contains
         ! In:
         !    sys: system being studied
         !    reference: current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
         !    dets_this_proc: The deterministic states belonging to this
         !        processor.
 
@@ -578,11 +581,12 @@ contains
         use parallel, only: iproc
         use search, only: binary_search
         use system, only: sys_t
-        use qmc_data, only: reference_t
+        use qmc_data, only: reference_t, annihilation_flags_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(i0), intent(in) :: dets_this_proc(:,:)
 
         integer :: i, istart, iend, pos
@@ -605,7 +609,7 @@ contains
                 walker_data(:,pos+1:tot_walkers+1) = walker_data(:,pos:tot_walkers)
 
                 ! Insert a determinant with population zero into the walker arrays.
-                call insert_new_walker(sys, pos, dets_this_proc(:,i), zero_population, reference%H00)
+                call insert_new_walker(sys, annihilation_flags, pos, dets_this_proc(:,i), zero_population, reference%H00)
 
                 tot_walkers = tot_walkers + 1
             end if

@@ -123,7 +123,8 @@ contains
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
         use qmc_data, only: qmc_in_global, semi_stoch_in_global, fciqmc_in_global, &
-                            ccmc_in_global, restart_in_global, load_bal_in_global
+                            ccmc_in_global, restart_in_global, load_bal_in_global, &
+                            annihilation_flags
         use qmc_data, only: reference_t
         use dmqmc_data, only: dmqmc_in_global
         use simple_fciqmc, only: do_simple_fciqmc
@@ -147,7 +148,7 @@ contains
                 call do_simple_fciqmc(sys, qmc_in_global, restart_in_global, reference)
             else
                 call do_qmc(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, semi_stoch_in_global, &
-                            restart_in_global, reference, load_bal_in_global, dmqmc_in_global)
+                            restart_in_global, reference, load_bal_in_global, dmqmc_in_global, annihilation_flags)
             end if
         end if
 

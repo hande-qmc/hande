@@ -519,7 +519,7 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, reference, spawn, determ, nload_slots)
+    subroutine redistribute_semi_stoch_t(sys, reference, annihilation_flags, spawn, determ, nload_slots)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
@@ -528,6 +528,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    annihilation_flags: calculation specific annihilation flags.
         !    spawn: spawn_t object, required for determining the new processes
         !        labels for deterministic states.
         !    nload_slots: number of load balancing slots (per processor).
@@ -540,8 +541,10 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_data, only: reference_t, semi_stoch_t, empty_determ_space, reuse_determ_space
+        use qmc_data, only: annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(reference_t), intent(in) :: reference
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
@@ -558,8 +561,8 @@ contains
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, sys, reference, spawn, reuse_determ_space, 0, sep_annihil_copy, &
-                                   .false., .true., nload_slots)
+            call init_semi_stoch_t(determ, sys, reference, annihilation_flags, spawn, reuse_determ_space, &
+                                    0, sep_annihil_copy, .false., .true., nload_slots)
         end if
 
     end subroutine redistribute_semi_stoch_t
@@ -687,8 +690,8 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath, min_attempts, &
-                             doing_lb, nb_comm, determ)
+    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, nattempts, &
+                            ndeath, min_attempts, doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -700,6 +703,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
         !    load_bal_in: input options for load balancing.
+        !    annihilation_flags: calculation specific annihilation flags.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! Out:
@@ -720,13 +724,14 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t, annihilation_flags_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(load_bal_in_t), intent(in) :: load_bal_in
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
@@ -772,7 +777,8 @@ contains
             if (doing_lb .and. par_info%load%needed) then
                 call do_load_balancing(real_factor, par_info, load_bal_in)
                 call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, determ, &
-                                                      walker_population, tot_walkers, nparticles, qmc_spawn, load_bal_in%nslots)
+                                                      walker_population, tot_walkers, nparticles, qmc_spawn, &
+                                                      load_bal_in%nslots, annihilation_flags)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.
@@ -980,7 +986,7 @@ contains
 
     subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_dets, real_factor, &
                                                 determ, walker_populations, tot_walkers, &
-                                                nparticles, spawn, nload_slots)
+                                                nparticles, spawn, nload_slots, annihilation_flags)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -999,6 +1005,7 @@ contains
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         !    nload_slots: number of load balancing slots (per processor).
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    rng: random number generator.
         !    determ (optional): The deterministic space being used, as required for
@@ -1014,7 +1021,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t
+        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, annihilation_flags_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 
@@ -1030,16 +1037,18 @@ contains
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
         integer, intent(in) :: nload_slots
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
 
         call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, &
                                     nparticles, spawn, nload_slots)
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
-        call direct_annihilation(sys, rng, qmc_in, reference)
+        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
         spawn%head = spawn%head_start
 
-        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, spawn, determ, nload_slots)
+        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, annihilation_flags, spawn, &
+                                                            determ, nload_slots)
 
     end subroutine redistribute_load_balancing_dets
 
