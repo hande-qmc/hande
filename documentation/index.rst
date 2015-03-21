@@ -9,6 +9,7 @@ HANDE QMC
 .. toctree::
    :maxdepth: 2
 
+   users_guide/quickstart
    users_guide/manual
    developers_guide/developers_guide
 

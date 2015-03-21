@@ -1,6 +1,9 @@
 HANDE QMC: High Accuracy N-DEterminant Quantum Monte Carlo.
 ===========================================================
 
+A Quickstart guide is available in documentation/users_guide/quickstart.rst which can be
+read in plain text or compiled as below.
+
 User-level documentation detailing the HANDE program is in the `documentation/users_guide`
 directory, written in reStructuredText (http://docutils.sourceforge.net/rst.html) and can
 be compiled into HTML/LaTeX/PDF/etc using sphinx (http://sphinx.pocoo.org).
