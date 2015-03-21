@@ -818,7 +818,7 @@ contains
 
         call aot_get_val(ncycles, err, lua_state, opts, 'ncycles')
         if (err /= 0) call stop_all('lua_hilbert_space', 'Number of cycles not supplied.')
-        call aot_get_val(truncation_level, err, lua_state, opts, 'ex_level', -1)
+        call aot_get_val(truncation_level, err, lua_state, opts, 'ex_level', default=-1)
         call aot_get_val(ref_det, err_arr, sys%nel, lua_state, opts, key='reference')
         have_seed = aot_exists(lua_state, opts, 'rng_seed')
         call aot_get_val(rng_seed, err, lua_state, opts, 'rng_seed')

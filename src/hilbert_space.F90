@@ -11,7 +11,7 @@ public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space, ge
 
 contains
 
-    subroutine estimate_hilbert_space(sys, truncation_level, ncycles, occ_list0, rng_seed)
+    subroutine estimate_hilbert_space(sys, ex_level, ncycles, occ_list0, rng_seed)
 
         ! Based on Appendix A in George Booth's thesis.
 
@@ -29,9 +29,18 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
-        !    reference: reference determinant.
         ! In:
-        !    seed: seed for the dSFMT random number generator.
+        !    ex_level: maximum excitation level relative to the reference
+        !       determinant to include in the Hilbert space.  If negative or
+        !       greater than the number of electrons, the entire Hilbert space
+        !       is considered.
+        !    ncycles: number of cycles i.e. number of random determinants to
+        !       generate.
+        !    occ_list0: reference determinant.  If not allocated, then a best
+        !       guess is generated based upon the spin and symmetry quantum
+        !       numbers.
+        !    rng_seed (optional): seed to initialise the random number generator.
+        !       Default: seed based upon the hash of the time and calculation UUID.
 
         use calc, only: GLOBAL_META, gen_seed, sym_in, ms_in
 
@@ -48,11 +57,11 @@ contains
         use utils, only: binom_r, rng_init_info
 
         type(sys_t), intent(inout) :: sys
-        integer, intent(in) :: truncation_level, ncycles
+        integer, intent(in) :: ex_level, ncycles
         integer, intent(inout), allocatable :: occ_list0(:)
         integer, intent(in), optional :: rng_seed
 
-        integer :: seed, icycle, i, ierr, a
+        integer :: truncation_level, seed, icycle, i, ierr, a
         integer :: ref_sym, det_sym
         integer(i0) :: f(sys%basis%string_len), f0(sys%basis%string_len)
         integer :: occ_list(sys%nel)
@@ -69,7 +78,13 @@ contains
 
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
 
-        truncate_space = truncation_level >= 0 .and. truncation_level <= sys%nel
+        truncate_space = ex_level >= 0 .and. ex_level <= sys%nel
+        if (truncate_space) then
+            truncation_level = ex_level
+        else
+            truncation_level = sys%nel
+        end if
+
         if (present(rng_seed)) then
             seed = rng_seed
         else
