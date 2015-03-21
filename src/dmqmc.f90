@@ -39,7 +39,6 @@ contains
         use qmc_common
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
-        use calc, only: propagate_to_beta
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
@@ -187,7 +186,7 @@ contains
                                     end if
 
                                     ! Now attempt to spawn from the second end.
-                                    if (.not. propagate_to_beta) then
+                                    if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet2, &
                                                          walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)

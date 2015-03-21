@@ -179,8 +179,8 @@ contains
         nwalker_int_p = sampling_size
         nwalker_real = sampling_size + info_size
 
-        annihilation_flags%propagate_to_beta = propagate_to_beta
-        annihilation_flags%replica_tricks = replica_tricks
+        annihilation_flags%propagate_to_beta = dmqmc_in%propagate_to_beta
+        annihilation_flags%replica_tricks = dmqmc_in%replica_tricks
 
         ! Thus the number of bits occupied by each determinant in the main
         ! walker list is given by string_len*i0_length+nwalker_int*32+
@@ -304,7 +304,7 @@ contains
         ! When using the propagate_to_beta option the number of iterations in imaginary
         ! time we want to do depends on what value of beta we are seeking. It's
         ! annoying to have to modify this in the input file, so just do it here.
-        if (propagate_to_beta) qmc_in%nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
+        if (dmqmc_in%propagate_to_beta) qmc_in%nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
 
         ! --- Initial walker distributions ---
         ! Note occ_list could be set and allocated in the input.
@@ -830,7 +830,7 @@ contains
 
             ! Expectation values.
             if (doing_dmqmc_calc(dmqmc_energy)) then
-                if (propagate_to_beta) then
+                if (dmqmc_in%propagate_to_beta) then
                     update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace_propagate
                 else
                     update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
@@ -845,7 +845,7 @@ contains
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
-                if (propagate_to_beta) then
+                if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%free_electron_trial) then
                         trial_dm_ptr => kinetic_energy_ueg
                     else
@@ -853,7 +853,7 @@ contains
                     end if
                 end if
             case(hub_k)
-                if (propagate_to_beta) then
+                if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%free_electron_trial) then
                         trial_dm_ptr => kinetic0_hub_k
                     else
