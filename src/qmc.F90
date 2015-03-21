@@ -161,7 +161,7 @@ contains
         sampling_size = 1
         if (doing_calc(hfs_fciqmc_calc)) then
             sampling_size = sampling_size + 1
-        else if (replica_tricks) then
+        else if (dmqmc_in%replica_tricks) then
             sampling_size = sampling_size + 1
         end if
 
