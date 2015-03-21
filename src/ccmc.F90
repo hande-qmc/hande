@@ -224,7 +224,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, annihilation_flags)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -239,6 +239,7 @@ contains
         !    restart_in: input options for HDF5 restart files.
         !    reference: current reference determinant.
         !    load_bal_in: input options for load balancing.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -268,7 +269,7 @@ contains
         use system, only: sys_t
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
-        use qmc_data, only: load_bal_in_t
+        use qmc_data, only: load_bal_in_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -277,6 +278,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
@@ -448,7 +450,7 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(rng(0), sys, qmc_in, reference, load_bal_in, real_factor, &
+                call init_mc_cycle(rng(0), sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
                                    nattempts, ndeath, nint(D0_normalisation,int_64))
                 nparticles_change = 0.0_p
 
@@ -663,7 +665,7 @@ contains
                 if (nprocs > 1) call redistribute_particles(walker_dets, real_factor, walker_population, &
                                                              tot_walkers, nparticles, qmc_spawn, load_bal_in%nslots)
 
-                call direct_annihilation(sys, rng(0), qmc_in, reference, nspawn_events)
+                call direct_annihilation(sys, rng(0), qmc_in, reference, annihilation_flags, nspawn_events)
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 

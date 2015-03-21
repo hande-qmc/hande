@@ -364,8 +364,8 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, target_nparticles_tot, &
-                                             nparticles_tot, nload_slots)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags,&
+                                             target_nparticles_tot, nparticles_tot, nload_slots)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -380,6 +380,7 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
         !    reference: current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
         !    nload_slots: number of load balancing slots (per processor).
@@ -397,7 +398,7 @@ contains
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t
 
         type(dSFMT_t), intent(inout) :: rng
@@ -405,6 +406,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(out) :: nparticles_tot(sampling_size)
         integer, intent(in) :: nload_slots
@@ -488,7 +490,7 @@ contains
         end if
 
 
-        call direct_annihilation(sys, rng, qmc_in, reference)
+        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
 
         if (propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -499,7 +501,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(walker_dets, real_factor, walker_population, &
                                         tot_walkers, nparticles, qmc_spawn, nload_slots)
-            call direct_annihilation(sys, rng, qmc_in, reference)
+            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
         end if
 
     end subroutine create_initial_density_matrix

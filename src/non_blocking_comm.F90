@@ -95,8 +95,8 @@ contains
 
     end subroutine init_non_blocking_comm
 
-    subroutine end_non_blocking_comm(sys, rng, qmc_in, reference, ireport, spawn, request_s, request_rep, report_time, &
-                                     ntot_particles, shift, dump_restart_file, load_bal_in)
+    subroutine end_non_blocking_comm(sys, rng, qmc_in, reference, annihilation_flags, ireport, spawn, request_s, &
+                                     request_rep, report_time, ntot_particles, shift, dump_restart_file, load_bal_in)
 
         ! Subroutine dealing with the last iteration when using non-blocking communications.
 
@@ -108,6 +108,7 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
         !    ireport: index of current report loop.
         !    dump_restart_file: if true then output an HDF5 restart file.
         !    load_bal_in: input options for load balancing.
@@ -134,7 +135,7 @@ contains
         use qmc_common, only: write_fciqmc_report
         use parallel, only: parent
         use fciqmc_data, only: sampling_size
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t
 
         use const, only: p, dp
         use dSFMT_interface, only: dSFMT_t
@@ -142,6 +143,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: ireport
         type(spawn_t), intent(inout) :: spawn
@@ -162,7 +164,7 @@ contains
         call receive_spawned_walkers(spawn, request_s)
         if (.not. dump_restart_file) then
             call annihilate_wrapper_non_blocking_spawn(spawn, qmc_in%initiator_approx)
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, spawn)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, spawn)
             ! Receive final send of report loop quantities.
         end if
         ntot_particles_save = ntot_particles

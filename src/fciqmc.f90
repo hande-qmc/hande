@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, &
-                         load_bal_in, reference)
+                         load_bal_in, reference, annihilation_flags)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -24,6 +24,7 @@ contains
         !    fciqmc_in: input options relating to FCIQMC.
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    reference: reference determinant. May change during the calculation.
@@ -50,7 +51,7 @@ contains
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t
-        use qmc_data, only: reference_t, empty_determ_space
+        use qmc_data, only: reference_t, empty_determ_space, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -59,6 +60,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(inout) :: reference
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -104,12 +106,13 @@ contains
         ! If the user has asked to use semi-stochastic from the first iteration
         ! then turn it on now. Otherwise, use an empty deterministic space.
         if (semi_stoch_iter == 0) then
-            call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
+            call init_semi_stoch_t(determ, sys, reference, annihilation_flags, qmc_spawn, &
+                                   semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
                                    semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
                                    load_bal_in%nslots)
         else
-            call init_semi_stoch_t(determ, sys, reference, qmc_spawn, empty_determ_space, 0, .false., .false., &
-                                   .false., load_bal_in%nslots)
+            call init_semi_stoch_t(determ, sys, reference, annihilation_flags, qmc_spawn, empty_determ_space, 0, &
+                                   .false., .false., .false., load_bal_in%nslots)
         end if
 
         ! In case this is not set.
@@ -146,16 +149,16 @@ contains
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter) then
                     call dealloc_semi_stoch_t(determ, .false.)
-                    call init_semi_stoch_t(determ, sys, reference, qmc_spawn, semi_stoch_in%determ_space_type, &
+                    call init_semi_stoch_t(determ, sys, reference, annihilation_flags, qmc_spawn, semi_stoch_in%determ_space_type, &
                                            semi_stoch_in%target_size, semi_stoch_in%separate_annihil, &
                                            use_mpi_barriers, semi_stoch_in%write_determ_space, &
                                            load_bal_in%nslots)
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, real_factor, nattempts, ndeath, &
-                                   doing_lb=fciqmc_in%doing_load_balancing,  nb_comm=fciqmc_in%non_blocking_comm, &
-                                   determ=determ)
+                call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
+                                   nattempts, ndeath, doing_lb=fciqmc_in%doing_load_balancing, &
+                                   nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
                 ideterm = 0
 
                 do idet = 1, tot_walkers ! loop over walkers/dets
@@ -229,15 +232,15 @@ contains
                 if (fciqmc_in%non_blocking_comm) then
                     call receive_spawned_walkers(received_list, req_data_s)
                     call evolve_spawned_walkers(sys, qmc_in, reference, received_list, cdet, rng, ndeath, load_bal_in%nslots)
-                    call direct_annihilation_received_list(sys, rng, qmc_in, reference)
+                    call direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags)
                     ! Need to add walkers which have potentially moved processor to the spawned walker list.
                     if (par_info%load%needed) then
                         call redistribute_particles(walker_dets, real_factor,  walker_population, tot_walkers, &
                                                     nparticles, qmc_spawn, load_bal_in%nslots)
                         par_info%load%needed = .false.
                     end if
-                    call direct_annihilation_spawned_list(sys, rng, qmc_in, reference, send_counts, req_data_s, &
-                                                          par_info%report_comm%nb_spawn, nspawn_events)
+                    call direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, send_counts, &
+                                                          req_data_s, par_info%report_comm%nb_spawn, nspawn_events)
                     call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
                 else
                     ! If using semi-stochastic then perform the deterministic
@@ -252,9 +255,9 @@ contains
                     end if
 
                     if (semi_stochastic) then
-                        call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events, determ)
+                        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, nspawn_events, determ)
                     else
-                        call direct_annihilation(sys, rng, qmc_in, reference, nspawn_events)
+                        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, nspawn_events)
                     end if
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
                 end if
@@ -276,9 +279,10 @@ contains
 
         end do
 
-        if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, reference, ireport, received_list, &
-                                                          req_data_s, par_info%report_comm%request, t1, nparticles_old, shift(1), &
-                                                          restart_in%dump_restart, load_bal_in)
+        if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, reference, annihilation_flags, ireport, &
+                                                                    received_list,  req_data_s, par_info%report_comm%request, &
+                                                                    t1, nparticles_old, shift(1), restart_in%dump_restart, &
+                                                                    load_bal_in)
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
