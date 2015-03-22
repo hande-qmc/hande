@@ -461,7 +461,7 @@ type(ccmc_in_t) :: ccmc_in_global
 type(restart_in_t) :: restart_in_global
 type(load_bal_in_t) :: load_bal_in_global
 
-type(annihilation_flags_t) :: annihilation_flags
+type(annihilation_flags_t) :: annihilation_flags_global
 
 type(walker_t), target :: walker_global
 

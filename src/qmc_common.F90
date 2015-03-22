@@ -655,7 +655,7 @@ contains
             ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
             D0_population = D0_population*qmc_in%ncycles
             proj_energy = proj_energy*qmc_in%ncycles
-            call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
+            call local_energy_estimators(psip_list, rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
             call mpi_allreduce(proj_energy, proj_energy_sum, psip_list%sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -824,8 +824,6 @@ contains
         !    update_tau: true if the processor thinks the timestep should be rescaled.
         !             Only used if not in variable shift mode and if tau_search is being
         !             used.
-        !    psip_list: walker_t object with current psip distribution on the
-        !        current proccesor.
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
@@ -833,6 +831,9 @@ contains
         !    
         ! In/Out:
         !    qmc_in: input optons relating to QMC methods.
+        !    psip_list: walker_t object with current psip distribution on the
+        !        current proccesor.  Total (global) quantities are updated on
+        !        exit.
         !    ntot_particles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
@@ -877,7 +878,7 @@ contains
         type(qmc_in_t), intent(inout) :: qmc_in
         integer, intent(in) :: ireport, iteration
         logical, intent(in) :: update_tau
-        type(walker_t), intent(in) :: psip_list
+        type(walker_t), intent(inout) :: psip_list
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
@@ -914,16 +915,16 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
-            call update_energy_estimators(qmc_in, nspawn_events, ntot_particles, load_bal_in, doing_lb, comms_found, &
+            call update_energy_estimators(qmc_in, nspawn_events, psip_list, ntot_particles, load_bal_in, doing_lb, comms_found, &
                                           update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
+            call local_energy_estimators(psip_list, rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, rep_comm%request, ntot_particles, load_bal_in, doing_lb, comms_found, &
+            call update_energy_estimators_recv(qmc_in, psip_list%sampling_size, rep_comm%request, ntot_particles, psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, &
                                                update_tau_now, bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy

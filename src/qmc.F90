@@ -481,10 +481,10 @@ contains
 
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
-            tmp_int_64 = calculate_hf_signed_pop()
+            tmp_int_64 = calculate_hf_signed_pop(walker_global%tot_walkers, walker_global%walker_population)
             call mpi_allreduce(tmp_int_64, hf_signed_pop, walker_global%sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
-            hf_signed_pop = calculate_hf_signed_pop()
+            hf_signed_pop = calculate_hf_signed_pop(walker_global%tot_walkers, walker_global%walker_population)
 #endif
         end if
 

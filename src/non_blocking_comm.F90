@@ -170,7 +170,7 @@ contains
         end if
         ntot_particles_save = ntot_particles
         shift_save = shift
-        call update_energy_estimators_recv(qmc_in, request_rep, ntot_particles, load_bal_in)
+        call update_energy_estimators_recv(qmc_in, psip_list%sampling_size, request_rep, ntot_particles, psip_list%nparticles_proc, load_bal_in)
         if (parent) call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false., .true.)
         ! The call to update_energy_estimators updates the shift and ntot_particles.
         ! When restarting a calculation we actually need the old (before the call)
