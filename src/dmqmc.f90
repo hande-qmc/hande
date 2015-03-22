@@ -130,6 +130,7 @@ contains
                         ! other bit string.
                         cdet1%f => walker_global%walker_dets(:sys%basis%string_len,idet)
                         cdet1%f2 => walker_global%walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet1%data => walker_global%walker_data(:,idet)
                         cdet2%f => walker_global%walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
                         cdet2%f2 => walker_global%walker_dets(:sys%basis%string_len,idet)
 
@@ -157,7 +158,7 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                         reference%H00, load_bal_in%nslots)
+                                                         reference%H00, load_bal_in%nslots, walker_global)
                         end if
 
                         do ireplica = 1, walker_global%sampling_size
@@ -239,9 +240,9 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles)
+                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, walker_global)
 
-                call update_shift_dmqmc(qmc_in, walker_global%tot_nparticles, tot_nparticles_old, ireport)
+                call update_shift_dmqmc(qmc_in, walker_global%tot_nparticles, tot_nparticles_old)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
