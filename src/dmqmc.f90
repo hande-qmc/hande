@@ -266,7 +266,7 @@ contains
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
-        call load_balancing_report(qmc_spawn%mpi_time)
+        call load_balancing_report(walker_global%nparticles, walker_global%tot_walkers, qmc_spawn%mpi_time)
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport

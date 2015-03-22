@@ -94,7 +94,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header()
-        call initial_fciqmc_status(sys, qmc_in, reference)
+        call initial_fciqmc_status(sys, qmc_in, reference, walker_global)
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -267,7 +267,7 @@ contains
         end do
 
         if (parent) write (6,'()')
-        call load_balancing_report(qmc_spawn%mpi_time)
+        call load_balancing_report(walker_global%nparticles, walker_global%tot_walkers, qmc_spawn%mpi_time)
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport

@@ -129,10 +129,10 @@ contains
 
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qmc_spawn, req_data_s, send_counts, received_list, restart_in%read_restart)
-            call initial_fciqmc_status(sys, qmc_in, reference, .true., par_info%report_comm, &
+            call initial_fciqmc_status(sys, qmc_in, reference, walker_global, .true., par_info%report_comm, &
                                        send_counts(iproc)/received_list%element_len)
         else
-            call initial_fciqmc_status(sys, qmc_in, reference)
+            call initial_fciqmc_status(sys, qmc_in, reference, walker_global)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -275,7 +275,7 @@ contains
 
             ! Should we try and update the reference determinant now?
             if (mod(ireport, fciqmc_in%select_ref_det_every_nreports) == 0) &
-                    call select_ref_det(sys, fciqmc_in%ref_det_factor, reference)
+                    call select_ref_det(sys, fciqmc_in%ref_det_factor, reference, walker_global)
 
         end do
 
@@ -287,9 +287,9 @@ contains
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
         if (semi_stochastic .and. determ%separate_annihilation) then
-            call load_balancing_report(qmc_spawn%mpi_time, determ%mpi_time)
+            call load_balancing_report(walker_global%nparticles, walker_global%tot_walkers, qmc_spawn%mpi_time, determ%mpi_time)
         else
-            call load_balancing_report(qmc_spawn%mpi_time)
+            call load_balancing_report(walker_global%nparticles, walker_global%tot_walkers, qmc_spawn%mpi_time)
         end if
 
         if (soft_exit) then
