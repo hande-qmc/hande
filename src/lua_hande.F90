@@ -257,7 +257,9 @@ contains
         ! In:
         !    pos (optional): position of sys object in the lua stack.  Default 1.
         ! In/Out:
-        !    lua_state: flu/Lua state to which the HANDE API is added.
+        !    lua_state: flu/Lua state to which the HANDE API is added. On
+        !        output, the stack will be the same, but without the pointer
+        !        to the sys objecy, which will be popped from the stack.
         ! Out:
         !    sys: sys_t object.
 
@@ -284,9 +286,17 @@ contains
         do i = 1, flu_gettop(lua_state)-pos_loc
             call flu_insert(lua_state, 1) ! lua_rotate only available in lua 5.3...
         end do
+        ! Get the pointer to the sys_t object (which should not be at the top
+        ! of the stack. This routine also pops this value from the stack.
         call aot_top_get_val(sys_ptr, err, lua_state)
         if (err /= 0) call stop_all('get_sys_t_old', 'Problem receiving sys_t object.')
         call c_f_pointer(sys_ptr, sys)
+
+        ! Now rotate the objects in the stack again to get it back to its
+        ! original state (minus the sys object).
+        do i = 1, pos_loc-1
+            call flu_insert(lua_state, 1)
+        end do
 
     end subroutine get_sys_t_old
 
