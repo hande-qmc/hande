@@ -706,7 +706,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, spawn, nattempts, &
+    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, psip_list, spawn, nattempts, &
                             ndeath, min_attempts, doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
@@ -723,6 +723,9 @@ contains
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! In/Out:
+        !    psip_list: total population (on this proccesor) is used to set
+        !       nattempts and population is redistributed if requested by the
+        !       load balancing approach.
         !    spawn: spawn_t object for holding spawned particles.  Reset on exit.
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
@@ -742,7 +745,7 @@ contains
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t, walker_global, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t, walker_t, annihilation_flags_t
         use system, only: sys_t
         use spawn_data, only: spawn_t
 
@@ -751,6 +754,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
+        type(walker_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         type(load_bal_in_t), intent(in) :: load_bal_in
         integer(int_p), intent(in) :: real_factor
@@ -780,24 +784,24 @@ contains
             ! ct algorithm: kinda poorly defined.
             ! ccmc: number of excitor clusters we'll randomly generate and
             ! attempt to spawn from.
-            nattempts = walker_global%nparticles(1)
+            nattempts = psip_list%nparticles(1)
         else if (doing_calc(dmqmc_calc)) then
             ! Each particle and each end gets to attempt to spawn onto a
             ! connected determinant and a chance to die/clone.
-            nattempts = nint(4*walker_global%nparticles(1)*walker_global%sampling_size)
+            nattempts = nint(4*psip_list%nparticles(1)*psip_list%sampling_size)
         else
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
-            nattempts = nint(2*walker_global%nparticles(1))
+            nattempts = nint(2*psip_list%nparticles(1))
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
         if (present(doing_lb)) then
             if (doing_lb .and. par_info%load%needed) then
-                call do_load_balancing(walker_global, spawn, real_factor, par_info, load_bal_in)
-                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, walker_global%walker_dets, real_factor, determ, &
-                                                      walker_global, spawn, load_bal_in%nslots, annihilation_flags)
+                call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
+                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%walker_dets, real_factor, determ, &
+                                                      psip_list, spawn, load_bal_in%nslots, annihilation_flags)
                 ! If using non-blocking communications we still need this flag to
                 ! be set.
                 if (.not. nb_comm_local) par_info%load%needed = .false.
@@ -808,7 +812,7 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
+    subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, psip_list, ntot_particles, nspawn_events, report_time, &
                                semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, load_bal_in, &
                                update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm, dmqmc_in)
 
@@ -820,10 +824,13 @@ contains
         !    update_tau: true if the processor thinks the timestep should be rescaled.
         !             Only used if not in variable shift mode and if tau_search is being
         !             used.
+        !    psip_list: walker_t object with current psip distribution on the
+        !        current proccesor.
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
         !    load_bal_in: input options for load balancing.
+        !    
         ! In/Out:
         !    qmc_in: input optons relating to QMC methods.
         !    ntot_particles: total number (across all processors) of
@@ -863,17 +870,18 @@ contains
         use system, only: sys_t
         use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, walker_global
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, walker_t
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
         type(qmc_in_t), intent(inout) :: qmc_in
         integer, intent(in) :: ireport, iteration
         logical, intent(in) :: update_tau
+        type(walker_t), intent(in) :: psip_list
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
-        real(p), intent(inout) :: ntot_particles(walker_global%sampling_size)
+        real(p), intent(inout) :: ntot_particles(psip_list%sampling_size)
         real, intent(inout) :: report_time
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
@@ -886,7 +894,7 @@ contains
 
         real :: curr_time
         logical :: update, update_tau_now, vary_shift_before, nb_comm_local, comms_found
-        real(dp) :: rep_info_copy(nprocs*walker_global%sampling_size+nparticles_start_ind-1)
+        real(dp) :: rep_info_copy(nprocs*psip_list%sampling_size+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
         update_tau_now = update_tau .and. .not. vary_shift(1) .and. qmc_in%tau_search
@@ -943,10 +951,10 @@ contains
         ! Write restart file if required.
         if (dump_restart_file_shift .and. any(vary_shift)) then
             dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, walker_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+            call dump_restart_hdf5(restart_info_global_shift, psip_list, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
                                    ntot_particles, nb_comm_local)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, walker_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+            call dump_restart_hdf5(restart_info_global, psip_list, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
                                    ntot_particles, nb_comm_local)
         end if
         ! cpu_time outputs an elapsed time, so update the reference timer.

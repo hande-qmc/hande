@@ -120,7 +120,7 @@ contains
                 do icycle = 1, qmc_in%ncycles
 
                     call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
-                                       qmc_spawn, nattempts, ndeath)
+                                       walker_global, qmc_spawn, nattempts, ndeath)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
@@ -245,7 +245,7 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, qmc_in, reference, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
+                call end_report_loop(sys, qmc_in, reference, ireport, iteration, .false., walker_global, tot_nparticles_old, nspawn_events, t1, &
                                      unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, load_bal_in, &
                                      .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
 

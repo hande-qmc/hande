@@ -450,7 +450,7 @@ contains
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
                 call init_mc_cycle(rng(0), sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
-                                   qmc_spawn, nattempts, ndeath, nint(D0_normalisation,int_64))
+                                   walker_global, qmc_spawn, nattempts, ndeath, nint(D0_normalisation,int_64))
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
@@ -671,7 +671,7 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, reference, ireport, iter, update_tau, nparticles_old, nspawn_events, t1, &
+            call end_report_loop(sys, qmc_in, reference, ireport, iter, update_tau, walker_global, nparticles_old, nspawn_events, t1, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
                                  load_bal_in, bloom_stats=bloom_stats)
 
