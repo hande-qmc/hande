@@ -118,7 +118,6 @@ contains
 
         use calc
         use diagonalisation, only: diagonalise
-        use qmc, only: do_qmc
         use hilbert_space, only: estimate_hilbert_space
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
@@ -224,5 +223,86 @@ contains
         call end_parallel()
 
     end subroutine end_calc
+
+! --- QMC wrapper ---
+
+    subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, &
+                      dmqmc_in, annihilation_flags)
+
+        ! Initialise and run stochastic quantum chemistry procedures.
+
+        ! In/Out:
+        !    sys: system being studied.  This should(!) be returned unaltered on
+        !         output from each procedure, but might be varied during the
+        !         run if needed.
+        !    qmc_in: input options relating to QMC methods.
+        !    fciqmc_in: input options relating to FCIQMC.
+        !    reference: the reference determinant.
+        !    dmqmc_in: input options relating to DMQMC.
+        !    annihilation_flags: calculation specific annihilation flags.
+        ! In:
+        !    ccmc_in: input options relating to CCMC.
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    restart_in: input options for HDF5 restart files.
+        !    load_bal_in: input options for load balancing.
+
+        use calc
+
+        use ccmc, only: do_ccmc
+        use ct_fciqmc, only: do_ct_fciqmc
+        use dmqmc, only: do_dmqmc
+        use fciqmc, only: do_fciqmc
+        use hellmann_feynman_sampling, only: do_hfs_fciqmc
+
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
+        use qmc_data, only: restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
+        use dmqmc_data, only: dmqmc_in_t
+        use qmc, only: init_proc_pointers
+        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+        use parallel, only: nprocs
+
+        type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
+        type(semi_stoch_in_t), intent(in) :: semi_stoch_in
+        type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
+        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(annihilation_flags_t), intent(inout) :: annihilation_flags
+
+        real(p) :: hub_matel
+        type(sys_t) :: sys_bak
+
+        ! Initialise procedure pointers.
+        call init_proc_pointers(sys, qmc_in, dmqmc_in)
+
+        ! Set spin variables.
+        call copy_sys_spin_info(sys, sys_bak)
+        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+
+        ! Calculation-specifc initialisation and then run QMC calculation.
+
+        if (doing_calc(dmqmc_calc)) then
+            call do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, load_bal_in)
+        else if (doing_calc(ct_fciqmc_calc)) then
+            call do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, annihilation_flags, hub_matel)
+        else if (doing_calc(ccmc_calc)) then
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in)
+        else
+            ! Doing FCIQMC calculation (of some sort) using the original
+            ! timestep algorithm.
+            if (doing_calc(hfs_fciqmc_calc)) then
+                call do_hfs_fciqmc(sys, qmc_in, restart_in, load_bal_in)
+            else
+                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in)
+            end if
+        end if
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
+
+    end subroutine do_qmc
 
 end module hande_top_level

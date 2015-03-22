@@ -308,10 +308,11 @@ contains
 
     !--- Output procedures ---
 
-    subroutine write_fciqmc_report_header(dmqmc_in)
+    subroutine write_fciqmc_report_header(ntypes, dmqmc_in)
 
         ! In:
-        !    dmqmc_in: input options relating to DMQMC.
+        !    ntypes: number of particle types being sampled.
+        !    dmqmc_in (optional): input options relating to DMQMC.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
@@ -319,8 +320,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
 
-        use qmc_data, only: walker_global
-
+        integer, intent(in) :: ntypes
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
 
         integer :: i, j
@@ -354,7 +354,7 @@ contains
             end if
             if (calc_inst_rdm) then
                 do i = 1, nrdms
-                    do j = 1, walker_global%sampling_size
+                    do j = 1, ntypes
                         write (6, '(7X,a3,'//int_fmt(i,0)//',1x,a5,1x,'//int_fmt(j,0)//')', advance = 'no') &
                                 'RDM', i, 'trace', j
                     end do
@@ -413,7 +413,9 @@ contains
         logical, intent(in) :: comment, non_blocking_comm
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
 
-        integer :: mc_cycles, i, j
+        integer :: mc_cycles, i, j, ntypes
+
+        ntypes = size(ntot_particles)
 
         ! For non-blocking communications we print out the nth report loop
         ! after the (n+1)st iteration. Adjust mc_cycles accordingly
@@ -475,7 +477,7 @@ contains
             ! Traces for instantaneous RDM estimates.
             if (calc_inst_rdm) then
                 do i = 1, nrdms
-                    do j = 1, walker_global%sampling_size
+                    do j = 1, ntypes
                         write (6, '(2x,es17.10)', advance = 'no') rdm_traces(j,i)
                     end do
                 end do
@@ -511,64 +513,70 @@ contains
 
     end subroutine write_fciqmc_report
 
-    subroutine end_fciqmc(nb_comm, reference)
+    subroutine end_fciqmc(nb_comm, reference, psip_list)
 
         ! Deallocate fciqmc data arrays.
 
         ! In:
         !    nb_comm: true if using non-blocking communications.
-        ! In/Out:
+        ! In/Out (optional):
         !   reference: reference state. On exit, allocatable components are deallocated.
+        !   psip_list: main walker_t object.  On exit, allocatable components are deallocated.
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
         use calc, only: dealloc_parallel_t
-        use qmc_data, only: reference_t, walker_global
+        use qmc_data, only: reference_t, walker_t
 
         logical, intent(in) :: nb_comm
-        type(reference_t), intent(inout) :: reference
+        type(reference_t), intent(inout), optional :: reference
+        type(walker_t), intent(inout), optional :: psip_list
 
         integer :: ierr
 
-        if (allocated(reference%occ_list0)) then
-            deallocate(reference%occ_list0, stat=ierr)
-            call check_deallocate('reference%occ_list0',ierr)
+        if (present(reference)) then
+            if (allocated(reference%occ_list0)) then
+                deallocate(reference%occ_list0, stat=ierr)
+                call check_deallocate('reference%occ_list0',ierr)
+            end if
+            if (allocated(reference%hs_occ_list0)) then
+                deallocate(reference%hs_occ_list0, stat=ierr)
+                call check_deallocate('reference%hs_occ_list0',ierr)
+            end if
         end if
-        if (allocated(reference%hs_occ_list0)) then
-            deallocate(reference%hs_occ_list0, stat=ierr)
-            call check_deallocate('reference%hs_occ_list0',ierr)
-        end if
-        if (allocated(walker_global%nparticles)) then
-            deallocate(walker_global%nparticles, stat=ierr)
-            call check_deallocate('walker_global%nparticles',ierr)
-        end if
-        if (allocated(walker_global%walker_dets)) then
-            deallocate(walker_global%walker_dets, stat=ierr)
-            call check_deallocate('walker_global%walker_dets',ierr)
-        end if
-        if (allocated(walker_global%walker_population)) then
-            deallocate(walker_global%walker_population, stat=ierr)
-            call check_deallocate('walker_global%walker_population',ierr)
-        end if
-        if (allocated(walker_global%walker_data)) then
-            deallocate(walker_global%walker_data, stat=ierr)
-            call check_deallocate('walker_global%walker_data',ierr)
-        end if
-        if (allocated(reference%f0)) then
-            deallocate(reference%f0, stat=ierr)
-            call check_deallocate('reference%f0',ierr)
-        end if
-        if (allocated(reference%hs_f0)) then
-            deallocate(reference%hs_f0, stat=ierr)
-            call check_deallocate('reference%f0',ierr)
-        end if
-        if (allocated(neel_singlet_amp)) then
-            deallocate(neel_singlet_amp, stat=ierr)
-            call check_deallocate('neel_singlet_amp',ierr)
-        end if
-        if (allocated(walker_global%nparticles_proc)) then
-            deallocate(walker_global%nparticles_proc, stat=ierr)
-            call check_deallocate('walker_global%nparticles_proc', ierr)
+        if (present(psip_list)) then
+            if (allocated(psip_list%nparticles)) then
+                deallocate(psip_list%nparticles, stat=ierr)
+                call check_deallocate('psip_list%nparticles',ierr)
+            end if
+            if (allocated(psip_list%walker_dets)) then
+                deallocate(psip_list%walker_dets, stat=ierr)
+                call check_deallocate('psip_list%walker_dets',ierr)
+            end if
+            if (allocated(psip_list%walker_population)) then
+                deallocate(psip_list%walker_population, stat=ierr)
+                call check_deallocate('psip_list%walker_population',ierr)
+            end if
+            if (allocated(psip_list%walker_data)) then
+                deallocate(psip_list%walker_data, stat=ierr)
+                call check_deallocate('psip_list%walker_data',ierr)
+            end if
+            if (allocated(reference%f0)) then
+                deallocate(reference%f0, stat=ierr)
+                call check_deallocate('reference%f0',ierr)
+            end if
+            if (allocated(reference%hs_f0)) then
+                deallocate(reference%hs_f0, stat=ierr)
+                call check_deallocate('reference%f0',ierr)
+            end if
+            if (allocated(neel_singlet_amp)) then
+                deallocate(neel_singlet_amp, stat=ierr)
+                call check_deallocate('neel_singlet_amp',ierr)
+            end if
+            if (allocated(psip_list%nparticles_proc)) then
+                deallocate(psip_list%nparticles_proc, stat=ierr)
+                call check_deallocate('psip_list%nparticles_proc', ierr)
+            end if
         end if
         call dealloc_parallel_t(nb_comm, par_info)
         call dealloc_spawn_t(qmc_spawn)

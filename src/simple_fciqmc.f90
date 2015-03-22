@@ -227,7 +227,7 @@ contains
         nparticles = real(sum(abs(psip_list%walker_population(1,:))),p)
         nparticles_old = nparticles
 
-        call write_fciqmc_report_header()
+        call write_fciqmc_report_header(1)
 
         call cpu_time(t1)
 

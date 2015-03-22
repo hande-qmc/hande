@@ -435,7 +435,7 @@ type qmc_state_t
     ! When replica_tricks is not being used, only the first element is used.
     logical, allocatable :: vary_shift(:) ! (sampling_size)
     ! Convenience handles.
-    type(walker_t) :: walkers
+    type(walker_t) :: psip_list
     type(reference_t) :: reference
     type(parallel_t) :: par_info
 end type qmc_state_t
