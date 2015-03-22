@@ -151,10 +151,11 @@ contains
         call flu_register(lua_state, 'mpi_root', mpi_root)
 
         ! Systems
-        call flu_register(lua_state, 'ueg', lua_ueg)
         call flu_register(lua_state, 'hubbard_k', lua_hubbard_k)
         call flu_register(lua_state, 'hubbard_real', lua_hubbard_real)
+        call flu_register(lua_state, 'read_in', lua_read_in)
         call flu_register(lua_state, 'heisenberg', lua_heisenberg)
+        call flu_register(lua_state, 'ueg', lua_ueg)
 
         ! Calculations
         call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)
@@ -356,8 +357,10 @@ contains
         !    sys: system (sys_t) object.  On exit the electron number is set, along with symmetry
         !         and spin indices (currently in calc).
 
-        use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val
+        use aot_vector_module, only: aot_get_val
+        use errors, only: stop_all
+        use flu_binding, only: flu_State
         use system, only: sys_t
 
         use calc, only: sym_in, ms_in
@@ -365,12 +368,23 @@ contains
         type(flu_State), intent(inout) :: lua_state
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: opts
+
+        integer, allocatable :: cas(:), err_arr(:)
         integer :: err
 
         call aot_get_val(sys%nel, err, lua_state, opts, 'electrons')
         call aot_get_val(sys%nel, err, lua_state, opts, 'nel')
         call aot_get_val(ms_in, err, lua_state, opts, 'ms')
         call aot_get_val(sym_in, err, lua_state, opts, 'sym')
+
+        call aot_get_val(cas, err_arr, 2, lua_state, opts, key='CAS')
+        ! AOTUS returns a vector of size 0 to denote a non-existent vector.
+        if (size(cas) == 0) deallocate(cas)
+        if (allocated(cas)) then
+            if (size(cas) /= 2) call stop_all('set_common_sys_options', &
+                            'The CAS option should provide exactly 2 parameters (in an array).')
+            sys%CAS = cas
+        end if
 
     end subroutine set_common_sys_options
 
@@ -523,8 +537,8 @@ contains
         integer :: opts
         logical :: new, new_basis
         integer :: err
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'ms', 'sym', 'ktwist']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'ms', 'sym', 'ktwist', 'CAS']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -593,7 +607,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', 'ms', 'finite']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'ms', 'finite', 'CAS']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -625,6 +640,83 @@ contains
         nreturn = 1
 
     end function lua_hubbard_real
+
+    function lua_read_in(L) result(nreturn) bind(c)
+
+        ! Create/modify read-in system.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    read_in{
+        !        sys = sys_old -- New sys_t object is created if not passed.
+        !        electrons = N,
+        !        ms = Ms,
+        !        int_file = '...',
+        !        dipole_int_file = '...'
+        !        Lz = true/false
+        !        sym = S,
+        !        CAS = {cas1, cas2}
+        !    }
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+
+        use basis, only: init_model_basis_fns
+        use momentum_symmetry, only: init_momentum_symmetry
+        use read_in_system, only: read_in_integrals
+        use system, only: sys_t, read_in, init_system
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+        type(flu_State) :: lua_state
+
+        type(sys_t), pointer :: sys
+        type(c_ptr) :: sys_ptr
+        integer :: opts
+        logical :: new, new_basis
+        integer :: err
+
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS']
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys, new)
+
+        ! Get a handle to the table...
+        opts = aot_table_top(lua_state)
+
+        sys%system = read_in
+
+        ! Parse table for options...
+        call set_common_sys_options(lua_state, sys, opts)
+
+        call aot_get_val(sys%read_in%fcidump, err, lua_state, opts, 'int_file')
+        call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
+        call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
+
+        new_basis = new .or. aot_exists(lua_state, opts, 'int_file') &
+                        .or. aot_exists(lua_state, opts, 'CAS')
+
+        if (new_basis) then
+            ! [todo] - deallocate existing basis info and start afresh.
+
+            call init_system(sys)
+            call read_in_integrals(sys, cas_info=sys%cas)
+            call init_generic_system_basis(sys)
+        end if
+
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
+
+        sys_ptr = c_loc(sys)
+        call flu_pushlightuserdata(lua_state, sys_ptr)
+        nreturn = 1
+
+    end function lua_read_in
 
     function lua_heisenberg(L) result(nreturn) bind(c)
 
@@ -658,7 +750,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', 'staggered_field']
+        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', 'staggered_field', &
+                                                                'CAS']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -732,8 +825,8 @@ contains
         logical :: new_basis
         integer :: err
 
-        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
-                                               'ms', 'sym', 'ktwist', 'chem_pot']
+        character(10), parameter :: keys(11) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+                                               'ms', 'sym', 'ktwist', 'chem_pot', 'CAS']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
