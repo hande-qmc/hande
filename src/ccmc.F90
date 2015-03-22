@@ -488,7 +488,9 @@ contains
                 call cumulative_population(qs%psip_list%walker_population, qs%psip_list%tot_walkers, D0_proc, D0_pos, real_factor, &
                                            cumulative_abs_nint_pops, tot_abs_nint_pop)
 
-                bloom_threshold = ceiling(max(nattempts, qs%psip_list%tot_walkers)*bloom_stats%prop)*real(bloom_stats%encoding_factor,p)
+                associate(bs=>bloom_stats, nstates_active=>qs%psip_list%tot_walkers)
+                    bloom_threshold = ceiling(max(nattempts, nstates_active)*bs%prop)*real(bs%encoding_factor,p)
+                end associate
 
                 ! Two options for evolution:
 
@@ -550,9 +552,10 @@ contains
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                     if (iattempt <= nstochastic_clusters) then
-                        call select_cluster(rng(it), sys, qs%psip_list, qs%reference%f0, real_factor, ccmc_in%linked, nstochastic_clusters, &
-                                            D0_normalisation, qmc_in%initiator_pop, D0_pos, cumulative_abs_nint_pops, &
-                                            tot_abs_nint_pop, min_cluster_size, max_cluster_size, cdet(it), cluster(it))
+                        call select_cluster(rng(it), sys, qs%psip_list, qs%reference%f0, real_factor, ccmc_in%linked, &
+                                            nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
+                                            cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, max_cluster_size, &
+                                            cdet(it), cluster(it))
                     else if (iattempt <= nstochastic_clusters+nD0_select) then
                         ! We just select the empty cluster.
                         ! As in the original algorithm, allow this to happen on
@@ -617,8 +620,9 @@ contains
                                           cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
                             else
-                                call spawner_ccmc(rng(it), sys, qmc_in, qs%reference, qmc_spawn%cutoff, real_factor, ccmc_in%linked, &
-                                          cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total)
+                                call spawner_ccmc(rng(it), sys, qmc_in, qs%reference, qmc_spawn%cutoff, real_factor,  &
+                                          ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, &
+                                          nspawnings_total)
                             end if
 
                            if (nspawned /= 0_int_p) then
@@ -642,8 +646,8 @@ contains
                             if ((.not. ccmc_in%linked) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-                                    call stochastic_ccmc_death(rng(it), real_factor, ccmc_in%linked, sys, qs%reference, qmc_in%tau, &
-                                                               cdet(it), cluster(it), load_bal_in%nslots)
+                                    call stochastic_ccmc_death(rng(it), real_factor, ccmc_in%linked, sys, qs%reference, &
+                                                               qmc_in%tau, cdet(it), cluster(it), load_bal_in%nslots)
                                 end if
                             end if
                         end if
@@ -661,8 +665,8 @@ contains
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
                         call stochastic_ccmc_death_nc(rng(it), real_factor, ccmc_in%linked, qmc_in%tau, iattempt==D0_pos, &
-                                                      qs%psip_list%walker_data(1,iattempt), qs%psip_list%walker_population(1, iattempt), &
-                                                      nparticles_change(1), ndeath)
+                                              qs%psip_list%walker_data(1,iattempt), qs%psip_list%walker_population(1, iattempt), &
+                                              nparticles_change(1), ndeath)
                     end do
                     !$omp end do
                 end if
@@ -675,9 +679,10 @@ contains
                 ! the current hash shift, so it's just those in the main list
                 ! that we need to deal with.
                 if (nprocs > 1) call redistribute_particles(qs%psip_list%walker_dets, real_factor, qs%psip_list%walker_population, &
-                                                             qs%psip_list%tot_walkers, qs%psip_list%nparticles, qmc_spawn, load_bal_in%nslots)
+                                                 qs%psip_list%tot_walkers, qs%psip_list%nparticles, qmc_spawn, load_bal_in%nslots)
 
-                call direct_annihilation(sys, rng(0), qmc_in, qs%reference, annihilation_flags, qs%psip_list, qmc_spawn, nspawn_events)
+                call direct_annihilation(sys, rng(0), qmc_in, qs%reference, annihilation_flags, qs%psip_list, &
+                                         qmc_spawn, nspawn_events)
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
 
@@ -685,9 +690,9 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, qs%reference, ireport, iter, update_tau, qs%psip_list, nparticles_old, nspawn_events, t1, &
-                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
-                                 load_bal_in, bloom_stats=bloom_stats)
+            call end_report_loop(sys, qmc_in, qs%reference, ireport, iter, update_tau, qs%psip_list, nparticles_old, &
+                                 nspawn_events, t1, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
+                                 dump_restart_file_shift, load_bal_in, bloom_stats=bloom_stats)
 
             if (soft_exit) exit
 
@@ -1131,8 +1136,8 @@ contains
 
     end subroutine create_null_cluster
 
-    subroutine select_cluster_non_composite(sys, psip_list, f0, real_factor, iexcip, iexcip_pos, nattempts, normalisation, initiator_pop, &
-                                            D0_pos, cumulative_excip_pop, tot_excip_pop, cdet, cluster)
+    subroutine select_cluster_non_composite(sys, psip_list, f0, real_factor, iexcip, iexcip_pos, nattempts, normalisation, &
+                                            initiator_pop,  D0_pos, cumulative_excip_pop, tot_excip_pop, cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.

@@ -86,7 +86,8 @@ contains
         call check_allocate('rep_loop_sum', tot_nelems, ierr)
 
         ! Move the variables to be communicated to rep_loop_loc.
-        call local_dmqmc_estimators(dmqmc_in, rep_loop_loc, min_ind, max_ind, psip_list%nparticles, psip_list%tot_walkers, nspawn_events)
+        call local_dmqmc_estimators(dmqmc_in, rep_loop_loc, min_ind, max_ind, psip_list%nparticles, &
+                                    psip_list%tot_walkers, nspawn_events)
 
 #ifdef PARALLEL
         call mpi_allreduce(rep_loop_loc, rep_loop_sum, size(rep_loop_loc), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)

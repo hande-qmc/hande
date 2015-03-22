@@ -192,7 +192,7 @@ contains
                                     spawning_end = 1
                                     ! Attempt to spawn.
                                     call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet1, &
-                                                     qs%psip_list%walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                                 qs%psip_list%walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
@@ -206,7 +206,7 @@ contains
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet2, &
-                                                         qs%psip_list%walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                                 qs%psip_list%walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
                                                                                 spawning_end, ireplica, qmc_spawn, &
@@ -242,7 +242,8 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, qmc_in, qs%reference, annihilation_flags, qs%psip_list, qmc_spawn, nspawn_events)
+                    call direct_annihilation(sys, rng, qmc_in, qs%reference, annihilation_flags, qs%psip_list, &
+                                             qmc_spawn, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
@@ -262,9 +263,9 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, qmc_in, qs%reference, ireport, iteration, .false., qs%psip_list, tot_nparticles_old, nspawn_events, t1, &
-                                     unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, load_bal_in, &
-                                     .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
+                call end_report_loop(sys, qmc_in, qs%reference, ireport, iteration, .false., qs%psip_list, tot_nparticles_old, &
+                                     nspawn_events, t1, unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, &
+                                     load_bal_in, .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
 
                 if (soft_exit) exit
 
@@ -292,7 +293,8 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs%psip_list, qs%reference, mc_cycles_done, qs%psip_list%tot_nparticles, .false.)
+            call dump_restart_hdf5(restart_info_global, qs%psip_list, qs%reference, mc_cycles_done, &
+                                   qs%psip_list%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
 

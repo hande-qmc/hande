@@ -658,8 +658,10 @@ contains
             call local_energy_estimators(psip_list, rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
-            call mpi_allreduce(proj_energy, proj_energy_sum, psip_list%sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(psip_list%nparticles, ntot_particles, psip_list%sampling_size, MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(proj_energy, proj_energy_sum, psip_list%sampling_size, mpi_preal, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(psip_list%nparticles, ntot_particles, psip_list%sampling_size, MPI_PREAL, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
             proj_energy = proj_energy_sum
             D0_population = D0_population_sum
@@ -706,8 +708,8 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, psip_list, spawn, nattempts, &
-                            ndeath, min_attempts, doing_lb, nb_comm, determ)
+    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
+                             psip_list, spawn, nattempts, ndeath, min_attempts, doing_lb, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -812,9 +814,10 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, psip_list, ntot_particles, nspawn_events, report_time, &
-                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, dump_restart_file_shift, load_bal_in, &
-                               update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm, dmqmc_in)
+    subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, psip_list,    &
+                                ntot_particles, nspawn_events, report_time, semi_stoch_shift_it,     &
+                                semi_stoch_start_it, soft_exit, dump_restart_file_shift, load_bal_in,&
+                                update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm, dmqmc_in)
 
         ! In:
         !    sys: system being studied.
@@ -924,8 +927,9 @@ contains
             call local_energy_estimators(psip_list, rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, psip_list%sampling_size, rep_comm%request, ntot_particles, psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, &
-                                               update_tau_now, bloom_stats)
+            call update_energy_estimators_recv(qmc_in, psip_list%sampling_size, rep_comm%request, ntot_particles,             &
+                                               psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau_now, &
+                                               bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(rep_comm)

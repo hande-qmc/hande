@@ -135,8 +135,8 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(qmc_in, ntypes, rep_request_s, ntot_particles_old, nparticles_proc, load_bal_in, doing_lb, comms_found, &
-                                             update_tau, bloom_stats)
+    subroutine update_energy_estimators_recv(qmc_in, ntypes, rep_request_s, ntot_particles_old, nparticles_proc, &
+                                             load_bal_in, doing_lb, comms_found, update_tau, bloom_stats)
 
         ! Receive report loop quantities from all other processors and reduce.
 
@@ -209,7 +209,8 @@ contains
 
     end subroutine update_energy_estimators_recv
 
-    subroutine local_energy_estimators(psip_list, rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats, spawn_elsewhere)
+    subroutine local_energy_estimators(psip_list, rep_loop_loc, nspawn_events, comms_found, update_tau, &
+                                       bloom_stats, spawn_elsewhere)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
@@ -256,7 +257,8 @@ contains
             rep_loop_loc(bloom_tot_ind) = bloom_stats%tot_bloom_curr
             rep_loop_loc(bloom_num_ind) = bloom_stats%nblooms_curr
         end if
-        if (doing_calc(hfs_fciqmc_calc)) rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(psip_list%tot_walkers, psip_list%walker_population)
+        if (doing_calc(hfs_fciqmc_calc)) &
+            rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(psip_list%tot_walkers, psip_list%walker_population)
         rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
         rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
         rep_loop_loc(hf_D0_pop_ind) = D0_hf_population

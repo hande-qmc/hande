@@ -604,9 +604,11 @@ contains
                 ! This deterministic state is not in walker_dets. Move all
                 ! determinants with index pos or greater down one and insert
                 ! this determinant with an initial sign of zero.
-                psip_list%walker_dets(:,pos+1:psip_list%tot_walkers+1) = psip_list%walker_dets(:,pos:psip_list%tot_walkers)
-                psip_list%walker_population(:,pos+1:psip_list%tot_walkers+1) = psip_list%walker_population(:,pos:psip_list%tot_walkers)
-                psip_list%walker_data(:,pos+1:psip_list%tot_walkers+1) = psip_list%walker_data(:,pos:psip_list%tot_walkers)
+                associate(dets=>psip_list%walker_dets, pops=>psip_list%walker_population, dat=>psip_list%walker_data)
+                    dets(:,pos+1:psip_list%tot_walkers+1) = dets(:,pos:psip_list%tot_walkers)
+                    pops(:,pos+1:psip_list%tot_walkers+1) = pops(:,pos:psip_list%tot_walkers)
+                    dat(:,pos+1:psip_list%tot_walkers+1) = dat(:,pos:psip_list%tot_walkers)
+                end associate
 
                 ! Insert a determinant with population zero into the walker arrays.
                 call insert_new_walker(sys, psip_list, annihilation_flags, pos, dets_this_proc(:,i), zero_population, reference%H00)
@@ -951,7 +953,8 @@ contains
 
         ! In determ_dets and determ_pops, return the determinants and
         ! populations of the most populated determinants on this processor.
-        call find_most_populated_dets(psip_list%walker_dets, psip_list%walker_population, psip_list%tot_walkers, ndets, determ_dets, determ_pops)
+        call find_most_populated_dets(psip_list%walker_dets, psip_list%walker_population, &
+                                      psip_list%tot_walkers, ndets, determ_dets, determ_pops)
 
         ! Create a joined list, all_determ_pops, of the most populated
         ! determinants from each processor.

@@ -483,7 +483,8 @@ contains
                     if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, &
                                                                                npsips_this_proc, sym_in, ireplica, spawn)
                 else
-                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors, spawn)
+                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, &
+                                                        dmqmc_in%all_sym_sectors, spawn)
                 end if
             case(hub_real)
                 call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors, spawn)
@@ -1142,7 +1143,9 @@ contains
                 end if
 
                 ! Finally, update the walker population.
-                psip_list%walker_population(ireplica,idet) = sign(new_population(ireplica), psip_list%walker_population(ireplica,idet))
+                associate(pops=>psip_list%walker_population)
+                    pops(ireplica,idet) = sign(new_population(ireplica), pops(ireplica,idet))
+                end associate
 
             end do
 

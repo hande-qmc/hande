@@ -65,7 +65,8 @@ contains
                 call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx, determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list,&
+                                              spawn, determ_flags=determ%flags)
         else
             call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx)
             call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
