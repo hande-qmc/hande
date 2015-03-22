@@ -258,7 +258,7 @@ contains
                                             'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
 
-            call init_qmc_legacy(sys, pl%sampling_size, qmc_in)
+            call init_qmc_legacy(sys, pl%sampling_size, qmc_in, dmqmc_in)
 
             ! If not using real amplitudes then we always want spawn_cutoff to be
             ! equal to 1.0, so overwrite the default before creating spawn_t objects.
