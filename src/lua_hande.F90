@@ -245,14 +245,14 @@ contains
 
     end subroutine warn_unused_args
 
-    subroutine get_sys_t(lua_state, sys, pos)
+    subroutine get_sys_t_old(lua_state, sys, pos)
 
-        ! Get a sys_t object from the lua stack.
+        ! Get an existing sys_t object from the lua stack.
 
         ! It is often convenient (e.g. for semantic ordering of arguments in
         ! a lua function) to get a sys_t variable from the stack, even if it is
         ! not topmost.  Obtain sys_t object from an arbitrary position on the
-        ! stack and leave the stack otherwise unchanged.
+        ! stack and then pop it from the stack.
 
         ! In:
         !    pos (optional): position of sys object in the lua stack.  Default 1.
@@ -278,49 +278,62 @@ contains
         pos_loc = 1
         if (present(pos)) pos_loc = pos
 
-        ! It is syntactically convenient to have this (e.g.) as the first argument (and hence bottom of stack) but we need it before
-        ! parsing the options...
+        ! It is syntactically convenient to have this (e.g.) as the first
+        ! argument (and hence bottom of stack) but we need it before parsing
+        ! the options...
         do i = 1, flu_gettop(lua_state)-pos_loc
             call flu_insert(lua_state, 1) ! lua_rotate only available in lua 5.3...
         end do
         call aot_top_get_val(sys_ptr, err, lua_state)
-        if (err /= 0) call stop_all('get_sys_t', 'Problem receiving sys_t object.')
+        if (err /= 0) call stop_all('get_sys_t_old', 'Problem receiving sys_t object.')
         call c_f_pointer(sys_ptr, sys)
 
-    end subroutine get_sys_t
+    end subroutine get_sys_t_old
 
-    subroutine get_sys_t_opt(lua_state, nargs, sys, new)
+    subroutine get_sys_t(lua_state, sys, new)
 
         ! Get (or create, if necessary) a sys_t object from the lua stack.
 
+        ! This routine assumes that there is a single object on the stack,
+        ! which is a table. If this table contains a sys_t object already
+        ! (with the key 'sys') then a pointer to this excisting object will be
+        ! returned. Otherwise a new sys_t object will be created, and a
+        ! pointer to this object returned instead.
+
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
-        ! In:
-        !    nargs: number of required arguments.  If this is the number of
-        !       items passed, then a new sys_t object is created, otherwise
-        !       a sys_t object is popped from the first position in the stack
-        !       (i.e. the argument list (sys, required_args) is assumed).
         ! Out:
         !    sys: sys_t object from stack/created.
-        !    new: true if the sys_t object was allocated rather than passed in.
+        !    new (optional): true if the sys_t object was allocated rather
+        !        than passed in.
 
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer
+        use errors, only: stop_all
         use flu_binding, only: flu_State, flu_gettop
+        use aot_table_module, only: aot_exists, aot_get_val
         use system, only: sys_t
 
         type(flu_State), intent(inout) :: lua_state
-        integer, intent(in) :: nargs
         type(sys_t), pointer, intent(out) :: sys
-        logical, intent(out) :: new
+        logical, optional, intent(out) :: new
 
-        new = flu_gettop(lua_state) == nargs
-        if (new) then
-            allocate(sys)
+        type(c_ptr) :: sys_ptr
+        integer :: err
+
+        ! Check if an existing system object was passed in. If so then use
+        ! this object instead of creating a new one. thandle=1 because the
+        ! table should be the only object on the stack.
+        if (aot_exists(lua_state, thandle=1, key='sys')) then
+            call aot_get_val(sys_ptr, err, lua_state, thandle=1, key='sys')
+            if (err /= 0) call stop_all('get_sys_t', 'Problem receiving sys_t object.')
+            call c_f_pointer(sys_ptr, sys)
+            if (present(new)) new = .false.
         else
-            ! Passed a system object as the first argument.
-            call get_sys_t(lua_state, sys)
+            allocate(sys)
+            if (present(new)) new = .true.
         end if
 
-    end subroutine get_sys_t_opt
+    end subroutine get_sys_t
 
     subroutine set_common_sys_options(lua_state, sys, opts)
 
@@ -472,18 +485,16 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    hubbard_k(
-        !        [sys_t, ] -- optional.  New sys_t object is created if not passed.
-        !        {
-        !           electrons = N,
-        !           lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
-        !           ms = Ms,
-        !           sym = sym_index,
-        !           U = U,
-        !           t = t,
-        !           ktwist = {...},    -- D-dimensional vector.
-        !        }
-        !       )
+        !    hubbard_k{
+        !        sys = sys_old -- New sys_t object is created if not passed.
+        !        electrons = N,
+        !        lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
+        !        ms = Ms,
+        !        sym = sym_index,
+        !        U = U,
+        !        t = t,
+        !        ktwist = {...},    -- D-dimensional vector.
+        !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
         use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
@@ -502,10 +513,11 @@ contains
         integer :: opts
         logical :: new, new_basis
         integer :: err
-        character(10), parameter :: keys(8) = [character(10) :: 'nel', 'electrons', 'lattice', 'U', 't', 'ms', 'sym', 'ktwist']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'ms', 'sym', 'ktwist']
 
         lua_state = flu_copyptr(L)
-        call get_sys_t_opt(lua_state, 1, sys, new)
+        call get_sys_t(lua_state, sys, new)
 
         ! get a handle to the table...
         opts = aot_table_top(lua_state)
@@ -544,17 +556,15 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    hubbard_real(
-        !        [sys_t, ] -- optional.  New sys_t object is created if not passed.
-        !        {
-        !           electrons = N,
-        !           lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
-        !           ms = Ms,
-        !           U = U,
-        !           t = t,
-        !           finite = true/false,
-        !        }
-        !       )
+        !    hubbard_real{
+        !        sys = sys_old -- New sys_t object is created if not passed.
+        !        electrons = N,
+        !        lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
+        !        ms = Ms,
+        !        U = U,
+        !        t = t,
+        !        finite = true/false,
+        !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
         use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
@@ -573,10 +583,10 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(7) = [character(10) :: 'nel', 'electrons', 'lattice', 'U', 't', 'ms', 'finite']
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', 'ms', 'finite']
 
         lua_state = flu_copyptr(L)
-        call get_sys_t_opt(lua_state, 1, sys, new)
+        call get_sys_t(lua_state, sys, new)
 
         ! get a handle to the table...
         opts = aot_table_top(lua_state)
@@ -614,14 +624,12 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    heisenberg(
-        !        [sys_t, ] -- optional.  New sys_t object is created if not passed.
-        !        {
-        !           lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
-        !           ms = Ms,
-        !           J = J,
-        !        }
-        !       )
+        !    heisenberg{
+        !        sys = sys_old -- New sys_t object is created if not passed.
+        !        lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
+        !        ms = Ms,
+        !        J = J,
+        !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
         use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
@@ -640,10 +648,10 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(5) = [character(10) :: 'ms', 'J', 'lattice', 'magnetic_field', 'staggered_field']
+        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', 'staggered_field']
 
         lua_state = flu_copyptr(L)
-        call get_sys_t_opt(lua_state, 1, sys, new)
+        call get_sys_t(lua_state, sys, new)
 
         ! get a handle to the table...
         opts = aot_table_top(lua_state)
@@ -681,19 +689,17 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    ueg(
-        !        [sys_t, ] -- optional.  New sys_t object is created if not passed.
-        !        {
-        !           electrons = N,
-        !           dim = D,           -- default: 3
-        !           rs = density,
-        !           cutoff = ecutoff,
-        !           ms = Ms,
-        !           sym = sym_index,
-        !           ktwist = {...},    -- D-dimensional vector
-        !           chem_pot = cp
-        !        }
-        !        )
+        !    ueg{
+        !        sys = sys_old -- New sys_t object is created if not passed.
+        !        electrons = N,
+        !        dim = D,           -- default: 3
+        !        rs = density,
+        !        cutoff = ecutoff,
+        !        ms = Ms,
+        !        sym = sym_index,
+        !        ktwist = {...},    -- D-dimensional vector
+        !        chem_pot = cp
+        !    }
         !    Returns: sys_t object.
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
@@ -713,15 +719,14 @@ contains
         type(sys_t), pointer :: sys
         type(c_ptr) :: sys_ptr
         integer :: opts
-        logical :: new, new_basis
+        logical :: new_basis
         integer :: err
 
-        character(10), parameter :: keys(9) = [character(10) :: 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
                                                'ms', 'sym', 'ktwist', 'chem_pot']
 
         lua_state = flu_copyptr(L)
-
-        call get_sys_t_opt(lua_state, 1, sys, new)
+        call get_sys_t(lua_state, sys)
 
         ! Get a handle to the table...
         opts = aot_table_top(lua_state)
@@ -809,10 +814,10 @@ contains
         integer :: opts, err
         integer, allocatable :: err_arr(:)
         logical :: have_seed
-        character(*), parameter :: keys(4) = [character(10) :: 'ncycles', 'ex_level', 'reference', 'rng_seed']
+        character(10), parameter :: keys(5) = [character(10) :: 'sys', 'ncycles', 'ex_level', 'reference', 'rng_seed']
 
         lua_state = flu_copyptr(L)
-        call get_sys_t(lua_state, sys)
+        call get_sys_t_old(lua_state, sys)
 
         opts = aot_table_top(lua_state)
 
@@ -886,10 +891,11 @@ contains
         type(c_ptr) :: sys_ptr
         type(sys_t), pointer :: sys
         integer :: opts, err
-        character(10), parameter :: keys(5) = [character(10) :: 'ncycles', 'rng_seed', 'init_beta', 'fermi_temperature', 'temp_pop']
+        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'ncycles', 'rng_seed', 'init_beta', &
+                                                                'fermi_temperature', 'temp_pop']
 
         lua_state = flu_copyptr(L)
-        call get_sys_t(lua_state, sys)
+        call get_sys_t_old(lua_state, sys)
 
         opts = aot_table_top(lua_state)
 
