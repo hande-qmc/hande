@@ -267,22 +267,46 @@ contains
         !    occ_list(:): integer list of occupied orbitals in the Slater
         !        determinant. (min size: number of electrons.)
 
+        ! This algorithm has a look over Nbits/256 rather than Nbits, and so
+        ! is most likely dominated by O(N_el) scaling.
+
         use basis_types, only: basis_t
+        use bit_table_256_m, only: bit_table_256
 
         type(basis_t), intent(in) :: basis_set
         integer(i0), intent(in) :: f(basis_set%string_len)
         integer, intent(out) :: occ_list(:)
-        integer :: i, j, iorb
 
-        iorb = 1
-        outer: do i = 1, basis_set%string_len
-            do j = 0, i0_end
-                if (btest(f(i), j)) then
-                    occ_list(iorb) = basis_set%basis_lookup(j, i)
-                    if (iorb == size(occ_list)) exit outer
-                    iorb = iorb + 1
-                end if
+        ! The lookup table contains the list of bits set for all possible integers contained in a given number of bits.
+        ! Number of bits in integers in the lookup table (assume a power of 2!).
+        integer, parameter :: field_size = ubound(bit_table_256, dim=1)
+        ! Number of such bit chunks in integers of kind i0.
+        integer, parameter :: nfields = i0_length/field_size
+        ! Bit mask to extract a chunk containing field_size bits.
+        integer, parameter :: mask = 2**field_size - 1
+
+        integer :: iel, ifield, nfound, offset, nbits_seen
+        integer(i0) :: field
+
+        ! WARNING: we assume that the basis functions 1,2,..., correspond to bits 0,1,...
+        ! in the first integer of f and so on (i.e. basis_set%separate_strings is false).
+
+        nfound = 0
+        nbits_seen = 0
+        outer: do iel = 1, basis_set%string_len
+            offset = 0
+            do ifield = 1, nfields
+                ! Inspect one byte at a time.
+                field = iand(mask, ishft(f(iel), -offset))
+                associate(in_field=>bit_table_256(0,field))
+                    ! 1-based index in lookup table, which matches the orbitals indexing scheme.
+                    occ_list(nfound+1:nfound+in_field) = bit_table_256(1:in_field, field) + nbits_seen
+                    nfound = nfound + in_field
+                end associate
+                offset = offset + field_size
+                nbits_seen = nbits_seen + field_size
             end do
+            if (nfound == size(occ_list)) exit outer
         end do outer
 
     end subroutine decode_det
@@ -291,6 +315,7 @@ contains
 
         ! Decode determinant bit string into integer list containing the
         ! occupied orbitals.
+        !
         ! In:
         !    sys: system being studied (contains required basis information).
         !    f(string_len): bit string representation of the Slater
@@ -305,29 +330,15 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info_t), intent(inout) :: d
-        integer :: i, j, iocc, iunocc_a, iunocc_b
 
-        iocc = 0
-        iunocc_a = 0
-        iunocc_b = 0
-
-        do i = 1, sys%basis%string_len
-            do j = 0, i0_end
-                if (btest(f(i), j)) then
-                    iocc = iocc + 1
-                    d%occ_list(iocc) = sys%basis%basis_lookup(j, i)
-                end if
-                if (iocc == sys%nel) exit
-            end do
-        end do
+        call decode_det(sys%basis, f, d%occ_list)
 
     end subroutine decode_det_occ
 
-    pure subroutine decode_det_occ_spinunocc(sys, f, d)
+    pure subroutine decode_det_occ_symunocc(sys, f, d)
 
-        ! Decode determinant bit string into integer lists containing the
-        ! occupied and unoccupied orbitals.  The unoccupied alpha and beta
-        ! orbitals are given separately, as this is convenient for FCIQMC.
+        ! Decode determinant bit string into integer list containing the
+        ! occupied orbitals.
         ! In:
         !    f(string_len): bit string representation of the Slater
         !        determinant.
@@ -335,45 +346,30 @@ contains
         !    d: det_info_t variable.  The following components are set:
         !        occ_list: integer list of occupied spin-orbitals in the
         !            Slater determinant.
-        !        unocc_list_alpha: integer list of unoccupied alpha
-        !            spin-orbitals in the Slater determinant.
-        !        unocc_list_beta: integer list of unoccupied beta
-        !            spin-orbitals in the Slater determinant.
+        !        symunocc(2, sym0_tot:symmax_tot): number of unoccupied orbitals of each
+        !            spin/symmetry.  The same indexing scheme is used for
+        !            nbasis_sym_spin.
 
+        use point_group_symmetry, only: nbasis_sym_spin
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info_t), intent(inout) :: d
-        integer :: i, j, iocc, iunocc_a, iunocc_b
+        integer :: i, ims, isym
 
-        iocc = 0
-        iunocc_a = 0
-        iunocc_b = 0
+        call decode_det(sys%basis, f, d%occ_list)
 
-        do i = 1, sys%basis%string_len
-            do j = 0, i0_end
-                if (btest(f(i), j)) then
-                    iocc = iocc + 1
-                    d%occ_list(iocc) = sys%basis%basis_lookup(j, i)
-                else
-                    if (mod(j,2)==0) then
-                        ! alpha state (even bit index, odd basis function index)
-                        iunocc_a = iunocc_a + 1
-                        d%unocc_list_alpha(iunocc_a) = sys%basis%basis_lookup(j, i)
-                    else
-                        ! beta state (odd bit index, even basis function index)
-                        iunocc_b = iunocc_b + 1
-                        d%unocc_list_beta(iunocc_b) = sys%basis%basis_lookup(j, i)
-                    end if
-                end if
-                ! Have we covered all basis functions?
-                ! This avoids examining any "padding" at the end of f.
-                if (iocc+iunocc_a+iunocc_b==sys%basis%nbasis) exit
-            end do
+        d%symunocc = nbasis_sym_spin
+        do i = 1, sys%nel
+            associate(orb=>d%occ_list(i))
+                ims = (sys%basis%basis_fns(orb)%ms+3)/2
+                isym = sys%basis%basis_fns(orb)%sym
+            end associate
+            d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
         end do
 
-    end subroutine decode_det_occ_spinunocc
+    end subroutine decode_det_occ_symunocc
 
     pure subroutine decode_det_spinocc_spinunocc(sys, f, d)
 
@@ -404,6 +400,10 @@ contains
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info_t), intent(inout) :: d
         integer :: i, j, iocc, iocc_a, iocc_b, iunocc_a, iunocc_b, orb, last_basis_ind
+
+        ! A bit too much to do the chunk-based decoding of the occupied list and then fill
+        ! in the remaining information.  We only use this in Hubbard model calculations in
+        ! k-space, so for now just do a (slow) bit-wise inspection.
 
         iocc = 0
         iocc_a = 0
@@ -474,51 +474,6 @@ contains
         end do
 
     end subroutine decode_det_spinocc_spinunocc
-
-    pure subroutine decode_det_occ_symunocc(sys, f, d)
-
-        !0 Decode determinant bit string into integer list containing the
-        ! occupied orbitals.
-        ! In:
-        !    f(string_len): bit string representation of the Slater
-        !        determinant.
-        ! Out:
-        !    d: det_info_t variable.  The following components are set:
-        !        occ_list: integer list of occupied spin-orbitals in the
-        !            Slater determinant.
-        !        symunocc(2, sym0_tot:symmax_tot): number of unoccupied orbitals of each
-        !            spin/symmetry.  The same indexing scheme is used for
-        !            nbasis_sym_spin.
-
-        use point_group_symmetry, only: nbasis_sym_spin
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f(sys%basis%string_len)
-        type(det_info_t), intent(inout) :: d
-        integer :: i, j, iocc, iunocc_a, iunocc_b, orb, ims, isym
-
-        iocc = 0
-        iunocc_a = 0
-        iunocc_b = 0
-
-        d%symunocc = nbasis_sym_spin
-
-        do i = 1, sys%basis%string_len
-            do j = 0, i0_end
-                if (btest(f(i), j)) then
-                    orb = sys%basis%basis_lookup(j, i)
-                    ims = (sys%basis%basis_fns(orb)%ms+3)/2
-                    isym = sys%basis%basis_fns(orb)%sym
-                    iocc = iocc + 1
-                    d%occ_list(iocc) = orb
-                    d%symunocc(ims, isym) = d%symunocc(ims, isym) - 1
-                end if
-                if (iocc == sys%nel) exit
-            end do
-        end do
-
-    end subroutine decode_det_occ_symunocc
 
 !--- Extract information from bit strings ---
 
