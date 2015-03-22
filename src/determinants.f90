@@ -267,8 +267,9 @@ contains
         !    occ_list(:): integer list of occupied orbitals in the Slater
         !        determinant. (min size: number of electrons.)
 
-! [review] - AJWT: This algorithm has a look over Nbits/256 rather than Nbits, and so
-! [review] - AJWT: is most likely dominated by O(N_el) scaling.
+        ! This algorithm has a look over Nbits/256 rather than Nbits, and so
+        ! is most likely dominated by O(N_el) scaling.
+
         use basis_types, only: basis_t
         use bit_table_256_m, only: bit_table_256
 
@@ -306,10 +307,6 @@ contains
                 nbits_seen = nbits_seen + field_size
             end do
             if (nfound == size(occ_list)) exit outer
-! [review] - AJWT: it's probably more optimal to do nbits_seen = nbits_seen + i0_length,
-! [review] - AJWT:  but that would require not modifying nbits_seen in the inner loop, so require an
-! [review] - AJWT:  additional +offset in the occ_list(... line.  That might not be terrible however.
-            nbits_seen = iel*i0_length
         end do outer
 
     end subroutine decode_det
