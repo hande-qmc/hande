@@ -345,6 +345,8 @@ contains
         ! In/Out:
         !    states: 2D array of i0 integers containing the state label for each occupied state.
         !        Sorted on output.
+! [review] - AJWT: Might be worth noting that these are also 2D, but the routine doesn't care about what size
+! [review] - AJWT:  the first dimension is - just that the 2nd should be >=nstates 
         !    pops, dat: population and data arrays for each state.  Sorted by states on output.
 
         use const, only: int_p, i0, p

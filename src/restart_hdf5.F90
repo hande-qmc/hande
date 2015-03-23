@@ -44,7 +44,8 @@ Module restart_hdf5
     !            total population      # total population for each particle type.
     !            received_list         # list of walkers sent from last iteration of non-blocking calculation.
     !            processor map         # processor map used for load balancing
-    !            resort                # if present and true, the psip information must be resorted before use.
+! [review] - AJWT: adding a hyphen is the last resort to help understanding
+    !            resort                # if present and true, the psip information must be re-sorted before use.
     !      state/
     !            shift                 # shift (energy offset/population control)
     !            ncycles               # number of Monte Carlo cycles performed
@@ -534,6 +535,7 @@ Module restart_hdf5
                 if (exists) then
                     call hdf5_read(subgroup_id, dresort, resort)
                     associate(pl=>qs%psip_list)
+! [review] - AJWT: the docs above mention if true for resort, but does 1==true in hdf5 world (or indeed in FORTRAN)?
                         if (resort == 1) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
                     end associate
                 end if
@@ -576,6 +578,8 @@ Module restart_hdf5
 
         end subroutine read_restart_hdf5
 
+! [review] - AJWT: This routine is dauntingly long and dense, but I shall persevere!
+
         subroutine redistribute_restart_hdf5(ri, nprocs_target)
 
             ! Create a new set of restart files for a different number of processors than they
@@ -605,6 +609,7 @@ Module restart_hdf5
 #ifndef DISABLE_HDF5
 
             ! Number of new restart files to work on at a time.
+! [review] - AJWT: (2nd read) - I see what this parameter is now - can it have a name describing what it's the max of!
             integer, parameter :: nmax = 10
             ! Max determinants we'll assign to a processor in RAM before writing out to disk.
             ! (Note: memory usage is O(nmax*nchunk).
@@ -637,10 +642,13 @@ Module restart_hdf5
 
             if (.not.parent) call stop_all('redistribute_restart_hdf5', &
                             'Restart redistribution must currently be performed in serial.  Please improve.')
+! [review] - AJWT: While I think the code tells me that the filenames for write and read must be different, the error
+! [review] - AJWT: message didn't convey that information.
             if (ri%write_id < 0 .and. ri%write_id == ri%read_id) &
                 call stop_all('redistribute_restart_hdf5', 'Cannot redistribute restart information in place.')
 
             ! Find the number of processors used to produce the original set of files.
+! [review] - AJWT: which is put into nprocs_read
             call h5open_f(ierr)
             call init_restart_hdf5(ri, .false., tmp_name, kinds, 0, .false.)
             call h5fopen_f(tmp_name, H5F_ACC_RDONLY_F, orig_id, ierr)
@@ -664,18 +672,23 @@ Module restart_hdf5
                 call h5fclose_f(new_id, ierr)
             end do
 
+! [review] - AJWT: Open the original files
             call h5fopen_f(orig_names(0), H5F_ACC_RDONLY_F, orig_id, ierr)
             call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
             call h5gopen_f(orig_group_id, gpsips, orig_subgroup_id, ierr)
 
             ! Get info relating to assigning states to processors.
+! [review] - AJWT: Backwards compatability options to be removed at some point.
+! [review] - AJWT: We should probably print a warning when these are used (i.e. not previously set in restart files).
             hash_seed = 7 ! hard-coded default at time of writing (so will work with past and future restart files)
             move_freq = 0 ! true unless doing CCMC.
+! [review] - AJWT: There must be some nicer wrappers we can create - this is almost unreadable!  What about some functions?
             call h5gopen_f(orig_id, gmetadata, orig_group_id, ierr)
                 call hdf5_read(orig_group_id, dcalc, calc_type_restart)
             call h5gclose_f(orig_group_id, ierr)
             call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
             call h5gopen_f(orig_group_id, gstate, orig_subgroup_id, ierr)
+! [review] - AJWT: Shouldn't this be something like dhash_shift not dncycles?
             call hdf5_read(orig_subgroup_id, dncycles, hash_shift)
             call h5lexists_f(orig_subgroup_id, dhash_seed, exists, ierr)
             if (exists) call hdf5_read(orig_subgroup_id, dhash_seed, hash_seed)
@@ -696,6 +709,7 @@ Module restart_hdf5
                 call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
                 call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
                 ! ...and non-psip-specific groups in the qmc/ group.
+! [review] - AJWT: I see that the indentation is meant to help understand structure, though I'm not sure it does much
                 call h5gcreate_f(new_id, gqmc, group_id, ierr)
                 call h5gopen_f(new_id, gqmc, group_id, ierr)
                     call h5ocopy_f(orig_group_id, gstate, group_id, gstate, ierr)
@@ -725,11 +739,15 @@ Module restart_hdf5
             ! Read the old restart file for each processor in turn and place the psip
             ! information into the new restart file for the appropriate processor.
             ! NOTE: we do not do any load balancing here (and ignore any that was done).
+! [review] - AJWT: (3rd read) A description of how there is caching and new files are only 
+! [review] - AJWT:            written out a few chunks at a time in blocks on nmax would be helpful.
             do i = 0, nprocs_read-1
                 call h5fopen_f(orig_names(i), H5F_ACC_RDONLY_F, orig_id, ierr)
                 call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
                 call h5gopen_f(orig_group_id, gpsips, orig_subgroup_id, ierr)
 
+! [review] - AJWT: How can one be sure if all the data has been moved?
+! [review] - AJWT: What if somebody adds a bit of data, but doens't change this section?
                     call dset_shape(orig_subgroup_id, ddets, dims)
                     allocate(psip_dets(dims(1), dims(2)), stat=ierr)
                     call check_allocate('psip_dets', size(psip_dets), ierr)
@@ -764,13 +782,20 @@ Module restart_hdf5
                     ! [todo] - non-blocking information.
                     ndets = dims(2)
                     label_length = size(psip_dets, dim=1)
+! [review] - AJWT: (3rd read) The fact nmax is defined at the top of the routine and not used until now might indicate that this routine
+! [review] - AJWT:              could be broken up
                     do inew = 0, nprocs_target-1, nmax
                         nmoved = 0
+! [review] - AJWT: Call me a bear of little brain, but I don't know what this variable does, nor why inew+nmax might be relevant
+! [review] - AJWT: (2nd read) naming nmax something sensible would definitely help this!
+
                         iproc_max = min(inew+nmax,nprocs_target)-1
+! [review] - AJWT: Another cryptically named variable whose purpose is to be fathomed.  Might it 
                         allocate(ihead(inew:iproc_max))
                         ihead = 0
                         do idet = 1, ndets
                             ! Get processor index
+! [review] - AJWT: Not really knowing much about the load balancing, I assume that slot_pos is irrelevant
                             call assign_particle_processor(psip_dets(:,idet), label_length, hash_seed, hash_shift, move_freq, &
                                                            nprocs_target, ip, slot_pos, pm_dummy%map, pm_dummy%nslots)
                             if (ip > iproc_max) then
@@ -792,6 +817,7 @@ Module restart_hdf5
                                 end if
                             end if
                         end do
+! [review] - AJWT: By everything else, I read the code to mean the psips for procs inew...iproc_max which haven't yet been dumped.
                         ! Dump out everything else...
                         do ip = inew, iproc_max
                             call write_psip_info(new_names(ip), kinds, psip_dets_new(:,:ihead(ip),ip), &
@@ -819,10 +845,13 @@ Module restart_hdf5
                 call h5fclose_f(orig_id, ierr)
             end do
 
+! [review] - AJWT: Might it be worth checking that ndets==0 here?
+
             if (parent) write (6,'()')
 
             contains
 
+! [review] - AJWT: At least there's one subroutine.  The name is fairly intuitive, bit a comment about the inputs wouldn't go amiss.
                 subroutine write_psip_info(fname, kinds, psip_dets, psip_pop, psip_data)
 
                     use const, only: i0, int_p, p
