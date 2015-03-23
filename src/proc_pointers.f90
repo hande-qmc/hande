@@ -198,15 +198,16 @@ end type gen_excit_ptr_t
 type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
-    subroutine i_spawner(rng, sys, qmc_in, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, nspawned, connection)
+    subroutine i_spawner(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, nspawned, connection)
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t
         use system, only: sys_t
-        import :: det_info_t, excit_t, gen_excit_ptr_t, int_p
+        import :: det_info_t, excit_t, gen_excit_ptr_t, int_p, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: d

@@ -95,7 +95,7 @@ contains
 
     end subroutine init_non_blocking_comm
 
-    subroutine end_non_blocking_comm(sys, rng, qmc_in, reference, annihilation_flags, ireport, psip_list, spawn, request_s, &
+    subroutine end_non_blocking_comm(sys, rng, qmc_in, qs, reference, annihilation_flags, ireport, psip_list, spawn, request_s, &
                                      request_rep, report_time, ntot_particles, shift, dump_restart_file, load_bal_in)
 
         ! Subroutine dealing with the last iteration when using non-blocking communications.
@@ -135,13 +135,14 @@ contains
         use system, only: sys_t
         use qmc_common, only: write_fciqmc_report
         use parallel, only: parent
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, particle_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, particle_t, annihilation_flags_t, qmc_state_t
 
         use const, only: p, dp
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qs
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(dSFMT_t), intent(inout) :: rng
@@ -170,9 +171,9 @@ contains
         end if
         ntot_particles_save = ntot_particles
         shift_save = shift
-        call update_energy_estimators_recv(qmc_in, psip_list%nspaces, request_rep, ntot_particles, &
+        call update_energy_estimators_recv(qmc_in, qs, psip_list%nspaces, request_rep, ntot_particles, &
                                            psip_list%nparticles_proc, load_bal_in)
-        if (parent) call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false., .true.)
+        if (parent) call write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, curr_time-report_time, .false., .true.)
         ! The call to update_energy_estimators updates the shift and ntot_particles.
         ! When restarting a calculation we actually need the old (before the call)
         ! values of these quantites to be written to the restart file, so reset

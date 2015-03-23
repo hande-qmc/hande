@@ -31,7 +31,7 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn_standard(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_standard(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -71,6 +71,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -85,11 +86,11 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_in%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_standard
 
-    subroutine spawn_importance_sampling(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, &
+    subroutine spawn_importance_sampling(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
                                          gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -134,6 +135,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -151,11 +153,11 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, qmc_in%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, &
+    subroutine spawn_lattice_split_gen(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
                                        gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -210,6 +212,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -225,7 +228,7 @@ contains
         call gen_excit_ptr%init(rng, sys, qmc_in, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, qmc_in%tau*abs_hmatel/pgen)
+        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs_hmatel/pgen)
 
         if (nspawn /= 0_int_p) then
 
@@ -239,7 +242,7 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, &
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
                                                            gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -291,6 +294,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -309,7 +313,7 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, tilde_hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, qmc_in%tau*abs(tilde_hmatel)/pgen)
+        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs(tilde_hmatel)/pgen)
 
         if (nspawn /= 0_int_p) then
 
@@ -327,7 +331,7 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(rng, sys, qmc_in, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_null(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -364,6 +368,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet

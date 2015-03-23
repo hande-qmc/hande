@@ -33,25 +33,6 @@ integer :: real_bit_shift
 ! real_factor = 2**(real_bit_shift)
 integer(int_p) :: real_factor
 
-!--- Energy data ---
-
-! shift: the shift is held constant at the initial value (from input) unless
-! vary_shift is true. When the replica_tricks option is used, the elements
-! of the shift array refer to the shifts in the corresponding replica systems.
-! When replica_tricks is not being used, only the first element is used.
-real(p), allocatable, target :: shift(:) ! (walker_global%nspaces)
-
-! projected energy
-! This stores during an FCIQMC report loop
-!   \sum_{i/=0} <D_0|H|D_i> N_i
-! where D_0 is the reference determinants and N_i is the walker population on
-! determinant D_i.
-! The projected energy is given as
-!   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
-! and so proj_energy must be 'normalised' and averaged over the report loops
-! accordingly.
-real(p) :: proj_energy
-
 !--- Walker data ---
 
 ! Ditto but across all processors.
@@ -65,22 +46,6 @@ real(p) :: rspawn
 ! The total number of successful spawning events, across all processes.
 integer :: tot_nspawn_events
 
-! Population of walkers on reference determinant.
-! The initial value can be overridden by a restart file or input option.
-! For DMQMC, this variable stores the initial number of psips to be
-! randomly distributed along the diagonal elements of the density matrix.
-real(p) :: D0_population = 10.0_p
-
-! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
-! required because in DMQMC calculations, instead of spawning from one end with
-! the full probability, we spawn from two different ends with half probability each.
-! Hence, tau is set to tau/2 in DMQMC calculations, so that an extra factor is not
-! required in every spawning routine. In the death step however, we use
-! walker_energies(1,idet), which has a factor of 1/2 included for convenience
-! already, for conveniece elsewhere. Hence we have to multiply by an extra factor
-! of 2 to account for the extra 1/2 in tau. dmqmc_factor is set to 1.0 when not
-! performing a DMQMC calculation, and so can be ignored in these cases.
-real(p) :: dmqmc_factor = 1.0_p
 
 ! In DMQMC the trace of the density matrix is an important quantity
 ! used in calculating all thermal estimators. This quantity stores
@@ -242,12 +207,6 @@ integer :: rdm_unit
 ! there are relativley few of them and they are expensive to calculate
 real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
-
-!--- Calculation modes ---
-
-! The shift is updated at the end of each report loop when vary_shift is true.
-logical, allocatable :: vary_shift(:) ! (walker_global%nspaces)
-
 !--- Restart data ---
 
 ! Restart data.
@@ -380,7 +339,7 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(qmc_in, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, dmqmc_in)
+    subroutine write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, dmqmc_in)
 
         ! Write the report line at the end of a report loop.
 
@@ -398,9 +357,10 @@ contains
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
         use dmqmc_data, only: dmqmc_in_t
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
-        use qmc_data, only: qmc_in_t, walker_global
+        use qmc_data, only: qmc_in_t, walker_global, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qs
         integer, intent(in) :: ireport
         real(p), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
@@ -430,7 +390,7 @@ contains
         ! DMQMC output.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
-                (mc_cycles_done+mc_cycles-qmc_in%ncycles), shift(1), trace(1)
+                (mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), trace(1)
             ! The trace on the second replica.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
                 write(6, '(3X,es17.10)',advance = 'no') trace(2)
@@ -492,15 +452,15 @@ contains
 
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,X,es17.10)', advance = 'no') &
-                                             mc_cycles_done+mc_cycles, shift(1),   &
-                                             proj_energy, D0_population, &
+                                             mc_cycles_done+mc_cycles, qs%shift(1),   &
+                                             qs%proj_energy, qs%D0_population, &
                                              hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
                                              D0_hf_population, &
                                              ntot_particles
         else
             write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,es17.10)', advance='no') &
-                                             mc_cycles_done+mc_cycles, shift(1),   &
-                                             proj_energy, D0_population, &
+                                             mc_cycles_done+mc_cycles, qs%shift(1),   &
+                                             qs%proj_energy, qs%D0_population, &
                                              ntot_particles
         end if
         write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') tot_nocc_states, tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles

@@ -258,7 +258,7 @@ contains
 
     end subroutine communicate_inst_rdms
 
-    subroutine update_shift_dmqmc(qmc_in, loc_totnparticles, loc_totnparticles_old)
+    subroutine update_shift_dmqmc(qmc_in, qs, loc_totnparticles, loc_totnparticles_old)
 
         ! In:
         !    qmc_in: input options relating to QMC methods.
@@ -268,21 +268,21 @@ contains
         !        particles in the simulation currently.
 
         use energy_evaluation, only: update_shift
-        use fciqmc_data, only: shift, vary_shift
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qs
         real(p), intent(in) :: loc_totnparticles(:)
         real(p), intent(in) :: loc_totnparticles_old(:)
         integer :: ireplica
 
         do ireplica = 1, size(loc_totnparticles)
-            if (vary_shift(ireplica)) then
-                call update_shift(qmc_in, shift(ireplica), loc_totnparticles_old(ireplica), &
+            if (qs%vary_shift(ireplica)) then
+                call update_shift(qmc_in, qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
                     loc_totnparticles(ireplica), qmc_in%ncycles)
             end if
-            if (loc_totnparticles(ireplica) > qmc_in%target_particles .and. (.not. vary_shift(ireplica))) &
-                vary_shift(ireplica) = .true.
+            if (loc_totnparticles(ireplica) > qmc_in%target_particles .and. (.not. qs%vary_shift(ireplica))) &
+                qs%vary_shift(ireplica) = .true.
         end do
 
     end subroutine update_shift_dmqmc

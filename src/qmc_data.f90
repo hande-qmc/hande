@@ -428,12 +428,12 @@ type qmc_state_t
     ! accordingly.
     real(p) :: proj_energy
     ! Energy offset (shift) applied to the Hamiltonian.
-    real(p), allocatable :: shift(:) ! (sampling_size)
+    real(p), allocatable :: shift(:) ! (psip_list%nspaces)
     ! The shift is updated at the end of each report loop when vary_shift is true.
     ! When the replica_tricks option is used, the elements
     ! of the shift array refer to the shifts in the corresponding replica systems.
     ! When replica_tricks is not being used, only the first element is used.
-    logical, allocatable :: vary_shift(:) ! (sampling_size)
+    logical, allocatable :: vary_shift(:) ! (spsip_list%nspace)
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store

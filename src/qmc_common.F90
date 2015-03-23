@@ -10,7 +10,7 @@ contains
 
 ! --- Utility routines ---
 
-    subroutine select_ref_det(sys, ref_det_factor, reference, psip_list)
+    subroutine select_ref_det(sys, ref_det_factor, reference, psip_list, qs)
 
         ! Change the reference determinant to be the determinant with the
         ! greatest population if it exceeds some threshold relative to the
@@ -40,12 +40,13 @@ contains
 
         use parallel
         use errors, only: stop_all
-        use qmc_data, only: reference_t, particle_t
+        use qmc_data, only: reference_t, particle_t, qmc_state_t
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: ref_det_factor
         type(reference_t), intent(inout) :: reference
         type(particle_t), intent(inout) :: psip_list
+        type(qmc_state_t), intent(inout) :: qs
 
         integer, parameter :: particle_type = 1
         integer :: i, D0_proc
@@ -86,7 +87,7 @@ contains
         if (all(fmax == reference%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
             in_data = (/ 0_int_p, int(iproc,int_p) /)
-        else if (abs(max_pop) > ref_det_factor*abs(D0_population)) then
+        else if (abs(max_pop) > ref_det_factor*abs(qs%D0_population)) then
             in_data = (/ max_pop, int(iproc,int_p) /)
         else
             ! No det with sufficient population to become reference det on this
@@ -109,7 +110,7 @@ contains
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. any(fmax /= reference%f0)) then
+        if (abs(max_pop) > ref_det_factor*abs(qs%D0_population) .and. any(fmax /= reference%f0)) then
             updated = .true.
             reference%f0 = fmax
             reference%H00 = H00_max
@@ -135,7 +136,7 @@ contains
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(sys%basis, sys%nel, reference%f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
+                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') qs%D0_population
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') reference%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
@@ -579,7 +580,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, reference, psip_list, nb_comm, rep_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, reference, psip_list, nb_comm, rep_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -605,11 +606,12 @@ contains
         use excitations, only: excit_t, get_excitation
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_in_t, reference_t, particle_t
+        use qmc_data, only: qmc_in_t, reference_t, particle_t, qmc_state_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qs
         type(reference_t), intent(in) :: reference
         type(particle_t), intent(in), target :: psip_list
         logical, optional, intent(in) :: nb_comm
@@ -631,8 +633,8 @@ contains
         ! Calculate the projected energy based upon the initial walker
         ! distribution.  proj_energy and D0_population are both accumulated in
         ! update_proj_energy.
-        proj_energy = 0.0_p
-        D0_population = 0.0_p
+        qs%proj_energy = 0.0_p
+        qs%D0_population = 0.0_p
         call alloc_det_info_t(sys, cdet)
         do idet = 1, psip_list%nstates
             cdet%f = psip_list%states(:,idet)
@@ -643,7 +645,7 @@ contains
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
             call update_proj_energy_ptr(sys, reference%f0, cdet, real_population(1), &
-                                        D0_population, proj_energy, D0_excit, hmatel)
+                                        qs%D0_population, qs%proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info_t(cdet)
 
@@ -653,18 +655,18 @@ contains
             ! the send here.
             ! For simplicity, hook into the normal estimator communications, which normalises
             ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
-            D0_population = D0_population*qmc_in%ncycles
-            proj_energy = proj_energy*qmc_in%ncycles
-            call local_energy_estimators(psip_list, rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
+            qs%D0_population = qs%D0_population*qmc_in%ncycles
+            qs%proj_energy = qs%proj_energy*qmc_in%ncycles
+            call local_energy_estimators(psip_list, qs, rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
-            call mpi_allreduce(proj_energy, proj_energy_sum, psip_list%nspaces, mpi_preal, &
+            call mpi_allreduce(qs%proj_energy, proj_energy_sum, psip_list%nspaces, mpi_preal, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(psip_list%nparticles, ntot_particles, psip_list%nspaces, MPI_PREAL, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            proj_energy = proj_energy_sum
-            D0_population = D0_population_sum
+            call mpi_allreduce(qs%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            qs%proj_energy = proj_energy_sum
+            qs%D0_population = D0_population_sum
             ! TODO: HFS, DMQMC quantities
         end if
 #else
@@ -679,27 +681,29 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            call write_fciqmc_report(qmc_in, 0, ntot_particles, 0.0, .true., .false.)
+            call write_fciqmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false.)
         end if
 
     end subroutine initial_fciqmc_status
 
 ! --- QMC loop and cycle initialisation routines ---
 
-    subroutine init_report_loop(bloom_stats)
+    subroutine init_report_loop(qs, bloom_stats)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
 
         use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
+        use qmc_data, only: qmc_state_t
 
+        type(qmc_state_t), intent(inout) :: qs
         type(bloom_stats_t), intent(inout) :: bloom_stats
 
         call bloom_stats_init_report_loop(bloom_stats)
 
-        proj_energy = 0.0_p
+        qs%proj_energy = 0.0_p
         rspawn = 0.0_p
-        D0_population = 0.0_p
+        qs%D0_population = 0.0_p
 
         ! DMQMC-specific...
         if (allocated(excit_dist)) excit_dist = 0.0_p
@@ -814,7 +818,7 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, psip_list,      &
+    subroutine end_report_loop(sys, qmc_in, reference, ireport, iteration, update_tau, psip_list, qs,  &
                                 ntot_particles, nspawn_events, report_time, semi_stoch_shift_it,       &
                                 semi_stoch_start_it, soft_exit, dump_restart_file_shift, load_bal_in,  &
                                 update_estimators, bloom_stats, doing_lb, nb_comm, rep_comm, dmqmc_in, &
@@ -877,7 +881,7 @@ contains
         use system, only: sys_t
         use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, particle_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, particle_t, qmc_state_t
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
@@ -885,6 +889,7 @@ contains
         integer, intent(in) :: ireport, iteration
         logical, intent(in) :: update_tau
         type(particle_t), intent(inout) :: psip_list
+        type(qmc_state_t), intent(inout) :: qs
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
@@ -905,14 +910,14 @@ contains
         real(dp) :: rep_info_copy(nprocs*psip_list%nspaces+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
-        update_tau_now = update_tau .and. .not. vary_shift(1) .and. qmc_in%tau_search
+        update_tau_now = update_tau .and. .not. qs%vary_shift(1) .and. qmc_in%tau_search
 
         ! Using non-blocking communications?
         nb_comm_local = .false.
         if (present(nb_comm)) nb_comm_local = nb_comm
 
         ! Are all the shifts currently varying?
-        vary_shift_before = all(vary_shift)
+        vary_shift_before = all(qs%vary_shift)
 
         ! Test for a comms file so MPI communication can be combined with
         ! energy_estimators communication
@@ -922,16 +927,16 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
-            call update_energy_estimators(qmc_in, nspawn_events, psip_list, ntot_particles, load_bal_in, doing_lb, comms_found, &
+            call update_energy_estimators(qmc_in, qs, nspawn_events, psip_list, ntot_particles, load_bal_in, doing_lb, comms_found, &
                                           update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(psip_list, rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
+            call local_energy_estimators(psip_list, qs, rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, psip_list%nspaces, rep_comm%request, ntot_particles,             &
+            call update_energy_estimators_recv(qmc_in, qs, psip_list%nspaces, rep_comm%request, ntot_particles,             &
                                                psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau_now, &
                                                bloom_stats)
             ! Send current report loop quantities.
@@ -945,7 +950,7 @@ contains
         ! If we have just started varying the shift, then we can calculate the
         ! iteration at which to start semi-stochastic, if it is being turned on
         ! relative to the shift start.
-        if ((.not. vary_shift_before) .and. all(vary_shift) .and. (semi_stoch_shift_it /= -1)) &
+        if ((.not. vary_shift_before) .and. all(qs%vary_shift) .and. (semi_stoch_shift_it /= -1)) &
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
         call cpu_time(curr_time)
@@ -954,16 +959,16 @@ contains
         ! curr_time - report_time is thus the time taken by this report loop.
         if (parent) then
             if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-            call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false., nb_comm_local, dmqmc_in)
+            call write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, curr_time-report_time, .false., nb_comm_local, dmqmc_in)
         end if
 
         ! Write restart file if required.
-        if (dump_restart_file_shift .and. any(vary_shift)) then
+        if (dump_restart_file_shift .and. any(qs%vary_shift)) then
             dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, psip_list, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+            call dump_restart_hdf5(restart_info_global_shift, qs, psip_list, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
                                    ntot_particles, nb_comm_local, spawn_recv)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, psip_list, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+            call dump_restart_hdf5(restart_info_global, qs, psip_list, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
                                    ntot_particles, nb_comm_local, spawn_recv)
         end if
         ! cpu_time outputs an elapsed time, so update the reference timer.
@@ -971,7 +976,7 @@ contains
 
         call calc_interact(comms_found, soft_exit, qmc_in)
 
-        if (update_tau_now) call rescale_tau(qmc_in%tau)
+        if (update_tau_now) call rescale_tau(qs%tau)
 
     end subroutine end_report_loop
 
