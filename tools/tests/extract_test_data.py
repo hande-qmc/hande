@@ -17,7 +17,7 @@ def main(filename):
     data = pyhande.testcode.extract_test_data(filename)
     output = []
     for (key, val) in data.items():
-        output.append((key, val.to_string(index=False, index_names=False)))
+        output.append((key, val.to_string(index=False, index_names=False, float_format='{:.10f}'.format)))
 
     return '\n\n'.join('\n'.join(calc_out) for calc_out in output)
 
