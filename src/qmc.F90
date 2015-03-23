@@ -333,7 +333,10 @@ contains
                 ! initialise pl%walker_population. For DMQMC, this is
                 ! not required, as psips are spawned along the diagonal
                 ! initially.
-                if (.not.doing_calc(dmqmc_calc)) then
+                if (doing_calc(dmqmc_calc)) then
+                    ! Initial distribution handled later
+                    pl%tot_walkers = 0
+                else
                     pl%tot_walkers = 1
                     ! Zero all populations...
                     pl%walker_population(:,pl%tot_walkers) = 0_int_p
