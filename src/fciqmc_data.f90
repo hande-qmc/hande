@@ -527,6 +527,7 @@ contains
         use spawn_data, only: dealloc_spawn_t
         use calc, only: dealloc_parallel_t
         use qmc_data, only: reference_t, walker_t
+        use reference_determinant, only: dealloc_reference_t
 
         logical, intent(in) :: nb_comm
         type(reference_t), intent(inout), optional :: reference
@@ -535,14 +536,7 @@ contains
         integer :: ierr
 
         if (present(reference)) then
-            if (allocated(reference%occ_list0)) then
-                deallocate(reference%occ_list0, stat=ierr)
-                call check_deallocate('reference%occ_list0',ierr)
-            end if
-            if (allocated(reference%hs_occ_list0)) then
-                deallocate(reference%hs_occ_list0, stat=ierr)
-                call check_deallocate('reference%hs_occ_list0',ierr)
-            end if
+            call dealloc_reference_t(reference)
         end if
         if (present(psip_list)) then
             if (allocated(psip_list%nparticles)) then
@@ -560,14 +554,6 @@ contains
             if (allocated(psip_list%walker_data)) then
                 deallocate(psip_list%walker_data, stat=ierr)
                 call check_deallocate('psip_list%walker_data',ierr)
-            end if
-            if (allocated(reference%f0)) then
-                deallocate(reference%f0, stat=ierr)
-                call check_deallocate('reference%f0',ierr)
-            end if
-            if (allocated(reference%hs_f0)) then
-                deallocate(reference%hs_f0, stat=ierr)
-                call check_deallocate('reference%f0',ierr)
             end if
             if (allocated(neel_singlet_amp)) then
                 deallocate(neel_singlet_amp, stat=ierr)

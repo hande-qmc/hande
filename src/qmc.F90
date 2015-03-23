@@ -88,7 +88,7 @@ contains
 
     end subroutine init_qmc_legacy
 
-    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, annihilation_flags, qmc_state, dmqmc_in, fciqmc_in)
+    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, dmqmc_in, fciqmc_in)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -101,6 +101,10 @@ contains
         !    load_bal_in: input options for load balancing.
         !    fciqmc_in (optional): input options relating to FCIQMC.  Default
         !       fciqmc_in_t settings are used if not present.
+        !    referemce_in: reference determinant.  If set (ie components
+        !       allocated) then this is copied into qmc_state%reference.
+        !       Otherwise a best guess is made based upon symmetry/spin/number
+        !       of electrons/etc in set_reference_det.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in (optional): input options relating to DMQMC.
@@ -120,7 +124,7 @@ contains
         use determinants, only: decode_det, encode_det, write_det
         use energy_evaluation, only: nparticles_start_ind, calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
-        use reference_determinant, only: set_reference_det
+        use reference_determinant, only: set_reference_det, copy_reference_t
         use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
         use spawn_data, only: alloc_spawn_t
@@ -132,13 +136,14 @@ contains
         use restart_hdf5, only: restart_info_global, read_restart_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, &
-                            annihilation_flags_t, qmc_state_t
+                            annihilation_flags_t, qmc_state_t, reference_t
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(reference_t), intent(in) :: reference_in
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
         type(qmc_state_t), intent(inout) :: qmc_state
         type(dmqmc_in_t), intent(inout), optional :: dmqmc_in
@@ -156,6 +161,8 @@ contains
 
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
+
+        call copy_reference_t(reference_in, qmc_state%reference)
 
         ! --- Array sizes depending upon QMC algorithms ---
 

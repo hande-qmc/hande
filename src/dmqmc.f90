@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, load_bal_in)
+    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, load_bal_in, reference_in)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -17,6 +17,9 @@ contains
         ! In:
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
+        !    reference_in: current reference determinant.  If not set (ie
+        !       components allocated) then a best guess is made based upon the
+        !       desired spin/symmetry.
         ! In/Out:
         !    sys: system being studied.  NOTE: if modified inside a procedure,
         !         it should be returned in its original (ie unmodified state)
@@ -48,6 +51,7 @@ contains
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(reference_t), intent(in) :: reference_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
@@ -74,7 +78,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, annihilation_flags, qs, dmqmc_in=dmqmc_in)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in)
 
         allocate(tot_nparticles_old(qs%psip_list%sampling_size), stat=ierr)
         call check_allocate('tot_nparticles_old', size(tot_nparticles_old), ierr)

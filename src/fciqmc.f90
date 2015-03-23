@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in)
+    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -22,6 +22,9 @@ contains
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    fciqmc_in: input options relating to FCIQMC.
         !    restart_in: input options for HDF5 restart files.
+        !    reference_in: current reference determinant.  If not set (ie
+        !       components allocated) then a best guess is made based upon the
+        !       desired spin/symmetry.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    load_bal_in: input options for load balancing.
@@ -50,7 +53,7 @@ contains
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t
-        use qmc_data, only: empty_determ_space, qmc_state_t, annihilation_flags_t
+        use qmc_data, only: empty_determ_space, qmc_state_t, annihilation_flags_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -58,6 +61,7 @@ contains
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(reference_t), intent(in) :: reference_in
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -92,7 +96,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, annihilation_flags, qs, fciqmc_in=fciqmc_in)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, fciqmc_in=fciqmc_in)
 
         allocate(nparticles_old(qs%psip_list%sampling_size), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)

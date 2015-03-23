@@ -285,18 +285,18 @@ contains
         ! Calculation-specifc initialisation and then run QMC calculation.
 
         if (doing_calc(dmqmc_calc)) then
-            call do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, load_bal_in)
+            call do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, load_bal_in, reference)
         else if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, annihilation_flags, hub_matel)
         else if (doing_calc(ccmc_calc)) then
-            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in)
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
         else
             ! Doing FCIQMC calculation (of some sort) using the original
             ! timestep algorithm.
             if (doing_calc(hfs_fciqmc_calc)) then
-                call do_hfs_fciqmc(sys, qmc_in, restart_in, load_bal_in)
+                call do_hfs_fciqmc(sys, qmc_in, restart_in, load_bal_in, reference)
             else
-                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in)
+                call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
             end if
         end if
 

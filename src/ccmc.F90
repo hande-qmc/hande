@@ -224,7 +224,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -237,7 +237,9 @@ contains
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
-        !    reference: current reference determinant.
+        !    reference_in: current reference determinant.  If not set (ie
+        !       components allocated) then a best guess is made based upon the
+        !       desired spin/symmetry.
         !    load_bal_in: input options for load balancing.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
@@ -277,6 +279,7 @@ contains
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(reference_t), intent(in) :: reference_in
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
@@ -319,7 +322,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, annihilation_flags, qs)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
 
         allocate(nparticles_old(qs%psip_list%sampling_size), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)

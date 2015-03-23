@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine do_hfs_fciqmc(sys, qmc_in, restart_in, load_bal_in)
+    subroutine do_hfs_fciqmc(sys, qmc_in, restart_in, load_bal_in, reference_in)
 
         ! Run the FCIQMC algorithm starting from the initial walker
         ! distribution and perform Hellmann--Feynman sampling in conjunction on
@@ -35,6 +35,9 @@ contains
         !    sys: system being studied.
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
+        !    reference_in: current reference determinant.  If not set (ie
+        !       components allocated) then a best guess is made based upon the
+        !       desired spin/symmetry.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -56,12 +59,13 @@ contains
         use qmc, only: init_qmc
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
-        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t, reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(reference_t), intent(in) :: reference_in
 
         integer :: idet, ireport, icycle, iparticle, hf_initiator_flag, h_initiator_flag, ierr
         integer(int_64) :: nattempts
@@ -87,7 +91,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, annihilation_flags, qs)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
 
         allocate(nparticles_old(qs%psip_list%sampling_size), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)
