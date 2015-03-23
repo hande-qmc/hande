@@ -487,8 +487,8 @@ contains
         integer :: opts
         logical :: new, new_basis
         integer :: err
-        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'ms', 'sym', 'ktwist', 'CAS']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'ms', 'sym', 'ktwist']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -557,8 +557,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'ms', 'finite', 'CAS']
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'ms', 'finite']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -630,8 +630,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms', 'CAS']
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -700,8 +700,7 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', 'staggered_field', &
-                                                                'CAS']
+        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', 'staggered_field' ]
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -775,8 +774,8 @@ contains
         logical :: new_basis
         integer :: err
 
-        character(10), parameter :: keys(11) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
-                                               'ms', 'sym', 'ktwist', 'chem_pot', 'CAS']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+                                               'ms', 'sym', 'ktwist', 'chem_pot']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
