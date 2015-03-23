@@ -246,61 +246,6 @@ contains
 
     end subroutine warn_unused_args
 
-    subroutine get_sys_t_old(lua_state, sys, pos)
-
-        ! Get an existing sys_t object from the lua stack.
-
-        ! It is often convenient (e.g. for semantic ordering of arguments in
-        ! a lua function) to get a sys_t variable from the stack, even if it is
-        ! not topmost.  Obtain sys_t object from an arbitrary position on the
-        ! stack and then pop it from the stack.
-
-        ! In:
-        !    pos (optional): position of sys object in the lua stack.  Default 1.
-        ! In/Out:
-        !    lua_state: flu/Lua state to which the HANDE API is added. On
-        !        output, the stack will be the same, but without the pointer
-        !        to the sys objecy, which will be popped from the stack.
-        ! Out:
-        !    sys: sys_t object.
-
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer
-        use flu_binding, only: flu_State, flu_gettop, flu_insert
-        use aot_top_module, only: aot_top_get_val
-
-        use errors, only: stop_all
-        use system, only: sys_t
-
-        type(flu_State), intent(inout) :: lua_state
-        type(sys_t), pointer, intent(out) :: sys
-        integer, intent(in), optional :: pos
-
-        type(c_ptr) :: sys_ptr
-        integer :: i, err, pos_loc
-
-        pos_loc = 1
-        if (present(pos)) pos_loc = pos
-
-        ! It is syntactically convenient to have this (e.g.) as the first
-        ! argument (and hence bottom of stack) but we need it before parsing
-        ! the options...
-        do i = 1, flu_gettop(lua_state)-pos_loc
-            call flu_insert(lua_state, 1) ! lua_rotate only available in lua 5.3...
-        end do
-        ! Get the pointer to the sys_t object (which should not be at the top
-        ! of the stack. This routine also pops this value from the stack.
-        call aot_top_get_val(sys_ptr, err, lua_state)
-        if (err /= 0) call stop_all('get_sys_t_old', 'Problem receiving sys_t object.')
-        call c_f_pointer(sys_ptr, sys)
-
-        ! Now rotate the objects in the stack again to get it back to its
-        ! original state (minus the sys object).
-        do i = 1, pos_loc-1
-            call flu_insert(lua_state, 1)
-        end do
-
-    end subroutine get_sys_t_old
-
     subroutine get_sys_t(lua_state, sys, new)
 
         ! Get (or create, if necessary) a sys_t object from the lua stack.
@@ -315,8 +260,9 @@ contains
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! Out:
         !    sys: sys_t object from stack/created.
-        !    new (optional): true if the sys_t object was allocated rather
-        !        than passed in.
+        !    new (optional): If present, set to true if the sys_t object was
+        !       allocated rather than passed in.  If not present, an error is
+        !       thrown if the 'sys' key is not present.
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer
         use errors, only: stop_all
@@ -340,8 +286,12 @@ contains
             call c_f_pointer(sys_ptr, sys)
             if (present(new)) new = .false.
         else
+            if (present(new)) then
+                new = .true.
+            else
+                call stop_all('get_sys_t', 'No system object supplied.')
+            end if
             allocate(sys)
-            if (present(new)) new = .true.
         end if
 
     end subroutine get_sys_t
@@ -883,15 +833,13 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    hilbert_space(
-        !        sys_t,
-        !        {
+        !    hilbert_space{
+        !           sys = sys_t,
         !           ncycles = n,
         !           ex_level = level,
         !           rng_seed = seed,
         !           reference = { ... },  -- nel-dimensional vector.
-        !        }
-        !       )
+        !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
 
@@ -920,7 +868,7 @@ contains
         character(10), parameter :: keys(5) = [character(10) :: 'sys', 'ncycles', 'ex_level', 'reference', 'rng_seed']
 
         lua_state = flu_copyptr(L)
-        call get_sys_t_old(lua_state, sys)
+        call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
 
@@ -955,22 +903,20 @@ contains
     function lua_kinetic_energy(L) result(nresult) bind(c)
 
         ! Run a Monte Carlo calculation to estimate the kinetic energy of a
-        ! system.
+        ! system in the canonical ensemble.
 
         ! In/Out:
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    kinetic_energy(
-        !        sys_t,
-        !        {
+        !    kinetic_energy{
+        !           sys = sys_t,
         !           ncycles = n,
         !           rng_seed = seed,
         !           init_beta = beta,
         !           fermi_temperature = temp,
         !           temp_pop = pop
-        !        }
-        !       )
+        !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
 
@@ -998,7 +944,7 @@ contains
                                                                 'fermi_temperature', 'temp_pop']
 
         lua_state = flu_copyptr(L)
-        call get_sys_t_old(lua_state, sys)
+        call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
 
