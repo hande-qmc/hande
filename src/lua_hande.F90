@@ -153,6 +153,7 @@ contains
         ! Systems
         call flu_register(lua_state, 'hubbard_k', lua_hubbard_k)
         call flu_register(lua_state, 'hubbard_real', lua_hubbard_real)
+        call flu_register(lua_state, 'chung_landau', lua_chung_landau)
         call flu_register(lua_state, 'read_in', lua_read_in)
         call flu_register(lua_state, 'heisenberg', lua_heisenberg)
         call flu_register(lua_state, 'ueg', lua_ueg)
@@ -596,6 +597,49 @@ contains
         nreturn = 1
 
     end function lua_hubbard_real
+
+    function lua_chung_landau(L) result(nreturn) bind(c)
+
+        ! Create/modify a Chung--Landau system.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    chung_landau{
+        !        sys = sys_old -- New sys_t object is created if not passed.
+        !        electrons = N,
+        !        lattice = { { ... }, { ... }, ... } -- D D-dimensional vectors.
+        !        U = U,
+        !        t = t,
+        !        finite = true/false,
+        !    }
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
+
+        use errors, only: warning
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+        type(flu_State) :: lua_state
+        integer :: opts
+
+        ! The Hamiltonian used by Chung-Landau is essentially the spin-polarised Hubbard model in real
+        ! space with a different diagonal matrix element.  Therefore piggy-back on lua_hubbard_real.
+
+        lua_state = flu_copyptr(L)
+        opts = aot_table_top(lua_state)
+        if (aot_exists(lua_state, opts, 'ms')) then
+            call warning('lua_chung_landau', 'The Chung-Landau Hamiltonian is for spinless fermions.  Ignoring the ms keyword.')
+        end if
+
+        ! The Hamiltonian used by Chung-Landau is essentially the spin-polarised Hubbard model in real
+        ! space with a different diagonal matrix element.  Therefore piggy-back on lua_hubbard_real.
+        nreturn = lua_hubbard_real(L)
+
+    end function lua_chung_landau
 
     function lua_read_in(L) result(nreturn) bind(c)
 
