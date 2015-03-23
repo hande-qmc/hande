@@ -87,7 +87,7 @@ contains
         logical :: update_tau
 
         if (parent) then
-            write (6,'(1X,"FCICMC")')
+            write (6,'(1X,"FCIQMC")')
             write (6,'(1X,"------",/)')
         end if
 
