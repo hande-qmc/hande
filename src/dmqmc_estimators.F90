@@ -108,13 +108,15 @@ contains
 
     end subroutine dmqmc_estimate_comms
 
-    subroutine local_dmqmc_estimators(dmqmc_in, rep_loop_loc, min_ind, max_ind, nparticles, nstates_active, nspawn_events)
+    subroutine local_dmqmc_estimators(dmqmc_in, dmqmc_estimates, rep_loop_loc, min_ind, max_ind, nparticles, &
+                                      nstates_active, nspawn_events)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
 
         ! In:
         !    dmqmc_in: input options for DMQMC.
+        !    dmqmc_estimates: type containing dmqmc estimates.
         !    min_ind: Array holding the minimum indices of the various
         !        quantities in rep_loop_sum.
         !    max_ind: Array holding the maximum indices of the various
@@ -126,14 +128,15 @@ contains
         !    rep_loop_loc: array containing local quantities to be communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: numerators, rspawn
+        use fciqmc_data, only: rspawn
         use fciqmc_data, only: trace
         use fciqmc_data, only: excit_dist
         use fciqmc_data, only: trace, excit_dist, rdm_traces, renyi_2
         use fciqmc_data, only: calc_inst_rdm
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_estimates_t), intent(in) :: dmqmc_estimates
         integer, intent(in) :: min_ind(:), max_ind(:)
         integer, intent(in) :: nstates_active
         real(p), intent(in) :: nparticles(:)
@@ -147,10 +150,10 @@ contains
         rep_loop_loc(nocc_states_ind) = nstates_active
         rep_loop_loc(nspawned_ind) = nspawn_events
         rep_loop_loc(min_ind(nparticles_ind):max_ind(nparticles_ind)) = nparticles
-        rep_loop_loc(min_ind(trace_ind):max_ind(trace_ind)) = trace
-        rep_loop_loc(min_ind(operators_ind):max_ind(operators_ind)) = numerators
+        rep_loop_loc(min_ind(trace_ind):max_ind(trace_ind)) = dmqmc_estimates%trace
+        rep_loop_loc(min_ind(operators_ind):max_ind(operators_ind)) = dmqmc_estimates%numerators
         if (dmqmc_in%calc_excit_dist) then
-            rep_loop_loc(min_ind(excit_dist_ind):max_ind(excit_dist_ind)) = excit_dist
+            rep_loop_loc(min_ind(excit_dist_ind):max_ind(excit_dist_ind)) = dmqmc_estimates%excit_dist
         end if
         if (calc_inst_rdm) then
             ! Reshape this 2d array into a 1d array to add it to rep_loop_loc.
@@ -163,7 +166,8 @@ contains
 
     end subroutine local_dmqmc_estimators
 
-    subroutine communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, tot_nparticles, qs)
+    subroutine communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, tot_nparticles, qs, &
+                                             dmqmc_estimates)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -179,6 +183,7 @@ contains
         !        quantities in rep_loop_sum.
         !    ncycles: number of monte carlo cycles.
         ! Out:
+        !    dmqmc_estimates: type containing dmqmc_estimates.
         !    tot_nparticles: total number of particles of each type across all
         !       processors.
 
@@ -186,7 +191,7 @@ contains
         use fciqmc_data, only: rspawn, nrdms
         use fciqmc_data, only: trace, numerators, excit_dist
         use fciqmc_data, only: rdm_traces, renyi_2, calc_inst_rdm
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
 
@@ -195,15 +200,16 @@ contains
         integer, intent(in) :: min_ind(:), max_ind(:), ncycles
         real(p), intent(out) :: tot_nparticles(:)
         type(qmc_state_t), intent(inout) :: qs
+        type(dmqmc_estimates_t), intent(out) :: dmqmc_estimates
 
         rspawn = rep_loop_sum(rspawn_ind)
         qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
         qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
-        trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
-        numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))
+        dmqmc_estimates%trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
+        dmqmc_estimates%numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))
         if (dmqmc_in%calc_excit_dist) then
-            excit_dist = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
+            dmqmc_estimates%excit_dist = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
         end if
         if (calc_inst_rdm) then
             rdm_traces = reshape(rep_loop_sum(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)), shape(rdm_traces))
@@ -304,26 +310,27 @@ contains
         !    dmqmc_in: input options for DMQMC.
         !    idet: Current position in the main particle list.
         !    iteration: current Monte Carlo cycle.
-        !    cdet: det_info_t object containing information of current density
-        !        matrix element.
         !    H00: diagonal Hamiltonian element for the reference.
         !    nload_slots: number of load balancing slots (per processor).
         !    psip_list: particle information/lists.
+        ! In/Out:
+        !    cdet: det_info_t object containing information of current density
+        !        matrix element.
+        !    dmqmc_estimates: type containing dmqmc estimates.
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
         use excitations, only: get_excitation, excit_t
-        use fciqmc_data, only: trace, doing_reduced_dm
+        use fciqmc_data, only: doing_reduced_dm
         use fciqmc_data, only: accumulated_probs
-        use fciqmc_data, only: excit_dist
         use fciqmc_data, only: accumulated_probs_old, real_factor
-        use fciqmc_data, only: energy_ind, numerators
+        use fciqmc_data, only: energy_ind
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
         use qmc_data, only: reference_t, particle_t
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -332,6 +339,7 @@ contains
         real(p), intent(in) :: H00
         integer, intent(in) :: nload_slots
         type(particle_t), intent(in) :: psip_list
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
 
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
