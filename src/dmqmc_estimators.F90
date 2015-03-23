@@ -21,7 +21,7 @@ end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list, qs)
+    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list, qs, dmqmc_estimates)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -38,17 +38,19 @@ contains
         ! In/Out:
         !    psip_list: particle information.  On output total (ie not
         !        per-processor) quantities are updated.
+        !    dmqmc_estimates: type containing dmqmc estimates.
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: num_dmqmc_operators, calc_inst_rdm, nrdms
         use qmc_data, only: particle_t, qmc_state_t
         use parallel
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
         type(particle_t), intent(inout) :: psip_list
         type(qmc_state_t), intent(inout) :: qs
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
 
         real(dp), allocatable :: rep_loop_loc(:)
         real(dp), allocatable :: rep_loop_sum(:)
@@ -87,7 +89,7 @@ contains
         call check_allocate('rep_loop_sum', tot_nelems, ierr)
 
         ! Move the variables to be communicated to rep_loop_loc.
-        call local_dmqmc_estimators(dmqmc_in, rep_loop_loc, min_ind, max_ind, psip_list%nparticles, &
+        call local_dmqmc_estimators(dmqmc_in, dmqmc_estimates, rep_loop_loc, min_ind, max_ind, psip_list%nparticles, &
                                     psip_list%nstates, nspawn_events)
 
 #ifdef PARALLEL
@@ -98,7 +100,8 @@ contains
 #endif
 
         ! Move the communicated quantites to the corresponding variables.
-        call communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, psip_list%tot_nparticles, qs)
+        call communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, psip_list%tot_nparticles, qs, &
+                                           dmqmc_estimates)
 
         ! Clean up.
         deallocate(rep_loop_loc, stat=ierr)
@@ -131,7 +134,7 @@ contains
         use fciqmc_data, only: rspawn
         use fciqmc_data, only: trace
         use fciqmc_data, only: excit_dist
-        use fciqmc_data, only: trace, excit_dist, rdm_traces, renyi_2
+        use fciqmc_data, only: trace, rdm_traces, renyi_2
         use fciqmc_data, only: calc_inst_rdm
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
@@ -189,7 +192,6 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use fciqmc_data, only: rspawn, nrdms
-        use fciqmc_data, only: trace, numerators, excit_dist
         use fciqmc_data, only: rdm_traces, renyi_2, calc_inst_rdm
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
@@ -296,7 +298,7 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, nload_slots, psip_list)
+    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, nload_slots, psip_list, dmqmc_estimates)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -324,13 +326,13 @@ contains
         use fciqmc_data, only: doing_reduced_dm
         use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: accumulated_probs_old, real_factor
-        use fciqmc_data, only: energy_ind
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
         use qmc_data, only: reference_t, particle_t
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind, &
+                              correlation_fn_ind, staggered_mag_ind, full_r2_ind
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -360,38 +362,41 @@ contains
 
         ! The following only use the populations with ireplica = 1, so only call
         ! them if the determinant is occupied in the first replica.
-        if (abs(unweighted_walker_pop(1)) > 0) then
-            ! See which estimators are to be calculated, and call the
-            ! corresponding procedures.
-            ! Energy
-            If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
-                    &(sys, excitation, cdet, H00, unweighted_walker_pop(1), psip_list%dat(1, idet), trace, &
-                    numerators(energy_ind))
-            ! Energy squared.
-            if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
-                &(sys, cdet, excitation, H00, unweighted_walker_pop(1))
-            ! Spin-spin correlation function.
-            if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-                &(sys, cdet, excitation, H00, unweighted_walker_pop(1), dmqmc_in%correlation_mask)
-            ! Staggered magnetisation.
-            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
-                &(sys, cdet, excitation, H00, unweighted_walker_pop(1))
-            ! Excitation distribution.
-            if (dmqmc_in%calc_excit_dist) excit_dist(excitation%nexcit) = &
-                excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
-            ! Excitation distribtuion for calculating importance sampling weights.
-            if (dmqmc_in%find_weights .and. iteration > dmqmc_in%start_av_excit_dist) excit_dist(excitation%nexcit) = &
-                excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
-        end if
+        associate (est => dmqmc_estimates)
+            if (abs(unweighted_walker_pop(1)) > 0) then
+                ! See which estimators are to be calculated, and call the
+                ! corresponding procedures.
+                ! Energy
+                if (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
+                        &(sys, excitation, cdet, H00, unweighted_walker_pop(1), psip_list%dat(1, idet), &
+                          est%trace, est%numerators(energy_ind))
+                ! Energy squared.
+                if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
+                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(energy_squared_ind))
+                ! Spin-spin correlation function.
+                if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
+                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), dmqmc_in%correlation_mask, &
+                      est%numerators(correlation_fn_ind))
+                ! Staggered magnetisation.
+                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&
+                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(staggered_mag_ind))
+                ! Excitation distribution.
+                if (dmqmc_in%calc_excit_dist) est%excit_dist(excitation%nexcit) = &
+                    est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
+                ! Excitation distribtuion for calculating importance sampling weights.
+                if (dmqmc_in%find_weights .and. iteration > dmqmc_in%start_av_excit_dist) est%excit_dist(excitation%nexcit) = &
+                    est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
+            end if
 
-        ! Full Renyi entropy (S_2).
-        if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit, &
-                                                                      dmqmc_in%half_density_matrix)
+            ! Full Renyi entropy (S_2).
+            if (doing_dmqmc_calc(dmqmc_full_r2)) call update_full_renyi_2(unweighted_walker_pop, excitation%nexcit, &
+                                                                          dmqmc_in%half_density_matrix, est%numerators(full_r2_ind))
 
-        ! Update the contribution to the trace from other replicas
-        if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) then
-            trace(2) = trace(2) + unweighted_walker_pop(2)
-        end if
+            ! Update the contribution to the trace from other replicas
+            if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) then
+                est%trace(2) = est%trace(2) + unweighted_walker_pop(2)
+            end if
+        end associate
 
         ! Reduced density matrices.
         if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
@@ -488,7 +493,7 @@ contains
 
     end subroutine dmqmc_energy_and_trace_propagate
 
-    subroutine dmqmc_energy_squared_heisenberg(sys, cdet, excitation, H00, walker_pop)
+    subroutine dmqmc_energy_squared_heisenberg(sys, cdet, excitation, H00, walker_pop, energy_sq)
 
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
@@ -506,16 +511,19 @@ contains
         !    H00: diagonal Hamiltonian element for the reference.
         !    walker_pop: number of particles on the current density matrix
         !        element.
+        ! In/Out:
+        !    energy_sq: running total of thermal energy squared estimate.
 
         use excitations, only: excit_t
         use determinants, only: det_info_t
-        use fciqmc_data, only: numerators, energy_squared_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, walker_pop
+        real(p), intent(inout) :: energy_sq
+
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
         real(p) :: sum_H1_H2, J_coupling_squared
 
@@ -598,12 +606,12 @@ contains
 
         end if
 
-        numerators(energy_squared_ind) = numerators(energy_squared_ind) + &
-            sum_H1_H2*walker_pop
+        energy_sq = energy_sq + sum_H1_H2*walker_pop
 
     end subroutine dmqmc_energy_squared_heisenberg
 
-    subroutine dmqmc_correlation_function_heisenberg(sys, cdet, excitation, H00, walker_pop, correlation_mask)
+    subroutine dmqmc_correlation_function_heisenberg(sys, cdet, excitation, H00, walker_pop, correlation_mask, &
+                                                     correlation_fn)
 
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
@@ -621,11 +629,12 @@ contains
         !       element.
         !    correlation_mask: masks for calculating spin-spin correlation
         !       function.
+        ! In/Out:
+        !    correlation_fn: running estimate for the correlation function estimator.
 
         use bit_utils, only: count_set_bits
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: numerators, correlation_fn_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -633,6 +642,8 @@ contains
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, walker_pop
         integer(i0), allocatable, intent(in) :: correlation_mask(:)
+        real(p), intent(inout) :: correlation_fn
+
         integer(i0) :: f(sys%basis%string_len)
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
         integer :: sign_factor
@@ -655,8 +666,7 @@ contains
             sign_factor = (mod(sign_factor+1,2)*2)-1
             ! Hence sign_factor can be used to find the matrix element, as used
             ! below.
-            numerators(correlation_fn_ind) = numerators(correlation_fn_ind) + &
-                (sign_factor*(walker_pop/4))
+            correlation_fn = correlation_fn + (sign_factor*(walker_pop/4))
         else if (excitation%nexcit == 1) then
             ! If not a diagonal element, but only a single excitation, then the
             ! corresponding matrix element will be 1/2 if and only if the two
@@ -668,12 +678,12 @@ contains
             bit_position2 = sys%basis%bit_lookup(1,excitation%to_orb(1))
             bit_element2 = sys%basis%bit_lookup(2,excitation%to_orb(1))
             if (btest(correlation_mask(bit_element1), bit_position1) .and. btest(correlation_mask(bit_element2), bit_position2)) &
-                numerators(correlation_fn_ind) = numerators(correlation_fn_ind) + (walker_pop/2)
+                correlation_fn = correlation_fn + walker_pop/2
         end if
 
     end subroutine dmqmc_correlation_function_heisenberg
 
-    subroutine dmqmc_stag_mag_heisenberg(sys, cdet, excitation, H00, walker_pop)
+    subroutine dmqmc_stag_mag_heisenberg(sys, cdet, excitation, H00, walker_pop, staggered_mag)
 
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
@@ -689,17 +699,20 @@ contains
         !    H00: diagonal Hamiltonian element for the reference.
         !    walker_pop: number of particles on the current density matrix
         !       element.
+        ! In/Out:
+        !    staggered_mag: running estimate for the staggered magnitisation.
 
         use bit_utils, only: count_set_bits
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: numerators, staggered_mag_ind
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, walker_pop
+        real(p), intent(inout) :: staggered_mag
+
         integer :: bit_element1, bit_position1, bit_element2, bit_position2
         integer(i0) :: f(sys%basis%string_len)
         integer :: n_up_plus
@@ -745,12 +758,11 @@ contains
             total_sum = (mod(total_sum+1,2)*2)-1
         end if
 
-        numerators(staggered_mag_ind) = numerators(staggered_mag_ind) + &
-            (real(total_sum)/real(sys%lattice%nsites**2))*walker_pop
+        staggered_mag = staggered_mag + (real(total_sum)/real(sys%lattice%nsites**2))*walker_pop
 
     end subroutine dmqmc_stag_mag_heisenberg
 
-    subroutine update_full_renyi_2(walker_pop, excit_level, half_density_matrix)
+    subroutine update_full_renyi_2(walker_pop, excit_level, half_density_matrix, full_r2)
 
         ! Add the contribution from the current density matrix element to the
         ! Renyi entropy (S_2) of the full density matrix.
@@ -762,12 +774,14 @@ contains
         !        contributing to the full density matrix bitstring.
         !    half_density_matrix: reflect psips spawned from lower triangle into
         !        the upper one?
-
-        use fciqmc_data, only: numerators, full_r2_ind
+        ! In/Out:
+        !    full_r2: running estimate for Renyi entropy of the full density
+        !       matrix.
 
         real(p), intent(in) :: walker_pop(:)
         integer, intent(in) :: excit_level
         logical, intent(in) :: half_density_matrix
+        real(p), intent(inout) :: full_r2
 
         if (half_density_matrix .and. excit_level /= 0) then
             ! With the half-density matrix option, only the upper-half of the
@@ -775,9 +789,9 @@ contains
             ! as large instead. Thus, a product of off-diagonal elements is four
             ! times as large. We want two 'correct size' contributions, so we
             ! need to divide these contirbutions by two to get this.
-            numerators(full_r2_ind) = numerators(full_r2_ind) + walker_pop(1)*walker_pop(2)/2.0_p
+            full_r2 = full_r2 + walker_pop(1)*walker_pop(2)/2.0_p
         else
-            numerators(full_r2_ind) = numerators(full_r2_ind) + walker_pop(1)*walker_pop(2)
+            full_r2 = full_r2 + walker_pop(1)*walker_pop(2)
         end if
 
     end subroutine update_full_renyi_2

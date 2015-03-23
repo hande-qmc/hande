@@ -45,7 +45,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -71,6 +71,7 @@ contains
         type(bloom_stats_t) :: bloom_stats
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
+        type(dmqmc_estimates_t) :: dmqmc_estimates
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -179,7 +180,7 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list)
+                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list, dmqmc_estimates)
                         end if
 
                         do ireplica = 1, qs%psip_list%nspaces
@@ -263,7 +264,8 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs)
+                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs, &
+                                          dmqmc_estimates)
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
 

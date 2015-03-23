@@ -54,7 +54,7 @@ abstract interface
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
     end subroutine i_update_dmqmc_energy_and_trace
-    subroutine i_update_dmqmc_estimators(sys, cdet, excitation, H00, walker_pop)
+    subroutine i_update_dmqmc_estimators(sys, cdet, excitation, H00, walker_pop, estimate)
         use system, only: sys_t
         use determinants, only: det_info_t
         use qmc_data, only: reference_t
@@ -64,8 +64,9 @@ abstract interface
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, walker_pop
+        real(p), intent(inout) :: estimate
     end subroutine i_update_dmqmc_estimators
-    subroutine i_update_dmqmc_correlation_function(sys, cdet, excitation, H00, walker_pop, mask)
+    subroutine i_update_dmqmc_correlation_function(sys, cdet, excitation, H00, walker_pop, mask, cfunc)
         use system, only: sys_t
         use determinants, only: det_info_t
         use qmc_data, only: reference_t
@@ -76,6 +77,7 @@ abstract interface
         type(excit_t), intent(in) :: excitation
         real(p), intent(in) :: H00, walker_pop
         integer(i0), allocatable, intent(in) :: mask(:)
+        real(p), intent(inout) :: cfunc
     end subroutine i_update_dmqmc_correlation_function
     subroutine i_gen_excit(rng, sys, qmc_in, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
