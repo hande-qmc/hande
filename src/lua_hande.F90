@@ -252,9 +252,15 @@ contains
 
         ! This routine assumes that there is a single object on the stack,
         ! which is a table. If this table contains a sys_t object already
-        ! (with the key 'sys') then a pointer to this excisting object will be
+        ! (with the key 'sys') then a pointer to this existing object will be
         ! returned. Otherwise a new sys_t object will be created, and a
         ! pointer to this object returned instead.
+
+        ! If it is expected that a sys_t object already exists then the
+        ! 'new' variable should not be passed in. A stop_all will then be
+        ! called if the sys_t object doesn't exist. If it is not known
+        ! if a sys_t object will already exist (or it is expected that it
+        ! doesn't) then a 'new' variable should be input.
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
