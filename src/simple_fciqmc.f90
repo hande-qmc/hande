@@ -293,7 +293,7 @@ contains
             end do
 
             ! Update the shift
-            psip_list%nparticles = real(sum(abs(psip_list%walker_population(1,:))),p)
+            nparticles = real(sum(abs(psip_list%walker_population(1,:))),p)
             if (vary_shift(1)) then
                 call update_shift(qmc_in, shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
