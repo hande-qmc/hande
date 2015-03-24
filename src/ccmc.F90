@@ -602,7 +602,7 @@ contains
                             connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%ref%f0)
                             call update_proj_energy_ptr(sys, qs%ref%f0, cdet(it), &
                                      cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
-                                     qs%D0_population, qs%proj_energy, connection, junk)
+                                     qs%estimators%D0_population, qs%estimators%proj_energy, connection, junk)
                         end if
 
                         ! Spawning

@@ -446,17 +446,17 @@ contains
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,X,es17.10)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, qs%shift(1),   &
-                                             qs%proj_energy, qs%D0_population, &
+                                             qs%estimators%proj_energy, qs%estimators%D0_population, &
                                              hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
                                              D0_hf_population, &
                                              ntot_particles
         else
             write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,es17.10)', advance='no') &
                                              mc_cycles_done+mc_cycles, qs%shift(1),   &
-                                             qs%proj_energy, qs%D0_population, &
+                                             qs%estimators%proj_energy, qs%estimators%D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%tot_nstates, qs%tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
+        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
 
     end subroutine write_fciqmc_report
 

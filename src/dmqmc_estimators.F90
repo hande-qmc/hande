@@ -197,8 +197,8 @@ contains
         type(qmc_state_t), intent(inout) :: qs
 
         rspawn = rep_loop_sum(rspawn_ind)
-        qs%tot_nstates = rep_loop_sum(nocc_states_ind)
-        qs%tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
+        qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
         trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
         numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))

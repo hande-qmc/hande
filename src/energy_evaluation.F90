@@ -250,8 +250,8 @@ contains
 
         rep_loop_loc = 0.0_dp
 
-        rep_loop_loc(proj_energy_ind) = qs%proj_energy
-        rep_loop_loc(D0_pop_ind) = qs%D0_population
+        rep_loop_loc(proj_energy_ind) = qs%estimators%proj_energy
+        rep_loop_loc(D0_pop_ind) = qs%estimators%D0_population
         rep_loop_loc(rspawn_ind) = rspawn
         if (present(update_tau)) then
             if (update_tau) rep_loop_loc(update_tau_ind) = 1.0_p
@@ -328,8 +328,8 @@ contains
 
         ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
 
-        qs%proj_energy = rep_loop_sum(proj_energy_ind)
-        qs%D0_population = rep_loop_sum(D0_pop_ind)
+        qs%estimators%proj_energy = rep_loop_sum(proj_energy_ind)
+        qs%estimators%D0_population = rep_loop_sum(D0_pop_ind)
         rspawn = rep_loop_sum(rspawn_ind)
         if (present(update_tau)) then
             update_tau = abs(rep_loop_sum(update_tau_ind)) > depsilon
@@ -345,8 +345,8 @@ contains
         proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
         proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
         D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
-        qs%tot_nstates = rep_loop_sum(nocc_states_ind)
-        qs%tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
+        qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if
@@ -379,17 +379,17 @@ contains
             qs%vary_shift(1) = .true.
             if (qmc_in%vary_shift_from_proje) then
               ! Set shift to be instantaneous projected energy.
-              qs%shift = qs%proj_energy/qs%D0_population
-              hf_shift = proj_hf_O_hpsip/qs%D0_population + proj_hf_H_hfpsip/qs%D0_population &
-                                                       - (qs%proj_energy*D0_hf_population)/qs%D0_population**2
+              qs%shift = qs%estimators%proj_energy/qs%estimators%D0_population
+              hf_shift = proj_hf_O_hpsip/qs%estimators%D0_population + proj_hf_H_hfpsip/qs%estimators%D0_population &
+                                                       - (qs%estimators%proj_energy*D0_hf_population)/qs%estimators%D0_population**2
             else
                 qs%shift = qmc_in%vary_shift_from
             end if
         end if
 
         ! average energy quantities over report loop.
-        qs%proj_energy = qs%proj_energy/qmc_in%ncycles
-        qs%D0_population = qs%D0_population/qmc_in%ncycles
+        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
+        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
         ! Similarly for the HFS estimator
         D0_hf_population = D0_hf_population/qmc_in%ncycles
         proj_hf_O_hpsip = proj_hf_O_hpsip/qmc_in%ncycles

@@ -201,8 +201,8 @@ contains
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, cdet, real_population, qs%D0_population, &
-                                                qs%proj_energy, connection, hmatel)
+                    call update_proj_energy_ptr(sys, qs%ref%f0, cdet, real_population, qs%estimators%D0_population, &
+                                                qs%estimators%proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
                     call set_parent_flag_ptr(real_population, qmc_in%initiator_pop, cdet%f, determ%flags(idet), cdet%initiator_flag)
@@ -395,8 +395,8 @@ contains
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
             connection = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
-            call update_proj_energy_ptr(sys, reference%f0, cdet, real_pop, qs%D0_population, &
-                                        qs%proj_energy, connection, hmatel)
+            call update_proj_energy_ptr(sys, reference%f0, cdet, real_pop, qs%estimators%D0_population, &
+                                        qs%estimators%proj_energy, connection, hmatel)
 
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.

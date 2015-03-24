@@ -493,7 +493,7 @@ contains
 
             ! Set initial values from input
             qmc_state%tau = qmc_in%tau
-            qmc_state%D0_population = qmc_in%D0_population
+            qmc_state%estimators%D0_population = qmc_in%D0_population
 
         end associate
 

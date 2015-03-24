@@ -345,7 +345,7 @@ Module restart_hdf5
 
                     call hdf5_write(subgroup_id, dhsref, kinds, shape(reference%hs_f0), reference%hs_f0)
 
-                    tmp = qs%D0_population
+                    tmp = qs%estimators%D0_population
                     call hdf5_write(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
 
                 call h5gclose_f(subgroup_id, ierr)
@@ -528,7 +528,7 @@ Module restart_hdf5
                     call hdf5_read(subgroup_id, dhsref, kinds, shape(reference%hs_f0), reference%hs_f0)
 
                     call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
-                    qs%D0_population = tmp(1)
+                    qs%estimators%D0_population = tmp(1)
 
                 call h5gclose_f(subgroup_id, ierr)
 

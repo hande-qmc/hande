@@ -87,7 +87,7 @@ contains
         if (all(fmax == reference%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
             in_data = (/ 0_int_p, int(iproc,int_p) /)
-        else if (abs(max_pop) > ref_det_factor*abs(qs%D0_population)) then
+        else if (abs(max_pop) > ref_det_factor*abs(qs%estimators%D0_population)) then
             in_data = (/ max_pop, int(iproc,int_p) /)
         else
             ! No det with sufficient population to become reference det on this
@@ -110,7 +110,7 @@ contains
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(qs%D0_population) .and. any(fmax /= reference%f0)) then
+        if (abs(max_pop) > ref_det_factor*abs(qs%estimators%D0_population) .and. any(fmax /= reference%f0)) then
             updated = .true.
             reference%f0 = fmax
             reference%H00 = H00_max
@@ -136,7 +136,7 @@ contains
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(sys%basis, sys%nel, reference%f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') qs%D0_population
+                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') qs%estimators%D0_population
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') reference%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
@@ -633,8 +633,8 @@ contains
         ! Calculate the projected energy based upon the initial walker
         ! distribution.  proj_energy and D0_population are both accumulated in
         ! update_proj_energy.
-        qs%proj_energy = 0.0_p
-        qs%D0_population = 0.0_p
+        qs%estimators%proj_energy = 0.0_p
+        qs%estimators%D0_population = 0.0_p
         call alloc_det_info_t(sys, cdet)
         do idet = 1, psip_list%nstates
             cdet%f = psip_list%states(:,idet)
@@ -645,7 +645,7 @@ contains
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, reference%f0)
             call update_proj_energy_ptr(sys, reference%f0, cdet, real_population(1), &
-                                        qs%D0_population, qs%proj_energy, D0_excit, hmatel)
+                                        qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info_t(cdet)
 
@@ -655,18 +655,18 @@ contains
             ! the send here.
             ! For simplicity, hook into the normal estimator communications, which normalises
             ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
-            qs%D0_population = qs%D0_population*qmc_in%ncycles
-            qs%proj_energy = qs%proj_energy*qmc_in%ncycles
+            qs%estimators%D0_population = qs%estimators%D0_population*qmc_in%ncycles
+            qs%estimators%proj_energy = qs%estimators%proj_energy*qmc_in%ncycles
             call local_energy_estimators(psip_list, qs, rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
             call update_energy_estimators_send(rep_comm)
         else
-            call mpi_allreduce(qs%proj_energy, proj_energy_sum, psip_list%nspaces, mpi_preal, &
+            call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, psip_list%nspaces, mpi_preal, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(psip_list%nparticles, ntot_particles, psip_list%nspaces, MPI_PREAL, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            qs%proj_energy = proj_energy_sum
-            qs%D0_population = D0_population_sum
+            call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            qs%estimators%proj_energy = proj_energy_sum
+            qs%estimators%D0_population = D0_population_sum
             ! TODO: HFS, DMQMC quantities
         end if
 #else
@@ -701,9 +701,9 @@ contains
 
         call bloom_stats_init_report_loop(bloom_stats)
 
-        qs%proj_energy = 0.0_p
+        qs%estimators%proj_energy = 0.0_p
         rspawn = 0.0_p
-        qs%D0_population = 0.0_p
+        qs%estimators%D0_population = 0.0_p
 
         ! DMQMC-specific...
         if (allocated(excit_dist)) excit_dist = 0.0_p

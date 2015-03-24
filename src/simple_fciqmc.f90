@@ -238,9 +238,9 @@ contains
         do ireport = 1, qmc_in%nreport
 
             ! Zero report cycle quantities.
-            qs%proj_energy = 0.0_p
+            qs%estimators%proj_energy = 0.0_p
             rspawn = 0.0_p
-            qs%D0_population = 0.0_p
+            qs%estimators%D0_population = 0.0_p
 
             do icycle = 1, qmc_in%ncycles
 
@@ -267,7 +267,7 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs, qs%proj_energy)
+                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs, qs%estimators%proj_energy)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
                     if (use_sparse_hamil) then
@@ -307,8 +307,8 @@ contains
             end if
 
             ! Average these quantities over the report cycle.
-            qs%proj_energy = qs%proj_energy/qmc_in%ncycles
-            qs%D0_population = qs%D0_population/qmc_in%ncycles
+            qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
+            qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
             rspawn = rspawn/qmc_in%ncycles
 
             call cpu_time(t2)
@@ -537,9 +537,9 @@ contains
 
         if (ref) then
             ! Have reference determinant.
-            qs%D0_population = qs%D0_population + pop
+            qs%estimators%D0_population = qs%estimators%D0_population + pop
         else
-            qs%proj_energy = qs%proj_energy + H0i*pop
+            qs%estimators%proj_energy = qs%estimators%proj_energy + H0i*pop
         end if
 
     end subroutine simple_update_proj_energy

@@ -118,10 +118,10 @@ contains
         do ireport = 1, qmc_in%nreport
 
             ! Zero report cycle quantities.
-            qs%proj_energy = 0.0_p
+            qs%estimators%proj_energy = 0.0_p
             proj_hf_O_hpsip = 0.0_p
             proj_hf_H_hfpsip = 0.0_p
-            qs%D0_population = 0.0_p
+            qs%estimators%D0_population = 0.0_p
             D0_hf_population = 0.0_p
             rspawn = 0.0_p
 
@@ -157,7 +157,7 @@ contains
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
                     call update_proj_energy_ptr(sys, qs%ref%f0, cdet, real_population(1),  &
-                                                qs%D0_population, qs%proj_energy, connection, hmatel)
+                                                qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(qs%psip_list%pops(1,idet)),&
                                              int(qs%psip_list%pops(2,idet)), cdet%data,  &
