@@ -441,6 +441,8 @@ contains
 #else
         use parallel, only: parallel_timing_t
 
+        real(p), intent(in) :: nparticles(:)
+        integer, intent(in) :: nstates_active
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 #endif
