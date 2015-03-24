@@ -314,6 +314,7 @@ contains
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
+        real(p) :: D0_population_cycle, proj_energy_cycle
 
         if (parent) then
             write (6,'(1X,"CCMC")')
@@ -544,15 +545,17 @@ contains
                 !$omp        max_cluster_size, cdet, cluster, truncation_level,      &
                 !$omp        D0_normalisation, D0_pos, nD0_select, qs,               &
                 !$omp        sys, bloom_threshold, bloom_stats,                      &
-                !$omp        proj_energy, real_factor, min_cluster_size,             &
+                !$omp        proj_energy_cycle, real_factor, min_cluster_size,       &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
                 !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
-                !$omp        right_cluster, nprocs, ms_stats,                        &
-                !$omp        nparticles_change, ndeath, D0_population)
+                !$omp        right_cluster, nprocs, ms_stats, qmc_in, load_bal_in,   &
+                !$omp        nparticles_change, ndeath, D0_population_cycle)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                !$omp do schedule(dynamic,200) reduction(+:D0_population,proj_energy)
+                D0_population_cycle = 0.0_p
+                proj_energy_cycle = 0.0_p
+                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle)
                 do iattempt = 1, nclusters
 
                     ! For OpenMP scalability, have this test inside a single loop rather
@@ -602,7 +605,7 @@ contains
                             connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%ref%f0)
                             call update_proj_energy_ptr(sys, qs%ref%f0, cdet(it), &
                                      cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
-                                     qs%estimators%D0_population, qs%estimators%proj_energy, connection, junk)
+                                     D0_population_cycle, proj_energy_cycle, connection, junk)
                         end if
 
                         ! Spawning
@@ -679,6 +682,8 @@ contains
                 !$omp end parallel
 
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
+                qs%estimators%D0_population = qs%estimators%D0_population + D0_population_cycle
+                qs%estimators%proj_energy = qs%estimators%proj_energy + proj_energy_cycle
 
                 ! Redistribute excips to new processors.
                 ! The spawned excips were sent to the correct processors with

@@ -497,7 +497,7 @@ contains
         string_len = size(states, dim=1)
 
         !$omp parallel do default(none) &
-        !$omp shared(nstates, %states, %popss, spawn, iproc, nprocs, string_len) &
+        !$omp shared(nstates, states, pops, spawn, iproc, nprocs, string_len, nload_slots) &
         !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, nstates
             !  - set hash_shift and move_freq
