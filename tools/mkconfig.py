@@ -33,7 +33,7 @@ config_file can be either a path to a file or the name of a file in the
 specified configuration directory.
 
 If no configuration file is given then the script chooses a config file:
-1) If ./make.inc exists and contains a line beginning 
+1) If ./make.inc exists and contains a line beginning
 ## mkconfig
 then the remaining parameters on that line are used as argument.
 Otherwise, if a .default file in the specified configuration directory
@@ -248,18 +248,17 @@ A configuration file does not need to be specified with the --ls option.''')
 
     (options, args) = parser.parse_args(my_args)
 
-    #If there are no command line arguments, try and get them from make.inc
-    if len(args) == 0:
-        if os.path.exists('./make.inc'):
-            with open('./make.inc') as f:
-                for l in f:
-                    if '## mkconfig' in l:
-                        my_args+=shlex.split(l)[2:]
-                        print "Using argumets from "
-                        print l
-                        (options, args) = parser.parse_args(my_args)
-                        break
-                
+    # If there are no command line arguments, try and get them from make.inc
+    if len(args) == 0 and os.path.exists('./make.inc'):
+        with open('./make.inc') as f:
+            for l in f:
+                if '## mkconfig' in l:
+                    my_args += shlex.split(l)[2:]
+                    print("Using argumets from ")
+                    print(l)
+                    (options, args) = parser.parse_args(my_args)
+                    break
+
     config_file = ''
 
     if not options.ls and not options.help_long:
@@ -283,7 +282,7 @@ A configuration file does not need to be specified with the --ls option.''')
 
 def list_configs(config_dir):
     '''Return the path to all config files in config_dir.
-    
+
 We assume only config files are in config_dir.'''
     if os.path.isdir(config_dir):
         return [os.path.join(config_dir, f) for f in os.listdir(config_dir)]
@@ -323,7 +322,7 @@ def parse_config(config_file):
     parser.read(config_file)
 
     for section in parser.sections():
-        if (section not in valid_sections and 
+        if (section not in valid_sections and
                 section not in valid_sections_upper):
             err = ('Invalid section in config file %s: %s.'
                     % (config_file, section))
@@ -362,7 +361,8 @@ def parse_config(config_file):
 
 def create_makefile(config_file, args, defs, use_debug=False):
     '''Returns the makefile using the options given in the config_file.
-        args is the list of arguments which is re-encoded in the make.inc.
+
+args is the list of arguments which is re-encoded in the make.inc.
     '''
     # Select the configuration section to use.
     if use_debug:
@@ -381,16 +381,16 @@ def create_makefile(config_file, args, defs, use_debug=False):
 
     config.update(config=config_name)
 
-    config["args"]=" ".join(pipes.quote(s) for s in args)
+    config["args"] = " ".join(pipes.quote(s) for s in args)
     if defs:
-        config["defs"]=" -D".join([""]+defs)
+        config["defs"] = " -D".join([""]+defs)
     else:
-        config["defs"]=""
+        config["defs"] = ""
     return (MAKEFILE_TEMPLATE % config)
 
 def main(args):
     '''Main procedure.
-    
+
 args: list of arguments.'''
 
     (options, config_file, args) = parse_options(args)
@@ -406,7 +406,7 @@ args: list of arguments.'''
             fout = sys.stdout
         else:
             fout = open(options.out, 'w')
-        fout.write(create_makefile(config_file, args,options.define, options.debug))
+        fout.write(create_makefile(config_file, args, options.define, options.debug))
         if fout != sys.stdout:
             fout.close()
 
