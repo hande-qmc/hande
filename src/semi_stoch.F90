@@ -415,8 +415,9 @@ contains
             nclash = 0
                         
             ! Count the number of deterministic states with each hash value.
+            ! Note hash table doesn't affect Markov chain so just hash the whole shebang.
             do i = 1, determ%tot_size
-                hash = modulo(murmurhash_bit_string(determ%dets(:,i), tensor_label_len, ht%seed), ht%nhash) + 1
+                hash = modulo(murmurhash_bit_string(determ%dets(:,i), i0_length*tensor_label_len, ht%seed), ht%nhash) + 1
                 nclash(hash) = nclash(hash) + 1
             end do
 
@@ -430,7 +431,7 @@ contains
             ! Now loop over all states again and this time fill in the hash table.
             nclash = 0
             do i = 1, determ%tot_size
-                hash = modulo(murmurhash_bit_string(determ%dets(:,i), tensor_label_len, ht%seed), ht%nhash) + 1
+                hash = modulo(murmurhash_bit_string(determ%dets(:,i), i0_length*tensor_label_len, ht%seed), ht%nhash) + 1
                 iz = ht%hash_ptr(hash) + nclash(hash)
                 ht%ind(iz) = i
                 nclash(hash) = nclash(hash) + 1
@@ -630,7 +631,8 @@ contains
 
         is_determ = .false.
 
-        hash = modulo(murmurhash_bit_string(f, size(f), ht%seed), ht%nhash) + 1
+        ! hash table doesn't affect Markov chain so hash whole bit string irrespective of i0_length.
+        hash = modulo(murmurhash_bit_string(f, i0_length*size(f), ht%seed), ht%nhash) + 1
         ! Search the region of the hash table corresponding to this hash value.
         do iz = ht%hash_ptr(hash), ht%hash_ptr(hash+1)-1
             if (all(f == dets(:,ht%ind(iz)))) then

@@ -612,8 +612,8 @@ contains
         ! (Extra credit for parallel calculations)
         ! Hash the label to get a (hopefully uniform) distribution across all
         ! possible particle labels and then modulo it to assign each label in
-        ! a (hopefully uniform) fasion.
-        hash = murmurhash_bit_string(particle_label, length, seed)
+        ! a (hopefully uniform) fashion.
+        hash = murmurhash_bit_string(particle_label, i0_length*length, seed)
         if (shift == 0) then
             ! p = hash(label) % np
             slot_pos = modulo(hash, np*nslots)
@@ -633,7 +633,7 @@ contains
             ! changes at most once in this window.
             offset = ishft(hash+shift, -freq)
             mod_label = particle_label + offset
-            hash = murmurhash_bit_string(mod_label, length, seed)
+            hash = murmurhash_bit_string(mod_label, i0_length*length, seed)
             slot_pos = modulo(hash, np*nslots)
             particle_proc = proc_map(slot_pos)
         end if
