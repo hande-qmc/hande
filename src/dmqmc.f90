@@ -45,7 +45,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_estimates_global
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_estimates_global
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -71,6 +71,8 @@ contains
         type(bloom_stats_t) :: bloom_stats
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
+        type(dmqmc_estimates_t) :: dmqmc_estimates
+        type(dmqmc_weighted_sampling_t) :: weighted_sampling
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -87,7 +89,7 @@ contains
 
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
-        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates_global)
+        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates_global, weighted_sampling)
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -122,7 +124,7 @@ contains
         do beta_cycle = 1, dmqmc_in%beta_loops
 
             call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, qs, beta_cycle, qs%psip_list%nstates, qs%psip_list%nparticles, &
-                                      qs%spawn_store%spawn)
+                                      qs%spawn_store%spawn, weighted_sampling%probs)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
@@ -179,7 +181,8 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list, dmqmc_estimates_global)
+                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list, &
+                                                         dmqmc_estimates_global, weighted_sampling)
                         end if
 
                         do ireplica = 1, qs%psip_list%nspaces
@@ -258,13 +261,13 @@ contains
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
                     if (dmqmc_in%vary_weights .and. iteration <= dmqmc_in%finish_varying_weights) &
-                        call update_sampling_weights(rng, sys%basis, qmc_in, qs%psip_list)
+                        call update_sampling_weights(rng, sys%basis, qmc_in, qs%psip_list, weighted_sampling)
 
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
                 call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs, &
-                                          dmqmc_estimates_global)
+                                          weighted_sampling%probs_old, dmqmc_estimates_global)
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
 
@@ -285,7 +288,7 @@ contains
             if (calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
-            if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations)
+            if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, weighted_sampling)
 
         end do
 
@@ -310,7 +313,8 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, qs, beta_cycle, nstates_active, nparticles, spawn)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, qs, beta_cycle, nstates_active, nparticles, spawn, &
+                                    accumulated_probs)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -326,6 +330,9 @@ contains
         !       processor.  Set to 0.
         !    nstates_active: number of occupied density matrix elements on
         !       processor.  Set to 0.
+        !    accumulated_probs:  This holds the factors by which the populations
+        !        on each excitation level (from 0 to max_number_excitations) are
+        !        reduced, relative to DMQMC without any importance sampling.
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
@@ -342,6 +349,7 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         integer, intent(out) :: nstates_active
         real(p), intent(out) :: nparticles(:)
+        real(p), intent(out) :: accumulated_probs(:)
         integer :: new_seed
 
         ! Reset the current position in the spawning array to be the slot
