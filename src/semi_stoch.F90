@@ -1201,12 +1201,13 @@ contains
 
 #ifndef DISABLE_HDF5
         use hdf5
-        use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init
+        use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init, dtype_equal
 #else
         use errors, only: stop_all
 #endif
         use checking, only: check_allocate, check_deallocate
-        use hashing, only: murmurhash_bit_string
+        use errors, only: stop_all
+
         use parallel
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor
@@ -1226,10 +1227,12 @@ contains
         integer :: i, proc, slot, ndeterm, ndeterm_this_proc, ierr
         integer :: displs(0:nprocs-1)
         integer(HSIZE_T) :: dims(2), maxdims(2)
+        integer(hid_t) :: kind_i0
 #endif
 #ifdef DISABLE_HDF5
         call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
 #else
+
         ! Read the deterministic states in on just the parent processor.
         if (parent) then
             call get_unique_filename("SEMI.STOCH", ".H5", .false., 0, filename)
@@ -1239,6 +1242,12 @@ contains
             call h5open_f(ierr)
             call hdf5_kinds_init(kinds)
             call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
+
+            ! [todo] - replace with kinds%i0 once the redistribute_restart series is merged.
+            kind_i0 = kinds%i32
+            if (i0 == int_64) kind_i0 = kinds%i64
+            if (.not.dtype_equal(file_id, 'dets', kind_i0)) &
+                call stop_all('read_determ_from_file', 'Restarting with a different DET_SIZE is not supported.  Please implement.')
 
             ! Find how many determinants are in the file.
             call h5dopen_f(file_id, 'dets', dset_id, ierr)
