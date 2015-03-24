@@ -38,6 +38,12 @@ type spawn_t
     ! Number of integers which make up the identifying bit string (ie some kind
     ! of location of the particle).
     integer :: bit_str_len
+    ! Total number of bits in the bit string used to represent the label.
+    ! This allows us to assign a processor based upon hashing a given number of bits and
+    ! hence make the processor assignment independent of the size of the integer used in
+    ! the bit string (which naturally includes some padding if bit_str_nbits is not
+    ! a multiple of i0_length).
+    integer :: bit_str_nbits
     ! Number of types of of different particles which are spawned at the same
     ! time.
     integer :: ntypes
@@ -140,12 +146,13 @@ contains
 
 !--- Initialisation/finalisation ---
 
-    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, cutoff, bit_shift, proc_map, hash_seed, mpi_barriers, spawn)
+    subroutine alloc_spawn_t(bit_str_len, bit_str_nbits, ntypes, flag, array_len, cutoff, bit_shift, proc_map, hash_seed, &
+                             mpi_barriers, spawn)
 
         ! Allocate and initialise a spawn_t object.
 
         ! In:
-        !    bit_str_len, ntypes, array_len, hash_seed: see description of
+        !    bit_str_len, bit_str_nbits, ntypes, array_len, hash_seed: see description of
         !       matching components in the spawn_t definition.
         !    flag: whether or not to append an element for storing flags (ie
         !       additional information in bit string format) for the data stored
@@ -164,7 +171,7 @@ contains
         use checking, only: check_allocate
         use errors, only: stop_all
 
-        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift
+        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift, bit_str_nbits
         real(p) :: cutoff
         logical, intent(in) :: flag, mpi_barriers
         type(proc_map_t), intent(in) :: proc_map
@@ -173,6 +180,7 @@ contains
         integer :: ierr, block_size, i, j
 
         spawn%bit_str_len = bit_str_len
+        spawn%bit_str_nbits = bit_str_nbits
         spawn%ntypes = ntypes
         spawn%element_len = spawn%bit_str_len + spawn%ntypes
         if (flag) then

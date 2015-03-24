@@ -303,9 +303,12 @@ contains
                     end if
 
                     ! Note the initiator approximation is not implemented for density matrix calculations.
-                    call alloc_spawn_t(rdm_info(i)%string_len*2, nreplicas, .false., spawn_length_loc, &
-                                         qmc_in%spawn_cutoff, real_bit_shift, pm_dummy, &
-                                         27, qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
+
+                    ! Also we use spawn_t only as a lookup/storage/compression device for the RDMs so
+                    ! need not worry about hashing identical amounts of data irrespective of DET_SIZE.
+                    call alloc_spawn_t(rdm_info(i)%string_len*2, rdm_info(i)%string_len*2*i0_length, nreplicas, .false., &
+                                         spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, pm_dummy, 27, &
+                                         qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and
                     ! each hash value can have 7 clashes. This was found to give
