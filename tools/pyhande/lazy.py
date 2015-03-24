@@ -10,7 +10,7 @@ import pyhande.analysis
 import pyhande.weight
 
 def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
-                reweight_itts=0, mean_shift=0.0, arith_mean=False):
+                reweight_history=0, mean_shift=0.0, arith_mean=False):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -25,7 +25,7 @@ select_function : function
     below for examples.
 extract_psips : bool
     also extract the mean number of psips from the calculation.
-reweight_itts : integer
+reweight_history : integer
     reweight in an attempt to remove population control bias. According to
     C. J. Umirigar et. al. J. Chem. Phys. 99, 2865 (1993) this should be set
     to be a few correlation times.
@@ -71,9 +71,9 @@ size from the blocking analysis:
         to_block.append('# H psips')
 
     # Compute and define new weighted columns to reblock.
-    if reweight_itts > 0:
+    if reweight_history > 0:
         data = pyhande.weight.reweight(data, metadata[0]['mc_cycles'],
-            metadata[0]['tau'], reweight_itts, mean_shift, 
+            metadata[0]['tau'], reweight_history, mean_shift,
             arith_mean=arith_mean)
         data['W * \sum H_0j N_j'] = data['\sum H_0j N_j'] * data['Weight']
         data['W * N_0'] = data['N_0'] * data['Weight']
@@ -82,16 +82,16 @@ size from the blocking analysis:
 
     mc_data = data.ix[indx, to_block]
 
-#    if mc_data['Shift'][1] == mc_data['Shift'][2]:
-#        warnings.warn('The blocking analysis starts from before the shift '
-#                     'begins to vary.')
+    if mc_data['Shift'][1] == mc_data['Shift'][2]:
+        warnings.warn('The blocking analysis starts from before the shift '
+                     'begins to vary.')
 
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
     
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
     reblock = pd.concat([reblock, proje], axis=1)
 
-    if reweight_itts > 0:
+    if reweight_history > 0:
         proje = pyhande.analysis.projected_energy(reblock, covariance, 
                     data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0'
                     ,col_name='Weighted Proj. E.')
@@ -102,7 +102,7 @@ size from the blocking analysis:
     if extract_psips:
         (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock,
                 keys=('# H psips',), summary_tuple=(opt_block, no_opt_block))
-    if reweight_itts > 0:
+    if reweight_history > 0:
         (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock,
                 keys=('W * \sum H_0j N_j', 'W * N_0', 'Weighted Proj. E.'),
                 summary_tuple=(opt_block, no_opt_block))
