@@ -49,8 +49,8 @@ contains
 
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(qmc_in, qs, nspawn_events, psip_list, ntot_particles_old, load_bal_in, doing_lb, comms_found, &
-                                        update_tau, bloom_stats)
+    subroutine update_energy_estimators(qmc_in, qs, nspawn_events, psip_list, ntot_particles_old, load_bal_in, doing_lb, &
+                                        comms_found, update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.

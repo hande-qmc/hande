@@ -1298,8 +1298,8 @@ contains
 
     end subroutine select_cluster_non_composite
 
-    subroutine spawner_ccmc(rng, sys, qmc_in, tau, reference, spawn_cutoff, real_factor, linked_ccmc, cdet, cluster, gen_excit_ptr, &
-                            nspawn, connection, nspawnings_total)
+    subroutine spawner_ccmc(rng, sys, qmc_in, tau, reference, spawn_cutoff, real_factor, linked_ccmc, cdet, cluster, &
+                            gen_excit_ptr, nspawn, connection, nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
         ! probability

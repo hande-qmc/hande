@@ -31,7 +31,8 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn_standard(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_standard(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+                              gen_excit_ptr, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 

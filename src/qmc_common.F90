@@ -136,7 +136,8 @@ contains
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
                 call write_det(sys%basis, sys%nel, reference%f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') qs%estimators%D0_population
+                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
+                            qs%estimators%D0_population
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') reference%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
@@ -927,8 +928,8 @@ contains
         update = .true.
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
-            call update_energy_estimators(qmc_in, qs, nspawn_events, psip_list, ntot_particles, load_bal_in, doing_lb, comms_found, &
-                                          update_tau_now, bloom_stats)
+            call update_energy_estimators(qmc_in, qs, nspawn_events, psip_list, ntot_particles, load_bal_in, doing_lb, &
+                                          comms_found, update_tau_now, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
@@ -936,7 +937,7 @@ contains
             call local_energy_estimators(psip_list, qs, rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, qs, psip_list%nspaces, rep_comm%request, ntot_particles,             &
+            call update_energy_estimators_recv(qmc_in, qs, psip_list%nspaces, rep_comm%request, ntot_particles, &
                                                psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau_now, &
                                                bloom_stats)
             ! Send current report loop quantities.
