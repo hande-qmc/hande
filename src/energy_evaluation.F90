@@ -345,7 +345,7 @@ contains
         proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
         proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
         D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
-        qs%tot_nocc_states = rep_loop_sum(nocc_states_ind)
+        qs%tot_nstates = rep_loop_sum(nocc_states_ind)
         qs%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon

@@ -456,7 +456,7 @@ contains
                                              qs%proj_energy, qs%D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%tot_nocc_states, qs%tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
+        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%tot_nstates, qs%tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
 
     end subroutine write_fciqmc_report
 

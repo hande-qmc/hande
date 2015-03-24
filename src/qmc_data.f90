@@ -435,7 +435,7 @@ type qmc_state_t
     ! When replica_tricks is not being used, only the first element is used.
     logical, allocatable :: vary_shift(:) ! (psip_list%nspaces)
     ! Total number of occupied states across all processors.
-    integer :: tot_nocc_states
+    integer :: tot_nstates
     ! The total number of successful spawning events, across all processors.
     integer :: tot_nspawn_events
     ! Convenience handles.
