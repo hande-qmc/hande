@@ -35,17 +35,10 @@ integer(int_p) :: real_factor
 
 !--- Walker data ---
 
-! Ditto but across all processors.
-integer :: tot_nocc_states
-
 ! Rate of spawning.  This is a running total over MC cycles on each processor
 ! until it is summed over processors and averaged over cycles in
 ! update_energy_estimators.
 real(p) :: rspawn
-
-! The total number of successful spawning events, across all processes.
-integer :: tot_nspawn_events
-
 
 ! In DMQMC the trace of the density matrix is an important quantity
 ! used in calculating all thermal estimators. This quantity stores
@@ -463,7 +456,7 @@ contains
                                              qs%proj_energy, qs%D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') tot_nocc_states, tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
+        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%tot_nocc_states, qs%tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
 
     end subroutine write_fciqmc_report
 

@@ -21,7 +21,7 @@ end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list)
+    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list, qs)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -41,13 +41,14 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: num_dmqmc_operators, calc_inst_rdm, nrdms
-        use qmc_data, only: particle_t
+        use qmc_data, only: particle_t, qmc_state_t
         use parallel
         use dmqmc_data, only: dmqmc_in_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
         type(particle_t), intent(inout) :: psip_list
+        type(qmc_state_t), intent(inout) :: qs
 
         real(dp), allocatable :: rep_loop_loc(:)
         real(dp), allocatable :: rep_loop_sum(:)
@@ -97,7 +98,7 @@ contains
 #endif
 
         ! Move the communicated quantites to the corresponding variables.
-        call communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, psip_list%tot_nparticles)
+        call communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, psip_list%tot_nparticles, qs)
 
         ! Clean up.
         deallocate(rep_loop_loc, stat=ierr)
@@ -162,7 +163,7 @@ contains
 
     end subroutine local_dmqmc_estimators
 
-    subroutine communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, tot_nparticles)
+    subroutine communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, tot_nparticles, qs)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -182,20 +183,22 @@ contains
         !       processors.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn, tot_nocc_states, tot_nspawn_events, nrdms
+        use fciqmc_data, only: rspawn, nrdms
         use fciqmc_data, only: trace, numerators, excit_dist
         use fciqmc_data, only: rdm_traces, renyi_2, calc_inst_rdm
         use dmqmc_data, only: dmqmc_in_t
         use parallel, only: nprocs
+        use qmc_data, only: qmc_state_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         real(dp), intent(in) :: rep_loop_sum(:)
         integer, intent(in) :: min_ind(:), max_ind(:), ncycles
         real(p), intent(out) :: tot_nparticles(:)
+        type(qmc_state_t), intent(inout) :: qs
 
         rspawn = rep_loop_sum(rspawn_ind)
-        tot_nocc_states = rep_loop_sum(nocc_states_ind)
-        tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        qs%tot_nocc_states = rep_loop_sum(nocc_states_ind)
+        qs%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
         trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
         numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))

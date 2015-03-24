@@ -433,7 +433,11 @@ type qmc_state_t
     ! When the replica_tricks option is used, the elements
     ! of the shift array refer to the shifts in the corresponding replica systems.
     ! When replica_tricks is not being used, only the first element is used.
-    logical, allocatable :: vary_shift(:) ! (spsip_list%nspace)
+    logical, allocatable :: vary_shift(:) ! (psip_list%nspaces)
+    ! Total number of occupied states across all processors.
+    integer :: tot_nocc_states
+    ! The total number of successful spawning events, across all processors.
+    integer :: tot_nspawn_events
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
