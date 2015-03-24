@@ -307,8 +307,8 @@ contains
                     ! Also we use spawn_t only as a lookup/storage/compression device for the RDMs so
                     ! need not worry about hashing identical amounts of data irrespective of DET_SIZE.
                     call alloc_spawn_t(rdm_info(i)%string_len*2, rdm_info(i)%string_len*2*i0_length, nreplicas, .false., &
-                                         spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, pm_dummy, 27, &
-                                         qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
+                                       spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, pm_dummy, 27, &
+                                       qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and
                     ! each hash value can have 7 clashes. This was found to give
@@ -1055,7 +1055,7 @@ contains
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
-        call assign_particle_processor(f_new, tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        call assign_particle_processor(f_new, i0_length*tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                        nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 

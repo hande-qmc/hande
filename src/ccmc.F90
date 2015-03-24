@@ -405,7 +405,7 @@ contains
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                 associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
-                    call assign_particle_processor(qs%ref%f0, sys%basis%string_len, spawn%hash_seed, spawn%hash_shift, &
+                    call assign_particle_processor(qs%ref%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
                                                    spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
 
                     ! Update the shift of the excitor locations to be the end of this

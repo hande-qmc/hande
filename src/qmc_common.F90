@@ -492,8 +492,8 @@ contains
         !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, nstates
             !  - set hash_shift and move_freq
-            call assign_particle_processor(states(:,iexcitor), string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                           nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor(states(:,iexcitor), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                           spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
             if (pproc /= iproc) then
                 ! Need to move.
                 ! Add to spawned array so it will be sent to the correct

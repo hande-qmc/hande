@@ -916,8 +916,8 @@ contains
         ! If check_proc is true then make sure that the determinant does belong
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
-            call assign_particle_processor(f, size(f), spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, proc, slot, &
-                                           spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor(f, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                           proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
         else
             proc = iproc
         end if

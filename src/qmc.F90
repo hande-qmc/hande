@@ -372,8 +372,8 @@ contains
                     ! belongs on this processor.
                     ! If it doesn't, set the walkers array to be empty.
                     associate(pm=>spawn%proc_map)
-                        call assign_particle_processor(reference%f0, sys%basis%string_len, spawn%hash_seed, &
-                                                       spawn%hash_shift, spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
+                        call assign_particle_processor(reference%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                                       spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
                     end associate
                     if (D0_proc /= iproc) pl%nstates = 0
                 end if
@@ -412,7 +412,7 @@ contains
                     end select
 
                     associate(pm=>spawn%proc_map)
-                        call assign_particle_processor(f0_inv, sys%basis%string_len, spawn%hash_seed, spawn%hash_shift, &
+                        call assign_particle_processor(f0_inv, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
                                                        spawn%move_freq, nprocs, D0_inv_proc, slot, pm%map, pm%nslots)
                     end associate
 
