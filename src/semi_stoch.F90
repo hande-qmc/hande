@@ -899,7 +899,6 @@ contains
         !    check_proc: If true then first check if f belongs to this
         !        processor. If not then don't add it.
 
-        use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor
