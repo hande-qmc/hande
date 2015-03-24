@@ -607,7 +607,7 @@ contains
         integer, intent(in) :: nslots
         integer, intent(out) :: particle_proc, slot_pos
 
-        integer :: hash, offset
+        integer :: hash, offset, i, tmp1, tmp2
         integer(i0) :: mod_label(size(particle_label))
 
         ! (Extra credit for parallel calculations)
@@ -621,7 +621,7 @@ contains
             particle_proc = proc_map(slot_pos)
         else
             ! o = [ hash(label) + shift ] >> freq
-            ! p = [ hash(label) + o ] % np
+            ! p = [ hash(label + o) ] % np
             ! Explanation:
             ! We wish to slowly vary the processor a label is assigned to.
             ! The shift is a fast(ish) varying value (e.g. the iteration
@@ -633,7 +633,16 @@ contains
             ! 2^freq values of the shift and hence the assigned processor
             ! changes at most once in this window.
             offset = ishft(hash+shift, -freq)
-            mod_label = particle_label + offset
+            if (i0_length == 32) then
+                mod_label = particle_label + offset
+            else
+                ! Ensure the offset is applied bitwise identically every 32 bits.
+                do i = 1, size(particle_label)
+                    tmp1 = transfer(particle_label(i), tmp1) + offset
+                    tmp2 = transfer(ishft(particle_label(i),-32), tmp1) + offset
+                    mod_label(i) = ior(transfer(tmp1, 0_i0), ishft(transfer(tmp2,0_i0),32))
+                end do
+            end if
             hash = murmurhash_bit_string(mod_label, nbits, seed)
             slot_pos = modulo(hash, np*nslots)
             particle_proc = proc_map(slot_pos)
