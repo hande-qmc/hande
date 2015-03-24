@@ -254,6 +254,7 @@ A configuration file does not need to be specified with the --ls option.''')
             for l in f:
                 if '## mkconfig' in l:
                     my_args += shlex.split(l)[2:]
+                    my_args = list(set(my_args))
                     print("Using arguments from:")
                     print(l.strip())
                     (options, args) = parser.parse_args(my_args)
