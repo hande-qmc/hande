@@ -5,11 +5,10 @@ include_f = -I $${HDF5_ROOT-/usr}/include
 fc = gfortran
 cc = gcc
 cxx = g++
-cppflags = -DDISABLE_HDF5 -DDISABLE_LANCZOS
+cppflags = -DDISABLE_HDF5 -DDISABLE_LANCZOS -DDISABLE_UUID
 ld = gfortran
 ldflags = -L ${HOME}/lib
-libs = -lstdc++ -lz -luuid
-# -llapack -lblas 
+libs = -lstdc++ -lz -llapack -lblas 
 f90_module_flag = -J
 
 [opt]
