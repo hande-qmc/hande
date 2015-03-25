@@ -633,6 +633,8 @@ contains
             ! 2^freq values of the shift and hence the assigned processor
             ! changes at most once in this window.
             offset = ishft(hash+shift, -freq)
+! [review] - AJWT: I had a recollection that offset only added to the lowest element of the array - or at least that's how I had
+! [review] - AJWT: conceived of it.  I don't think it makes much difference to add it to all of the elements if the hash function is any good, so might save some coding and space just to add it to the last element?
             if (i0_length == 32) then
                 mod_label = particle_label + offset
             else

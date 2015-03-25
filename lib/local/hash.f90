@@ -48,6 +48,11 @@ contains
 
         ! Pass MurmurHash2 a multiple of 32-bits.
         ! The size parameter used in Murmurhash is in bytes...
+! [review] - AJWT: This is potentially dangerous, but probably not in practice.
+! [review] - AJWT: If f is passed in from an array with a shorter length than 
+! [review] - AJWT: nbytes (if it were based on 16-bit integers say), then MurmurHash2
+! [review] - AJWT: would access potentially unallocated memory.  It might be worth putting
+! [review] - AJWT: something in which would indicate this at compile time if somebody tried to do this.
         nbytes = ceiling(real(N)/32)*4
 
         ! Unfortunately it seems c_loc is not required to be pure by the
