@@ -1033,7 +1033,7 @@ contains
         use parallel
         use errors, only: stop_all
         use spawn_data, only: spawn_t
-        use spawning, only: assign_particle_processor, add_spawned_particle
+        use spawning, only: assign_particle_processor_dmqmc, add_spawned_particle
 
         integer, intent(in) :: string_len, tensor_label_len
         integer(i0), intent(in) :: f(string_len)
@@ -1055,7 +1055,7 @@ contains
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
-        call assign_particle_processor(f_new, i0_length*tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                        nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 

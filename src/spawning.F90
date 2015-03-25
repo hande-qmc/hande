@@ -650,6 +650,69 @@ contains
 
     end subroutine assign_particle_processor
 
+    subroutine assign_particle_processor_dmqmc(particle_label, nbits, seed, shift, freq, np, particle_proc, slot_pos, &
+                                               proc_map, nslots)
+
+        ! Wrapper around assign_particle_processor to ensure we hash the same
+        ! amount of data for tensor labels in DMQMC (which involve two labels)
+        ! irrespective of DET_SIZE.
+
+        ! The tensor label is formed by concatenating together the labels for
+        ! both determinants.  We therefore need to ensure the same amount of
+        ! padding exists between the two labels for DET_SIZE=32 and DET_SIZE=64.
+        ! We do this by inserting an additional integer in the DET_SIZE=32 case
+        ! if required.
+
+        ! In:
+        !    particle_label: bit string which describes the location/basis
+        !       function/etc of the particle (ie psip or excip).
+        !    nbits: length (in bits) of particle_label.  This allows us to ignore
+        !       any additional padding at the end of the bit string for different
+        !       sizes of i0 integers.
+        !    seed: seed to pass to the hashing function.
+        !    shift: value to add to the hash of the label before determining
+        !       the processor to which the label is assigned.
+        !    freq: frequency over which the result changes exactly once.
+        !       See comments below.  Ignored if the shift is 0.  Must be smaller
+        !       than 32.
+        !    np: number of processors over which the particles are to be
+        !       distributed.
+        !    proc_map: array which maps determinants to processors.
+        !    nslots: number of slots proc_map is divided into.
+        ! Out:
+        !    particle_proc: processor where determinant resides
+        !    slot_pos: position in proc_map for this determinant
+
+        use parallel, only: parent
+
+        integer(i0), intent(in) :: particle_label(:)
+        integer, intent(in) :: nbits, seed, shift, freq, np
+        integer, intent(in) :: proc_map(0:)
+        integer, intent(in) :: nslots
+        integer, intent(out) :: particle_proc, slot_pos
+
+        integer(i0) :: particle_label_padded(size(particle_label)+1)
+        integer :: label_len
+
+        if (i0_length == 32) then
+            label_len = size(particle_label)/2
+            if (mod(label_len,2) == 0) then
+                call assign_particle_processor(particle_label, nbits, seed, shift, freq, np, &
+                                               particle_proc, slot_pos, proc_map, nslots)
+            else
+                particle_label_padded(:label_len) = particle_label(:label_len)
+                particle_label_padded(label_len+1) = 0_i0
+                particle_label_padded(label_len+2:) = particle_label(label_len+1:)
+                call assign_particle_processor(particle_label_padded, nbits+i0_length, seed, shift, freq, np, &
+                                               particle_proc, slot_pos, proc_map, nslots)
+            end if
+        else
+            call assign_particle_processor(particle_label, nbits, seed, shift, freq, np, &
+                                           particle_proc, slot_pos, proc_map, nslots)
+        end if
+
+    end subroutine assign_particle_processor_dmqmc
+
     subroutine add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
         ! Add a new particle to a store of spawned particles.
@@ -1118,8 +1181,8 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
-                                           iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                                 nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
@@ -1189,8 +1252,8 @@ contains
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        call assign_particle_processor(f_new_tot, i0_length*basis%tensor_label_len, spawn%hash_seed, spawn%hash_shift, &
-                                       spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                             nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_spawned_particle_density_matrix',&
@@ -1270,8 +1333,8 @@ contains
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        call assign_particle_processor(f_new_tot, i0_length*basis%tensor_label_len, spawn%hash_seed, spawn%hash_shift, &
-                                       spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                             nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_spawned_particle_half_density_matrix',&
@@ -1360,8 +1423,9 @@ contains
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            call assign_particle_processor(f_new_tot, i0_length*basis%tensor_label_len, spawn%hash_seed, spawn%hash_shift, &
-                                           spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                                 spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
+                                                 spawn%proc_map%nslots)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_half_density_matrix',&
@@ -1442,8 +1506,8 @@ contains
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            call assign_particle_processor(f_new_tot, i0_length*basis%tensor_label_len, spawn%hash_seed, spawn%hash_shift, &
-                                           spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                                 nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_density_matrix', &
@@ -1518,6 +1582,7 @@ contains
                 end if
             end if
 
+            ! Can just hash everything as RDMs don't enter the Markov chain.
             call assign_particle_processor(f_new_tot, 2*i0_length*rdm_bl, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                           nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 

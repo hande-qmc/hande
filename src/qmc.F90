@@ -146,7 +146,7 @@ contains
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
         integer :: step, size_main_walker, size_spawned_walker, max_nstates, max_nspawned_states
-        integer :: nwalker_int, nwalker_int_p, nwalker_real
+        integer :: nwalker_int, nwalker_int_p, nwalker_real, nhash_bits
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(sys%basis%string_len)
         integer(int_64) :: tmp_int_64
@@ -274,11 +274,18 @@ contains
             spawn_cutoff = qmc_in%spawn_cutoff
             if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
-            call alloc_spawn_t(sys%basis%tensor_label_len, sys%basis%nbasis, pl%nspaces, qmc_in%initiator_approx, &
+            if (doing_calc(dmqmc_calc)) then
+                ! Hash the entire first bit array and the minimum number of bits
+                ! in the second bit array.
+                nhash_bits = sys%basis%nbasis + i0_length*sys%basis%string_len
+            else
+                nhash_bits = sys%basis%nbasis
+            end if
+            call alloc_spawn_t(sys%basis%tensor_label_len, nhash_bits, pl%nspaces, qmc_in%initiator_approx, &
                                max_nspawned_states, spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, &
                                qmc_in%use_mpi_barriers, spawn)
             if (fciqmc_in_loc%non_blocking_comm) then
-                call alloc_spawn_t(sys%basis%tensor_label_len, sys%basis%nbasis, pl%nspaces, qmc_in%initiator_approx, &
+                call alloc_spawn_t(sys%basis%tensor_label_len, nhash_bits, pl%nspaces, qmc_in%initiator_approx, &
                                    max_nspawned_states, spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, &
                                    .false., spawn_recv)
             end if
