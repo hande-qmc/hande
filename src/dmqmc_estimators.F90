@@ -41,13 +41,13 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: num_dmqmc_operators, calc_inst_rdm, nrdms
-        use qmc_data, only: walker_t
+        use qmc_data, only: particle_t
         use parallel
         use dmqmc_data, only: dmqmc_in_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
-        type(walker_t), intent(inout) :: psip_list
+        type(particle_t), intent(inout) :: psip_list
 
         real(dp), allocatable :: rep_loop_loc(:)
         real(dp), allocatable :: rep_loop_sum(:)
@@ -63,11 +63,11 @@ contains
         nelems(rspawn_ind) = 1
         nelems(nocc_states_ind) = 1
         nelems(nspawned_ind) = 1
-        nelems(nparticles_ind) = psip_list%sampling_size
-        nelems(trace_ind) = psip_list%sampling_size
+        nelems(nparticles_ind) = psip_list%nspaces
+        nelems(trace_ind) = psip_list%nspaces
         nelems(operators_ind) = num_dmqmc_operators 
         nelems(excit_dist_ind) = max_num_excits + 1
-        nelems(rdm_trace_ind) = psip_list%sampling_size*nrdms
+        nelems(rdm_trace_ind) = psip_list%nspaces*nrdms
         nelems(rdm_r2_ind) = nrdms
 
         ! The total number of elements in the array to be communicated.
@@ -87,7 +87,7 @@ contains
 
         ! Move the variables to be communicated to rep_loop_loc.
         call local_dmqmc_estimators(dmqmc_in, rep_loop_loc, min_ind, max_ind, psip_list%nparticles, &
-                                    psip_list%tot_walkers, nspawn_events)
+                                    psip_list%nstates, nspawn_events)
 
 #ifdef PARALLEL
         call mpi_allreduce(rep_loop_loc, rep_loop_sum, size(rep_loop_loc), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -319,7 +319,7 @@ contains
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
-        use qmc_data, only: reference_t, walker_t
+        use qmc_data, only: reference_t, particle_t
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
@@ -328,14 +328,14 @@ contains
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: H00
         integer, intent(in) :: nload_slots
-        type(walker_t), intent(in) :: psip_list
+        type(particle_t), intent(in) :: psip_list
 
         type(excit_t) :: excitation
-        real(p) :: unweighted_walker_pop(psip_list%sampling_size)
+        real(p) :: unweighted_walker_pop(psip_list%nspaces)
 
         ! Get excitation.
-        excitation = get_excitation(sys%nel, sys%basis, psip_list%walker_dets(:sys%basis%string_len,idet), &
-                         psip_list%walker_dets((1+sys%basis%string_len):sys%basis%tensor_label_len,idet))
+        excitation = get_excitation(sys%nel, sys%basis, psip_list%states(:sys%basis%string_len,idet), &
+                         psip_list%states((1+sys%basis%string_len):sys%basis%tensor_label_len,idet))
 
         ! When performing importance sampling the result is that certain
         ! excitation levels have smaller psips populations than the true density
@@ -343,8 +343,8 @@ contains
         ! population by this factor to calculate the contribution from these
         ! excitation levels correctly.
 
-        ! In the case of no importance sampling, unweighted_walker_pop = walker_t%walker_population(1,idet).
-        unweighted_walker_pop = real(psip_list%walker_population(:,idet),p)*accumulated_probs(excitation%nexcit)/&
+        ! In the case of no importance sampling, unweighted_walker_pop = particle_t%pops(1,idet).
+        unweighted_walker_pop = real(psip_list%pops(:,idet),p)*accumulated_probs(excitation%nexcit)/&
             real_factor
 
         ! The following only use the populations with ireplica = 1, so only call
@@ -354,7 +354,7 @@ contains
             ! corresponding procedures.
             ! Energy
             If (doing_dmqmc_calc(dmqmc_energy)) call update_dmqmc_energy_and_trace_ptr&
-                    &(sys, excitation, cdet, H00, unweighted_walker_pop(1), psip_list%walker_data(1, idet), trace, &
+                    &(sys, excitation, cdet, H00, unweighted_walker_pop(1), psip_list%dat(1, idet), trace, &
                     numerators(energy_ind))
             ! Energy squared.
             if (doing_dmqmc_calc(dmqmc_energy_squared)) call update_dmqmc_energy_squared_ptr&
@@ -367,10 +367,10 @@ contains
                 &(sys, cdet, excitation, H00, unweighted_walker_pop(1))
             ! Excitation distribution.
             if (dmqmc_in%calc_excit_dist) excit_dist(excitation%nexcit) = &
-                excit_dist(excitation%nexcit) + real(abs(psip_list%walker_population(1,idet)),p)/real_factor
+                excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
             ! Excitation distribtuion for calculating importance sampling weights.
             if (dmqmc_in%find_weights .and. iteration > dmqmc_in%start_av_excit_dist) excit_dist(excitation%nexcit) = &
-                excit_dist(excitation%nexcit) + real(abs(psip_list%walker_population(1,idet)),p)/real_factor
+                excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
         end if
 
         ! Full Renyi entropy (S_2).
@@ -384,7 +384,7 @@ contains
 
         ! Reduced density matrices.
         if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
-            &(sys%basis, cdet, excitation, psip_list%walker_population(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm)
+            &(sys%basis, cdet, excitation, psip_list%pops(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm)
 
         accumulated_probs_old = accumulated_probs
 

@@ -102,7 +102,7 @@ contains
         !    fciqmc_in (optional): input options relating to FCIQMC.  Default
         !       fciqmc_in_t settings are used if not present.
         !    referemce_in: reference determinant.  If set (ie components
-        !       allocated) then this is copied into qmc_state%reference.
+        !       allocated) then this is copied into qmc_state%ref.
         !       Otherwise a best guess is made based upon symmetry/spin/number
         !       of electrons/etc in set_reference_det.
         ! In/Out:
@@ -162,21 +162,21 @@ contains
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
 
-        call copy_reference_t(reference_in, qmc_state%reference)
+        call copy_reference_t(reference_in, qmc_state%ref)
 
         ! --- Array sizes depending upon QMC algorithms ---
 
-        associate(pl=>qmc_state%psip_list, reference=>qmc_state%reference)
+        associate(pl=>qmc_state%psip_list, reference=>qmc_state%ref)
 
-            pl%sampling_size = 1
+            pl%nspaces = 1
             if (doing_calc(hfs_fciqmc_calc)) then
-                pl%sampling_size = pl%sampling_size + 1
+                pl%nspaces = pl%nspaces + 1
             else if (present(dmqmc_in)) then
-                if (dmqmc_in%replica_tricks) pl%sampling_size = pl%sampling_size + 1
+                if (dmqmc_in%replica_tricks) pl%nspaces = pl%nspaces + 1
             end if
 
             ! Each determinant occupies string_len kind=i0 integers,
-            ! pl%sampling_size kind=int_p integers, pl%sampling_size kind=p reals and one
+            ! pl%nspaces kind=int_p integers, pl%nspaces kind=p reals and one
             ! integer. If the Neel singlet state is used as the reference state for
             ! the projected estimator, then a further 2 reals are used per
             ! determinant.
@@ -186,8 +186,8 @@ contains
                 pl%info_size = 0
             end if
             nwalker_int = 1
-            nwalker_int_p = pl%sampling_size
-            nwalker_real = pl%sampling_size + pl%info_size
+            nwalker_int_p = pl%nspaces
+            nwalker_real = pl%nspaces + pl%info_size
 
             if (present(dmqmc_in)) then
                 annihilation_flags%propagate_to_beta = dmqmc_in%propagate_to_beta
@@ -217,9 +217,9 @@ contains
 
             ! Each spawned_walker occupies spawned_size kind=int_s integers.
             if (qmc_in%initiator_approx) then
-                size_spawned_walker = (sys%basis%tensor_label_len+pl%sampling_size+1)*int_s_length/8
+                size_spawned_walker = (sys%basis%tensor_label_len+pl%nspaces+1)*int_s_length/8
             else
-                size_spawned_walker = (sys%basis%tensor_label_len+pl%sampling_size)*int_s_length/8
+                size_spawned_walker = (sys%basis%tensor_label_len+pl%nspaces)*int_s_length/8
             end if
             max_nspawned_states = qmc_in%spawned_walker_length
             if (max_nspawned_states < 0) then
@@ -244,18 +244,18 @@ contains
             ! --- Memory allocation ---
 
             ! Allocate main walker lists.
-            allocate(pl%nparticles(pl%sampling_size), stat=ierr)
-            call check_allocate('pl%nparticles', pl%sampling_size, ierr)
-            allocate(pl%tot_nparticles(pl%sampling_size), stat=ierr)
-            call check_allocate('pl%tot_nparticles', pl%sampling_size, ierr)
-            allocate(pl%walker_dets(sys%basis%tensor_label_len,max_nstates), stat=ierr)
-            call check_allocate('pl%walker_dets', sys%basis%string_len*max_nstates, ierr)
-            allocate(pl%walker_population(pl%sampling_size,max_nstates), stat=ierr)
-            call check_allocate('pl%walker_population', pl%sampling_size*max_nstates, ierr)
-            allocate(pl%walker_data(pl%sampling_size+pl%info_size,max_nstates), stat=ierr)
-            call check_allocate('pl%walker_data', size(pl%walker_data), ierr)
-            allocate(pl%nparticles_proc(pl%sampling_size, nprocs), stat=ierr)
-            call check_allocate('pl%nparticles_proc', nprocs*pl%sampling_size, ierr)
+            allocate(pl%nparticles(pl%nspaces), stat=ierr)
+            call check_allocate('pl%nparticles', pl%nspaces, ierr)
+            allocate(pl%tot_nparticles(pl%nspaces), stat=ierr)
+            call check_allocate('pl%tot_nparticles', pl%nspaces, ierr)
+            allocate(pl%states(sys%basis%tensor_label_len,max_nstates), stat=ierr)
+            call check_allocate('pl%states', sys%basis%string_len*max_nstates, ierr)
+            allocate(pl%pops(pl%nspaces,max_nstates), stat=ierr)
+            call check_allocate('pl%pops', pl%nspaces*max_nstates, ierr)
+            allocate(pl%dat(pl%nspaces+pl%info_size,max_nstates), stat=ierr)
+            call check_allocate('pl%dat', size(pl%dat), ierr)
+            allocate(pl%nparticles_proc(pl%nspaces, nprocs), stat=ierr)
+            call check_allocate('pl%nparticles_proc', nprocs*pl%nspaces, ierr)
 
             ! Allocate spawned walker lists.
             if (mod(max_nspawned_states, nprocs) /= 0) then
@@ -265,22 +265,22 @@ contains
                                             'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
 
-            call init_qmc_legacy(sys, pl%sampling_size, qmc_in, dmqmc_in)
+            call init_qmc_legacy(sys, pl%nspaces, qmc_in, dmqmc_in)
 
             ! If not using real amplitudes then we always want spawn_cutoff to be
             ! equal to 1.0, so overwrite the default before creating spawn_t objects.
             spawn_cutoff = qmc_in%spawn_cutoff
             if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
-            call alloc_spawn_t(sys%basis%tensor_label_len, pl%sampling_size, qmc_in%initiator_approx, &
+            call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, &
                              max_nspawned_states, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
             if (fciqmc_in_loc%non_blocking_comm) then
-                call alloc_spawn_t(sys%basis%tensor_label_len, pl%sampling_size, qmc_in%initiator_approx, &
+                call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, &
                                    max_nspawned_states, spawn_cutoff, real_bit_shift, 7, .false., received_list)
             end if
 
             if (nprocs == 1 .or. .not. fciqmc_in_loc%doing_load_balancing) load_bal_in%nslots = 1
-            call init_parallel_t(pl%sampling_size, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, par_info, &
+            call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, par_info, &
                                  load_bal_in%nslots)
 
             allocate(reference%f0(sys%basis%string_len), stat=ierr)
@@ -336,36 +336,36 @@ contains
                 if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, reference%f0)
 
                 ! In general FCIQMC, we start with psips only on the
-                ! reference determinant, so set pl%tot_walkers = 1 and
-                ! initialise pl%walker_population. For DMQMC, this is
+                ! reference determinant, so set pl%nstates = 1 and
+                ! initialise pl%pops. For DMQMC, this is
                 ! not required, as psips are spawned along the diagonal
                 ! initially.
                 if (doing_calc(dmqmc_calc)) then
                     ! Initial distribution handled later
-                    pl%tot_walkers = 0
+                    pl%nstates = 0
                 else
-                    pl%tot_walkers = 1
+                    pl%nstates = 1
                     ! Zero all populations...
-                    pl%walker_population(:,pl%tot_walkers) = 0_int_p
+                    pl%pops(:,pl%nstates) = 0_int_p
                     ! Set initial population of Hamiltonian walkers.
-                    pl%walker_population(1,pl%tot_walkers) = nint(qmc_in%D0_population)*real_factor
+                    pl%pops(1,pl%nstates) = nint(qmc_in%D0_population)*real_factor
                     ! Set the bitstring of this psip to be that of the
                     ! reference state.
-                    pl%walker_dets(:,pl%tot_walkers) = reference%f0
+                    pl%states(:,pl%nstates) = reference%f0
 
                     ! Determine and set properties for the reference state which we start on.
                     ! By definition, when using a single determinant as a reference state:
-                    pl%walker_data(1,pl%tot_walkers) = 0.0_p
+                    pl%dat(1,pl%nstates) = 0.0_p
                     ! Or if not using a single determinant:
                     if (trial_function == neel_singlet) then
                         ! Set the Neel state data for the reference state, if it is being used.
-                        pl%walker_data(1,pl%tot_walkers) = reference%H00
+                        pl%dat(1,pl%nstates) = reference%H00
                         reference%H00 = 0.0_p
 
-                        pl%walker_data(pl%sampling_size+1,pl%tot_walkers) = sys%lattice%nsites/2
+                        pl%dat(pl%nspaces+1,pl%nstates) = sys%lattice%nsites/2
                         ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
                         ! The Neel state cannot be used for non-bipartite lattices.
-                        pl%walker_data(pl%sampling_size+2,pl%tot_walkers) = sys%lattice%ndim*sys%lattice%nsites
+                        pl%dat(pl%nspaces+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
                     end if
 
                     ! Finally, we need to check if the reference determinant actually
@@ -374,7 +374,7 @@ contains
                     call assign_particle_processor(reference%f0, sys%basis%string_len, qmc_spawn%hash_seed, &
                                                    qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, &
                                                    D0_proc, slot, load_bal_in%nslots)
-                    if (D0_proc /= iproc) pl%tot_walkers = 0
+                    if (D0_proc /= iproc) pl%nstates = 0
                 end if
 
                 ! For the Heisenberg model and open shell systems, it is often useful to
@@ -416,28 +416,28 @@ contains
 
                     ! Store if not identical to reference det.
                     if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then
-                        pl%tot_walkers = pl%tot_walkers + 1
+                        pl%nstates = pl%nstates + 1
                         ! Zero all populations for this determinant.
-                        pl%walker_population(:,pl%tot_walkers) = 0_int_p
+                        pl%pops(:,pl%nstates) = 0_int_p
                         ! Set the population for this basis function.
-                        pl%walker_population(1,pl%tot_walkers) = nint(qmc_in%D0_population)*real_factor
-                        pl%walker_data(1,pl%tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
+                        pl%pops(1,pl%nstates) = nint(qmc_in%D0_population)*real_factor
+                        pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
                         select case(sys%system)
                         case(heisenberg)
                             if (trial_function /= single_basis) then
-                                pl%walker_data(1,pl%tot_walkers) = 0
+                                pl%dat(1,pl%nstates) = 0
                             else
-                                pl%walker_data(1,pl%tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
+                                pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
                             end if
                         case default
-                            pl%walker_data(1,pl%tot_walkers) = sc0_ptr(sys, reference%f0) - reference%H00
+                            pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
                         end select
-                        pl%walker_dets(:,pl%tot_walkers) = f0_inv
+                        pl%states(:,pl%nstates) = f0_inv
                         ! If we are using the Neel state as a reference in the
                         ! Heisenberg model, then set the required data.
                         if (trial_function == neel_singlet) then
-                            pl%walker_data(pl%sampling_size+1,pl%tot_walkers) = 0
-                            pl%walker_data(pl%sampling_size+2,pl%tot_walkers) = 0
+                            pl%dat(pl%nspaces+1,pl%nstates) = 0
+                            pl%dat(pl%nspaces+2,pl%nstates) = 0
                         end if
                     end if
                 end if
@@ -447,19 +447,19 @@ contains
             ! Total number of particles on processor.
             ! Probably should be handled more simply by setting it to be either 0 or
             ! D0_population or obtaining it from the restart file, as appropriate.
-            forall (i=1:pl%sampling_size) pl%nparticles(i) = sum(abs( real(pl%walker_population(i,:pl%tot_walkers),p)/real_factor))
+            forall (i=1:pl%nspaces) pl%nparticles(i) = sum(abs( real(pl%pops(i,:pl%nstates),p)/real_factor))
             ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
-            do i=1, pl%sampling_size
+            do i=1, pl%nspaces
                 call mpi_allgather(pl%nparticles(i), 1, MPI_PREAL, pl%nparticles_proc(i,:), 1, MPI_PREAL, MPI_COMM_WORLD, ierr)
             end do
             ! When restarting a non-blocking calculation this sum will not equal
             ! tot_nparticles as some walkers have been communicated around the report
             ! loop. The correct total is in the restart file so get it from there.
-            if (.not. restart_in%read_restart) forall(i=1:pl%sampling_size) pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
+            if (.not. restart_in%read_restart) forall(i=1:pl%nspaces) pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
 #else
             tot_nparticles = pl%nparticles
-            pl%pl%nparticles_proc(:pl%sampling_size,1) = pl%nparticles(:pl%sampling_size)
+            pl%pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
 #endif
 
             ! Decide whether the shift should be turned on from the start.
@@ -467,10 +467,10 @@ contains
 
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
-                tmp_int_64 = calculate_hf_signed_pop(pl%tot_walkers, pl%walker_population)
-                call mpi_allreduce(tmp_int_64, hf_signed_pop, pl%sampling_size, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+                tmp_int_64 = calculate_hf_signed_pop(pl%nstates, pl%pops)
+                call mpi_allreduce(tmp_int_64, hf_signed_pop, pl%nspaces, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 #else
-                hf_signed_pop = calculate_hf_signed_pop(pl%tot_walkers, pl%walker_population)
+                hf_signed_pop = calculate_hf_signed_pop(pl%nstates, pl%pops)
 #endif
             end if
 
@@ -493,8 +493,8 @@ contains
 
         if (parent) then
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
-            call write_det(sys%basis, sys%nel, qmc_state%reference%f0, new_line=.true.)
-            write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',qmc_state%reference%H00
+            call write_det(sys%basis, sys%nel, qmc_state%ref%f0, new_line=.true.)
+            write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',qmc_state%ref%H00
             if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =',O00
             write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
             select case(sys%system)

@@ -39,7 +39,7 @@ integer(int_p) :: real_factor
 ! vary_shift is true. When the replica_tricks option is used, the elements
 ! of the shift array refer to the shifts in the corresponding replica systems.
 ! When replica_tricks is not being used, only the first element is used.
-real(p), allocatable, target :: shift(:) ! (walker_global%sampling_size)
+real(p), allocatable, target :: shift(:) ! (walker_global%nspaces)
 
 ! projected energy
 ! This stores during an FCIQMC report loop
@@ -92,7 +92,7 @@ real(p) :: dmqmc_factor = 1.0_p
 ! used in calculating all thermal estimators. This quantity stores
 ! the this value, Tr(\rho), where rho is the density matrix which
 ! the DMQMC algorithm calculates stochastically.
-real(p), allocatable :: trace(:) ! (walker_global%sampling_size)
+real(p), allocatable :: trace(:) ! (walker_global%nspaces)
 
 ! The following indicies are used to access components of DMQMC numerators.
 enum, bind(c)
@@ -130,7 +130,7 @@ real(p) :: numerators(num_dmqmc_operators)
 real(p), allocatable :: renyi_2(:)
 
 ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-real(p), allocatable :: rdm_traces(:,:) ! (walker_global%sampling_size, nrdms)
+real(p), allocatable :: rdm_traces(:,:) ! (walker_global%nspaces, nrdms)
 
 ! If this logical is true then the program runs the DMQMC algorithm with
 ! importance sampling.
@@ -252,7 +252,7 @@ real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 !--- Calculation modes ---
 
 ! The shift is updated at the end of each report loop when vary_shift is true.
-logical, allocatable :: vary_shift(:) ! (walker_global%sampling_size)
+logical, allocatable :: vary_shift(:) ! (walker_global%nspaces)
 
 !--- Restart data ---
 
@@ -521,17 +521,17 @@ contains
         !    nb_comm: true if using non-blocking communications.
         ! In/Out (optional):
         !   reference: reference state. On exit, allocatable components are deallocated.
-        !   psip_list: main walker_t object.  On exit, allocatable components are deallocated.
+        !   psip_list: main particle_t object.  On exit, allocatable components are deallocated.
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
         use calc, only: dealloc_parallel_t
-        use qmc_data, only: reference_t, walker_t
+        use qmc_data, only: reference_t, particle_t
         use reference_determinant, only: dealloc_reference_t
 
         logical, intent(in) :: nb_comm
         type(reference_t), intent(inout), optional :: reference
-        type(walker_t), intent(inout), optional :: psip_list
+        type(particle_t), intent(inout), optional :: psip_list
 
         integer :: ierr
 
@@ -543,17 +543,17 @@ contains
                 deallocate(psip_list%nparticles, stat=ierr)
                 call check_deallocate('psip_list%nparticles',ierr)
             end if
-            if (allocated(psip_list%walker_dets)) then
-                deallocate(psip_list%walker_dets, stat=ierr)
-                call check_deallocate('psip_list%walker_dets',ierr)
+            if (allocated(psip_list%states)) then
+                deallocate(psip_list%states, stat=ierr)
+                call check_deallocate('psip_list%states',ierr)
             end if
-            if (allocated(psip_list%walker_population)) then
-                deallocate(psip_list%walker_population, stat=ierr)
-                call check_deallocate('psip_list%walker_population',ierr)
+            if (allocated(psip_list%pops)) then
+                deallocate(psip_list%pops, stat=ierr)
+                call check_deallocate('psip_list%pops',ierr)
             end if
-            if (allocated(psip_list%walker_data)) then
-                deallocate(psip_list%walker_data, stat=ierr)
-                call check_deallocate('psip_list%walker_data',ierr)
+            if (allocated(psip_list%dat)) then
+                deallocate(psip_list%dat, stat=ierr)
+                call check_deallocate('psip_list%dat',ierr)
             end if
             if (allocated(neel_singlet_amp)) then
                 deallocate(neel_singlet_amp, stat=ierr)

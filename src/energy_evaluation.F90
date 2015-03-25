@@ -37,7 +37,7 @@ contains
     ! buffer(1:nparticles_start_ind-1)
     !   single-valued data given by the (descriptive) name in the enumerator
     !   above.
-    ! buffer(nparticles_start_ind+iproc*walker_t%sampling_size:nparticles_start_ind-1+(iproc+1)*walker_t%sampling_size)
+    ! buffer(nparticles_start_ind+iproc*particle_t%nspaces:nparticles_start_ind-1+(iproc+1)*particle_t%nspaces)
     !   the total population of each particle type on processor iproc.  Prior to
     !   communication, each processor only sets its only value.
 
@@ -78,22 +78,22 @@ contains
         !       their respective components.
 
         use bloom_handler, only: bloom_stats_t
-        use qmc_data, only: walker_t, qmc_in_t, load_bal_in_t
+        use qmc_data, only: particle_t, qmc_in_t, load_bal_in_t
 
         use parallel
 
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: nspawn_events
-        type(walker_t), intent(inout) :: psip_list
-        real(p), intent(inout) :: ntot_particles_old(psip_list%sampling_size)
+        type(particle_t), intent(inout) :: psip_list
+        real(p), intent(inout) :: ntot_particles_old(psip_list%nspaces)
         logical, optional, intent(in) :: doing_lb
         logical, intent(inout) :: comms_found
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
         type(load_bal_in_t), intent(in) :: load_bal_in
 
-        real(dp) :: rep_loop_loc(psip_list%sampling_size*nprocs+nparticles_start_ind-1)
-        real(dp) :: rep_loop_sum(psip_list%sampling_size*nprocs+nparticles_start_ind-1)
+        real(dp) :: rep_loop_loc(psip_list%nspaces*nprocs+nparticles_start_ind-1)
+        real(dp) :: rep_loop_sum(psip_list%nspaces*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
         call local_energy_estimators(psip_list, rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats)
@@ -216,7 +216,7 @@ contains
         ! efficient sending to other processors.
 
         ! In:
-        !    psip_list: walker_t object containing particle information.
+        !    psip_list: particle_t object containing particle information.
         ! In (optional):
         !    nspawn_events: The total number of spawning events to this process.
         !    comms_found: whether HANDE.COMM exists on this processor
@@ -233,9 +233,9 @@ contains
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs, iproc
-        use qmc_data, only: walker_t
+        use qmc_data, only: particle_t
 
-        type(walker_t), intent(in) :: psip_list
+        type(particle_t), intent(in) :: psip_list
         real(dp), intent(out) :: rep_loop_loc(:)
         type(bloom_stats_t), intent(in), optional :: bloom_stats
         integer, intent(in), optional :: nspawn_events
@@ -258,18 +258,18 @@ contains
             rep_loop_loc(bloom_num_ind) = bloom_stats%nblooms_curr
         end if
         if (doing_calc(hfs_fciqmc_calc)) &
-            rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(psip_list%tot_walkers, psip_list%walker_population)
+            rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(psip_list%nstates, psip_list%pops)
         rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
         rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
         rep_loop_loc(hf_D0_pop_ind) = D0_hf_population
-        rep_loop_loc(nocc_states_ind) = psip_list%tot_walkers
+        rep_loop_loc(nocc_states_ind) = psip_list%nstates
         if (present(nspawn_events)) rep_loop_loc(nspawned_ind) = nspawn_events
 
-        offset = nparticles_start_ind-1 + iproc*psip_list%sampling_size
+        offset = nparticles_start_ind-1 + iproc*psip_list%nspaces
         if (present(spawn_elsewhere)) then
-            rep_loop_loc(offset+1:offset+psip_list%sampling_size) = psip_list%nparticles + spawn_elsewhere
+            rep_loop_loc(offset+1:offset+psip_list%nspaces) = psip_list%nparticles + spawn_elsewhere
         else
-            rep_loop_loc(offset+1:offset+psip_list%sampling_size) = psip_list%nparticles
+            rep_loop_loc(offset+1:offset+psip_list%nspaces) = psip_list%nparticles
         end if
         if (present(comms_found)) then
             if (comms_found) rep_loop_loc(comms_found_ind) = 1.0_p

@@ -125,9 +125,9 @@ contains
         use ranking, only: insertion_rank
         use calc, only: parallel_t
         use checking, only: check_allocate, check_deallocate
-        use qmc_data, only: load_bal_in_t, walker_t
+        use qmc_data, only: load_bal_in_t, particle_t
 
-        type(walker_t), intent(inout) :: psip_list
+        type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(in) :: spawn
         integer(int_p), intent(in) :: real_factor
         type(parallel_t), intent(inout) :: parallel_info
@@ -513,7 +513,7 @@ contains
     subroutine initialise_slot_pop(psip_list, proc_map, nslots, spawn, real_factor, slot_pop)
 
         ! In:
-        !   psip_list: walker_t object containing the current psip locations and
+        !   psip_list: particle_t object containing the current psip locations and
         !       populations.
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor
@@ -525,11 +525,11 @@ contains
         !   slot_pop: array containing population of slots in proc_map. Processor dependendent.
 
         use parallel, only: nprocs, iproc
-        use qmc_data, only: walker_t
+        use qmc_data, only: particle_t
         use spawning, only: assign_particle_processor
         use spawn_data, only: spawn_t
 
-        type(walker_t), intent(in) :: psip_list
+        type(particle_t), intent(in) :: psip_list
         integer, intent(in) :: nslots
         type(spawn_t), intent(in) :: spawn
         integer(int_p), intent(in) :: real_factor
@@ -538,13 +538,13 @@ contains
 
         integer :: i, det_pos, iproc_slot, tensor_label_len
 
-        tensor_label_len = size(psip_list%walker_dets, dim=1)
+        tensor_label_len = size(psip_list%states, dim=1)
 
         slot_pop = 0.0_p
-        do i = 1, psip_list%tot_walkers
-            call assign_particle_processor(psip_list%walker_dets(:,i), tensor_label_len, spawn%hash_seed, &
+        do i = 1, psip_list%nstates
+            call assign_particle_processor(psip_list%states(:,i), tensor_label_len, spawn%hash_seed, &
                                            spawn%hash_shift, spawn%move_freq, nprocs, iproc_slot, det_pos, nslots)
-            slot_pop(det_pos) = slot_pop(det_pos) + abs(real(psip_list%walker_population(1,i),p))
+            slot_pop(det_pos) = slot_pop(det_pos) + abs(real(psip_list%pops(1,i),p))
         end do
 
         ! Remove encoding factor to obtain the true populations.

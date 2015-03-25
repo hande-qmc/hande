@@ -324,9 +324,9 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
 
-        allocate(nparticles_old(qs%psip_list%sampling_size), stat=ierr)
+        allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)
-        allocate(nparticles_change(qs%psip_list%sampling_size), stat=ierr)
+        allocate(nparticles_change(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_change', size(nparticles_change), ierr)
 
         ! Initialise bloom_stats components to the following parameters.
@@ -378,7 +378,7 @@ contains
         end do
 
         ! ...and scratch space for calculative cumulative probabilities.
-        allocate(cumulative_abs_nint_pops(size(qs%psip_list%walker_dets,dim=2)), stat=ierr)
+        allocate(cumulative_abs_nint_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
         call check_allocate('cumulative_abs_nint_pops', size(cumulative_abs_nint_pops), ierr)
 
         nparticles_old = qs%psip_list%tot_nparticles
@@ -387,8 +387,8 @@ contains
         D0_pos = 1
 
         ! Main fciqmc loop.
-        if (parent) call write_fciqmc_report_header(qs%psip_list%sampling_size)
-        call initial_fciqmc_status(sys, qmc_in, qs%reference, qs%psip_list)
+        if (parent) call write_fciqmc_report_header(qs%psip_list%nspaces)
+        call initial_fciqmc_status(sys, qmc_in, qs%ref, qs%psip_list)
         ! Initialise timer.
         call cpu_time(t1)
 
@@ -411,7 +411,7 @@ contains
 
                 iter = mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                call assign_particle_processor(qs%reference%f0, sys%basis%string_len, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
+                call assign_particle_processor(qs%ref%f0, sys%basis%string_len, qmc_spawn%hash_seed, qmc_spawn%hash_shift, &
                                                qmc_spawn%move_freq, nprocs, D0_proc, slot, load_bal_in%nslots)
 
                 ! Update the shift of the excitor locations to be the end of this
@@ -424,8 +424,8 @@ contains
                     ! As we might select the reference determinant multiple times in
                     ! a cycle, the running total of D0_population is incorrect (by
                     ! a factor of the number of times it was selected).
-                    call find_D0(qs%psip_list, qs%reference%f0, D0_pos)
-                    D0_normalisation = real(qs%psip_list%walker_population(1,D0_pos),p)/real_factor
+                    call find_D0(qs%psip_list, qs%ref%f0, D0_pos)
+                    D0_normalisation = real(qs%psip_list%pops(1,D0_pos),p)/real_factor
 
                     nD0_proc = 1
 
@@ -441,7 +441,7 @@ contains
                 if (ccmc_in%linked) then
                     ! The BCH expansion of the Hamiltonian terminates at fourth
                     ! order in T so at most four excitors needed in the cluster
-                    if (qs%psip_list%tot_walkers == nD0_proc) then
+                    if (qs%psip_list%nstates == nD0_proc) then
                         ! All excips are on the reference, so no possible clusters
                         ! In linked CCMC we can select the same excip multiple times.
                         max_cluster_size = 0
@@ -456,7 +456,7 @@ contains
                     ! excitors.
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
-                    max_cluster_size = min(sys%nel, truncation_level+2, qs%psip_list%tot_walkers-nD0_proc)
+                    max_cluster_size = min(sys%nel, truncation_level+2, qs%psip_list%nstates-nD0_proc)
                 end if
 
 #ifdef PARALLEL
@@ -466,7 +466,7 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(rng(0), sys, qmc_in, qs%reference, load_bal_in, annihilation_flags, real_factor, &
+                call init_mc_cycle(rng(0), sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
                                    qs%psip_list, qmc_spawn, nattempts, ndeath, nint(D0_normalisation,int_64))
                 nparticles_change = 0.0_p
 
@@ -488,10 +488,10 @@ contains
                 ! (normalised) selection scheme we want...
                 ! Given the contribution to the projected energy is divided by the cluster generation probability and
                 ! multiplied by the actual weight, doing this has absolutely no effect on the projected energy.
-                call cumulative_population(qs%psip_list%walker_population, qs%psip_list%tot_walkers, D0_proc, D0_pos, real_factor, &
+                call cumulative_population(qs%psip_list%pops, qs%psip_list%nstates, D0_proc, D0_pos, real_factor, &
                                            cumulative_abs_nint_pops, tot_abs_nint_pop)
 
-                associate(bs=>bloom_stats, nstates_active=>qs%psip_list%tot_walkers)
+                associate(bs=>bloom_stats, nstates_active=>qs%psip_list%nstates)
                     bloom_threshold = ceiling(max(nattempts, nstates_active)*bs%prop)*real(bs%encoding_factor,p)
                 end associate
 
@@ -555,7 +555,7 @@ contains
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                     if (iattempt <= nstochastic_clusters) then
-                        call select_cluster(rng(it), sys, qs%psip_list, qs%reference%f0, real_factor, ccmc_in%linked, &
+                        call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, real_factor, ccmc_in%linked, &
                                             nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, max_cluster_size, &
                                             cdet(it), cluster(it))
@@ -570,12 +570,12 @@ contains
                             ! needs to be converted into a det_info_t object for the excitation
                             ! generators. On subsequent calls, cdet does not need to change.
                             seen_D0 = .true.
-                            call create_null_cluster(sys, qs%reference%f0, nprocs*real(nD0_select,p), D0_normalisation, &
+                            call create_null_cluster(sys, qs%ref%f0, nprocs*real(nD0_select,p), D0_normalisation, &
                                                      qmc_in%initiator_pop, cdet(it), cluster(it))
                         end if
                     else
                         ! Deterministically select each excip as a non-composite cluster.
-                        call select_cluster_non_composite(sys, qs%psip_list, qs%reference%f0, real_factor, &
+                        call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, real_factor, &
                                                           iattempt-nstochastic_clusters-nD0_select, &
                                                           iexcip_pos, nsingle_excitors, D0_normalisation, qmc_in%initiator_pop, &
                                                           D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
@@ -596,8 +596,8 @@ contains
                             ! estimator.  See comments in spawning.F90 for why we
                             ! must divide through by the probability of selecting
                             ! the cluster.
-                            connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%reference%f0)
-                            call update_proj_energy_ptr(sys, qs%reference%f0, cdet(it), &
+                            connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%ref%f0)
+                            call update_proj_energy_ptr(sys, qs%ref%f0, cdet(it), &
                                      cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                      D0_population, proj_energy, connection, junk)
                         end if
@@ -619,21 +619,21 @@ contains
                                 ! When sampling e^-T H e^T, the cluster operators in e^-T
                                 ! and e^T can excite to/from the same orbital, requiring
                                 ! a different spawning routine
-                                call linked_spawner_ccmc(rng(it), sys, qmc_in, qs%reference, qmc_spawn%cutoff, real_factor, &
+                                call linked_spawner_ccmc(rng(it), sys, qmc_in, qs%ref, qmc_spawn%cutoff, real_factor, &
                                           cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total, fexcit, ldet(it), &
                                           rdet(it), left_cluster(it), right_cluster(it))
                             else
-                                call spawner_ccmc(rng(it), sys, qmc_in, qs%reference, qmc_spawn%cutoff, real_factor,  &
+                                call spawner_ccmc(rng(it), sys, qmc_in, qs%ref, qmc_spawn%cutoff, real_factor,  &
                                           ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, &
                                           nspawnings_total)
                             end if
 
                            if (nspawned /= 0_int_p) then
                                if (cluster(it)%excitation_level == huge(0)) then
-                                   call create_spawned_particle_ptr(sys%basis, qs%reference, cdet(it), connection, &
+                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, &
                                                                     nspawned, 1, qmc_spawn, load_bal_in%nslots, fexcit)
                                else
-                                   call create_spawned_particle_ptr(sys%basis, qs%reference, cdet(it), connection, nspawned, 1, &
+                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, 1, &
                                                                     qmc_spawn, load_bal_in%nslots)
                                end if
                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -649,7 +649,7 @@ contains
                             if ((.not. ccmc_in%linked) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-                                    call stochastic_ccmc_death(rng(it), real_factor, ccmc_in%linked, sys, qs%reference, &
+                                    call stochastic_ccmc_death(rng(it), real_factor, ccmc_in%linked, sys, qs%ref, &
                                                                qmc_in%tau, cdet(it), cluster(it), load_bal_in%nslots)
                                 end if
                             end if
@@ -660,15 +660,15 @@ contains
                 end do
                 !$omp end do
 
-                if (ccmc_in%full_nc .and. qs%psip_list%tot_walkers > 0) then
+                if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
                     !$omp do schedule(dynamic,200) reduction(+:ndeath,nparticles_change)
-                    do iattempt = 1, qs%psip_list%tot_walkers
+                    do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
                         call stochastic_ccmc_death_nc(rng(it), real_factor, ccmc_in%linked, qmc_in%tau, iattempt==D0_pos, &
-                                              qs%psip_list%walker_data(1,iattempt), qs%psip_list%walker_population(1, iattempt), &
+                                              qs%psip_list%dat(1,iattempt), qs%psip_list%pops(1, iattempt), &
                                               nparticles_change(1), ndeath)
                     end do
                     !$omp end do
@@ -681,10 +681,10 @@ contains
                 ! The spawned excips were sent to the correct processors with
                 ! the current hash shift, so it's just those in the main list
                 ! that we need to deal with.
-                if (nprocs > 1) call redistribute_particles(qs%psip_list%walker_dets, real_factor, qs%psip_list%walker_population, &
-                                                 qs%psip_list%tot_walkers, qs%psip_list%nparticles, qmc_spawn, load_bal_in%nslots)
+                if (nprocs > 1) call redistribute_particles(qs%psip_list%states, real_factor, qs%psip_list%pops, &
+                                                 qs%psip_list%nstates, qs%psip_list%nparticles, qmc_spawn, load_bal_in%nslots)
 
-                call direct_annihilation(sys, rng(0), qmc_in, qs%reference, annihilation_flags, qs%psip_list, &
+                call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
                                          qmc_spawn, nspawn_events)
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
@@ -693,7 +693,7 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, qs%reference, ireport, iter, update_tau, qs%psip_list, nparticles_old, &
+            call end_report_loop(sys, qmc_in, qs%ref, ireport, iter, update_tau, qs%psip_list, nparticles_old, &
                                  nspawn_events, t1, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  dump_restart_file_shift, load_bal_in, bloom_stats=bloom_stats)
 
@@ -704,7 +704,7 @@ contains
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
         call multispawn_stats_report(ms_stats)
-        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%tot_walkers, qmc_spawn%mpi_time)
+        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_spawn%mpi_time)
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
@@ -713,7 +713,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs%psip_list, qs%reference, mc_cycles_done, nparticles_old, .false.)
+            call dump_restart_hdf5(restart_info_global, qs%psip_list, qs%ref, mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if
 
@@ -771,20 +771,20 @@ contains
         ! Find the reference determinant in the list of walkers
 
         ! In:
-        !    psip_list: walker_t object containing current excip distribution on
+        !    psip_list: particle_t object containing current excip distribution on
         !       this processor.
         !    f0: bit string representing the reference.
         ! In/Out:
         !    D0_pos: on input, the position of the reference in
-        !       walker_t%walker_dets in the previous iteration (or -1 if it was
+        !       particle_t%states in the previous iteration (or -1 if it was
         !       not on this processor).  On output, the current position.
 
         use bit_utils, only: bit_str_cmp
         use search, only: binary_search
-        use qmc_data, only: walker_t
+        use qmc_data, only: particle_t
         use errors, only: stop_all
 
-        type(walker_t), intent(in) :: psip_list
+        type(particle_t), intent(in) :: psip_list
         integer(i0), intent(in) :: f0(:)
         integer, intent(inout) :: D0_pos
 
@@ -792,20 +792,20 @@ contains
 
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
-            call binary_search(psip_list%walker_dets, f0, 1, psip_list%tot_walkers, hit, D0_pos)
+            call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
         else
-            select case(bit_str_cmp(f0, psip_list%walker_dets(:,D0_pos)))
+            select case(bit_str_cmp(f0, psip_list%states(:,D0_pos)))
             case(0)
                 ! D0 hasn't moved.
                 hit = .true.
             case(1)
-                ! D0 < psip_list%walker_dets(:,D0_pos) -- it has moved to earlier in
+                ! D0 < psip_list%states(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
-                call binary_search(psip_list%walker_dets, f0, 1, D0_pos, hit, D0_pos)
+                call binary_search(psip_list%states, f0, 1, D0_pos, hit, D0_pos)
             case(-1)
-                ! D0 > psip_list%walker_dets(:,D0_pos) -- it has moved to later in
+                ! D0 > psip_list%states(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
-                call binary_search(psip_list%walker_dets, f0, D0_pos, psip_list%tot_walkers, hit, D0_pos)
+                call binary_search(psip_list%states, f0, D0_pos, psip_list%nstates, hit, D0_pos)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
@@ -823,7 +823,7 @@ contains
 
         ! In:
         !    sys: system being studied
-        !    psip_list: walker_t object containing current excip distribution on
+        !    psip_list: particle_t object containing current excip distribution on
         !       this processor.
         !    f0: bit string of the reference
         !    nattempts: the number of times (on this processor) a random cluster
@@ -837,7 +837,7 @@ contains
         !    D0_pos: position in the excip list of the reference.  Must be negative
         !       if the reference is not on the processor.
         !    cumulative_excip_population: running cumulative excip population on
-        !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_t%walker_population(1:i)).
+        !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
         !    min_size: the minimum size cluster to allow.
         !    max_size: the maximum size cluster to allow.
@@ -867,7 +867,7 @@ contains
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use qmc_data, only: walker_t
+        use qmc_data, only: particle_t
         use proc_pointers, only: decoder_ptr
         use utils, only: factorial
         use search, only: binary_search
@@ -876,7 +876,7 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(walker_t), intent(in), target :: psip_list
+        type(particle_t), intent(in), target :: psip_list
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer(int_64), intent(in) :: nattempts
         integer(int_p), intent(in) :: real_factor
@@ -990,7 +990,7 @@ contains
             call insert_sort(pop(:cluster%nexcitors))
             prev_pos = 1
             do i = 1, cluster%nexcitors
-                call binary_search(cumulative_excip_pop, pop(i), prev_pos, psip_list%tot_walkers, hit, pos)
+                call binary_search(cumulative_excip_pop, pop(i), prev_pos, psip_list%nstates, hit, pos)
                 ! Not allowed to select the reference as it is not an excitor.
                 ! Because we treat (for the purposes of the cumulative
                 ! population) the reference to have 0 excips, then
@@ -1003,16 +1003,16 @@ contains
                 ! Correcting for this accident is much easier than producing an
                 ! array explicitly without D0...
                 if (pos == D0_pos) pos = pos - 1
-                excitor_pop = real(psip_list%walker_population(1,pos),p)/real_factor
+                excitor_pop = real(psip_list%pops(1,pos),p)/real_factor
                 if (i == 1) then
                     ! First excitor 'seeds' the cluster:
-                    cdet%f = psip_list%walker_dets(:,pos)
-                    cdet%data => psip_list%walker_data(:,pos) ! Only use if cluster is non-composite!
+                    cdet%f = psip_list%states(:,pos)
+                    cdet%data => psip_list%dat(:,pos) ! Only use if cluster is non-composite!
                     cluster_population = excitor_pop
                     ! Counter the additional *nprocs above.
                     cluster%pselect = cluster%pselect/nprocs
                 else
-                    call collapse_cluster(sys%basis, f0, psip_list%walker_dets(:,pos), excitor_pop, cdet%f, &
+                    call collapse_cluster(sys%basis, f0, psip_list%states(:,pos), excitor_pop, cdet%f, &
                                           cluster_population, allowed)
                     if (.not.allowed) then
                         if (.not. linked_ccmc) exit
@@ -1030,7 +1030,7 @@ contains
                 if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
                 ! Probability of choosing this excitor = nint(pop)/tot_pop.
                 cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop
-                cluster%excitors(i)%f => psip_list%walker_dets(:,pos)
+                cluster%excitors(i)%f => psip_list%states(:,pos)
                 prev_pos = pos
             end do
 
@@ -1147,7 +1147,7 @@ contains
 
         ! In:
         !    sys: system being studied
-        !    psip_list: walker_t object containing current excip distribution on
+        !    psip_list: particle_t object containing current excip distribution on
         !       this processor.
         !    f0: bit string of the reference
         !    real_factor: the encoding factor by which the stored populations are multiplied
@@ -1160,7 +1160,7 @@ contains
         !    initiator_pop: the population above which a determinant is an initiator.
         !    D0_pos: position in the excip list of the reference.
         !    cumulative_excip_population: running cumulative excip population on
-        !        all excitors; i.e. cumulative_excip_population(i) = sum(walker_t%walker_population(1:i)).
+        !        all excitors; i.e. cumulative_excip_population(i) = sum(particle_t%pops(1:i)).
         !    tot_excip_pop: total excip population.
 
         ! NOTE: cumulative_excip_pop and tot_excip_pop ignore the population on the
@@ -1192,12 +1192,12 @@ contains
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
-        use qmc_data, only: walker_t
+        use qmc_data, only: particle_t
         use search, only: binary_search
         use proc_pointers, only: decoder_ptr
 
         type(sys_t), intent(in) :: sys
-        type(walker_t), intent(in), target :: psip_list
+        type(particle_t), intent(in), target :: psip_list
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in) :: iexcip, nattempts
@@ -1271,10 +1271,10 @@ contains
             ! until proven otherwise (initiator_flag=1).
             cdet%initiator_flag = 0
 
-            cdet%f = psip_list%walker_dets(:,iexcip_pos)
-            cdet%data => psip_list%walker_data(:,iexcip_pos)
-            cluster%excitors(1)%f => psip_list%walker_dets(:,iexcip_pos)
-            excitor_pop = real(psip_list%walker_population(1,iexcip_pos),p)/real_factor
+            cdet%f = psip_list%states(:,iexcip_pos)
+            cdet%data => psip_list%dat(:,iexcip_pos)
+            cluster%excitors(1)%f => psip_list%states(:,iexcip_pos)
+            excitor_pop = real(psip_list%pops(1,iexcip_pos),p)/real_factor
             if (abs(excitor_pop) <= initiator_pop) cdet%initiator_flag = 1
             ! pclust = |population|/total_population, as just a single excitor in the cluster..
             cluster%pselect = (cluster%pselect*nint(abs(excitor_pop)))/tot_excip_pop

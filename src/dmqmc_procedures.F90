@@ -385,7 +385,7 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
-        !    psip_list: walker_t object conaining sample of initial density
+        !    psip_list: particle_t object conaining sample of initial density
         !       matrix on output.
         !    spawn: spawn_t object.  Reset on input and output.  Used to
         !       communicate the generated particles.
@@ -410,7 +410,7 @@ contains
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
-        use qmc_data, only: qmc_in_t, reference_t, walker_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
         use spawn_data, only:spawn_t
         use dmqmc_data, only: dmqmc_in_t
         use calc, only: sym_in
@@ -422,11 +422,11 @@ contains
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
-        type(walker_t), intent(inout) :: psip_list
+        type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         integer, intent(in) :: nload_slots
 
-        real(p) :: nparticles_temp(psip_list%sampling_size)
+        real(p) :: nparticles_temp(psip_list%nspaces)
         integer :: nel, ireplica, ierr
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
@@ -440,7 +440,7 @@ contains
 
         nparticles_temp = 0.0_p
 
-        do ireplica = 1, psip_list%sampling_size
+        do ireplica = 1, psip_list%nspaces
             select case(sys%system)
             case(heisenberg)
                 if (dmqmc_in%all_spin_sectors) then
@@ -496,7 +496,7 @@ contains
         ! Finally, count the total number of particles across all processes.
         if (dmqmc_in%all_spin_sectors) then
 #ifdef PARALLEL
-            call mpi_allreduce(nparticles_temp, psip_list%tot_nparticles, psip_list%sampling_size, MPI_PREAL, MPI_SUM, &
+            call mpi_allreduce(nparticles_temp, psip_list%tot_nparticles, psip_list%nspaces, MPI_PREAL, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
             psip_list%tot_nparticles = nparticles_temp
@@ -514,8 +514,8 @@ contains
             ! portions of the spawned walker array are no longer there due to
             ! new determinants being accepted. So we need to reorganise the
             ! determinants appropriately.
-            call redistribute_particles(psip_list%walker_dets, real_factor, psip_list%walker_population, &
-                                        psip_list%tot_walkers, psip_list%nparticles, spawn, nload_slots)
+            call redistribute_particles(psip_list%states, real_factor, psip_list%pops, &
+                                        psip_list%nstates, psip_list%nparticles, spawn, nload_slots)
             call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         end if
 
@@ -1097,16 +1097,16 @@ contains
         use excitations, only: get_excitation_level
         use fciqmc_data, only: accumulated_probs
         use fciqmc_data, only: weight_altering_factors, real_factor
-        use qmc_data, only: qmc_in_t, walker_t
+        use qmc_data, only: qmc_in_t, particle_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
         type(qmc_in_t), intent(in) :: qmc_in
-        type(walker_t), intent(inout) :: psip_list
+        type(particle_t), intent(inout) :: psip_list
 
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
-        real(p) :: new_population_target(psip_list%sampling_size)
-        integer(int_p) :: old_population(psip_list%sampling_size), new_population(psip_list%sampling_size)
+        real(p) :: new_population_target(psip_list%nspaces)
+        integer(int_p) :: old_population(psip_list%nspaces), new_population(psip_list%nspaces)
         real(dp) :: r, pextra
 
         ! Alter weights for the next iteration.
@@ -1118,22 +1118,22 @@ contains
         ! correct importance sampled wavefunction for the new weights. The code
         ! below loops over every psips and destroys (or creates) it with the
         ! appropriate probability.
-        do idet = 1, psip_list%tot_walkers
+        do idet = 1, psip_list%nstates
 
-            excit_level = get_excitation_level(psip_list%walker_dets(1:basis%string_len,idet), &
-                    psip_list%walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
+            excit_level = get_excitation_level(psip_list%states(1:basis%string_len,idet), &
+                    psip_list%states(basis%string_len+1:basis%tensor_label_len,idet))
 
-            old_population = abs(psip_list%walker_population(:,idet))
+            old_population = abs(psip_list%pops(:,idet))
 
             ! The new population that we are aiming for. If this is not an
             ! integer then we will have to round up or down to an integer with
             ! an unbiased probability.
-            new_population_target = abs(real(psip_list%walker_population(:,idet),p))/weight_altering_factors(excit_level)
+            new_population_target = abs(real(psip_list%pops(:,idet),p))/weight_altering_factors(excit_level)
             new_population = int(new_population_target, int_p)
 
             ! If new_population_target is not an integer, round it up or down
             ! with an unbiased probability. Do this for each replica.
-            do ireplica = 1, psip_list%sampling_size
+            do ireplica = 1, psip_list%nspaces
 
                 pextra = new_population_target(ireplica) - new_population(ireplica)
 
@@ -1143,7 +1143,7 @@ contains
                 end if
 
                 ! Finally, update the walker population.
-                associate(pops=>psip_list%walker_population)
+                associate(pops=>psip_list%pops)
                     pops(ireplica,idet) = sign(new_population(ireplica), pops(ireplica,idet))
                 end associate
 

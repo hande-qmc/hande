@@ -80,14 +80,14 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in)
 
-        allocate(tot_nparticles_old(qs%psip_list%sampling_size), stat=ierr)
+        allocate(tot_nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('tot_nparticles_old', size(tot_nparticles_old), ierr)
-        allocate(real_population(qs%psip_list%sampling_size), stat=ierr)
+        allocate(real_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('real_population', size(real_population), ierr)
 
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
-        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%sampling_size)
+        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces)
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -100,7 +100,7 @@ contains
         ! Main DMQMC loop.
         if (parent) then
             call rng_init_info(qmc_in%seed+iproc)
-            call write_fciqmc_report_header(qs%psip_list%sampling_size, dmqmc_in)
+            call write_fciqmc_report_header(qs%psip_list%nspaces, dmqmc_in)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -121,11 +121,11 @@ contains
 
         do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, qs%psip_list%tot_walkers, qs%psip_list%nparticles)
+            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, qs%psip_list%nstates, qs%psip_list%nparticles)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs%reference, annihilation_flags, &
+            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs%ref, annihilation_flags, &
                                                init_tot_nparticles, qs%psip_list, qmc_spawn, load_bal_in%nslots)
 
             ! Allow the shift to vary from the very start of the beta loop, if
@@ -139,20 +139,20 @@ contains
 
                 do icycle = 1, qmc_in%ncycles
 
-                    call init_mc_cycle(rng, sys, qmc_in, qs%reference, load_bal_in, annihilation_flags, real_factor, &
+                    call init_mc_cycle(rng, sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
                                        qs%psip_list, qmc_spawn, nattempts, ndeath)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
-                    do idet = 1, qs%psip_list%tot_walkers ! loop over walkers/dets
+                    do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
 
                         ! f points to the bitstring that is spawning, f2 to the
                         ! other bit string.
-                        cdet1%f => qs%psip_list%walker_dets(:sys%basis%string_len,idet)
-                        cdet1%f2 => qs%psip_list%walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
-                        cdet1%data => qs%psip_list%walker_data(:,idet)
-                        cdet2%f => qs%psip_list%walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
-                        cdet2%f2 => qs%psip_list%walker_dets(:sys%basis%string_len,idet)
+                        cdet1%f => qs%psip_list%states(:sys%basis%string_len,idet)
+                        cdet1%f2 => qs%psip_list%states((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet1%data => qs%psip_list%dat(:,idet)
+                        cdet2%f => qs%psip_list%states((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet2%f2 => qs%psip_list%states(:sys%basis%string_len,idet)
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
@@ -168,7 +168,7 @@ contains
                         call decoder_ptr(sys, cdet2%f, cdet2)
 
                         ! Extract the real signs from the encoded signs.
-                        real_population = real(qs%psip_list%walker_population(:,idet),p)/real_factor
+                        real_population = real(qs%psip_list%pops(:,idet),p)/real_factor
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
@@ -178,10 +178,10 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                         qs%reference%H00, load_bal_in%nslots, qs%psip_list)
+                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list)
                         end if
 
-                        do ireplica = 1, qs%psip_list%sampling_size
+                        do ireplica = 1, qs%psip_list%nspaces
 
                             ! If this condition is met then there will only be
                             ! one det in this symmetry sector, so don't attempt
@@ -196,7 +196,7 @@ contains
                                     spawning_end = 1
                                     ! Attempt to spawn.
                                     call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet1, &
-                                                 qs%psip_list%walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                                 qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
@@ -210,7 +210,7 @@ contains
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet2, &
-                                                 qs%psip_list%walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                                 qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
                                                                                 spawning_end, ireplica, qmc_spawn, &
@@ -226,12 +226,12 @@ contains
                             ! Clone or die.
                             ! We have contributions to the clone/death step from
                             ! both ends of the current walker. We do both of
-                            ! these at once by using qs%psip_list%walker_data(:,idet) which,
+                            ! these at once by using qs%psip_list%dat(:,idet) which,
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, qmc_in%tau, qs%psip_list%walker_data(ireplica,idet), shift(ireplica), &
-                                           qs%psip_list%walker_population(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
+                            call stochastic_death(rng, qmc_in%tau, qs%psip_list%dat(ireplica,idet), shift(ireplica), &
+                                           qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do
                     end do
 
@@ -246,7 +246,7 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, qmc_in, qs%reference, annihilation_flags, qs%psip_list, &
+                    call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
                                              qmc_spawn, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
@@ -267,7 +267,7 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, qmc_in, qs%reference, ireport, iteration, .false., qs%psip_list, tot_nparticles_old, &
+                call end_report_loop(sys, qmc_in, qs%ref, ireport, iteration, .false., qs%psip_list, tot_nparticles_old, &
                                      nspawn_events, t1, unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, &
                                      load_bal_in, .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
 
@@ -288,7 +288,7 @@ contains
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
-        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%tot_walkers, qmc_spawn%mpi_time)
+        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_spawn%mpi_time)
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
@@ -297,7 +297,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs%psip_list, qs%reference, mc_cycles_done, &
+            call dump_restart_hdf5(restart_info_global, qs%psip_list, qs%ref, mc_cycles_done, &
                                    qs%psip_list%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if

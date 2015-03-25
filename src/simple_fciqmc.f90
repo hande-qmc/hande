@@ -36,7 +36,7 @@ contains
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space.
         !    ref_det: location of reference in dets.
-        !    psip_list: walker_t object for storing psips sampling the Hilbert
+        !    psip_list: particle_t object for storing psips sampling the Hilbert
         !       space and related information.  Allocated and initialised on
         !       output.
         !    spawn: spawn_t object for holding the spawned psips.  Allocated on
@@ -48,7 +48,7 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use qmc_data, only: qmc_in_t, reference_t, walker_t
+        use qmc_data, only: qmc_in_t, reference_t, particle_t
         use spawn_data, only: spawn_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
@@ -57,7 +57,7 @@ contains
         type(reference_t), intent(inout) :: reference
         logical, intent(in) :: restart
         integer, intent(out) :: ref_det
-        type(walker_t), intent(out) :: psip_list
+        type(particle_t), intent(out) :: psip_list
         type(spawn_t), intent(out) :: spawn
 
         integer, allocatable :: sym_space_size(:)
@@ -111,12 +111,12 @@ contains
 
         ! Allocate main and spawned lists to hold population of walkers.
         ! Don't need to hold determinants, so can just set spawned_size to be 1.
-        allocate(psip_list%walker_population(1,ndets), stat=ierr)
-        call check_allocate('psip_list%walker_population',ndets,ierr)
+        allocate(psip_list%pops(1,ndets), stat=ierr)
+        call check_allocate('psip_list%pops',ndets,ierr)
         allocate(spawn%sdata(1,ndets), stat=ierr)
         call check_allocate('spawn%sdata',ndets,ierr)
         ! Zero these.
-        psip_list%walker_population = 0_int_p
+        psip_list%pops = 0_int_p
         spawn%sdata = 0_int_s
 
         allocate(shift(1), stat=ierr)
@@ -169,7 +169,7 @@ contains
             end if
             reference%f0 = dets(:,ref_det)
             call decode_det(sys%basis, reference%f0, reference%occ_list0)
-            psip_list%walker_population(1,ref_det) = nint(qmc_in%D0_population)
+            psip_list%pops(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
@@ -197,7 +197,7 @@ contains
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, walker_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: rng_init_info
@@ -216,7 +216,7 @@ contains
         integer :: ref_det, ndets
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
-        type(walker_t) :: psip_list
+        type(particle_t) :: psip_list
         type(spawn_t) :: spawn
 
         call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det, psip_list, spawn)
@@ -224,7 +224,7 @@ contains
         if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
-        nparticles = real(sum(abs(psip_list%walker_population(1,:))),p)
+        nparticles = real(sum(abs(psip_list%pops(1,:))),p)
         nparticles_old = nparticles
 
         call write_fciqmc_report_header(1)
@@ -263,24 +263,24 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%walker_population(1,idet), proj_energy)
+                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), proj_energy)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
                     if (use_sparse_hamil) then
                         associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
-                            do ipart = 1, abs(psip_list%walker_population(1,idet))
+                            do ipart = 1, abs(psip_list%pops(1,idet))
                                 call attempt_spawn(rng, spawn, qmc_in%tau, idet, &
-                                                   psip_list%walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                                                   psip_list%pops(1,idet), hamil_csr%mat(hstart:hend), &
                                                    hamil_csr%col_ind(hstart:hend))
                             end do
                         end associate
                     else
-                        do ipart = 1, abs(psip_list%walker_population(1,idet))
-                            call attempt_spawn(rng, spawn, qmc_in%tau, idet, psip_list%walker_population(1,idet), hamil(:,idet))
+                        do ipart = 1, abs(psip_list%pops(1,idet))
+                            call attempt_spawn(rng, spawn, qmc_in%tau, idet, psip_list%pops(1,idet), hamil(:,idet))
                         end do
                     end if
 
-                    call simple_death(rng, qmc_in%tau, Hii, reference%H00, psip_list%walker_population(1,idet))
+                    call simple_death(rng, qmc_in%tau, Hii, reference%H00, psip_list%pops(1,idet))
 
                 end do
 
@@ -288,12 +288,12 @@ contains
                 ! total.
                 rspawn = rspawn + real(sum(abs(spawn%sdata(1,:))))/nattempts
 
-                call simple_annihilation(spawn, psip_list%walker_population)
+                call simple_annihilation(spawn, psip_list%pops)
 
             end do
 
             ! Update the shift
-            nparticles = real(sum(abs(psip_list%walker_population(1,:))),p)
+            nparticles = real(sum(abs(psip_list%pops(1,:))),p)
             if (vary_shift(1)) then
                 call update_shift(qmc_in, shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if

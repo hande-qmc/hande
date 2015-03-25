@@ -114,7 +114,7 @@ contains
         !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    rng: random number generator.
-        !    psip_list: walker_t object containing the main particles list.
+        !    psip_list: particle_t object containing the main particles list.
         !    spawn: spawn_t object containing spawned walkers from final
         !        iteration.
         !    request_s: array of requests for completing this final send of
@@ -135,7 +135,7 @@ contains
         use system, only: sys_t
         use qmc_common, only: write_fciqmc_report
         use parallel, only: parent
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, walker_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, particle_t, annihilation_flags_t
 
         use const, only: p, dp
         use dSFMT_interface, only: dSFMT_t
@@ -146,7 +146,7 @@ contains
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: ireport
-        type(walker_t), intent(inout) :: psip_list
+        type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout) :: request_s(:), request_rep(:)
         real, intent(inout) :: report_time
@@ -170,7 +170,7 @@ contains
         end if
         ntot_particles_save = ntot_particles
         shift_save = shift
-        call update_energy_estimators_recv(qmc_in, psip_list%sampling_size, request_rep, ntot_particles, &
+        call update_energy_estimators_recv(qmc_in, psip_list%nspaces, request_rep, ntot_particles, &
                                            psip_list%nparticles_proc, load_bal_in)
         if (parent) call write_fciqmc_report(qmc_in, ireport, ntot_particles, curr_time-report_time, .false., .true.)
         ! The call to update_energy_estimators updates the shift and ntot_particles.

@@ -227,9 +227,9 @@ Module restart_hdf5
             use fciqmc_data, only: shift, D0_population, par_info, received_list
             use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
-            use qmc_data, only: reference_t, walker_t
+            use qmc_data, only: reference_t, particle_t
 
-            type(walker_t), intent(in) :: psip_list
+            type(particle_t), intent(in) :: psip_list
             type(restart_info_t), intent(in) :: ri
             type(reference_t), intent(in) :: reference
             integer, intent(in) :: ncycles
@@ -296,14 +296,14 @@ Module restart_hdf5
 
                 ! Don't write out the entire array for storing particles but
                 ! rather only the slots in use...
-                call hdf5_write(subgroup_id, ddets, kinds, shape(psip_list%walker_dets(:,:psip_list%tot_walkers)), &
-                                 psip_list%walker_dets(:,:psip_list%tot_walkers))
+                call hdf5_write(subgroup_id, ddets, kinds, shape(psip_list%states(:,:psip_list%nstates)), &
+                                 psip_list%states(:,:psip_list%nstates))
 
-                call hdf5_write(subgroup_id, dpops, kinds, shape(psip_list%walker_population(:,:psip_list%tot_walkers)), &
-                                 psip_list%walker_population(:,:psip_list%tot_walkers))
+                call hdf5_write(subgroup_id, dpops, kinds, shape(psip_list%pops(:,:psip_list%nstates)), &
+                                 psip_list%pops(:,:psip_list%nstates))
 
-                call hdf5_write(subgroup_id, ddata, kinds, shape(psip_list%walker_data(:,:psip_list%tot_walkers)), &
-                                 psip_list%walker_data(:,:psip_list%tot_walkers))
+                call hdf5_write(subgroup_id, ddata, kinds, shape(psip_list%dat(:,:psip_list%nstates)), &
+                                 psip_list%dat(:,:psip_list%nstates))
                 if (nb_comm) then
                     call hdf5_write(subgroup_id, dspawn, kinds, shape(received_list%sdata(:,:received_list%head(0,0))), &
                                     received_list%sdata(:,:received_list%head(0,0)))
@@ -382,9 +382,9 @@ Module restart_hdf5
                                    par_info, received_list
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
-            use qmc_data, only: reference_t, walker_t
+            use qmc_data, only: reference_t, particle_t
 
-            type(walker_t), intent(inout) :: psip_list
+            type(particle_t), intent(inout) :: psip_list
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
             type(reference_t), intent(inout) :: reference
@@ -403,7 +403,7 @@ Module restart_hdf5
             real(p), target :: tmp(1)
             logical :: exists
 
-            integer(HSIZE_T) :: dims(size(shape(psip_list%walker_dets))), maxdims(size(shape(psip_list%walker_dets)))
+            integer(HSIZE_T) :: dims(size(shape(psip_list%states))), maxdims(size(shape(psip_list%states)))
 
 
             ! Initialise HDF5 and open file.
@@ -469,22 +469,22 @@ Module restart_hdf5
                 call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
                 ! Figure out how many determinants we wrote out...
-                ! psip_list%walker_dets has rank 2, so need not look that up!
+                ! psip_list%states has rank 2, so need not look that up!
                 call h5dopen_f(subgroup_id, ddets, dset_id, ierr)
                 call h5dget_space_f(dset_id, dspace_id, ierr)
                 call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
                 call h5dclose_f(dset_id, ierr)
                 ! Number of determinants is the last index...
-                psip_list%tot_walkers = dims(size(dims))
+                psip_list%nstates = dims(size(dims))
 
-                call hdf5_read(subgroup_id, ddets, kinds, shape(psip_list%walker_dets), psip_list%walker_dets)
+                call hdf5_read(subgroup_id, ddets, kinds, shape(psip_list%states), psip_list%states)
 
                 if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p)) &
                     call stop_all('read_restart_hdf5', &
                                   'Restarting with a different POP_SIZE is not supported.  Please implement.')
-                call hdf5_read(subgroup_id, dpops, kinds, shape(psip_list%walker_population), psip_list%walker_population)
+                call hdf5_read(subgroup_id, dpops, kinds, shape(psip_list%pops), psip_list%pops)
 
-                call hdf5_read(subgroup_id, ddata, kinds, shape(psip_list%walker_data), psip_list%walker_data)
+                call hdf5_read(subgroup_id, ddata, kinds, shape(psip_list%dat), psip_list%dat)
 
                 call hdf5_read(subgroup_id, dtot_pop, kinds, shape(psip_list%tot_nparticles), psip_list%tot_nparticles)
 

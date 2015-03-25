@@ -172,7 +172,7 @@ contains
         spawn%mpi_time%barrier_time = 0.0_p
         spawn%mpi_time%comm_time = 0.0_p
         ! Convert the spawning cutoff to the encoded representation for walker
-        ! populations (see comments for walker_population) and round up to
+        ! populations (see comments for particle_t%pops) and round up to
         ! nearest integer. (It may not be possible to use the exact cutoff
         ! requested. This will be the case if rounding is required).
         spawn%cutoff = ceiling(cutoff*(2_int_p**int(bit_shift,int_p)), int_p)
