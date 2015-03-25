@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, tau, qs, Kii, loc_shift, population, tot_population, ndeath)
+    subroutine stochastic_death(rng, qs, Kii, loc_shift, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -18,7 +18,7 @@ contains
         !  K_ii =  < D_i | H | D_i > - E_0.
 
         ! In:
-        !    tau: timestep being used.
+        !    qs: qmc_state_t object. tau and dmqmc_factor are used.
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
         !    loc_shift: The value of the shift to be used in the death step.
@@ -40,7 +40,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
 
-        real(p), intent(in) :: tau, Kii
+        real(p), intent(in) :: Kii
         type(qmc_state_t), intent(in) :: qs
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift

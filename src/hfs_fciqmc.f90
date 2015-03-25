@@ -110,7 +110,7 @@ contains
         ! Main fciqmc loop.
 
         if (parent) call write_fciqmc_report_header(qs%psip_list%nspaces)
-        call initial_fciqmc_status(sys, qmc_in, qs, qs%ref, qs%psip_list)
+        call initial_fciqmc_status(sys, qmc_in, qs)
 
         ! Initialise timer.
         call cpu_time(t1)
@@ -237,7 +237,7 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call stochastic_death(rng, qs%tau, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                    call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
                                           qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
@@ -250,7 +250,7 @@ contains
                                                                         qs%spawn_store%spawn, load_bal_in%nslots)
 
                     ! Clone or die: Hamiltonian walkers.
-                    call stochastic_death(rng, qs%tau, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                    call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
                                           qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
 
                 end do
@@ -264,7 +264,7 @@ contains
             ! energy_estimators communication
             comms_found = check_comms_file()
             ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(qmc_in, qs, nspawn_events, qs%psip_list, nparticles_old, load_bal_in, &
+            call update_energy_estimators(qmc_in, qs, nspawn_events, nparticles_old, load_bal_in, &
                                           comms_found=comms_found)
 
             call cpu_time(t2)
@@ -295,7 +295,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, qs%psip_list, qs%ref, mc_cycles_done, nparticles_old, .false.)
+            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if
 

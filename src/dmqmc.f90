@@ -232,7 +232,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, qs%tau, qs, qs%psip_list%dat(ireplica,idet), qs%shift(ireplica), &
+                            call stochastic_death(rng, qs, qs%psip_list%dat(ireplica,idet), qs%shift(ireplica), &
                                            qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do
                     end do
@@ -269,7 +269,7 @@ contains
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, qmc_in, qs%ref, ireport, iteration, .false., qs%psip_list, qs, tot_nparticles_old, &
+                call end_report_loop(sys, qmc_in, ireport, iteration, .false., qs, tot_nparticles_old, &
                                      nspawn_events, t1, unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, &
                                      load_bal_in, .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
 
@@ -299,7 +299,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, qs%psip_list, qs%ref, mc_cycles_done, &
+            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done, &
                                    qs%psip_list%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
