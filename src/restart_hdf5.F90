@@ -490,7 +490,7 @@ Module restart_hdf5
                 ! in chunks).
                 if (nprocs /= nprocs_restart) &
                     call stop_all('read_restart_hdf5', &
-                                  'Restarting on a different number of processors not supported.  Please implement.')
+                              'Restarting on a different number of processors not supported.  Use the redistribute_restart option.')
 
                 if (i0_length /= i0_length_restart) &
                     call stop_all('read_restart_hdf5', &
@@ -667,6 +667,13 @@ Module restart_hdf5
             end do
             allocate(new_names(0:nprocs_target-1))
             do i = 0, nprocs_target-1
+! [review] - AJWT: This can generate unbalanced files - e.g. if HANDE.RS.0.p0.H5
+!                  exists, and we now redistribute to two processors, it will
+!                  make files
+!                    HANDE.RS.1.p0.H5 and 
+!                    HANDE.RS.0.p1.H5
+!                  This doesn't seem a very sensible naming scheme!
+
                 call init_restart_hdf5(ri, .true., new_names(i), ip=i, verbose=i==0)
                 call h5fcreate_f(new_names(i), H5F_ACC_TRUNC_F, new_id, ierr)
                 call h5fclose_f(new_id, ierr)
