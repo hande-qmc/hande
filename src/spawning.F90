@@ -1508,8 +1508,9 @@ contains
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                                 nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                                 spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
+                                                 spawn%proc_map%nslots)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_density_matrix', &
