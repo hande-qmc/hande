@@ -371,7 +371,7 @@ contains
         call aot_get_val(tmp, err_arr, 3, lua_state, opts, key='twist')
         if (size(tmp) > 0) then
             if (size(tmp) /= sys%lattice%ndim) &
-                call stop_all('ueg_system', 'twist vector not consistent with the dim parameter.')
+                call stop_all('get_ktwist', 'twist vector not consistent with the dim parameter.')
             allocate(sys%k_lattice%ktwist(sys%lattice%ndim))
             sys%k_lattice%ktwist = tmp
         end if
