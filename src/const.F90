@@ -2,8 +2,6 @@ module const
 
 ! Module containing precision of types and constant data.
 
-#include "cdefs.h"
-
 use, intrinsic :: iso_c_binding, only: c_int32_t, c_int64_t
 
 implicit none
@@ -24,23 +22,28 @@ integer, parameter :: int_64 = selected_int_kind(15)
 ! Similarly, doing bit operations on a 64-bit integer on 64-bit architecture
 ! is much faster than doing them on 2 32-bit integers, so the waste in memory is
 ! usually worth the performance benefit..
-#if DET_SIZE == 32
+#if DET_SIZE == 32 || ! defined(DET_SIZE)
+#if ! defined(DET_SIZE)
+#warning "Using default DET_SIZE"
+#endif
 integer, parameter :: i0 = int_32
 ! C int type which interoperates with i0.
 integer, parameter :: c_i0 = c_int32_t
 #elif DET_SIZE == 64
 integer, parameter :: i0 = int_64
 integer, parameter :: c_i0 = c_int64_t
+#else
+#error "Unknown DET_SIZE"
 #endif
 
 ! int_p determines whether 32 or 64 integers are used for particle populations.
-#if POP_SIZE == 32
+#if POP_SIZE == 32 || ! defined(POP_SIZE)
+! Note: use 32-bit integers by default.
 integer, parameter :: int_p = int_32
 #elif POP_SIZE == 64
 integer, parameter :: int_p = int_64
 #else
-! Use 32-bit integers by default.
-integer, parameter :: int_p = int_32
+#error "Unknown POP_SIZE"
 #endif
 
 ! The sdata array holds both walker populations and determinants together.

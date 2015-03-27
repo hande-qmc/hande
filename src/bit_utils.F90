@@ -7,8 +7,6 @@ end module popcnt_intrinsic
 
 module bit_utils
 
-#include "cdefs.h"
-
 ! Module for bit utilities.
 
 ! Mainly mainipulate variables of type integer(i0) on a bit-wise basis

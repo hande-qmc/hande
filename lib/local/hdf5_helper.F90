@@ -21,7 +21,6 @@ module hdf5_helper
 
     ! [todo] - Check error flags returned by HDF5 procedures.
 
-#include "../../src/cdefs.h"
 #ifndef DISABLE_HDF5
 
     use hdf5, only: hid_t
