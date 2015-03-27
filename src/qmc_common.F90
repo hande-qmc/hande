@@ -660,6 +660,7 @@ contains
             call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_PREAL, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
             qs%estimators%proj_energy = proj_energy_sum
             qs%estimators%D0_population = D0_population_sum
             ! TODO: HFS, DMQMC quantities
