@@ -821,14 +821,14 @@ contains
         type(sys_t), pointer :: sys
         type(c_ptr) :: sys_ptr
         integer :: opts
-        logical :: new_basis
+        logical :: new_basis, new
         integer :: err
 
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
                                                'ms', 'sym', 'ktwist', 'chem_pot']
 
         lua_state = flu_copyptr(L)
-        call get_sys_t(lua_state, sys)
+        call get_sys_t(lua_state, sys, new)
 
         ! Get a handle to the table...
         opts = aot_table_top(lua_state)
@@ -843,7 +843,7 @@ contains
                     aot_exists(lua_state, opts, 'dim')    .or. &
                     aot_exists(lua_state, opts, 'rs')    .or. &
                     aot_exists(lua_state, opts, 'nel')    .or. &
-                    aot_exists(lua_state, opts, 'electrons')
+                    aot_exists(lua_state, opts, 'electrons') .or. new
 
         call aot_get_val(sys%ueg%ecutoff, err, lua_state, opts, 'cutoff')
         call aot_get_val(sys%ueg%r_s, err, lua_state, opts, 'rs')
