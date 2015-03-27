@@ -6,7 +6,6 @@ use const
 use parallel, only: parent, block_size
 use errors
 use hilbert_space
-use canonical_kinetic_energy, only: nkinetic_cycles
 use calc
 use lanczos
 use determinants

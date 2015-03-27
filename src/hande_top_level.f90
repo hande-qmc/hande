@@ -155,7 +155,8 @@ contains
         end if
 
         if (doing_calc(mc_canonical_kinetic_energy)) then
-            call estimate_kinetic_energy(sys, qmc_in_global, dmqmc_in_global)
+            call estimate_kinetic_energy(sys, dmqmc_in_global%fermi_temperature, dmqmc_in_global%init_beta,  &
+                                         int(qmc_in_global%D0_population), nkinetic_cycles, qmc_in_global%seed)
         end if
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then

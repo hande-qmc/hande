@@ -190,6 +190,11 @@ integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
 ! If true then allow the use of MPI barrier calls.
 logical :: use_mpi_barriers = .false.
 
+! --- legacy input parser only ---
+
+! Number of report loops use to estimate the energy.
+integer :: nkinetic_cycles
+
 contains
 
     subroutine init_calc_defaults(git_sha1, uuid, seed)
