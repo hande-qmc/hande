@@ -702,7 +702,7 @@ contains
             ! Only deal with fully spin (un)polarised system, so that kf^{up} =
             ! kf^{down}.
             pol_factor = 1.0_p + abs(real(sys%nalpha-sys%nbeta,p)/sys%nel)
-            if (pol_factor-int(pol_factor) > depsilon) &
+            if (pol_factor-int(pol_factor) > depsilon .and. parent) &
                 call warning('set_fermi_energy','Fermi energy not calculated correctly for given &
                              &spin polarisation. Please implement.')
             select case(sys%lattice%ndim)

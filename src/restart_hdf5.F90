@@ -348,7 +348,7 @@ module restart_hdf5
             call h5fclose_f(file_id, ierr)
             call h5close_f(ierr)
 #else
-            call warning('dump_restart_hdf5', '# Not compiled with HDF5 support.  Cannot write out restart file.')
+            if (parent) call warning('dump_restart_hdf5', '# Not compiled with HDF5 support.  Cannot write out restart file.')
 #endif
 
         end subroutine dump_restart_hdf5

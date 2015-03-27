@@ -271,11 +271,11 @@ contains
                 ! Reduced density matrix eigenvalues calculation.
                 if (doing_exact_rdm_eigv) then
                     if (nprocs > 1) then
-                        call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. &
+                        if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. &
                                       &Skipping this calculation.', 3)
                     else
                         if (doing_calc(lanczos_diag)) then
-                            call warning('diagonalise','RDM eigenvalues cannot be calculated with the Lanczos &
+                            if (parent) call warning('diagonalise','RDM eigenvalues cannot be calculated with the Lanczos &
                                                         &routine. Skipping this calculation.', 3)
                         else if (doing_calc(exact_diag)) then
                             write(6,'(1x,a46)') "Performing reduced density matrix calculation."
