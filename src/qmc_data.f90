@@ -391,10 +391,11 @@ type particle_t
 end type particle_t
 
 type spawned_particle_t
-    ! Walker information: spawned list.
+    ! List of spawned particles.
     type(spawn_t) :: spawn
-    ! Walker information: received list for non-blocking communications.
-    type(spawn_t) :: received_list
+    ! List of spawned particles received from other processors.  Used for non-blocking
+    ! communications (normal synchronous communications can just use spawn alone).
+    type(spawn_t) :: spawn_recv
     ! Rate of spawning.  This is a running total over MC cycles on each processor
     ! until it is summed over processors and averaged over cycles in
     ! update_energy_estimators.
@@ -435,6 +436,7 @@ type qmc_state_t
     logical, allocatable :: vary_shift(:) ! (sampling_size)
     ! Convenience handles.
     type(particle_t) :: psip_list
+    type(spawned_particle_t) :: spawn_store
     type(reference_t) :: ref
     type(parallel_t) :: par_info
 end type qmc_state_t

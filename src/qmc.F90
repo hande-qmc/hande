@@ -166,7 +166,8 @@ contains
 
         ! --- Array sizes depending upon QMC algorithms ---
 
-        associate(pl=>qmc_state%psip_list, reference=>qmc_state%ref)
+        associate(pl=>qmc_state%psip_list, reference=>qmc_state%ref, spawn=>qmc_state%spawn_store%spawn, &
+                  spawn_recv=>qmc_state%spawn_store%spawn_recv)
 
             pl%nspaces = 1
             if (doing_calc(hfs_fciqmc_calc)) then
@@ -273,10 +274,10 @@ contains
             if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
             call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, &
-                             max_nspawned_states, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, qmc_spawn)
+                             max_nspawned_states, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, spawn)
             if (fciqmc_in_loc%non_blocking_comm) then
                 call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, &
-                                   max_nspawned_states, spawn_cutoff, real_bit_shift, 7, .false., received_list)
+                                   max_nspawned_states, spawn_cutoff, real_bit_shift, 7, .false., spawn_recv)
             end if
 
             if (nprocs == 1 .or. .not. fciqmc_in_loc%doing_load_balancing) load_bal_in%nslots = 1
@@ -296,7 +297,7 @@ contains
                     allocate(reference%occ_list0(sys%nel), stat=ierr)
                     call check_allocate('reference%occ_list0',sys%nel,ierr)
                 end if
-                call read_restart_hdf5(restart_info_global, fciqmc_in_loc%non_blocking_comm, reference, pl)
+                call read_restart_hdf5(restart_info_global, fciqmc_in_loc%non_blocking_comm, reference, pl, spawn_recv)
                 ! Need to re-calculate the reference determinant data
                 call decode_det(sys%basis, reference%f0, reference%occ_list0)
                 if (trial_function == neel_singlet) then
@@ -371,8 +372,8 @@ contains
                     ! Finally, we need to check if the reference determinant actually
                     ! belongs on this processor.
                     ! If it doesn't, set the walkers array to be empty.
-                    call assign_particle_processor(reference%f0, sys%basis%string_len, qmc_spawn%hash_seed, &
-                                                   qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, &
+                    call assign_particle_processor(reference%f0, sys%basis%string_len, spawn%hash_seed, &
+                                                   spawn%hash_shift, spawn%move_freq, nprocs, &
                                                    D0_proc, slot, load_bal_in%nslots)
                     if (D0_proc /= iproc) pl%nstates = 0
                 end if
@@ -410,8 +411,8 @@ contains
                         call encode_det(sys%basis, occ_list0_inv, f0_inv)
                     end select
 
-                    call assign_particle_processor(f0_inv, sys%basis%string_len, qmc_spawn%hash_seed, &
-                                                   qmc_spawn%hash_shift, qmc_spawn%move_freq, nprocs, &
+                    call assign_particle_processor(f0_inv, sys%basis%string_len, spawn%hash_seed, &
+                                                   spawn%hash_shift, spawn%move_freq, nprocs, &
                                                    D0_inv_proc, slot, load_bal_in%nslots)
 
                     ! Store if not identical to reference det.

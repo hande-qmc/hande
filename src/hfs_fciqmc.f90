@@ -129,7 +129,7 @@ contains
 
                 ! Reset the current position in the spawning array to be the
                 ! slot preceding the first slot.
-                qmc_spawn%head = qmc_spawn%head_start
+                qs%spawn_store%spawn%head = qs%spawn_store%spawn%head_start
 
                 ! Number of spawning attempts that will be made.
                 ! Each Hamiltonian particle gets a chance to spawn a Hamiltonian
@@ -178,22 +178,22 @@ contains
                     do iparticle = 1, abs(qs%psip_list%pops(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, &
+                        call spawner_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
                                          qs%psip_list%pops(1,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
-                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, qmc_spawn, &
-                                                             load_bal_in%nslots)
+                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
+                                                             qs%spawn_store%spawn, load_bal_in%nslots)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         ! [todo] - JSS: real populations for HFS spawner.
-                        call spawner_hfs_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, &
+                        call spawner_hfs_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
                                              qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
-                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, qmc_spawn, &
-                                                             load_bal_in%nslots)
+                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
+                                                             qs%spawn_store%spawn, load_bal_in%nslots)
 
                     end do
 
@@ -203,12 +203,12 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet, &
+                        call spawner_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
                                          qs%psip_list%pops(2,idet), gen_excit_ptr, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
                             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
-                                                             qmc_spawn, load_bal_in%nslots)
+                                                             qs%spawn_store%spawn, load_bal_in%nslots)
 
                     end do
 
@@ -247,7 +247,7 @@ contains
                     call stochastic_hf_cloning(rng, qmc_in%tau, qs%psip_list%dat(2,idet), &
                                                qs%psip_list%pops(1,idet), nspawned)
                     if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, &
-                                                                        qmc_spawn, load_bal_in%nslots)
+                                                                        qs%spawn_store%spawn, load_bal_in%nslots)
 
                     ! Clone or die: Hamiltonian walkers.
                     call stochastic_death(rng, qmc_in%tau, qs%psip_list%dat(1,idet), shift(1), &
@@ -255,7 +255,8 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, qmc_spawn, nspawn_events)
+                call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, qs%spawn_store%spawn, &
+                                         nspawn_events)
 
             end do
 
@@ -284,7 +285,7 @@ contains
         end do
 
         if (parent) write (6,'()')
-        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_spawn%mpi_time)
+        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qs%spawn_store%spawn%mpi_time)
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport

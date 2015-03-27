@@ -129,7 +129,7 @@ contains
         ! walkers which were spawned onto this processor from other processors
         ! (not including the current processor) from  the previous iteration.
         ! They have since been evolved so they can be annihilated with the main list.
-        ! First annihilate within the received_list.
+        ! First annihilate within spawn_recv.
         call annihilate_wrapper_non_blocking_spawn(spawn_recv, qmc_in%initiator_approx)
         ! Annihilate with main list.
         call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv)

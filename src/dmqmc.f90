@@ -121,12 +121,13 @@ contains
 
         do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, qs%psip_list%nstates, qs%psip_list%nparticles)
+            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, qs%psip_list%nstates, qs%psip_list%nparticles, &
+                                      qs%spawn_store%spawn)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs%ref, annihilation_flags, &
-                                               init_tot_nparticles, qs%psip_list, qmc_spawn, load_bal_in%nslots)
+                                               init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, load_bal_in%nslots)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
@@ -140,7 +141,7 @@ contains
                 do icycle = 1, qmc_in%ncycles
 
                     call init_mc_cycle(rng, sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
-                                       qs%psip_list, qmc_spawn, nattempts, ndeath)
+                                       qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
@@ -195,12 +196,13 @@ contains
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet1, &
+                                    call spawner_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet1, &
                                                  qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
-                                                                            spawning_end, ireplica, qmc_spawn, load_bal_in%nslots)
+                                                                            spawning_end, ireplica, qs%spawn_store%spawn,      &
+                                                                            load_bal_in%nslots)
 
                                         if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -209,11 +211,11 @@ contains
                                     ! Now attempt to spawn from the second end.
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
-                                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet2, &
+                                        call spawner_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet2, &
                                                  qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
-                                                                                spawning_end, ireplica, qmc_spawn, &
+                                                                                spawning_end, ireplica, qs%spawn_store%spawn, &
                                                                                 load_bal_in%nslots)
 
                                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
@@ -247,7 +249,7 @@ contains
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
                     call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
-                                             qmc_spawn, nspawn_events)
+                                             qs%spawn_store%spawn, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
@@ -288,7 +290,7 @@ contains
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
-        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_spawn%mpi_time)
+        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qs%spawn_store%spawn%mpi_time)
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
@@ -307,12 +309,13 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, nstates_active, nparticles)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, nstates_active, nparticles, spawn)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
         ! In/Out:
         !    rng: random number generator.
+        !    spawn: spawn_t object.  Reset on exit.
         ! In:
         !    initial_shift: the initial shift used for population control.
         !    beta_cycle: The index of the beta loop about to be started.
@@ -327,9 +330,11 @@ contains
         use parallel
         use qmc_data, only: qmc_in_t
         use dmqmc_data, only: dmqmc_in_t
+        use spawn_data, only: spawn_t
         use utils, only: int_fmt
 
-        type(dSFMT_t) :: rng
+        type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: spawn
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: beta_cycle
@@ -339,7 +344,7 @@ contains
 
         ! Reset the current position in the spawning array to be the slot
         ! preceding the first slot.
-        qmc_spawn%head = qmc_spawn%head_start
+        spawn%head = spawn%head_start
 
         ! Set all quantities back to their starting values.
         nstates_active = 0

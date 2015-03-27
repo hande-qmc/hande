@@ -57,12 +57,6 @@ real(p) :: proj_energy
 ! Ditto but across all processors.
 integer :: tot_nocc_states
 
-! Walker information: spawned list.
-type(spawn_t) :: qmc_spawn
-
-! Walker information: received list for non-blocking communications.
-type(spawn_t) :: received_list
-
 ! Rate of spawning.  This is a running total over MC cycles on each processor
 ! until it is summed over processors and averaged over cycles in
 ! update_energy_estimators.
@@ -513,7 +507,7 @@ contains
 
     end subroutine write_fciqmc_report
 
-    subroutine end_fciqmc(nb_comm, reference, psip_list)
+    subroutine end_fciqmc(nb_comm, reference, psip_list, spawn)
 
         ! Deallocate fciqmc data arrays.
 
@@ -522,6 +516,7 @@ contains
         ! In/Out (optional):
         !   reference: reference state. On exit, allocatable components are deallocated.
         !   psip_list: main particle_t object.  On exit, allocatable components are deallocated.
+        !   spawn: spawn_t object.  On exit, allocatable components are deallocated.
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
@@ -532,6 +527,7 @@ contains
         logical, intent(in) :: nb_comm
         type(reference_t), intent(inout), optional :: reference
         type(particle_t), intent(inout), optional :: psip_list
+        type(spawn_t), intent(inout), optional :: spawn
 
         integer :: ierr
 
@@ -565,7 +561,7 @@ contains
             end if
         end if
         call dealloc_parallel_t(nb_comm, par_info)
-        call dealloc_spawn_t(qmc_spawn)
+        if (present(spawn)) call dealloc_spawn_t(spawn)
 
     end subroutine end_fciqmc
 
