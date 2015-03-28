@@ -213,7 +213,7 @@ contains
 
                         ! Attempt to spawn.
                         call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
-                                        qs%psip_list%pops(1,idet),  gen_excit_ptr, nspawned, connection)
+                                        qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
@@ -408,7 +408,7 @@ contains
 
                 ! Attempt to spawn.
                 call spawner_ptr(rng, sys, qmc_in, qs%tau, spawn_to_send%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
-                                 nspawned, connection)
+                                 neel_singlet_amp, nspawned, connection)
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then

@@ -200,7 +200,8 @@ contains
                                     spawning_end = 1
                                     ! Attempt to spawn.
                                     call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet1, &
-                                                 qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                                     qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
+                                                     weighted_sampling%probs, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
@@ -215,7 +216,8 @@ contains
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, &
-                                                 cdet2, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                                         cdet2, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
+                                                         weighted_sampling%probs, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
                                                                                 spawning_end, ireplica, qs%spawn_store%spawn, &
