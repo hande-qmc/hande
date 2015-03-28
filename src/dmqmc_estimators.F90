@@ -50,7 +50,7 @@ contains
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
-        real(p), intent(in) :: accumulated_probs_old(:)
+        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
         type(particle_t), intent(inout) :: psip_list
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
@@ -244,7 +244,7 @@ contains
         use hash_table, only: reset_hash_table
         use spawn_data, only: annihilate_wrapper_spawn_t
 
-        real(p), intent(in) :: accumulated_probs_old(:)
+        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
 
         integer :: irdm
 
@@ -1203,7 +1203,7 @@ contains
 
         type(rdm_t), intent(in) :: rdm_data(:)
         type(spawn_t), intent(in) :: rdm_lists(:)
-        real(p), intent(in) :: accumulated_probs_old(:)
+        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
         real(p), intent(out) :: r2(:)
 
         integer :: i, irdm, excit_level, rdm_bl

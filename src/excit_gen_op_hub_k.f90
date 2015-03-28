@@ -37,7 +37,7 @@ contains
 ! sampling infrastructure to generate a random excitation and then produce the
 ! correct matrix element without writing new excitation generators.
 
-    subroutine gen_excit_double_occ_matel_hub_k(sys, cdet, connection, hmatel)
+    subroutine gen_excit_double_occ_matel_hub_k(sys, cdet, connection, trial_func, hmatel)
 
         ! Produce the correct matrix element < D | \hat{D} | D' > for a given
         ! random excitation.
@@ -49,6 +49,8 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, |D'>, produced by the excitation
         !        generator.  Unused; just for interface compatibility.
+        !    trial_func: importance sampling weights. Unused; just for interface
+        !        compatability.
         ! In/Out:
         !    hmatel: on input, the Hamiltonian matrix element, < D | \hat{H} | D'>.
         !        On output, the operator matrix element, < D | \hat{D} | D' >.
@@ -60,6 +62,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
+        real(dp), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
 
         hmatel = hmatel / (sys%hubbard%u * sys%lattice%nsites)
