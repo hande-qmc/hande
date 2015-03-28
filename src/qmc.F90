@@ -459,8 +459,8 @@ contains
             ! loop. The correct total is in the restart file so get it from there.
             if (.not. restart_in%read_restart) forall(i=1:pl%nspaces) pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
 #else
-            tot_nparticles = pl%nparticles
-            pl%pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
+            pl%tot_nparticles = pl%nparticles
+            pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
 #endif
 
             ! Decide whether the shift should be turned on from the start.
