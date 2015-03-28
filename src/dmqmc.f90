@@ -87,7 +87,7 @@ contains
 
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
-        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces)
+        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs)
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -121,7 +121,7 @@ contains
 
         do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, qs%psip_list%nstates, qs%psip_list%nparticles, &
+            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, qs, beta_cycle, qs%psip_list%nstates, qs%psip_list%nparticles, &
                                       qs%spawn_store%spawn)
 
             ! Distribute psips uniformly along the diagonal of the density
@@ -131,11 +131,11 @@ contains
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            vary_shift = qs%psip_list%tot_nparticles >= qmc_in%target_particles
+            qs%vary_shift = qs%psip_list%tot_nparticles >= qmc_in%target_particles
 
             do ireport = 1, qmc_in%nreport
 
-                call init_report_loop(bloom_stats)
+                call init_report_loop(qs, bloom_stats)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -196,7 +196,7 @@ contains
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet1, &
+                                    call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet1, &
                                                  qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
@@ -211,8 +211,8 @@ contains
                                     ! Now attempt to spawn from the second end.
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
-                                        call spawner_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet2, &
-                                                 qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                        call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, &
+                                                 cdet2, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
                                                                                 spawning_end, ireplica, qs%spawn_store%spawn, &
@@ -232,7 +232,7 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, qmc_in%tau, qs%psip_list%dat(ireplica,idet), shift(ireplica), &
+                            call stochastic_death(rng, qs, qs%psip_list%dat(ireplica,idet), qs%shift(ireplica), &
                                            qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do
                     end do
@@ -263,13 +263,13 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list)
+                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs)
 
-                call update_shift_dmqmc(qmc_in, qs%psip_list%tot_nparticles, tot_nparticles_old)
+                call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, qmc_in, qs%ref, ireport, iteration, .false., qs%psip_list, tot_nparticles_old, &
+                call end_report_loop(sys, qmc_in, ireport, iteration, .false., qs, tot_nparticles_old, &
                                      nspawn_events, t1, unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, &
                                      load_bal_in, .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
 
@@ -299,7 +299,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs%psip_list, qs%ref, mc_cycles_done, &
+            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done, &
                                    qs%psip_list%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
@@ -309,7 +309,7 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, nstates_active, nparticles, spawn)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, qs, beta_cycle, nstates_active, nparticles, spawn)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
@@ -328,7 +328,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data, only: dmqmc_in_t
         use spawn_data, only: spawn_t
         use utils, only: int_fmt
@@ -338,6 +338,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: beta_cycle
+        type(qmc_state_t), intent(inout) :: qs
         integer, intent(out) :: nstates_active
         real(p), intent(out) :: nparticles(:)
         integer :: new_seed
@@ -348,7 +349,7 @@ contains
 
         ! Set all quantities back to their starting values.
         nstates_active = 0
-        shift = qmc_in%initial_shift
+        qs%shift = qmc_in%initial_shift
         nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
         if (dmqmc_in%vary_weights) accumulated_probs = 1.0_p

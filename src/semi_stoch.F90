@@ -655,7 +655,7 @@ contains
 
     end function check_if_determ
 
-    subroutine determ_projection(rng, qmc_in, spawn, determ)
+    subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -670,15 +670,16 @@ contains
 
         use csr, only: csrpgemv_single_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: shift, real_factor
+        use fciqmc_data, only: real_factor
         use omp_lib
         use parallel, only: nprocs, iproc, nthreads
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
         use spawn_data, only: spawn_t
         use spawning, only: add_spawned_particle, add_flagged_spawned_particle
 
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qs
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
 
@@ -697,8 +698,8 @@ contains
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     ! For states on this processor (proc == iproc), add the
                     ! contribution from the shift.
-                    out_vec = -out_vec + shift(1)*determ%vector(i)
-                    out_vec = out_vec*qmc_in%tau
+                    out_vec = -out_vec + qs%shift(1)*determ%vector(i)
+                    out_vec = out_vec*qs%tau
                     call create_spawned_particle_determ(out_vec, row, proc, qmc_in%initiator_approx)
                 end do
             else
@@ -706,7 +707,7 @@ contains
                     ! The same as above, but without the shift contribution.
                     row = row + 1
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
-                    out_vec = -out_vec*qmc_in%tau
+                    out_vec = -out_vec*qs%tau
                     call create_spawned_particle_determ(out_vec, row, proc, qmc_in%initiator_approx)
                 end do
             end if
@@ -762,7 +763,7 @@ contains
 
     end subroutine determ_projection
 
-    subroutine determ_projection_separate_annihil(determ, tau)
+    subroutine determ_projection_separate_annihil(determ, tau, qs)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
@@ -781,10 +782,11 @@ contains
         !       amplitudes across all processes, on output.
 
         use csr, only: csrpgemv
-        use fciqmc_data, only: shift
         use parallel
+        use qmc_data, only: qmc_state_t
 
         type(semi_stoch_t), intent(inout) :: determ
+        type(qmc_state_t), intent(in) :: qs
         real(p), intent(in) :: tau
 
         integer :: i, ierr
@@ -823,14 +825,14 @@ contains
         ! timestep, H is the determinstic Hamiltonian, v is the vector of
         ! deterministic amplitudes and S is the shift. We therefore begin by
         ! setting the vector used to store the output to tau*S*v.
-        determ%vector = tau*shift(1)*determ%vector
+        determ%vector = qs%tau*qs%shift(1)*determ%vector
 
         ! Perform the multiplication of the deterministic Hamiltonian on the
         ! full deterministic vector. A factor of minus one is applied to the
         ! Hamiltonian, as required, and the result is added to the input
         ! vector, determ%vector, which is used to hold the final result of the
         ! deterministic projection.
-        call csrpgemv(.true., .false., -1.0_p*tau, determ%hamil, determ%full_vector, determ%vector)
+        call csrpgemv(.true., .false., -1.0_p*qs%tau, determ%hamil, determ%full_vector, determ%vector)
 
     end subroutine determ_projection_separate_annihil
 

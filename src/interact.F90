@@ -8,7 +8,7 @@ character(*), parameter :: comms_file = "HANDE.COMM"
 
 contains
 
-    subroutine calc_interact(comms_found, soft_exit, qmc_in)
+    subroutine calc_interact(comms_found, soft_exit, qmc_in, qs)
 
         ! Read HANDE.COMM if it exists in the working directory of any
         ! processor and set the variables according to the options defined in
@@ -25,12 +25,12 @@ contains
         use utils, only: get_free_unit
         use parallel
 
-        use fciqmc_data, only: vary_shift, shift
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
 
         logical, intent(in) :: comms_found
         logical, intent(out) :: soft_exit
         type(qmc_in_t), optional, intent(inout) :: qmc_in
+        type(qmc_state_t), optional, intent(inout) :: qs
 
         logical :: comms_exists, comms_read, eof
         integer :: proc, i
@@ -95,16 +95,16 @@ contains
                             soft_exit = .true.
                         case('TAU')
                             ! Change timestep.
-                            if (present(qmc_in)) call readf(qmc_in%tau)
+                            if (present(qmc_in)) call readf(qs%tau)
                         case('VARYSHIFT_TARGET')
                             call readf(qmc_in%target_particles)
                             if (qmc_in%target_particles < 0) then
                                 ! start varying the shift now.
-                                vary_shift = .true.
+                                qs%vary_shift = .true.
                             end if
                         case('SHIFT')
-                            do i = 1,size(shift)
-                                call readf(shift(i))
+                            do i = 1,size(qs%shift)
+                                call readf(qs%shift(i))
                             end do
                         case default
                             write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
@@ -126,10 +126,10 @@ contains
 #ifdef PARALLEL
             ! If in parallel need to broadcast data.
             call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
-            if (present(qmc_in)) call mpi_bcast(qmc_in%tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(shift, size(shift), mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(qs%tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
+            call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, proc, mpi_comm_world, ierr)
             call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            call mpi_bcast(vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
+            call mpi_bcast(qs%vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
 #endif
 
             if (parent) write (6,'(1X,"#",/,1X,"#",1X,a59,/,1X,"#",1X,62("-"))')  &

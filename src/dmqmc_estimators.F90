@@ -21,7 +21,7 @@ end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list)
+    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list, qs)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -41,13 +41,14 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use fciqmc_data, only: num_dmqmc_operators, calc_inst_rdm, nrdms
-        use qmc_data, only: particle_t
+        use qmc_data, only: particle_t, qmc_state_t
         use parallel
         use dmqmc_data, only: dmqmc_in_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
         type(particle_t), intent(inout) :: psip_list
+        type(qmc_state_t), intent(inout) :: qs
 
         real(dp), allocatable :: rep_loop_loc(:)
         real(dp), allocatable :: rep_loop_sum(:)
@@ -97,7 +98,7 @@ contains
 #endif
 
         ! Move the communicated quantites to the corresponding variables.
-        call communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, psip_list%tot_nparticles)
+        call communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, psip_list%tot_nparticles, qs)
 
         ! Clean up.
         deallocate(rep_loop_loc, stat=ierr)
@@ -162,7 +163,7 @@ contains
 
     end subroutine local_dmqmc_estimators
 
-    subroutine communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, tot_nparticles)
+    subroutine communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, tot_nparticles, qs)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -182,20 +183,22 @@ contains
         !       processors.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn, tot_nocc_states, tot_nspawn_events, nrdms
+        use fciqmc_data, only: rspawn, nrdms
         use fciqmc_data, only: trace, numerators, excit_dist
         use fciqmc_data, only: rdm_traces, renyi_2, calc_inst_rdm
         use dmqmc_data, only: dmqmc_in_t
         use parallel, only: nprocs
+        use qmc_data, only: qmc_state_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         real(dp), intent(in) :: rep_loop_sum(:)
         integer, intent(in) :: min_ind(:), max_ind(:), ncycles
         real(p), intent(out) :: tot_nparticles(:)
+        type(qmc_state_t), intent(inout) :: qs
 
         rspawn = rep_loop_sum(rspawn_ind)
-        tot_nocc_states = rep_loop_sum(nocc_states_ind)
-        tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
+        qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
         trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
         numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))
@@ -258,7 +261,7 @@ contains
 
     end subroutine communicate_inst_rdms
 
-    subroutine update_shift_dmqmc(qmc_in, loc_totnparticles, loc_totnparticles_old)
+    subroutine update_shift_dmqmc(qmc_in, qs, loc_totnparticles, loc_totnparticles_old)
 
         ! In:
         !    qmc_in: input options relating to QMC methods.
@@ -268,21 +271,21 @@ contains
         !        particles in the simulation currently.
 
         use energy_evaluation, only: update_shift
-        use fciqmc_data, only: shift, vary_shift
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qs
         real(p), intent(in) :: loc_totnparticles(:)
         real(p), intent(in) :: loc_totnparticles_old(:)
         integer :: ireplica
 
         do ireplica = 1, size(loc_totnparticles)
-            if (vary_shift(ireplica)) then
-                call update_shift(qmc_in, shift(ireplica), loc_totnparticles_old(ireplica), &
+            if (qs%vary_shift(ireplica)) then
+                call update_shift(qmc_in, qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
                     loc_totnparticles(ireplica), qmc_in%ncycles)
             end if
-            if (loc_totnparticles(ireplica) > qmc_in%target_particles .and. (.not. vary_shift(ireplica))) &
-                vary_shift(ireplica) = .true.
+            if (loc_totnparticles(ireplica) > qmc_in%target_particles .and. (.not. qs%vary_shift(ireplica))) &
+                qs%vary_shift(ireplica) = .true.
         end do
 
     end subroutine update_shift_dmqmc

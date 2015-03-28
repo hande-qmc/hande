@@ -10,7 +10,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc_legacy(sys, ntypes, qmc_in, dmqmc_in)
+    subroutine init_qmc_legacy(sys, ntypes, qmc_in, qs, dmqmc_in)
 
         ! Do some legacy initialisation (ie things which should not be
         ! global/modified in input structures/etc).
@@ -28,23 +28,24 @@ contains
 
         use calc, only: trial_function, neel_singlet
         use dmqmc_data, only: dmqmc_in_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ntypes
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qs
 
         integer :: i, ierr
 
         ! Allocate the shift.
-        allocate(shift(ntypes), stat=ierr)
-        call check_allocate('shift', size(shift), ierr)
-        shift = qmc_in%initial_shift
+        allocate(qs%shift(ntypes), stat=ierr)
+        call check_allocate('qs%shift', size(qs%shift), ierr)
+        qs%shift = qmc_in%initial_shift
 
-        allocate(vary_shift(ntypes), stat=ierr)
-        call check_allocate('vary_shift', size(vary_shift), ierr)
+        allocate(qs%vary_shift(ntypes), stat=ierr)
+        call check_allocate('qs%vary_shift', size(qs%vary_shift), ierr)
 
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers
         ! are being used.
@@ -266,7 +267,7 @@ contains
                                             'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
 
-            call init_qmc_legacy(sys, pl%nspaces, qmc_in, dmqmc_in)
+            call init_qmc_legacy(sys, pl%nspaces, qmc_in, qmc_state, dmqmc_in)
 
             ! If not using real amplitudes then we always want spawn_cutoff to be
             ! equal to 1.0, so overwrite the default before creating spawn_t objects.
@@ -297,7 +298,7 @@ contains
                     allocate(reference%occ_list0(sys%nel), stat=ierr)
                     call check_allocate('reference%occ_list0',sys%nel,ierr)
                 end if
-                call read_restart_hdf5(restart_info_global, fciqmc_in_loc%non_blocking_comm, reference, pl, spawn_recv)
+                call read_restart_hdf5(restart_info_global, fciqmc_in_loc%non_blocking_comm, spawn_recv, qmc_state)
                 ! Need to re-calculate the reference determinant data
                 call decode_det(sys%basis, reference%f0, reference%occ_list0)
                 if (trial_function == neel_singlet) then
@@ -464,7 +465,7 @@ contains
 #endif
 
             ! Decide whether the shift should be turned on from the start.
-            vary_shift = pl%tot_nparticles >= qmc_in%target_particles
+            qmc_state%vary_shift = pl%tot_nparticles >= qmc_in%target_particles
 
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
@@ -489,6 +490,10 @@ contains
                 qmc_in%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
                 qmc_in%pattempt_double = 1.0_p - qmc_in%pattempt_single
             end if
+
+            ! Set initial values from input
+            qmc_state%tau = qmc_in%tau
+            qmc_state%estimators%D0_population = qmc_in%D0_population
 
         end associate
 

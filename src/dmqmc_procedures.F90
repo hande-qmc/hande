@@ -5,7 +5,7 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas)
+    subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas, qs)
 
         ! In:
         !    sys: system being studied.
@@ -20,13 +20,14 @@ contains
         use fciqmc_data
         use system, only: sys_t
 
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: nreplicas
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(qmc_state_t), intent(inout) :: qs
 
         integer :: ierr, i, bit_position, bit_element
 
@@ -67,19 +68,19 @@ contains
             ! probability. To avoid having to multiply by an extra variable in
             ! every spawning routine to account for this, we multiply the time
             ! step by 0.5 instead, then correct this in the death step (see below).
-            qmc_in%tau = qmc_in%tau*0.5_p
+            qs%tau = qs%tau*0.5_p
             ! Set dmqmc_factor to 2 so that when probabilities in death.f90 are
             ! multiplied by this factor it cancels the factor of 0.5 introduced
             ! into the timestep in DMQMC.cThis factor is also used in updated the
             ! shift, where the true tau is needed.
-            dmqmc_factor = 2.0_p
+            qs%dmqmc_factor = 2.0_p
         end if
         ! Set the timestep to be the appropriate factor of ef so that results
         ! are at temperatures commensurate(ish) with the reduced (inverse) temperature
         ! Beta = 1\Theta = T/T_F, where T_F is the Fermi-Temperature. Also need
         ! to set the appropriate beta = Beta / T_F.
         if (dmqmc_in%fermi_temperature) then
-            qmc_in%tau = qmc_in%tau / sys%ueg%ef
+            qs%tau = qs%tau / sys%ueg%ef
             dmqmc_in%init_beta = dmqmc_in%init_beta / sys%ueg%ef
         end if
 

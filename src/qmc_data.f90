@@ -402,6 +402,25 @@ type spawned_particle_t
     real(p) :: rspawn
 end type spawned_particle_t
 
+type estimators_t
+    ! Population of walkers on reference determinant/trace of density matrix.
+    real(p) :: D0_population
+    ! projected energy
+    ! This stores during an FCIQMC report loop
+    !   \sum_{i/=0} <D_0|H|D_i> N_i
+    ! where D_0 is the reference determinants and N_i is the walker population on
+    ! determinant D_i.
+    ! The projected energy is given as
+    !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
+    ! and so proj_energy must be 'normalised' and averaged over the report loops
+    ! accordingly.
+    real(p) :: proj_energy
+    ! Total number of occupied states across all processors.
+    integer :: tot_nstates
+    ! The total number of successful spawning events, across all processors.
+    integer :: tot_nspawn_events
+end type estimators_t
+
 type qmc_state_t
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
     ! required because in DMQMC calculations, instead of spawning from one end with
@@ -415,30 +434,19 @@ type qmc_state_t
     real(p) :: dmqmc_factor = 1.0_p
     ! timestep
     real(p) :: tau
-    ! Population of walkers on reference determinant/trace of density matrix.
-    real(p) :: D0_population
-    ! projected energy
-    ! This stores during an FCIQMC report loop
-    !   \sum_{i/=0} <D_0|H|D_i> N_i
-    ! where D_0 is the reference determinants and N_i is the walker population on
-    ! determinant D_i.
-    ! The projected energy is given as
-    !   <D_0|H|D_0> + \sum_{i/=0} <D_0|H|D_i> N_i/N_0
-    ! and so proj_energy must be 'normalised' and averaged over the report loops
-    ! accordingly.
-    real(p) :: proj_energy
     ! Energy offset (shift) applied to the Hamiltonian.
-    real(p), allocatable :: shift(:) ! (sampling_size)
+    real(p), allocatable :: shift(:) ! (psip_list%nspaces)
     ! The shift is updated at the end of each report loop when vary_shift is true.
     ! When the replica_tricks option is used, the elements
     ! of the shift array refer to the shifts in the corresponding replica systems.
     ! When replica_tricks is not being used, only the first element is used.
-    logical, allocatable :: vary_shift(:) ! (sampling_size)
+    logical, allocatable :: vary_shift(:) ! (psip_list%nspaces)
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
     type(reference_t) :: ref
     type(parallel_t) :: par_info
+    type(estimators_t) :: estimators
 end type qmc_state_t
 
 type annihilation_flags_t
