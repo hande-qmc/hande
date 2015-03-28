@@ -351,6 +351,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t
         use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
         use qmc_data, only: qmc_in_t, walker_global, qmc_state_t
+        use dmqmc_data, only: dmqmc_estimates_global
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
@@ -383,35 +384,35 @@ contains
         ! DMQMC output.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
-                (mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), trace(1)
+                (mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), dmqmc_estimates_global%trace(1)
             ! The trace on the second replica.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write(6, '(3X,es17.10)',advance = 'no') trace(2)
+                write(6, '(3X,es17.10)',advance = 'no') dmqmc_estimates_global%trace(2)
             end if
 
             ! Renyi-2 entropy for the full density matrix.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(4X,es17.10)', advance = 'no') numerators(full_r2_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(full_r2_ind)
             end if
 
             ! Energy.
             if (doing_dmqmc_calc(dmqmc_energy)) then
-                write (6, '(4X,es17.10)', advance = 'no') numerators(energy_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(energy_ind)
             end if
 
             ! Energy squared.
             if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                write (6, '(4X,es17.10)', advance = 'no') numerators(energy_squared_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(energy_squared_ind)
             end if
 
             ! Correlation function.
             if (doing_dmqmc_calc(dmqmc_correlation)) then
-                write (6, '(4X,es17.10)', advance = 'no') numerators(correlation_fn_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(correlation_fn_ind)
             end if
 
             ! Staggered magnetisation.
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                write (6, '(4X,es17.10)', advance = 'no') numerators(staggered_mag_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(staggered_mag_ind)
             end if
 
             ! Renyi-2 entropy for all RDMs being sampled.
@@ -434,9 +435,9 @@ contains
             ! density matrix.
             if (present(dmqmc_in)) then
                 if (dmqmc_in%calc_excit_dist) then
-                    excit_dist = excit_dist/ntot_particles(1)
-                    do i = 0, ubound(excit_dist,1)
-                        write (6, '(4X,es17.10)', advance = 'no') excit_dist(i)
+                    dmqmc_estimates_global%excit_dist = dmqmc_estimates_global%excit_dist/ntot_particles(1)
+                    do i = 0, ubound(dmqmc_estimates_global%excit_dist,1)
+                        write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%excit_dist(i)
                     end do
                 end if
             end if
