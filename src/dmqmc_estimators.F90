@@ -858,7 +858,7 @@ contains
         ! Apply the mask for the B subsystem to set all sites in the A
         ! subsystem to 0.
         f1 = iand(rdms(irdm)%B_masks(:,isym),cdet%f(:basis%string_len))
-        f2 = iand(rdms(irdm)%B_masks(:,isym),cdet%f(basis%string_len+1:basis%tensor_label_len))
+        f2 = iand(rdms(irdm)%B_masks(:,isym),cdet%f2(:basis%string_len))
 
         ! Once this is done, check if the resulting bitstrings (which can
         ! only possibly have 1's in the B subsystem) are identical. If
