@@ -143,11 +143,11 @@ contains
         ! If doing a reduced density matrix calculation, allocate and define
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
-        if (doing_reduced_dm) call setup_rdm_arrays(sys, qmc_in, nreplicas)
+        if (doing_reduced_dm) call setup_rdm_arrays(sys, qmc_in, dmqmc_in%rdm, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, qmc_in, nreplicas)
+    subroutine setup_rdm_arrays(sys, qmc_in, rdm_in, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -159,6 +159,7 @@ contains
         !    sys: system being studied.
         !    qmc_in (optional): Input options relating to QMC methods.  Only needed for
         !         spawn_cutoff and if calc_inst_rdm is true.
+        !    rdm_in (optional): Input options relating to reduced density matrices.
         !    nreplicas (optional): number of replicas being used.  Must be specified if
         !         qmc_in is.
 
@@ -167,21 +168,23 @@ contains
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
         use fciqmc_data, only: renyi_2, real_bit_shift
-        use fciqmc_data, only: spawned_length, rdm_spawn, rdms
+        use fciqmc_data, only: rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
         use system, only: sys_t, heisenberg
         use utils, only: int_fmt
 
+        use dmqmc_data, only: dmqmc_rdm_in_t
         use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in), optional :: qmc_in
+        type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
         integer, intent(in), optional :: nreplicas
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
-        integer :: bit_position, bit_element, nbytes_int
+        integer :: bit_position, bit_element, nbytes_int, spawn_length_loc
 
         ! For the Heisenberg model only currently.
         if (sys%system==heisenberg) then
@@ -231,34 +234,37 @@ contains
                 if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
                 size_spawned_rdm = (rdms(i)%string_len*2+nreplicas)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
-                if (spawned_length < 0) then
+
+                spawn_length_loc = rdm_in%spawned_length
+
+                if (spawn_length_loc < 0) then
                     ! Given in MB.  Convert.
                     ! Note that the factor of 2 is because two spawning arrays
                     ! are stored, and 21*nbytes_int is added because there are
                     ! 21 integers in the hash table for each spawned rdm slot.
                     ! 21 was found to be appropriate after testing.
-                    spawned_length = int((-real(spawned_length,p)*10**6)/&
+                    spawn_length_loc = int((-real(spawn_length_loc,p)*10**6)/&
                                           (2*size_spawned_rdm + 21*nbytes_int))
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
                 call alloc_spawn_t(rdms(i)%string_len*2, nreplicas, .false., &
-                                     spawned_length, qmc_in%spawn_cutoff, real_bit_shift, &
+                                     spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, &
                                      27, use_mpi_barriers, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
                 ! the table is three times as large as the spawning arrays and
                 ! each hash value can have 7 clashes. This was found to give
                 ! reasonable performance.
-                call alloc_hash_table(3*spawned_length, 7, rdms(i)%string_len*2, &
+                call alloc_hash_table(3*spawn_length_loc, 7, rdms(i)%string_len*2, &
                                      0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
             end if
         end do
 
         if (parent .and. calc_inst_rdm) then
             write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
-                total_size_spawned_rdm*real(2*spawned_length,p)/10**6
-            write (6,'(1X,a49,'//int_fmt(spawned_length,1)//',/)') &
-                'Number of elements per core in spawned RDM lists:', spawned_length
+                total_size_spawned_rdm*real(2*spawn_length_loc,p)/10**6
+            write (6,'(1X,a49,'//int_fmt(spawn_length_loc,1)//',/)') &
+                'Number of elements per core in spawned RDM lists:', spawn_length_loc
         end if
 
         ! For an ms = 0 subspace, assuming less than or exactly half the spins

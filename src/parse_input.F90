@@ -408,11 +408,11 @@ contains
                     end if
                 end if
             case('SPAWNED_RDM_LENGTH')
-                call readi(spawned_length)
+                call readi(dmqmc_in%rdm%spawned_length)
                 if (item /= nitems) then
                     call readu(w)
                     if (w == 'MB') then
-                        spawned_length = -spawned_length
+                        dmqmc_in%rdm%spawned_length = -dmqmc_in%rdm%spawned_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
@@ -726,7 +726,7 @@ contains
                 if (qmc_in%walker_length == 0) call stop_all(this,'Walker length zero.')
                 if (qmc_in%spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
-            if (calc_inst_rdm .and. spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
+            if (calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
             if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
             if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(reference%occ_list0)) then
@@ -920,7 +920,7 @@ contains
         call mpi_bcast(dmqmc_in%beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)

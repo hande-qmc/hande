@@ -119,10 +119,6 @@ logical :: calc_ground_rdm = .false.
 ! They are thrown away after these calculation has been performed on them.
 logical :: calc_inst_rdm = .false.
 
-! The length of the spawning array for RDMs. Each RDM calculated has the same
-! length array.
-integer :: spawned_length
-
 ! If true then calculate the concurrence for reduced density matrix of two sites.
 logical :: doing_concurrence = .false.
 
@@ -131,7 +127,7 @@ logical :: doing_vn_entropy = .false.
 
 ! If true then, if doing an exact diagonalisation, calculate and output the
 ! eigenvalues of the reduced density matrix requested.
-logical :: doing_exact_rdm_eigv=.false.
+logical :: doing_exact_rdm_eigv = .false.
 
 ! This stores the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
