@@ -104,10 +104,6 @@ logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-! If true then the reduced density matricies will be calulated for the 'A'
-! subsystems specified by the user.
-logical :: doing_reduced_dm = .false.
-
 ! If true then each subsystem A RDM specified by the user will be accumulated
 ! from the iteration start_averaging until the end of the beat loop, allowing
 ! ground-state estimates of the RDMs to be calculated.

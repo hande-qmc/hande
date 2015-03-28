@@ -143,7 +143,7 @@ contains
         ! If doing a reduced density matrix calculation, allocate and define
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
-        if (doing_reduced_dm) call setup_rdm_arrays(sys, qmc_in, dmqmc_in%rdm, nreplicas)
+        if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, qmc_in, dmqmc_in%rdm, nreplicas)
 
     end subroutine init_dmqmc
 

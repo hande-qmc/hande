@@ -325,7 +325,7 @@ contains
                 call readi(dmqmc_in%rdm%nrdms)
                 allocate(rdms(dmqmc_in%rdm%nrdms), stat=ierr)
                 call check_allocate('rdms', dmqmc_in%rdm%nrdms, ierr)
-                doing_reduced_dm = .true.
+                dmqmc_in%rdm%doing_rdm = .true.
                 do i = 1, dmqmc_in%rdm%nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
@@ -927,7 +927,7 @@ contains
         call mpi_bcast(qmc_in%vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)

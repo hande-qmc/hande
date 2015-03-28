@@ -331,7 +331,7 @@ contains
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
         use excitations, only: get_excitation, excit_t
-        use fciqmc_data, only: doing_reduced_dm, real_factor
+        use fciqmc_data, only: real_factor
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
@@ -406,7 +406,7 @@ contains
         end associate
 
         ! Reduced density matrices.
-        if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
+        if (dmqmc_in%rdm%doing_rdm) call update_reduced_density_matrix_heisenberg&
             &(sys%basis, cdet, excitation, psip_list%pops(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm, &
               weighted_sampling%probs)
 

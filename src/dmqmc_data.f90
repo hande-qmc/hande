@@ -35,10 +35,9 @@ type dmqmc_rdm_in_t
     ! full RDM.
     integer :: spawned_length
 
-    ! [todo] - rename.
     ! If true then the reduced density matricies will be calulated for the 'A'
     ! subsystems specified by the user.
-    logical :: doing_reduced_dm = .false.
+    logical :: doing_rdm = .false.
 
     ! If true then each subsystem A RDM specified by the user will be accumulated
     ! from the iteration start_averaging until the end of the beat loop, allowing
