@@ -132,9 +132,7 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use fciqmc_data, only: rspawn
-        use fciqmc_data, only: trace
-        use fciqmc_data, only: excit_dist
-        use fciqmc_data, only: trace, rdm_traces, renyi_2
+        use fciqmc_data, only: rdm_traces, renyi_2
         use fciqmc_data, only: calc_inst_rdm
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
@@ -202,7 +200,7 @@ contains
         integer, intent(in) :: min_ind(:), max_ind(:), ncycles
         real(p), intent(out) :: tot_nparticles(:)
         type(qmc_state_t), intent(inout) :: qs
-        type(dmqmc_estimates_t), intent(out) :: dmqmc_estimates
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
 
         rspawn = rep_loop_sum(rspawn_ind)
         qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)

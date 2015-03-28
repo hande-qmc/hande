@@ -5,7 +5,7 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas, qs)
+    subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas, qs, dmqmc_estimates)
 
         ! In:
         !    sys: system being studied.
@@ -13,6 +13,7 @@ contains
         ! In/Out:
         !    qmc_in: Input options relating to QMC methods.
         !    dmqmc_in: Input options relating to DMQMC.
+        !    dmqmc_estimates: type containing estimates for observables.
 
         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
@@ -21,19 +22,20 @@ contains
         use system, only: sys_t
 
         use qmc_data, only: qmc_in_t, qmc_state_t
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: nreplicas
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(qmc_state_t), intent(inout) :: qs
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
 
         integer :: ierr, i, bit_position, bit_element
 
-        allocate(trace(nreplicas), stat=ierr)
-        call check_allocate('trace',size(trace),ierr)
-        trace = 0.0_p
+        allocate(dmqmc_estimates%trace(nreplicas), stat=ierr)
+        call check_allocate('dmqmc_estimates%trace',size(dmqmc_estimates%trace),ierr)
+        dmqmc_estimates%trace = 0.0_p
 
         allocate(rdm_traces(nreplicas,nrdms), stat=ierr)
         call check_allocate('rdm_traces',size(rdm_traces),ierr)
@@ -54,9 +56,9 @@ contains
         end if
 
         if (dmqmc_in%calc_excit_dist .or. dmqmc_in%find_weights) then
-            allocate(excit_dist(0:sys%max_number_excitations), stat=ierr)
-            call check_allocate('excit_dist',sys%max_number_excitations+1,ierr)
-            excit_dist = 0.0_p
+            allocate(dmqmc_estimates%excit_dist(0:sys%max_number_excitations), stat=ierr)
+            call check_allocate('dmqmc_estimates%excit_dist',sys%max_number_excitations+1,ierr)
+            dmqmc_estimates%excit_dist = 0.0_p
         end if
 
         ! When using an importance sampled initial density matrix we use then
