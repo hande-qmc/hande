@@ -1,4 +1,4 @@
-module restart_hdf5
+Module restart_hdf5
 
     ! Restart functionality based on the HDF5 library.  Note: this is only
     ! for QMC (ie FCIQMC, DMQMC or CCMC) calculations).
@@ -203,12 +203,13 @@ module restart_hdf5
         end subroutine init_restart_hdf5
 #endif
 
-        subroutine dump_restart_hdf5(ri, reference, ncycles, total_population, nb_comm)
+        subroutine dump_restart_hdf5(ri, psip_list, reference, ncycles, total_population, nb_comm, spawn_recv)
 
             ! Write out a restart file.
 
             ! In:
             !    ri: restart information.  ri%restart_stem and ri%write_id are used.
+            !    psip_list: particle information to write out to the restart file.
             !    reference: current reference determinant.
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
@@ -220,21 +221,23 @@ module restart_hdf5
 #endif
             use const
             use, intrinsic :: iso_c_binding
+            use errors, only: stop_all
             use parallel, only: nprocs, iproc, parent, nthreads
             use utils, only: get_unique_filename, int_fmt
 
-            use fciqmc_data, only: walker_dets, walker_population, walker_data, &
-                                   shift, tot_walkers,               &
-                                   D0_population, par_info, received_list
+            use fciqmc_data, only: shift, D0_population, par_info
             use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
-            use qmc_data, only: reference_t
+            use qmc_data, only: reference_t, particle_t
+            use spawn_data, only: spawn_t
 
+            type(particle_t), intent(in) :: psip_list
             type(restart_info_t), intent(in) :: ri
             type(reference_t), intent(in) :: reference
             integer, intent(in) :: ncycles
             real(p), intent(in) :: total_population(:)
             logical, intent(in) :: nb_comm
+            type(spawn_t), intent(in), optional :: spawn_recv
 #ifndef DISABLE_HDF5
             character(255) :: restart_file
 
@@ -296,18 +299,22 @@ module restart_hdf5
 
                 ! Don't write out the entire array for storing particles but
                 ! rather only the slots in use...
-                call hdf5_write(subgroup_id, ddets, kinds, shape(walker_dets(:,:tot_walkers)), &
-                                 walker_dets(:,:tot_walkers))
+                call hdf5_write(subgroup_id, ddets, kinds, shape(psip_list%states(:,:psip_list%nstates)), &
+                                 psip_list%states(:,:psip_list%nstates))
 
-                call hdf5_write(subgroup_id, dpops, kinds, shape(walker_population(:,:tot_walkers)), &
-                                 walker_population(:,:tot_walkers))
+                call hdf5_write(subgroup_id, dpops, kinds, shape(psip_list%pops(:,:psip_list%nstates)), &
+                                 psip_list%pops(:,:psip_list%nstates))
 
-                call hdf5_write(subgroup_id, ddata, kinds, shape(walker_data(:,:tot_walkers)), &
-                                 walker_data(:,:tot_walkers))
+                call hdf5_write(subgroup_id, ddata, kinds, shape(psip_list%dat(:,:psip_list%nstates)), &
+                                 psip_list%dat(:,:psip_list%nstates))
                 if (nb_comm) then
-                    call hdf5_write(subgroup_id, dspawn, kinds, shape(received_list%sdata(:,:received_list%head(0,0))), &
-                                    received_list%sdata(:,:received_list%head(0,0)))
-                    call hdf5_write(subgroup_id, dnspawn, received_list%head(0,0))
+                    if (present(spawn_recv)) then
+                        call hdf5_write(subgroup_id, dspawn, kinds, shape(spawn_recv%sdata(:,:spawn_recv%head(0,0))), &
+                                        spawn_recv%sdata(:,:spawn_recv%head(0,0)))
+                        call hdf5_write(subgroup_id, dnspawn, spawn_recv%head(0,0))
+                    else
+                        call stop_all('dump_restart_hdf5', 'Non-blocking comms in use but spawn_recv not supplied.')
+                    end if
                 end if
                 call hdf5_write(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
 
@@ -358,7 +365,7 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nb_comm, reference)
+        subroutine read_restart_hdf5(ri, nb_comm, reference, psip_list, spawn_recv)
 
             ! Read QMC data from restart file.
 
@@ -366,6 +373,8 @@ module restart_hdf5
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
             !    nb_comm: true if using non-blocking communications.
             ! In/Out:
+            !    psip_list: psip information.  Allocated on input, contains info
+            !       from the restart file on exit.
             !    reference: reference determinant. Set from the value in the restart file
 
 #ifndef DISABLE_HDF5
@@ -375,17 +384,17 @@ module restart_hdf5
             use errors, only: stop_all
             use const
 
-            use fciqmc_data, only: walker_dets, walker_population, walker_data,  &
-                                   shift, tot_nparticles, &
-                                   D0_population, mc_cycles_done, tot_walkers,   &
-                                   par_info, received_list
+            use fciqmc_data, only: shift, D0_population, mc_cycles_done, par_info
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
-            use qmc_data, only: reference_t
+            use qmc_data, only: reference_t, particle_t
+            use spawn_data, only: spawn_t
 
+            type(particle_t), intent(inout) :: psip_list
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
             type(reference_t), intent(inout) :: reference
+            type(spawn_t), intent(inout), optional :: spawn_recv
 
 #ifndef DISABLE_HDF5
             ! HDF5 kinds
@@ -401,7 +410,7 @@ module restart_hdf5
             real(p), target :: tmp(1)
             logical :: exists
 
-            integer(HSIZE_T) :: dims(size(shape(walker_dets))), maxdims(size(shape(walker_dets)))
+            integer(HSIZE_T) :: dims(size(shape(psip_list%states))), maxdims(size(shape(psip_list%states)))
 
 
             ! Initialise HDF5 and open file.
@@ -467,31 +476,32 @@ module restart_hdf5
                 call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
                 ! Figure out how many determinants we wrote out...
-                ! walker_dets has rank 2, so need not look that up!
+                ! psip_list%states has rank 2, so need not look that up!
                 call h5dopen_f(subgroup_id, ddets, dset_id, ierr)
                 call h5dget_space_f(dset_id, dspace_id, ierr)
                 call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
                 call h5dclose_f(dset_id, ierr)
                 ! Number of determinants is the last index...
-                tot_walkers = dims(size(dims))
+                psip_list%nstates = dims(size(dims))
 
-                call hdf5_read(subgroup_id, ddets, kinds, shape(walker_dets), walker_dets)
+                call hdf5_read(subgroup_id, ddets, kinds, shape(psip_list%states), psip_list%states)
 
                 if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p)) &
                     call stop_all('read_restart_hdf5', &
                                   'Restarting with a different POP_SIZE is not supported.  Please implement.')
-                call hdf5_read(subgroup_id, dpops, kinds, shape(walker_population), walker_population)
+                call hdf5_read(subgroup_id, dpops, kinds, shape(psip_list%pops), psip_list%pops)
 
-                call hdf5_read(subgroup_id, ddata, kinds, shape(walker_data), walker_data)
+                call hdf5_read(subgroup_id, ddata, kinds, shape(psip_list%dat), psip_list%dat)
 
-                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(tot_nparticles), tot_nparticles)
+                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(psip_list%tot_nparticles), psip_list%tot_nparticles)
 
                 if (nb_comm) then
-
-                    call hdf5_read(subgroup_id, dspawn, kinds, shape(received_list%sdata), received_list%sdata)
-
-                    call hdf5_read(subgroup_id, dnspawn, received_list%head(0,0))
-
+                    if (present(spawn_recv)) then
+                        call hdf5_read(subgroup_id, dspawn, kinds, shape(spawn_recv%sdata), spawn_recv%sdata)
+                        call hdf5_read(subgroup_id, dnspawn, spawn_recv%head(0,0))
+                    else
+                        call stop_all('read_restart_hdf5', 'Non-blocking comms in use but spawn_recv not supplied.')
+                    end if
                 end if
 
                 call h5lexists_f(subgroup_id, dproc_map, exists, ierr)

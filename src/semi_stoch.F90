@@ -43,20 +43,20 @@ module semi_stoch
 ! deterministic state belonging to another processor, then H_{II} and H_{JI}
 ! will be stored, but H_{IJ} and H_{JJ} will not.
 !
-! Deterministic states still reside in the main walker arrays, walker_dets,
-! walker_populations and walker_data. However, we want to perform spawning from
+! Deterministic states still reside in the main walker arrays, particle_t%states,
+! particle_t%popss and particle_t%dat. However, we want to perform spawning from
 ! deterministic to deterministic states exactly. Thus, whenever a stochastic
 ! spawning event of this type is generated, it is cancelled. We still have to
 ! attempt stochastic spawning from deterministic states because deterministic to
 ! stochastic spawning *is* allowed, and must be treated using the excitation
 ! generators as usual.
 !
-! Because all deterministic states are still stored in walker_dets, they do not
+! Because all deterministic states are still stored in particle_t%states, they do not
 ! have to be treated differently for the most part. For example, energy
 ! evaluation is performed exactly as it is without semi-stochastic.
 !
 ! We store an array of flags (semi_stoch_t%flags) which specify whether or not
-! states in walker_dets belong to the deterministic space or not. The status
+! states in particle_t%states belong to the deterministic space or not. The status
 ! of newly spawned states is checked on-the-fly.
 !
 ! To check if a newly spawned determinant belongs to the deterministic space
@@ -64,9 +64,9 @@ module semi_stoch
 ! semi_stocht%dets stores *all deterministic states on all processors*
 ! (a spawned state can of course belong to any processor).
 !
-! Note that all deterministic states are stored in walker_dets only for that
+! Note that all deterministic states are stored in particle_t%states only for that
 ! one processor (just as for all other states). Deterministic states are never
-! removed from walker_dets, even if they have an amplitude of exactly zero
+! removed from particle_t%states, even if they have an amplitude of exactly zero
 ! (which is very unlikely in practice). This simplifies the implemenation in
 ! some places. No stochastic rounding is ever performed for the populations of
 ! deterministic states.
@@ -99,7 +99,7 @@ implicit none
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, reference, annihilation_flags, spawn, space_type, &
+    subroutine init_semi_stoch_t(determ, sys, psip_list, reference, annihilation_flags, spawn, space_type, &
                                  target_size, separate_annihilation, mpi_barriers, write_determ_in, nload_slots)
 
         ! Create a semi_stoch_t object which holds all of the necessary
@@ -128,9 +128,8 @@ contains
         !    nload_slots: number of slots proc map is divided into.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: walker_length
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, &
-                            reuse_determ_space, annihilation_flags_t
+                            reuse_determ_space, particle_t, annihilation_flags_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -140,6 +139,7 @@ contains
 
         type(semi_stoch_t), intent(inout) :: determ
         type(sys_t), intent(in) :: sys
+        type(particle_t), intent(inout) :: psip_list
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(spawn_t), intent(in) :: spawn
@@ -150,7 +150,7 @@ contains
         logical, intent(in) :: write_determ_in
         integer, intent(in) :: nload_slots
 
-        integer :: i, ierr, determ_dets_mem
+        integer :: i, ierr, determ_dets_mem, max_nstates
         integer :: displs(0:nprocs-1)
         ! dtes_this_proc will hold deterministic states on this processor only.
         ! This is only needed during initialisation.
@@ -181,8 +181,9 @@ contains
             end if
         end if
 
-        allocate(determ%flags(walker_length), stat=ierr)
-        call check_allocate('determ%flags', walker_length, ierr)
+        max_nstates = size(psip_list%states, dim=2)
+        allocate(determ%flags(max_nstates), stat=ierr)
+        call check_allocate('determ%flags', size(determ%flags), ierr)
         allocate(determ%sizes(0:nprocs-1), stat=ierr)
         call check_allocate('determ%sizes', nprocs, ierr)
 
@@ -194,7 +195,7 @@ contains
 
         ! Create temporary space for enumerating the deterministic space
         ! belonging to this processor only.
-        allocate(dets_this_proc(sys%basis%tensor_label_len, walker_length), stat=ierr)
+        allocate(dets_this_proc(sys%basis%tensor_label_len, max_nstates), stat=ierr)
         call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
         dets_this_proc = 0_i0
 
@@ -210,7 +211,7 @@ contains
         ! deterministic space will be used. This is the default behaviour
         ! (space_type = empty_determ_space).
         if (space_type == high_pop_determ_space) then
-            call create_high_pop_space(dets_this_proc, spawn, target_size, determ%sizes(iproc), nload_slots)
+            call create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ%sizes(iproc), nload_slots)
         else if (space_type == read_determ_space) then
             call read_determ_from_file(dets_this_proc, determ, spawn, sys, nload_slots, print_info)
         else if (space_type == reuse_determ_space) then
@@ -289,9 +290,9 @@ contains
         call create_determ_hamil(determ, sys, reference%H00, displs, dets_this_proc, print_info)
 
         ! All deterministic states on this processor are always stored in
-        ! walker_dets, even if they have a population of zero, so they are
+        ! particle_t%states, even if they have a population of zero, so they are
         ! added in here.
-        call add_determ_dets_to_walker_dets(determ, sys, reference, annihilation_flags, dets_this_proc)
+        call add_determ_dets_to_psip_list(determ, psip_list, sys, reference, annihilation_flags, dets_this_proc)
 
         ! We don't need this temporary space anymore. All deterministic states
         ! from all processors are stored in determ%dets.
@@ -559,11 +560,11 @@ contains
 
     end subroutine create_determ_hamil
 
-    subroutine add_determ_dets_to_walker_dets(determ, sys, reference, annihilation_flags, dets_this_proc)
+    subroutine add_determ_dets_to_psip_list(determ, psip_list, sys, reference, annihilation_flags, dets_this_proc)
 
         ! Also set the deterministic flags of any deterministic states already
-        ! in walker_dets, and add deterministic data to walker_populations and
-        ! walker_data. All deterministic states not already in walker_dets are
+        ! in particle_t%states, and add deterministic data to particle_t%popss and
+        ! particle_t%dat. All deterministic states not already in particle_t%states are
         ! set to have an initial sign of zero.
 
         ! In/Out:
@@ -576,52 +577,53 @@ contains
         !        processor.
 
         use annihilation, only: insert_new_walker
-        use fciqmc_data, only: walker_dets, walker_population, walker_data
-        use fciqmc_data, only: tot_walkers, sampling_size
         use parallel, only: iproc
         use search, only: binary_search
         use system, only: sys_t
-        use qmc_data, only: reference_t, annihilation_flags_t
+        use qmc_data, only: reference_t, particle_t, annihilation_flags_t
 
         type(semi_stoch_t), intent(inout) :: determ
+        type(particle_t), intent(inout) :: psip_list
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(i0), intent(in) :: dets_this_proc(:,:)
 
         integer :: i, istart, iend, pos
-        integer(int_p) :: zero_population(sampling_size)
+        integer(int_p) :: zero_population(psip_list%nspaces)
         logical :: hit
 
         zero_population = 0_int_p
         determ%flags = 1
 
         istart = 1
-        iend = tot_walkers
+        iend = psip_list%nstates
         do i = 1, determ%sizes(iproc)
-            call binary_search(walker_dets, dets_this_proc(:,i), istart, iend, hit, pos)
+            call binary_search(psip_list%states, dets_this_proc(:,i), istart, iend, hit, pos)
             if (.not. hit) then
-                ! This deterministic state is not in walker_dets. Move all
+                ! This deterministic state is not in states. Move all
                 ! determinants with index pos or greater down one and insert
                 ! this determinant with an initial sign of zero.
-                walker_dets(:,pos+1:tot_walkers+1) = walker_dets(:,pos:tot_walkers)
-                walker_population(:,pos+1:tot_walkers+1) = walker_population(:,pos:tot_walkers)
-                walker_data(:,pos+1:tot_walkers+1) = walker_data(:,pos:tot_walkers)
+                associate(dets=>psip_list%states, pops=>psip_list%pops, dat=>psip_list%dat)
+                    dets(:,pos+1:psip_list%nstates+1) = dets(:,pos:psip_list%nstates)
+                    pops(:,pos+1:psip_list%nstates+1) = pops(:,pos:psip_list%nstates)
+                    dat(:,pos+1:psip_list%nstates+1) = dat(:,pos:psip_list%nstates)
+                end associate
 
                 ! Insert a determinant with population zero into the walker arrays.
-                call insert_new_walker(sys, annihilation_flags, pos, dets_this_proc(:,i), zero_population, reference%H00)
+                call insert_new_walker(sys, psip_list, annihilation_flags, pos, dets_this_proc(:,i), zero_population, reference%H00)
 
-                tot_walkers = tot_walkers + 1
+                psip_list%nstates = psip_list%nstates + 1
             end if
 
             ! Set this flag to specify a deterministic state.
             determ%flags(pos) = 0
 
             istart = pos + 1
-            iend = tot_walkers
+            iend = psip_list%nstates
         end do
 
-    end subroutine add_determ_dets_to_walker_dets
+    end subroutine add_determ_dets_to_psip_list
 
     function check_if_determ(ht, dets, f) result(is_determ)
 
@@ -876,9 +878,9 @@ contains
 
     end subroutine add_det_to_determ_space
 
-    subroutine create_high_pop_space(dets_this_proc, spawn, target_size, determ_size_this_proc, nload_slots)
+    subroutine create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ_size_this_proc, nload_slots)
 
-        ! Find the most highly populated determinants in walker_dets and use
+        ! Find the most highly populated determinants in psip_list%states and use
         ! these to define the deterministic space.
 
         ! In/Out:
@@ -888,18 +890,19 @@ contains
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    target_size: Size of deterministic space to use if possible. If
         !        not then use the largest space possible (all determinants in
-        !        walker_dets).
+        !        psip_list%states).
         !    nload_slots: number of slots proc map is divided into.
         ! Out:
         !    determ_size_this_proc: Size of the deterministic space created,
         !        on this processor only.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: tot_walkers, walker_dets, walker_population
+        use qmc_data, only: particle_t
         use parallel
         use spawn_data, only: spawn_t
 
         integer(i0), intent(out) :: dets_this_proc(:,:)
+        type(particle_t), intent(in) :: psip_list
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: target_size
         integer, intent(out) :: determ_size_this_proc
@@ -916,7 +919,7 @@ contains
 
         ! If there are less determinants on this processor than the target
         ! number then obviously we need to consider a smaller number.
-        ndets = min(target_size, tot_walkers)
+        ndets = min(target_size, psip_list%nstates)
 
         ! all_ndets will hold the values of ndets from each processor.
 #ifdef PARALLEL
@@ -950,7 +953,8 @@ contains
 
         ! In determ_dets and determ_pops, return the determinants and
         ! populations of the most populated determinants on this processor.
-        call find_most_populated_dets(walker_dets, walker_population, tot_walkers, ndets, determ_dets, determ_pops)
+        call find_most_populated_dets(psip_list%states, psip_list%pops, &
+                                      psip_list%nstates, ndets, determ_dets, determ_pops)
 
         ! Create a joined list, all_determ_pops, of the most populated
         ! determinants from each processor.

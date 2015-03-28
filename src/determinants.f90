@@ -31,7 +31,7 @@ type det_info_t
     ! is the determinant an initiator determinant or not? (used only in
     ! i-FCIQMC).
     integer :: initiator_flag
-    ! Pointer (never allocated) to corresponding elements in walker_data array.
+    ! Pointer (never allocated) to corresponding elements in particle_t%dat array.
     real(p), pointer :: data(:) => NULL()
     ! Pointer to an existing cluster_t variable.  Used *only* in CCMC and so
     ! should *not* be used in generic routines.  In particular, great care

@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, reference, load_bal_in, annihilation_flags)
+    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, load_bal_in, reference_in)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -16,9 +16,10 @@ contains
 
         ! In:
         !    restart_in: input options for HDF5 restart files.
-        !    reference: reference determinant.
         !    load_bal_in: input options for load balancing.
-        !    annihilation_flags: calculation specific annihilation flags.
+        !    reference_in: current reference determinant.  If not set (ie
+        !       components allocated) then a best guess is made based upon the
+        !       desired spin/symmetry.
         ! In/Out:
         !    sys: system being studied.  NOTE: if modified inside a procedure,
         !         it should be returned in its original (ie unmodified state)
@@ -27,6 +28,7 @@ contains
         !    dmqmc_in: input options relating to DMQMC.
 
         use parallel
+        use checking, only: check_allocate
         use annihilation, only: direct_annihilation
         use bit_utils, only: count_set_bits
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
@@ -36,28 +38,27 @@ contains
         use dmqmc_estimators
         use dmqmc_procedures
         use excitations, only: excit_t
+        use qmc, only: init_qmc
         use qmc_common
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use system
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
-        type(reference_t), intent(in) :: reference
-        type(load_bal_in_t), intent(in) :: load_bal_in
-        type(annihilation_flags_t), intent(in) :: annihilation_flags
+        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(reference_t), intent(in) :: reference_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
-        integer :: idet, ireport, icycle, iparticle, iteration, ireplica
+        integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
         integer :: beta_cycle
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
-        real(p) :: tot_nparticles_old(sampling_size)
-        real(p) :: real_population(sampling_size)
+        real(p), allocatable :: tot_nparticles_old(:), real_population(:)
         integer(int_64) :: nattempts
         integer :: nel_temp, nattempts_current_det
         type(det_info_t) :: cdet1, cdet2
@@ -68,6 +69,25 @@ contains
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
+        type(qmc_state_t), target :: qs
+        type(annihilation_flags_t) :: annihilation_flags
+
+        if (parent) then
+            write (6,'(1X,"DMQMC")')
+            write (6,'(1X,"-----",/)')
+        end if
+
+        ! Initialise data.
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in)
+
+        allocate(tot_nparticles_old(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('tot_nparticles_old', size(tot_nparticles_old), ierr)
+        allocate(real_population(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('real_population', size(real_population), ierr)
+
+        ! Initialise all the required arrays, ie to store thermal quantities,
+        ! and to initalise reduced density matrix quantities if necessary.
+        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces)
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -80,7 +100,7 @@ contains
         ! Main DMQMC loop.
         if (parent) then
             call rng_init_info(qmc_in%seed+iproc)
-            call write_fciqmc_report_header(dmqmc_in)
+            call write_fciqmc_report_header(qs%psip_list%nspaces, dmqmc_in)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -101,37 +121,39 @@ contains
 
         do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle)
+            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, qs%psip_list%nstates, qs%psip_list%nparticles, &
+                                      qs%spawn_store%spawn)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags, &
-                                               init_tot_nparticles, tot_nparticles, load_bal_in%nslots)
+            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs%ref, annihilation_flags, &
+                                               init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, load_bal_in%nslots)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            vary_shift = tot_nparticles >= qmc_in%target_particles
+            vary_shift = qs%psip_list%tot_nparticles >= qmc_in%target_particles
 
             do ireport = 1, qmc_in%nreport
 
                 call init_report_loop(bloom_stats)
-                tot_nparticles_old = tot_nparticles
+                tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
 
-                    call init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
-                                       nattempts, ndeath)
+                    call init_mc_cycle(rng, sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
+                                       qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
-                    do idet = 1, tot_walkers ! loop over walkers/dets
+                    do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
 
                         ! f points to the bitstring that is spawning, f2 to the
                         ! other bit string.
-                        cdet1%f => walker_dets(:sys%basis%string_len,idet)
-                        cdet1%f2 => walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
-                        cdet2%f => walker_dets((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
-                        cdet2%f2 => walker_dets(:sys%basis%string_len,idet)
+                        cdet1%f => qs%psip_list%states(:sys%basis%string_len,idet)
+                        cdet1%f2 => qs%psip_list%states((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet1%data => qs%psip_list%dat(:,idet)
+                        cdet2%f => qs%psip_list%states((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
+                        cdet2%f2 => qs%psip_list%states(:sys%basis%string_len,idet)
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
@@ -147,7 +169,7 @@ contains
                         call decoder_ptr(sys, cdet2%f, cdet2)
 
                         ! Extract the real signs from the encoded signs.
-                        real_population = real(walker_population(:,idet),p)/real_factor
+                        real_population = real(qs%psip_list%pops(:,idet),p)/real_factor
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
@@ -157,10 +179,10 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                         reference%H00, load_bal_in%nslots)
+                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list)
                         end if
 
-                        do ireplica = 1, sampling_size
+                        do ireplica = 1, qs%psip_list%nspaces
 
                             ! If this condition is met then there will only be
                             ! one det in this symmetry sector, so don't attempt
@@ -174,12 +196,13 @@ contains
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet1, &
-                                                     walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                    call spawner_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet1, &
+                                                 qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
-                                                                            spawning_end, ireplica, qmc_spawn, load_bal_in%nslots)
+                                                                            spawning_end, ireplica, qs%spawn_store%spawn,      &
+                                                                            load_bal_in%nslots)
 
                                         if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -188,11 +211,11 @@ contains
                                     ! Now attempt to spawn from the second end.
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
-                                        call spawner_ptr(rng, sys, qmc_in, qmc_spawn%cutoff, real_factor, cdet2, &
-                                                         walker_population(ireplica,idet), gen_excit_ptr, nspawned, connection)
+                                        call spawner_ptr(rng, sys, qmc_in, qs%spawn_store%spawn%cutoff, real_factor, cdet2, &
+                                                 qs%psip_list%pops(ireplica,idet), gen_excit_ptr, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
-                                                                                spawning_end, ireplica, qmc_spawn, &
+                                                                                spawning_end, ireplica, qs%spawn_store%spawn, &
                                                                                 load_bal_in%nslots)
 
                                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
@@ -205,12 +228,12 @@ contains
                             ! Clone or die.
                             ! We have contributions to the clone/death step from
                             ! both ends of the current walker. We do both of
-                            ! these at once by using walker_data(:,idet) which,
+                            ! these at once by using qs%psip_list%dat(:,idet) which,
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, qmc_in%tau, walker_data(ireplica,idet), shift(ireplica), &
-                                           walker_population(ireplica,idet), nparticles(ireplica), ndeath)
+                            call stochastic_death(rng, qmc_in%tau, qs%psip_list%dat(ireplica,idet), shift(ireplica), &
+                                           qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do
                     end do
 
@@ -225,7 +248,8 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, nspawn_events)
+                    call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
+                                             qs%spawn_store%spawn, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts)
 
@@ -234,20 +258,20 @@ contains
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
                     if (dmqmc_in%vary_weights .and. iteration <= dmqmc_in%finish_varying_weights) &
-                                                                    call update_sampling_weights(rng, sys%basis, qmc_in)
+                        call update_sampling_weights(rng, sys%basis, qmc_in, qs%psip_list)
 
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles)
+                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list)
 
-                call update_shift_dmqmc(qmc_in, tot_nparticles, tot_nparticles_old, ireport)
+                call update_shift_dmqmc(qmc_in, qs%psip_list%tot_nparticles, tot_nparticles_old)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, qmc_in, reference, ireport, iteration, .false., tot_nparticles_old, nspawn_events, t1, &
-                                     unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, load_bal_in, &
-                                     .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
+                call end_report_loop(sys, qmc_in, qs%ref, ireport, iteration, .false., qs%psip_list, tot_nparticles_old, &
+                                     nspawn_events, t1, unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, &
+                                     load_bal_in, .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
 
                 if (soft_exit) exit
 
@@ -266,7 +290,7 @@ contains
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
-        call load_balancing_report(qmc_spawn%mpi_time)
+        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qs%spawn_store%spawn%mpi_time)
 
         if (soft_exit) then
             mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
@@ -275,7 +299,8 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done, tot_nparticles, .false.)
+            call dump_restart_hdf5(restart_info_global, qs%psip_list, qs%ref, mc_cycles_done, &
+                                   qs%psip_list%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
 
@@ -284,35 +309,45 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, beta_cycle, nstates_active, nparticles, spawn)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
         ! In/Out:
         !    rng: random number generator.
+        !    spawn: spawn_t object.  Reset on exit.
         ! In:
         !    initial_shift: the initial shift used for population control.
         !    beta_cycle: The index of the beta loop about to be started.
         !    dmqmc_in: input options for DMQMC.
+        ! Out:
+        !    nparticles: number of particles in each space/of each type on
+        !       processor.  Set to 0.
+        !    nstates_active: number of occupied density matrix elements on
+        !       processor.  Set to 0.
 
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
         use qmc_data, only: qmc_in_t
         use dmqmc_data, only: dmqmc_in_t
+        use spawn_data, only: spawn_t
         use utils, only: int_fmt
 
-        type(dSFMT_t) :: rng
+        type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: spawn
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: beta_cycle
+        integer, intent(out) :: nstates_active
+        real(p), intent(out) :: nparticles(:)
         integer :: new_seed
 
         ! Reset the current position in the spawning array to be the slot
         ! preceding the first slot.
-        qmc_spawn%head = qmc_spawn%head_start
+        spawn%head = spawn%head_start
 
         ! Set all quantities back to their starting values.
-        tot_walkers = 0
+        nstates_active = 0
         shift = qmc_in%initial_shift
         nparticles = 0.0_dp
         if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p

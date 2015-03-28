@@ -222,7 +222,7 @@ type dmqmc_estimates_t
     ! used in calculating all thermal estimators. This quantity stores
     ! the this value, Tr(\rho), where rho is the density matrix which
     ! the DMQMC algorithm calculates stochastically.
-    real(p), allocatable :: trace(:) ! (sampling_size)
+    real(p), allocatable :: trace(:) ! (particle_t%nspaces)
 
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.
@@ -244,7 +244,7 @@ type dmqmc_inst_rdms_t
 
     ! [todo] - remove rdm_ stem.
     ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-    real(p), allocatable :: rdm_traces(:,:) ! (sampling_size, nrdms)
+    real(p), allocatable :: rdm_traces(:,:) ! (particle_t%nspaces, nrdms)
 
     ! [todo] - remove rdm_ stem.
     type(rdm_spawn_t), allocatable :: rdm_spawn(:) ! nrdms

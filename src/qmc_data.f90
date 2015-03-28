@@ -18,6 +18,12 @@ type qmc_in_t
 
     ! True if allowing non-integer values for psip populations.
     logical :: real_amplitudes = .false.
+    ! The minimum amplitude of a spawning event which can be added to
+    ! the spawned list.
+    ! If real amplitudes are not used then the following default will be
+    ! overwritten by 0.0_p. In this case it will effectively not be used and all
+    ! spawnings events will be integers.
+    real(p) :: spawn_cutoff = 0.01_p
 
     ! Don't bother renormalising generation probabilities; instead allow forbidden
     ! excitations to be generated and then rejected.
@@ -45,6 +51,14 @@ type qmc_in_t
     ! Factor by which the changes in the population are damped when updating the
     ! shift.
     real(p) :: shift_damping = 0.050_dp
+
+    ! Array sizes: main and spawned particle lists.
+    ! If these are < 0, then the values represent the number of MB to be used.
+    ! CARE: as we don't modify qmc_in_t objects, one should inspect the sizes
+    ! used in particle_t and spawned_particle_t for the exact values used (which may
+    ! be rounded for various reasons).
+    integer :: walker_length = 0
+    integer :: spawned_walker_length = 0
 
     ! The initial population on the reference determinant/trace of the density matrix.
     ! Overridden by a restart file.
@@ -323,16 +337,11 @@ end type semi_stoch_t
 ! --- Estimators ---
 
 ! [todo] - rename walker -> particle
-type walker_t
-    ! Array sizes
-    ! If these are < 0, then the values represent the number of MB to be used to
-    ! store the main walker and spawned walker data respectively.
-    integer :: walker_length
+type particle_t
     ! Current number of walkers stored in the main list (processor dependent).
     ! This is updated during annihilation and merging of the spawned walkers into
     ! the main list.
-    ! [todo] - rename tot_walkers -> nstates_active
-    integer :: tot_walkers
+    integer :: nstates 
     ! Total number of particles on all walkers/determinants (processor dependent)
     ! Updated during death and annihilation and merging.
     ! The first element is the number of normal (Hamiltonian) particles.
@@ -346,25 +355,25 @@ type walker_t
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
     ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
     ! [todo] - rename sampling_size -> nspaces?
-    integer :: sampling_size
-    ! number of additional elements stored for each determinant in walker_data for
+    integer :: nspaces
+    ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
     integer :: info_size
     ! a) determinants
-    integer(i0), allocatable :: walker_dets(:,:) ! (string_len, walker_length)
-    ! [todo] - nicer referencing for elements of walker_data and ! walker_population
+    integer(i0), allocatable :: states(:,:) ! (string_len, walker_length)
+    ! [todo] - nicer referencing for elements of dat and ! pops
     ! b) walker population
     ! NOTE:
-    !   When using the real_amplitudes option, walker_population stores encoded
+    !   When using the real_amplitudes option, pops stores encoded
     !   representations of the true walker populations. To convert
-    !   walker_population(:,i) to the actual population on determinant i, one must
-    !   take real(walker_population(:,i),p)/real_factor. Thus, the resolution
+    !   pops(:,i) to the actual population on determinant i, one must
+    !   take real(pops(:,i),p)/real_factor. Thus, the resolution
     !   in the true walker populations is 1/real_factor. This is how
     !   non-integers populations are implemented. When not using the real_amplitudes
     !   option, real_factor will be equal to 1, allowing only integer
     !   populations. In general, when one sees that a integer is of kind int_p, it
     !   should be understood that it stores a population in its encoded form.
-    integer(int_p), allocatable :: walker_population(:,:) ! (sampling_size,walker_length)
+    integer(int_p), allocatable :: pops(:,:) ! (nspaces,walker_length)
     ! c) Walker information.  This contains:
     ! * Diagonal matrix elements, K_ii.  Storing them avoids recalculation.
     !   K_ii = < D_i | H | D_i > - E_0, where E_0 = <D_0 | H | D_0> and |D_0> is the
@@ -378,31 +387,20 @@ type walker_t
     !   gives the total number of spins up on the first sublattice. The second
     !   component gives the number of 0-1 bonds where the 1 is on the first
     !   sublattice.
-    real(p), allocatable :: walker_data(:,:) ! (sampling_size+info_size,walker_length)
-end type walker_t
+    real(p), allocatable :: dat(:,:) ! (sampling_size+info_size,walker_length)
+end type particle_t
 
-type spawned_walker_t
-    ! Array sizes
-    ! If these are < 0, then the values represent the number of MB to be used to
-    ! store the main walker and spawned walker data respectively.
-    integer :: spawned_walker_length
-    ! The minimum amplitude of a spawning event which can be added to
-    ! the spawned list.
-    ! If real amplitudes are not used then the following default will be
-    ! overwritten by 0.0_p. In this case it will effectively not be used and all
-    ! spawnings events will be integers.
-    ! [review] - JSS: do we need this?  It's repeated in spawn_t as well...
-    ! [review] - JSS: really an input parameter
-    real(p) :: spawn_cutoff = 0.01_p
-    ! Walker information: spawned list.
-    type(spawn_t) :: qmc_spawn
-    ! Walker information: received list for non-blocking communications.
-    type(spawn_t) :: received_list
+type spawned_particle_t
+    ! List of spawned particles.
+    type(spawn_t) :: spawn
+    ! List of spawned particles received from other processors.  Used for non-blocking
+    ! communications (normal synchronous communications can just use spawn alone).
+    type(spawn_t) :: spawn_recv
     ! Rate of spawning.  This is a running total over MC cycles on each processor
     ! until it is summed over processors and averaged over cycles in
     ! update_energy_estimators.
     real(p) :: rspawn
-end type spawned_walker_t
+end type spawned_particle_t
 
 type qmc_state_t
     ! When performing dmqmc calculations, dmqmc_factor = 2.0. This factor is
@@ -437,8 +435,9 @@ type qmc_state_t
     ! When replica_tricks is not being used, only the first element is used.
     logical, allocatable :: vary_shift(:) ! (sampling_size)
     ! Convenience handles.
-    type(walker_t) :: walkers
-    type(reference_t) :: reference
+    type(particle_t) :: psip_list
+    type(spawned_particle_t) :: spawn_store
+    type(reference_t) :: ref
     type(parallel_t) :: par_info
 end type qmc_state_t
 
@@ -462,9 +461,11 @@ type(semi_stoch_in_t) :: semi_stoch_in_global
 type(ccmc_in_t) :: ccmc_in_global
 type(restart_in_t) :: restart_in_global
 type(load_bal_in_t) :: load_bal_in_global
-type(annihilation_flags_t) :: annihilation_flags
 
-! [todo] - move to sys_heisenberg_t
+type(annihilation_flags_t) :: annihilation_flags_global
+
+type(particle_t), target :: walker_global
+
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate

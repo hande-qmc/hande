@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, qmc_in, reference, restart, ndets, dets, ref_det)
+    subroutine init_simple_fciqmc(sys, qmc_in, reference, restart, ndets, dets, ref_det, psip_list, spawn)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -36,6 +36,11 @@ contains
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space.
         !    ref_det: location of reference in dets.
+        !    psip_list: particle_t object for storing psips sampling the Hilbert
+        !       space and related information.  Allocated and initialised on
+        !       output.
+        !    spawn: spawn_t object for holding the spawned psips.  Allocated on
+        !       output, with one slot for each determinant in thie Hilbert space.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -43,7 +48,8 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, reference_t, particle_t
+        use spawn_data, only: spawn_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
@@ -51,6 +57,8 @@ contains
         type(reference_t), intent(inout) :: reference
         logical, intent(in) :: restart
         integer, intent(out) :: ref_det
+        type(particle_t), intent(out) :: psip_list
+        type(spawn_t), intent(out) :: spawn
 
         integer, allocatable :: sym_space_size(:)
         integer :: ndets
@@ -103,13 +111,13 @@ contains
 
         ! Allocate main and spawned lists to hold population of walkers.
         ! Don't need to hold determinants, so can just set spawned_size to be 1.
-        allocate(walker_population(1,ndets), stat=ierr)
-        call check_allocate('walker_population',ndets,ierr)
-        allocate(qmc_spawn%sdata(1,ndets), stat=ierr)
-        call check_allocate('qmc_spawn%sdata',ndets,ierr)
+        allocate(psip_list%pops(1,ndets), stat=ierr)
+        call check_allocate('psip_list%pops',ndets,ierr)
+        allocate(spawn%sdata(1,ndets), stat=ierr)
+        call check_allocate('spawn%sdata',ndets,ierr)
         ! Zero these.
-        walker_population = 0_int_p
-        qmc_spawn%sdata = 0_int_s
+        psip_list%pops = 0_int_p
+        spawn%sdata = 0_int_s
 
         allocate(shift(1), stat=ierr)
         call check_allocate('shift', size(shift), ierr)
@@ -161,7 +169,7 @@ contains
             end if
             reference%f0 = dets(:,ref_det)
             call decode_det(sys%basis, reference%f0, reference%occ_list0)
-            walker_population(1,ref_det) = nint(qmc_in%D0_population)
+            psip_list%pops(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
@@ -189,7 +197,8 @@ contains
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t
+        use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
@@ -207,16 +216,18 @@ contains
         integer :: ref_det, ndets
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
+        type(particle_t) :: psip_list
+        type(spawn_t) :: spawn
 
-        call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det)
+        call init_simple_fciqmc(sys, qmc_in, reference, restart_in%read_restart, ndets, dets, ref_det, psip_list, spawn)
 
         if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
-        nparticles = real(sum(abs(walker_population(1,:))),p)
+        nparticles = real(sum(abs(psip_list%pops(1,:))),p)
         nparticles_old = nparticles
 
-        call write_fciqmc_report_header()
+        call write_fciqmc_report_header(1)
 
         call cpu_time(t1)
 
@@ -230,7 +241,7 @@ contains
             do icycle = 1, qmc_in%ncycles
 
                 ! Zero spawning arrays.
-                qmc_spawn%sdata = 0_int_s
+                spawn%sdata = 0_int_s
 
                 ! Number of spawning attempts that will be made.
                 nattempts = int(nparticles)
@@ -252,36 +263,37 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det == idet, H0i, walker_population(1,idet), proj_energy)
+                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), proj_energy)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
                     if (use_sparse_hamil) then
                         associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
-                            do ipart = 1, abs(walker_population(1,idet))
-                                call attempt_spawn(rng, qmc_in%tau, idet, walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                            do ipart = 1, abs(psip_list%pops(1,idet))
+                                call attempt_spawn(rng, spawn, qmc_in%tau, idet, &
+                                                   psip_list%pops(1,idet), hamil_csr%mat(hstart:hend), &
                                                    hamil_csr%col_ind(hstart:hend))
                             end do
                         end associate
                     else
-                        do ipart = 1, abs(walker_population(1,idet))
-                            call attempt_spawn(rng, qmc_in%tau, idet, walker_population(1,idet), hamil(:,idet))
+                        do ipart = 1, abs(psip_list%pops(1,idet))
+                            call attempt_spawn(rng, spawn, qmc_in%tau, idet, psip_list%pops(1,idet), hamil(:,idet))
                         end do
                     end if
 
-                    call simple_death(rng, qmc_in%tau, Hii, reference%H00, walker_population(1,idet))
+                    call simple_death(rng, qmc_in%tau, Hii, reference%H00, psip_list%pops(1,idet))
 
                 end do
 
                 ! Find the spawning rate and add to the running
                 ! total.
-                rspawn = rspawn + real(sum(abs(qmc_spawn%sdata(1,:))))/nattempts
+                rspawn = rspawn + real(sum(abs(spawn%sdata(1,:))))/nattempts
 
-                call simple_annihilation()
+                call simple_annihilation(spawn, psip_list%pops)
 
             end do
 
             ! Update the shift
-            nparticles = real(sum(abs(walker_population(1,:))),p)
+            nparticles = real(sum(abs(psip_list%pops(1,:))),p)
             if (vary_shift(1)) then
                 call update_shift(qmc_in, shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
@@ -302,7 +314,7 @@ contains
 
             ! Write restart file if required.
             if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
+                call dump_restart_hdf5(restart_info_global, psip_list, reference, mc_cycles_done+qmc_in%ncycles*ireport, &
                                        (/nparticles_old/), .false.)
 
             t1 = t2
@@ -312,7 +324,7 @@ contains
         if (parent) write (6,'()')
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, reference, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
+            call dump_restart_hdf5(restart_info_global, psip_list, reference, mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
                                    (/nparticles_old/), .false.)
             if (parent) write (6,'()')
         end if
@@ -321,7 +333,7 @@ contains
 
     end subroutine do_simple_fciqmc
 
-    subroutine attempt_spawn(rng, tau, idet, pop, hrow, det_indx)
+    subroutine attempt_spawn(rng, spawn, tau, idet, pop, hrow, det_indx)
 
         ! Simulate spawning part of FCIQMC algorithm.
         ! We attempt to spawn on all determinants connected to the current
@@ -331,14 +343,24 @@ contains
 
         ! In:
         !    tau: timestep being used.
-        !    iwalker: walker whose particles attempt to clone/die.
+        !    idet: determinant index from which we attempt to spawn.
+        !    pop: population on the parent determinant.
+        !    hrow: row of the Hamitlonian matrix i.e. H(:,idet).
+        !    det_indx (optional): list of indices for which hrow contains an
+        !       entry (i.e. if H(j,idet) is present, then an entry in det_indx
+        !       must be set to j.  Must be present if H doesn't contain an entry
+        !       for each determinant (ie is in sparse format).
         ! In/Out:
         !    rng: random number generator.
+        !    spawn: spawn_t object holding the newly spawned particles.
+
+        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: idet
         integer(int_p), intent(in) :: pop
         real(p), intent(in) :: tau, hrow(:)
+        type(spawn_t), intent(inout) :: spawn
         integer, intent(in), optional :: det_indx(:)
 
         integer :: j, jdet
@@ -376,17 +398,17 @@ contains
                 ! Flip child sign.
                 if (pop < 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) - nspawn
                 end if
             else
                 ! Same sign as parent.
                 if (pop > 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) - nspawn
                 end if
             end if
 
@@ -455,15 +477,24 @@ contains
 
     end subroutine simple_death
 
-    subroutine simple_annihilation()
+    subroutine simple_annihilation(spawn, pop)
 
         ! Annihilation: merge main and spawned lists.
 
-        ! This is especially easy as we store the walker populations for all
+        ! This is especially easy as we store the populations for all
         ! determinants for both the main and spawned lists so it just amounts to
         ! adding the two arrays together,
 
-        walker_population = walker_population + int(qmc_spawn%sdata, int_p)
+        ! In:
+        !    spawn: spawn_t object containing the spawned particles.
+        ! In/Out:
+        !    pop: main population on each site before (input) and after (output)
+        !         annihilation.
+ 
+        type(spawn_t), intent(in)  :: spawn
+        integer(int_p), intent(inout) :: pop(:,:)
+
+        pop = pop + int(spawn%sdata, int_p)
 
     end subroutine simple_annihilation
 

@@ -59,7 +59,7 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: neel_singlet_amp, sampling_size
+        use fciqmc_data, only: neel_singlet_amp
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -71,7 +71,8 @@ contains
         integer :: bit_position, bit_element
 
         ! Find the number of up spins on sublattice 1.
-        up_spins_from = nint(cdet%data(sampling_size+1))
+        ! WARNING: we assume the number of up spins is the penultimate element in cdet%data.
+        up_spins_from = nint(cdet%data(size(cdet%data)-1))
         ! For the spin up which was flipped to create the connected
         ! basis function, find whether this spin was on sublattice 1 or 2.
         ! If it was on sublattice 1, the basis function we go to has 1 less

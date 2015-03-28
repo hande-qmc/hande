@@ -254,4 +254,79 @@ contains
 
     end subroutine set_reference_det
 
+!--- reference_t utils ---
+
+    subroutine dealloc_reference_t(ref)
+
+        ! In/Out:
+        !    ref: reference_t object.  Deallocated on output.
+
+        use checking, only: check_deallocate
+        use qmc_data, only: reference_t
+
+        type(reference_t), intent(inout) :: ref
+
+        integer :: ierr
+
+        if (allocated(ref%f0)) then
+            deallocate(ref%f0, stat=ierr)
+            call check_deallocate('ref%f0', ierr)
+        end if
+        if (allocated(ref%occ_list0)) then
+            deallocate(ref%occ_list0, stat=ierr)
+            call check_deallocate('ref%occ_list0', ierr)
+        end if
+        if (allocated(ref%hs_f0)) then
+            deallocate(ref%hs_f0, stat=ierr)
+            call check_deallocate('ref%hs_f0', ierr)
+        end if
+        if (allocated(ref%hs_occ_list0)) then
+            deallocate(ref%hs_occ_list0, stat=ierr)
+            call check_deallocate('ref%hs_occ_list0', ierr)
+        end if
+
+    end subroutine dealloc_reference_t
+
+    subroutine copy_reference_t(ref1, ref2)
+
+        ! Copy information about a reference determinant from one reference_t
+        ! object to another.
+
+        ! In:
+        !    ref1: reference_t object to be copied.
+        ! In/Out:
+        !    ref2: destination reference_t object.  Reallocated to be the same
+        !       size as ref1 before being set equal.
+
+        use checking, only: check_allocate
+        use qmc_data, only: reference_t
+
+        type(reference_t), intent(in) :: ref1
+        type(reference_t), intent(inout) :: ref2
+
+        integer :: ierr
+
+        call dealloc_reference_t(ref2)
+
+        if (allocated(ref1%f0)) then
+            allocate(ref2%f0(size(ref1%f0)), stat=ierr)
+            call check_allocate('ref2%f0', size(ref2%f0), ierr)
+        end if
+        if (allocated(ref1%occ_list0)) then
+            allocate(ref2%occ_list0(size(ref1%occ_list0)), stat=ierr)
+            call check_allocate('ref2%occ_list0', size(ref2%occ_list0), ierr)
+        end if
+        if (allocated(ref1%hs_f0)) then
+            allocate(ref2%hs_f0(size(ref1%hs_f0)), stat=ierr)
+            call check_allocate('ref2%hs_f0', size(ref2%hs_f0), ierr)
+        end if
+        if (allocated(ref1%hs_occ_list0)) then
+            allocate(ref2%hs_occ_list0(size(ref1%hs_occ_list0)), stat=ierr)
+            call check_allocate('ref2%hs_occ_list0', size(ref2%hs_occ_list0), ierr)
+        end if
+
+        ref2 = ref1
+
+    end subroutine copy_reference_t
+
 end module reference_determinant

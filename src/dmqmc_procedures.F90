@@ -5,10 +5,11 @@ implicit none
 
 contains
 
-    subroutine init_dmqmc(sys, qmc_in, dmqmc_in)
+    subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas)
 
         ! In:
         !    sys: system being studied.
+        !    nreplicas: number of replicas being used.
         ! In/Out:
         !    qmc_in: Input options relating to QMC methods.
         !    dmqmc_in: Input options relating to DMQMC.
@@ -23,17 +24,18 @@ contains
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: nreplicas
         type(qmc_in_t), intent(inout) :: qmc_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: ierr, i, bit_position, bit_element
 
-        allocate(trace(sampling_size), stat=ierr)
-        call check_allocate('trace',sampling_size,ierr)
+        allocate(trace(nreplicas), stat=ierr)
+        call check_allocate('trace',size(trace),ierr)
         trace = 0.0_p
 
-        allocate(rdm_traces(sampling_size,nrdms), stat=ierr)
-        call check_allocate('rdm_traces',sampling_size*nrdms,ierr)
+        allocate(rdm_traces(nreplicas,nrdms), stat=ierr)
+        call check_allocate('rdm_traces',size(rdm_traces),ierr)
         rdm_traces = 0.0_p
 
         ! If calculating a correlaton function then set up the necessary bit
@@ -134,11 +136,11 @@ contains
         ! If doing a reduced density matrix calculation, allocate and define
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
-        if (doing_reduced_dm) call setup_rdm_arrays(sys)
+        if (doing_reduced_dm) call setup_rdm_arrays(sys, qmc_in, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys)
+    subroutine setup_rdm_arrays(sys, qmc_in, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -148,12 +150,16 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in (optional): Input options relating to QMC methods.  Only needed for
+        !         spawn_cutoff and if calc_inst_rdm is true.
+        !    nreplicas (optional): number of replicas being used.  Must be specified if
+        !         qmc_in is.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
         use errors
         use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
-        use fciqmc_data, only: renyi_2, sampling_size, real_bit_shift, spawn_cutoff
+        use fciqmc_data, only: renyi_2, real_bit_shift
         use fciqmc_data, only: spawned_length, rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
@@ -161,7 +167,11 @@ contains
         use system, only: sys_t, heisenberg
         use utils, only: int_fmt
 
+        use qmc_data, only: qmc_in_t
+
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in), optional :: qmc_in
+        integer, intent(in), optional :: nreplicas
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
         integer :: bit_position, bit_element, nbytes_int
@@ -211,7 +221,8 @@ contains
 
             ! Allocate the spawn_t and hash table instances for this RDM.
             if (calc_inst_rdm) then
-                size_spawned_rdm = (rdms(i)%string_len*2+sampling_size)*int_s_length/8
+                if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
+                size_spawned_rdm = (rdms(i)%string_len*2+nreplicas)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
                 if (spawned_length < 0) then
                     ! Given in MB.  Convert.
@@ -224,8 +235,8 @@ contains
                 end if
 
                 ! Note the initiator approximation is not implemented for density matrix calculations.
-                call alloc_spawn_t(rdms(i)%string_len*2, sampling_size, .false., &
-                                     spawned_length, spawn_cutoff, real_bit_shift, &
+                call alloc_spawn_t(rdms(i)%string_len*2, nreplicas, .false., &
+                                     spawned_length, qmc_in%spawn_cutoff, real_bit_shift, &
                                      27, use_mpi_barriers, rdm_spawn(i)%spawn)
                 ! Hard code hash table collision limit for now.  The length of
                 ! the table is three times as large as the spawning arrays and
@@ -363,8 +374,8 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags,&
-                                             target_nparticles_tot, nparticles_tot, nload_slots)
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags, &
+                                             target_nparticles_tot, psip_list, spawn, nload_slots)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -374,6 +385,10 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    psip_list: particle_t object conaining sample of initial density
+        !       matrix on output.
+        !    spawn: spawn_t object.  Reset on input and output.  Used to
+        !       communicate the generated particles.
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
@@ -390,13 +405,13 @@ contains
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use errors
-        use fciqmc_data, only: sampling_size, walker_dets, nparticles, real_factor, &
-                               walker_population, tot_walkers, qmc_spawn
+        use fciqmc_data, only: real_factor
         use parallel
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
-        use qmc_data, only: qmc_in_t, reference_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
+        use spawn_data, only:spawn_t
         use dmqmc_data, only: dmqmc_in_t
         use calc, only: sym_in
 
@@ -407,10 +422,11 @@ contains
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
-        real(p), intent(out) :: nparticles_tot(sampling_size)
+        type(particle_t), intent(inout) :: psip_list
+        type(spawn_t), intent(inout) :: spawn
         integer, intent(in) :: nload_slots
 
-        real(p) :: nparticles_temp(sampling_size)
+        real(p) :: nparticles_temp(psip_list%nspaces)
         integer :: nel, ireplica, ierr
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
@@ -424,7 +440,7 @@ contains
 
         nparticles_temp = 0.0_p
 
-        do ireplica = 1, sampling_size
+        do ireplica = 1, psip_list%nspaces
             select case(sys%system)
             case(heisenberg)
                 if (dmqmc_in%all_spin_sectors) then
@@ -445,32 +461,33 @@ contains
                         if (r < prob) npsips = npsips + 1_int_64
 
                         nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, p)
-                        call random_distribution_heisenberg(rng, sys%basis, nel, npsips, ireplica)
+                        call random_distribution_heisenberg(rng, sys%basis, nel, npsips, ireplica, spawn)
                     end do
                 else
                     ! This process will always create excatly the target number
                     ! of psips.
-                    call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica)
+                    call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica, spawn)
                 end if
             case(ueg, hub_k)
                 if (dmqmc_in%propagate_to_beta) then
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, dmqmc_in, sym_in, npsips_this_proc, qmc_spawn, rng)
+                        call init_grand_canonical_ensemble(sys, dmqmc_in, sym_in, npsips_this_proc, spawn, rng)
                     else
                         call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, &
-                                                   dmqmc_in%all_sym_sectors, rng, qmc_spawn)
+                                                   dmqmc_in%all_sym_sectors, rng, spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
                     if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, &
-                                                                               npsips_this_proc, sym_in, ireplica, qmc_spawn)
+                                                                               npsips_this_proc, sym_in, ireplica, spawn)
                 else
-                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors)
+                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, &
+                                                        dmqmc_in%all_sym_sectors, spawn)
                 end if
             case(hub_real)
-                call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors)
+                call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors, spawn)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
             end select
@@ -479,33 +496,32 @@ contains
         ! Finally, count the total number of particles across all processes.
         if (dmqmc_in%all_spin_sectors) then
 #ifdef PARALLEL
-            call mpi_allreduce(nparticles_temp, nparticles_tot, sampling_size, MPI_PREAL, MPI_SUM, &
+            call mpi_allreduce(nparticles_temp, psip_list%tot_nparticles, psip_list%nspaces, MPI_PREAL, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
-            nparticles_tot = nparticles_temp
+            psip_list%tot_nparticles = nparticles_temp
 #endif
         else
-            nparticles_tot = target_nparticles_tot
+            psip_list%tot_nparticles = target_nparticles_tot
         end if
 
-
-        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
+        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
 
         if (dmqmc_in%propagate_to_beta) then
             ! Reset the position of the first spawned particle in the spawning array
-            qmc_spawn%head = qmc_spawn%head_start
+            spawn%head = spawn%head_start
             ! During the metropolis steps determinants originally in the correct
             ! portions of the spawned walker array are no longer there due to
             ! new determinants being accepted. So we need to reorganise the
             ! determinants appropriately.
-            call redistribute_particles(walker_dets, real_factor, walker_population, &
-                                        tot_walkers, nparticles, qmc_spawn, nload_slots)
-            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags)
+            call redistribute_particles(psip_list%states, real_factor, psip_list%pops, &
+                                        psip_list%nstates, psip_list%nparticles, spawn, nload_slots)
+            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         end if
 
     end subroutine create_initial_density_matrix
 
-    subroutine random_distribution_heisenberg(rng, basis, spins_up, npsips, ireplica)
+    subroutine random_distribution_heisenberg(rng, basis, spins_up, npsips, ireplica, spawn)
 
         ! For the Heisenberg model only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -516,6 +532,7 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    spawn: spawn_t object to hold spawned particles.
         ! In:
         !    basis: information about the single-particle basis.
         !    spins_up: for the spin configurations generated, this number
@@ -528,6 +545,7 @@ contains
         use calc, only: ms_in
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: real_factor
+        use spawn_data, only: spawn_t
         use parallel
         use system
 
@@ -536,6 +554,7 @@ contains
         integer, intent(in) :: spins_up
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
+        type(spawn_t), intent(inout) :: spawn
         integer(int_64) :: i
         integer :: rand_basis, bits_set
         integer :: bit_element, bit_position
@@ -568,13 +587,13 @@ contains
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
             call create_diagonal_density_matrix_particle(f,basis%string_len, &
-                    basis%tensor_label_len, real_factor,ireplica)
+                    basis%tensor_label_len, real_factor,ireplica, spawn)
 
         end do
 
     end subroutine random_distribution_heisenberg
 
-    subroutine random_distribution_electronic(rng, sys, sym, npsips, ireplica, all_sym_sectors)
+    subroutine random_distribution_electronic(rng, sys, sym, npsips, ireplica, all_sym_sectors, spawn)
 
         ! For the electronic Hamiltonians only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -592,12 +611,14 @@ contains
         !    all_sym_sectors: create determinants in all symmetry sectors?
         ! In/Out:
         !    rng: random number generator
+        !    spawn: spawn_t object to hold spawned particles.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use symmetry, only: symmetry_orb_list
         use hilbert_space, only: gen_random_det_full_space
         use system, only: sys_t
         use fciqmc_data, only: real_factor
+        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -605,6 +626,7 @@ contains
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
         logical, intent(in) :: all_sym_sectors
+        type(spawn_t), intent(inout) :: spawn
 
         integer(int_64) :: i
         integer(i0) :: f(sys%basis%string_len)
@@ -617,7 +639,7 @@ contains
                 call gen_random_det_full_space(rng, sys, f, occ_list)
                 if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                        sys%basis%tensor_label_len, real_factor, ireplica)
+                        sys%basis%tensor_label_len, real_factor, ireplica, spawn)
                     exit
                 end if
             end do
@@ -625,7 +647,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, sym, ireplica, qmc_spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, sym, ireplica, spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -652,7 +674,7 @@ contains
         !    ireplica: replica index.
         ! In/Out:
         !    rng: random number generator.
-        !    qmc_spawn: spawn_t object containing the initial distribution of
+        !    spawn: spawn_t object containing the initial distribution of
         !        psips on the diagonal.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -660,7 +682,7 @@ contains
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det
         use excitations, only: excit_t, create_excited_det
-        use fciqmc_data, only: real_factor,  sampling_size
+        use fciqmc_data, only: real_factor
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
@@ -676,13 +698,13 @@ contains
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
         type(dSFMT_t), intent(inout) :: rng
-        type(spawn_t), intent(inout) :: qmc_spawn
+        type(spawn_t), intent(inout) :: spawn
 
         integer :: occ_list(sys%nel), naccept
         integer :: idet, iattempt, nsuccess
         integer :: thread_id = 0, proc
         integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
-        real(p), target :: tmp_data(sampling_size)
+        real(p), target :: tmp_data(1)
         real(p) :: pgen, hmatel, E_new, E_old, prob
         real(dp) :: r
         type(det_info_t) :: cdet
@@ -706,8 +728,8 @@ contains
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, dmqmc_in%metropolis_attempts
             do proc = 0, nprocs-1
-                do idet = qmc_spawn%head_start(nthreads-1,proc)+1, qmc_spawn%head(thread_id,proc)
-                    cdet%f = qmc_spawn%sdata(:sys%basis%string_len,idet)
+                do idet = spawn%head_start(nthreads-1,proc)+1, spawn%head(thread_id,proc)
+                    cdet%f = spawn%sdata(:sys%basis%string_len,idet)
                     E_old = trial_dm_ptr(sys, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
@@ -732,8 +754,8 @@ contains
                         ! Accept the new determinant by modifying the entry
                         ! in spawned walker list.
                         naccept = naccept + 1
-                        qmc_spawn%sdata(:sys%basis%string_len,idet) = f_new
-                        qmc_spawn%sdata(sys%basis%string_len+1:sys%basis%tensor_label_len,idet) = f_new
+                        spawn%sdata(:sys%basis%string_len,idet) = f_new
+                        spawn%sdata(sys%basis%string_len+1:sys%basis%tensor_label_len,idet) = f_new
                     end if
                 end do
             end do
@@ -747,11 +769,11 @@ contains
 
     end subroutine initialise_dm_metropolis
 
-    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, all_sym_sectors, rng, qmc_spawn)
+    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, all_sym_sectors, rng, spawn)
 
         ! Create an initital distribution of psips along the diagonal.
         ! This subroutine will return a list of occupied determinants in
-        ! qmc_spawn which can then be used for the metropolis initialisation.
+        ! spawn which can then be used for the metropolis initialisation.
         ! Psips are distributed equally among all excitation levels.
 
         ! In:
@@ -763,7 +785,7 @@ contains
         !    all_sym_sectors: create determinants in all symmetry sectors?
         ! In/Out:
         !    rng: random number generator.
-        !    qmc_spawn: spawn_t object containing list of occupied determinants.
+        !    spawn: spawn_t object containing list of occupied determinants.
 
         use spawn_data, only: spawn_t
         use determinants, only: encode_det, decode_det_spinocc_spinunocc, dealloc_det_info_t, &
@@ -781,7 +803,7 @@ contains
         integer, intent(in) :: ireplica
         logical, intent(in) :: all_sym_sectors
         type(dSFMT_t), intent(inout) :: rng
-        type(spawn_t), intent(inout) :: qmc_spawn
+        type(spawn_t), intent(inout) :: spawn
 
         integer :: occ_list(sys%nel), idet, ilevel
         integer(i0) :: f(sys%basis%string_len)
@@ -798,7 +820,7 @@ contains
         ! excitation level zero, so take care of this explicitly.
         do idet = 1, psips_per_level
             call create_diagonal_density_matrix_particle(f0, sys%basis%string_len, &
-                                                         sys%basis%tensor_label_len, real_factor, ireplica)
+                                                         sys%basis%tensor_label_len, real_factor, ireplica, spawn)
         end do
 
         ! Uniformly distribute the psips on all other levels.
@@ -812,7 +834,7 @@ contains
                 if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                     call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                                                sys%basis%tensor_label_len, real_factor, ireplica)
+                                                                sys%basis%tensor_label_len, real_factor, ireplica, spawn)
                     exit
                 end if
             end do
@@ -890,7 +912,7 @@ contains
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                                            sys%basis%tensor_label_len, real_factor, ireplica)
+                                                            sys%basis%tensor_label_len, real_factor, ireplica, spawn)
                 ipsip = ipsip + 1
             end if
         end do
@@ -949,7 +971,7 @@ contains
 
     end subroutine set_level_probabilities
 
-    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type)
+    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, spawn)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly
@@ -966,11 +988,13 @@ contains
         !        element.
         !    particle_type: the label of the replica to which this particle is
         !        to sample.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spawned particle is added.
 
         use hashing
-        use fciqmc_data, only: qmc_spawn
         use parallel
         use errors, only: stop_all
+        use spawn_data, only: spawn_t
         use spawning, only: add_spawned_particle
 
         integer, intent(in) :: string_len, tensor_label_len
@@ -978,6 +1002,7 @@ contains
         integer(int_p), intent(in) :: nspawn
         integer ::particle_type
         integer(i0) :: f_new(tensor_label_len)
+        type(spawn_t), intent(inout) :: spawn
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -992,15 +1017,15 @@ contains
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
         iproc_spawn = modulo(murmurhash_bit_string(f_new, &
-                                tensor_label_len, qmc_spawn%hash_seed), nprocs)
+                                tensor_label_len, spawn%hash_seed), nprocs)
 #endif
 
-        ! qmc_spawn%head_start(nthreads-1,i) stores the last entry before the
+        ! spawn%head_start(nthreads-1,i) stores the last entry before the
         ! start of the block of spawned particles to be sent to processor i.
-        if (qmc_spawn%head(0,iproc_spawn)+1 - qmc_spawn%head_start(nthreads-1,iproc_spawn) >= qmc_spawn%block_size) &
+        if (spawn%head(0,iproc_spawn)+1 - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_diagonal_density_matrix_particle', 'There is no space left in the spawning array.')
 
-        call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, qmc_spawn)
+        call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
     end subroutine create_diagonal_density_matrix_particle
 
@@ -1053,7 +1078,7 @@ contains
 
     end subroutine decode_dm_bitstring
 
-    subroutine update_sampling_weights(rng, basis, qmc_in)
+    subroutine update_sampling_weights(rng, basis, qmc_in, psip_list)
 
         ! This routine updates the values of the weights used in importance
         ! sampling. It also removes or adds psips from the various excitation
@@ -1061,25 +1086,27 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    psip_list: main particle list.
         ! In:
         !    basis: information about the single-particle basis.
+        !    qmc_in: Input options relating to QMC methods.
 
         use annihilation, only: remove_unoccupied_dets
         use basis_types, only: basis_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: get_excitation_level
         use fciqmc_data, only: accumulated_probs
-        use fciqmc_data, only: weight_altering_factors, tot_walkers, walker_dets, walker_population
-        use fciqmc_data, only: nparticles, sampling_size, real_factor
-        use qmc_data, only: qmc_in_t 
+        use fciqmc_data, only: weight_altering_factors, real_factor
+        use qmc_data, only: qmc_in_t, particle_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
         type(qmc_in_t), intent(in) :: qmc_in
+        type(particle_t), intent(inout) :: psip_list
 
         integer :: idet, ireplica, excit_level, nspawn, sign_factor
-        real(p) :: new_population_target(sampling_size)
-        integer(int_p) :: old_population(sampling_size), new_population(sampling_size)
+        real(p) :: new_population_target(psip_list%nspaces)
+        integer(int_p) :: old_population(psip_list%nspaces), new_population(psip_list%nspaces)
         real(dp) :: r, pextra
 
         ! Alter weights for the next iteration.
@@ -1091,22 +1118,22 @@ contains
         ! correct importance sampled wavefunction for the new weights. The code
         ! below loops over every psips and destroys (or creates) it with the
         ! appropriate probability.
-        do idet = 1, tot_walkers
+        do idet = 1, psip_list%nstates
 
-            excit_level = get_excitation_level(walker_dets(1:basis%string_len,idet), &
-                    walker_dets(basis%string_len+1:basis%tensor_label_len,idet))
+            excit_level = get_excitation_level(psip_list%states(1:basis%string_len,idet), &
+                    psip_list%states(basis%string_len+1:basis%tensor_label_len,idet))
 
-            old_population = abs(walker_population(:,idet))
+            old_population = abs(psip_list%pops(:,idet))
 
             ! The new population that we are aiming for. If this is not an
             ! integer then we will have to round up or down to an integer with
             ! an unbiased probability.
-            new_population_target = abs(real(walker_population(:,idet),p))/weight_altering_factors(excit_level)
+            new_population_target = abs(real(psip_list%pops(:,idet),p))/weight_altering_factors(excit_level)
             new_population = int(new_population_target, int_p)
 
             ! If new_population_target is not an integer, round it up or down
             ! with an unbiased probability. Do this for each replica.
-            do ireplica = 1, sampling_size
+            do ireplica = 1, psip_list%nspaces
 
                 pextra = new_population_target(ireplica) - new_population(ireplica)
 
@@ -1116,19 +1143,21 @@ contains
                 end if
 
                 ! Finally, update the walker population.
-                walker_population(ireplica,idet) = sign(new_population(ireplica), walker_population(ireplica,idet))
+                associate(pops=>psip_list%pops)
+                    pops(ireplica,idet) = sign(new_population(ireplica), pops(ireplica,idet))
+                end associate
 
             end do
 
             ! Update the total number of walkers.
-            nparticles = nparticles + real(new_population - old_population, p)/real_factor
+            psip_list%nparticles = psip_list%nparticles + real(new_population - old_population, p)/real_factor
 
         end do
 
         ! Call the annihilation routine to update the main walker list, as some
         ! sites will have become unoccupied and so need removing from the
         ! simulation.
-        call remove_unoccupied_dets(rng, qmc_in%real_amplitudes)
+        call remove_unoccupied_dets(rng, psip_list, qmc_in%real_amplitudes)
 
     end subroutine update_sampling_weights
 

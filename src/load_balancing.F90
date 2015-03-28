@@ -97,7 +97,7 @@ end type dbin_t
 
 contains
 
-    subroutine do_load_balancing(real_factor, parallel_info, load_bal_in)
+    subroutine do_load_balancing(psip_list, spawn, real_factor, parallel_info, load_bal_in)
 
         ! Main subroutine in module, carries out load balancing as follows:
         ! 1. If doing load balancing then:
@@ -116,16 +116,19 @@ contains
         ! In/Out:
         !    parallel_info: parallel_t type object containing information for
         !       parallel calculation see calc.f90 for description.
+        !    psip_list: psip locations and populations.  On output
+        !       nparticles_proc (number of particles on each processor) is updated.
+        !    spawn: spawn_t object which defines processor locations of particles.
 
         use parallel
         use spawn_data, only: spawn_t
-        use fciqmc_data, only: qmc_spawn, walker_dets, walker_population, tot_walkers, &
-                               nparticles, nparticles_proc, sampling_size
         use ranking, only: insertion_rank
         use calc, only: parallel_t
         use checking, only: check_allocate, check_deallocate
-        use qmc_data, only: load_bal_in_t
+        use qmc_data, only: load_bal_in_t, particle_t
 
+        type(particle_t), intent(inout) :: psip_list
+        type(spawn_t), intent(in) :: spawn
         integer(int_p), intent(in) :: real_factor
         type(parallel_t), intent(inout) :: parallel_info
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -144,7 +147,7 @@ contains
         associate(lb=>parallel_info%load)
 
         ! Find slot populations.
-        call initialise_slot_pop(lb%proc_map, load_bal_in%nslots, qmc_spawn, real_factor, slot_pop)
+        call initialise_slot_pop(psip_list, lb%proc_map, load_bal_in%nslots, spawn, real_factor, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, size(lb%proc_map), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -161,8 +164,8 @@ contains
         ! Note: these populations are calculated from the main list and do not
         ! include walkers in the received list which have not been introduced
         ! yet.
-        forall (i=1:nprocs) nparticles_proc(1,i) = sum(slot_list, MASK=lb%proc_map==i-1)
-        pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
+        forall (i=1:nprocs) psip_list%nparticles_proc(1,i) = sum(slot_list, MASK=lb%proc_map==i-1)
+        pop_av = sum(psip_list%nparticles_proc(1,:nprocs))/nprocs
 
         ! As stated above we only initially determine when to do load balancing
         ! based on the previous report loop's populations. This means that the
@@ -170,14 +173,15 @@ contains
         ! taken this first load balancing into account. As a result the decision
         ! to attempt load balancing will be a bad one, so we potentially need to
         ! exit the subroutine now.
-        call check_imbalance(nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
+        call check_imbalance(psip_list%nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
         if (.not. lb%needed) return
 
         up_thresh = pop_av + int(pop_av*load_bal_in%percent)
         low_thresh = pop_av - int(pop_av*load_bal_in%percent)
 
         ! Find donor/receiver processors.
-        call find_processors(nparticles_proc(1,:nprocs), up_thresh, low_thresh, lb%proc_map, receivers, donors, donor_bins%nslots)
+        call find_processors(psip_list%nparticles_proc(1,:nprocs), up_thresh, low_thresh, &
+                             lb%proc_map, receivers, donors, donor_bins%nslots)
 
         ! Smaller list of donor slot populations.
         call alloc_dbin_t(donor_bins)
@@ -186,13 +190,16 @@ contains
         call reduce_slots(donors, slot_list, lb%proc_map, donor_bins%index, donor_bins%pop)
         call insertion_rank(donor_bins%pop, donor_bins%rank, 1.0e-8_p)
 
-        if (load_bal_in%write_info .and. parent) call write_load_balancing_info(nparticles_proc, donor_bins%pop)
+        if (load_bal_in%write_info .and. parent) &
+            call write_load_balancing_info(psip_list%nparticles_proc, donor_bins%pop)
 
         ! Attempt to modify proc map to get more even population distribution.
-        call redistribute_slots(donor_bins, donors, receivers, up_thresh, low_thresh, lb%proc_map, nparticles_proc(1,:nprocs))
+        call redistribute_slots(donor_bins, donors, receivers, up_thresh, low_thresh, lb%proc_map, &
+                                psip_list%nparticles_proc(1,:nprocs))
         lb%nattempts = lb%nattempts + 1
 
-        if (load_bal_in%write_info .and. parent) call write_load_balancing_info(nparticles_proc, donor_bins%pop)
+        if (load_bal_in%write_info .and. parent) &
+            call write_load_balancing_info(psip_list%nparticles_proc, donor_bins%pop)
 
         deallocate(donors, stat=ierr)
         call check_deallocate('donors', ierr)
@@ -503,9 +510,11 @@ contains
 
     end subroutine find_processors
 
-    subroutine initialise_slot_pop(proc_map, nslots, spawn, real_factor, slot_pop)
+    subroutine initialise_slot_pop(psip_list, proc_map, nslots, spawn, real_factor, slot_pop)
 
         ! In:
+        !   psip_list: particle_t object containing the current psip locations and
+        !       populations.
         !   proc_map: array which maps determinants to processors.
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs))=processor
         !   nslots: number of slots which we divide slot_pop (and similar arrays) into.
@@ -516,10 +525,11 @@ contains
         !   slot_pop: array containing population of slots in proc_map. Processor dependendent.
 
         use parallel, only: nprocs, iproc
-        use fciqmc_data, only: tot_walkers, walker_dets, walker_population
+        use qmc_data, only: particle_t
         use spawning, only: assign_particle_processor
         use spawn_data, only: spawn_t
 
+        type(particle_t), intent(in) :: psip_list
         integer, intent(in) :: nslots
         type(spawn_t), intent(in) :: spawn
         integer(int_p), intent(in) :: real_factor
@@ -528,13 +538,13 @@ contains
 
         integer :: i, det_pos, iproc_slot, tensor_label_len
 
-        tensor_label_len = size(walker_dets, dim=1)
+        tensor_label_len = size(psip_list%states, dim=1)
 
         slot_pop = 0.0_p
-        do i = 1, tot_walkers
-            call assign_particle_processor(walker_dets(:,i), tensor_label_len, spawn%hash_seed, &
+        do i = 1, psip_list%nstates
+            call assign_particle_processor(psip_list%states(:,i), tensor_label_len, spawn%hash_seed, &
                                            spawn%hash_shift, spawn%move_freq, nprocs, iproc_slot, det_pos, nslots)
-            slot_pop(det_pos) = slot_pop(det_pos) + abs(real(walker_population(1,i),p))
+            slot_pop(det_pos) = slot_pop(det_pos) + abs(real(psip_list%pops(1,i),p))
         end do
 
         ! Remove encoding factor to obtain the true populations.

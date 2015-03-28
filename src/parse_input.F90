@@ -260,7 +260,7 @@ contains
             case('REAL_AMPLITUDES')
                 qmc_in%real_amplitudes = .true.
             case('SPAWN_CUTOFF')
-                call readf(spawn_cutoff)
+                call readf(qmc_in%spawn_cutoff)
 
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
@@ -388,21 +388,21 @@ contains
             case('BETA_LOOPS')
                 call readi(dmqmc_in%beta_loops)
             case('WALKER_LENGTH')
-                call readi(walker_length)
+                call readi(qmc_in%walker_length)
                 if (item /= nitems) then
                     call readu(w)
                     if (w == 'MB') then
-                        walker_length = -walker_length
+                        qmc_in%walker_length = -qmc_in%walker_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
                 end if
             case('SPAWNED_WALKER_LENGTH')
-                call readi(spawned_walker_length)
+                call readi(qmc_in%spawned_walker_length)
                 if (item /= nitems) then
                     call readu(w)
                     if (w == 'MB') then
-                        spawned_walker_length = -spawned_walker_length
+                        qmc_in%spawned_walker_length = -qmc_in%spawned_walker_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
@@ -723,8 +723,8 @@ contains
                'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
-                if (walker_length == 0) call stop_all(this,'Walker length zero.')
-                if (spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
+                if (qmc_in%walker_length == 0) call stop_all(this,'Walker length zero.')
+                if (qmc_in%spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
             if (calc_inst_rdm .and. spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
             if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
@@ -860,7 +860,7 @@ contains
             call mpi_bcast(sys%lattice%lattice, sys%lattice%ndim*sys%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(qmc_in%real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -918,8 +918,8 @@ contains
         call mpi_bcast(qmc_in%ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
