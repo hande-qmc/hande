@@ -23,6 +23,50 @@ end enum
 ! for DMQMC.
 integer, parameter :: num_dmqmc_operators = terminator - 1
 
+type dmqmc_rdm_in_t
+    ! The total number of rdms beings calculated (currently only applicable to
+    ! instantaneous RDM calculations, not to ground-state RDM calculations,
+    ! which only ever calculate one RDM).
+    integer :: nrdms
+
+    ! The length of the spawning array for RDMs. Each RDM calculated has the
+    ! same length array. Note, this is only used for instantaneous RDMs.
+    ! Ground-state RDM calculations allocate an array exactly the size of the
+    ! full RDM.
+    integer :: spawned_length
+
+    ! [todo] - rename.
+    ! If true then the reduced density matricies will be calulated for the 'A'
+    ! subsystems specified by the user.
+    logical :: doing_reduced_dm = .false.
+
+    ! If true then each subsystem A RDM specified by the user will be accumulated
+    ! from the iteration start_averaging until the end of the beat loop, allowing
+    ! ground-state estimates of the RDMs to be calculated.
+    logical :: calc_ground_rdm = .false.
+
+    ! If true then the reduced density matricies will be calculated for each
+    ! subsystem specified by the user at the end of each report loop. These RDMs
+    ! can be used to calculate instantaeous estimates at the given beta value.
+    ! They are thrown away after these calculation has been performed on them.
+    logical :: calc_inst_rdm = .false.
+
+    ! If true then calculate the concurrence for reduced density matrix of two sites.
+    logical :: doing_concurrence = .false.
+
+    ! If true then calculate the von Neumann entanglement entropy for specified subsystem.
+    logical :: doing_vn_entropy = .false.
+
+    ! If true then, if doing an exact diagonalisation, calculate and output the
+    ! eigenvalues of the reduced density matrix requested.
+    logical :: doing_exact_rdm_eigv = .false.
+
+    ! If true then the reduced density matrix is output to a file, 'reduced_dm'
+    ! each beta loop.
+    logical :: output_rdm = .false.
+
+end type dmqmc_rdm_in_t
+
 type dmqmc_in_t
     ! The number of times the program will loop over each value of beta in the main loop.
     integer :: beta_loops = 100
@@ -121,51 +165,10 @@ type dmqmc_in_t
     ! Default: Single and double excitations (if applicable).
     integer :: max_metropolis_move = 2
 
+    ! Input options relating to RDMs in DMQMC.
+    type(dmqmc_rdm_in_t) :: rdm
+
 end type dmqmc_in_t
-
-type dmqmc_rdm_in_t
-    ! The total number of rdms beings calculated (currently only applicable to
-    ! instantaneous RDM calculations, not to ground-state RDM calculations,
-    ! which only ever calculate one RDM).
-    integer :: nrdms
-
-    ! The length of the spawning array for RDMs. Each RDM calculated has the
-    ! same length array. Note, this is only used for instantaneous RDMs.
-    ! Ground-state RDM calculations allocate an array exactly the size of the
-    ! full RDM.
-    integer :: spawned_length
-
-    ! [todo] - rename.
-    ! If true then the reduced density matricies will be calulated for the 'A'
-    ! subsystems specified by the user.
-    logical :: doing_reduced_dm = .false.
-
-    ! If true then each subsystem A RDM specified by the user will be accumulated
-    ! from the iteration start_averaging until the end of the beat loop, allowing
-    ! ground-state estimates of the RDMs to be calculated.
-    logical :: calc_ground_rdm = .false.
-
-    ! If true then the reduced density matricies will be calculated for each
-    ! subsystem specified by the user at the end of each report loop. These RDMs
-    ! can be used to calculate instantaeous estimates at the given beta value.
-    ! They are thrown away after these calculation has been performed on them.
-    logical :: calc_inst_rdm = .false.
-
-    ! If true then calculate the concurrence for reduced density matrix of two sites.
-    logical :: doing_concurrence = .false.
-
-    ! If true then calculate the von Neumann entanglement entropy for specified subsystem.
-    logical :: doing_vn_entropy = .false.
-
-    ! If true then, if doing an exact diagonalisation, calculate and output the
-    ! eigenvalues of the reduced density matrix requested.
-    logical :: doing_exact_rdm_eigv = .false.
-
-    ! If true then the reduced density matrix is output to a file, 'reduced_dm'
-    ! each beta loop.
-    logical :: output_rdm = .false.
-
-end type dmqmc_rdm_in_t
 
 ! Spawned lists for rdms.
 type rdm_spawn_t

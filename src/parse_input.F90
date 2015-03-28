@@ -322,11 +322,11 @@ contains
             case('USE_ALL_SPIN_SECTORS')
                 dmqmc_in%all_spin_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
-                call readi(nrdms)
-                allocate(rdms(nrdms), stat=ierr)
-                call check_allocate('rdms', nrdms, ierr)
+                call readi(dmqmc_in%rdm%nrdms)
+                allocate(rdms(dmqmc_in%rdm%nrdms), stat=ierr)
+                call check_allocate('rdms', dmqmc_in%rdm%nrdms, ierr)
                 doing_reduced_dm = .true.
-                do i = 1, nrdms
+                do i = 1, dmqmc_in%rdm%nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
                     rdms(i)%A_nsites = nitems
@@ -931,7 +931,7 @@ contains
         call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
