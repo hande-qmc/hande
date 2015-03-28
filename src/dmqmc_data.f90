@@ -288,4 +288,5 @@ type dmqmc_weighted_sampling_t
 end type dmqmc_weighted_sampling_t
 
 type (dmqmc_in_t) :: dmqmc_in_global
+type (dmqmc_estimates_t) :: dmqmc_estimates_global
 end module dmqmc_data

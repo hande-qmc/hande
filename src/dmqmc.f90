@@ -45,7 +45,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_estimates_global
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -87,7 +87,7 @@ contains
 
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
-        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs)
+        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates_global)
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -135,7 +135,7 @@ contains
 
             do ireport = 1, qmc_in%nreport
 
-                call init_report_loop(qs, bloom_stats)
+                call init_dmqmc_report_loop(bloom_stats, dmqmc_estimates_global, rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -179,7 +179,7 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list)
+                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list, dmqmc_estimates_global)
                         end if
 
                         do ireplica = 1, qs%psip_list%nspaces
@@ -263,7 +263,8 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs)
+                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs, &
+                                          dmqmc_estimates_global)
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
 
@@ -367,5 +368,33 @@ contains
         call dSFMT_init(new_seed, 50000, rng)
 
     end subroutine init_dmqmc_beta_loop
+
+    subroutine init_dmqmc_report_loop(bloom_stats, dmqmc_estimates, rspawn)
+
+        ! Initialise a report loop (basically zero quantities accumulated over
+        ! a report loop).
+
+        ! In/Out:
+        !    bloom_stats: type containing information regarding blooming events.
+        !    dmqmc_estimates: type containing estimates of observables.
+        ! Out:
+        !    rspawn: spawning rate.
+
+        use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
+        use dmqmc_data, only: dmqmc_estimates_t
+
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
+        real(p), intent(out) :: rspawn
+
+        call bloom_stats_init_report_loop(bloom_stats)
+
+        rspawn = 0.0_p
+
+        dmqmc_estimates%excit_dist = 0.0_p
+        dmqmc_estimates%trace = 0.0_p
+        dmqmc_estimates%numerators = 0.0_p
+
+    end subroutine init_dmqmc_report_loop
 
 end module dmqmc
