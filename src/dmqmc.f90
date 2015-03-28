@@ -135,7 +135,7 @@ contains
 
             do ireport = 1, qmc_in%nreport
 
-                call init_report_loop(qs, bloom_stats)
+                call init_dmqmc_report_loop(bloom_stats, dmqmc_estimates_global, rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -368,5 +368,33 @@ contains
         call dSFMT_init(new_seed, 50000, rng)
 
     end subroutine init_dmqmc_beta_loop
+
+    subroutine init_dmqmc_report_loop(bloom_stats, dmqmc_estimates, rspawn)
+
+        ! Initialise a report loop (basically zero quantities accumulated over
+        ! a report loop).
+
+        ! In/Out:
+        !    bloom_stats: type containing information regarding blooming events.
+        !    dmqmc_estimates: type containing estimates of observables.
+        ! Out:
+        !    rspawn: spawning rate.
+
+        use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
+        use dmqmc_data, only: dmqmc_estimates_t
+
+        type(bloom_stats_t), intent(inout) :: bloom_stats
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
+        real(p), intent(out) :: rspawn
+
+        call bloom_stats_init_report_loop(bloom_stats)
+
+        rspawn = 0.0_p
+
+        dmqmc_estimates%excit_dist = 0.0_p
+        dmqmc_estimates%trace = 0.0_p
+        dmqmc_estimates%numerators = 0.0_p
+
+    end subroutine init_dmqmc_report_loop
 
 end module dmqmc

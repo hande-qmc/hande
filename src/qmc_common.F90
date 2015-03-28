@@ -701,11 +701,6 @@ contains
         rspawn = 0.0_p
         qs%estimators%D0_population = 0.0_p
 
-        ! DMQMC-specific...
-        if (allocated(excit_dist)) excit_dist = 0.0_p
-        if (allocated(trace)) trace = 0.0_p
-        numerators = 0.0_p
-
     end subroutine init_report_loop
 
     subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
