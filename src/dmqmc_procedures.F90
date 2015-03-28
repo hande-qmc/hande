@@ -166,7 +166,7 @@ contains
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
         use errors
-        use fciqmc_data, only: reduced_density_matrix, nrdms, calc_ground_rdm, calc_inst_rdm
+        use fciqmc_data, only: reduced_density_matrix, nrdms, calc_inst_rdm
         use fciqmc_data, only: renyi_2, real_bit_shift
         use fciqmc_data, only: rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
@@ -226,7 +226,7 @@ contains
             ! the following condition is met then the number of rows is greater
             ! than the maximum integer accessible. This would clearly be too
             ! large, so abort in this case.
-            if (calc_ground_rdm .and. rdms(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
+            if (rdm_in%calc_ground_rdm .and. rdms(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
             ! Allocate the spawn_t and hash table instances for this RDM.
@@ -272,7 +272,7 @@ contains
         ! can occur in the subsystem, from all spins down to all spins up. Hence
         ! the total size of the reduced density matrix will be 2**(number of
         ! spins in subsystem A).
-        if (calc_ground_rdm) then
+        if (rdm_in%calc_ground_rdm) then
             if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
                 allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
                 call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)

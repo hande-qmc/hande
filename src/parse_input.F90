@@ -337,14 +337,14 @@ contains
                     end do
                 end do
             case('GROUND_STATE_RDM')
-                calc_ground_rdm = .true.
+                dmqmc_in%rdm%calc_ground_rdm = .true.
             case('INSTANTANEOUS_RDM')
                 calc_inst_rdm = .true.
             case('OUTPUT_RDM')
                 output_rdm = .true.
             case('EXACT_RDM_EIGENVALUES')
                 doing_exact_rdm_eigv = .true.
-                calc_ground_rdm = .true.
+                dmqmc_in%rdm%calc_ground_rdm = .true.
             case('CONCURRENCE')
                 doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
@@ -765,8 +765,8 @@ contains
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
                     call stop_all(this, 'The use_all_spin_sectors option cannot be used with magnetic fields.')
-            if (calc_ground_rdm) call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options cannot be&
-                                                      & used together.')
+            if (dmqmc_in%rdm%calc_ground_rdm) call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options&
+                                                      & cannot be used together.')
         end if
 
         if (restart_in%dump_restart_file_shift) then
@@ -928,7 +928,7 @@ contains
         call mpi_bcast(qmc_in%vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%doing_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)

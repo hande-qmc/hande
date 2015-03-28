@@ -407,7 +407,7 @@ contains
 
         ! Reduced density matrices.
         if (dmqmc_in%rdm%doing_rdm) call update_reduced_density_matrix_heisenberg&
-            &(sys%basis, cdet, excitation, psip_list%pops(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm, &
+            &(sys%basis, dmqmc_in%rdm, cdet, excitation, psip_list%pops(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm, &
               weighted_sampling%probs)
 
         weighted_sampling%probs_old = weighted_sampling%probs
@@ -804,7 +804,7 @@ contains
 
     end subroutine update_full_renyi_2
 
-    subroutine update_reduced_density_matrix_heisenberg(basis, cdet, excitation, walker_pop, &
+    subroutine update_reduced_density_matrix_heisenberg(basis, rdm_in, cdet, excitation, walker_pop, &
                                                         iteration, nload_slots, start_av_rdm, &
                                                         accumulated_probs)
 
@@ -821,6 +821,7 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    rdm_in: input options relating to reduced density matrices.
         !    cdet: information on density matrix element, in particular cdet%f,
         !       the bit strings of each label.
         !    excitation: excit_t type variable which stores information on
@@ -839,15 +840,17 @@ contains
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
+        use dmqmc_data, only: dmqmc_rdm_in_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
         use fciqmc_data, only: reduced_density_matrix
-        use fciqmc_data, only: calc_inst_rdm, calc_ground_rdm, rdms, nrdms
+        use fciqmc_data, only: calc_inst_rdm, rdms, nrdms
         use fciqmc_data, only: rdm_spawn
         use fciqmc_data, only: nsym_vec, real_factor
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
+        type(dmqmc_rdm_in_t) :: rdm_in
         type(det_info_t), intent(in) :: cdet
         integer, intent(in) :: iteration
         integer(int_p), intent(in) :: walker_pop(:)
@@ -855,7 +858,6 @@ contains
         integer, intent(in) :: nload_slots
         integer, intent(in) :: start_av_rdm
         real(p), intent(in) :: accumulated_probs(:)
-
 
         real(p) :: unweighted_walker_pop(size(walker_pop))
         integer :: irdm, isym, ireplica
@@ -885,7 +887,7 @@ contains
             ! bitstrings.
             call decode_dm_bitstring(basis, cdet%f,irdm,isym)
 
-            if (calc_ground_rdm) then
+            if (rdm_in%calc_ground_rdm) then
                 ! The above routine actually maps to numbers between 0
                 ! and 2^rdms(1)%A_nsites-1, but the smallest and largest
                 ! reduced density matrix indices are one more than these,
