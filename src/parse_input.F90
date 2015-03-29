@@ -341,7 +341,7 @@ contains
             case('INSTANTANEOUS_RDM')
                 dmqmc_in%rdm%calc_inst_rdm = .true.
             case('OUTPUT_RDM')
-                output_rdm = .true.
+                dmqmc_in%rdm%output_rdm = .true.
             case('EXACT_RDM_EIGENVALUES')
                 doing_exact_rdm_eigv = .true.
                 dmqmc_in%rdm%calc_ground_rdm = .true.
@@ -930,7 +930,7 @@ contains
         call mpi_bcast(dmqmc_in%rdm%doing_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)

@@ -164,9 +164,6 @@ type(rdm_t), allocatable :: rdms(:)
 ! This is only set and used when performing rdm calculations.
 integer :: nsym_vec
 
-! If true then the reduced density matrix is output to a file, 'reduced_dm'
-! each beta loop.
-logical :: output_rdm
 ! The unit of the file reduced_dm.
 integer :: rdm_unit
 

@@ -928,7 +928,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: dmqmc_rdm_in_t
         use fciqmc_data, only: rdms, reduced_density_matrix
-        use fciqmc_data, only: output_rdm, rdm_unit, rdm_traces
+        use fciqmc_data, only: rdm_unit, rdm_traces
         use parallel
         use utils, only: get_free_unit, append_ext, int_fmt
 
@@ -984,7 +984,7 @@ contains
 
             write (6,'(1x,"# RDM trace =",1X,es17.10)') rdm_traces(1,1)
 
-            if (output_rdm) then
+            if (rdm_in%output_rdm) then
                 new_unit = get_free_unit()
                 call append_ext('rdm', beta_cycle, rdm_filename)
                 open(new_unit, file=trim(rdm_filename), status='replace')
