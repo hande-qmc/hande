@@ -118,9 +118,6 @@ type rdm_spawn_t
 end type rdm_spawn_t
 type(rdm_spawn_t), allocatable :: rdm_spawn(:)
 
-! Temporary global data for DMQMC instantaneous RDMs.
-integer :: nrdms
-
 ! The total number of RDMs beings calculated.
 ! NOTE: This can only be equal to 1 currently.
 integer :: fci_nrdms = 0
@@ -235,12 +232,12 @@ contains
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
             end if
             if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                do i = 1, nrdms
+                do i = 1, dmqmc_in%rdm%nrdms
                     write (6, '(16X,a3,'//int_fmt(i,0)//',1x,a2)', advance = 'no') 'RDM', i, 'S2'
                 end do
             end if
             if (dmqmc_in%rdm%calc_inst_rdm) then
-                do i = 1, nrdms
+                do i = 1, dmqmc_in%rdm%nrdms
                     do j = 1, ntypes
                         write (6, '(7X,a3,'//int_fmt(i,0)//',1x,a5,1x,'//int_fmt(j,0)//')', advance = 'no') &
                                 'RDM', i, 'trace', j
@@ -358,14 +355,14 @@ contains
 
             ! Renyi-2 entropy for all RDMs being sampled.
             if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                do i = 1, nrdms
+                do i = 1, dmqmc_in%rdm%nrdms
                     write (6, '(6X,es17.10)', advance = 'no') renyi_2(i)
                 end do
             end if
 
             ! Traces for instantaneous RDM estimates.
             if (dmqmc_in%rdm%calc_inst_rdm) then
-                do i = 1, nrdms
+                do i = 1, dmqmc_in%rdm%nrdms
                     do j = 1, ntypes
                         write (6, '(2x,es17.10)', advance = 'no') rdm_traces(j,i)
                     end do

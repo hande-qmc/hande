@@ -44,7 +44,7 @@ contains
         !    dmqmc_estimates: type containing dmqmc estimates.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: num_dmqmc_operators, nrdms
+        use fciqmc_data, only: num_dmqmc_operators
         use qmc_data, only: particle_t, qmc_state_t
         use parallel
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
@@ -75,8 +75,8 @@ contains
         nelems(operators_ind) = num_dmqmc_operators 
         nelems(excit_dist_ind) = max_num_excits + 1
         nelems(ground_rdm_trace_ind) = 1
-        nelems(inst_rdm_trace_ind) = psip_list%nspaces*nrdms
-        nelems(rdm_r2_ind) = nrdms
+        nelems(inst_rdm_trace_ind) = psip_list%nspaces*dmqmc_estimates%inst_rdm%nrdms
+        nelems(rdm_r2_ind) = dmqmc_estimates%inst_rdm%nrdms
 
         ! The total number of elements in the array to be communicated.
         tot_nelems = sum(nelems)
@@ -195,7 +195,7 @@ contains
         !       processors.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn, nrdms
+        use fciqmc_data, only: rspawn
         use fciqmc_data, only: rdm_traces, renyi_2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
@@ -250,14 +250,16 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use dmqmc_data, only: rdm_t
-        use fciqmc_data, only: rdm_spawn, nrdms, rdm_traces, renyi_2
+        use fciqmc_data, only: rdm_spawn, rdm_traces, renyi_2
         use hash_table, only: reset_hash_table
         use spawn_data, only: annihilate_wrapper_spawn_t
 
         real(p), intent(in) :: accumulated_probs_old(0:)
 
-        integer :: irdm
+        integer :: irdm, nrdms
         type(rdm_t), intent(in) :: rdm_info(:)
+
+        nrdms = size(rdm_info)
 
         ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
         ! array of type spawn_t due to a bug in gfortran which results in
@@ -856,7 +858,7 @@ contains
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t, rdm_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
-        use fciqmc_data, only: nrdms, rdm_spawn, nsym_vec, real_factor
+        use fciqmc_data, only: rdm_spawn, nsym_vec, real_factor
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
@@ -871,7 +873,7 @@ contains
         real(p), intent(in) :: accumulated_probs(0:)
 
         real(p) :: unweighted_walker_pop(size(walker_pop))
-        integer :: irdm, isym, ireplica
+        integer :: irdm, isym, ireplica, nrdms
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(basis%tensor_label_len)
 
@@ -880,6 +882,8 @@ contains
         ! Combined bitstring.
         f3(1:basis%string_len) = cdet%f(:basis%string_len)
         f3(basis%string_len+1:) = cdet%f2(:basis%string_len)
+
+        nrdms = size(dmqmc_estimates%rdm_info)
 
         ! Loop over all RDMs to be calculated.
         do irdm = 1, nrdms

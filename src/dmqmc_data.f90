@@ -208,7 +208,7 @@ end type rdm_spawn_t
 !--- Type for all instantaneous RDMs ---
 type dmqmc_inst_rdms_t
     ! The total number of rdms beings calculated.
-    integer :: nrdms
+    integer :: nrdms = 0
     ! The total number of translational symmetry vectors.
     ! This is only set and used when performing rdm calculations.
     integer :: nsym_vec
@@ -273,6 +273,9 @@ type dmqmc_estimates_t
 
     ! Info about ground-state RDM estimates.
     type(dmqmc_ground_rdm_t) :: ground_rdm
+
+    ! Info about instantaneous temperature-dependent) RDM estimates.
+    type(dmqmc_inst_rdms_t) :: inst_rdm
 end type dmqmc_estimates_t
 
 !--- Type for weighted sampling parameters ---

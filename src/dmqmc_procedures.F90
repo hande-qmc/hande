@@ -40,8 +40,8 @@ contains
         call check_allocate('dmqmc_estimates%trace',size(dmqmc_estimates%trace),ierr)
         dmqmc_estimates%trace = 0.0_p
 
-        nrdms = dmqmc_in%rdm%nrdms
-        allocate(rdm_traces(nreplicas,nrdms), stat=ierr)
+        dmqmc_estimates%inst_rdm%nrdms = dmqmc_in%rdm%nrdms
+        allocate(rdm_traces(nreplicas, dmqmc_in%rdm%nrdms), stat=ierr)
         call check_allocate('rdm_traces',size(rdm_traces),ierr)
         rdm_traces = 0.0_p
 
