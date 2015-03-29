@@ -105,9 +105,10 @@ logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-! This stores the reduces matrix, which is slowly accumulated over time
-! (on each processor).
 real(p), allocatable :: reduced_density_matrix(:,:)
+
+! Used to hold the RDM in FCI calculations.
+real(p), allocatable :: fci_rdm(:,:)
 
 ! Spawned lists for rdms.
 type rdm_spawn_t

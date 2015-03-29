@@ -143,11 +143,12 @@ contains
         ! If doing a reduced density matrix calculation, allocate and define
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
-        if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%rdm_info, qmc_in, dmqmc_in%rdm, nreplicas)
+        if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%rdm_info, reduced_density_matrix, &
+                                                          qmc_in, dmqmc_in%rdm, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, qmc_in, rdm_in, nreplicas)
+    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, ground_rdm, qmc_in, rdm_in, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -166,6 +167,9 @@ contains
         !    rdm_in (optional): Input options relating to reduced density matrices.
         !    nreplicas (optional): number of replicas being used.  Must be
         !        specified if qmc_in is.
+        ! Out:
+        !     ground_rdm: The array used to store the RDM in ground-state
+        !         calculations.
         ! In/Out:
         !     rdm_info: information relating to RDM subsystems being studied.
 
@@ -173,7 +177,7 @@ contains
         use checking, only: check_allocate
         use dmqmc_data, only: rdm_t
         use errors
-        use fciqmc_data, only: reduced_density_matrix, nrdms
+        use fciqmc_data, only: nrdms
         use fciqmc_data, only: renyi_2, real_bit_shift
         use fciqmc_data, only: rdm_spawn
         use hash_table, only: alloc_hash_table
@@ -188,6 +192,7 @@ contains
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: called_from_dmqmc
         type(rdm_t), intent(inout) :: rdm_info(:)
+        real(p), allocatable, intent(out) :: ground_rdm(:,:)
         type(qmc_in_t), intent(in), optional :: qmc_in
         type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
         integer, intent(in), optional :: nreplicas
@@ -237,9 +242,9 @@ contains
         ! spins in subsystem A).
         if (calc_ground_rdm) then
             if (ms_in == 0 .and. rdm_info(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
-                allocate(reduced_density_matrix(2**rdm_info(1)%A_nsites,2**rdm_info(1)%A_nsites), stat=ierr)
-                call check_allocate('reduced_density_matrix', 2**(2*rdm_info(1)%A_nsites),ierr)
-                reduced_density_matrix = 0.0_p
+                allocate(ground_rdm(2**rdm_info(1)%A_nsites,2**rdm_info(1)%A_nsites), stat=ierr)
+                call check_allocate('ground_rdm', 2**(2*rdm_info(1)%A_nsites),ierr)
+                ground_rdm = 0.0_p
             else
                 if (ms_in /= 0) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
