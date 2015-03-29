@@ -26,7 +26,7 @@ contains
         use determinants, only: spin_orb_list
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
-        use fciqmc_data, only: reduced_density_matrix
+        use fciqmc_data, only: reduced_density_matrix, fci_rdm_info
         use full_diagonalisation
         use hamiltonian, only: get_hmatel
         use reference_determinant
@@ -281,13 +281,13 @@ contains
                                                         &routine. Skipping this calculation.', 3)
                         else if (doing_calc(exact_diag)) then
                             write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                            call setup_rdm_arrays(sys, .false.)
+                            call setup_rdm_arrays(sys, .false., fci_rdm_info)
                             rdm_size = size(reduced_density_matrix, 1)
 
                             allocate(rdm_eigenvalues(rdm_size), stat=ierr)
                             call check_allocate('rdm_eigenvalues',rdm_size,ierr)
 
-                            call get_rdm_eigenvalues(sys%basis, ndets, dets, rdm_eigenvalues)
+                            call get_rdm_eigenvalues(sys%basis, fci_rdm_info, ndets, dets, rdm_eigenvalues)
                         end if
                     end if
                 end if
@@ -623,14 +623,16 @@ contains
 
     end subroutine generate_hamil
 
-    subroutine get_rdm_eigenvalues(basis, ndets, dets, rdm_eigenvalues)
+    subroutine get_rdm_eigenvalues(basis, rdm_info, ndets, dets, rdm_eigenvalues)
 
         use basis_types, only: basis_t
         use checking, only: check_allocate, check_deallocate
+        use dmqmc_data, only: rdm_t
         use dmqmc_procedures, only: decode_dm_bitstring
-        use fciqmc_data, only: reduced_density_matrix, rdms
+        use fciqmc_data, only: reduced_density_matrix
 
         type(basis_t), intent(in) :: basis
+        type(rdm_t), intent(inout) :: rdm_info(:)
         integer, intent(in) :: ndets
         integer(i0), intent(in) :: dets(:,:)
         real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))
@@ -646,8 +648,8 @@ contains
         ! Loop over all elements of the density matrix and add all contributing elements to the RDM.
         do i = 1, ndets
             do j = 1, ndets
-                f1 = iand(rdms(1)%B_masks(:,1),dets(:,i))
-                f2 = iand(rdms(1)%B_masks(:,1),dets(:,j))
+                f1 = iand(rdm_info(1)%B_masks(:,1),dets(:,i))
+                f2 = iand(rdm_info(1)%B_masks(:,1),dets(:,j))
                 ! If the two bitstrings are the same after bits corresponding to subsystem B have
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
@@ -656,15 +658,15 @@ contains
                     f3(basis%string_len+1:basis%string_len*2) = dets(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
-                    call decode_dm_bitstring(basis,f3,1,1)
-                    rdms(1)%end1 = rdms(1)%end1 + 1
-                    rdms(1)%end2 = rdms(1)%end2 + 1
+                    call decode_dm_bitstring(basis, f3, 1, rdm_info(1))
+                    rdm_info(1)%end1 = rdm_info(1)%end1 + 1
+                    rdm_info(1)%end2 = rdm_info(1)%end2 + 1
 
                     ! The ground state wave function is stored in hamil(:,1).
                     rdm_element = hamil(i,1)*hamil(j,1)
                     ! Finally add in the contribution from this density matrix element.
-                    reduced_density_matrix(rdms(1)%end1(1),rdms(1)%end2(1)) = &
-                        reduced_density_matrix(rdms(1)%end1(1),rdms(1)%end2(1)) + rdm_element
+                    reduced_density_matrix(rdm_info(1)%end1(1),rdm_info(1)%end2(1)) = &
+                        reduced_density_matrix(rdm_info(1)%end1(1),rdm_info(1)%end2(1)) + rdm_element
                 end if
             end do
         end do

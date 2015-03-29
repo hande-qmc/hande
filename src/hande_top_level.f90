@@ -39,7 +39,7 @@ contains
         use qmc_data, only: qmc_in_global, semi_stoch_in_global, fciqmc_in_global, &
                             ccmc_in_global, restart_in_global, load_bal_in_global
         use qmc_data, only: reference_t
-        use dmqmc_data, only: dmqmc_in_global
+        use dmqmc_data, only: dmqmc_in_global, dmqmc_estimates_global
         use read_in_system, only: read_in_integrals
         use ueg_system, only: init_ueg_proc_pointers
 
@@ -65,11 +65,11 @@ contains
 
         if (parent) call read_input(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, &
                                     semi_stoch_in_global, restart_in_global, reference, &
-                                    load_bal_in_global, dmqmc_in_global)
+                                    load_bal_in_global, dmqmc_in_global, dmqmc_estimates_global%rdm_info)
 
         call distribute_input(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, &
                               semi_stoch_in_global, restart_in_global, load_bal_in_global, &
-                              reference, dmqmc_in_global)
+                              reference, dmqmc_in_global, dmqmc_estimates_global%rdm_info)
 
         call init_system(sys, dmqmc_in_global)
 
