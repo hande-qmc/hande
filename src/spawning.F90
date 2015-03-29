@@ -79,7 +79,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        real(dp), intent(in) :: weights(:)
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -145,7 +145,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        real(dp), intent(in) :: weights(:)
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -224,7 +224,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        real(dp), intent(in) :: weights(:)
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -308,7 +308,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        real(dp), intent(in) :: weights(:)
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -385,7 +385,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        real(dp), intent(in) :: weights(:)
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 

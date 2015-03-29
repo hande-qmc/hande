@@ -157,7 +157,7 @@ abstract interface
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
-        real(p), intent(in) :: weights(:)
+        real(p), allocatable, intent(in) :: weights(:)
         real(p), intent(inout) :: hmatel
     end subroutine i_trial_fn
 
@@ -217,7 +217,7 @@ abstract interface
         type(det_info_t), intent(in) :: d
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
-        real(dp), intent(in) :: weights(:)
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawned
         type(excit_t), intent(out) :: connection
     end subroutine i_spawner
