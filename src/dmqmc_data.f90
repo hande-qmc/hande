@@ -236,7 +236,7 @@ type dmqmc_ground_rdm_t
     ! [todo] - rename to 'rdm'.
     ! This stores the reduces matrix, which is slowly accumulated over time
     ! (on each processor).
-    real(p), allocatable :: reduced_density_matrix(:,:)
+    real(p), allocatable :: rdm(:,:)
     ! The trace of the ground-state RDM.
     ! [todo] - Currently ground-state RDMs use the global rdm_traces, the same
     ! [todo] - as instantaneous RDMs. This needs updating.

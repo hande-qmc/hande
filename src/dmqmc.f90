@@ -123,8 +123,8 @@ contains
 
         do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, qs, beta_cycle, qs%psip_list%nstates, qs%psip_list%nparticles, &
-                                      qs%spawn_store%spawn, weighted_sampling%probs)
+            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates_global, qs, beta_cycle, qs%psip_list%nstates, &
+                                      qs%psip_list%nparticles, qs%spawn_store%spawn, weighted_sampling%probs)
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
@@ -287,8 +287,7 @@ contains
 
             ! Calculate and output all requested estimators based on the reduced
             ! density matrix. This is for ground-state RDMs only.
-            if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle, dmqmc_in%rdm, &
-                                                                              dmqmc_estimates_global%rdm_info)
+            if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(dmqmc_estimates_global, beta_cycle, dmqmc_in%rdm)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
             if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, weighted_sampling)
@@ -316,14 +315,15 @@ contains
 
     end subroutine do_dmqmc
 
-    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, qs, beta_cycle, nstates_active, nparticles, spawn, &
-                                    accumulated_probs)
+    subroutine init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, nstates_active, &
+                                    nparticles, spawn, accumulated_probs)
 
         ! Initialise/reset DMQMC data for a new run over the temperature range.
 
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object.  Reset on exit.
+        !    dmqmc_estimates: type containing dmqmc estimates.
         ! In:
         !    initial_shift: the initial shift used for population control.
         !    beta_cycle: The index of the beta loop about to be started.
@@ -340,7 +340,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
         use qmc_data, only: qmc_in_t, qmc_state_t
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use spawn_data, only: spawn_t
         use utils, only: int_fmt
 
@@ -348,6 +348,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         integer, intent(in) :: beta_cycle
         type(qmc_state_t), intent(inout) :: qs
         integer, intent(out) :: nstates_active
@@ -363,7 +364,7 @@ contains
         nstates_active = 0
         qs%shift = qmc_in%initial_shift
         nparticles = 0.0_dp
-        if (allocated(reduced_density_matrix)) reduced_density_matrix = 0.0_p
+        if (allocated(dmqmc_estimates%ground_rdm%rdm)) dmqmc_estimates%ground_rdm%rdm = 0.0_p
         if (dmqmc_in%vary_weights) accumulated_probs = 1.0_p
         if (dmqmc_in%find_weights) excit_dist = 0.0_p
 

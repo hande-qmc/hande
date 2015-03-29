@@ -406,14 +406,15 @@ contains
             if (dmqmc_in%replica_tricks .and. excitation%nexcit == 0) then
                 est%trace(2) = est%trace(2) + unweighted_walker_pop(2)
             end if
+
+            ! Reduced density matrices.
+            if (dmqmc_in%rdm%doing_rdm) call update_reduced_density_matrix_heisenberg&
+                (sys%basis, est, dmqmc_in%rdm, cdet, excitation, psip_list%pops(:,idet), &
+                 iteration, nload_slots, dmqmc_in%start_av_rdm, weighted_sampling%probs)
+
+            weighted_sampling%probs_old = weighted_sampling%probs
+
         end associate
-
-        ! Reduced density matrices.
-        if (dmqmc_in%rdm%doing_rdm) call update_reduced_density_matrix_heisenberg&
-            &(sys%basis, dmqmc_in%rdm, dmqmc_estimates%rdm_info, cdet, excitation, psip_list%pops(:,idet), iteration, &
-              nload_slots, dmqmc_in%start_av_rdm, weighted_sampling%probs)
-
-        weighted_sampling%probs_old = weighted_sampling%probs
 
     end subroutine update_dmqmc_estimators
 
@@ -807,7 +808,7 @@ contains
 
     end subroutine update_full_renyi_2
 
-    subroutine update_reduced_density_matrix_heisenberg(basis, rdm_in, rdm_info, cdet, excitation, walker_pop, &
+    subroutine update_reduced_density_matrix_heisenberg(basis, dmqmc_estimates, rdm_in, cdet, excitation, walker_pop, &
                                                         iteration, nload_slots, start_av_rdm, accumulated_probs)
 
         ! Add the contribution from the current walker to the reduced density
@@ -840,22 +841,19 @@ contains
         !    accumulated_probs: factors by which the population on each
         !        excitation level are reduced.
         ! In/Out:
-        !    rdm_info: information relating to RDMs and RDM subsystems being
-        !        studied.
+        !    dmqmc_estimates: type containing dmqmc estimates.
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
-        use dmqmc_data, only: dmqmc_rdm_in_t, rdm_t
+        use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t, rdm_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
-        use fciqmc_data, only: reduced_density_matrix
-        use fciqmc_data, only: nrdms, rdm_spawn
-        use fciqmc_data, only: nsym_vec, real_factor
+        use fciqmc_data, only: nrdms, rdm_spawn, nsym_vec, real_factor
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_rdm_in_t), intent(in) :: rdm_in
-        type(rdm_t), intent(inout) :: rdm_info(:)
         type(det_info_t), intent(in) :: cdet
         integer, intent(in) :: iteration
         integer(int_p), intent(in) :: walker_pop(:)
@@ -879,6 +877,9 @@ contains
         do irdm = 1, nrdms
         ! Loop over every symmetry-equivalent subsystem for this RDM.
         do isym = 1, nsym_vec
+
+        associate(rdm=>dmqmc_estimates%ground_rdm%rdm, end1=>dmqmc_estimates%rdm_info(irdm)%end1(1), &
+                  end2=>dmqmc_estimates%rdm_info(irdm)%end2(1), rdm_info=>dmqmc_estimates%rdm_info)
 
         ! Apply the mask for the B subsystem to set all sites in the A
         ! subsystem to 0.
@@ -909,8 +910,7 @@ contains
                 ! Note, when storing the entire RDM (as done here), the
                 ! maximum value of rdm_info(i)%string_len is 1, so we
                 ! only consider this one element here.
-                reduced_density_matrix(rdm_info(irdm)%end1(1),rdm_info(irdm)%end2(1)) = &
-                    reduced_density_matrix(rdm_info(irdm)%end1(1),rdm_info(irdm)%end2(1)) + unweighted_walker_pop(1)
+                rdm(end1, end2) = rdm(end1, end2) + unweighted_walker_pop(1)
             end if
 
             if (rdm_in%calc_inst_rdm) then
@@ -923,13 +923,14 @@ contains
             end if
 
         end if
+        end associate
         end do
 
         end do
 
     end subroutine update_reduced_density_matrix_heisenberg
 
-    subroutine call_ground_rdm_procedures(beta_cycle, rdm_in, rdm_info)
+    subroutine call_ground_rdm_procedures(dmqmc_estimates, beta_cycle, rdm_in)
 
         ! Wrapper for calling ground-state RDM procedures (*not*
         ! beta-dependent RDMs).
@@ -937,19 +938,18 @@ contains
         ! In:
         !    beta_cycle: index of the beta loop being performed.
         !    rdm_in: input options relating to reduced density matrices.
-        !    rdm_info: information relating to RDMs and RDM subsystems being
-        !        studied.
+        ! In/Out:
+        !    dmqmc_estimates: type containing dmqmc estimates.
 
         use checking, only: check_allocate, check_deallocate
-        use dmqmc_data, only: dmqmc_rdm_in_t, rdm_t
-        use fciqmc_data, only: reduced_density_matrix
+        use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t, rdm_t
         use fciqmc_data, only: rdm_unit, rdm_traces
         use parallel
         use utils, only: get_free_unit, append_ext, int_fmt
 
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         integer, intent(in) :: beta_cycle
         type(dmqmc_rdm_in_t), intent(in) :: rdm_in
-        type(rdm_t), intent(in) :: rdm_info(:)
 
         real(p), allocatable :: old_rdm_elements(:)
         integer :: i, j, k, ierr, new_unit
@@ -962,16 +962,16 @@ contains
         real(dp), allocatable :: dm_sum(:,:)
         integer :: num_eigv
 
-        num_eigv = 2**rdm_info(1)%A_nsites
+        num_eigv = 2**dmqmc_estimates%rdm_info(1)%A_nsites
 
         allocate(dm(num_eigv,num_eigv), stat=ierr)
         call check_allocate('dm',num_eigv**2,ierr)
         allocate(dm_sum(num_eigv,num_eigv), stat=ierr)
         call check_allocate('dm_sum',num_eigv**2,ierr)
 
-        dm = reduced_density_matrix
+        dm = dmqmc_estimates%ground_rdm%rdm
         call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
-        reduced_density_matrix = dm_sum
+        dmqmc_estimates%ground_rdm%rdm = dm_sum
 
         deallocate(dm)
         call check_deallocate('dm',ierr)
@@ -980,45 +980,49 @@ contains
 
 #endif
 
-        rdm_traces = 0.0_p
+        associate(rdm=>dmqmc_estimates%ground_rdm%rdm)
 
-        if (parent) then
-            ! Force the reduced density matrix to be symmetric by averaging the
-            ! upper and lower triangles.
-            do i = 1, ubound(reduced_density_matrix,1)
-                do j = 1, i-1
-                    reduced_density_matrix(i,j) = 0.5_p*(reduced_density_matrix(i,j) + reduced_density_matrix(j,i))
-                    reduced_density_matrix(j,i) = reduced_density_matrix(i,j)
-                end do
-                ! Add current contribution to the trace.
-                rdm_traces(1,1) = rdm_traces(1,1) + reduced_density_matrix(i,i)
-            end do
+            rdm_traces = 0.0_p
 
-            ! Call the routines to calculate the desired quantities.
-            if (rdm_in%doing_vn_entropy) call calculate_vn_entropy(rdm_traces(1,1), rdm_info)
-            if (rdm_in%doing_concurrence) call calculate_concurrence()
-
-            write (6,'(1x,"# RDM trace =",1X,es17.10)') rdm_traces(1,1)
-
-            if (rdm_in%output_rdm) then
-                new_unit = get_free_unit()
-                call append_ext('rdm', beta_cycle, rdm_filename)
-                open(new_unit, file=trim(rdm_filename), status='replace')
-                write(new_unit,'(a5,1x,es15.8)') "Trace", rdm_traces(1,1)
-                do i = 1, ubound(reduced_density_matrix,1)
-                    do j = i, ubound(reduced_density_matrix,1)
-                        write(new_unit,'(a1,'//int_fmt(i,0)//',a1,'//int_fmt(j,0)//',a1,1x,es15.8)') &
-                            "(",i,",",j,")", reduced_density_matrix(i,j)
+            if (parent) then
+                ! Force the reduced density matrix to be symmetric by averaging the
+                ! upper and lower triangles.
+                do i = 1, ubound(rdm,1)
+                    do j = 1, i-1
+                        rdm(i,j) = 0.5_p*(rdm(i,j) + rdm(j,i))
+                        rdm(j,i) = rdm(i,j)
                     end do
+                    ! Add current contribution to the trace.
+                    rdm_traces(1,1) = rdm_traces(1,1) + rdm(i,i)
                 end do
-                close(new_unit)
+
+                ! Call the routines to calculate the desired quantities.
+                if (rdm_in%doing_vn_entropy) call calculate_vn_entropy(rdm, dmqmc_estimates%rdm_info)
+                if (rdm_in%doing_concurrence) call calculate_concurrence(rdm)
+
+                write (6,'(1x,"# RDM trace =",1X,es17.10)') rdm_traces(1,1)
+
+                if (rdm_in%output_rdm) then
+                    new_unit = get_free_unit()
+                    call append_ext('rdm', beta_cycle, rdm_filename)
+                    open(new_unit, file=trim(rdm_filename), status='replace')
+                    write(new_unit,'(a5,1x,es15.8)') "Trace", rdm_traces(1,1)
+                    do i = 1, ubound(rdm,1)
+                        do j = i, ubound(rdm,1)
+                            write(new_unit,'(a1,'//int_fmt(i,0)//',a1,'//int_fmt(j,0)//',a1,1x,es15.8)') &
+                                "(",i,",",j,")", rdm(i,j)
+                        end do
+                    end do
+                    close(new_unit)
+                end if
+
             end if
 
-        end if
+        end associate
 
     end subroutine call_ground_rdm_procedures
 
-    subroutine calculate_vn_entropy(trace_rdm, rdm_info)
+    subroutine calculate_vn_entropy(rdm, rdm_info)
 
         ! Calculate the Von Neumann Entropy. Use lapack to calculate the
         ! eigenvalues {\lambda_j} of the reduced density matrix.
@@ -1028,15 +1032,15 @@ contains
         ! whether diagonalisation should be performed in serial or paralell.
 
         ! In:
-        !    trace_rdm: The trace of the RDM being considered.
         !    rdm_info: information relating to RDMs and RDM subsystems being
         !        studied.
+        ! In/Out:
+        !     rdm: Reduced density matrix estimate.
 
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: rdm_t
-        use fciqmc_data, only: reduced_density_matrix
 
-        real(p), intent(in) :: trace_rdm
+        real(p), intent(inout) :: rdm(:,:)
         type(rdm_t) :: rdm_info(:)
 
         integer :: i, rdm_size
@@ -1054,9 +1058,9 @@ contains
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
 #ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
+        call ssyev('N', 'U', rdm_size, rdm, rdm_size, eigv, work, -1, info)
 #else
-        call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, eigv, work, -1, info)
+        call dsyev('N', 'U', rdm_size, rdm, rdm_size, eigv, work, -1, info)
 #endif
 
         lwork = nint(work(1))
@@ -1072,7 +1076,7 @@ contains
         ! reduced_desntiy_matrix later, so use some temporary space:
         allocate(dm_tmp(rdm_size,rdm_size), stat=ierr)
         call check_allocate('dm_tmp',rdm_size**2,ierr)
-        dm_tmp = reduced_density_matrix
+        dm_tmp = rdm
 
 #ifdef SINGLE_PRECISION
         call ssyev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
@@ -1101,7 +1105,7 @@ contains
 
     end subroutine calculate_vn_entropy
 
-    subroutine calculate_concurrence()
+    subroutine calculate_concurrence(rdm)
 
         ! Calculate the concurrence of a qubit. For a reduced density matrix
         ! \rho, the concurrence,
@@ -1120,8 +1124,13 @@ contains
         ! Below we have named {\sigma_y \otimes \sigma_y} flip_spin_matrix as in
         ! the literature.
 
+        ! In:
+        !     rdm: Reduced density matrix estimate.
+
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: reduced_density_matrix
+
+        real(p), intent(in) :: rdm(:,:)
+
         integer :: info, ierr, lwork
         real(p), allocatable :: work(:)
         real(p) :: reigv(4), ieigv(4)
@@ -1137,7 +1146,7 @@ contains
                                        -1.0_p,  0.0_p, 0.0_p,  0.0_p  ], shape(flip_spin_matrix))
 
         ! Make rdm_spin_flip_tmp because sgeev and dgeev delete input matrix.
-        rdm_spin_flip_tmp = matmul(reduced_density_matrix, flip_spin_matrix)
+        rdm_spin_flip_tmp = matmul(rdm, flip_spin_matrix)
         rdm_spin_flip = rdm_spin_flip_tmp
 
         ! Find the optimal size of the workspace.

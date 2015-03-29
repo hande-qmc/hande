@@ -105,8 +105,6 @@ logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-real(p), allocatable :: reduced_density_matrix(:,:)
-
 ! Used to hold the RDM in FCI calculations.
 real(p), allocatable :: fci_rdm(:,:)
 
