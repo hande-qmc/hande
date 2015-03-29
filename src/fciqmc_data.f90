@@ -104,12 +104,6 @@ logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-! If true then calculate the concurrence for reduced density matrix of two sites.
-logical :: doing_concurrence = .false.
-
-! If true then calculate the von Neumann entanglement entropy for specified subsystem.
-logical :: doing_vn_entropy = .false.
-
 ! If true then, if doing an exact diagonalisation, calculate and output the
 ! eigenvalues of the reduced density matrix requested.
 logical :: doing_exact_rdm_eigv = .false.

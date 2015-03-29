@@ -916,22 +916,25 @@ contains
 
     end subroutine update_reduced_density_matrix_heisenberg
 
-    subroutine call_ground_rdm_procedures(beta_cycle)
+    subroutine call_ground_rdm_procedures(beta_cycle, rdm_in)
 
         ! Wrapper for calling ground-state RDM procedures (*not*
         ! beta-dependent RDMs).
 
         ! In:
         !    beta_cycle: index of the beta loop being performed.
+        !    rdm_in: input options relating to reduced density matrices.
 
         use checking, only: check_allocate, check_deallocate
+        use dmqmc_data, only: dmqmc_rdm_in_t
         use fciqmc_data, only: rdms, reduced_density_matrix
-        use fciqmc_data, only: doing_vn_entropy, doing_concurrence
         use fciqmc_data, only: output_rdm, rdm_unit, rdm_traces
         use parallel
         use utils, only: get_free_unit, append_ext, int_fmt
 
         integer, intent(in) :: beta_cycle
+        type(dmqmc_rdm_in_t) :: rdm_in
+
         real(p), allocatable :: old_rdm_elements(:)
         integer :: i, j, k, ierr, new_unit
         character(10) :: rdm_filename
@@ -976,8 +979,8 @@ contains
             end do
 
             ! Call the routines to calculate the desired quantities.
-            if (doing_vn_entropy) call calculate_vn_entropy(rdm_traces(1,1))
-            if (doing_concurrence) call calculate_concurrence()
+            if (rdm_in%doing_vn_entropy) call calculate_vn_entropy(rdm_traces(1,1))
+            if (rdm_in%doing_concurrence) call calculate_concurrence()
 
             write (6,'(1x,"# RDM trace =",1X,es17.10)') rdm_traces(1,1)
 

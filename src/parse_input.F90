@@ -346,9 +346,9 @@ contains
                 doing_exact_rdm_eigv = .true.
                 dmqmc_in%rdm%calc_ground_rdm = .true.
             case('CONCURRENCE')
-                doing_concurrence = .true.
+                dmqmc_in%rdm%doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
-                doing_vn_entropy = .true.
+                dmqmc_in%rdm%doing_vn_entropy = .true.
             case('RENYI_ENTROPY_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
             case('START_AVERAGING_EXCITATION_DIST')
@@ -933,8 +933,8 @@ contains
         call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%start_av_excit_dist, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%start_av_rdm, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
