@@ -287,7 +287,8 @@ contains
 
             ! Calculate and output all requested estimators based on the reduced
             ! density matrix. This is for ground-state RDMs only.
-            if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle, dmqmc_in%rdm, dmqmc_estimates%rdm_info)
+            if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(beta_cycle, dmqmc_in%rdm, &
+                                                                              dmqmc_estimates_global%rdm_info)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
             if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, weighted_sampling)

@@ -50,7 +50,7 @@ contains
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
-        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
+        real(p), intent(in) :: accumulated_probs_old(0:)
         type(particle_t), intent(inout) :: psip_list
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
@@ -246,7 +246,7 @@ contains
         use hash_table, only: reset_hash_table
         use spawn_data, only: annihilate_wrapper_spawn_t
 
-        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
+        real(p), intent(in) :: accumulated_probs_old(0:)
 
         integer :: irdm
         type(rdm_t), intent(in) :: rdm_info(:)
@@ -862,7 +862,7 @@ contains
         type(excit_t), intent(in) :: excitation
         integer, intent(in) :: nload_slots
         integer, intent(in) :: start_av_rdm
-        real(p), intent(in) :: accumulated_probs(:)
+        real(p), intent(in) :: accumulated_probs(0:)
 
         real(p) :: unweighted_walker_pop(size(walker_pop))
         integer :: irdm, isym, ireplica
@@ -948,8 +948,8 @@ contains
         use utils, only: get_free_unit, append_ext, int_fmt
 
         integer, intent(in) :: beta_cycle
-        type(dmqmc_rdm_in_t) :: rdm_in
-        type(rdm_t) :: rdm_info(:)
+        type(dmqmc_rdm_in_t), intent(in) :: rdm_in
+        type(rdm_t), intent(in) :: rdm_info(:)
 
         real(p), allocatable :: old_rdm_elements(:)
         integer :: i, j, k, ierr, new_unit
@@ -1226,7 +1226,7 @@ contains
 
         type(rdm_t), intent(in) :: rdm_info(:)
         type(spawn_t), intent(in) :: rdm_lists(:)
-        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
+        real(p), intent(in) :: accumulated_probs_old(0:)
         real(p), intent(out) :: r2(:)
 
         integer :: i, irdm, excit_level, rdm_bl
