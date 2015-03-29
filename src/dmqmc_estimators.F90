@@ -14,7 +14,8 @@ enum, bind(c)
     enumerator :: trace_ind
     enumerator :: operators_ind
     enumerator :: excit_dist_ind
-    enumerator :: rdm_trace_ind
+    enumerator :: ground_rdm_trace_ind
+    enumerator :: inst_rdm_trace_ind
     enumerator :: rdm_r2_ind
     enumerator :: final_ind ! ensure this remains the last index.
 end enum
@@ -73,7 +74,8 @@ contains
         nelems(trace_ind) = psip_list%nspaces
         nelems(operators_ind) = num_dmqmc_operators 
         nelems(excit_dist_ind) = max_num_excits + 1
-        nelems(rdm_trace_ind) = psip_list%nspaces*nrdms
+        nelems(ground_rdm_trace_ind) = 1
+        nelems(inst_rdm_trace_ind) = psip_list%nspaces*nrdms
         nelems(rdm_r2_ind) = nrdms
 
         ! The total number of elements in the array to be communicated.
@@ -157,10 +159,13 @@ contains
         if (dmqmc_in%calc_excit_dist) then
             rep_loop_loc(min_ind(excit_dist_ind):max_ind(excit_dist_ind)) = dmqmc_estimates%excit_dist
         end if
+        if (dmqmc_in%rdm%calc_ground_rdm) then
+            rep_loop_loc(min_ind(ground_rdm_trace_ind)) = dmqmc_estimates%ground_rdm%trace
+        end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
             ! Reshape this 2d array into a 1d array to add it to rep_loop_loc.
-            nrdms = max_ind(rdm_trace_ind) - min_ind(rdm_trace_ind) + 1
-            rep_loop_loc(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)) = reshape(rdm_traces, nrdms)
+            nrdms = max_ind(inst_rdm_trace_ind) - min_ind(inst_rdm_trace_ind) + 1
+            rep_loop_loc(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)) = reshape(rdm_traces, nrdms)
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = renyi_2
@@ -212,8 +217,11 @@ contains
         if (dmqmc_in%calc_excit_dist) then
             dmqmc_estimates%excit_dist = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
         end if
+        if (dmqmc_in%rdm%calc_ground_rdm) then
+            dmqmc_estimates%ground_rdm%trace = rep_loop_sum(min_ind(ground_rdm_trace_ind))
+        end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
-            rdm_traces = reshape(rep_loop_sum(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)), shape(rdm_traces))
+            rdm_traces = reshape(rep_loop_sum(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)), shape(rdm_traces))
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
@@ -943,7 +951,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t, rdm_t
-        use fciqmc_data, only: rdm_unit, rdm_traces
+        use fciqmc_data, only: rdm_unit
         use parallel
         use utils, only: get_free_unit, append_ext, int_fmt
 
@@ -980,9 +988,9 @@ contains
 
 #endif
 
-        associate(rdm=>dmqmc_estimates%ground_rdm%rdm)
+        associate(rdm=>dmqmc_estimates%ground_rdm%rdm, trace=>dmqmc_estimates%ground_rdm%trace)
 
-            rdm_traces = 0.0_p
+            trace = 0.0_p
 
             if (parent) then
                 ! Force the reduced density matrix to be symmetric by averaging the
@@ -993,20 +1001,20 @@ contains
                         rdm(j,i) = rdm(i,j)
                     end do
                     ! Add current contribution to the trace.
-                    rdm_traces(1,1) = rdm_traces(1,1) + rdm(i,i)
+                    trace = trace + rdm(i,i)
                 end do
 
                 ! Call the routines to calculate the desired quantities.
                 if (rdm_in%doing_vn_entropy) call calculate_vn_entropy(rdm, dmqmc_estimates%rdm_info)
                 if (rdm_in%doing_concurrence) call calculate_concurrence(rdm)
 
-                write (6,'(1x,"# RDM trace =",1X,es17.10)') rdm_traces(1,1)
+                write (6,'(1x,"# RDM trace =",1X,es17.10)') trace
 
                 if (rdm_in%output_rdm) then
                     new_unit = get_free_unit()
                     call append_ext('rdm', beta_cycle, rdm_filename)
                     open(new_unit, file=trim(rdm_filename), status='replace')
-                    write(new_unit,'(a5,1x,es15.8)') "Trace", rdm_traces(1,1)
+                    write(new_unit,'(a5,1x,es15.8)') "Trace", trace
                     do i = 1, ubound(rdm,1)
                         do j = i, ubound(rdm,1)
                             write(new_unit,'(a1,'//int_fmt(i,0)//',a1,'//int_fmt(j,0)//',a1,1x,es15.8)') &
