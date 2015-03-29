@@ -49,7 +49,7 @@ contains
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
-        use fciqmc_data, only: real_factor
+        use fciqmc_data, only: real_factor, neel_singlet_amp
         use hfs_data
         use interact, only: calc_interact, check_comms_file
         use qmc_common
@@ -179,7 +179,8 @@ contains
 
                         ! Attempt to spawn Hamiltonian walkers..
                         call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
-                                         qs%psip_list%pops(1,idet), gen_excit_ptr, nspawned, connection)
+                                         qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, &
+                                         nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
                             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
@@ -189,7 +190,8 @@ contains
                         ! Hamiltonian walkers.
                         ! [todo] - JSS: real populations for HFS spawner.
                         call spawner_hfs_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
-                                             qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, nspawned, connection)
+                                             qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, neel_singlet_amp, &
+                                             nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
                             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
@@ -204,7 +206,8 @@ contains
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
                         call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
-                                         qs%psip_list%pops(2,idet), gen_excit_ptr, nspawned, connection)
+                                         qs%psip_list%pops(2,idet), gen_excit_ptr, neel_singlet_amp, &
+                                         nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
                             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &

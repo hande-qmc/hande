@@ -151,12 +151,13 @@ abstract interface
         integer, intent(in) :: nslots
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
-    subroutine i_trial_fn(sys, cdet, connection, hmatel)
+    subroutine i_trial_fn(sys, cdet, connection, weights, hmatel)
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
+        real(p), allocatable, intent(in) :: weights(:)
         real(p), intent(inout) :: hmatel
     end subroutine i_trial_fn
 
@@ -200,11 +201,12 @@ end type gen_excit_ptr_t
 type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
-    subroutine i_spawner(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, nspawned, connection)
+    subroutine i_spawner(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, weights, &
+                         nspawned, connection)
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t
         use system, only: sys_t
-        import :: det_info_t, excit_t, gen_excit_ptr_t, int_p, p
+        import :: det_info_t, excit_t, gen_excit_ptr_t, int_p, p, dp
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -215,6 +217,7 @@ abstract interface
         type(det_info_t), intent(in) :: d
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawned
         type(excit_t), intent(out) :: connection
     end subroutine i_spawner

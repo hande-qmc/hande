@@ -278,13 +278,13 @@ type dmqmc_weighted_sampling_t
     ! This holds the factors by which the populations on each excitation level
     ! (from 0 to max_number_excitations) are reduced, relative to DMQMC
     ! without any importance sampling.
-    real(p), allocatable :: accumulated_probs(:) ! (max_number_excitations + 1)
+    real(p), allocatable :: probs(:) ! (max_number_excitations + 1)
     ! The value of accumulated_probs on the last report cycle.
-    real(p), allocatable :: accumulated_probs_old(:) ! (max_number_excitations + 1)
+    real(p), allocatable :: probs_old(:) ! (max_number_excitations + 1)
 
     ! If varying the weights then this array holds the factors by which the
     ! weights are changed each iteration.
-    real(dp), allocatable :: weight_altering_factors(:)
+    real(dp), allocatable :: altering_factors(:)
 end type dmqmc_weighted_sampling_t
 
 type (dmqmc_in_t) :: dmqmc_in_global

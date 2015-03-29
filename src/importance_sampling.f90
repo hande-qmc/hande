@@ -41,7 +41,7 @@ implicit none
 
 contains
 
-    subroutine neel_trial_state(sys, cdet, connection, hmatel)
+    subroutine neel_trial_state(sys, cdet, connection, trial_func, hmatel)
 
         ! Apply the transformation to the Hamiltonian matrix element due to
         ! using the Neel singlet state as the trial function.
@@ -52,6 +52,7 @@ contains
         !        from.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
+        !    trial_func: importance sampling weights.
         ! In/Out:
         !    hmatel: on input, untransformed matrix element connecting two spin
         !        functions (kets).  On output, transformed matrix element,
@@ -59,12 +60,12 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: neel_singlet_amp
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
+        real(dp), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
 
         integer :: up_spins_to, up_spins_from
@@ -88,11 +89,11 @@ contains
         ! For a given number of spins up on sublattice 1, n, the corresponding
         ! ampltidue of this basis function in the trial function is stored as
         ! neel_singlet_amp(n), for this particular trial function. Hence we have:
-        hmatel = (neel_singlet_amp(up_spins_to)*hmatel)/neel_singlet_amp(up_spins_from)
+        hmatel = (trial_func(up_spins_to)*hmatel)/trial_func(up_spins_from)
 
     end subroutine neel_trial_state
 
-    subroutine dmqmc_weighting_fn(sys, cdet, connection, hmatel)
+    subroutine dmqmc_weighting_fn(sys, cdet, connection, trial_func, hmatel)
 
         ! Apply a transformation to the Hamiltonian matrix element by
         ! reducing the probability of spawning to higher excitation levels
@@ -106,6 +107,7 @@ contains
         !        from.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
+        !    trial_func: importance sampling weights.
         ! In/Out:
         !    hmatel: on input, untransformed matrix element connecting two spin
         !        functions (kets).  On output, transformed matrix element,
@@ -118,12 +120,12 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t, get_excitation_level, create_excited_det
-        use fciqmc_data, only: accumulated_probs
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
+        real(dp), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
         integer(i0) :: f_new(sys%basis%string_len)
         integer :: excit_level_old, excit_level_new
@@ -134,7 +136,7 @@ contains
 
         excit_level_new = get_excitation_level(f_new,cdet%f2)
 
-        hmatel = accumulated_probs(excit_level_old)*hmatel*(1/accumulated_probs(excit_level_new))
+        hmatel = trial_func(excit_level_old)*hmatel*(1/trial_func(excit_level_new))
 
     end subroutine dmqmc_weighting_fn
 

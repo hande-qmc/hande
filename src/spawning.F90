@@ -32,7 +32,7 @@ contains
 !--- Spawning wrappers ---
 
     subroutine spawn_standard(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
-                              gen_excit_ptr, nspawn, connection)
+                              gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -56,6 +56,7 @@ contains
         !    gen_excit_ptr: procedure pointer to excitation generators.
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -78,6 +79,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -92,7 +94,7 @@ contains
     end subroutine spawn_standard
 
     subroutine spawn_importance_sampling(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                         gen_excit_ptr, nspawn, connection)
+                                         gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -120,6 +122,7 @@ contains
         !    gen_excit_ptr: procedure pointer to excitation generators.
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -142,6 +145,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -151,7 +155,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(sys, cdet, connection, hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel)
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
@@ -159,7 +163,7 @@ contains
     end subroutine spawn_importance_sampling
 
     subroutine spawn_lattice_split_gen(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                       gen_excit_ptr, nspawn, connection)
+                                       gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -197,6 +201,7 @@ contains
         !        gen_excit_ptr%init must return (at least) the connecting matrix
         !        element and gen_excit_ptr%finalise must fill in the rest of the
         !        information about the excitation.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -219,6 +224,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -244,7 +250,7 @@ contains
     end subroutine spawn_lattice_split_gen
 
     subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                                           gen_excit_ptr, nspawn, connection)
+                                                           gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -279,6 +285,7 @@ contains
         !        gen_excit_ptr%init must return (at least) the connecting matrix
         !        element and gen_excit_ptr%finalise must fill in the rest of the
         !        information about the excitation.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -301,6 +308,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -311,7 +319,7 @@ contains
         call gen_excit_ptr%init(rng, sys, qmc_in, cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(sys, cdet, connection, tilde_hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel)
 
         ! 3. Attempt spawning.
         nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs(tilde_hmatel)/pgen)
@@ -332,7 +340,8 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_null(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, weights, &
+                          nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -353,6 +362,7 @@ contains
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -375,6 +385,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 

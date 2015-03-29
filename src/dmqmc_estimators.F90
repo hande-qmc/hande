@@ -21,7 +21,8 @@ end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list, qs, dmqmc_estimates)
+    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list, qs, accumulated_probs_old, &
+                                    dmqmc_estimates)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -35,6 +36,7 @@ contains
         !    max_num_excits: The maximum excitation level for the system being
         !        studied.
         !    ncycles: the number of monte carlo cycles.
+        !    accumulated_probs_old: the value of accumulated_probs on the last report cycle.
         ! In/Out:
         !    psip_list: particle information.  On output total (ie not
         !        per-processor) quantities are updated.
@@ -48,6 +50,7 @@ contains
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
+        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
         type(particle_t), intent(inout) :: psip_list
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
@@ -60,7 +63,7 @@ contains
         ! If calculating instantaneous RDM estimates then call this routine to
         ! perform annihilation for RDM particles, and calculate RDM estimates
         ! before they are summed over processors. below.
-        if (calc_inst_rdm) call communicate_inst_rdms()
+        if (calc_inst_rdm) call communicate_inst_rdms(accumulated_probs_old)
 
         ! How big is each variable to be communicated?
         nelems(rspawn_ind) = 1
@@ -223,7 +226,7 @@ contains
 
     end subroutine communicated_dmqmc_estimators
 
-    subroutine communicate_inst_rdms()
+    subroutine communicate_inst_rdms(accumulated_probs_old)
 
         ! Perform annihilation between 'RDM particles'. This is done exactly
         ! by calling the normal annihilation routine for a spawned object,
@@ -233,10 +236,15 @@ contains
         ! Also, once annihilation has occurred, calculate all instantaneous
         ! RDM estimates.
 
+        ! In:
+        !    accumulated_probs_old: The value of accumulated_probs on the last report cycle.
+
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use fciqmc_data, only: rdm_spawn, rdms, nrdms, rdm_traces, renyi_2
         use hash_table, only: reset_hash_table
         use spawn_data, only: annihilate_wrapper_spawn_t
+
+        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
 
         integer :: irdm
 
@@ -259,7 +267,7 @@ contains
         end do
 
         call calculate_rdm_traces(rdms, rdm_spawn%spawn, rdm_traces)
-        if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdms, rdm_spawn%spawn, renyi_2)
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdms, rdm_spawn%spawn, accumulated_probs_old,  renyi_2)
 
         do irdm = 1, nrdms
             rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
@@ -296,7 +304,8 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, nload_slots, psip_list, dmqmc_estimates)
+    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, nload_slots, psip_list, dmqmc_estimates, &
+                                       weighted_sampling)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -317,20 +326,19 @@ contains
         !    cdet: det_info_t object containing information of current density
         !        matrix element.
         !    dmqmc_estimates: type containing dmqmc estimates.
+        !    weighted_sampling: type containing weighted sampling parameters.
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
         use excitations, only: get_excitation, excit_t
-        use fciqmc_data, only: doing_reduced_dm
-        use fciqmc_data, only: accumulated_probs
-        use fciqmc_data, only: accumulated_probs_old, real_factor
+        use fciqmc_data, only: doing_reduced_dm, real_factor
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
         use qmc_data, only: reference_t, particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind, &
-                              correlation_fn_ind, staggered_mag_ind, full_r2_ind
+                              correlation_fn_ind, staggered_mag_ind, full_r2_ind, dmqmc_weighted_sampling_t
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -340,6 +348,7 @@ contains
         integer, intent(in) :: nload_slots
         type(particle_t), intent(in) :: psip_list
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
+        type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
@@ -355,8 +364,8 @@ contains
         ! excitation levels correctly.
 
         ! In the case of no importance sampling, unweighted_walker_pop = particle_t%pops(1,idet).
-        unweighted_walker_pop = real(psip_list%pops(:,idet),p)*accumulated_probs(excitation%nexcit)/&
-            real_factor
+        unweighted_walker_pop = real(psip_list%pops(:,idet),p)*weighted_sampling%probs(excitation%nexcit)/&
+                                real_factor
 
         ! The following only use the populations with ireplica = 1, so only call
         ! them if the determinant is occupied in the first replica.
@@ -398,9 +407,10 @@ contains
 
         ! Reduced density matrices.
         if (doing_reduced_dm) call update_reduced_density_matrix_heisenberg&
-            &(sys%basis, cdet, excitation, psip_list%pops(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm)
+            &(sys%basis, cdet, excitation, psip_list%pops(:,idet), iteration, nload_slots, dmqmc_in%start_av_rdm, &
+              weighted_sampling%probs)
 
-        accumulated_probs_old = accumulated_probs
+        weighted_sampling%probs_old = weighted_sampling%probs
 
     end subroutine update_dmqmc_estimators
 
@@ -795,7 +805,8 @@ contains
     end subroutine update_full_renyi_2
 
     subroutine update_reduced_density_matrix_heisenberg(basis, cdet, excitation, walker_pop, &
-                                                        iteration, nload_slots, start_av_rdm)
+                                                        iteration, nload_slots, start_av_rdm, &
+                                                        accumulated_probs)
 
         ! Add the contribution from the current walker to the reduced density
         ! matrices being sampled. This is performed by 'tracing out' the
@@ -823,6 +834,8 @@ contains
         !        performed if iteration <= start_av_rdm.
         !    nload_slots: number of load balancing slots (per processor).
         !    start_av_rdm: iteration we start averaging the rdm on.
+        !    accumulated_probs: factors by which the population on each
+        !        excitation level are reduced.
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -830,7 +843,7 @@ contains
         use excitations, only: excit_t
         use fciqmc_data, only: reduced_density_matrix
         use fciqmc_data, only: calc_inst_rdm, calc_ground_rdm, rdms, nrdms
-        use fciqmc_data, only: rdm_spawn, accumulated_probs
+        use fciqmc_data, only: rdm_spawn
         use fciqmc_data, only: nsym_vec, real_factor
         use spawning, only: create_spawned_particle_rdm
 
@@ -841,6 +854,8 @@ contains
         type(excit_t), intent(in) :: excitation
         integer, intent(in) :: nload_slots
         integer, intent(in) :: start_av_rdm
+        real(p), intent(in) :: accumulated_probs(:)
+
 
         real(p) :: unweighted_walker_pop(size(walker_pop))
         integer :: irdm, isym, ireplica
@@ -1167,7 +1182,7 @@ contains
 
     end subroutine calculate_rdm_traces
 
-    subroutine calculate_rdm_renyi_2(rdm_data, rdm_lists, r2)
+    subroutine calculate_rdm_renyi_2(rdm_data, rdm_lists, accumulated_probs_old, r2)
 
         ! Calculate the Renyi entropy (S_2) for all instantaneous RDMs being
         ! calculated.
@@ -1177,17 +1192,20 @@ contains
         !        various subsystems for which RDMs are being estimated.
         !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of
         !        the RDM psips which belong to this processor.
+        !    accumulated_probs_old: value of accumulated probs on the last
+        !        report cycle.
         ! Out:
         !    r2: The calculated Renyi entropies (S_2).
 
         use fciqmc_data, only: rdm_t
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: accumulated_probs_old
         use spawn_data, only: spawn_t
 
         type(rdm_t), intent(in) :: rdm_data(:)
         type(spawn_t), intent(in) :: rdm_lists(:)
+        real(p), allocatable, intent(in) :: accumulated_probs_old(:)
         real(p), intent(out) :: r2(:)
+
         integer :: i, irdm, excit_level, rdm_bl
         real(p) :: unweighted_pop_1, unweighted_pop_2
         integer, parameter :: thread_id = 0
