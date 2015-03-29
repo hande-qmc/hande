@@ -391,7 +391,7 @@ contains
 
         rspawn = 0.0_p
 
-        dmqmc_estimates%excit_dist = 0.0_p
+        if (allocated(dmqmc_estimates%excit_dist)) dmqmc_estimates%excit_dist = 0.0_p
         dmqmc_estimates%trace = 0.0_p
         dmqmc_estimates%numerators = 0.0_p
 

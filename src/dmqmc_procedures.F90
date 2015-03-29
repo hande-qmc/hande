@@ -119,7 +119,7 @@ contains
                 ! Allocate an array to store the factors by which the weights
                 ! will change each iteration.
                 allocate(weight_altering_factors(0:sys%max_number_excitations), stat=ierr)
-                call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr) 
+                call check_allocate('weight_altering_factors',sys%max_number_excitations+1,ierr)
                 weight_altering_factors = real(accumulated_probs,dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
                 ! If varying the weights, start the accumulated probabilties
                 ! as all 1.0 initially, and then alter them gradually later.
