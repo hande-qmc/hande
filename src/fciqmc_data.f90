@@ -118,12 +118,16 @@ type rdm_spawn_t
 end type rdm_spawn_t
 type(rdm_spawn_t), allocatable :: rdm_spawn(:)
 
-! The total number of rdms beings calculated.
-integer :: nrdms = 0
+! Temporary global data for DMQMC instantaneous RDMs.
+integer :: nrdms
+
+! The total number of RDMs beings calculated.
+! NOTE: This can only be equal to 1 currently.
+integer :: fci_nrdms = 0
 
 ! This stores  information for the various RDMs that the user asks to be
 ! calculated. Each element of this array corresponds to one of these RDMs.
-type(rdm_t), allocatable :: fci_rdm_info(:) ! (nrdms)
+type(rdm_t), allocatable :: fci_rdm_info(:) ! (fci_nrdms)
 
 ! The total number of translational symmetry vectors.
 ! This is only set and used when performing rdm calculations.

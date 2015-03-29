@@ -177,7 +177,6 @@ contains
         use checking, only: check_allocate
         use dmqmc_data, only: rdm_t
         use errors
-        use fciqmc_data, only: nrdms
         use fciqmc_data, only: renyi_2, real_bit_shift
         use fciqmc_data, only: rdm_spawn
         use hash_table, only: alloc_hash_table
@@ -197,8 +196,10 @@ contains
         type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
         integer, intent(in), optional :: nreplicas
 
-        integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
-        integer :: bit_position, bit_element, nbytes_int, spawn_length_loc
+        integer :: i, ierr, ipos, nrdms
+        integer :: basis_find, bit_position, bit_element
+        integer :: size_spawned_rdm, total_size_spawned_rdm
+        integer :: nbytes_int, spawn_length_loc
         logical :: calc_ground_rdm
 
         ! If this routine was not called from DMQMC then we must be doing a
@@ -206,6 +207,8 @@ contains
         calc_ground_rdm = .not. called_from_dmqmc
         ! This should only be present if called_from_dmqmc is true.
         if (present(rdm_in)) calc_ground_rdm = rdm_in%calc_ground_rdm
+
+        nrdms = size(rdm_info)
 
         ! For the Heisenberg model only currently.
         if (sys%system == heisenberg) then
@@ -328,19 +331,21 @@ contains
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: rdm_t
         use errors
-        use fciqmc_data, only: nrdms, nsym_vec
+        use fciqmc_data, only: nsym_vec
         use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell, enumerate_lattice_vectors
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(rdm_t), intent(inout) :: rdm_info(:)
 
-        integer :: i, j, k, l, ipos, ierr
+        integer :: i, j, k, l, nrdms, ipos, ierr
         integer :: basis_find, bit_position, bit_element
         integer(i0) :: A_mask(sys%basis%string_len)
         real(p), allocatable :: sym_vecs(:,:)
         integer :: r(sys%lattice%ndim)
         integer, allocatable :: lvecs(:,:)
+
+        nrdms = size(rdm_info)
 
         ! Return all translational symmetry vectors in sym_vecs.
         call find_translational_symmetry_vecs(sys, sym_vecs, nsym_vec)
