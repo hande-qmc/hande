@@ -263,7 +263,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_global
         use utils, only: int_fmt
 
         integer, intent(in) :: ntypes
@@ -308,7 +308,7 @@ contains
             end if
             if (present(dmqmc_in)) then
                 if (dmqmc_in%calc_excit_dist) then
-                    do i = 0, ubound(excit_dist,1)
+                    do i = 0, ubound(dmqmc_estimates_global%excit_dist,1)
                         write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
                         write (6, '(5X,a16)', advance='no') excit_header
                     end do
