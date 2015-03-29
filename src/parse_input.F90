@@ -336,6 +336,10 @@ contains
                         call readi(rdms(i)%subsystem_A(j))
                     end do
                 end do
+
+                ! TODO: Remove this. This is here temporarily until more purity
+                ! work is done, and FCI RDMs are separated out from DMQMC RDMs.
+                nrdms = dmqmc_in%rdm%nrdms
             case('GROUND_STATE_RDM')
                 dmqmc_in%rdm%calc_ground_rdm = .true.
             case('INSTANTANEOUS_RDM')
@@ -931,6 +935,8 @@ contains
         call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        ! TODO: Remove this when more purity work is done.
+        call mpi_bcast(nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)

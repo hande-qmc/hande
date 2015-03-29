@@ -143,11 +143,11 @@ contains
         ! If doing a reduced density matrix calculation, allocate and define
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
-        if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, qmc_in, dmqmc_in%rdm, nreplicas)
+        if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., qmc_in, dmqmc_in%rdm, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, qmc_in, rdm_in, nreplicas)
+    subroutine setup_rdm_arrays(sys, called_from_dmqmc, qmc_in, rdm_in, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -157,11 +157,15 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in (optional): Input options relating to QMC methods.  Only needed for
-        !         spawn_cutoff and if calc_inst_rdm is true.
+        !    called_from_dmqmc: This variable should be true if this routine is
+        !        called from DMQMC, false otherwise. This routine is also used
+        !        by the FCI code, in which case qmc_in, rdm_in and nreplicas
+        !        will not be passed in.
+        !    qmc_in (optional): Input options relating to QMC methods.  Only
+        !         needed for spawn_cutoff and if calc_inst_rdm is true.
         !    rdm_in (optional): Input options relating to reduced density matrices.
-        !    nreplicas (optional): number of replicas being used.  Must be specified if
-        !         qmc_in is.
+        !    nreplicas (optional): number of replicas being used.  Must be
+        !        specified if qmc_in is.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
@@ -179,39 +183,31 @@ contains
         use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
+        logical, intent(in) :: called_from_dmqmc
         type(qmc_in_t), intent(in), optional :: qmc_in
         type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
         integer, intent(in), optional :: nreplicas
 
         integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
         integer :: bit_position, bit_element, nbytes_int, spawn_length_loc
+        logical :: calc_ground_rdm
+
+        ! If this routine was not called from DMQMC then we must be doing a
+        ! ground state RDM calculation.
+        calc_ground_rdm = .not. called_from_dmqmc
+        ! This should only be present if called_from_dmqmc is true.
+        if (present(rdm_in)) calc_ground_rdm = rdm_in%calc_ground_rdm
 
         ! For the Heisenberg model only currently.
-        if (sys%system==heisenberg) then
+        if (sys%system == heisenberg) then
             call find_rdm_masks(sys)
         else
             call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for &
                            &the Heisenberg model.")
         end if
 
-        total_size_spawned_rdm = 0
-        nbytes_int = bit_size(i)/8
-
-        ! Create the instances of the rdm_spawn_t type for instantaneous RDM
-        ! calculatons.
-        if (rdm_in%calc_inst_rdm) then
-            allocate(rdm_spawn(nrdms), stat=ierr)
-            call check_allocate('rdm_spawn', nrdms, ierr)
-        end if
-
-        ! If calculating Renyi entropy (S2).
-        if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            allocate(renyi_2(nrdms), stat=ierr)
-            call check_allocate('renyi_2', nrdms, ierr)
-            renyi_2 = 0.0_p
-        end if
-
         ! Loop over all subsystems for which we are calculating RDMs.
+        ! Setup the rdms array.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
             rdms(i)%string_len = ceiling(real(rdms(i)%A_nsites)/i0_length)
@@ -226,53 +222,16 @@ contains
             ! the following condition is met then the number of rows is greater
             ! than the maximum integer accessible. This would clearly be too
             ! large, so abort in this case.
-            if (rdm_in%calc_ground_rdm .and. rdms(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
+            if (calc_ground_rdm .and. rdms(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
-
-            ! Allocate the spawn_t and hash table instances for this RDM.
-            if (rdm_in%calc_inst_rdm) then
-                if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
-                size_spawned_rdm = (rdms(i)%string_len*2+nreplicas)*int_s_length/8
-                total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
-
-                spawn_length_loc = rdm_in%spawned_length
-
-                if (spawn_length_loc < 0) then
-                    ! Given in MB.  Convert.
-                    ! Note that the factor of 2 is because two spawning arrays
-                    ! are stored, and 21*nbytes_int is added because there are
-                    ! 21 integers in the hash table for each spawned rdm slot.
-                    ! 21 was found to be appropriate after testing.
-                    spawn_length_loc = int((-real(spawn_length_loc,p)*10**6)/&
-                                          (2*size_spawned_rdm + 21*nbytes_int))
-                end if
-
-                ! Note the initiator approximation is not implemented for density matrix calculations.
-                call alloc_spawn_t(rdms(i)%string_len*2, nreplicas, .false., &
-                                     spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, &
-                                     27, use_mpi_barriers, rdm_spawn(i)%spawn)
-                ! Hard code hash table collision limit for now.  The length of
-                ! the table is three times as large as the spawning arrays and
-                ! each hash value can have 7 clashes. This was found to give
-                ! reasonable performance.
-                call alloc_hash_table(3*spawn_length_loc, 7, rdms(i)%string_len*2, &
-                                     0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
-            end if
         end do
-
-        if (parent .and. rdm_in%calc_inst_rdm) then
-            write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
-                total_size_spawned_rdm*real(2*spawn_length_loc,p)/10**6
-            write (6,'(1X,a49,'//int_fmt(spawn_length_loc,1)//',/)') &
-                'Number of elements per core in spawned RDM lists:', spawn_length_loc
-        end if
 
         ! For an ms = 0 subspace, assuming less than or exactly half the spins
         ! in the subsystem are in the subsystem, then any combination of spins
         ! can occur in the subsystem, from all spins down to all spins up. Hence
         ! the total size of the reduced density matrix will be 2**(number of
         ! spins in subsystem A).
-        if (rdm_in%calc_ground_rdm) then
+        if (calc_ground_rdm) then
             if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
                 allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
                 call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)
@@ -284,6 +243,63 @@ contains
                 else if (rdms(1)%A_nsites > floor(real(sys%lattice%nsites,p)/2.0_p)) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
                                   &whose size is less than half the total system size.")
+                end if
+            end if
+        end if
+
+        ! Setup code relating to instantaneous RDMs.
+        if (present(rdm_in)) then
+            ! Create the instances of the rdm_spawn_t type for instantaneous RDM
+            ! calculatons.
+            if (rdm_in%calc_inst_rdm) then
+                allocate(rdm_spawn(nrdms), stat=ierr)
+                call check_allocate('rdm_spawn', nrdms, ierr)
+
+                ! If calculating Renyi entropy (S2).
+                if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
+                    allocate(renyi_2(nrdms), stat=ierr)
+                    call check_allocate('renyi_2', nrdms, ierr)
+                    renyi_2 = 0.0_p
+                end if
+
+                total_size_spawned_rdm = 0
+                nbytes_int = bit_size(i)/8
+
+                do i = 1, nrdms
+                    ! Allocate the spawn_t and hash table instances for this RDM.
+                    if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
+                    size_spawned_rdm = (rdms(i)%string_len*2+nreplicas)*int_s_length/8
+                    total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
+
+                    spawn_length_loc = rdm_in%spawned_length
+
+                    if (spawn_length_loc < 0) then
+                        ! Given in MB.  Convert.
+                        ! Note that the factor of 2 is because two spawning arrays
+                        ! are stored, and 21*nbytes_int is added because there are
+                        ! 21 integers in the hash table for each spawned rdm slot.
+                        ! 21 was found to be appropriate after testing.
+                        spawn_length_loc = int((-real(spawn_length_loc,p)*10**6)/&
+                                              (2*size_spawned_rdm + 21*nbytes_int))
+                    end if
+
+                    ! Note the initiator approximation is not implemented for density matrix calculations.
+                    call alloc_spawn_t(rdms(i)%string_len*2, nreplicas, .false., &
+                                         spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, &
+                                         27, use_mpi_barriers, rdm_spawn(i)%spawn)
+                    ! Hard code hash table collision limit for now.  The length of
+                    ! the table is three times as large as the spawning arrays and
+                    ! each hash value can have 7 clashes. This was found to give
+                    ! reasonable performance.
+                    call alloc_hash_table(3*spawn_length_loc, 7, rdms(i)%string_len*2, &
+                                         0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
+                end do
+
+                if (parent) then
+                    write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
+                        total_size_spawned_rdm*real(2*spawn_length_loc,p)/10**6
+                    write (6,'(1X,a49,'//int_fmt(spawn_length_loc,1)//',/)') &
+                        'Number of elements per core in spawned RDM lists:', spawn_length_loc
                 end if
             end if
         end if
@@ -1064,7 +1080,7 @@ contains
         use fciqmc_data, only: rdms
 
         type(basis_t), intent(in) :: basis
-        integer(i0), intent(in) :: f(basis%tensor_label_len)
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: irdm, isym
         integer :: i, bit_pos, bit_element
 
