@@ -322,11 +322,11 @@ contains
             case('USE_ALL_SPIN_SECTORS')
                 dmqmc_in%all_spin_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
-                call readi(nrdms)
-                allocate(rdms(nrdms), stat=ierr)
-                call check_allocate('rdms', nrdms, ierr)
-                doing_reduced_dm = .true.
-                do i = 1, nrdms
+                call readi(dmqmc_in%rdm%nrdms)
+                allocate(rdms(dmqmc_in%rdm%nrdms), stat=ierr)
+                call check_allocate('rdms', dmqmc_in%rdm%nrdms, ierr)
+                dmqmc_in%rdm%doing_rdm = .true.
+                do i = 1, dmqmc_in%rdm%nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
                     rdms(i)%A_nsites = nitems
@@ -336,19 +336,23 @@ contains
                         call readi(rdms(i)%subsystem_A(j))
                     end do
                 end do
+
+                ! TODO: Remove this. This is here temporarily until more purity
+                ! work is done, and FCI RDMs are separated out from DMQMC RDMs.
+                nrdms = dmqmc_in%rdm%nrdms
             case('GROUND_STATE_RDM')
-                calc_ground_rdm = .true.
+                dmqmc_in%rdm%calc_ground_rdm = .true.
             case('INSTANTANEOUS_RDM')
-                calc_inst_rdm = .true.
+                dmqmc_in%rdm%calc_inst_rdm = .true.
             case('OUTPUT_RDM')
-                output_rdm = .true.
+                dmqmc_in%rdm%output_rdm = .true.
             case('EXACT_RDM_EIGENVALUES')
                 doing_exact_rdm_eigv = .true.
-                calc_ground_rdm = .true.
+                dmqmc_in%rdm%calc_ground_rdm = .true.
             case('CONCURRENCE')
-                doing_concurrence = .true.
+                dmqmc_in%rdm%doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
-                doing_vn_entropy = .true.
+                dmqmc_in%rdm%doing_vn_entropy = .true.
             case('RENYI_ENTROPY_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
             case('START_AVERAGING_EXCITATION_DIST')
@@ -408,11 +412,11 @@ contains
                     end if
                 end if
             case('SPAWNED_RDM_LENGTH')
-                call readi(spawned_length)
+                call readi(dmqmc_in%rdm%spawned_length)
                 if (item /= nitems) then
                     call readu(w)
                     if (w == 'MB') then
-                        spawned_length = -spawned_length
+                        dmqmc_in%rdm%spawned_length = -dmqmc_in%rdm%spawned_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
@@ -726,7 +730,7 @@ contains
                 if (qmc_in%walker_length == 0) call stop_all(this,'Walker length zero.')
                 if (qmc_in%spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
-            if (calc_inst_rdm .and. spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
+            if (dmqmc_in%rdm%calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
             if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
             if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(reference%occ_list0)) then
@@ -747,7 +751,7 @@ contains
 
         if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%replica_tricks)) call stop_all(this,&
                     'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
-        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%rdm%calc_inst_rdm)) call stop_all(this,&
                     'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
 
         ! If the FINITE_CLUSTER keyword was detected then make sure that
@@ -765,8 +769,8 @@ contains
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
                     call stop_all(this, 'The use_all_spin_sectors option cannot be used with magnetic fields.')
-            if (calc_ground_rdm) call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options cannot be&
-                                                      & used together.')
+            if (dmqmc_in%rdm%calc_ground_rdm) call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options&
+                                                      & cannot be used together.')
         end if
 
         if (restart_in%dump_restart_file_shift) then
@@ -920,21 +924,23 @@ contains
         call mpi_bcast(dmqmc_in%beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        ! TODO: Remove this when more purity work is done.
         call mpi_bcast(nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%start_av_excit_dist, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%start_av_rdm, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)

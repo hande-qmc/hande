@@ -104,35 +104,6 @@ logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-! If true then the reduced density matricies will be calulated for the 'A'
-! subsystems specified by the user.
-logical :: doing_reduced_dm = .false.
-
-! If true then each subsystem A RDM specified by the user will be accumulated
-! from the iteration start_averaging until the end of the beat loop, allowing
-! ground-state estimates of the RDMs to be calculated.
-logical :: calc_ground_rdm = .false.
-
-! If true then the reduced density matricies will be calculated for each
-! subsystem specified by the user at the end of each report loop. These RDMs
-! can be used to calculate instantaeous estimates at the given beta value.
-! They are thrown away after these calculation has been performed on them.
-logical :: calc_inst_rdm = .false.
-
-! The length of the spawning array for RDMs. Each RDM calculated has the same
-! length array.
-integer :: spawned_length
-
-! If true then calculate the concurrence for reduced density matrix of two sites.
-logical :: doing_concurrence = .false.
-
-! If true then calculate the von Neumann entanglement entropy for specified subsystem.
-logical :: doing_vn_entropy = .false.
-
-! If true then, if doing an exact diagonalisation, calculate and output the
-! eigenvalues of the reduced density matrix requested.
-logical :: doing_exact_rdm_eigv=.false.
-
 ! This stores the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
 real(p), allocatable :: reduced_density_matrix(:,:)
@@ -189,9 +160,6 @@ type(rdm_t), allocatable :: rdms(:)
 ! This is only set and used when performing rdm calculations.
 integer :: nsym_vec
 
-! If true then the reduced density matrix is output to a file, 'reduced_dm'
-! each beta loop.
-logical :: output_rdm
 ! The unit of the file reduced_dm.
 integer :: rdm_unit
 
@@ -298,7 +266,7 @@ contains
                     write (6, '(16X,a3,'//int_fmt(i,0)//',1x,a2)', advance = 'no') 'RDM', i, 'S2'
                 end do
             end if
-            if (calc_inst_rdm) then
+            if (dmqmc_in%rdm%calc_inst_rdm) then
                 do i = 1, nrdms
                     do j = 1, ntypes
                         write (6, '(7X,a3,'//int_fmt(i,0)//',1x,a5,1x,'//int_fmt(j,0)//')', advance = 'no') &
@@ -423,7 +391,7 @@ contains
             end if
 
             ! Traces for instantaneous RDM estimates.
-            if (calc_inst_rdm) then
+            if (dmqmc_in%rdm%calc_inst_rdm) then
                 do i = 1, nrdms
                     do j = 1, ntypes
                         write (6, '(2x,es17.10)', advance = 'no') rdm_traces(j,i)

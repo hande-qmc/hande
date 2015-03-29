@@ -26,7 +26,7 @@ contains
         use determinants, only: spin_orb_list
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
-        use fciqmc_data, only: doing_exact_rdm_eigv, reduced_density_matrix
+        use fciqmc_data, only: reduced_density_matrix
         use full_diagonalisation
         use hamiltonian, only: get_hmatel
         use reference_determinant
@@ -281,7 +281,7 @@ contains
                                                         &routine. Skipping this calculation.', 3)
                         else if (doing_calc(exact_diag)) then
                             write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                            call setup_rdm_arrays(sys)
+                            call setup_rdm_arrays(sys, .false.)
                             rdm_size = size(reduced_density_matrix, 1)
 
                             allocate(rdm_eigenvalues(rdm_size), stat=ierr)
