@@ -867,8 +867,13 @@ contains
         real(p) :: unweighted_walker_pop(size(walker_pop))
         integer :: irdm, isym, ireplica
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
+        integer(i0) :: f3(basis%tensor_label_len)
 
         if (.not. (iteration > start_av_rdm .or. rdm_in%calc_inst_rdm)) return
+
+        ! Combined bitstring.
+        f3(1:basis%string_len) = cdet%f(:basis%string_len)
+        f3(basis%string_len+1:) = cdet%f2(:basis%string_len)
 
         ! Loop over all RDMs to be calculated.
         do irdm = 1, nrdms
@@ -890,7 +895,7 @@ contains
         if (sum(abs(f1-f2)) == 0_i0) then
             ! Call a function which maps the subsystem A state to two RDM
             ! bitstrings.
-            call decode_dm_bitstring(basis, cdet%f, isym, rdm_info(irdm))
+            call decode_dm_bitstring(basis, f3, isym, rdm_info(irdm))
 
             if (rdm_in%calc_ground_rdm) then
                 ! The above routine actually maps to numbers between 0
