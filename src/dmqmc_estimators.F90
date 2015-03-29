@@ -43,7 +43,7 @@ contains
         !    dmqmc_estimates: type containing dmqmc estimates.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: num_dmqmc_operators, calc_inst_rdm, nrdms
+        use fciqmc_data, only: num_dmqmc_operators, nrdms
         use qmc_data, only: particle_t, qmc_state_t
         use parallel
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
@@ -63,7 +63,7 @@ contains
         ! If calculating instantaneous RDM estimates then call this routine to
         ! perform annihilation for RDM particles, and calculate RDM estimates
         ! before they are summed over processors. below.
-        if (calc_inst_rdm) call communicate_inst_rdms(accumulated_probs_old)
+        if (dmqmc_in%rdm%calc_inst_rdm) call communicate_inst_rdms(accumulated_probs_old)
 
         ! How big is each variable to be communicated?
         nelems(rspawn_ind) = 1
@@ -134,9 +134,7 @@ contains
         !    rep_loop_loc: array containing local quantities to be communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn
-        use fciqmc_data, only: rdm_traces, renyi_2
-        use fciqmc_data, only: calc_inst_rdm
+        use fciqmc_data, only: rspawn, rdm_traces, renyi_2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -159,7 +157,7 @@ contains
         if (dmqmc_in%calc_excit_dist) then
             rep_loop_loc(min_ind(excit_dist_ind):max_ind(excit_dist_ind)) = dmqmc_estimates%excit_dist
         end if
-        if (calc_inst_rdm) then
+        if (dmqmc_in%rdm%calc_inst_rdm) then
             ! Reshape this 2d array into a 1d array to add it to rep_loop_loc.
             nrdms = max_ind(rdm_trace_ind) - min_ind(rdm_trace_ind) + 1
             rep_loop_loc(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)) = reshape(rdm_traces, nrdms)
@@ -193,7 +191,7 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use fciqmc_data, only: rspawn, nrdms
-        use fciqmc_data, only: rdm_traces, renyi_2, calc_inst_rdm
+        use fciqmc_data, only: rdm_traces, renyi_2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
@@ -214,7 +212,7 @@ contains
         if (dmqmc_in%calc_excit_dist) then
             dmqmc_estimates%excit_dist = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
         end if
-        if (calc_inst_rdm) then
+        if (dmqmc_in%rdm%calc_inst_rdm) then
             rdm_traces = reshape(rep_loop_sum(min_ind(rdm_trace_ind):max_ind(rdm_trace_ind)), shape(rdm_traces))
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
@@ -844,8 +842,7 @@ contains
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
         use fciqmc_data, only: reduced_density_matrix
-        use fciqmc_data, only: calc_inst_rdm, rdms, nrdms
-        use fciqmc_data, only: rdm_spawn
+        use fciqmc_data, only: rdms, nrdms, rdm_spawn
         use fciqmc_data, only: nsym_vec, real_factor
         use spawning, only: create_spawned_particle_rdm
 
@@ -863,7 +860,7 @@ contains
         integer :: irdm, isym, ireplica
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
 
-        if (.not. (iteration > start_av_rdm .or. calc_inst_rdm)) return
+        if (.not. (iteration > start_av_rdm .or. rdm_in%calc_inst_rdm)) return
 
         ! Loop over all RDMs to be calculated.
         do irdm = 1, nrdms
@@ -903,7 +900,7 @@ contains
                     reduced_density_matrix(rdms(irdm)%end1(1),rdms(irdm)%end2(1)) + unweighted_walker_pop(1)
             end if
 
-            if (calc_inst_rdm) then
+            if (rdm_in%calc_inst_rdm) then
                 do ireplica = 1, size(walker_pop)
                 if (abs(walker_pop(ireplica)) > 0) then
                     call create_spawned_particle_rdm(rdms(irdm), walker_pop(ireplica), &

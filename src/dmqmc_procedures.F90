@@ -166,7 +166,7 @@ contains
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
         use errors
-        use fciqmc_data, only: reduced_density_matrix, nrdms, calc_inst_rdm
+        use fciqmc_data, only: reduced_density_matrix, nrdms
         use fciqmc_data, only: renyi_2, real_bit_shift
         use fciqmc_data, only: rdm_spawn, rdms
         use hash_table, only: alloc_hash_table
@@ -199,7 +199,7 @@ contains
 
         ! Create the instances of the rdm_spawn_t type for instantaneous RDM
         ! calculatons.
-        if (calc_inst_rdm) then
+        if (rdm_in%calc_inst_rdm) then
             allocate(rdm_spawn(nrdms), stat=ierr)
             call check_allocate('rdm_spawn', nrdms, ierr)
         end if
@@ -230,7 +230,7 @@ contains
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
 
             ! Allocate the spawn_t and hash table instances for this RDM.
-            if (calc_inst_rdm) then
+            if (rdm_in%calc_inst_rdm) then
                 if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
                 size_spawned_rdm = (rdms(i)%string_len*2+nreplicas)*int_s_length/8
                 total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
@@ -260,7 +260,7 @@ contains
             end if
         end do
 
-        if (parent .and. calc_inst_rdm) then
+        if (parent .and. rdm_in%calc_inst_rdm) then
             write (6,'(1X,a58,f7.2)') 'Memory allocated per core for the spawned RDM lists (MB): ', &
                 total_size_spawned_rdm*real(2*spawn_length_loc,p)/10**6
             write (6,'(1X,a49,'//int_fmt(spawn_length_loc,1)//',/)') &

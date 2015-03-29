@@ -339,7 +339,7 @@ contains
             case('GROUND_STATE_RDM')
                 dmqmc_in%rdm%calc_ground_rdm = .true.
             case('INSTANTANEOUS_RDM')
-                calc_inst_rdm = .true.
+                dmqmc_in%rdm%calc_inst_rdm = .true.
             case('OUTPUT_RDM')
                 output_rdm = .true.
             case('EXACT_RDM_EIGENVALUES')
@@ -726,7 +726,7 @@ contains
                 if (qmc_in%walker_length == 0) call stop_all(this,'Walker length zero.')
                 if (qmc_in%spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
-            if (calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
+            if (dmqmc_in%rdm%calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
             if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
             if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
             if (allocated(reference%occ_list0)) then
@@ -747,7 +747,7 @@ contains
 
         if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%replica_tricks)) call stop_all(this,&
                     'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
-        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%rdm%calc_inst_rdm)) call stop_all(this,&
                     'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
 
         ! If the FINITE_CLUSTER keyword was detected then make sure that
@@ -929,7 +929,7 @@ contains
         call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%doing_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)

@@ -570,7 +570,7 @@ contains
                 if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
                     write (6, '(1x,a73)') 'RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.'
                 end if
-                if (calc_inst_rdm) then
+                if (dmqmc_in%rdm%calc_inst_rdm) then
                     write (6, '(1x,a83)') 'RDM(n) trace m: The current total population on the diagonal of replica m &
                                           &of RDM n.'
                 end if
