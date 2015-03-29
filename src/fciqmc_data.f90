@@ -104,10 +104,6 @@ logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-! If true then, if doing an exact diagonalisation, calculate and output the
-! eigenvalues of the reduced density matrix requested.
-logical :: doing_exact_rdm_eigv = .false.
-
 ! This stores the reduces matrix, which is slowly accumulated over time
 ! (on each processor).
 real(p), allocatable :: reduced_density_matrix(:,:)

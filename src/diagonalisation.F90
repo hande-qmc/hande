@@ -26,7 +26,7 @@ contains
         use determinants, only: spin_orb_list
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
-        use fciqmc_data, only: doing_exact_rdm_eigv, reduced_density_matrix
+        use fciqmc_data, only: reduced_density_matrix
         use full_diagonalisation
         use hamiltonian, only: get_hmatel
         use reference_determinant

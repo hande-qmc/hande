@@ -89,6 +89,10 @@ character(255) :: hamiltonian_file = 'HAMIL'
 ! BLACS info for diagonalisation
 type(blacs_info) :: proc_blacs_info
 
+! If true then, if doing an exact diagonalisation, calculate and output the
+! eigenvalues of the reduced density matrix requested.
+logical :: doing_exact_rdm_eigv = .false.
+
 !--- Parallel info for FCI calculations ---
 
 ! Distribution of Hamiltonian matrix across the processors.

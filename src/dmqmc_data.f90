@@ -56,10 +56,6 @@ type dmqmc_rdm_in_t
     ! If true then calculate the von Neumann entanglement entropy for specified subsystem.
     logical :: doing_vn_entropy = .false.
 
-    ! If true then, if doing an exact diagonalisation, calculate and output the
-    ! eigenvalues of the reduced density matrix requested.
-    logical :: doing_exact_rdm_eigv = .false.
-
     ! If true then the reduced density matrix is output to a file, 'reduced_dm'
     ! each beta loop.
     logical :: output_rdm = .false.

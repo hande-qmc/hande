@@ -25,7 +25,6 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
-        use fciqmc_data, only: doing_exact_rdm_eigv
         use parallel, only: parent, nprocs
         use system, only: sys_t
 
