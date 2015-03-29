@@ -205,29 +205,6 @@ type rdm_t
     integer(i0), allocatable :: end1(:), end2(:)
 end type rdm_t
 
-type dmqmc_estimates_t
-    ! numerators stores the numerators for the estimators in DMQMC. These
-    ! are, for a general operator O which we wish to find the thermal average of:
-    ! \sum_{i,j} \rho_{ij} * O_{ji}
-    ! This variabe will store this value from the first iteration of each
-    ! report loop. At the end of a report loop, the values from each
-    ! processor are combined and stored in numerators on the parent
-    ! processor. This is then output, and the values of numerators
-    ! are reset on each processor to start the next report loop.
-    real(p) :: numerators(num_dmqmc_operators)
-
-    ! In DMQMC the trace of the density matrix is an important quantity
-    ! used in calculating all thermal estimators. This quantity stores
-    ! the this value, Tr(\rho), where rho is the density matrix which
-    ! the DMQMC algorithm calculates stochastically.
-    real(p), allocatable :: trace(:) ! (particle_t%nspaces)
-
-    ! This array is used to hold the number of particles on each excitation
-    ! level of the density matrix.
-    real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
-end type dmqmc_estimates_t
-
-
 !--- Type for all instantaneous RDMs ---
 type dmqmc_inst_rdms_t
     ! The total number of rdms beings calculated.
@@ -258,7 +235,6 @@ type dmqmc_inst_rdms_t
     real(p), allocatable :: renyi_2(:) ! (nrdms)
 end type dmqmc_inst_rdms_t
 
-
 !--- Type for a ground state RDM ---
 type dmqmc_ground_rdm_t
     ! [todo] - rename to 'rdm'.
@@ -270,6 +246,31 @@ type dmqmc_ground_rdm_t
     ! [todo] - as instantaneous RDMs. This needs updating.
     real(p) :: trace
 end type dmqmc_ground_rdm_t
+
+type dmqmc_estimates_t
+    ! numerators stores the numerators for the estimators in DMQMC. These
+    ! are, for a general operator O which we wish to find the thermal average of:
+    ! \sum_{i,j} \rho_{ij} * O_{ji}
+    ! This variabe will store this value from the first iteration of each
+    ! report loop. At the end of a report loop, the values from each
+    ! processor are combined and stored in numerators on the parent
+    ! processor. This is then output, and the values of numerators
+    ! are reset on each processor to start the next report loop.
+    real(p) :: numerators(num_dmqmc_operators)
+
+    ! In DMQMC the trace of the density matrix is an important quantity
+    ! used in calculating all thermal estimators. This quantity stores
+    ! the this value, Tr(\rho), where rho is the density matrix which
+    ! the DMQMC algorithm calculates stochastically.
+    real(p), allocatable :: trace(:) ! (particle_t%nspaces)
+
+    ! This array is used to hold the number of particles on each excitation
+    ! level of the density matrix.
+    real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
+
+    ! Info about ground-state RDM estimates.
+    type(dmqmc_ground_rdm_t) :: ground_rdm
+end type dmqmc_estimates_t
 
 !--- Type for weighted sampling parameters ---
 type dmqmc_weighted_sampling_t
