@@ -653,13 +653,8 @@ Module restart_hdf5
             call h5open_f(ierr)
             call init_restart_hdf5(ri, .false., tmp_name, kinds, 0, .false.)
             call h5fopen_f(tmp_name, H5F_ACC_RDONLY_F, orig_id, ierr)
-            if (ierr/=0) then
-               call stop_all('redistribute_restart_hdf5', "Unable to open restart file.")
-            endif
-
-            call h5gopen_f(orig_id, gmetadata, orig_group_id, ierr)
-            call hdf5_read(orig_group_id, dnprocs, nprocs_read)
-            call h5gclose_f(orig_group_id, ierr)
+            if (ierr/=0) call stop_all('redistribute_restart_hdf5', "Unable to open restart file.")
+            call hdf5_read(orig_id, gmetadata//'/'//dnprocs, nprocs_read)
             call h5fclose_f(orig_id, ierr)
 
             ! Create filenames and HDF5 IDs for all old and new files.
@@ -686,75 +681,66 @@ Module restart_hdf5
             ! Open the original file from proc=0 to get required metadata.  (The choice is arbitrary as
             ! all restart files contain the same metadata.)
             call h5fopen_f(orig_names(0), H5F_ACC_RDONLY_F, orig_id, ierr)
-            call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
-            call h5gopen_f(orig_group_id, gpsips, orig_subgroup_id, ierr)
 
             ! Get info relating to assigning states to processors.
             hash_seed = 7 ! hard-coded default at time of writing (so will work with past and future restart files)
             move_freq = 0 ! true unless doing CCMC.
-! [review] - AJWT: There must be some nicer wrappers we can create - this is almost unreadable!  What about some functions?
-            call h5gopen_f(orig_id, gmetadata, orig_group_id, ierr)
-                call hdf5_read(orig_group_id, dcalc, calc_type_restart)
-            call h5gclose_f(orig_group_id, ierr)
-            call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
-            call h5gopen_f(orig_group_id, gstate, orig_subgroup_id, ierr)
-            ! CARE: as an implementation detail, the CCMC code uses the number of Monte Carlo cycles (stored in dncycles) as the
-            ! hash shift.
-            call hdf5_read(orig_subgroup_id, dncycles, hash_shift)
+            call hdf5_read(orig_id, gmetadata//'/'//dcalc, calc_type_restart)
 
-            call h5lexists_f(orig_subgroup_id, dhash_seed, exists, ierr)
+            ! CARE: as an implementation detail, the CCMC code uses the number of
+            ! Monte Carlo cycles (stored in dncycles) as the hash shift.
+            call hdf5_read(orig_id, gqmc//'/'//gstate//'/'//dncycles, hash_shift)
+
+            call h5lexists_f(orig_id, gqmc//'/'//gstate//'/'//dhash_seed, exists, ierr)
             if (exists) then
-                call hdf5_read(orig_subgroup_id, dhash_seed, hash_seed)
+                call hdf5_read(orig_id, gqmc//'/'//gstate//'/'//dhash_seed, hash_seed)
             else if (iand(calc_type_restart, ccmc_calc) /= 0 .and. parent) then
                 call warning('redistribute_restart_hdf5', &
                              'hash_seed not found in the restart file.  Using a default hard-coded value.')
             end if
 
-            call h5lexists_f(orig_subgroup_id, dmove_freq, exists, ierr)
+            call h5lexists_f(orig_id, gqmc//'/'//gstate//'/'//dmove_freq, exists, ierr)
             if (exists) then
-                call hdf5_read(orig_subgroup_id, dmove_freq, move_freq)
+                call hdf5_read(orig_id, gqmc//'/'//gstate//'/'//dmove_freq, move_freq)
             else if (iand(calc_type_restart, ccmc_calc) /= 0) then
                 ! Only relevant in CCMC.  Require user to set it in input file manually.
                 move_freq = ccmc_in_defaults%move_freq
                 if (parent) call warning('redistribute_restart_hdf5', &
                                          'move_freq not found in the restart file.  Using a default hard-coded value.')
             end if
-            call h5gclose_f(orig_subgroup_id, ierr)
-            call h5gopen_f(orig_group_id, gpsips, orig_subgroup_id, ierr)
+
+            call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
 
             ! Write out metadata to each new file.
             ! Can just copy it from the first old restart file as it is the same on all files...
             do i = 0, nprocs_target-1
                 call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
+                ! /metadata and /rng
                 call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
                 call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
-                ! ...and non-psip-specific groups in the qmc/ group.
-! [review] - AJWT: I see that the indentation is meant to help understand structure, though I'm not sure it does much
+                ! ...and non-psip-specific groups in the /qmc group.
                 call h5gcreate_f(new_id, gqmc, group_id, ierr)
                 call h5gopen_f(new_id, gqmc, group_id, ierr)
+                    ! /qmc/state and /qmc/reference
                     call h5ocopy_f(orig_group_id, gstate, group_id, gstate, ierr)
                     call h5ocopy_f(orig_group_id, gref, group_id, gref, ierr)
-                    ! ...and create (but don't fill) the psips group except the constant (new) processor map and total population.
+                    ! ...and create the /qmc/psips group and fill in the constant (new) processor map and total population.
                     call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
-                    call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
-                        ! Note that HDF5 can't store booleans so instead set resort to 1 and interpret that accordingly when reading
-                        ! a restart file back in.
-                        call hdf5_write(subgroup_id, dresort, 1)
-                        call h5ocopy_f(orig_subgroup_id, dtot_pop, subgroup_id, dtot_pop, ierr)
-                    call h5gclose_f(subgroup_id, ierr)
+                    call hdf5_write(group_id, gpsips//'/'//dproc_map, kinds, shape(pm_dummy%map), pm_dummy%map)
+                    call h5ocopy_f(orig_group_id, gpsips//'/'//dtot_pop, group_id, dtot_pop, ierr)
+                    ! Note that HDF5 can't store booleans so instead set resort to 1 and interpret that accordingly when reading
+                    ! a restart file back in.
+                    call hdf5_write(group_id, gpsips//'/'//dresort, 1)
                 call h5gclose_f(group_id, ierr)
-                ! Update info.
-                ! NOTE: we don't modify the date/time/UUID...
-                call h5gopen_f(new_id, gmetadata, group_id, ierr)
-                    call h5dopen_f(group_id, dnprocs, dset_id, ierr)
-                    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, nprocs_target, [0_HSIZE_T,0_HSIZE_T], ierr)
-                    call h5dclose_f(dset_id, ierr)
-                call h5gclose_f(group_id, ierr)
+
+                ! Update info.  NOTE: we don't modify the date/time/UUID, just processor count...
+                call h5dopen_f(new_id, gmetadata//'/'//dnprocs, dset_id, ierr)
+                call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, nprocs_target, [0_HSIZE_T,0_HSIZE_T], ierr)
+                call h5dclose_f(dset_id, ierr)
+
                 call h5fclose_f(new_id, ierr)
             end do
 
-            call h5gclose_f(orig_subgroup_id, ierr)
-            call h5gclose_f(orig_group_id, ierr)
             call h5fclose_f(orig_id, ierr)
 
             ! Read the old restart file for each processor in turn and place the psip
