@@ -41,9 +41,9 @@ contains
         dmqmc_estimates%trace = 0.0_p
 
         dmqmc_estimates%inst_rdm%nrdms = dmqmc_in%rdm%nrdms
-        allocate(rdm_traces(nreplicas, dmqmc_in%rdm%nrdms), stat=ierr)
-        call check_allocate('rdm_traces',size(rdm_traces),ierr)
-        rdm_traces = 0.0_p
+        allocate(dmqmc_estimates%inst_rdm%traces(nreplicas, dmqmc_in%rdm%nrdms), stat=ierr)
+        call check_allocate('dmqmc_estimates%inst_rdm%traces', size(dmqmc_estimates%inst_rdm%traces),ierr)
+        dmqmc_estimates%inst_rdm%traces = 0.0_p
 
         ! If calculating a correlaton function then set up the necessary bit
         ! mask. This has a bit set for each of the two sites/orbitals being

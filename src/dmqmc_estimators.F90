@@ -64,7 +64,8 @@ contains
         ! If calculating instantaneous RDM estimates then call this routine to
         ! perform annihilation for RDM particles, and calculate RDM estimates
         ! before they are summed over processors. below.
-        if (dmqmc_in%rdm%calc_inst_rdm) call communicate_inst_rdms(accumulated_probs_old, dmqmc_estimates%rdm_info)
+        if (dmqmc_in%rdm%calc_inst_rdm) call communicate_inst_rdms(accumulated_probs_old, dmqmc_estimates%rdm_info, &
+                                                                    dmqmc_estimates%inst_rdm)
 
         ! How big is each variable to be communicated?
         nelems(rspawn_ind) = 1
@@ -136,7 +137,7 @@ contains
         !    rep_loop_loc: array containing local quantities to be communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn, rdm_traces, renyi_2
+        use fciqmc_data, only: rspawn, renyi_2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -165,7 +166,7 @@ contains
         if (dmqmc_in%rdm%calc_inst_rdm) then
             ! Reshape this 2d array into a 1d array to add it to rep_loop_loc.
             nrdms = max_ind(inst_rdm_trace_ind) - min_ind(inst_rdm_trace_ind) + 1
-            rep_loop_loc(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)) = reshape(rdm_traces, nrdms)
+            rep_loop_loc(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)) = reshape(dmqmc_estimates%inst_rdm%traces, nrdms)
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = renyi_2
@@ -196,7 +197,7 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use fciqmc_data, only: rspawn
-        use fciqmc_data, only: rdm_traces, renyi_2
+        use fciqmc_data, only: renyi_2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
@@ -221,7 +222,8 @@ contains
             dmqmc_estimates%ground_rdm%trace = rep_loop_sum(min_ind(ground_rdm_trace_ind))
         end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
-            rdm_traces = reshape(rep_loop_sum(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)), shape(rdm_traces))
+            dmqmc_estimates%inst_rdm%traces = reshape(rep_loop_sum(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)), &
+                                                      shape(dmqmc_estimates%inst_rdm%traces))
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
             renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
@@ -232,7 +234,7 @@ contains
 
     end subroutine communicated_dmqmc_estimators
 
-    subroutine communicate_inst_rdms(accumulated_probs_old, rdm_info)
+    subroutine communicate_inst_rdms(accumulated_probs_old, rdm_info, inst_rdms)
 
         ! Perform annihilation between 'RDM particles'. This is done exactly
         ! by calling the normal annihilation routine for a spawned object,
@@ -247,17 +249,21 @@ contains
         !        report cycle.
         !    rdm_info: information relating to RDMs and RDM subsystems being
         !        studied.
+        ! In/Out:
+        !    inst_rdms: The instantaneous RDM estimates which are to be
+        !        communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use dmqmc_data, only: rdm_t
-        use fciqmc_data, only: rdm_spawn, rdm_traces, renyi_2
+        use dmqmc_data, only: rdm_t, dmqmc_inst_rdms_t
+        use fciqmc_data, only: rdm_spawn, renyi_2
         use hash_table, only: reset_hash_table
         use spawn_data, only: annihilate_wrapper_spawn_t
 
         real(p), intent(in) :: accumulated_probs_old(0:)
+        type(rdm_t), intent(in) :: rdm_info(:)
+        type(dmqmc_inst_rdms_t), intent(inout) :: inst_rdms
 
         integer :: irdm, nrdms
-        type(rdm_t), intent(in) :: rdm_info(:)
 
         nrdms = size(rdm_info)
 
@@ -279,7 +285,7 @@ contains
             rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
         end do
 
-        call calculate_rdm_traces(rdm_info, rdm_spawn%spawn, rdm_traces)
+        call calculate_rdm_traces(rdm_info, rdm_spawn%spawn, inst_rdms%traces)
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdm_info, rdm_spawn%spawn, accumulated_probs_old,  renyi_2)
 
         do irdm = 1, nrdms
@@ -1198,7 +1204,7 @@ contains
         !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of
         !        the RDM psips which belong to this processor.
         ! Out:
-        !    r2: The calculated RDM traces.
+        !    traces: The calculated RDM traces.
 
         use dmqmc_data, only: rdm_t
         use excitations, only: get_excitation_level

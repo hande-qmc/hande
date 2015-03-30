@@ -81,9 +81,6 @@ real(p) :: numerators(num_dmqmc_operators)
 ! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
 real(p), allocatable :: renyi_2(:)
 
-! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-real(p), allocatable :: rdm_traces(:,:) ! (walker_global%nspaces, nrdms)
-
 ! If this logical is true then the program runs the DMQMC algorithm with
 ! importance sampling.
 ! dmqmc_sampling_prob stores the factors by which the probabilities of
@@ -176,20 +173,23 @@ contains
 
     !--- Output procedures ---
 
-    subroutine write_fciqmc_report_header(ntypes, dmqmc_in)
+    subroutine write_fciqmc_report_header(ntypes, dmqmc_in, max_excit)
 
         ! In:
         !    ntypes: number of particle types being sampled.
-        !    dmqmc_in (optional): input options relating to DMQMC.
+        ! In (optional):
+        !    dmqmc_in: input options relating to DMQMC.
+        !    max_excit: The maximum number of excitations for the system.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_global
+        use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
 
         integer, intent(in) :: ntypes
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
+        integer, optional, intent(in) :: max_excit
 
         integer :: i, j
         character(16) :: excit_header
@@ -230,7 +230,7 @@ contains
             end if
             if (present(dmqmc_in)) then
                 if (dmqmc_in%calc_excit_dist) then
-                    do i = 0, ubound(dmqmc_estimates_global%excit_dist,1)
+                    do i = 0, max_excit
                         write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
                         write (6, '(5X,a16)', advance='no') excit_header
                     end do
@@ -266,14 +266,14 @@ contains
         !    elapsed_time: time taken for the report loop.
         !    comment: if true, then prefix the line with a #.
         !    non_blocking_comm: true if using non-blocking communications
+        ! In (optional):
         !    dmqmc_in: input options relating to DMQMC.
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_global
         use qmc_data, only: qmc_in_t, walker_global, qmc_state_t
-        use dmqmc_data, only: dmqmc_estimates_global
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
@@ -348,7 +348,7 @@ contains
             if (dmqmc_in%rdm%calc_inst_rdm) then
                 do i = 1, dmqmc_in%rdm%nrdms
                     do j = 1, ntypes
-                        write (6, '(2x,es17.10)', advance = 'no') rdm_traces(j,i)
+                        write (6, '(2x,es17.10)', advance = 'no') dmqmc_estimates_global%inst_rdm%traces(j,i)
                     end do
                 end do
             end if

@@ -210,9 +210,8 @@ type dmqmc_inst_rdms_t
     ! The total number of rdms beings calculated.
     integer :: nrdms = 0
 
-    ! [todo] - remove rdm_ stem.
-    ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-    real(p), allocatable :: rdm_traces(:,:) ! (particle_t%nspaces, nrdms)
+    ! traces(i,j) holds the trace of replica i of the rdm with label j.
+    real(p), allocatable :: traces(:,:) ! (particle_t%nspaces, nrdms)
 
     ! [todo] - remove rdm_ stem.
     type(rdm_spawn_t), allocatable :: rdm_spawn(:) ! nrdms
@@ -230,13 +229,10 @@ end type dmqmc_inst_rdms_t
 
 !--- Type for a ground state RDM ---
 type dmqmc_ground_rdm_t
-    ! [todo] - rename to 'rdm'.
     ! This stores the reduces matrix, which is slowly accumulated over time
     ! (on each processor).
     real(p), allocatable :: rdm(:,:)
     ! The trace of the ground-state RDM.
-    ! [todo] - Currently ground-state RDMs use the global rdm_traces, the same
-    ! [todo] - as instantaneous RDMs. This needs updating.
     real(p) :: trace
 end type dmqmc_ground_rdm_t
 

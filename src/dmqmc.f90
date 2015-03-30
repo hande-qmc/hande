@@ -102,7 +102,7 @@ contains
         ! Main DMQMC loop.
         if (parent) then
             call rng_init_info(qmc_in%seed+iproc)
-            call write_fciqmc_report_header(qs%psip_list%nspaces, dmqmc_in)
+            call write_fciqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations)
         end if
         ! Initialise timer.
         call cpu_time(t1)
