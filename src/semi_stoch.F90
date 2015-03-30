@@ -611,7 +611,7 @@ contains
                 end associate
 
                 ! Insert a determinant with population zero into the walker arrays.
-                call insert_new_walker(sys, psip_list, annihilation_flags, pos, dets_this_proc(:,i), zero_population, reference%H00)
+                call insert_new_walker(sys, psip_list, annihilation_flags, pos, dets_this_proc(:,i), zero_population, reference)
 
                 psip_list%nstates = psip_list%nstates + 1
             end if

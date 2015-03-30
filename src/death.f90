@@ -105,7 +105,7 @@ contains
 
     end subroutine stochastic_death
 
-    subroutine stochastic_hf_cloning(rng, tau, Oii, hamiltonian_pop, ncloned)
+    subroutine stochastic_hf_cloning(rng, tau, Oii, hf_shift, hamiltonian_pop, ncloned)
 
         ! Clone Hellmann--Feynman particles from Hamiltonian particles.
         ! HF particles are created from Hamiltonian particles on the same
@@ -121,6 +121,7 @@ contains
         !    tau: timestep being used.
         !    Oii: < D_i | O | D_i > (stored in the appropriate element of
         !        walker_enegies).
+        !    hf_shift: the Hellmann--Feynman shift, \tilde{S}.
         !    hamiltonian_pop: number of Hamiltonian particles on determinant
         !        D_i.
         ! Out:
@@ -128,10 +129,8 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
-        use hfs_data, only: hf_shift
-
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: tau, Oii
+        real(p), intent(in) :: tau, Oii, hf_shift
         integer(int_p), intent(in) :: hamiltonian_pop
         integer(int_p), intent(out) :: ncloned
 

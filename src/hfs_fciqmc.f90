@@ -119,10 +119,10 @@ contains
 
             ! Zero report cycle quantities.
             qs%estimators%proj_energy = 0.0_p
-            proj_hf_O_hpsip = 0.0_p
-            proj_hf_H_hfpsip = 0.0_p
+            qs%estimators%proj_hf_O_hpsip = 0.0_p
+            qs%estimators%proj_hf_H_hfpsip = 0.0_p
             qs%estimators%D0_population = 0.0_p
-            D0_hf_population = 0.0_p
+            qs%estimators%D0_hf_population = 0.0_p
             rspawn = 0.0_p
 
             do icycle = 1, qmc_in%ncycles
@@ -161,8 +161,8 @@ contains
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(qs%psip_list%pops(1,idet)),&
                                              int(qs%psip_list%pops(2,idet)), cdet%data,  &
-                                             connection, hmatel, D0_hf_population,  &
-                                             proj_hf_O_hpsip, proj_hf_H_hfpsip)
+                                             connection, hmatel, qs%estimators%D0_hf_population,  &
+                                             qs%estimators%proj_hf_O_hpsip, qs%estimators%proj_hf_H_hfpsip)
 
                     ! Is this determinant an initiator?
                     ! A determinant can be an initiator in the Hamiltonian space
@@ -247,7 +247,7 @@ contains
                     ! Not in place, must set initiator flag.
                     cdet%initiator_flag = h_initiator_flag
                     ! [todo] - JSS: real populations for HFS spawner.
-                    call stochastic_hf_cloning(rng, qs%tau, qs%psip_list%dat(2,idet), &
+                    call stochastic_hf_cloning(rng, qs%tau, qs%shift(2), qs%psip_list%dat(2,idet), &
                                                qs%psip_list%pops(1,idet), nspawned)
                     if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, &
                                                                         qs%spawn_store%spawn, load_bal_in%nslots)

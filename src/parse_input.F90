@@ -530,8 +530,6 @@ contains
                     hf_operator = dipole_operator
                 end select
             ! Integral file for dipole moment.
-            case('ALPHA0')
-                call readi(alpha0)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
@@ -1051,7 +1049,6 @@ contains
         call mpi_bcast(qmc_in%initiator_approx, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(alpha0, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)

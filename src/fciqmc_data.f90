@@ -306,6 +306,7 @@ contains
 
         ! In:
         !    qmc_in: input options relating to QMC methods.
+        !    qs: QMC state (containing shift and various estimators).
         !    ireport: index of the report loop.
         !    ntot_particles: total number of particles in main walker list.
         !    elapsed_time: time taken for the report loop.
@@ -317,7 +318,6 @@ contains
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
         use dmqmc_data, only: dmqmc_in_t
-        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population, hf_shift
         use qmc_data, only: qmc_in_t, walker_global, qmc_state_t
         use dmqmc_data, only: dmqmc_estimates_global
 
@@ -416,8 +416,8 @@ contains
             write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,X,es17.10)', advance = 'no') &
                                              mc_cycles_done+mc_cycles, qs%shift(1),   &
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &
-                                             hf_shift, proj_hf_O_hpsip, proj_hf_H_hfpsip, &
-                                             D0_hf_population, &
+                                             qs%shift(2), qs%estimators%proj_hf_O_hpsip, qs%estimators%proj_hf_H_hfpsip, &
+                                             qs%estimators%D0_hf_population, &
                                              ntot_particles
         else
             write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,es17.10)', advance='no') &

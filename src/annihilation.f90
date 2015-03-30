@@ -275,7 +275,7 @@ contains
             if (qmc_in%real_amplitudes) call round_low_population_spawns(rng, spawn, lower_bound)
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers(sys, psip_list, reference%H00, annihilation_flags, spawn, determ_flags, lower_bound)
+            call insert_new_walkers(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound)
 
         else
 
@@ -667,7 +667,7 @@ contains
 
     end subroutine round_low_population_spawns
 
-    subroutine insert_new_walkers(sys, psip_list, H00, annihilation_flags, spawn, determ_flags, lower_bound)
+    subroutine insert_new_walkers(sys, psip_list, ref, annihilation_flags, spawn, determ_flags, lower_bound)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -675,7 +675,7 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    H00: energy of reference determinant
+        !    ref: reference determinant --- the diagonal matrix elements are required.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    psip_list: psip information.
@@ -688,13 +688,12 @@ contains
 
         use search, only: binary_search
         use system, only: sys_t
-        use qmc_data, only: particle_t, annihilation_flags_t
-        use qmc_data, only: particle_t
+        use qmc_data, only: particle_t, annihilation_flags_t, reference_t
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(inout) :: psip_list
-        real(p), intent(in) :: H00
+        type(reference_t), intent(in) :: ref
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
@@ -757,7 +756,7 @@ contains
             associate(spawned_population => spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes, i), &
                     tbl=>sys%basis%tensor_label_len)
                 call insert_new_walker(sys, psip_list, annihilation_flags, k, int(spawn%sdata(:tbl,i), i0), &
-                                       int(spawned_population, int_p), H00)
+                                       int(spawned_population, int_p), ref)
                 ! Extract the real sign from the encoded sign.
                 real_population = real(spawned_population,p)/real_factor
                 psip_list%nparticles = psip_list%nparticles + abs(real_population)
@@ -777,7 +776,7 @@ contains
 
     end subroutine insert_new_walkers
 
-    subroutine insert_new_walker(sys, psip_list, annihilation_flags,  pos, det, population, H00)
+    subroutine insert_new_walker(sys, psip_list, annihilation_flags,  pos, det, population, ref)
 
         ! Insert a new determinant, det, at position pos in psip_list%states. Also
         ! insert a new population at position pos in psip_list%pops and
@@ -793,15 +792,14 @@ contains
         !        data.
         !    det: The determinant to insert into psip_list%states.
         !    population: The population to insert into psip_list%pops.
-        !    H00: energy of the reference determinant.
+        !    ref: reference determinant.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use calc, only: trial_function, neel_singlet
         use heisenberg_estimators, only: neel_singlet_data
-        use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr
         use system, only: sys_t
-        use qmc_data, only: particle_t, annihilation_flags_t
+        use qmc_data, only: particle_t, annihilation_flags_t, reference_t
 
         use fciqmc_data, only: replica_tricks
 
@@ -811,32 +809,32 @@ contains
         integer, intent(in) :: pos
         integer(i0), intent(in) :: det(sys%basis%tensor_label_len)
         integer(int_p), intent(in) :: population(psip_list%nspaces)
-        real(p), intent(in) :: H00
+        type(reference_t), intent(in) :: ref
 
         ! Insert the new determinant.
         psip_list%states(:,pos) = det
         ! Insert the new population.
         psip_list%pops(:,pos) = population
         ! Calculate and insert all new components of psip_list%dat.
-        psip_list%dat(1,pos) = sc0_ptr(sys, det) - H00
+        psip_list%dat(1,pos) = sc0_ptr(sys, det) - ref%H00
         associate(pl=>psip_list)
             if (trial_function == neel_singlet) &
                 pl%dat(pl%nspaces+1:pl%nspaces+2,pos) = neel_singlet_data(sys, det)
         end associate
         if (doing_calc(hfs_fciqmc_calc)) then
             ! Set psip_list%dat(2:,k) = <D_i|O|D_i> - <D_0|O|D_0>.
-            psip_list%dat(2,pos) = op0_ptr(sys, det) - O00
+            psip_list%dat(2,pos) = op0_ptr(sys, det) - ref%O00
         else if (doing_calc(dmqmc_calc)) then
             if (annihilation_flags%propagate_to_beta) then
                 ! Store H^T_ii-H_jj so we can propagate with ~ 1 + \Delta\beta(H^T_ii - H_jj),
                 ! where H^T_ii is the "trial" Hamiltonian.
                 associate(bl=>sys%basis%string_len, pl=>psip_list)
-                    pl%dat(1,pos) = -trial_dm_ptr(sys, pl%states((bl+1):(2*bl),pos)) + (pl%dat(1,pos) + H00)
+                    pl%dat(1,pos) = -trial_dm_ptr(sys, pl%states((bl+1):(2*bl),pos)) + (pl%dat(1,pos) + ref%H00)
                 end associate
             else
                 ! Set the energy to be the average of the two induvidual energies.
                 associate(bl=>sys%basis%string_len, pl=>psip_list)
-                    pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - H00)/2
+                    pl%dat(1,pos) = (pl%dat(1,pos) + sc0_ptr(sys, pl%states((bl+1):(2*bl),pos)) - ref%H00)/2
                 end associate
                 if (annihilation_flags%replica_tricks) then
                     psip_list%dat(2:psip_list%nspaces,pos) = psip_list%dat(1,pos)

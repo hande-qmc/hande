@@ -229,7 +229,6 @@ contains
         !       evaluation.
 
         use fciqmc_data, only: rspawn
-        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs, iproc
@@ -259,9 +258,9 @@ contains
         end if
         if (doing_calc(hfs_fciqmc_calc)) &
             rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(qs%psip_list%nstates, qs%psip_list%pops)
-        rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
-        rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
-        rep_loop_loc(hf_D0_pop_ind) = D0_hf_population
+        rep_loop_loc(hf_proj_O_ind) = qs%estimators%proj_hf_O_hpsip
+        rep_loop_loc(hf_proj_H_ind) = qs%estimators%proj_hf_H_hfpsip
+        rep_loop_loc(hf_D0_pop_ind) = qs%estimators%D0_hf_population
         rep_loop_loc(nocc_states_ind) = qs%psip_list%nstates
         if (present(nspawn_events)) rep_loop_loc(nspawned_ind) = nspawn_events
 
@@ -302,7 +301,6 @@ contains
         !    comms_found: whether a HANDE.COMM file exists
 
         use fciqmc_data, only: rspawn, par_info
-        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -339,9 +337,9 @@ contains
             bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
         end if
         new_hf_signed_pop = rep_loop_sum(hf_signed_pop_ind)
-        proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
-        proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
-        D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
+        qs%estimators%proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
+        qs%estimators%proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
+        qs%estimators%D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
         qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
         qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         if (present(comms_found)) then
@@ -366,19 +364,23 @@ contains
         if (qs%vary_shift(1)) then
             call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
-                call update_hf_shift(qmc_in, qs, ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
+                call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), qs%estimators%hf_signed_pop, &
                                      new_hf_signed_pop, qmc_in%ncycles)
             end if
         end if
         ntot_particles_old = ntot_particles
-        hf_signed_pop = new_hf_signed_pop
+        qs%estimators%hf_signed_pop = new_hf_signed_pop
         if (ntot_particles(1) > qmc_in%target_particles .and. .not.qs%vary_shift(1)) then
             qs%vary_shift(1) = .true.
             if (qmc_in%vary_shift_from_proje) then
-              ! Set shift to be instantaneous projected energy.
-              qs%shift = qs%estimators%proj_energy/qs%estimators%D0_population
-              hf_shift = proj_hf_O_hpsip/qs%estimators%D0_population + proj_hf_H_hfpsip/qs%estimators%D0_population &
-                                                       - (qs%estimators%proj_energy*D0_hf_population)/qs%estimators%D0_population**2
+                ! Set shift to be instantaneous projected energy.
+                associate(est=>qs%estimators)
+                    qs%shift = est%proj_energy/est%D0_population
+                    if (doing_calc(hfs_fciqmc_calc)) then
+                        qs%shift(2) = est%proj_hf_O_hpsip/est%D0_population + est%proj_hf_H_hfpsip/est%D0_population &
+                                                             - (est%proj_energy*est%D0_hf_population)/est%D0_population**2
+                    end if
+                end associate
             else
                 qs%shift = qmc_in%vary_shift_from
             end if
@@ -388,9 +390,9 @@ contains
         qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
         qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
         ! Similarly for the HFS estimator
-        D0_hf_population = D0_hf_population/qmc_in%ncycles
-        proj_hf_O_hpsip = proj_hf_O_hpsip/qmc_in%ncycles
-        proj_hf_H_hfpsip = proj_hf_H_hfpsip/qmc_in%ncycles
+        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
+        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
+        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
         ! average spawning rate over report loop and processor.
         rspawn = rspawn/(qmc_in%ncycles*nprocs)
 
@@ -412,8 +414,12 @@ contains
 
         ! In:
         !    qmc_in: Input options relating to QMC methods.
+        !    qs: qmc state.
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
+        !    nupdate_steps: number of iterations between shift updates.
+        ! In/Out:
+        !    loc_shift: energy shift/offset.  Set to S(beta-A*tau) on input and S(beta) on output.
 
         use qmc_data, only: qmc_in_t, qmc_state_t
 
@@ -429,29 +435,34 @@ contains
 
     end subroutine update_shift
 
-    subroutine update_hf_shift(qmc_in, qs, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
+    subroutine update_hf_shift(qmc_in, qs, hf_shift, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
 
         ! Update the Hellmann-Feynman shift, \tilde{S}.
 
         ! In:
         !    qmc_in: Input options relating to QMC methods.
+        !    qs: qmc state.
         !    nparticles_old: N_w(beta-A*tau); total Hamiltonian population at beta-Atau.
         !    nparticles: N_w(beta); total Hamiltonian population at beta.
         !    nhf_particles_old: N_w(beta-A*tau); total Hellmann-Feynman (signed) population at beta-Atau.
         !    nhf_particles: N_w(beta); total Hellmann-Feynman (signed) population at beta.
-        !
+        !    nupdate_steps: number of iterations between shift updates.
+        ! In/Out:
+        !    hf_shift: Hellmann--Feynman shift.  Set to \tilde{S}(beta-A*tau) on input and
+        !       \tilde{S}(beta) on output.
+
         ! WARNING:
         ! The Hellmann-Feynman signed population is not simply the sum over
         ! Hellmann-Feynman walkers but also involves the Hamiltonian walkers and
         ! *must* be calculated using calculate_hf_signed_pop.
 
-        use hfs_data, only: hf_shift
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         real(p), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
+        real(p), intent(inout) :: hf_shift
 
         ! Given the definition of the shift, S, \tilde{S} \equiv \frac{dS}{d\alpha}|_{\alpha=0}.
         ! Hence \tilde{S}(\beta) =
@@ -483,7 +494,6 @@ contains
         !       spaces on each occupied state.
 
         use fciqmc_data, only: real_factor
-        use hfs_data, only: alpha0
 
         integer, intent(in) :: nstates_active
         integer(int_p), intent(in) :: populations(:,:)
@@ -497,13 +507,9 @@ contains
         do i = 1, nstates_active
             real_population = real(abs(populations(:,i)),p)/real_factor
             if (populations(1,i) == 0_int_p) then
-                if (alpha0 < 0) then
-                    ! letting alpha->0_-
-                    hf_signed_pop = hf_signed_pop - real_population(2)
-                else
-                    ! letting alpha->0_+
-                    hf_signed_pop = hf_signed_pop + real_population(2)
-                end if
+                ! An approximation: let alpha->0_+ (using alpha->0_- appears not to make much of a difference).
+                ! letting alpha->0_+
+                hf_signed_pop = hf_signed_pop + real_population(2)
             else
                 hf_signed_pop = hf_signed_pop + sign(1.0_p, real_population(1))*&
                                                  real_population(2)

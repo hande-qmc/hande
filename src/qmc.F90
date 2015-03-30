@@ -126,7 +126,6 @@ contains
         use energy_evaluation, only: nparticles_start_ind, calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det, copy_reference_t
-        use hfs_data, only: O00, hf_signed_pop
         use proc_pointers, only: sc0_ptr, op0_ptr
         use spawn_data, only: alloc_spawn_t
         use spawning, only: assign_particle_processor
@@ -307,7 +306,7 @@ contains
                 else
                     reference%H00 = sc0_ptr(sys, reference%f0)
                 end if
-                if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, reference%f0)
+                if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
             else
 
                 ! Reference det
@@ -335,7 +334,7 @@ contains
 
                 ! Energy of reference determinant.
                 reference%H00 = sc0_ptr(sys, reference%f0)
-                if (doing_calc(hfs_fciqmc_calc)) O00 = op0_ptr(sys, reference%f0)
+                if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 
                 ! In general FCIQMC, we start with psips only on the
                 ! reference determinant, so set pl%nstates = 1 and
@@ -470,9 +469,10 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
                 tmp_int_64 = calculate_hf_signed_pop(pl%nstates, pl%pops)
-                call mpi_allreduce(tmp_int_64, hf_signed_pop, pl%nspaces, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+                call mpi_allreduce(tmp_int_64, qmc_state%estimators%hf_signed_pop, pl%nspaces, MPI_INTEGER8, MPI_SUM, &
+                                   MPI_COMM_WORLD, ierr)
 #else
-                hf_signed_pop = calculate_hf_signed_pop(pl%nstates, pl%pops)
+                qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl%nstates, pl%pops)
 #endif
             end if
 
@@ -501,7 +501,7 @@ contains
             write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
             call write_det(sys%basis, sys%nel, qmc_state%ref%f0, new_line=.true.)
             write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',qmc_state%ref%H00
-            if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =',O00
+            if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =', qmc_state%ref%O00
             write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
             select case(sys%system)
             case (hub_k)
