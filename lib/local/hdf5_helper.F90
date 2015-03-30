@@ -28,7 +28,7 @@ module hdf5_helper
     implicit none
 
     private
-    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape
+    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape, hdf5_path
 
 
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
@@ -66,6 +66,12 @@ module hdf5_helper
         module procedure read_array_2d_real_sp
         module procedure read_array_2d_real_dp
     end interface hdf5_read
+
+    interface hdf5_path
+        module procedure hdf5_path_2
+        module procedure hdf5_path_3
+        module procedure hdf5_path_4
+    end interface hdf5_path
 
     contains
 
@@ -206,6 +212,52 @@ module hdf5_helper
             call h5dclose_f(dset_id, ierr)
 
         end subroutine dset_shape
+
+        ! === Helper procedures: combining group/data/link names ===
+
+        pure function hdf5_path_2(l1, l2) result(path)
+
+            ! In:
+            !    l1, l2: group or dataspace or link names, where l2 is inside l1.
+            ! Returns:
+            !    l1/l2, ie the complete HDF5 path to l2 from the group containing l1.
+
+            character(*), intent(in) :: l1, l2
+            character(len=len(l1)+len(l2)+1) :: path
+
+            path = l1 // '/' // l2
+
+        end function hdf5_path_2
+
+        pure function hdf5_path_3(l1, l2, l3) result(path)
+
+            ! In:
+            !    l1, l2, l3: group or dataspace or link names, where l2 is inside l1 and l3 inside l2.
+            ! Returns:
+            !    l1/l2/l3, ie the complete HDF5 path to l3 from the group containing l1.
+
+            character(*), intent(in) :: l1, l2, l3
+            character(len=len(l1)+len(l2)+len(l3)+2) :: path
+
+            path = hdf5_path(l1, l2)
+            path = hdf5_path(trim(path), l3)
+
+        end function hdf5_path_3
+
+        pure function hdf5_path_4(l1, l2, l3, l4) result(path)
+
+            ! In:
+            !    l1, l2, l3, l4: group or dataspace or link names, where l2 is inside l1, l3 inside l2 and l4 inside l3.
+            ! Returns:
+            !    l1/l2/l3, ie the complete HDF5 path to l4 from the group containing l1.
+
+            character(*), intent(in) :: l1, l2, l3, l4
+            character(len=len(l1)+len(l2)+len(l3)+len(l4)+3) :: path
+
+            path = hdf5_path(l1, l2, l3)
+            path = hdf5_path(trim(path), l4)
+
+        end function hdf5_path_4
 
         ! === Helper procedures: writing ===
 

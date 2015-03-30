@@ -595,7 +595,7 @@ Module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_write, dset_shape, dtype_equal
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_write, dset_shape, dtype_equal, hdf5_path
             use checking
             use errors, only: warning, stop_all
             use const, only: i0, int_p, p
@@ -654,7 +654,7 @@ Module restart_hdf5
             call init_restart_hdf5(ri, .false., tmp_name, kinds, 0, .false.)
             call h5fopen_f(tmp_name, H5F_ACC_RDONLY_F, orig_id, ierr)
             if (ierr/=0) call stop_all('redistribute_restart_hdf5', "Unable to open restart file.")
-            call hdf5_read(orig_id, gmetadata//'/'//dnprocs, nprocs_read)
+            call hdf5_read(orig_id, hdf5_path(gmetadata,dnprocs), nprocs_read)
             call h5fclose_f(orig_id, ierr)
 
             ! Create filenames and HDF5 IDs for all old and new files.
@@ -685,23 +685,23 @@ Module restart_hdf5
             ! Get info relating to assigning states to processors.
             hash_seed = 7 ! hard-coded default at time of writing (so will work with past and future restart files)
             move_freq = 0 ! true unless doing CCMC.
-            call hdf5_read(orig_id, gmetadata//'/'//dcalc, calc_type_restart)
+            call hdf5_read(orig_id, hdf5_path(gmetadata, dcalc), calc_type_restart)
 
             ! CARE: as an implementation detail, the CCMC code uses the number of
             ! Monte Carlo cycles (stored in dncycles) as the hash shift.
-            call hdf5_read(orig_id, gqmc//'/'//gstate//'/'//dncycles, hash_shift)
+            call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dncycles), hash_shift)
 
-            call h5lexists_f(orig_id, gqmc//'/'//gstate//'/'//dhash_seed, exists, ierr)
+            call h5lexists_f(orig_id, hdf5_path(gqmc, gstate, dhash_seed), exists, ierr)
             if (exists) then
-                call hdf5_read(orig_id, gqmc//'/'//gstate//'/'//dhash_seed, hash_seed)
+                call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dhash_seed), hash_seed)
             else if (iand(calc_type_restart, ccmc_calc) /= 0 .and. parent) then
                 call warning('redistribute_restart_hdf5', &
                              'hash_seed not found in the restart file.  Using a default hard-coded value.')
             end if
 
-            call h5lexists_f(orig_id, gqmc//'/'//gstate//'/'//dmove_freq, exists, ierr)
+            call h5lexists_f(orig_id, hdf5_path(gqmc, gstate, dmove_freq), exists, ierr)
             if (exists) then
-                call hdf5_read(orig_id, gqmc//'/'//gstate//'/'//dmove_freq, move_freq)
+                call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dmove_freq), move_freq)
             else if (iand(calc_type_restart, ccmc_calc) /= 0) then
                 ! Only relevant in CCMC.  Require user to set it in input file manually.
                 move_freq = ccmc_in_defaults%move_freq
@@ -726,15 +726,15 @@ Module restart_hdf5
                     call h5ocopy_f(orig_group_id, gref, group_id, gref, ierr)
                     ! ...and create the /qmc/psips group and fill in the constant (new) processor map and total population.
                     call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
-                    call hdf5_write(group_id, gpsips//'/'//dproc_map, kinds, shape(pm_dummy%map), pm_dummy%map)
-                    call h5ocopy_f(orig_group_id, gpsips//'/'//dtot_pop, group_id, dtot_pop, ierr)
+                    call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map), pm_dummy%map)
+                    call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, dtot_pop, ierr)
                     ! Note that HDF5 can't store booleans so instead set resort to 1 and interpret that accordingly when reading
                     ! a restart file back in.
-                    call hdf5_write(group_id, gpsips//'/'//dresort, 1)
+                    call hdf5_write(group_id, hdf5_path(gpsips, dresort), 1)
                 call h5gclose_f(group_id, ierr)
 
                 ! Update info.  NOTE: we don't modify the date/time/UUID, just processor count...
-                call h5dopen_f(new_id, gmetadata//'/'//dnprocs, dset_id, ierr)
+                call h5dopen_f(new_id, hdf5_path(gmetadata, dnprocs), dset_id, ierr)
                 call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, nprocs_target, [0_HSIZE_T,0_HSIZE_T], ierr)
                 call h5dclose_f(dset_id, ierr)
 
