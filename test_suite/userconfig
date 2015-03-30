@@ -1,4 +1,4 @@
-[hubbard]
+[hande]
 exe = ../bin/hande.x
 inputs_args = ('*.in', '')
 vcs = git
