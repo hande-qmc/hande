@@ -63,12 +63,6 @@ integer, parameter :: num_dmqmc_operators = terminator - 1
 
 real(dp), allocatable :: weight_altering_factors(:)
 
-! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
-! Currently only implemented for DMQMC.
-logical :: replica_tricks = .false.
-
-real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
-
 ! The unit of the file reduced_dm.
 integer :: rdm_unit
 

@@ -1216,7 +1216,7 @@ contains
 
     end subroutine update_sampling_weights
 
-    subroutine output_and_alter_weights(dmqmc_in, max_number_excitations, weighted_sampling)
+    subroutine output_and_alter_weights(dmqmc_in, max_number_excitations, excit_dist, weighted_sampling)
 
         ! This routine will alter and output the sampling weights used in
         ! importance sampling. It uses the excitation distribution, calculated
@@ -1230,19 +1230,21 @@ contains
         ! weights are output and can then be used in future DMQMC runs.
 
         ! In:
-        !    dmqmc_in: input options relating to DMQMC.
         !    max_number_excitations: maximum number of excitations possible (see
         !       sys_t type in system for details).
         !    vary_weights: vary weights with beta?
         ! In/Out:
+        !    dmqmc_in: input options relating to DMQMC.
+        !    excit_dist: distribution of particles across excitations levels of
+        !        the density matrix.
         !    weighted_sampling: type containing weighted sampling information.
 
-        use fciqmc_data, only: excit_dist
         use dmqmc_data, only: dmqmc_in_t, dmqmc_weighted_sampling_t
         use parallel
 
         integer, intent(in) :: max_number_excitations
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        real(p), intent(inout) :: excit_dist(:)
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
         integer :: i, ierr

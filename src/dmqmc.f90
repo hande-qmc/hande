@@ -290,7 +290,8 @@ contains
             if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(dmqmc_estimates_global, beta_cycle, dmqmc_in%rdm)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
-            if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, weighted_sampling)
+            if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, &
+                                                                     dmqmc_estimates_global%excit_dist, weighted_sampling)
 
         end do
 
@@ -366,7 +367,7 @@ contains
         nparticles = 0.0_dp
         if (allocated(dmqmc_estimates%ground_rdm%rdm)) dmqmc_estimates%ground_rdm%rdm = 0.0_p
         if (dmqmc_in%vary_weights) accumulated_probs = 1.0_p
-        if (dmqmc_in%find_weights) excit_dist = 0.0_p
+        if (dmqmc_in%find_weights) dmqmc_estimates%excit_dist = 0.0_p
 
         new_seed = qmc_in%seed+iproc+(beta_cycle-1)*nprocs
 

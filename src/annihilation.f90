@@ -801,8 +801,6 @@ contains
         use system, only: sys_t
         use qmc_data, only: particle_t, annihilation_flags_t, reference_t
 
-        use fciqmc_data, only: replica_tricks
-
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(inout) :: psip_list
         type(annihilation_flags_t), intent(in) :: annihilation_flags
