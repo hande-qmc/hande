@@ -484,7 +484,6 @@ contains
         !       spaces on each occupied state.
 
         use fciqmc_data, only: real_factor
-        use hfs_data, only: alpha0
 
         integer, intent(in) :: nstates_active
         integer(int_p), intent(in) :: populations(:,:)
@@ -498,13 +497,9 @@ contains
         do i = 1, nstates_active
             real_population = real(abs(populations(:,i)),p)/real_factor
             if (populations(1,i) == 0_int_p) then
-                if (alpha0 < 0) then
-                    ! letting alpha->0_-
-                    hf_signed_pop = hf_signed_pop - real_population(2)
-                else
-                    ! letting alpha->0_+
-                    hf_signed_pop = hf_signed_pop + real_population(2)
-                end if
+                ! An approximation: let alpha->0_+ (using alpha->0_- appears not to make much of a difference).
+                ! letting alpha->0_+
+                hf_signed_pop = hf_signed_pop + real_population(2)
             else
                 hf_signed_pop = hf_signed_pop + sign(1.0_p, real_population(1))*&
                                                  real_population(2)
