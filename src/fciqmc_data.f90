@@ -40,12 +40,6 @@ integer(int_p) :: real_factor
 ! update_energy_estimators.
 real(p) :: rspawn
 
-! In DMQMC the trace of the density matrix is an important quantity
-! used in calculating all thermal estimators. This quantity stores
-! the this value, Tr(\rho), where rho is the density matrix which
-! the DMQMC algorithm calculates stochastically.
-real(p), allocatable :: trace(:) ! (walker_global%nspaces)
-
 ! The following indicies are used to access components of DMQMC numerators.
 enum, bind(c)
     enumerator :: energy_ind = 1
@@ -60,8 +54,6 @@ end enum
 ! This variable holds the total number of operators which are implemented
 ! for DMQMC.
 integer, parameter :: num_dmqmc_operators = terminator - 1
-
-real(dp), allocatable :: weight_altering_factors(:)
 
 ! The unit of the file reduced_dm.
 integer :: rdm_unit

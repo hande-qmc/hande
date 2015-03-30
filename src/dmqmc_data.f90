@@ -122,8 +122,8 @@ type dmqmc_in_t
     ! If vary_weights is true, then instead of using the final sampling
     ! weights for all the iterations, the weights will be gradually increased
     ! until finish_varying_weights, at which point they will be held constant.
-    ! weight_altering_factors stores the factors by which each weight is
-    ! multiplied at each step.
+    ! altering_factors stores the factors by which each weight is multiplied
+    ! at each step.
     logical :: vary_weights = .false.
     ! If this logical is true then the program will calculate the ratios
     ! of the numbers of the psips on neighbouring excitation levels. These
