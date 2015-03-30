@@ -61,16 +61,6 @@ end enum
 ! for DMQMC.
 integer, parameter :: num_dmqmc_operators = terminator - 1
 
-! numerators stores the numerators for the estimators in DMQMC. These
-! are, for a general operator O which we wish to find the thermal average of:
-! \sum_{i,j} \rho_{ij} * O_{ji}
-! This variabe will store this value from the first iteration of each
-! report loop. At the end of a report loop, the values from each
-! processor are combined and stored in numerators on the parent
-! processor. This is then output, and the values of numerators
-! are reset on each processor to start the next report loop.
-real(p) :: numerators(num_dmqmc_operators)
-
 real(dp), allocatable :: weight_altering_factors(:)
 
 ! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
