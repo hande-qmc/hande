@@ -19,6 +19,7 @@ contains
         !    sys: system being studied.  Unaltered on output.
         !    reference: reference determinant to specify symmetry block to consider.
 
+        use calc, only: fci_rdm, fci_rdm_info
         use checking, only: check_allocate, check_deallocate
         use errors
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
@@ -26,7 +27,6 @@ contains
         use determinants, only: spin_orb_list
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
-        use fciqmc_data, only: fci_rdm, fci_rdm_info
         use full_diagonalisation
         use hamiltonian, only: get_hmatel
         use reference_determinant
@@ -626,10 +626,10 @@ contains
     subroutine get_rdm_eigenvalues(basis, rdm_info, ndets, dets, rdm_eigenvalues)
 
         use basis_types, only: basis_t
+        use calc, only: fci_rdm
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: rdm_t
         use dmqmc_procedures, only: decode_dm_bitstring
-        use fciqmc_data, only: fci_rdm
 
         type(basis_t), intent(in) :: basis
         type(rdm_t), intent(inout) :: rdm_info(:)

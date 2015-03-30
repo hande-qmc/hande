@@ -5,7 +5,6 @@ module fciqmc_data
 
 use const
 use csr, only: csrp_t
-use dmqmc_data, only: rdm_t
 use spawn_data, only: spawn_t
 use hash_table, only: hash_table_t
 use calc, only: parallel_t
@@ -105,9 +104,6 @@ logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-! Used to hold the RDM in FCI calculations.
-real(p), allocatable :: fci_rdm(:,:)
-
 ! Spawned lists for rdms.
 type rdm_spawn_t
     type(spawn_t) :: spawn
@@ -117,14 +113,6 @@ type rdm_spawn_t
     type(hash_table_t) :: ht
 end type rdm_spawn_t
 type(rdm_spawn_t), allocatable :: rdm_spawn(:)
-
-! The total number of RDMs beings calculated.
-! NOTE: This can only be equal to 1 currently.
-integer :: fci_nrdms = 0
-
-! This stores  information for the various RDMs that the user asks to be
-! calculated. Each element of this array corresponds to one of these RDMs.
-type(rdm_t), allocatable :: fci_rdm_info(:) ! (fci_nrdms)
 
 ! The total number of translational symmetry vectors.
 ! This is only set and used when performing rdm calculations.
