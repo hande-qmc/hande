@@ -209,9 +209,6 @@ end type rdm_spawn_t
 type dmqmc_inst_rdms_t
     ! The total number of rdms beings calculated.
     integer :: nrdms = 0
-    ! The total number of translational symmetry vectors.
-    ! This is only set and used when performing rdm calculations.
-    integer :: nsym_vec
 
     ! [todo] - remove rdm_ stem.
     ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.

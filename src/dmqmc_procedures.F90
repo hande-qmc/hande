@@ -331,14 +331,13 @@ contains
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: rdm_t
         use errors
-        use fciqmc_data, only: nsym_vec
         use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell, enumerate_lattice_vectors
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(rdm_t), intent(inout) :: rdm_info(:)
 
-        integer :: i, j, k, l, nrdms, ipos, ierr
+        integer :: i, j, k, l, nrdms, nsym_vecs, ipos, ierr
         integer :: basis_find, bit_position, bit_element
         integer(i0) :: A_mask(sys%basis%string_len)
         real(p), allocatable :: sym_vecs(:,:)
@@ -348,7 +347,7 @@ contains
         nrdms = size(rdm_info)
 
         ! Return all translational symmetry vectors in sym_vecs.
-        call find_translational_symmetry_vecs(sys, sym_vecs, nsym_vec)
+        call find_translational_symmetry_vecs(sys, sym_vecs, nsym_vecs)
 
         ! Allocate the RDM arrays.
         do i = 1, nrdms
@@ -358,10 +357,10 @@ contains
                               &dmqmc_full_renyi_2 option to calculate the Renyi entropy of the &
                               &whole lattice.')
             else
-                allocate(rdm_info(i)%B_masks(sys%basis%string_len,nsym_vec), stat=ierr)
-                call check_allocate('rdm_info(i)%B_masks', nsym_vec*sys%basis%string_len,ierr)
-                allocate(rdm_info(i)%bit_pos(rdm_info(i)%A_nsites,nsym_vec,2), stat=ierr)
-                call check_allocate('rdm_info(i)%bit_pos', nsym_vec*rdm_info(i)%A_nsites*2,ierr)
+                allocate(rdm_info(i)%B_masks(sys%basis%string_len,nsym_vecs), stat=ierr)
+                call check_allocate('rdm_info(i)%B_masks', nsym_vecs*sys%basis%string_len,ierr)
+                allocate(rdm_info(i)%bit_pos(rdm_info(i)%A_nsites,nsym_vecs,2), stat=ierr)
+                call check_allocate('rdm_info(i)%bit_pos', nsym_vecs*rdm_info(i)%A_nsites*2,ierr)
             end if
             rdm_info(i)%B_masks = 0_i0
             rdm_info(i)%bit_pos = 0
@@ -373,7 +372,7 @@ contains
         call check_allocate('lvecs', size(lvecs), ierr)
         call enumerate_lattice_vectors(sys%lattice, lvecs)
         do i = 1, nrdms ! Over every subsystem.
-            do j = 1, nsym_vec ! Over every symmetry vector.
+            do j = 1, nsym_vecs ! Over every symmetry vector.
                 A_mask = 0_i0
                 do k = 1, rdm_info(i)%A_nsites ! Over every site in the subsystem.
                     r = sys%basis%basis_fns(rdm_info(i)%subsystem_A(k))%l

@@ -114,10 +114,6 @@ type rdm_spawn_t
 end type rdm_spawn_t
 type(rdm_spawn_t), allocatable :: rdm_spawn(:)
 
-! The total number of translational symmetry vectors.
-! This is only set and used when performing rdm calculations.
-integer :: nsym_vec
-
 ! The unit of the file reduced_dm.
 integer :: rdm_unit
 

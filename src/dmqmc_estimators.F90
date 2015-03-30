@@ -858,7 +858,7 @@ contains
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t, rdm_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
-        use fciqmc_data, only: rdm_spawn, nsym_vec, real_factor
+        use fciqmc_data, only: rdm_spawn, real_factor
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
@@ -873,7 +873,7 @@ contains
         real(p), intent(in) :: accumulated_probs(0:)
 
         real(p) :: unweighted_walker_pop(size(walker_pop))
-        integer :: irdm, isym, ireplica, nrdms
+        integer :: irdm, isym, ireplica, nrdms, nsym_vecs
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(basis%tensor_label_len)
 
@@ -884,11 +884,12 @@ contains
         f3(basis%string_len+1:) = cdet%f2(:basis%string_len)
 
         nrdms = size(dmqmc_estimates%rdm_info)
+        nsym_vecs = size(dmqmc_estimates%rdm_info(1)%B_masks, 2)
 
         ! Loop over all RDMs to be calculated.
         do irdm = 1, nrdms
         ! Loop over every symmetry-equivalent subsystem for this RDM.
-        do isym = 1, nsym_vec
+        do isym = 1, nsym_vecs
 
         associate(rdm=>dmqmc_estimates%ground_rdm%rdm, end1=>dmqmc_estimates%rdm_info(irdm)%end1(1), &
                   end2=>dmqmc_estimates%rdm_info(irdm)%end2(1), rdm_info=>dmqmc_estimates%rdm_info)
