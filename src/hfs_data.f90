@@ -30,11 +30,4 @@ integer, parameter :: double_occ_operator = 2**2
 ! supplied integrals.
 integer, parameter :: dipole_operator = 2**3
 
-!--- Operator parameters. ---
-
-!--- HFS-specific variables. ---
-
-! Hellmann--Feynman shift.
-real(p) :: hf_shift = 0.0_p
-
 end module hfs_data

@@ -301,7 +301,6 @@ contains
         !    comms_found: whether a HANDE.COMM file exists
 
         use fciqmc_data, only: rspawn, par_info
-        use hfs_data, only: hf_shift
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -365,7 +364,7 @@ contains
         if (qs%vary_shift(1)) then
             call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
-                call update_hf_shift(qmc_in, qs, ntot_particles_old(1), ntot_particles(1), qs%estimators%hf_signed_pop, &
+                call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), qs%estimators%hf_signed_pop, &
                                      new_hf_signed_pop, qmc_in%ncycles)
             end if
         end if
@@ -377,8 +376,10 @@ contains
                 ! Set shift to be instantaneous projected energy.
                 associate(est=>qs%estimators)
                     qs%shift = est%proj_energy/est%D0_population
-                    hf_shift = est%proj_hf_O_hpsip/est%D0_population + est%proj_hf_H_hfpsip/est%D0_population &
+                    if (doing_calc(hfs_fciqmc_calc)) then
+                        qs%shift(2) = est%proj_hf_O_hpsip/est%D0_population + est%proj_hf_H_hfpsip/est%D0_population &
                                                              - (est%proj_energy*est%D0_hf_population)/est%D0_population**2
+                    end if
                 end associate
             else
                 qs%shift = qmc_in%vary_shift_from
@@ -413,8 +414,12 @@ contains
 
         ! In:
         !    qmc_in: Input options relating to QMC methods.
+        !    qs: qmc state.
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
+        !    nupdate_steps: number of iterations between shift updates.
+        ! In/Out:
+        !    loc_shift: energy shift/offset.  Set to S(beta-A*tau) on input and S(beta) on output.
 
         use qmc_data, only: qmc_in_t, qmc_state_t
 
@@ -430,29 +435,34 @@ contains
 
     end subroutine update_shift
 
-    subroutine update_hf_shift(qmc_in, qs, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
+    subroutine update_hf_shift(qmc_in, qs, hf_shift, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
 
         ! Update the Hellmann-Feynman shift, \tilde{S}.
 
         ! In:
         !    qmc_in: Input options relating to QMC methods.
+        !    qs: qmc state.
         !    nparticles_old: N_w(beta-A*tau); total Hamiltonian population at beta-Atau.
         !    nparticles: N_w(beta); total Hamiltonian population at beta.
         !    nhf_particles_old: N_w(beta-A*tau); total Hellmann-Feynman (signed) population at beta-Atau.
         !    nhf_particles: N_w(beta); total Hellmann-Feynman (signed) population at beta.
-        !
+        !    nupdate_steps: number of iterations between shift updates.
+        ! In/Out:
+        !    hf_shift: Hellmann--Feynman shift.  Set to \tilde{S}(beta-A*tau) on input and
+        !       \tilde{S}(beta) on output.
+
         ! WARNING:
         ! The Hellmann-Feynman signed population is not simply the sum over
         ! Hellmann-Feynman walkers but also involves the Hamiltonian walkers and
         ! *must* be calculated using calculate_hf_signed_pop.
 
-        use hfs_data, only: hf_shift
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         real(p), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
+        real(p), intent(inout) :: hf_shift
 
         ! Given the definition of the shift, S, \tilde{S} \equiv \frac{dS}{d\alpha}|_{\alpha=0}.
         ! Hence \tilde{S}(\beta) =

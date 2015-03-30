@@ -247,7 +247,7 @@ contains
                     ! Not in place, must set initiator flag.
                     cdet%initiator_flag = h_initiator_flag
                     ! [todo] - JSS: real populations for HFS spawner.
-                    call stochastic_hf_cloning(rng, qs%tau, qs%psip_list%dat(2,idet), &
+                    call stochastic_hf_cloning(rng, qs%tau, qs%shift(2), qs%psip_list%dat(2,idet), &
                                                qs%psip_list%pops(1,idet), nspawned)
                     if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, &
                                                                         qs%spawn_store%spawn, load_bal_in%nslots)
