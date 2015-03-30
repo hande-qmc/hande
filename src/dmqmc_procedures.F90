@@ -40,10 +40,10 @@ contains
         call check_allocate('dmqmc_estimates%trace',size(dmqmc_estimates%trace),ierr)
         dmqmc_estimates%trace = 0.0_p
 
-        nrdms = dmqmc_in%rdm%nrdms
-        allocate(rdm_traces(nreplicas,nrdms), stat=ierr)
-        call check_allocate('rdm_traces',size(rdm_traces),ierr)
-        rdm_traces = 0.0_p
+        dmqmc_estimates%inst_rdm%nrdms = dmqmc_in%rdm%nrdms
+        allocate(dmqmc_estimates%inst_rdm%traces(nreplicas, dmqmc_in%rdm%nrdms), stat=ierr)
+        call check_allocate('dmqmc_estimates%inst_rdm%traces', size(dmqmc_estimates%inst_rdm%traces),ierr)
+        dmqmc_estimates%inst_rdm%traces = 0.0_p
 
         ! If calculating a correlaton function then set up the necessary bit
         ! mask. This has a bit set for each of the two sites/orbitals being
@@ -144,11 +144,11 @@ contains
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
         if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%rdm_info, dmqmc_estimates%ground_rdm%rdm, &
-                                                          qmc_in, dmqmc_in%rdm, nreplicas)
+                                                          qmc_in, dmqmc_in%rdm, dmqmc_estimates%inst_rdm, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, ground_rdm, qmc_in, rdm_in, nreplicas)
+    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, ground_rdm, qmc_in, rdm_in, inst_rdms, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -162,24 +162,25 @@ contains
         !        called from DMQMC, false otherwise. This routine is also used
         !        by the FCI code, in which case qmc_in, rdm_in and nreplicas
         !        will not be passed in.
-        !    qmc_in (optional): Input options relating to QMC methods.  Only
-        !         needed for spawn_cutoff and if calc_inst_rdm is true.
-        !    rdm_in (optional): Input options relating to reduced density matrices.
-        !    nreplicas (optional): number of replicas being used.  Must be
-        !        specified if qmc_in is.
+        ! In (optional):
+        !    qmc_in: Input options relating to QMC methods.  Only needed for
+        !        spawn_cutoff and if calc_inst_rdm is true.
+        !    rdm_in: Input options relating to reduced density matrices.
+        !    nreplicas: number of replicas being used.  Must be specified if
+        !        qmc_in is.
         ! Out:
         !     ground_rdm: The array used to store the RDM in ground-state
         !         calculations.
         ! In/Out:
         !     rdm_info: information relating to RDM subsystems being studied.
+        !     inst_rdms (optional): estimates of instantaneous
+        !         (temperature-dependent) reduced density matrices.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
-        use dmqmc_data, only: rdm_t
+        use dmqmc_data, only: rdm_t, dmqmc_inst_rdms_t
         use errors
-        use fciqmc_data, only: nrdms
-        use fciqmc_data, only: renyi_2, real_bit_shift
-        use fciqmc_data, only: rdm_spawn
+        use fciqmc_data, only: real_bit_shift
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
@@ -195,10 +196,13 @@ contains
         real(p), allocatable, intent(out) :: ground_rdm(:,:)
         type(qmc_in_t), intent(in), optional :: qmc_in
         type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
+        type(dmqmc_inst_rdms_t), intent(inout), optional :: inst_rdms
         integer, intent(in), optional :: nreplicas
 
-        integer :: i, ierr, ipos, basis_find, size_spawned_rdm, total_size_spawned_rdm
-        integer :: bit_position, bit_element, nbytes_int, spawn_length_loc
+        integer :: i, ierr, ipos, nrdms
+        integer :: basis_find, bit_position, bit_element
+        integer :: size_spawned_rdm, total_size_spawned_rdm
+        integer :: nbytes_int, spawn_length_loc
         logical :: calc_ground_rdm
 
         ! If this routine was not called from DMQMC then we must be doing a
@@ -206,6 +210,8 @@ contains
         calc_ground_rdm = .not. called_from_dmqmc
         ! This should only be present if called_from_dmqmc is true.
         if (present(rdm_in)) calc_ground_rdm = rdm_in%calc_ground_rdm
+
+        nrdms = size(rdm_info)
 
         ! For the Heisenberg model only currently.
         if (sys%system == heisenberg) then
@@ -261,14 +267,14 @@ contains
             ! Create the instances of the rdm_spawn_t type for instantaneous RDM
             ! calculatons.
             if (rdm_in%calc_inst_rdm) then
-                allocate(rdm_spawn(nrdms), stat=ierr)
-                call check_allocate('rdm_spawn', nrdms, ierr)
+                allocate(inst_rdms%spawn(nrdms), stat=ierr)
+                call check_allocate('inst_rdms%spawn', nrdms, ierr)
 
                 ! If calculating Renyi entropy (S2).
                 if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                    allocate(renyi_2(nrdms), stat=ierr)
-                    call check_allocate('renyi_2', nrdms, ierr)
-                    renyi_2 = 0.0_p
+                    allocate(inst_rdms%renyi_2(nrdms), stat=ierr)
+                    call check_allocate('inst_rdms%renyi_2', nrdms, ierr)
+                    inst_rdms%renyi_2 = 0.0_p
                 end if
 
                 total_size_spawned_rdm = 0
@@ -295,13 +301,13 @@ contains
                     ! Note the initiator approximation is not implemented for density matrix calculations.
                     call alloc_spawn_t(rdm_info(i)%string_len*2, nreplicas, .false., &
                                          spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, &
-                                         27, use_mpi_barriers, rdm_spawn(i)%spawn)
+                                         27, use_mpi_barriers, inst_rdms%spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and
                     ! each hash value can have 7 clashes. This was found to give
                     ! reasonable performance.
                     call alloc_hash_table(3*spawn_length_loc, 7, rdm_info(i)%string_len*2, &
-                                         0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
+                                          0, 0, 17, inst_rdms%spawn(i)%ht, inst_rdms%spawn(i)%spawn%sdata)
                 end do
 
                 if (parent) then
@@ -328,22 +334,23 @@ contains
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: rdm_t
         use errors
-        use fciqmc_data, only: nrdms, nsym_vec
         use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell, enumerate_lattice_vectors
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(rdm_t), intent(inout) :: rdm_info(:)
 
-        integer :: i, j, k, l, ipos, ierr
+        integer :: i, j, k, l, nrdms, nsym_vecs, ipos, ierr
         integer :: basis_find, bit_position, bit_element
         integer(i0) :: A_mask(sys%basis%string_len)
         real(p), allocatable :: sym_vecs(:,:)
         integer :: r(sys%lattice%ndim)
         integer, allocatable :: lvecs(:,:)
 
+        nrdms = size(rdm_info)
+
         ! Return all translational symmetry vectors in sym_vecs.
-        call find_translational_symmetry_vecs(sys, sym_vecs, nsym_vec)
+        call find_translational_symmetry_vecs(sys, sym_vecs, nsym_vecs)
 
         ! Allocate the RDM arrays.
         do i = 1, nrdms
@@ -353,10 +360,10 @@ contains
                               &dmqmc_full_renyi_2 option to calculate the Renyi entropy of the &
                               &whole lattice.')
             else
-                allocate(rdm_info(i)%B_masks(sys%basis%string_len,nsym_vec), stat=ierr)
-                call check_allocate('rdm_info(i)%B_masks', nsym_vec*sys%basis%string_len,ierr)
-                allocate(rdm_info(i)%bit_pos(rdm_info(i)%A_nsites,nsym_vec,2), stat=ierr)
-                call check_allocate('rdm_info(i)%bit_pos', nsym_vec*rdm_info(i)%A_nsites*2,ierr)
+                allocate(rdm_info(i)%B_masks(sys%basis%string_len,nsym_vecs), stat=ierr)
+                call check_allocate('rdm_info(i)%B_masks', nsym_vecs*sys%basis%string_len,ierr)
+                allocate(rdm_info(i)%bit_pos(rdm_info(i)%A_nsites,nsym_vecs,2), stat=ierr)
+                call check_allocate('rdm_info(i)%bit_pos', nsym_vecs*rdm_info(i)%A_nsites*2,ierr)
             end if
             rdm_info(i)%B_masks = 0_i0
             rdm_info(i)%bit_pos = 0
@@ -368,7 +375,7 @@ contains
         call check_allocate('lvecs', size(lvecs), ierr)
         call enumerate_lattice_vectors(sys%lattice, lvecs)
         do i = 1, nrdms ! Over every subsystem.
-            do j = 1, nsym_vec ! Over every symmetry vector.
+            do j = 1, nsym_vecs ! Over every symmetry vector.
                 A_mask = 0_i0
                 do k = 1, rdm_info(i)%A_nsites ! Over every site in the subsystem.
                     r = sys%basis%basis_fns(rdm_info(i)%subsystem_A(k))%l

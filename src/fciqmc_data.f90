@@ -5,7 +5,6 @@ module fciqmc_data
 
 use const
 use csr, only: csrp_t
-use dmqmc_data, only: rdm_t
 use spawn_data, only: spawn_t
 use hash_table, only: hash_table_t
 use calc, only: parallel_t
@@ -72,19 +71,6 @@ integer, parameter :: num_dmqmc_operators = terminator - 1
 ! are reset on each processor to start the next report loop.
 real(p) :: numerators(num_dmqmc_operators)
 
-! When using the replica_tricks option, if the rdm in the first
-! simulation if denoted \rho^1 and the ancillary rdm is denoted
-! \rho^2 then renyi_2 holds:
-! x = \sum_{ij} \rho^1_{ij} * \rho^2_{ij}.
-! The indices of renyi_2 hold this value for the various rdms being
-! calculated. After post-processing averaging, this quantity should
-! be normalised by the product of the corresponding RDM traces.
-! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
-real(p), allocatable :: renyi_2(:)
-
-! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-real(p), allocatable :: rdm_traces(:,:) ! (walker_global%nspaces, nrdms)
-
 ! If this logical is true then the program runs the DMQMC algorithm with
 ! importance sampling.
 ! dmqmc_sampling_prob stores the factors by which the probabilities of
@@ -104,30 +90,6 @@ real(dp), allocatable :: weight_altering_factors(:)
 logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
-
-! Used to hold the RDM in FCI calculations.
-real(p), allocatable :: fci_rdm(:,:)
-
-! Spawned lists for rdms.
-type rdm_spawn_t
-    type(spawn_t) :: spawn
-    ! Spawn with the help of a hash table to avoid a sort (which is extremely
-    ! expensive when a large number of keys are repeated--seem to hit worst case
-    ! performance in quicksort).
-    type(hash_table_t) :: ht
-end type rdm_spawn_t
-type(rdm_spawn_t), allocatable :: rdm_spawn(:)
-
-! The total number of rdms beings calculated.
-integer :: nrdms = 0
-
-! This stores  information for the various RDMs that the user asks to be
-! calculated. Each element of this array corresponds to one of these RDMs.
-type(rdm_t), allocatable :: fci_rdm_info(:) ! (nrdms)
-
-! The total number of translational symmetry vectors.
-! This is only set and used when performing rdm calculations.
-integer :: nsym_vec
 
 ! The unit of the file reduced_dm.
 integer :: rdm_unit
@@ -191,20 +153,23 @@ contains
 
     !--- Output procedures ---
 
-    subroutine write_fciqmc_report_header(ntypes, dmqmc_in)
+    subroutine write_fciqmc_report_header(ntypes, dmqmc_in, max_excit)
 
         ! In:
         !    ntypes: number of particle types being sampled.
-        !    dmqmc_in (optional): input options relating to DMQMC.
+        ! In (optional):
+        !    dmqmc_in: input options relating to DMQMC.
+        !    max_excit: The maximum number of excitations for the system.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_global
+        use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
 
         integer, intent(in) :: ntypes
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
+        integer, optional, intent(in) :: max_excit
 
         integer :: i, j
         character(16) :: excit_header
@@ -231,12 +196,12 @@ contains
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}M2{ji}'
             end if
             if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                do i = 1, nrdms
+                do i = 1, dmqmc_in%rdm%nrdms
                     write (6, '(16X,a3,'//int_fmt(i,0)//',1x,a2)', advance = 'no') 'RDM', i, 'S2'
                 end do
             end if
             if (dmqmc_in%rdm%calc_inst_rdm) then
-                do i = 1, nrdms
+                do i = 1, dmqmc_in%rdm%nrdms
                     do j = 1, ntypes
                         write (6, '(7X,a3,'//int_fmt(i,0)//',1x,a5,1x,'//int_fmt(j,0)//')', advance = 'no') &
                                 'RDM', i, 'trace', j
@@ -245,7 +210,7 @@ contains
             end if
             if (present(dmqmc_in)) then
                 if (dmqmc_in%calc_excit_dist) then
-                    do i = 0, ubound(dmqmc_estimates_global%excit_dist,1)
+                    do i = 0, max_excit
                         write (excit_header, '("Excit. level",1X,'//int_fmt(i,0)//')') i
                         write (6, '(5X,a16)', advance='no') excit_header
                     end do
@@ -281,14 +246,14 @@ contains
         !    elapsed_time: time taken for the report loop.
         !    comment: if true, then prefix the line with a #.
         !    non_blocking_comm: true if using non-blocking communications
+        ! In (optional):
         !    dmqmc_in: input options relating to DMQMC.
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_global
         use qmc_data, only: qmc_in_t, walker_global, qmc_state_t
-        use dmqmc_data, only: dmqmc_estimates_global
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
@@ -354,16 +319,16 @@ contains
 
             ! Renyi-2 entropy for all RDMs being sampled.
             if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                do i = 1, nrdms
-                    write (6, '(6X,es17.10)', advance = 'no') renyi_2(i)
+                do i = 1, dmqmc_in%rdm%nrdms
+                    write (6, '(6X,es17.10)', advance = 'no') dmqmc_estimates_global%inst_rdm%renyi_2(i)
                 end do
             end if
 
             ! Traces for instantaneous RDM estimates.
             if (dmqmc_in%rdm%calc_inst_rdm) then
-                do i = 1, nrdms
+                do i = 1, dmqmc_in%rdm%nrdms
                     do j = 1, ntypes
-                        write (6, '(2x,es17.10)', advance = 'no') rdm_traces(j,i)
+                        write (6, '(2x,es17.10)', advance = 'no') dmqmc_estimates_global%inst_rdm%traces(j,i)
                     end do
                 end do
             end if

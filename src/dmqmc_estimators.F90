@@ -44,7 +44,7 @@ contains
         !    dmqmc_estimates: type containing dmqmc estimates.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: num_dmqmc_operators, nrdms
+        use fciqmc_data, only: num_dmqmc_operators
         use qmc_data, only: particle_t, qmc_state_t
         use parallel
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
@@ -64,7 +64,8 @@ contains
         ! If calculating instantaneous RDM estimates then call this routine to
         ! perform annihilation for RDM particles, and calculate RDM estimates
         ! before they are summed over processors. below.
-        if (dmqmc_in%rdm%calc_inst_rdm) call communicate_inst_rdms(accumulated_probs_old, dmqmc_estimates%rdm_info)
+        if (dmqmc_in%rdm%calc_inst_rdm) call communicate_inst_rdms(accumulated_probs_old, dmqmc_estimates%rdm_info, &
+                                                                    dmqmc_estimates%inst_rdm)
 
         ! How big is each variable to be communicated?
         nelems(rspawn_ind) = 1
@@ -75,8 +76,8 @@ contains
         nelems(operators_ind) = num_dmqmc_operators 
         nelems(excit_dist_ind) = max_num_excits + 1
         nelems(ground_rdm_trace_ind) = 1
-        nelems(inst_rdm_trace_ind) = psip_list%nspaces*nrdms
-        nelems(rdm_r2_ind) = nrdms
+        nelems(inst_rdm_trace_ind) = psip_list%nspaces*dmqmc_estimates%inst_rdm%nrdms
+        nelems(rdm_r2_ind) = dmqmc_estimates%inst_rdm%nrdms
 
         ! The total number of elements in the array to be communicated.
         tot_nelems = sum(nelems)
@@ -136,7 +137,7 @@ contains
         !    rep_loop_loc: array containing local quantities to be communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn, rdm_traces, renyi_2
+        use fciqmc_data, only: rspawn
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -165,10 +166,10 @@ contains
         if (dmqmc_in%rdm%calc_inst_rdm) then
             ! Reshape this 2d array into a 1d array to add it to rep_loop_loc.
             nrdms = max_ind(inst_rdm_trace_ind) - min_ind(inst_rdm_trace_ind) + 1
-            rep_loop_loc(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)) = reshape(rdm_traces, nrdms)
+            rep_loop_loc(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)) = reshape(dmqmc_estimates%inst_rdm%traces, nrdms)
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = renyi_2
+            rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = dmqmc_estimates%inst_rdm%renyi_2
         end if
 
     end subroutine local_dmqmc_estimators
@@ -195,8 +196,7 @@ contains
         !       processors.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn, nrdms
-        use fciqmc_data, only: rdm_traces, renyi_2
+        use fciqmc_data, only: rspawn
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
@@ -221,10 +221,11 @@ contains
             dmqmc_estimates%ground_rdm%trace = rep_loop_sum(min_ind(ground_rdm_trace_ind))
         end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
-            rdm_traces = reshape(rep_loop_sum(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)), shape(rdm_traces))
+            dmqmc_estimates%inst_rdm%traces = reshape(rep_loop_sum(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)), &
+                                                      shape(dmqmc_estimates%inst_rdm%traces))
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
+            dmqmc_estimates%inst_rdm%renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
         end if
 
         ! Average the spawning rate.
@@ -232,7 +233,7 @@ contains
 
     end subroutine communicated_dmqmc_estimators
 
-    subroutine communicate_inst_rdms(accumulated_probs_old, rdm_info)
+    subroutine communicate_inst_rdms(accumulated_probs_old, rdm_info, inst_rdms)
 
         ! Perform annihilation between 'RDM particles'. This is done exactly
         ! by calling the normal annihilation routine for a spawned object,
@@ -247,19 +248,24 @@ contains
         !        report cycle.
         !    rdm_info: information relating to RDMs and RDM subsystems being
         !        studied.
+        ! In/Out:
+        !    inst_rdms: The instantaneous RDM estimates which are to be
+        !        communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use dmqmc_data, only: rdm_t
-        use fciqmc_data, only: rdm_spawn, nrdms, rdm_traces, renyi_2
+        use dmqmc_data, only: rdm_t, dmqmc_inst_rdms_t
         use hash_table, only: reset_hash_table
         use spawn_data, only: annihilate_wrapper_spawn_t
 
         real(p), intent(in) :: accumulated_probs_old(0:)
-
-        integer :: irdm
         type(rdm_t), intent(in) :: rdm_info(:)
+        type(dmqmc_inst_rdms_t), intent(inout) :: inst_rdms
 
-        ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
+        integer :: irdm, nrdms
+
+        nrdms = size(rdm_info)
+
+        ! WARNING: cannot pass inst_rdm%spawn%spawn to procedures expecting an
         ! array of type spawn_t due to a bug in gfortran which results in
         ! memory deallocations!
         ! See https://groups.google.com/forum/#!topic/comp.lang.fortran/VuFvOsLs6hE
@@ -267,21 +273,22 @@ contains
         ! The explicit loop is also meant to be more efficient anyway, as it
         ! prevents any chance of copy-in/copy-out...
         do irdm = 1, nrdms
-            call annihilate_wrapper_spawn_t(rdm_spawn(irdm)%spawn, .false.)
+            call annihilate_wrapper_spawn_t(inst_rdms%spawn(irdm)%spawn, .false.)
             ! Now is also a good time to reset the hash table (otherwise we
             ! attempt to lookup non-existent data in the next cycle!).
-            call reset_hash_table(rdm_spawn(irdm)%ht)
+            call reset_hash_table(inst_rdms%spawn(irdm)%ht)
             ! spawn_t comms changes the memory used by spawn%sdata.  Make
             ! sure the hash table always uses the currently 'active'
             ! spawning memory.
-            rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
+            inst_rdms%spawn(irdm)%ht%data_label => inst_rdms%spawn(irdm)%spawn%sdata
         end do
 
-        call calculate_rdm_traces(rdm_info, rdm_spawn%spawn, rdm_traces)
-        if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdm_info, rdm_spawn%spawn, accumulated_probs_old,  renyi_2)
+        call calculate_rdm_traces(rdm_info, inst_rdms%spawn%spawn, inst_rdms%traces)
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdm_info, inst_rdms%spawn%spawn, accumulated_probs_old, &
+                                                                       inst_rdms%renyi_2)
 
         do irdm = 1, nrdms
-            rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
+            inst_rdms%spawn(irdm)%spawn%head = inst_rdms%spawn(irdm)%spawn%head_start
         end do
 
     end subroutine communicate_inst_rdms
@@ -856,7 +863,7 @@ contains
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t, rdm_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
-        use fciqmc_data, only: nrdms, rdm_spawn, nsym_vec, real_factor
+        use fciqmc_data, only: real_factor
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
@@ -871,7 +878,7 @@ contains
         real(p), intent(in) :: accumulated_probs(0:)
 
         real(p) :: unweighted_walker_pop(size(walker_pop))
-        integer :: irdm, isym, ireplica
+        integer :: irdm, isym, ireplica, nrdms, nsym_vecs
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(basis%tensor_label_len)
 
@@ -881,10 +888,13 @@ contains
         f3(1:basis%string_len) = cdet%f(:basis%string_len)
         f3(basis%string_len+1:) = cdet%f2(:basis%string_len)
 
+        nrdms = size(dmqmc_estimates%rdm_info)
+        nsym_vecs = size(dmqmc_estimates%rdm_info(1)%B_masks, 2)
+
         ! Loop over all RDMs to be calculated.
         do irdm = 1, nrdms
         ! Loop over every symmetry-equivalent subsystem for this RDM.
-        do isym = 1, nsym_vec
+        do isym = 1, nsym_vecs
 
         associate(rdm=>dmqmc_estimates%ground_rdm%rdm, end1=>dmqmc_estimates%rdm_info(irdm)%end1(1), &
                   end2=>dmqmc_estimates%rdm_info(irdm)%end2(1), rdm_info=>dmqmc_estimates%rdm_info)
@@ -925,7 +935,7 @@ contains
                 do ireplica = 1, size(walker_pop)
                 if (abs(walker_pop(ireplica)) > 0) then
                     call create_spawned_particle_rdm(rdm_info(irdm), walker_pop(ireplica), &
-                        ireplica, rdm_spawn(irdm), nload_slots)
+                        ireplica, dmqmc_estimates%inst_rdm%spawn(irdm), nload_slots)
                 end if
                 end do
             end if
@@ -1193,7 +1203,7 @@ contains
         !    rdm_lists: Array of rdm_spawn_t derived types, which hold all of
         !        the RDM psips which belong to this processor.
         ! Out:
-        !    r2: The calculated RDM traces.
+        !    traces: The calculated RDM traces.
 
         use dmqmc_data, only: rdm_t
         use excitations, only: get_excitation_level

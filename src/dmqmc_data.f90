@@ -208,17 +208,12 @@ end type rdm_spawn_t
 !--- Type for all instantaneous RDMs ---
 type dmqmc_inst_rdms_t
     ! The total number of rdms beings calculated.
-    integer :: nrdms
-    ! The total number of translational symmetry vectors.
-    ! This is only set and used when performing rdm calculations.
-    integer :: nsym_vec
+    integer :: nrdms = 0
 
-    ! [todo] - remove rdm_ stem.
-    ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-    real(p), allocatable :: rdm_traces(:,:) ! (particle_t%nspaces, nrdms)
+    ! traces(i,j) holds the trace of replica i of the rdm with label j.
+    real(p), allocatable :: traces(:,:) ! (particle_t%nspaces, nrdms)
 
-    ! [todo] - remove rdm_ stem.
-    type(rdm_spawn_t), allocatable :: rdm_spawn(:) ! nrdms
+    type(rdm_spawn_t), allocatable :: spawn(:) ! nrdms
 
     ! When using the replica_tricks option, if the rdm in the first
     ! simulation if denoted \rho^1 and the ancillary rdm is denoted
@@ -233,13 +228,10 @@ end type dmqmc_inst_rdms_t
 
 !--- Type for a ground state RDM ---
 type dmqmc_ground_rdm_t
-    ! [todo] - rename to 'rdm'.
     ! This stores the reduces matrix, which is slowly accumulated over time
     ! (on each processor).
     real(p), allocatable :: rdm(:,:)
     ! The trace of the ground-state RDM.
-    ! [todo] - Currently ground-state RDMs use the global rdm_traces, the same
-    ! [todo] - as instantaneous RDMs. This needs updating.
     real(p) :: trace
 end type dmqmc_ground_rdm_t
 
@@ -273,6 +265,9 @@ type dmqmc_estimates_t
 
     ! Info about ground-state RDM estimates.
     type(dmqmc_ground_rdm_t) :: ground_rdm
+
+    ! Info about instantaneous temperature-dependent) RDM estimates.
+    type(dmqmc_inst_rdms_t) :: inst_rdm
 end type dmqmc_estimates_t
 
 !--- Type for weighted sampling parameters ---

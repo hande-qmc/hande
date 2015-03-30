@@ -2,6 +2,7 @@ module calc
 
 use const
 use csr, only: csrp_t
+use dmqmc_data, only: rdm_t
 use parallel, only: blacs_info
 
 implicit none
@@ -89,9 +90,22 @@ character(255) :: hamiltonian_file = 'HAMIL'
 ! BLACS info for diagonalisation
 type(blacs_info) :: proc_blacs_info
 
+! Variables relating to FCI RDM calculation.
+
 ! If true then, if doing an exact diagonalisation, calculate and output the
 ! eigenvalues of the reduced density matrix requested.
 logical :: doing_exact_rdm_eigv = .false.
+
+! Used to hold the RDM in FCI calculations.
+real(p), allocatable :: fci_rdm(:,:)
+
+! The total number of RDMs beings calculated.
+! NOTE: This can only be equal to 1 currently.
+integer :: fci_nrdms = 0
+
+! This stores  information for the various RDMs that the user asks to be
+! calculated. Each element of this array corresponds to one of these RDMs.
+type(rdm_t), allocatable :: fci_rdm_info(:) ! (fci_nrdms)
 
 !--- Parallel info for FCI calculations ---
 

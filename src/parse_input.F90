@@ -341,11 +341,11 @@ contains
                 end do
 
             case('FCI_REDUCED_DENSITY_MATRIX')
-                call readi(nrdms)
-                allocate(fci_rdm_info(nrdms), stat=ierr)
-                call check_allocate('fci_rdm_info', nrdms, ierr)
+                call readi(fci_nrdms)
+                allocate(fci_rdm_info(fci_nrdms), stat=ierr)
+                call check_allocate('fci_rdm_info', fci_nrdms, ierr)
                 dmqmc_in%rdm%doing_rdm = .true.
-                do i = 1, nrdms
+                do i = 1, fci_nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
                     fci_rdm_info(i)%A_nsites = nitems
@@ -951,7 +951,7 @@ contains
         call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
