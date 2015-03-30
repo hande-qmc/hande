@@ -101,16 +101,6 @@ logical :: replica_tricks = .false.
 
 real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
-! Spawned lists for rdms.
-type rdm_spawn_t
-    type(spawn_t) :: spawn
-    ! Spawn with the help of a hash table to avoid a sort (which is extremely
-    ! expensive when a large number of keys are repeated--seem to hit worst case
-    ! performance in quicksort).
-    type(hash_table_t) :: ht
-end type rdm_spawn_t
-type(rdm_spawn_t), allocatable :: rdm_spawn(:)
-
 ! The unit of the file reduced_dm.
 integer :: rdm_unit
 

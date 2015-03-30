@@ -213,8 +213,7 @@ type dmqmc_inst_rdms_t
     ! traces(i,j) holds the trace of replica i of the rdm with label j.
     real(p), allocatable :: traces(:,:) ! (particle_t%nspaces, nrdms)
 
-    ! [todo] - remove rdm_ stem.
-    type(rdm_spawn_t), allocatable :: rdm_spawn(:) ! nrdms
+    type(rdm_spawn_t), allocatable :: spawn(:) ! nrdms
 
     ! When using the replica_tricks option, if the rdm in the first
     ! simulation if denoted \rho^1 and the ancillary rdm is denoted

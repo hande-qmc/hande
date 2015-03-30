@@ -144,11 +144,11 @@ contains
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
         if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%rdm_info, dmqmc_estimates%ground_rdm%rdm, &
-                                                          qmc_in, dmqmc_in%rdm, nreplicas)
+                                                          qmc_in, dmqmc_in%rdm, dmqmc_estimates%inst_rdm%spawn, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, ground_rdm, qmc_in, rdm_in, nreplicas)
+    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, ground_rdm, qmc_in, rdm_in, rdm_spawn, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -162,11 +162,14 @@ contains
         !        called from DMQMC, false otherwise. This routine is also used
         !        by the FCI code, in which case qmc_in, rdm_in and nreplicas
         !        will not be passed in.
-        !    qmc_in (optional): Input options relating to QMC methods.  Only
-        !         needed for spawn_cutoff and if calc_inst_rdm is true.
-        !    rdm_in (optional): Input options relating to reduced density matrices.
-        !    nreplicas (optional): number of replicas being used.  Must be
-        !        specified if qmc_in is.
+        ! In (optional):
+        !    qmc_in: Input options relating to QMC methods.  Only needed for
+        !        spawn_cutoff and if calc_inst_rdm is true.
+        !    rdm_in: Input options relating to reduced density matrices.
+        !    rdm_spawn: rdm_spawn_t object to which the spanwed particle
+        !        will be added.
+        !    nreplicas: number of replicas being used.  Must be specified if
+        !        qmc_in is.
         ! Out:
         !     ground_rdm: The array used to store the RDM in ground-state
         !         calculations.
@@ -175,10 +178,9 @@ contains
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
-        use dmqmc_data, only: rdm_t
+        use dmqmc_data, only: rdm_t, rdm_spawn_t
         use errors
         use fciqmc_data, only: renyi_2, real_bit_shift
-        use fciqmc_data, only: rdm_spawn
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
@@ -194,6 +196,7 @@ contains
         real(p), allocatable, intent(out) :: ground_rdm(:,:)
         type(qmc_in_t), intent(in), optional :: qmc_in
         type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
+        type(rdm_spawn_t), allocatable, intent(out), optional :: rdm_spawn(:)
         integer, intent(in), optional :: nreplicas
 
         integer :: i, ierr, ipos, nrdms

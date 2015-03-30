@@ -1468,12 +1468,11 @@ contains
         !    nslots: number of slots proc_map is divided into.
         ! In/Out:
         !    rdm_spawn: rdm_spawn_t object to which the spanwed particle
-        !    will be added.
+        !        will be added.
 
         use bit_utils, only: operator(.bitstrgt.)
-        use dmqmc_data, only: rdm_t
+        use dmqmc_data, only: rdm_t, rdm_spawn_t
         use errors, only: stop_all
-        use fciqmc_data, only: rdm_spawn_t
         use parallel, only: iproc, nprocs, nthreads
         use hash_table, only: hash_table_pos_t, lookup_hash_table_entry
         use hash_table, only: assign_hash_table_entry

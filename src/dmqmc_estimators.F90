@@ -255,7 +255,7 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use dmqmc_data, only: rdm_t, dmqmc_inst_rdms_t
-        use fciqmc_data, only: rdm_spawn, renyi_2
+        use fciqmc_data, only: renyi_2
         use hash_table, only: reset_hash_table
         use spawn_data, only: annihilate_wrapper_spawn_t
 
@@ -267,7 +267,7 @@ contains
 
         nrdms = size(rdm_info)
 
-        ! WARNING: cannot pass rdm_spawn%spawn to procedures expecting an
+        ! WARNING: cannot pass inst_rdm%spawn%spawn to procedures expecting an
         ! array of type spawn_t due to a bug in gfortran which results in
         ! memory deallocations!
         ! See https://groups.google.com/forum/#!topic/comp.lang.fortran/VuFvOsLs6hE
@@ -275,21 +275,22 @@ contains
         ! The explicit loop is also meant to be more efficient anyway, as it
         ! prevents any chance of copy-in/copy-out...
         do irdm = 1, nrdms
-            call annihilate_wrapper_spawn_t(rdm_spawn(irdm)%spawn, .false.)
+            call annihilate_wrapper_spawn_t(inst_rdms%spawn(irdm)%spawn, .false.)
             ! Now is also a good time to reset the hash table (otherwise we
             ! attempt to lookup non-existent data in the next cycle!).
-            call reset_hash_table(rdm_spawn(irdm)%ht)
+            call reset_hash_table(inst_rdms%spawn(irdm)%ht)
             ! spawn_t comms changes the memory used by spawn%sdata.  Make
             ! sure the hash table always uses the currently 'active'
             ! spawning memory.
-            rdm_spawn(irdm)%ht%data_label => rdm_spawn(irdm)%spawn%sdata
+            inst_rdms%spawn(irdm)%ht%data_label => inst_rdms%spawn(irdm)%spawn%sdata
         end do
 
-        call calculate_rdm_traces(rdm_info, rdm_spawn%spawn, inst_rdms%traces)
-        if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdm_info, rdm_spawn%spawn, accumulated_probs_old,  renyi_2)
+        call calculate_rdm_traces(rdm_info, inst_rdms%spawn%spawn, inst_rdms%traces)
+        if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdm_info, inst_rdms%spawn%spawn, accumulated_probs_old, &
+                                                                       renyi_2)
 
         do irdm = 1, nrdms
-            rdm_spawn(irdm)%spawn%head = rdm_spawn(irdm)%spawn%head_start
+            inst_rdms%spawn(irdm)%spawn%head = inst_rdms%spawn(irdm)%spawn%head_start
         end do
 
     end subroutine communicate_inst_rdms
@@ -864,7 +865,7 @@ contains
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t, rdm_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
-        use fciqmc_data, only: rdm_spawn, real_factor
+        use fciqmc_data, only: real_factor
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
@@ -936,7 +937,7 @@ contains
                 do ireplica = 1, size(walker_pop)
                 if (abs(walker_pop(ireplica)) > 0) then
                     call create_spawned_particle_rdm(rdm_info(irdm), walker_pop(ireplica), &
-                        ireplica, rdm_spawn(irdm), nload_slots)
+                        ireplica, dmqmc_estimates%inst_rdm%spawn(irdm), nload_slots)
                 end if
                 end do
             end if
