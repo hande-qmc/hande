@@ -119,7 +119,7 @@ contains
         ! In/Out:
         !     rep_comm: nb_rep_t object containing report loop information.
 
-        use calc, only: nb_rep_t
+        use qmc_data, only: nb_rep_t
         use parallel
 
         type(nb_rep_t), intent(inout) :: rep_comm

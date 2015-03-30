@@ -580,7 +580,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, rep_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -589,14 +589,13 @@ contains
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
+        ! In/Out:
         !    qs: qmc_state_t object.
         ! In (optional):
-        !    nb_comm: true if using non-blocking communications.
+        !    nb_comm: using non-blocking communications?
         !    spawn_elsewhere: number of particles spawned from the current
         !       processor to other processors.  Relevant only when restarting
         !       non-blocking calculations.
-        ! Out (Optional):
-        !    rep_comm: nb_rep_t object containg report loop information.
 
         use calc, only: nb_rep_t
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
@@ -611,7 +610,6 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
         logical, optional, intent(in) :: nb_comm
-        type(nb_rep_t), optional, intent(inout) :: rep_comm
         integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet
@@ -645,16 +643,19 @@ contains
         end do
         call dealloc_det_info_t(cdet)
 
+        ! Using non blocking communications?
+        nb_comm_local = .false.
+        if (present(nb_comm)) nb_comm_local = nb_comm
 #ifdef PARALLEL
-        if (present(rep_comm)) then
+        if (nb_comm_local) then
             ! The output in non-blocking comms is delayed one report loop, so initialise
             ! the send here.
             ! For simplicity, hook into the normal estimator communications, which normalises
             ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
             qs%estimators%D0_population = qs%estimators%D0_population*qmc_in%ncycles
             qs%estimators%proj_energy = qs%estimators%proj_energy*qmc_in%ncycles
-            call local_energy_estimators(qs, rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
-            call update_energy_estimators_send(rep_comm)
+            call local_energy_estimators(qs, qs%report_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
+            call update_energy_estimators_send(qs%report_comm%rep_info)
         else
             call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -669,10 +670,6 @@ contains
 #else
         ntot_particles = qs%psip_list%nparticles
 #endif
-
-        ! Using non blocking communications?
-        nb_comm_local = .false.
-        if (present(nb_comm)) nb_comm_local = nb_comm
 
         if (.not. nb_comm_local .and. parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
@@ -810,8 +807,8 @@ contains
 
     subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,             &
                                 nspawn_events, semi_stoch_shift_it, semi_stoch_start_it,           &
-                                soft_exit, load_bal_in,  update_estimators, bloom_stats, doing_lb, &
-                                nb_comm, rep_comm)
+                                soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, &
+                                nb_comm)
 
         ! In:
         !    sys: system being studied.
@@ -820,7 +817,6 @@ contains
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
         !    load_bal_in: input options for load balancing.
-        !    
         ! In/Out:
         !    qmc_in: input optons relating to QMC methods.
         !    update_tau: true if the processor thinks the timestep should be
@@ -843,10 +839,6 @@ contains
         !    load_bal_in: input options for load balancing.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
-        !    rep_comm: nb_rep_t object containing report loop info. Used for
-        !        non-blocking communications where we receive report information
-        !        from previous iteration and communicate the current iterations
-        !        estimators.
 
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send, &
@@ -873,7 +865,6 @@ contains
 
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb, nb_comm
-        type(nb_rep_t), optional, intent(inout) :: rep_comm
 
         real :: curr_time
         logical :: update, vary_shift_before, nb_comm_local, comms_found
@@ -903,15 +894,15 @@ contains
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, update_tau, bloom_stats, &
-                                          rep_comm%nb_spawn(2))
+            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
+                                          qs%par_info%report_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, rep_comm%request, ntot_particles, &
-                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau, &
+            call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
+                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau_now, &
                                                bloom_stats)
             ! Send current report loop quantities.
-            rep_comm%rep_info = rep_info_copy
-            call update_energy_estimators_send(rep_comm)
+            qs%par_info%report_comm%rep_info = rep_info_copy
+            call update_energy_estimators_send(qs%par_info%report_comm)
         else
             update_tau = .false.
             call check_interact(comms_found)

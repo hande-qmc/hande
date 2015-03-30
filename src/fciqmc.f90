@@ -144,8 +144,7 @@ contains
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
-            call initial_fciqmc_status(sys, qmc_in, qs, .true., par_info%report_comm, &
-                                       send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
+            call initial_fciqmc_status(sys, qmc_in, qs, send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
         else
             call initial_fciqmc_status(sys, qmc_in, qs)
         end if
@@ -258,8 +257,8 @@ contains
                             par_info%load%needed = .false.
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &
-                                                              send_counts, req_data_s, par_info%report_comm%nb_spawn, nspawn_events)
-                        call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
+                                                              send_counts, req_data_s, qs%par_info%report_comm%nb_spawn, nspawn_events)
+                        call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic
                         ! projection step.
@@ -288,7 +287,7 @@ contains
             call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
-                                 nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
+                                 nb_comm=fciqmc_in%non_blocking_comm)
 
             if (update_tau) call rescale_tau(qs%tau)
 
@@ -316,7 +315,7 @@ contains
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
-                                                                    par_info%report_comm%request, t1, nparticles_old, qs%shift(1), &
+                                                                    qs%par_info%report_comm%request, t1, nparticles_old, qs%shift(1), &
                                                                     restart_in%dump_restart, load_bal_in)
 
         if (parent) write (6,'()')
