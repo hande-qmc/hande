@@ -37,7 +37,4 @@ integer, parameter :: dipole_operator = 2**3
 ! Hellmann--Feynman shift.
 real(p) :: hf_shift = 0.0_p
 
-! Value of <D0|O|D0>, where O is the operator we are sampling.
-real(p) :: O00
-
 end module hfs_data

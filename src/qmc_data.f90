@@ -238,6 +238,9 @@ type reference_t
     integer, allocatable :: hs_occ_list0(:)
     ! Energy of reference determinant.
     real(p) :: H00
+    ! Value of <D0|O|D0>, where O is the operator we are sampling.
+    ! (Applicable/set only if Hellmann--Feynman sampling is in operation.)
+    real(p) :: O00
 end type reference_t
 
 ! --- semi-stochastic ---
