@@ -364,8 +364,8 @@ contains
         if (qs%vary_shift(1)) then
             call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
-                call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), qs%estimators%hf_signed_pop, &
-                                     new_hf_signed_pop, qmc_in%ncycles)
+                call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
+                                     qs%estimators%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         end if
         ntot_particles_old = ntot_particles
