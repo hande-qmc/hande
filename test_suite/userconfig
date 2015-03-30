@@ -1,4 +1,4 @@
-[hubbard]
+[hande]
 exe = ../bin/hande.x
 inputs_args = ('*.in', '')
 vcs = git
@@ -11,4 +11,4 @@ skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support\|Restar
 [user]
 diff = vimdiff
 benchmark = cc00373 b93ec9a
-
+tolerance = (1.e-10, 1.e-10, None, False)
