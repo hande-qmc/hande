@@ -1008,8 +1008,8 @@ contains
         if (err /= 0) call stop_all('lua_kinetic_energy', 'beta: target temperature not supplied.')
         call aot_get_val(fermi_temperature, err, lua_state, opts, 'fermi_temperature', default=.false.)
 
-        if (sys%ueg%chem_pot == huge(1.0_p)) call stop_all('lua_kinetic_energy',
-                                                           'chem_pot: chemical potential not supplied'.)
+        if (sys%ueg%chem_pot == huge(1.0_p)) call stop_all('lua_kinetic_energy', &
+                                                           'chem_pot: chemical potential not supplied.')
 
         have_seed = aot_exists(lua_state, opts, 'rng_seed')
         call aot_get_val(seed, err, lua_state, opts, 'rng_seed')
