@@ -71,18 +71,6 @@ integer, parameter :: num_dmqmc_operators = terminator - 1
 ! are reset on each processor to start the next report loop.
 real(p) :: numerators(num_dmqmc_operators)
 
-! If this logical is true then the program runs the DMQMC algorithm with
-! importance sampling.
-! dmqmc_sampling_prob stores the factors by which the probabilities of
-! spawning to a larger excitation are reduced by. So, when spawning from
-! a diagonal element to a element with one excitation, the probability
-! of spawning is reduced by a factor sampling_probs(1).
-! accumulated_probs(i) stores the multiplication of all the elements
-! of sampling_probs up to the ith element. This quantity is often
-! needed, so it is stored.
-real(p), allocatable :: accumulated_probs(:) ! (min(nel, nsites-nel) + 1)
-real(p), allocatable :: accumulated_probs_old(:) ! (min(nel, nsites-nel) + 1)
-
 real(dp), allocatable :: weight_altering_factors(:)
 
 ! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
