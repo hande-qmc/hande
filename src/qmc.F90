@@ -126,7 +126,7 @@ contains
         use energy_evaluation, only: nparticles_start_ind, calculate_hf_signed_pop
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det, copy_reference_t
-        use hfs_data, only: O00, hf_signed_pop
+        use hfs_data, only: O00
         use proc_pointers, only: sc0_ptr, op0_ptr
         use spawn_data, only: alloc_spawn_t
         use spawning, only: assign_particle_processor
@@ -470,9 +470,10 @@ contains
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
                 tmp_int_64 = calculate_hf_signed_pop(pl%nstates, pl%pops)
-                call mpi_allreduce(tmp_int_64, hf_signed_pop, pl%nspaces, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+                call mpi_allreduce(tmp_int_64, qmc_state%estimators%hf_signed_pop, pl%nspaces, MPI_INTEGER8, MPI_SUM, &
+                                   MPI_COMM_WORLD, ierr)
 #else
-                hf_signed_pop = calculate_hf_signed_pop(pl%nstates, pl%pops)
+                qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl%nstates, pl%pops)
 #endif
             end if
 

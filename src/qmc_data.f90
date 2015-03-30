@@ -419,6 +419,20 @@ type estimators_t
     integer :: tot_nstates
     ! The total number of successful spawning events, across all processors.
     integer :: tot_nspawn_events
+
+    ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
+    ! Signed population of Hellmann--Feynman particles
+    !     \sum_i sign(N_i) \tilde{N}_i,
+    ! where
+    !     N_i is the Hamiltonian population on |D_i>,
+    !     \tilde{N}_i is the Hellmann--Feynman population on |D_i>.
+    real(p) :: hf_signed_pop
+    ! Population on the reference in the Hellmann--Feynman space, \tilde{N}_0.
+    real(p) :: D0_hf_population
+    ! \sum_i <D_0|O|D_i> N_i.
+    real(p) :: proj_hf_O_hpsip
+    ! \sum_i <D_0|H|D_i> \tilde{N}_i.
+    real(p) :: proj_hf_H_hfpsip
 end type estimators_t
 
 type qmc_state_t
