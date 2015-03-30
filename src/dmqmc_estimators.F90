@@ -137,7 +137,7 @@ contains
         !    rep_loop_loc: array containing local quantities to be communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn, renyi_2
+        use fciqmc_data, only: rspawn
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -169,7 +169,7 @@ contains
             rep_loop_loc(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)) = reshape(dmqmc_estimates%inst_rdm%traces, nrdms)
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = renyi_2
+            rep_loop_loc(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)) = dmqmc_estimates%inst_rdm%renyi_2
         end if
 
     end subroutine local_dmqmc_estimators
@@ -197,7 +197,6 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use fciqmc_data, only: rspawn
-        use fciqmc_data, only: renyi_2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
@@ -226,7 +225,7 @@ contains
                                                       shape(dmqmc_estimates%inst_rdm%traces))
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
+            dmqmc_estimates%inst_rdm%renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
         end if
 
         ! Average the spawning rate.
@@ -255,7 +254,6 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use dmqmc_data, only: rdm_t, dmqmc_inst_rdms_t
-        use fciqmc_data, only: renyi_2
         use hash_table, only: reset_hash_table
         use spawn_data, only: annihilate_wrapper_spawn_t
 
@@ -287,7 +285,7 @@ contains
 
         call calculate_rdm_traces(rdm_info, inst_rdms%spawn%spawn, inst_rdms%traces)
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) call calculate_rdm_renyi_2(rdm_info, inst_rdms%spawn%spawn, accumulated_probs_old, &
-                                                                       renyi_2)
+                                                                       inst_rdms%renyi_2)
 
         do irdm = 1, nrdms
             inst_rdms%spawn(irdm)%spawn%head = inst_rdms%spawn(irdm)%spawn%head_start

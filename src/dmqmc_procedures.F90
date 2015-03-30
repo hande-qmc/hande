@@ -144,11 +144,11 @@ contains
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
         if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%rdm_info, dmqmc_estimates%ground_rdm%rdm, &
-                                                          qmc_in, dmqmc_in%rdm, dmqmc_estimates%inst_rdm%spawn, nreplicas)
+                                                          qmc_in, dmqmc_in%rdm, dmqmc_estimates%inst_rdm, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, ground_rdm, qmc_in, rdm_in, rdm_spawn, nreplicas)
+    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, ground_rdm, qmc_in, rdm_in, inst_rdms, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -166,8 +166,6 @@ contains
         !    qmc_in: Input options relating to QMC methods.  Only needed for
         !        spawn_cutoff and if calc_inst_rdm is true.
         !    rdm_in: Input options relating to reduced density matrices.
-        !    rdm_spawn: rdm_spawn_t object to which the spanwed particle
-        !        will be added.
         !    nreplicas: number of replicas being used.  Must be specified if
         !        qmc_in is.
         ! Out:
@@ -175,12 +173,14 @@ contains
         !         calculations.
         ! In/Out:
         !     rdm_info: information relating to RDM subsystems being studied.
+        !     inst_rdms (optional): estimates of instantaneous
+        !         (temperature-dependent) reduced density matrices.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
-        use dmqmc_data, only: rdm_t, rdm_spawn_t
+        use dmqmc_data, only: rdm_t, dmqmc_inst_rdms_t
         use errors
-        use fciqmc_data, only: renyi_2, real_bit_shift
+        use fciqmc_data, only: real_bit_shift
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
@@ -196,7 +196,7 @@ contains
         real(p), allocatable, intent(out) :: ground_rdm(:,:)
         type(qmc_in_t), intent(in), optional :: qmc_in
         type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
-        type(rdm_spawn_t), allocatable, intent(out), optional :: rdm_spawn(:)
+        type(dmqmc_inst_rdms_t), intent(inout), optional :: inst_rdms
         integer, intent(in), optional :: nreplicas
 
         integer :: i, ierr, ipos, nrdms
@@ -267,14 +267,14 @@ contains
             ! Create the instances of the rdm_spawn_t type for instantaneous RDM
             ! calculatons.
             if (rdm_in%calc_inst_rdm) then
-                allocate(rdm_spawn(nrdms), stat=ierr)
-                call check_allocate('rdm_spawn', nrdms, ierr)
+                allocate(inst_rdms%spawn(nrdms), stat=ierr)
+                call check_allocate('inst_rdms%spawn', nrdms, ierr)
 
                 ! If calculating Renyi entropy (S2).
                 if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                    allocate(renyi_2(nrdms), stat=ierr)
-                    call check_allocate('renyi_2', nrdms, ierr)
-                    renyi_2 = 0.0_p
+                    allocate(inst_rdms%renyi_2(nrdms), stat=ierr)
+                    call check_allocate('inst_rdms%renyi_2', nrdms, ierr)
+                    inst_rdms%renyi_2 = 0.0_p
                 end if
 
                 total_size_spawned_rdm = 0
@@ -301,13 +301,13 @@ contains
                     ! Note the initiator approximation is not implemented for density matrix calculations.
                     call alloc_spawn_t(rdm_info(i)%string_len*2, nreplicas, .false., &
                                          spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, &
-                                         27, use_mpi_barriers, rdm_spawn(i)%spawn)
+                                         27, use_mpi_barriers, inst_rdms%spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and
                     ! each hash value can have 7 clashes. This was found to give
                     ! reasonable performance.
                     call alloc_hash_table(3*spawn_length_loc, 7, rdm_info(i)%string_len*2, &
-                                         0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
+                                          0, 0, 17, inst_rdms%spawn(i)%ht, inst_rdms%spawn(i)%spawn%sdata)
                 end do
 
                 if (parent) then

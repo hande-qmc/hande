@@ -71,16 +71,6 @@ integer, parameter :: num_dmqmc_operators = terminator - 1
 ! are reset on each processor to start the next report loop.
 real(p) :: numerators(num_dmqmc_operators)
 
-! When using the replica_tricks option, if the rdm in the first
-! simulation if denoted \rho^1 and the ancillary rdm is denoted
-! \rho^2 then renyi_2 holds:
-! x = \sum_{ij} \rho^1_{ij} * \rho^2_{ij}.
-! The indices of renyi_2 hold this value for the various rdms being
-! calculated. After post-processing averaging, this quantity should
-! be normalised by the product of the corresponding RDM traces.
-! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
-real(p), allocatable :: renyi_2(:)
-
 ! If this logical is true then the program runs the DMQMC algorithm with
 ! importance sampling.
 ! dmqmc_sampling_prob stores the factors by which the probabilities of
@@ -330,7 +320,7 @@ contains
             ! Renyi-2 entropy for all RDMs being sampled.
             if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
                 do i = 1, dmqmc_in%rdm%nrdms
-                    write (6, '(6X,es17.10)', advance = 'no') renyi_2(i)
+                    write (6, '(6X,es17.10)', advance = 'no') dmqmc_estimates_global%inst_rdm%renyi_2(i)
                 end do
             end if
 
