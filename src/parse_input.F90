@@ -20,7 +20,8 @@ implicit none
 
 contains
 
-    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, dmqmc_in)
+    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, &
+                          load_bal_in, dmqmc_in, dmqmc_rdm_info)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
@@ -36,6 +37,7 @@ contains
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
         !    dmqmc_in: input options relating to DMQMC.
+        !    dmqmc_rdm_info: information about RDMs to be calculated from DMQMC.
 
 ! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
@@ -67,6 +69,7 @@ contains
         type(reference_t), intent(inout) :: reference
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(rdm_t), allocatable, intent(inout) :: dmqmc_rdm_info(:)
 
         character(255) :: cInp
         character(100) :: w
@@ -323,23 +326,35 @@ contains
                 dmqmc_in%all_spin_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
                 call readi(dmqmc_in%rdm%nrdms)
-                allocate(rdms(dmqmc_in%rdm%nrdms), stat=ierr)
-                call check_allocate('rdms', dmqmc_in%rdm%nrdms, ierr)
+                allocate(dmqmc_rdm_info(dmqmc_in%rdm%nrdms), stat=ierr)
+                call check_allocate('dmqmc_rdm_info', dmqmc_in%rdm%nrdms, ierr)
                 dmqmc_in%rdm%doing_rdm = .true.
                 do i = 1, dmqmc_in%rdm%nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
-                    rdms(i)%A_nsites = nitems
-                    allocate(rdms(i)%subsystem_A(nitems))
-                    call check_allocate('rdms(i)%subsystem_A',nitems,ierr)
+                    dmqmc_rdm_info(i)%A_nsites = nitems
+                    allocate(dmqmc_rdm_info(i)%subsystem_A(nitems))
+                    call check_allocate('dmqmc_rdm_info(i)%subsystem_A',nitems,ierr)
                     do j = 1, nitems
-                        call readi(rdms(i)%subsystem_A(j))
+                        call readi(dmqmc_rdm_info(i)%subsystem_A(j))
                     end do
                 end do
 
-                ! TODO: Remove this. This is here temporarily until more purity
-                ! work is done, and FCI RDMs are separated out from DMQMC RDMs.
-                nrdms = dmqmc_in%rdm%nrdms
+            case('FCI_REDUCED_DENSITY_MATRIX')
+                call readi(nrdms)
+                allocate(fci_rdm_info(nrdms), stat=ierr)
+                call check_allocate('fci_rdm_info', nrdms, ierr)
+                dmqmc_in%rdm%doing_rdm = .true.
+                do i = 1, nrdms
+                    call read_line(eof)
+                    if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
+                    fci_rdm_info(i)%A_nsites = nitems
+                    allocate(fci_rdm_info(i)%subsystem_A(nitems))
+                    call check_allocate('fci_rdm_info(i)%subsystem_A',nitems,ierr)
+                    do j = 1, nitems
+                        call readi(fci_rdm_info(i)%subsystem_A(j))
+                    end do
+                end do
             case('GROUND_STATE_RDM')
                 dmqmc_in%rdm%calc_ground_rdm = .true.
             case('INSTANTANEOUS_RDM')
@@ -348,7 +363,6 @@ contains
                 dmqmc_in%rdm%output_rdm = .true.
             case('EXACT_RDM_EIGENVALUES')
                 doing_exact_rdm_eigv = .true.
-                dmqmc_in%rdm%calc_ground_rdm = .true.
             case('CONCURRENCE')
                 dmqmc_in%rdm%doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
@@ -789,7 +803,8 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, dmqmc_in)
+    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, &
+                                load_bal_in, reference, dmqmc_in, dmqmc_rdm_info)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -807,10 +822,11 @@ contains
         !    restart_in: input options for HDF5 restart files.
         !    reference: current reference determinant.
         !    dmqmc_in: input options relating to DMQMC.
+        !    dmqmc_rdm_info: information about RDMs to be calculated from DMQMC.
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, load_bal_in_t, reference_t
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, rdm_t
 
 #ifndef PARALLEL
 
@@ -825,6 +841,7 @@ contains
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(inout) :: reference
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(rdm_t), allocatable, intent(inout) :: dmqmc_rdm_info(:)
 
 #else
 
@@ -843,6 +860,7 @@ contains
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(inout) :: reference
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(rdm_t), allocatable, intent(inout) :: dmqmc_rdm_info(:)
 
         integer :: i, ierr, occ_list_size
         logical :: option_set
@@ -933,7 +951,6 @@ contains
         call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        ! TODO: Remove this when more purity work is done.
         call mpi_bcast(nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
@@ -970,22 +987,42 @@ contains
             call mpi_bcast(dmqmc_in%sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
-        if (parent) option_set = allocated(rdms)
+        if (parent) option_set = allocated(dmqmc_rdm_info)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(rdms)
+            occ_list_size = size(dmqmc_rdm_info)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(rdms(occ_list_size), stat=ierr)
-                call check_allocate('rdms',occ_list_size,ierr)
+                allocate(dmqmc_rdm_info(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_rdm_info',occ_list_size,ierr)
             end if
             do i = 1, occ_list_size
-                call mpi_bcast(rdms(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                call mpi_bcast(dmqmc_rdm_info(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
                 if (.not.parent) then
-                    allocate(rdms(i)%subsystem_A(rdms(i)%A_nsites), stat=ierr)
-                    call check_allocate('rdms(i)%subsystem_A',rdms(i)%A_nsites,ierr)
+                    allocate(dmqmc_rdm_info(i)%subsystem_A(dmqmc_rdm_info(i)%A_nsites), stat=ierr)
+                    call check_allocate('dmqmc_rdm_info(i)%subsystem_A',dmqmc_rdm_info(i)%A_nsites,ierr)
                 end if
-                call mpi_bcast(rdms(i)%subsystem_A, rdms(i)%A_nsites, mpi_integer, 0, mpi_comm_world, ierr)
+                call mpi_bcast(dmqmc_rdm_info(i)%subsystem_A, dmqmc_rdm_info(i)%A_nsites, mpi_integer, &
+                               0, mpi_comm_world, ierr)
+            end do
+        end if
+        option_set = .false.
+        if (parent) option_set = allocated(fci_rdm_info)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            occ_list_size = size(fci_rdm_info)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(fci_rdm_info(occ_list_size), stat=ierr)
+                call check_allocate('fci_rdm_info',occ_list_size,ierr)
+            end if
+            do i = 1, occ_list_size
+                call mpi_bcast(fci_rdm_info(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                if (.not.parent) then
+                    allocate(fci_rdm_info(i)%subsystem_A(fci_rdm_info(i)%A_nsites), stat=ierr)
+                    call check_allocate('fci_rdm_info(i)%subsystem_A',fci_rdm_info(i)%A_nsites,ierr)
+                end if
+                call mpi_bcast(fci_rdm_info(i)%subsystem_A, fci_rdm_info(i)%A_nsites, mpi_integer, 0, mpi_comm_world, ierr)
             end do
         end if
         option_set = .false.

@@ -1471,8 +1471,9 @@ contains
         !    will be added.
 
         use bit_utils, only: operator(.bitstrgt.)
+        use dmqmc_data, only: rdm_t
         use errors, only: stop_all
-        use fciqmc_data, only: rdm_t, rdm_spawn_t
+        use fciqmc_data, only: rdm_spawn_t
         use parallel, only: iproc, nprocs, nthreads
         use hash_table, only: hash_table_pos_t, lookup_hash_table_entry
         use hash_table, only: assign_hash_table_entry

@@ -23,6 +23,37 @@ end enum
 ! for DMQMC.
 integer, parameter :: num_dmqmc_operators = terminator - 1
 
+! This type contains information for the RDM corresponding to a given
+! subsystem. It takes translational symmetry into account by storing information
+! for all subsystems which are equivalent by translational symmetry.
+type rdm_t
+    ! The total number of sites in subsystem A.
+    integer :: A_nsites
+    ! Similar to string_len, string_len is the length of the byte array
+    ! necessary to contain a bit for each subsystem-A basis function. An array
+    ! of twice this length is stored to hold both RDM indices.
+    integer :: string_len
+    ! The sites in subsystem A, as entered by the user.
+    integer, allocatable :: subsystem_A(:)
+    ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
+    ! version i of subsystem B, where the different 'versions' correspond to
+    ! subsystems which are equivalent by symmetry.
+    integer(i0), allocatable :: B_masks(:,:)
+    ! bit_pos(i,j,1) contains the position of the bit corresponding to site i in
+    ! 'version' j of subsystem A.
+    ! bit_pos(i,j,2) contains the element of the bit corresponding to site i in
+    ! 'version' j of subsystem A.
+    ! Note that site i in a given version is the site that corresponds to site i
+    ! in all other versions of subsystem A (and so bit_pos(i,:,1) and
+    ! bit_pos(i,:,2) will not be sorted). This is very important so that
+    ! equivalent psips will contribute to the same RDM element.
+    integer, allocatable :: bit_pos(:,:,:)
+    ! Two bitstrings of length string_len. To be used as temporary
+    ! bitstrings to prevent having to regularly allocate different length
+    ! bitstrings for different RDMs.
+    integer(i0), allocatable :: end1(:), end2(:)
+end type rdm_t
+
 type dmqmc_rdm_in_t
     ! The total number of rdms beings calculated (currently only applicable to
     ! instantaneous RDM calculations, not to ground-state RDM calculations,
@@ -174,36 +205,43 @@ type rdm_spawn_t
     type(hash_table_t) :: ht
 end type rdm_spawn_t
 
-! This type contains information for the RDM corresponding to a given
-! subsystem. It takes translational symmetry into account by storing information
-! for all subsystems which are equivalent by translational symmetry.
-type rdm_t
-    ! The total number of sites in subsystem A.
-    integer :: A_nsites
-    ! Similar to string_len, string_len is the length of the byte array
-    ! necessary to contain a bit for each subsystem-A basis function. An array
-    ! of twice this length is stored to hold both RDM indices.
-    integer :: string_len
-    ! The sites in subsystem A, as entered by the user.
-    integer, allocatable :: subsystem_A(:)
-    ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
-    ! version i of subsystem B, where the different 'versions' correspond to
-    ! subsystems which are equivalent by symmetry.
-    integer(i0), allocatable :: B_masks(:,:)
-    ! bit_pos(i,j,1) contains the position of the bit corresponding to site i in
-    ! 'version' j of subsystem A.
-    ! bit_pos(i,j,2) contains the element of the bit corresponding to site i in
-    ! 'version' j of subsystem A.
-    ! Note that site i in a given version is the site that corresponds to site i
-    ! in all other versions of subsystem A (and so bit_pos(i,:,1) and
-    ! bit_pos(i,:,2) will not be sorted). This is very important so that
-    ! equivalent psips will contribute to the same RDM element.
-    integer, allocatable :: bit_pos(:,:,:)
-    ! Two bitstrings of length string_len. To be used as temporary
-    ! bitstrings to prevent having to regularly allocate different length
-    ! bitstrings for different RDMs.
-    integer(i0), allocatable :: end1(:), end2(:)
-end type rdm_t
+!--- Type for all instantaneous RDMs ---
+type dmqmc_inst_rdms_t
+    ! The total number of rdms beings calculated.
+    integer :: nrdms
+    ! The total number of translational symmetry vectors.
+    ! This is only set and used when performing rdm calculations.
+    integer :: nsym_vec
+
+    ! [todo] - remove rdm_ stem.
+    ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
+    real(p), allocatable :: rdm_traces(:,:) ! (particle_t%nspaces, nrdms)
+
+    ! [todo] - remove rdm_ stem.
+    type(rdm_spawn_t), allocatable :: rdm_spawn(:) ! nrdms
+
+    ! When using the replica_tricks option, if the rdm in the first
+    ! simulation if denoted \rho^1 and the ancillary rdm is denoted
+    ! \rho^2 then renyi_2 holds:
+    ! x = \sum_{ij} \rho^1_{ij} * \rho^2_{ij}.
+    ! The indices of renyi_2 hold this value for the various rdms being
+    ! calculated. After post-processing averaging, this quantity should
+    ! be normalised by the product of the corresponding RDM traces -
+    ! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
+    real(p), allocatable :: renyi_2(:) ! (nrdms)
+end type dmqmc_inst_rdms_t
+
+!--- Type for a ground state RDM ---
+type dmqmc_ground_rdm_t
+    ! [todo] - rename to 'rdm'.
+    ! This stores the reduces matrix, which is slowly accumulated over time
+    ! (on each processor).
+    real(p), allocatable :: rdm(:,:)
+    ! The trace of the ground-state RDM.
+    ! [todo] - Currently ground-state RDMs use the global rdm_traces, the same
+    ! [todo] - as instantaneous RDMs. This needs updating.
+    real(p) :: trace
+end type dmqmc_ground_rdm_t
 
 type dmqmc_estimates_t
     ! numerators stores the numerators for the estimators in DMQMC. These
@@ -225,51 +263,17 @@ type dmqmc_estimates_t
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
+
+    ! RDM data.
+
+    ! This stores information for the various RDMs that the user asks to be
+    ! calculated. Each element of this array corresponds to one of these RDMs.
+    ! This is not really an estimate, but we put it here to be pragmatic.
+    type(rdm_t), allocatable :: rdm_info(:) ! (nrdms)
+
+    ! Info about ground-state RDM estimates.
+    type(dmqmc_ground_rdm_t) :: ground_rdm
 end type dmqmc_estimates_t
-
-
-!--- Type for all instantaneous RDMs ---
-type dmqmc_inst_rdms_t
-    ! The total number of rdms beings calculated.
-    integer :: nrdms
-    ! The total number of translational symmetry vectors.
-    ! This is only set and used when performing rdm calculations.
-    integer :: nsym_vec
-
-    ! This stores all the information for the various RDMs that the user asks
-    ! to be calculated. Each element of this array corresponds to one of these RDMs.
-    type(rdm_t), allocatable :: rdms(:) ! nrdms
-
-    ! [todo] - remove rdm_ stem.
-    ! rdm_traces(i,j) holds the trace of replica i of the rdm with label j.
-    real(p), allocatable :: rdm_traces(:,:) ! (particle_t%nspaces, nrdms)
-
-    ! [todo] - remove rdm_ stem.
-    type(rdm_spawn_t), allocatable :: rdm_spawn(:) ! nrdms
-
-    ! When using the replica_tricks option, if the rdm in the first
-    ! simulation if denoted \rho^1 and the ancillary rdm is denoted
-    ! \rho^2 then renyi_2 holds:
-    ! x = \sum_{ij} \rho^1_{ij} * \rho^2_{ij}.
-    ! The indices of renyi_2 hold this value for the various rdms being
-    ! calculated. After post-processing averaging, this quantity should
-    ! be normalised by the product of the corresponding RDM traces -
-    ! call it y. Then the renyi-2 entropy is then given by -log_2(x/y).
-    real(p), allocatable :: renyi_2(:) ! (nrdms)
-end type dmqmc_inst_rdms_t
-
-
-!--- Type for a ground state RDM ---
-type dmqmc_ground_rdm_t
-    ! [todo] - rename to 'rdm'.
-    ! This stores the reduces matrix, which is slowly accumulated over time
-    ! (on each processor).
-    real(p), allocatable :: reduced_density_matrix(:,:)
-    ! The trace of the ground-state RDM.
-    ! [todo] - Currently ground-state RDMs use the global rdm_traces, the same
-    ! [todo] - as instantaneous RDMs. This needs updating.
-    real(p) :: trace
-end type dmqmc_ground_rdm_t
 
 !--- Type for weighted sampling parameters ---
 type dmqmc_weighted_sampling_t

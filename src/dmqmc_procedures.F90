@@ -143,11 +143,12 @@ contains
         ! If doing a reduced density matrix calculation, allocate and define
         ! the bit masks that have 1's at the positions referring to either
         ! subsystems A or B.
-        if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., qmc_in, dmqmc_in%rdm, nreplicas)
+        if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%rdm_info, dmqmc_estimates%ground_rdm%rdm, &
+                                                          qmc_in, dmqmc_in%rdm, nreplicas)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, called_from_dmqmc, qmc_in, rdm_in, nreplicas)
+    subroutine setup_rdm_arrays(sys, called_from_dmqmc, rdm_info, ground_rdm, qmc_in, rdm_in, nreplicas)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -166,13 +167,19 @@ contains
         !    rdm_in (optional): Input options relating to reduced density matrices.
         !    nreplicas (optional): number of replicas being used.  Must be
         !        specified if qmc_in is.
+        ! Out:
+        !     ground_rdm: The array used to store the RDM in ground-state
+        !         calculations.
+        ! In/Out:
+        !     rdm_info: information relating to RDM subsystems being studied.
 
         use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
         use checking, only: check_allocate
+        use dmqmc_data, only: rdm_t
         use errors
-        use fciqmc_data, only: reduced_density_matrix, nrdms
+        use fciqmc_data, only: nrdms
         use fciqmc_data, only: renyi_2, real_bit_shift
-        use fciqmc_data, only: rdm_spawn, rdms
+        use fciqmc_data, only: rdm_spawn
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t
@@ -184,6 +191,8 @@ contains
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: called_from_dmqmc
+        type(rdm_t), intent(inout) :: rdm_info(:)
+        real(p), allocatable, intent(out) :: ground_rdm(:,:)
         type(qmc_in_t), intent(in), optional :: qmc_in
         type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
         integer, intent(in), optional :: nreplicas
@@ -200,7 +209,7 @@ contains
 
         ! For the Heisenberg model only currently.
         if (sys%system == heisenberg) then
-            call find_rdm_masks(sys)
+            call find_rdm_masks(sys, rdm_info)
         else
             call stop_all("setup_rdm_arrays","The use of RDMs is currently only implemented for &
                            &the Heisenberg model.")
@@ -210,19 +219,19 @@ contains
         ! Setup the rdms array.
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
-            rdms(i)%string_len = ceiling(real(rdms(i)%A_nsites)/i0_length)
-            allocate(rdms(i)%end1(rdms(i)%string_len), stat=ierr)
-            call check_allocate('rdms(i)%end1', rdms(i)%string_len, ierr)
-            allocate(rdms(i)%end2(rdms(i)%string_len), stat=ierr)
-            call check_allocate('rdms(i)%end2', rdms(i)%string_len, ierr)
-            rdms(i)%end1 = 0_i0
-            rdms(i)%end2 = 0_i0
+            rdm_info(i)%string_len = ceiling(real(rdm_info(i)%A_nsites)/i0_length)
+            allocate(rdm_info(i)%end1(rdm_info(i)%string_len), stat=ierr)
+            call check_allocate('rdm_info(i)%end1', rdm_info(i)%string_len, ierr)
+            allocate(rdm_info(i)%end2(rdm_info(i)%string_len), stat=ierr)
+            call check_allocate('rdm_info(i)%end2', rdm_info(i)%string_len, ierr)
+            rdm_info(i)%end1 = 0_i0
+            rdm_info(i)%end2 = 0_i0
 
             ! With the calc_ground_rdm option, the entire RDM is allocated. If
             ! the following condition is met then the number of rows is greater
             ! than the maximum integer accessible. This would clearly be too
             ! large, so abort in this case.
-            if (calc_ground_rdm .and. rdms(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
+            if (calc_ground_rdm .and. rdm_info(i)%string_len > 1) call stop_all("setup_rdm_arrays",&
                 "A requested RDM is too large for all indices to be addressed by a single integer.")
         end do
 
@@ -232,15 +241,15 @@ contains
         ! the total size of the reduced density matrix will be 2**(number of
         ! spins in subsystem A).
         if (calc_ground_rdm) then
-            if (ms_in == 0 .and. rdms(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
-                allocate(reduced_density_matrix(2**rdms(1)%A_nsites,2**rdms(1)%A_nsites), stat=ierr)
-                call check_allocate('reduced_density_matrix', 2**(2*rdms(1)%A_nsites),ierr)
-                reduced_density_matrix = 0.0_p
+            if (ms_in == 0 .and. rdm_info(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
+                allocate(ground_rdm(2**rdm_info(1)%A_nsites,2**rdm_info(1)%A_nsites), stat=ierr)
+                call check_allocate('ground_rdm', 2**(2*rdm_info(1)%A_nsites),ierr)
+                ground_rdm = 0.0_p
             else
                 if (ms_in /= 0) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
                                    &calculations.")
-                else if (rdms(1)%A_nsites > floor(real(sys%lattice%nsites,p)/2.0_p)) then
+                else if (rdm_info(1)%A_nsites > floor(real(sys%lattice%nsites,p)/2.0_p)) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for subsystems &
                                   &whose size is less than half the total system size.")
                 end if
@@ -268,7 +277,7 @@ contains
                 do i = 1, nrdms
                     ! Allocate the spawn_t and hash table instances for this RDM.
                     if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
-                    size_spawned_rdm = (rdms(i)%string_len*2+nreplicas)*int_s_length/8
+                    size_spawned_rdm = (rdm_info(i)%string_len*2+nreplicas)*int_s_length/8
                     total_size_spawned_rdm = total_size_spawned_rdm + size_spawned_rdm
 
                     spawn_length_loc = rdm_in%spawned_length
@@ -284,14 +293,14 @@ contains
                     end if
 
                     ! Note the initiator approximation is not implemented for density matrix calculations.
-                    call alloc_spawn_t(rdms(i)%string_len*2, nreplicas, .false., &
+                    call alloc_spawn_t(rdm_info(i)%string_len*2, nreplicas, .false., &
                                          spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, &
                                          27, use_mpi_barriers, rdm_spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and
                     ! each hash value can have 7 clashes. This was found to give
                     ! reasonable performance.
-                    call alloc_hash_table(3*spawn_length_loc, 7, rdms(i)%string_len*2, &
+                    call alloc_hash_table(3*spawn_length_loc, 7, rdm_info(i)%string_len*2, &
                                          0, 0, 17, rdm_spawn(i)%ht, rdm_spawn(i)%spawn%sdata)
                 end do
 
@@ -306,7 +315,7 @@ contains
 
     end subroutine setup_rdm_arrays
 
-    subroutine find_rdm_masks(sys)
+    subroutine find_rdm_masks(sys, rdm_info)
 
         ! Initialise bit masks for converting a density matrix basis function
         ! into its corresponding reduced density matrix basis function. Bit
@@ -317,12 +326,15 @@ contains
         !    sys: system being studied.
 
         use checking, only: check_allocate, check_deallocate
+        use dmqmc_data, only: rdm_t
         use errors
-        use fciqmc_data, only: nrdms, rdms, nsym_vec
+        use fciqmc_data, only: nrdms, nsym_vec
         use real_lattice, only: find_translational_symmetry_vecs, map_vec_to_cell, enumerate_lattice_vectors
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
+        type(rdm_t), intent(inout) :: rdm_info(:)
+
         integer :: i, j, k, l, ipos, ierr
         integer :: basis_find, bit_position, bit_element
         integer(i0) :: A_mask(sys%basis%string_len)
@@ -335,19 +347,19 @@ contains
 
         ! Allocate the RDM arrays.
         do i = 1, nrdms
-            if (rdms(i)%A_nsites == sys%lattice%nsites) then
+            if (rdm_info(i)%A_nsites == sys%lattice%nsites) then
                 call stop_all('find_rdm_masks','You are attempting to use the full density matrix &
                               &as an RDM. This is not supported. You should use the &
                               &dmqmc_full_renyi_2 option to calculate the Renyi entropy of the &
                               &whole lattice.')
             else
-                allocate(rdms(i)%B_masks(sys%basis%string_len,nsym_vec), stat=ierr)
-                call check_allocate('rdms(i)%B_masks', nsym_vec*sys%basis%string_len,ierr)
-                allocate(rdms(i)%bit_pos(rdms(i)%A_nsites,nsym_vec,2), stat=ierr)
-                call check_allocate('rdms(i)%bit_pos', nsym_vec*rdms(i)%A_nsites*2,ierr)
+                allocate(rdm_info(i)%B_masks(sys%basis%string_len,nsym_vec), stat=ierr)
+                call check_allocate('rdm_info(i)%B_masks', nsym_vec*sys%basis%string_len,ierr)
+                allocate(rdm_info(i)%bit_pos(rdm_info(i)%A_nsites,nsym_vec,2), stat=ierr)
+                call check_allocate('rdm_info(i)%bit_pos', nsym_vec*rdm_info(i)%A_nsites*2,ierr)
             end if
-            rdms(i)%B_masks = 0_i0
-            rdms(i)%bit_pos = 0
+            rdm_info(i)%B_masks = 0_i0
+            rdm_info(i)%bit_pos = 0
         end do
 
         ! Run through every site on every subsystem and add every translational
@@ -358,8 +370,8 @@ contains
         do i = 1, nrdms ! Over every subsystem.
             do j = 1, nsym_vec ! Over every symmetry vector.
                 A_mask = 0_i0
-                do k = 1, rdms(i)%A_nsites ! Over every site in the subsystem.
-                    r = sys%basis%basis_fns(rdms(i)%subsystem_A(k))%l
+                do k = 1, rdm_info(i)%A_nsites ! Over every site in the subsystem.
+                    r = sys%basis%basis_fns(rdm_info(i)%subsystem_A(k))%l
                     r = r + nint(sym_vecs(:,j))
                     ! If r is outside the cell considered in this simulation,
                     ! shift it by the appropriate lattice vector so that it is
@@ -374,8 +386,8 @@ contains
                             bit_position = sys%basis%bit_lookup(1,l)
                             bit_element = sys%basis%bit_lookup(2,l)
                             A_mask(bit_element) = ibset(A_mask(bit_element), bit_position)
-                            rdms(i)%bit_pos(k,j,1) = bit_position
-                            rdms(i)%bit_pos(k,j,2) = bit_element
+                            rdm_info(i)%bit_pos(k,j,1) = bit_position
+                            rdm_info(i)%bit_pos(k,j,2) = bit_element
                         end if
                     end do
                 end do
@@ -384,14 +396,14 @@ contains
                 ! system B, because the trailing bits on the end don't refer to
                 ! anything and should be set to 0. So, first set these to 1 and
                 ! then flip all the bits.
-                rdms(i)%B_masks(:,j) = A_mask
+                rdm_info(i)%B_masks(:,j) = A_mask
                 do ipos = 0, i0_end
                     basis_find = sys%basis%basis_lookup(ipos, sys%basis%string_len)
                     if (basis_find == 0) then
-                        rdms(i)%B_masks(sys%basis%string_len,j) = ibset(rdms(i)%B_masks(sys%basis%string_len,j),ipos)
+                        rdm_info(i)%B_masks(sys%basis%string_len,j) = ibset(rdm_info(i)%B_masks(sys%basis%string_len,j),ipos)
                     end if
                 end do
-                rdms(i)%B_masks(:,j) = not(rdms(i)%B_masks(:,j))
+                rdm_info(i)%B_masks(:,j) = not(rdm_info(i)%B_masks(:,j))
 
             end do
         end do
@@ -1058,11 +1070,11 @@ contains
 
     end subroutine create_diagonal_density_matrix_particle
 
-    subroutine decode_dm_bitstring(basis, f, irdm, isym)
+    subroutine decode_dm_bitstring(basis, f, isym, rdm_info)
 
         ! This function maps a full DMQMC bitstring to two bitstrings encoding
         ! the subsystem-A RDM bitstrings. These resulting bitstrings are stored
-        ! in the end1 and end2 components of rdms(irdm).
+        ! in the end1 and end2 components of rdm_info.
 
         ! Crucially, the mapping is performed so that, if there are two
         ! subsystems which are equivalent by symmetry, then equivalent sites in
@@ -1073,36 +1085,40 @@ contains
         ! In:
         !    basis: information about the single-particle basis.
         !    f: bitstring representation of the subsystem-A state.
-        !    irdm: The label of the RDM being considered.
         !    isym: The label of the symmetry vector being considered.
+        ! In/Out:
+        !    rdm_info: information about the RDM and subsystem for the RDM being
+        !        considered.
 
         use basis_types, only: basis_t
-        use fciqmc_data, only: rdms
+        use dmqmc_data, only: rdm_t
 
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f(:)
-        integer, intent(in) :: irdm, isym
+        integer, intent(in) :: isym
+        type(rdm_t), intent(inout) :: rdm_info
+
         integer :: i, bit_pos, bit_element
 
         ! Start from all bits down, so that we can flip bits up one by one.
-        rdms(irdm)%end1 = 0_i0
-        rdms(irdm)%end2 = 0_i0
+        rdm_info%end1 = 0_i0
+        rdm_info%end2 = 0_i0
 
         ! Loop over all the sites in the subsystem considered for the reduced
         ! density matrix.
-        do i = 1, rdms(irdm)%A_nsites
+        do i = 1, rdm_info%A_nsites
             ! Find the final bit positions and elements.
             bit_pos = basis%bit_lookup(1,i)
             bit_element = basis%bit_lookup(2,i)
 
             ! If the spin is up, set the corresponding bit in the first
             ! bitstring.
-            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)),rdms(irdm)%bit_pos(i,isym,1))) &
-                rdms(irdm)%end1(bit_element) = ibset(rdms(irdm)%end1(bit_element),bit_pos)
+            if (btest(f(rdm_info%bit_pos(i,isym,2)),rdm_info%bit_pos(i,isym,1))) &
+                rdm_info%end1(bit_element) = ibset(rdm_info%end1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of
             ! the bitstring.
-            if (btest(f(rdms(irdm)%bit_pos(i,isym,2)+basis%string_len),rdms(irdm)%bit_pos(i,isym,1))) &
-                rdms(irdm)%end2(bit_element) = ibset(rdms(irdm)%end2(bit_element),bit_pos)
+            if (btest(f(rdm_info%bit_pos(i,isym,2)+basis%string_len),rdm_info%bit_pos(i,isym,1))) &
+                rdm_info%end2(bit_element) = ibset(rdm_info%end2(bit_element),bit_pos)
         end do
 
     end subroutine decode_dm_bitstring
