@@ -144,7 +144,7 @@ GIT_SHA1 := $(shell git rev-parse HEAD 2> /dev/null || echo "unknown")
 
 # Append -dirty to SHA1 if source code contains changes.
 GIT_SHA1 := $(GIT_SHA1)$(shell test -z "$$(git status --porcelain -- $(SRCDIRS))" || echo -dirty)
-CPPFLAGS = -D_VCS_VERSION=${GIT_SHA1} -D_CONFIG='"$(CONFIG).($(OPT))"'
+CPPFLAGS = -D_VCS_VERSION='"${GIT_SHA1}"' -D_CONFIG='"$(CONFIG).($(OPT))"'
 
 #-----
 # Compiler configuration.
