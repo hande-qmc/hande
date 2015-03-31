@@ -144,16 +144,14 @@ CONFIG = %(config)s
 OPT = %(opt_level)s
 
 #-----
-# Version control information (HANDE specific).
+# Git info.
 
-# Get the version control id.  Git only.  Outputs a string.
-VCS_VERSION = $(shell set -o pipefail && echo -n \\" && ( git log --max-count=1 --pretty=format:%%H || echo -n 'Not under version control.' ) 2> /dev/null | tr -d '\\r\\n'  && echo -n \\")
+# Get the git sha1 hash.  Outputs a string.
+GIT_SHA1 := $(shell git rev-parse HEAD 2> /dev/null || echo "unknown")
 
-# Test to see if the working directory contains changes.  Git only.  If the
-# working directory contains changes (or is not under version control) then
-# the _VCS_LOCAL_CHANGES flag is set.
-VCS_LOCAL_CHANGES = $(shell git diff --quiet --cached -- $(SRCDIRS) 2> /dev/null && git diff --quiet -- $(SRCDIRS) 2> /dev/null || echo -n "-D_VCS_LOCAL_CHANGES")
-CPPFLAGS = $(VCS_LOCAL_CHANGES) -D_VCS_VERSION='${VCS_VERSION}' -D_CONFIG='"$(CONFIG).($(OPT))"' %(defs)s
+# Append -dirty to SHA1 if source code contains changes.
+GIT_SHA1 := $(GIT_SHA1)$(shell test -z "$$(git status --porcelain -- $(SRCDIRS))" || echo -dirty)
+CPPFLAGS = -D_VCS_VERSION='"${GIT_SHA1}"' -D_CONFIG='"$(CONFIG).($(OPT))"' %(defs)s
 
 #-----
 # Compiler configuration.

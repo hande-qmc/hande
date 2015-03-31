@@ -98,6 +98,12 @@ DEPEND_DIR = $(DEST_ROOT)/depend
 MAKEFILE_NAME := $(CURDIR)/$(word $(words $(MAKEFILE_LIST)), $(MAKEFILE_LIST))
 
 #-----
+# Figure out list of source code directories asap (generally useful to know).
+
+# Space separated list of source directories.
+SRCDIRS := $(subst :, ,$(VPATH))
+
+#-----
 # Include arch file.
 
 ifeq ($(ARCH),)
@@ -189,9 +195,6 @@ LIB = $(LIB_PREFIX)$(PROG_NAME)$(LIB_SUFFIX)
 CEXTS = .c .cpp
 FEXTS = .f .F .f90 .F90
 EXTS = $(FEXTS) $(CEXTS)
-
-# Space separated list of source directories.
-SRCDIRS := $(subst :, ,$(VPATH))
 
 # header files are in source directories: must provide to the C compilers
 INCLUDE = $(addprefix -I ,$(SRCDIRS))
