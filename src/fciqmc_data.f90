@@ -33,13 +33,6 @@ integer :: real_bit_shift
 ! real_factor = 2**(real_bit_shift)
 integer(int_p) :: real_factor
 
-!--- Walker data ---
-
-! Rate of spawning.  This is a running total over MC cycles on each processor
-! until it is summed over processors and averaged over cycles in
-! update_energy_estimators.
-real(p) :: rspawn
-
 ! The following indicies are used to access components of DMQMC numerators.
 enum, bind(c)
     enumerator :: energy_ind = 1
@@ -323,7 +316,8 @@ contains
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, rspawn, elapsed_time/qmc_in%ncycles
+        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, &
+                                             qs%spawn_store%rspawn, elapsed_time/qmc_in%ncycles
 
     end subroutine write_fciqmc_report
 

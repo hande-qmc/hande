@@ -137,7 +137,7 @@ contains
 
             do ireport = 1, qmc_in%nreport
 
-                call init_dmqmc_report_loop(bloom_stats, dmqmc_estimates_global, rspawn)
+                call init_dmqmc_report_loop(bloom_stats, dmqmc_estimates_global, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -256,7 +256,7 @@ contains
                     call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
                                              qs%spawn_store%spawn, nspawn_events)
 
-                    call end_mc_cycle(nspawn_events, ndeath, nattempts)
+                    call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
 
                     ! If doing importance sampling *and* varying the weights of
                     ! the trial function, call a routine to update these weights

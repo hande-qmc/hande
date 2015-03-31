@@ -97,7 +97,7 @@ contains
 
         ! Move the variables to be communicated to rep_loop_loc.
         call local_dmqmc_estimators(dmqmc_in, dmqmc_estimates, rep_loop_loc, min_ind, max_ind, psip_list%nparticles, &
-                                    psip_list%nstates, nspawn_events)
+                                    psip_list%nstates, nspawn_events, qs%spawn_store%rspawn)
 
 #ifdef PARALLEL
         call mpi_allreduce(rep_loop_loc, rep_loop_sum, size(rep_loop_loc), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -119,7 +119,7 @@ contains
     end subroutine dmqmc_estimate_comms
 
     subroutine local_dmqmc_estimators(dmqmc_in, dmqmc_estimates, rep_loop_loc, min_ind, max_ind, nparticles, &
-                                      nstates_active, nspawn_events)
+                                      nstates_active, nspawn_events, rspawn)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
@@ -134,11 +134,11 @@ contains
         !    nparticles: number of particles in each space on the current processor.
         !    nstates_active: number of occupied states in the particle lists.
         !    nspawn_events: The total number of spawning events to this process.
+        !    rspawn: rate of spawning on this processor.
         ! Out:
         !    rep_loop_loc: array containing local quantities to be communicated.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -147,6 +147,7 @@ contains
         integer, intent(in) :: nstates_active
         real(p), intent(in) :: nparticles(:)
         integer, intent(in) :: nspawn_events
+        real(p), intent(in) :: rspawn
         real(dp), intent(out) :: rep_loop_loc(:)
         integer :: nrdms(1)
 
@@ -199,7 +200,6 @@ contains
         !       processors.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
-        use fciqmc_data, only: rspawn
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use parallel, only: nprocs
         use qmc_data, only: qmc_state_t
@@ -211,7 +211,7 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
 
-        rspawn = rep_loop_sum(rspawn_ind)
+        qs%spawn_store%rspawn = rep_loop_sum(rspawn_ind)
         qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
         qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
@@ -232,7 +232,7 @@ contains
         end if
 
         ! Average the spawning rate.
-        rspawn = rspawn/(ncycles*nprocs)
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(ncycles*nprocs)
 
     end subroutine communicated_dmqmc_estimators
 

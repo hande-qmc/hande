@@ -123,7 +123,7 @@ contains
             qs%estimators%proj_hf_H_hfpsip = 0.0_p
             qs%estimators%D0_population = 0.0_p
             qs%estimators%D0_hf_population = 0.0_p
-            rspawn = 0.0_p
+            qs%spawn_store%rspawn = 0.0_p
 
             do icycle = 1, qmc_in%ncycles
 

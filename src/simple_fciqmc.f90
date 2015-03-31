@@ -240,7 +240,7 @@ contains
 
             ! Zero report cycle quantities.
             qs%estimators%proj_energy = 0.0_p
-            rspawn = 0.0_p
+            qs%spawn_store%rspawn = 0.0_p
             qs%estimators%D0_population = 0.0_p
 
             do icycle = 1, qmc_in%ncycles
@@ -291,7 +291,7 @@ contains
 
                 ! Find the spawning rate and add to the running
                 ! total.
-                rspawn = rspawn + real(sum(abs(spawn%sdata(1,:))))/nattempts
+                qs%spawn_store%rspawn = qs%spawn_store%rspawn + real(sum(abs(spawn%sdata(1,:))))/nattempts
 
                 call simple_annihilation(spawn, psip_list%pops)
 
@@ -310,7 +310,7 @@ contains
             ! Average these quantities over the report cycle.
             qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
             qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
-            rspawn = rspawn/qmc_in%ncycles
+            qs%spawn_store%rspawn = qs%spawn_store%rspawn/qmc_in%ncycles
 
             call cpu_time(t2)
 

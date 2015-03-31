@@ -229,7 +229,6 @@ contains
         !    rep_loop_loc: array containing local quantities required for energy
         !       evaluation.
 
-        use fciqmc_data, only: rspawn
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs, iproc
@@ -249,7 +248,7 @@ contains
 
         rep_loop_loc(proj_energy_ind) = qs%estimators%proj_energy
         rep_loop_loc(D0_pop_ind) = qs%estimators%D0_population
-        rep_loop_loc(rspawn_ind) = rspawn
+        rep_loop_loc(rspawn_ind) = qs%spawn_store%rspawn
         if (present(update_tau)) then
             if (update_tau) rep_loop_loc(update_tau_ind) = 1.0_p
         end if
@@ -304,7 +303,7 @@ contains
         !    update_tau: if true, tau should be automatically rescaled.
         !    comms_found: whether a HANDE.COMM file exists
 
-        use fciqmc_data, only: rspawn, par_info
+        use fciqmc_data, only: par_info
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -329,7 +328,7 @@ contains
 
         qs%estimators%proj_energy = rep_loop_sum(proj_energy_ind)
         qs%estimators%D0_population = rep_loop_sum(D0_pop_ind)
-        rspawn = rep_loop_sum(rspawn_ind)
+        qs%spawn_store%rspawn = rep_loop_sum(rspawn_ind)
         if (present(update_tau)) then
             update_tau = abs(rep_loop_sum(update_tau_ind)) > depsilon
         end if
@@ -398,7 +397,7 @@ contains
         qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
         qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
         ! average spawning rate over report loop and processor.
-        rspawn = rspawn/(qmc_in%ncycles*nprocs)
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
 
     end subroutine communicated_energy_estimators
 

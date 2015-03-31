@@ -695,7 +695,7 @@ contains
                 call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
                                          qs%spawn_store%spawn, nspawn_events)
 
-                call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn)
+                call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn, qs%spawn_store%rspawn)
 
             end do
 

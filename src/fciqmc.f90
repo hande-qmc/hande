@@ -259,7 +259,7 @@ contains
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &
                                                               send_counts, req_data_s, par_info%report_comm%nb_spawn, nspawn_events)
-                        call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts)
+                        call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic
                         ! projection step.
@@ -277,7 +277,7 @@ contains
                         else
                             call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events)
                         end if
-                        call end_mc_cycle(nspawn_events, ndeath, nattempts)
+                        call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate
 

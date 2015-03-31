@@ -699,7 +699,7 @@ contains
         call bloom_stats_init_report_loop(bloom_stats)
 
         qs%estimators%proj_energy = 0.0_p
-        rspawn = 0.0_p
+        qs%spawn_store%rspawn = 0.0_p
         qs%estimators%D0_population = 0.0_p
 
     end subroutine init_report_loop
@@ -961,7 +961,7 @@ contains
 
     end subroutine end_report_loop
 
-    subroutine end_mc_cycle(nspawn_events, ndeath, nattempts)
+    subroutine end_mc_cycle(nspawn_events, ndeath, nattempts, rspawn)
 
         ! Execute common code at the end of a Monte Carlo cycle.
 
@@ -969,10 +969,13 @@ contains
         !    nspawn_events: number of successful spawning events in the cycle.
         !    ndeath: (unscaled) number of particle deaths in the cycle.
         !    nattempts: number of attempted spawning events in the cycle.
+        ! In/Out:
+        !    rspawn: running total of spawning rate.
 
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath
         integer(int_64), intent(in) :: nattempts
+        real(p), intent(inout) :: rspawn
 
         ! Add the spawning rate (for the processor) to the running
         ! total.
