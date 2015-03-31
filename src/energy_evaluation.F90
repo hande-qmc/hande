@@ -144,6 +144,7 @@ contains
         !    ntypes: number of particle types/spaces being sampled.
         !    load_bal_in: input options for load balancing.
         ! In/Out:
+        !    qs: qmc_state_t object containing estimators that are upadted.
         !    rep_request_s: array of requests initialised during non-blocking send of
         !        information.
         !    ntot_particles_old: total number (across all processors) of
@@ -288,6 +289,7 @@ contains
         !        evaluation.
         !    load_bal_in: input options for load balancing.
         ! In/Out:
+        !    qs: QMC state containing estimators.
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
@@ -296,6 +298,8 @@ contains
         !    nparticles_proc: number of particles in each space on each processor.
         ! In (optional):
         !    doing_lb: true if performing load balancing.
+        ! In/Out (optional):
+        !    bloom_stats: blooming stats.
         ! Out (optional):
         !    update_tau: if true, tau should be automatically rescaled.
         !    comms_found: whether a HANDE.COMM file exists

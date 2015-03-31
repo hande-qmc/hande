@@ -29,6 +29,7 @@ contains
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
         !    reference: reference determinant. Set on output.
+        !    qs: state of QMC calculation.
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    restart: true is restarting from a HDF5 file.

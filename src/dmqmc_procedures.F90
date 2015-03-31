@@ -13,6 +13,7 @@ contains
         ! In/Out:
         !    qmc_in: Input options relating to QMC methods.
         !    dmqmc_in: Input options relating to DMQMC.
+        !    qs: estimators not specific to DMQMC.
         !    dmqmc_estimates: type containing estimates for observables.
         !    weighted_sampling: type containing information for weighted
         !        sampling.
@@ -446,9 +447,6 @@ contains
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
         !    nload_slots: number of load balancing slots (per processor).
-        ! Out:
-        !    nparticles_tot: The total number of psips in the generated density
-        !        matrix across all processes, for all replicas.
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
@@ -715,8 +713,6 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
-        !    beta: (inverse) temperature at which we're looking to sample the
-        !        trial density matrix.
         !    sym: symmetry index of determinant space we wish to sample.
         !    npsips: number of psips to distribute in this sector.
         !    ireplica: replica index.
@@ -1232,7 +1228,6 @@ contains
         ! In:
         !    max_number_excitations: maximum number of excitations possible (see
         !       sys_t type in system for details).
-        !    vary_weights: vary weights with beta?
         ! In/Out:
         !    dmqmc_in: input options relating to DMQMC.
         !    excit_dist: distribution of particles across excitations levels of

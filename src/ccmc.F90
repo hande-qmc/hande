@@ -241,7 +241,6 @@ contains
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
         !    load_bal_in: input options for load balancing.
-        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    qmc_in: input options relating to QMC methods.
 
@@ -1672,6 +1671,7 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    f0: bit string representation of the reference determinant.
         !    excitor: bit string of the Slater determinant formed by applying
         !        the excitor, e1, to the reference determinant.
         !    excitor_population: number of excips on the excitor e1.

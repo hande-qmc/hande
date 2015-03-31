@@ -536,6 +536,7 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    reference: information on the current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         !    psip_list: list of particles and their locations.
         !    spawn: spawn_t object, required for determining the new processes
@@ -733,8 +734,6 @@ contains
         !    min_attempts: if present, set nattempts to be at least this value.
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
-        !    nload_slots: number of load balancing slots proc_map is divided
-        !        into.
         ! In/Out (optional):
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.

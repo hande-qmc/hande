@@ -41,6 +41,7 @@ contains
         ! In/Out:
         !    psip_list: particle information.  On output total (ie not
         !        per-processor) quantities are updated.
+        !    qs: QMC state containing quantities not specific to DMQMC.
         !    dmqmc_estimates: type containing dmqmc estimates.
 
         use checking, only: check_allocate, check_deallocate
@@ -190,8 +191,10 @@ contains
         !    max_ind: Array holding the maximum indices of the various
         !        quantities in rep_loop_sum.
         !    ncycles: number of monte carlo cycles.
-        ! Out:
+        ! In/Out:
+        !    qs: QMC state containing quantities not specific to DMQMC.
         !    dmqmc_estimates: type containing dmqmc_estimates.
+        ! Out:
         !    tot_nparticles: total number of particles of each type across all
         !       processors.
 
@@ -301,6 +304,8 @@ contains
         !        particles in the simulation at end of the previous report loop.
         !    loc_totnparticles_old: total number (across all processors) of
         !        particles in the simulation currently.
+        ! In/Out:
+        !    qs: QMC state. Shift is updated.
 
         use energy_evaluation, only: update_shift
         use qmc_data, only: qmc_in_t, qmc_state_t

@@ -108,6 +108,7 @@ contains
 
         ! In/Out:
         !    determ: Deterministic space being used.
+        !    psip_list: particle_t object containing psip information.
         ! In:
         !    sys: system being studied
         !    reference: current reference determinant.
@@ -569,6 +570,7 @@ contains
 
         ! In/Out:
         !    determ: Deterministic space being used.
+        !    psip_list: particle_t object containing psip information.
         ! In:
         !    sys: system being studied
         !    reference: current reference determinant.
@@ -666,6 +668,7 @@ contains
         !    spawn: spawn_t object to which deterministic spawning will occur.
         ! In:
         !    qmc_in: input options relating to QMC methods.
+        !    qs: state of the QMC calculation. Timestep and shift are used.
         !    determ: deterministic space being used.
 
         use csr, only: csrpgemv_single_row
@@ -763,13 +766,15 @@ contains
 
     end subroutine determ_projection
 
-    subroutine determ_projection_separate_annihil(determ, tau, qs)
+    subroutine determ_projection_separate_annihil(determ, qs)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
         ! rather by using an extra MPI call to perform the annihilation of
         ! these spawnings among themselves directly.
 
+        ! In:
+        !    qs: state of QMC calculation. Shift and timestep are used.
         ! In/Out:
         !    determ: Deterministic space being used. On input determ%vector
         !       should hold the amplitudes of deterministic states on this
@@ -787,7 +792,6 @@ contains
 
         type(semi_stoch_t), intent(inout) :: determ
         type(qmc_state_t), intent(in) :: qs
-        real(p), intent(in) :: tau
 
         integer :: i, ierr
         integer :: send_counts(0:nprocs-1), receive_counts(0:nprocs-1)
@@ -889,6 +893,7 @@ contains
         !    dets_this_proc: The deterministic states belonging to this
         !        processor in the final created deterministic space.
         ! In:
+        !    psip_list: particle_t object containing psip information.
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    target_size: Size of deterministic space to use if possible. If
         !        not then use the largest space possible (all determinants in
@@ -1333,7 +1338,6 @@ contains
         !    dets_all_procs: The full list of all deterministic states on all
         !        processes.
         !    spawn: spawn_t object to which deterministic spawning will occur.
-        !    sys: system being studied.
         !    nload_slots: number of slots proc map is divided into (per
         !        processor).
 

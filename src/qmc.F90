@@ -16,12 +16,15 @@ contains
         ! global/modified in input structures/etc).
 
         ! In:
+        !    sys: the system being studied.
         !    ntypes: number of particle types/spaces being sampled.
         ! In (optional):
         !    dmqmc_in: DMQMC input options.
         ! In/Out:
         !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
         !       if dmqmc_in%propagate_to_beta is true.
+        !    qs: QMC calculation state. Component relating to the shift are
+        !       allocated and inititialised.
         
         use checking, only: check_allocate
         use utils, only: factorial_combination_1

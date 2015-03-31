@@ -325,8 +325,9 @@ contains
         !    rng: random number generator.
         !    spawn: spawn_t object.  Reset on exit.
         !    dmqmc_estimates: type containing dmqmc estimates.
+        !    qs: state of QMC calculation. Shift is reset on exit.
         ! In:
-        !    initial_shift: the initial shift used for population control.
+        !    qmc_in: input options relating to QMC calculations.
         !    beta_cycle: The index of the beta loop about to be started.
         !    dmqmc_in: input options for DMQMC.
         ! Out:

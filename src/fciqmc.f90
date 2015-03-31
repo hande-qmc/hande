@@ -265,7 +265,7 @@ contains
                         ! projection step.
                         if (semi_stochastic) then
                             if (determ%separate_annihilation) then
-                                call determ_projection_separate_annihil(determ, qs%tau, qs)
+                                call determ_projection_separate_annihil(determ, qs)
                                 call deterministic_annihilation(sys, rng, pl, determ)
                             else
                                 call determ_projection(rng, qmc_in, qs, spawn, determ)

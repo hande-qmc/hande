@@ -35,6 +35,7 @@ contains
         !    ccmc_in: input options relating to CCMC.
         !    semi_stoch_in: Input options for the semi-stochastic adaptation.
         !    restart_in: input options for HDF5 restart files.
+        !    reference: information on the reference determinant to use.
         !    load_bal_in: input options for load balancing.
         !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_rdm_info: information about RDMs to be calculated from DMQMC.

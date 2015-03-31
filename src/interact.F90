@@ -14,12 +14,15 @@ contains
         ! processor and set the variables according to the options defined in
         ! HANDE.COMM.
 
+        ! In:
+        !    comms_found: true if the file HANDE.COMM exists on nay processor.
         ! Out:
         !    softexit: true if SOFTEXIT is defined in HANDE.COMM, in which case
         !        any calculation should exit immediately and go to the
         !        post-processing steps.
         ! In/Out:
         !    qmc_in (optional): Input options relating to QMC methods.
+        !    qs (optional): QMC calculation state. The shift and/or timestep may be updated.
 
         use input, line=>char
         use utils, only: get_free_unit

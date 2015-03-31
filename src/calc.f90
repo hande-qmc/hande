@@ -347,7 +347,6 @@ contains
         !    ndata: the number of additional data elements accumulated over all
         !        processors (nparticles_start_ind-1).
         !    non_blocking_comm: true if using non-blocking communications
-        !    load_balancing: true if attempting load balancing.
         !    nslots: number of slots we divide proc_map into
         ! In/Out:
         !    par_calc: type containing parallel information for calculation
