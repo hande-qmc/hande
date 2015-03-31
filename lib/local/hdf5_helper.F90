@@ -45,6 +45,7 @@ module hdf5_helper
     interface hdf5_write
         module procedure write_string
         module procedure write_integer
+        module procedure write_boolean
         module procedure write_array_1d_int_32
         module procedure write_array_1d_int_64
         module procedure write_array_2d_int_32
@@ -57,6 +58,7 @@ module hdf5_helper
 
     interface hdf5_read
         module procedure read_integer
+        module procedure read_boolean
         module procedure read_array_1d_int_32
         module procedure read_array_1d_int_64
         module procedure read_array_2d_int_32
@@ -72,6 +74,8 @@ module hdf5_helper
         module procedure hdf5_path_3
         module procedure hdf5_path_4
     end interface hdf5_path
+
+    integer, parameter :: hande_hdf5_false = 0, hande_hdf5_true = 1
 
     contains
 
@@ -321,6 +325,30 @@ module hdf5_helper
             call h5sclose_f(dspace_id, ierr)
 
         end subroutine write_integer
+
+        subroutine write_boolean(id, dset, val)
+
+            ! Write a boolean to an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    val: boolean to write out.
+
+            ! NOTE: HDF5 can't handle boolean types, so instead we write out an integer
+            ! which we interpret ourselves in a consistent fashion.
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            logical, intent(in) :: val
+
+            if (val) then
+                call hdf5_write(id, dset, hande_hdf5_true)
+            else
+                call hdf5_write(id, dset, hande_hdf5_false)
+            end if
+
+        end subroutine write_boolean
 
         ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
         ! types and array dimensions as needed!
@@ -717,6 +745,39 @@ module hdf5_helper
             call h5dclose_f(dset_id, ierr)
 
         end subroutine read_integer
+
+        subroutine read_boolean(id, dset, val)
+
+            ! Read a boolean from an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            ! Out:
+            !    val: boolean read from HDF5 file.
+
+            ! NOTE: HDF5 can't handle boolean types, so instead we read an integer
+            ! which we interpret ourselves in a consistent fashion.
+
+            use errors, only: stop_all
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            logical, intent(out) :: val
+
+            integer :: val_int
+
+            call hdf5_read(id, dset, val_int)
+            select case(val_int)
+            case(hande_hdf5_true)
+                val = .true.
+            case(hande_hdf5_false)
+                val = .false.
+            case default
+                call stop_all('read_boolean', 'Illegal boolean flag detected.')
+            end select
+
+        end subroutine read_boolean
 
         ! I/O is not pure, so can't write elemental procedures...arse!  Please fill in with
         ! types and array dimensions as needed!

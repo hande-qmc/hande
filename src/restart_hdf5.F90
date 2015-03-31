@@ -433,9 +433,9 @@ Module restart_hdf5
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
             integer :: i0_length_restart
             type(c_ptr) :: ptr
-            integer :: ierr, resort
+            integer :: ierr
             real(p), target :: tmp(1)
-            logical :: exists
+            logical :: exists, resort
 
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states))), maxdims(size(shape(qs%psip_list%states)))
 
@@ -535,8 +535,7 @@ Module restart_hdf5
                 if (exists) then
                     call hdf5_read(subgroup_id, dresort, resort)
                     associate(pl=>qs%psip_list)
-                        ! Note HDF5 can't store boolean variables, so interpret 1 to be re-sorting must be performed.
-                        if (resort == 1) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+                        if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
                     end associate
                 end if
 
@@ -728,9 +727,7 @@ Module restart_hdf5
                     call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
                     call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map), pm_dummy%map)
                     call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, dtot_pop, ierr)
-                    ! Note that HDF5 can't store booleans so instead set resort to 1 and interpret that accordingly when reading
-                    ! a restart file back in.
-                    call hdf5_write(group_id, hdf5_path(gpsips, dresort), 1)
+                    call hdf5_write(group_id, hdf5_path(gpsips, dresort), .true.)
                 call h5gclose_f(group_id, ierr)
 
                 ! Update info.  NOTE: we don't modify the date/time/UUID, just processor count...
