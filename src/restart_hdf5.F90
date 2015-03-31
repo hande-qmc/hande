@@ -203,7 +203,7 @@ Module restart_hdf5
         end subroutine init_restart_hdf5
 #endif
 
-        subroutine dump_restart_hdf5(ri, qs, ncycles, total_population, nb_comm, spawn_recv)
+        subroutine dump_restart_hdf5(ri, qs, ncycles, total_population, nb_comm)
 
             ! Write out a restart file.
 
@@ -212,7 +212,9 @@ Module restart_hdf5
             !    qs: QMC state to write to restart file.
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
-            !    nb_comm: true is using non-blocking communications.
+            !    nb_comm: true if using non-blocking communications, in which case
+            !       information from qs%spawn_store%spawn_recv is also written out
+            !       to the restart file.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -227,7 +229,6 @@ Module restart_hdf5
             use fciqmc_data, only: par_info
             use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
-            use spawn_data, only: spawn_t
             use qmc_data, only: qmc_state_t
 
             type(restart_info_t), intent(in) :: ri
@@ -235,7 +236,6 @@ Module restart_hdf5
             integer, intent(in) :: ncycles
             real(p), intent(in) :: total_population(:)
             logical, intent(in) :: nb_comm
-            type(spawn_t), intent(in), optional :: spawn_recv
 #ifndef DISABLE_HDF5
             character(255) :: restart_file
 
@@ -306,13 +306,10 @@ Module restart_hdf5
                 call hdf5_write(subgroup_id, ddata, kinds, shape(qs%psip_list%dat(:,:qs%psip_list%nstates)), &
                                  qs%psip_list%dat(:,:qs%psip_list%nstates))
                 if (nb_comm) then
-                    if (present(spawn_recv)) then
-                        call hdf5_write(subgroup_id, dspawn, kinds, shape(spawn_recv%sdata(:,:spawn_recv%head(0,0))), &
-                                        spawn_recv%sdata(:,:spawn_recv%head(0,0)))
-                        call hdf5_write(subgroup_id, dnspawn, spawn_recv%head(0,0))
-                    else
-                        call stop_all('dump_restart_hdf5', 'Non-blocking comms in use but spawn_recv not supplied.')
-                    end if
+                    associate(sdata=>qs%spawn_store%spawn_recv%sdata, head=>qs%spawn_store%spawn_recv%head)
+                        call hdf5_write(subgroup_id, dspawn, kinds, shape(sdata(:,:head(0,0))), sdata(:,:head(0,0)))
+                        call hdf5_write(subgroup_id, dnspawn, head(0,0))
+                    end associate
                 end if
                 call hdf5_write(subgroup_id, dproc_map, kinds, shape(par_info%load%proc_map), par_info%load%proc_map)
 
@@ -363,7 +360,7 @@ Module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nb_comm, spawn_recv, qs)
+        subroutine read_restart_hdf5(ri, nb_comm, qs)
 
             ! Read QMC data from restart file.
 
@@ -372,7 +369,8 @@ Module restart_hdf5
             !    nb_comm: true if using non-blocking communications.
             ! In/Out:
             !    qs: qmc_state_t object.  Allocated on input, contains info
-            !       from the restart file on exit.
+            !       from the restart file on exit.  If nb_comm is true, then
+            !       information is also read into qs%spawn_store%spawn_recv.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -389,7 +387,6 @@ Module restart_hdf5
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
-            type(spawn_t), intent(inout), optional :: spawn_recv
             type(qmc_state_t), intent(inout) :: qs
 
 #ifndef DISABLE_HDF5
@@ -492,12 +489,10 @@ Module restart_hdf5
                 call hdf5_read(subgroup_id, dtot_pop, kinds, shape(qs%psip_list%tot_nparticles), qs%psip_list%tot_nparticles)
 
                 if (nb_comm) then
-                    if (present(spawn_recv)) then
-                        call hdf5_read(subgroup_id, dspawn, kinds, shape(spawn_recv%sdata), spawn_recv%sdata)
-                        call hdf5_read(subgroup_id, dnspawn, spawn_recv%head(0,0))
-                    else
-                        call stop_all('read_restart_hdf5', 'Non-blocking comms in use but spawn_recv not supplied.')
-                    end if
+                    associate(recv=>qs%spawn_store%spawn_recv)
+                        call hdf5_read(subgroup_id, dspawn, kinds, shape(recv%sdata), recv%sdata)
+                        call hdf5_read(subgroup_id, dnspawn, recv%head(0,0))
+                    end associate
                 end if
 
                 call h5lexists_f(subgroup_id, dproc_map, exists, ierr)

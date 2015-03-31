@@ -288,8 +288,7 @@ contains
             call end_report_loop(sys, qmc_in, ireport, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, t1, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
-                                 nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm,            &
-                                 spawn_recv=qs%spawn_store%spawn_recv)
+                                 nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
 
             if (soft_exit) exit
 
@@ -321,8 +320,7 @@ contains
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done, nparticles_old, &
-                                   fciqmc_in%non_blocking_comm, qs%spawn_store%spawn_recv)
+            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
             if (parent) write (6,'()')
         end if
 

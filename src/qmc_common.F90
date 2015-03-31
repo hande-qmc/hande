@@ -811,7 +811,7 @@ contains
     subroutine end_report_loop(sys, qmc_in, ireport, iteration, update_tau, qs, ntot_particles,        &
                                 nspawn_events, report_time, semi_stoch_shift_it, semi_stoch_start_it,  &
                                 soft_exit, dump_restart_file_shift, load_bal_in,  update_estimators,   &
-                                bloom_stats, doing_lb, nb_comm, rep_comm, dmqmc_in, spawn_recv)
+                                bloom_stats, doing_lb, nb_comm, rep_comm, dmqmc_in)
 
         ! In:
         !    sys: system being studied.
@@ -848,8 +848,6 @@ contains
         !    nb_comm: true if using non-blocking communications.
         !    load_bal_in: input options for load balancing.
         !    dmqmc_in: input options relating to DMQMC.
-        !    spawn_recv: spawn_t object containing particles spawned in the previous iteration and received using non-blocking comms
-        !                algorithm.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    rep_comm: nb_rep_t object containing report loop info. Used for
@@ -887,7 +885,6 @@ contains
         logical, optional, intent(in) :: doing_lb, nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
-        type(spawn_t), optional, intent(in) :: spawn_recv
 
         real :: curr_time
         logical :: update, update_tau_now, vary_shift_before, nb_comm_local, comms_found
@@ -950,10 +947,10 @@ contains
         if (dump_restart_file_shift .and. any(qs%vary_shift)) then
             dump_restart_file_shift = .false.
             call dump_restart_hdf5(restart_info_global_shift, qs, mc_cycles_done+qmc_in%ncycles*ireport, &
-                                   ntot_particles, nb_comm_local, spawn_recv)
+                                   ntot_particles, nb_comm_local)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
             call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done+qmc_in%ncycles*ireport, &
-                                   ntot_particles, nb_comm_local, spawn_recv)
+                                   ntot_particles, nb_comm_local)
         end if
         ! cpu_time outputs an elapsed time, so update the reference timer.
         report_time = curr_time
