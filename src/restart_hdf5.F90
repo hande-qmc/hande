@@ -577,9 +577,6 @@ Module restart_hdf5
 
         end subroutine read_restart_hdf5
 
-! [review] - AJWT: This routine is dauntingly long and dense, but I shall persevere!
-! [reply] - JSS: thanks.  :-)
-
         subroutine redistribute_restart_hdf5(ri, nprocs_target)
 
             ! Create a new set of restart files for a different number of processors than they
@@ -797,9 +794,6 @@ Module restart_hdf5
                     ! [todo] - non-blocking information.
                     ndets = dims(2)
                     label_length = size(psip_dets, dim=1)
-! [review] - AJWT: (3rd read) The fact nmax is defined at the top of the routine and not used until now might indicate that this routine
-! [review] - AJWT:              could be broken up
-! [reply] - JSS: will try to improve the structure rather than break it up (as it's rather interwoven due to metadata/psip info).
                     do iproc_min = 0, nprocs_target-1, nmax_files
                         nmoved = 0
                         iproc_max = min(iproc_min+nmax_files,nprocs_target)-1
