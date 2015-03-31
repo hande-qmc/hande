@@ -1,4 +1,4 @@
-Module restart_hdf5
+module restart_hdf5
 
     ! Restart functionality based on the HDF5 library.  Note: this is only
     ! for QMC (ie FCIQMC, DMQMC or CCMC) calculations).
@@ -601,8 +601,9 @@ Module restart_hdf5
             use parallel, only: parent
 
             use calc, only: ccmc_calc, init_proc_map_t
-            use qmc_data, only: ccmc_in_t
+            use qmc_data, only: ccmc_in_t, particle_t
             use spawn_data, only: proc_map_t
+            use particle_t_utils, only: alloc_particle_t, dealloc_particle_t
             use spawning, only: assign_particle_processor
 #endif
 
@@ -624,16 +625,12 @@ Module restart_hdf5
             character(255), allocatable :: orig_names(:), new_names(:)
             type(hdf5_kinds_t) :: kinds
             integer :: nprocs_read, ierr, i, iproc_min, icurr, iproc_max, idet, ndets, ip, nmoved, calc_type_restart
-            real(p), allocatable :: psip_data(:,:)
-            integer(i0), allocatable :: psip_dets(:,:)
-            integer(int_p), allocatable :: psip_pop(:,:)
             integer(hsize_t) :: dims(2)
 
-            integer :: hash_shift, hash_seed, label_length, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
+            integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
+            integer :: max_nstates, tensor_label_len
             integer, allocatable :: istate_proc(:)
-            integer(i0), allocatable :: psip_dets_new(:,:,:)
-            real(p), allocatable :: psip_data_new(:,:,:)
-            integer(int_p), allocatable :: psip_pop_new(:,:,:)
+            type(particle_t) :: psip_read, psip_new(0:nmax_files-1)
             logical :: exists
             type(ccmc_in_t) :: ccmc_in_defaults
             type(proc_map_t) :: pm_dummy
@@ -758,22 +755,20 @@ Module restart_hdf5
                     end if
 
                     call dset_shape(orig_subgroup_id, ddets, dims)
-                    allocate(psip_dets(dims(1), dims(2)), stat=ierr)
-                    call check_allocate('psip_dets', size(psip_dets), ierr)
-                    allocate(psip_dets_new(dims(1), min(nchunk,dims(2)), 0:min(nprocs_target, nmax_files)-1), stat=ierr)
-                    call check_allocate('psip_dets_new', size(psip_dets), ierr)
-
+                    tensor_label_len = dims(1)
+                    max_nstates = dims(2)
                     call dset_shape(orig_subgroup_id, dpops, dims)
-                    allocate(psip_pop(dims(1), dims(2)), stat=ierr)
-                    call check_allocate('psip_pop', size(psip_pop), ierr)
-                    allocate(psip_pop_new(dims(1), min(nchunk,dims(2)), 0:min(nprocs_target, nmax_files)-1), stat=ierr)
-                    call check_allocate('psip_pop_new', size(psip_pop_new), ierr)
-
+                    psip_read%nspaces = dims(1)
                     call dset_shape(orig_subgroup_id, ddata, dims)
-                    allocate(psip_data(dims(1), dims(2)), stat=ierr)
-                    call check_allocate('psip_data', size(psip_data), ierr)
-                    allocate(psip_data_new(dims(1), min(nchunk,dims(2)), 0:min(nprocs_target, nmax_files)-1), stat=ierr)
-                    call check_allocate('psip_data_new', size(psip_data_new), ierr)
+                    psip_read%info_size = dims(1) - psip_read%nspaces
+
+                    psip_new%nspaces = psip_read%nspaces
+                    psip_new%info_size = psip_read%info_size
+
+                    call alloc_particle_t(max_nstates, tensor_label_len, psip_read)
+                    do iproc_min = 0, min(nmax_files, nprocs_target)-1
+                        call alloc_particle_t(max_nstates, tensor_label_len, psip_new(iproc_min))
+                    end do
 
                     ! Read.
                     if (.not. dtype_equal(orig_subgroup_id, ddets, kinds%i0)) &
@@ -783,14 +778,13 @@ Module restart_hdf5
                         call stop_all('redistribute_restart_hdf5', &
                                       'Restarting with a different POP_SIZE is not supported.  Please implement.')
 
-                    call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_dets), psip_dets)
-                    call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_pop), psip_pop)
-                    call hdf5_read(orig_subgroup_id, ddata, kinds, shape(psip_data), psip_data)
+                    call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states), psip_read%states)
+                    call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops), psip_read%pops)
+                    call hdf5_read(orig_subgroup_id, ddata, kinds, shape(psip_read%dat), psip_read%dat)
 
                     ! Distribute.
                     ! [todo] - non-blocking information.
                     ndets = dims(2)
-                    label_length = size(psip_dets, dim=1)
                     do iproc_min = 0, nprocs_target-1, nmax_files
                         nmoved = 0
                         iproc_max = min(iproc_min+nmax_files,nprocs_target)-1
@@ -800,48 +794,40 @@ Module restart_hdf5
                         istate_proc = 0
                         do idet = 1, ndets
                             ! Get processor index (slot_pos is not relevant here as not redoing any load balancing).
-                            call assign_particle_processor(psip_dets(:,idet), label_length, hash_seed, hash_shift, move_freq, &
-                                                           nprocs_target, ip, slot_pos, pm_dummy%map, pm_dummy%nslots)
+                            call assign_particle_processor(psip_read%states(:,idet), tensor_label_len, hash_seed, hash_shift, &
+                                                           move_freq, nprocs_target, ip, slot_pos, pm_dummy%map, pm_dummy%nslots)
                             if (ip > iproc_max) then
                                 ! Leave in cache
-                                psip_dets(:,idet-nmoved) = psip_data(:,idet)
-                                psip_pop(:,idet-nmoved) = psip_data(:,idet)
-                                psip_data(:,idet-nmoved) = psip_data(:,idet)
+                                psip_read%states(:,idet-nmoved) = psip_read%states(:,idet)
+                                psip_read%pops(:,idet-nmoved) = psip_read%pops(:,idet)
+                                psip_read%dat(:,idet-nmoved) = psip_read%dat(:,idet)
                             else
                                 nmoved = nmoved + 1
                                 istate_proc(ip) = istate_proc(ip) + 1
-                                psip_dets_new(:,istate_proc(ip),ip) = psip_dets(:,idet)
-                                psip_pop_new(:,istate_proc(ip),ip) = psip_pop(:,idet)
-                                psip_data_new(:,istate_proc(ip),ip) = psip_data(:,idet)
+                                psip_new(ip)%states(:,istate_proc(ip)) = psip_read%states(:,idet)
+                                psip_new(ip)%pops(:,istate_proc(ip)) = psip_read%pops(:,idet)
+                                psip_new(ip)%dat(:,istate_proc(ip)) = psip_read%dat(:,idet)
                                 if (istate_proc(ip) == nchunk) then
                                     ! Dump out what we've found so far for target processor ip.
-                                    call write_psip_info(new_names(ip), kinds, psip_dets_new(:,:,ip), psip_pop_new(:,:,ip), &
-                                                         psip_data_new(:,:,ip))
+                                    call write_psip_info(new_names(ip), kinds, psip_new(ip)%states, psip_new(ip)%pops, &
+                                                         psip_new(ip)%dat)
                                     istate_proc(ip) = 0
                                 end if
                             end if
                         end do
                         ! Dump out the particles for the current set of processors (iproc_min..iproc_max) that are still in the cache.
                         do ip = iproc_min, iproc_max
-                            call write_psip_info(new_names(ip), kinds, psip_dets_new(:,:istate_proc(ip),ip), &
-                                                 psip_pop_new(:,:istate_proc(ip),ip), psip_data_new(:,:istate_proc(ip),ip))
+                            call write_psip_info(new_names(ip), kinds, psip_new(ip)%states(:,:istate_proc(ip)), &
+                                                 psip_new(ip)%pops(:,:istate_proc(ip)), psip_new(ip)%dat(:,:istate_proc(ip)))
                         end do
                         ndets = ndets - nmoved
                         deallocate(istate_proc)
                     end do
 
-                    deallocate(psip_dets, stat=ierr)
-                    call check_deallocate('psip_dets', ierr)
-                    deallocate(psip_dets_new, stat=ierr)
-                    call check_deallocate('psip_dets_new', ierr)
-                    deallocate(psip_pop, stat=ierr)
-                    call check_deallocate('psip_pop', ierr)
-                    deallocate(psip_pop_new, stat=ierr)
-                    call check_deallocate('psip_pop_new', ierr)
-                    deallocate(psip_data, stat=ierr)
-                    call check_deallocate('psip_data', ierr)
-                    deallocate(psip_data_new, stat=ierr)
-                    call check_deallocate('psip_data_new', ierr)
+                    call dealloc_particle_t(psip_read)
+                    do iproc_min = 0, min(nmax_files, nprocs_target)-1
+                        call dealloc_particle_t(psip_new(iproc_min))
+                    end do
 
                 call h5gclose_f(orig_subgroup_id, ierr)
                 call h5gclose_f(orig_group_id, ierr)
