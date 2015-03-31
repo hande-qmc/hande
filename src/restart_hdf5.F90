@@ -804,21 +804,25 @@ module restart_hdf5
                             else
                                 nmoved = nmoved + 1
                                 istate_proc(ip) = istate_proc(ip) + 1
-                                psip_new(ip)%states(:,istate_proc(ip)) = psip_read%states(:,idet)
-                                psip_new(ip)%pops(:,istate_proc(ip)) = psip_read%pops(:,idet)
-                                psip_new(ip)%dat(:,istate_proc(ip)) = psip_read%dat(:,idet)
-                                if (istate_proc(ip) == nchunk) then
-                                    ! Dump out what we've found so far for target processor ip.
-                                    call write_psip_info(new_names(ip), kinds, psip_new(ip)%states, psip_new(ip)%pops, &
-                                                         psip_new(ip)%dat)
-                                    istate_proc(ip) = 0
-                                end if
+                                ! Index for ip relative to iproc_min due to bounds used in psip_new.
+                                associate(pl_new=>psip_new(ip-iproc_min))
+                                    pl_new%states(:,istate_proc(ip)) = psip_read%states(:,idet)
+                                    pl_new%pops(:,istate_proc(ip)) = psip_read%pops(:,idet)
+                                    pl_new%dat(:,istate_proc(ip)) = psip_read%dat(:,idet)
+                                    if (istate_proc(ip) == nchunk) then
+                                        ! Dump out what we've found so far for target processor ip.
+                                        call write_psip_info(new_names(ip), kinds, pl_new%states, pl_new%pops, pl_new%dat)
+                                        istate_proc(ip) = 0
+                                    end if
+                                end associate
                             end if
                         end do
                         ! Dump out the particles for the current set of processors (iproc_min..iproc_max) that are still in the cache.
                         do ip = iproc_min, iproc_max
-                            call write_psip_info(new_names(ip), kinds, psip_new(ip)%states(:,:istate_proc(ip)), &
-                                                 psip_new(ip)%pops(:,:istate_proc(ip)), psip_new(ip)%dat(:,:istate_proc(ip)))
+                            associate(pl_new=>psip_new(ip-iproc_min), istate=>istate_proc(ip))
+                                call write_psip_info(new_names(ip), kinds, pl_new%states(:,:istate), pl_new%pops(:,:istate), &
+                                                     pl_new%dat(:,:istate))
+                            end associate
                         end do
                         ndets = ndets - nmoved
                         deallocate(istate_proc)
@@ -834,7 +838,7 @@ module restart_hdf5
                 call h5fclose_f(orig_id, ierr)
 
                 if (ndets /= 0) call stop_all('redistribute_restart_hdf5', &
-                                          'Failed to redistribute all determinants.  Something went seriously wrong!')
+                                              'Failed to redistribute all determinants.  Something went seriously wrong!')
 
             end do
 
