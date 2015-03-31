@@ -157,7 +157,7 @@ Module restart_hdf5
         end subroutine init_restart_info_t
 
 #ifndef DISABLE_HDF5
-        subroutine init_restart_hdf5(ri, write_mode, filename, kinds, ip, verbose)
+        subroutine init_restart_hdf5(ri, write_mode, filename, kinds, ip, verbose, fname_id)
 
             ! Initialise restart functionality:
 
@@ -181,6 +181,8 @@ Module restart_hdf5
             !    filename: name of the restart file.
             !    kinds (optional): derived type containing HDF5 types which correspond to the
             !        non-standard integer and real kinds used in HANDE.
+            !    fname_id (optional): integer used to label the restart file, i.e. Y in
+            !        restart_stem.Y.pX.H5.
 
             use hdf5_helper, only: hdf5_kinds_t, hdf5_kinds_init
 
@@ -193,6 +195,7 @@ Module restart_hdf5
             type(hdf5_kinds_t), intent(out), optional :: kinds
             integer, intent(in), optional :: ip
             logical, intent(in), optional :: verbose
+            integer, intent(out), optional :: fname_id
 
             character(14) :: proc_suf
             integer :: id, ierr, ip_loc
@@ -211,7 +214,7 @@ Module restart_hdf5
 
             ! Figure out filename: restart_stem.Y.pX.H5, where Y is related to id and X is the processor rank.
             write (proc_suf,'(".p",'//int_fmt(ip_loc,0)//',".H5")') ip_loc
-            call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
+            call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename, fname_id)
 
             ! New HDF5 files have a '.H5' suffix. However, older HANDE restart
             ! files do not have this. Therefore, if the above file does not
@@ -626,7 +629,7 @@ Module restart_hdf5
             integer(int_p), allocatable :: psip_pop(:,:)
             integer(hsize_t) :: dims(2)
 
-            integer :: hash_shift, hash_seed, label_length, move_freq, slot_pos, storage_type, nlinks, max_corder
+            integer :: hash_shift, hash_seed, label_length, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
             integer, allocatable :: istate_proc(:)
             integer(i0), allocatable :: psip_dets_new(:,:,:)
             real(p), allocatable :: psip_data_new(:,:,:)
@@ -634,6 +637,7 @@ Module restart_hdf5
             logical :: exists
             type(ccmc_in_t) :: ccmc_in_defaults
             type(proc_map_t) :: pm_dummy
+            type(restart_info_t) :: ri_write
 
             ! Hard code 1 load-balancing slot per processor for simplicity.  If the user wishes to use multiple
             ! slots, we should allow this to change when reading in the redistributed restart files.
@@ -659,17 +663,10 @@ Module restart_hdf5
                 call init_restart_hdf5(ri, .false., orig_names(i), ip=i, verbose=i==0)
             end do
             allocate(new_names(0:nprocs_target-1))
+            ri_write = ri
             do i = 0, nprocs_target-1
-! [review] - AJWT: This can generate unbalanced files - e.g. if HANDE.RS.0.p0.H5
-!                  exists, and we now redistribute to two processors, it will
-!                  make files
-!                    HANDE.RS.1.p0.H5 and 
-!                    HANDE.RS.0.p1.H5
-!                  This doesn't seem a very sensible naming scheme!
-! [reply] - JSS: if you set the index using dump_restart input option, it is handled correctly.  (This is what I was doing during
-! [reply] - JSS: testing, so didn't spot the bug.)  Will fix.
-
-                call init_restart_hdf5(ri, .true., new_names(i), ip=i, verbose=i==0)
+                call init_restart_hdf5(ri_write, .true., new_names(i), ip=i, verbose=i==0, fname_id=write_id)
+                ri_write%write_id = -write_id-1
                 call h5fcreate_f(new_names(i), H5F_ACC_TRUNC_F, new_id, ierr)
                 call h5fclose_f(new_id, ierr)
             end do
