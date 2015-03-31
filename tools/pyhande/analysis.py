@@ -10,7 +10,8 @@ import pyblock.error
 import pyblock.pd_utils
 
 def projected_energy(reblock_data, covariance, data_length,
-                     sum_key='\sum H_0j N_j', ref_key='N_0'):
+                     sum_key='\sum H_0j N_j', ref_key='N_0',
+                     col_name='Proj. Energy'):
     '''Calculate the projected energy estimator and associated error.
 
 The projected energy estimator is given by
@@ -55,7 +56,7 @@ See also
     proje_ref_cov = covariance.xs(ref_key, level=1)[sum_key]
     proje = pyblock.error.ratio(proje_sum, ref_pop, proje_ref_cov, data_length)
     proje.columns = pd.MultiIndex.from_tuples(
-            [('Proj. Energy', col) for col in proje.columns])
+            [(col_name, col) for col in proje.columns])
     return proje
 
 def qmc_summary(data, keys=('Shift', '\sum H_0j N_j', 'N_0',
