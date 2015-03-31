@@ -45,10 +45,9 @@ contains
         !    dmqmc_estimates: type containing dmqmc estimates.
 
         use checking, only: check_allocate, check_deallocate
-        use fciqmc_data, only: num_dmqmc_operators
         use qmc_data, only: particle_t, qmc_state_t
         use parallel
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, num_dmqmc_operators
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
@@ -966,7 +965,6 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t, rdm_t
-        use fciqmc_data, only: rdm_unit
         use parallel
         use utils, only: get_free_unit, append_ext, int_fmt
 

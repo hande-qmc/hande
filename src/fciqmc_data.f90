@@ -33,24 +33,6 @@ integer :: real_bit_shift
 ! real_factor = 2**(real_bit_shift)
 integer(int_p) :: real_factor
 
-! The following indicies are used to access components of DMQMC numerators.
-enum, bind(c)
-    enumerator :: energy_ind = 1
-    enumerator :: energy_squared_ind
-    enumerator :: correlation_fn_ind
-    enumerator :: staggered_mag_ind
-    enumerator :: full_r2_ind
-    enumerator :: terminator ! unused except in num_dmqmc_operators
-   ! NOTE: if you add a new estimator then you must insert it before terminator.
-end enum
-
-! This variable holds the total number of operators which are implemented
-! for DMQMC.
-integer, parameter :: num_dmqmc_operators = terminator - 1
-
-! The unit of the file reduced_dm.
-integer :: rdm_unit
-
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
@@ -209,7 +191,8 @@ contains
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_global
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_global, energy_ind, energy_squared_ind
+        use dmqmc_data, only: correlation_fn_ind, staggered_mag_ind, full_r2_ind
         use qmc_data, only: qmc_in_t, walker_global, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
