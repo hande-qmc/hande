@@ -10,21 +10,18 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc_legacy(sys, ntypes, qmc_in, qs, dmqmc_in)
+    subroutine init_qmc_legacy(sys, qmc_in, dmqmc_in)
 
         ! Do some legacy initialisation (ie things which should not be
         ! global/modified in input structures/etc).
 
         ! In:
         !    sys: the system being studied.
-        !    ntypes: number of particle types/spaces being sampled.
         ! In (optional):
         !    dmqmc_in: DMQMC input options.
         ! In/Out:
         !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
         !       if dmqmc_in%propagate_to_beta is true.
-        !    qs: QMC calculation state. Component relating to the shift are
-        !       allocated and inititialised.
         
         use checking, only: check_allocate
         use utils, only: factorial_combination_1
@@ -35,20 +32,10 @@ contains
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: ntypes
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(qmc_in_t), intent(inout) :: qmc_in
-        type(qmc_state_t), intent(inout) :: qs
 
         integer :: i, ierr
-
-        ! Allocate the shift.
-        allocate(qs%shift(ntypes), stat=ierr)
-        call check_allocate('qs%shift', size(qs%shift), ierr)
-        qs%shift = qmc_in%initial_shift
-
-        allocate(qs%vary_shift(ntypes), stat=ierr)
-        call check_allocate('qs%vary_shift', size(qs%vary_shift), ierr)
 
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers
         ! are being used.
@@ -261,6 +248,13 @@ contains
             allocate(pl%nparticles_proc(pl%nspaces, nprocs), stat=ierr)
             call check_allocate('pl%nparticles_proc', nprocs*pl%nspaces, ierr)
 
+            ! Allocate the shift.
+            allocate(qmc_state%shift(pl%nspaces), stat=ierr)
+            call check_allocate('qmc_state%shift', size(qmc_state%shift), ierr)
+            allocate(qmc_state%vary_shift(pl%nspaces), stat=ierr)
+            call check_allocate('qmc_state%vary_shift', size(qmc_state%vary_shift), ierr)
+            qmc_state%shift = qmc_in%initial_shift
+
             ! Allocate spawned walker lists.
             if (mod(max_nspawned_states, nprocs) /= 0) then
                 if (parent) write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
@@ -269,7 +263,7 @@ contains
                                             'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
 
-            call init_qmc_legacy(sys, pl%nspaces, qmc_in, qmc_state, dmqmc_in)
+            call init_qmc_legacy(sys, qmc_in, dmqmc_in)
 
             ! If not using real amplitudes then we always want spawn_cutoff to be
             ! equal to 1.0, so overwrite the default before creating spawn_t objects.
