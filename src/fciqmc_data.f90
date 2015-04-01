@@ -173,7 +173,8 @@ contains
 
     end subroutine write_fciqmc_report_header
 
-    subroutine write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, dmqmc_in)
+    subroutine write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, &
+                                   dmqmc_in, dmqmc_estimates)
 
         ! Write the report line at the end of a report loop.
 
@@ -187,11 +188,12 @@ contains
         !    non_blocking_comm: true if using non-blocking communications
         ! In (optional):
         !    dmqmc_in: input options relating to DMQMC.
+        !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_global, energy_ind, energy_squared_ind
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind
         use dmqmc_data, only: correlation_fn_ind, staggered_mag_ind, full_r2_ind
         use qmc_data, only: qmc_in_t, walker_global, qmc_state_t
 
@@ -202,6 +204,7 @@ contains
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
+        type(dmqmc_estimates_t), optional, intent(in) :: dmqmc_estimates
 
         integer :: mc_cycles, i, j, ntypes
 
@@ -226,41 +229,41 @@ contains
         ! DMQMC output.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
-                (mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), dmqmc_estimates_global%trace(1)
+                (mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), dmqmc_estimates%trace(1)
             ! The trace on the second replica.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write(6, '(3X,es17.10)',advance = 'no') dmqmc_estimates_global%trace(2)
+                write(6, '(3X,es17.10)',advance = 'no') dmqmc_estimates%trace(2)
             end if
 
             ! Renyi-2 entropy for the full density matrix.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(full_r2_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(full_r2_ind)
             end if
 
             ! Energy.
             if (doing_dmqmc_calc(dmqmc_energy)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(energy_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(energy_ind)
             end if
 
             ! Energy squared.
             if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(energy_squared_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(energy_squared_ind)
             end if
 
             ! Correlation function.
             if (doing_dmqmc_calc(dmqmc_correlation)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(correlation_fn_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(correlation_fn_ind)
             end if
 
             ! Staggered magnetisation.
             if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%numerators(staggered_mag_ind)
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(staggered_mag_ind)
             end if
 
             ! Renyi-2 entropy for all RDMs being sampled.
             if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
                 do i = 1, dmqmc_in%rdm%nrdms
-                    write (6, '(6X,es17.10)', advance = 'no') dmqmc_estimates_global%inst_rdm%renyi_2(i)
+                    write (6, '(6X,es17.10)', advance = 'no') dmqmc_estimates%inst_rdm%renyi_2(i)
                 end do
             end if
 
@@ -268,7 +271,7 @@ contains
             if (dmqmc_in%rdm%calc_inst_rdm) then
                 do i = 1, dmqmc_in%rdm%nrdms
                     do j = 1, ntypes
-                        write (6, '(2x,es17.10)', advance = 'no') dmqmc_estimates_global%inst_rdm%traces(j,i)
+                        write (6, '(2x,es17.10)', advance = 'no') dmqmc_estimates%inst_rdm%traces(j,i)
                     end do
                 end do
             end if
@@ -277,9 +280,8 @@ contains
             ! density matrix.
             if (present(dmqmc_in)) then
                 if (dmqmc_in%calc_excit_dist) then
-                    dmqmc_estimates_global%excit_dist = dmqmc_estimates_global%excit_dist/ntot_particles(1)
-                    do i = 0, ubound(dmqmc_estimates_global%excit_dist,1)
-                        write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates_global%excit_dist(i)
+                    do i = 0, ubound(dmqmc_estimates%excit_dist,1)
+                        write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%excit_dist(i)/ntot_particles(i)
                     end do
                 end if
             end if

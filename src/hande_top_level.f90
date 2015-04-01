@@ -125,7 +125,7 @@ contains
                             ccmc_in_global, restart_in_global, load_bal_in_global, &
                             annihilation_flags_global
         use qmc_data, only: reference_t
-        use dmqmc_data, only: dmqmc_in_global
+        use dmqmc_data, only: dmqmc_in_global, dmqmc_estimates_global
         use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
@@ -147,7 +147,8 @@ contains
                 call do_simple_fciqmc(sys, qmc_in_global, restart_in_global, reference)
             else
                 call do_qmc(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, semi_stoch_in_global, &
-                            restart_in_global, reference, load_bal_in_global, dmqmc_in_global, annihilation_flags_global)
+                            restart_in_global, reference, load_bal_in_global, dmqmc_in_global, &
+                            dmqmc_estimates_global, annihilation_flags_global)
             end if
         end if
 
@@ -227,7 +228,7 @@ contains
 ! --- QMC wrapper ---
 
     subroutine do_qmc(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, &
-                      dmqmc_in, annihilation_flags)
+                      dmqmc_in, dmqmc_estimates, annihilation_flags)
 
         ! Initialise and run stochastic quantum chemistry procedures.
 
@@ -239,6 +240,7 @@ contains
         !    fciqmc_in: input options relating to FCIQMC.
         !    reference: the reference determinant.
         !    dmqmc_in: input options relating to DMQMC.
+        !    dmqmc_estimates: type containing all DMQMC estimates.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In:
         !    ccmc_in: input options relating to CCMC.
@@ -256,7 +258,7 @@ contains
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use qmc, only: init_proc_pointers
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation, heisenberg, ueg, read_in
         use parallel, only: nprocs
@@ -270,6 +272,7 @@ contains
         type(reference_t), intent(inout) :: reference
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
 
         real(p) :: hub_matel
@@ -290,7 +293,7 @@ contains
         ! Calculation-specifc initialisation and then run QMC calculation.
 
         if (doing_calc(dmqmc_calc)) then
-            call do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, load_bal_in, reference)
+            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference)
         else if (doing_calc(ct_fciqmc_calc)) then
             call do_ct_fciqmc(sys, qmc_in, restart_in, reference, load_bal_in, annihilation_flags, hub_matel)
         else if (doing_calc(ccmc_calc)) then

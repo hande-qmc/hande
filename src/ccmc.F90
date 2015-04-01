@@ -253,17 +253,17 @@ contains
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
-                                 accumulate_bloom_stats, write_bloom_report
+                                 accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
         use calc, only: truncation_level, truncate_space
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
-        use fciqmc_data, only: mc_cycles_done, &
+        use fciqmc_data, only: mc_cycles_done, write_fciqmc_report, &
                                write_fciqmc_report_header, real_factor
         use qmc, only: init_qmc
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
-                              redistribute_particles
+                              redistribute_particles, rescale_tau, dump_restart_file_wrapper
         use proc_pointers
         use spawning, only: assign_particle_processor
         use system, only: sys_t
@@ -701,11 +701,21 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, ireport, iter, update_tau, qs, nparticles_old, &
-                                 nspawn_events, t1, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
-                                 dump_restart_file_shift, load_bal_in, bloom_stats=bloom_stats)
+            call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
+                                 nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
+                                 load_bal_in, bloom_stats=bloom_stats)
+
+            if (parent) then
+                call cpu_time(t2)
+                if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
+                call write_fciqmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false.)
+            end if
+
+            call dump_restart_file_wrapper(qs, dump_restart_file_shift, nparticles_old, ireport, qmc_in%ncycles, .false.)
 
             if (soft_exit) exit
+
+            if (update_tau) call rescale_tau(qs%tau)
 
         end do
 

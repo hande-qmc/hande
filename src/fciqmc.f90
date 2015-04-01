@@ -32,7 +32,7 @@ contains
         use parallel
         use checking, only: check_allocate
 
-        use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
+        use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation
@@ -86,7 +86,7 @@ contains
         logical :: soft_exit, dump_restart_file_shift
         logical :: semi_stochastic, determ_parent, determ_child
 
-        real :: t1
+        real :: t1, t2
 
         logical :: update_tau
 
@@ -285,10 +285,26 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, ireport, iter, update_tau, qs, nparticles_old, &
-                                 nspawn_events, t1, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, dump_restart_file_shift, &
+            call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
+                                 nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
+
+            if (update_tau) call rescale_tau(qs%tau)
+
+            if (parent) then
+                call cpu_time(t2)
+                if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
+                call write_fciqmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
+                                         fciqmc_in%non_blocking_comm)
+            end if
+
+            ! TODO: Check if this is needed.
+            ! cpu_time outputs an elapsed time, so update the reference timer.
+            !report_time = curr_time
+
+            call dump_restart_file_wrapper(qs, dump_restart_file_shift, nparticles_old, ireport, qmc_in%ncycles, &
+                                           fciqmc_in%non_blocking_comm)
 
             if (soft_exit) exit
 

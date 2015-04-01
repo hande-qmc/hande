@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, restart_in, load_bal_in, reference_in)
+    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference_in)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -26,12 +26,13 @@ contains
         !         at the end of the procedure.
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
+        !    dmqmc_estimates: type containing all DMQMC estimates.
 
         use parallel
         use checking, only: check_allocate
         use annihilation, only: direct_annihilation
         use bit_utils, only: count_set_bits
-        use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, &
+        use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use death, only: stochastic_death
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
@@ -45,14 +46,15 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_estimates_global
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
-        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
         integer :: beta_cycle
@@ -65,13 +67,12 @@ contains
         integer(int_p) :: nspawned, ndeath
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
-        logical :: soft_exit, dump_restart_file_shift
+        logical :: soft_exit, dump_restart_file_shift, update_tau
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
-        type(dmqmc_estimates_t) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t) :: weighted_sampling
 
         if (parent) then
@@ -89,7 +90,7 @@ contains
 
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
-        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates_global, weighted_sampling)
+        call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -123,7 +124,7 @@ contains
 
         do beta_cycle = 1, dmqmc_in%beta_loops
 
-            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates_global, qs, beta_cycle, qs%psip_list%nstates, &
+            call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, qs%psip_list%nstates, &
                                       qs%psip_list%nparticles, qs%spawn_store%spawn, weighted_sampling%probs)
 
             ! Distribute psips uniformly along the diagonal of the density
@@ -137,7 +138,7 @@ contains
 
             do ireport = 1, qmc_in%nreport
 
-                call init_dmqmc_report_loop(bloom_stats, dmqmc_estimates_global, qs%spawn_store%rspawn)
+                call init_dmqmc_report_loop(bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -182,7 +183,7 @@ contains
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
                                                          qs%ref%H00, load_bal_in%nslots, qs%psip_list, &
-                                                         dmqmc_estimates_global, weighted_sampling)
+                                                         dmqmc_estimates, weighted_sampling)
                         end if
 
                         do ireplica = 1, qs%psip_list%nspaces
@@ -269,29 +270,35 @@ contains
 
                 ! Sum all quantities being considered across all MPI processes.
                 call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs, &
-                                          weighted_sampling%probs_old, dmqmc_estimates_global)
+                                          weighted_sampling%probs_old, dmqmc_estimates)
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
 
                 ! Forcibly disable update_tau as need to average over multiple loops over beta
                 ! and hence want to use the same timestep throughout.
-                call end_report_loop(sys, qmc_in, ireport, iteration, .false., qs, tot_nparticles_old, &
-                                     nspawn_events, t1, unused_int_1, unused_int_2, soft_exit, dump_restart_file_shift, &
-                                     load_bal_in, .false., bloom_stats=bloom_stats, dmqmc_in=dmqmc_in)
+                update_tau = .false.
+                call end_report_loop(sys, qmc_in, iteration, update_tau, qs, tot_nparticles_old, &
+                                     nspawn_events, unused_int_1, unused_int_2, soft_exit, &
+                                     load_bal_in, .false., bloom_stats=bloom_stats)
+
+                if (parent) then
+                    call cpu_time(t2)
+                    if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
+                    call write_fciqmc_report(qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
+                                             .false., dmqmc_in, dmqmc_estimates)
+                end if
 
                 if (soft_exit) exit
 
             end do
 
-            if (soft_exit) exit
-
             ! Calculate and output all requested estimators based on the reduced
             ! density matrix. This is for ground-state RDMs only.
-            if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(dmqmc_estimates_global, beta_cycle, dmqmc_in%rdm)
+            if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(dmqmc_estimates, beta_cycle, dmqmc_in%rdm)
             ! Calculate and output new weights based on the psip distirubtion in
             ! the previous loop.
             if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, &
-                                                                     dmqmc_estimates_global%excit_dist, weighted_sampling)
+                                                                     dmqmc_estimates%excit_dist, weighted_sampling)
 
         end do
 

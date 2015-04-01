@@ -808,18 +808,14 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, qmc_in, ireport, iteration, update_tau, qs, ntot_particles,        &
-                                nspawn_events, report_time, semi_stoch_shift_it, semi_stoch_start_it,  &
-                                soft_exit, dump_restart_file_shift, load_bal_in,  update_estimators,   &
-                                bloom_stats, doing_lb, nb_comm, rep_comm, dmqmc_in)
+    subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,             &
+                                nspawn_events, semi_stoch_shift_it, semi_stoch_start_it,           &
+                                soft_exit, load_bal_in,  update_estimators, bloom_stats, doing_lb, &
+                                nb_comm, rep_comm)
 
         ! In:
         !    sys: system being studied.
-        !    ireport: index of current report loop.
         !    iteration: The current iteration of the simulation.
-        !    update_tau: true if the processor thinks the timestep should be rescaled.
-        !             Only used if not in variable shift mode and if tau_search is being
-        !             used.
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
@@ -827,6 +823,9 @@ contains
         !    
         ! In/Out:
         !    qmc_in: input optons relating to QMC methods.
+        !    update_tau: true if the processor thinks the timestep should be
+        !        rescaled. This will be updated on output to only be true if
+        !        in variable shift mode and if tau_search is being used.
         !    qs: qmc_state_t object. Energy estimators are updated.
         !    ntot_particles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
@@ -834,11 +833,6 @@ contains
         !        next report loop if update_estimators is true.
         !    semi_stoch_start_it: The iteration on which to start performing
         !        semi-stochastic.
-        !    report_time: time at the start of the current report loop.  Returns
-        !        the current time (ie the time for the start of the next report
-        !        loop.
-        !    dump_restart_file_shift: should we dump a restart file just before
-        !        the shift turns on?
         ! Out:
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
@@ -847,7 +841,6 @@ contains
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
         !    load_bal_in: input options for load balancing.
-        !    dmqmc_in: input options relating to DMQMC.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    rep_comm: nb_rep_t object containing report loop info. Used for
@@ -855,13 +848,11 @@ contains
         !        from previous iteration and communicate the current iterations
         !        estimators.
 
-        use dmqmc_data, only: dmqmc_in_t
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
         use interact, only: calc_interact, check_interact, check_comms_file
         use parallel, only: parent, nprocs
-        use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
         use system, only: sys_t
         use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
@@ -869,29 +860,27 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
-        integer, intent(in) :: ireport, iteration
-        logical, intent(in) :: update_tau
+        integer, intent(in) :: iteration
+        logical, intent(inout) :: update_tau
         type(qmc_state_t), intent(inout) :: qs
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
         real(p), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
-        real, intent(inout) :: report_time
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
-        logical, intent(inout) :: dump_restart_file_shift
+
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb, nb_comm
         type(nb_rep_t), optional, intent(inout) :: rep_comm
-        type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
 
         real :: curr_time
-        logical :: update, update_tau_now, vary_shift_before, nb_comm_local, comms_found
+        logical :: update, vary_shift_before, nb_comm_local, comms_found
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
-        update_tau_now = update_tau .and. .not. qs%vary_shift(1) .and. qmc_in%tau_search
+        update_tau = update_tau .and. .not. qs%vary_shift(1) .and. qmc_in%tau_search
 
         ! Using non-blocking communications?
         nb_comm_local = .false.
@@ -909,22 +898,22 @@ contains
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
             call update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles, load_bal_in, doing_lb, &
-                                          comms_found, update_tau_now, bloom_stats)
+                                          comms_found, update_tau, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
+            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, update_tau, bloom_stats, &
                                           rep_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
             call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, rep_comm%request, ntot_particles, &
-                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau_now, &
+                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau, &
                                                bloom_stats)
             ! Send current report loop quantities.
             rep_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(rep_comm)
         else
-            update_tau_now = .false.
+            update_tau = .false.
             call check_interact(comms_found)
         end if
 
@@ -934,32 +923,42 @@ contains
         if ((.not. vary_shift_before) .and. all(qs%vary_shift) .and. (semi_stoch_shift_it /= -1)) &
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
-        call cpu_time(curr_time)
-
-        ! report_time was the time at the previous iteration.
-        ! curr_time - report_time is thus the time taken by this report loop.
-        if (parent) then
-            if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-            call write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, curr_time-report_time, .false., nb_comm_local, dmqmc_in)
-        end if
-
-        ! Write restart file if required.
-        if (dump_restart_file_shift .and. any(qs%vary_shift)) then
-            dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, qs, mc_cycles_done+qmc_in%ncycles*ireport, &
-                                   ntot_particles, nb_comm_local)
-        else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done+qmc_in%ncycles*ireport, &
-                                   ntot_particles, nb_comm_local)
-        end if
-        ! cpu_time outputs an elapsed time, so update the reference timer.
-        report_time = curr_time
-
         call calc_interact(comms_found, soft_exit, qmc_in)
 
-        if (update_tau_now) call rescale_tau(qs%tau)
-
     end subroutine end_report_loop
+
+    subroutine dump_restart_file_wrapper(qs, dump_restart_file_shift, ntot_particles, ireport, ncycles, nb_comm)
+
+        ! Check if a restart file needs to be written, and if so then do so.
+
+        ! In:
+        !     qs: qmc_state_t object. Energy estimators are updated.
+        !     ireport: index of current report loop.
+        !     ncycles: the number of iterations per report loop.
+        !     nb_comm: true if using non-blocking communications.
+        ! In/Out:
+        !     dump_restart_file_shift: should we dump a restart file just before
+        !         the shift turns on?
+
+        use qmc_data, only: qmc_state_t
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
+
+        type(qmc_state_t), intent(in) :: qs
+        logical, intent(inout) :: dump_restart_file_shift
+        real(p), intent(in) :: ntot_particles(qs%psip_list%nspaces)
+        integer, intent(in) :: ireport, ncycles
+        logical, optional, intent(in) :: nb_comm
+
+        if (dump_restart_file_shift .and. any(qs%vary_shift)) then
+            dump_restart_file_shift = .false.
+            call dump_restart_hdf5(restart_info_global_shift, qs, mc_cycles_done+ncycles*ireport, &
+                                   ntot_particles, nb_comm)
+        else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
+            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done+ncycles*ireport, &
+                                   ntot_particles, nb_comm)
+        end if
+
+    end subroutine dump_restart_file_wrapper
 
     subroutine end_mc_cycle(nspawn_events, ndeath, nattempts, rspawn)
 
