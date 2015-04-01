@@ -71,7 +71,7 @@ contains
                               semi_stoch_in_global, restart_in_global, load_bal_in_global, &
                               reference, dmqmc_in_global, dmqmc_estimates_global%rdm_info)
 
-        call init_system(sys, dmqmc_in_global)
+        call init_system(sys)
 
         call check_input(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, semi_stoch_in_global, &
                          restart_in_global, reference, load_bal_in_global, dmqmc_in_global)
@@ -258,7 +258,7 @@ contains
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
         use dmqmc_data, only: dmqmc_in_t
         use qmc, only: init_proc_pointers
-        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation, heisenberg, ueg, read_in
         use parallel, only: nprocs
 
         type(sys_t), intent(inout) :: sys
@@ -279,6 +279,11 @@ contains
         call init_proc_pointers(sys, qmc_in, dmqmc_in)
 
         ! Set spin variables.
+        ! [todo] - handle all_spin_sectors more gracefully.  It should probably be handled by DMQMC-specific code but must be done before set_spin_polarisation.
+        if (dmqmc_in%all_spin_sectors) then
+            if (sys%system /= read_in .and. sys%system /= ueg) ms_in = sys%lattice%nsites
+            if (sys%system == heisenberg) sys%max_number_excitations = sys%lattice%nsites/2
+        end if
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 

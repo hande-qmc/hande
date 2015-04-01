@@ -671,11 +671,12 @@ contains
             end if
 
             if (sys%system == heisenberg) then
-                if (ms_in > sys%lattice%nsites .and. (.not. dmqmc_in%all_spin_sectors)) call stop_all(this,'Value of Ms given is&
-                                                                             & too large for this lattice.')
-                if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
-                if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
-                                                                              & possible for this lattice.')
+                if (.not. dmqmc_in%all_spin_sectors) then
+                    if (ms_in > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+                    if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
+                    if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
+                                                                                          & possible for this lattice.')
+                end if
                 if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. (.not.sys%lattice%bipartite_lattice)) &
                     call stop_all(this, 'Cannot set a staggered field&
                                         & for this lattice because it is frustrated.')
