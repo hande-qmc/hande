@@ -217,7 +217,7 @@ contains
         if (space_type == high_pop_determ_space) then
             call create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ%sizes(iproc), proc_map, nload_slots)
         else if (space_type == read_determ_space) then
-            call read_determ_from_file(dets_this_proc, determ, spawn, sys, nload_slots, print_info)
+            call read_determ_from_file(dets_this_proc, determ, spawn, sys, proc_map, nload_slots, print_info)
         else if (space_type == reuse_determ_space) then
             call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc), proc_map, nload_slots)
         end if
@@ -1145,7 +1145,7 @@ contains
 
     end subroutine find_indices_of_most_populated_dets
 
-    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, nload_slots, print_info)
+    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, proc_map, nload_slots, print_info)
 
         ! Use states read in from a HDF5 file to form the deterministic space.
 
@@ -1161,6 +1161,7 @@ contains
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    sys: system being studied.
+        !    proc_map: array mapping determinants to processors.
         !    nload_slots: number of slots in proc_map
         !    print_info: Should we print information to the screen?
 
@@ -1179,6 +1180,7 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
         logical, intent(in) :: print_info
 
@@ -1227,7 +1229,7 @@ contains
             determ%sizes = 0
             do i = 1, ndeterm
                 call assign_particle_processor(determ%dets(:,i), size(determ%dets,1), spawn%hash_seed, &
-                                                spawn%hash_shift, spawn%move_freq, nprocs, proc, slot, nload_slots)
+                                                spawn%hash_shift, spawn%move_freq, nprocs, proc, slot, proc_map, nload_slots)
                 determ%sizes(proc) = determ%sizes(proc) + 1
             end do
 

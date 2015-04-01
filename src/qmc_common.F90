@@ -657,8 +657,8 @@ contains
             ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
             qs%estimators%D0_population = qs%estimators%D0_population*qmc_in%ncycles
             qs%estimators%proj_energy = qs%estimators%proj_energy*qmc_in%ncycles
-            call local_energy_estimators(qs, qs%report_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
-            call update_energy_estimators_send(qs%report_comm%rep_info)
+            call local_energy_estimators(qs, qs%par_info%report_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
+            call update_energy_estimators_send(qs%par_info%report_comm)
         else
             call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
