@@ -258,7 +258,7 @@ calc_data : list of `:class:`pandas.Series`
         # If the number of iterations counter goes over 8 digits then the hande
         # output file prints stars.  This has now been fixed, however for
         # legacy reasons:
-        for (i,iteration) in enumerate(data['iterations']):
+        for (i,iteration) in enumerate(qmc_data['iterations']):
             if numpy.isnan(iteration):
                 qmc_data['iterations'][i] = \
                         i*metadata['mc_cycles'] + qmc_data['iterations'][0]
