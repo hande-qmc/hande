@@ -258,8 +258,9 @@ contains
                             qs%par_info%load%needed = .false.
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &
-                                                              send_counts, req_data_s, qs%par_info%report_comm%nb_spawn, nspawn_events)
-                        call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts qs%spawn_store%rspawn)
+                                                              send_counts, req_data_s, qs%par_info%report_comm%nb_spawn, &
+                                                              nspawn_events)
+                        call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic
                         ! projection step.
@@ -316,8 +317,8 @@ contains
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
-                                                                    qs%par_info%report_comm%request, t1, nparticles_old, qs%shift(1), &
-                                                                    restart_in%dump_restart, load_bal_in)
+                                                                    qs%par_info%report_comm%request, t1, nparticles_old, &
+                                                                    qs%shift(1), restart_in%dump_restart, load_bal_in)
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
