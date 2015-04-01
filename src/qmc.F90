@@ -268,7 +268,7 @@ contains
             end if
 
             if (nprocs == 1 .or. .not. fciqmc_in_loc%doing_load_balancing) load_bal_in%nslots = 1
-            call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, par_info, &
+            call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, qmc_state%par_info, &
                                  load_bal_in%nslots)
 
             allocate(reference%f0(sys%basis%string_len), stat=ierr)
