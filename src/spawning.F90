@@ -598,7 +598,7 @@ contains
         !    slot_pos: position in proc_map for this determinant
 
         use hashing, only: murmurhash_bit_string
-        use fciqmc_data, only: par_info
+        use qmc_data, only: par_info
 
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np

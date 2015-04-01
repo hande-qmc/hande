@@ -303,7 +303,6 @@ contains
         !    update_tau: if true, tau should be automatically rescaled.
         !    comms_found: whether a HANDE.COMM file exists
 
-        use fciqmc_data, only: par_info
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc

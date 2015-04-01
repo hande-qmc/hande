@@ -226,10 +226,9 @@ Module restart_hdf5
             use parallel, only: nprocs, iproc, parent, nthreads
             use utils, only: get_unique_filename, int_fmt
 
-            use fciqmc_data, only: par_info
             use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
-            use qmc_data, only: qmc_state_t
+            use qmc_data, only: qmc_state_t, par_info
 
             type(restart_info_t), intent(in) :: ri
             type(qmc_state_t), intent(in) :: qs
@@ -379,11 +378,11 @@ Module restart_hdf5
             use errors, only: stop_all
             use const
 
-            use fciqmc_data, only: mc_cycles_done, par_info
+            use fciqmc_data, only: mc_cycles_done
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
             use spawn_data, only: spawn_t
-            use qmc_data, only: qmc_state_t
+            use qmc_data, only: qmc_state_t, par_info
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm

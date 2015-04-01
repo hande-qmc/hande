@@ -123,9 +123,8 @@ contains
         use parallel
         use spawn_data, only: spawn_t
         use ranking, only: insertion_rank
-        use calc, only: parallel_t
         use checking, only: check_allocate, check_deallocate
-        use qmc_data, only: load_bal_in_t, particle_t
+        use qmc_data, only: load_bal_in_t, particle_t, parallel_t
 
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(in) :: spawn

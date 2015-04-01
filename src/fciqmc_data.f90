@@ -7,7 +7,6 @@ use const
 use csr, only: csrp_t
 use spawn_data, only: spawn_t
 use hash_table, only: hash_table_t
-use calc, only: parallel_t
 use parallel, only: parallel_timing_t
 implicit none
 
@@ -42,9 +41,6 @@ real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
 ! Restart data.
 integer :: mc_cycles_done = 0
-
-! Type for storing parallel information: see calc for description.
-type(parallel_t) :: par_info
 
 contains
 
@@ -359,7 +355,6 @@ contains
                 call check_deallocate('psip_list%nparticles_proc', ierr)
             end if
         end if
-        call dealloc_parallel_t(nb_comm, par_info)
         if (present(spawn)) call dealloc_spawn_t(spawn)
 
     end subroutine end_fciqmc
