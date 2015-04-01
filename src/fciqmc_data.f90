@@ -281,7 +281,7 @@ contains
             if (present(dmqmc_in)) then
                 if (dmqmc_in%calc_excit_dist) then
                     do i = 0, ubound(dmqmc_estimates%excit_dist,1)
-                        write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%excit_dist(i)/ntot_particles(i)
+                        write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%excit_dist(i)/ntot_particles(1)
                     end do
                 end if
             end if
