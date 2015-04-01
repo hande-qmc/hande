@@ -130,7 +130,8 @@ contains
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs%ref, annihilation_flags, &
-                                               init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, load_bal_in%nslots)
+                                               init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, &
+                                               qs%par_info%load%proc_map,load_bal_in%nslots)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
@@ -181,8 +182,8 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                         qs%ref%H00, load_bal_in%nslots, qs%psip_list, &
-                                                         dmqmc_estimates, weighted_sampling)
+                                                         qs%ref%H00, qs%par_info%load%proc_map, load_bal_in%nslots, &
+                                                         qs%psip_list, dmqmc_estimates, weighted_sampling)
                         end if
 
                         do ireplica = 1, qs%psip_list%nspaces
@@ -206,7 +207,7 @@ contains
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
                                                                             spawning_end, ireplica, qs%spawn_store%spawn,      &
-                                                                            load_bal_in%nslots)
+                                                                            qs%par_info%load%proc_map, load_bal_in%nslots)
 
                                         if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -221,7 +222,7 @@ contains
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
                                                                                 spawning_end, ireplica, qs%spawn_store%spawn, &
-                                                                                load_bal_in%nslots)
+                                                                                qs%par_info%load%proc_map, load_bal_in%nslots)
 
                                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                                 call accumulate_bloom_stats(bloom_stats, nspawned)

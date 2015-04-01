@@ -361,7 +361,7 @@ contains
                     ! If it doesn't, set the walkers array to be empty.
                     call assign_particle_processor(reference%f0, sys%basis%string_len, spawn%hash_seed, &
                                                    spawn%hash_shift, spawn%move_freq, nprocs, &
-                                                   D0_proc, slot, load_bal_in%nslots)
+                                                   D0_proc, slot, qmc_state%par_info%load%proc_map, load_bal_in%nslots)
                     if (D0_proc /= iproc) pl%nstates = 0
                 end if
 
@@ -400,7 +400,8 @@ contains
 
                     call assign_particle_processor(f0_inv, sys%basis%string_len, spawn%hash_seed, &
                                                    spawn%hash_shift, spawn%move_freq, nprocs, &
-                                                   D0_inv_proc, slot, load_bal_in%nslots)
+                                                   D0_inv_proc, slot, qmc_state%par_info%load%proc_map, &
+                                                   load_bal_in%nslots)
 
                     ! Store if not identical to reference det.
                     if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then

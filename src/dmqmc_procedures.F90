@@ -424,7 +424,7 @@ contains
     end subroutine find_rdm_masks
 
     subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags, &
-                                             target_nparticles_tot, psip_list, spawn, nload_slots)
+                                             target_nparticles_tot, psip_list, spawn, proc_map, nload_slots)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -446,6 +446,7 @@ contains
         !    annihilation_flags: calculation specific annihilation flags.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
+        !    proc_map: array which maps determinants to processors.
         !    nload_slots: number of load balancing slots (per processor).
 
         use annihilation, only: direct_annihilation
@@ -470,6 +471,7 @@ contains
         integer(int_64), intent(in) :: target_nparticles_tot
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
 
         real(p) :: nparticles_temp(psip_list%nspaces)
@@ -561,7 +563,7 @@ contains
             ! new determinants being accepted. So we need to reorganise the
             ! determinants appropriately.
             call redistribute_particles(psip_list%states, real_factor, psip_list%pops, &
-                                        psip_list%nstates, psip_list%nparticles, spawn, nload_slots)
+                                        psip_list%nstates, psip_list%nparticles, spawn, proc_map, nload_slots)
             call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         end if
 

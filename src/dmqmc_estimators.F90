@@ -326,8 +326,8 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, nload_slots, psip_list, dmqmc_estimates, &
-                                       weighted_sampling)
+    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, proc_map, nload_slots, psip_list, &
+                                       dmqmc_estimates, weighted_sampling)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -342,6 +342,7 @@ contains
         !    idet: Current position in the main particle list.
         !    iteration: current Monte Carlo cycle.
         !    H00: diagonal Hamiltonian element for the reference.
+        !    proc_map: array which maps determinants to processors.
         !    nload_slots: number of load balancing slots (per processor).
         !    psip_list: particle information/lists.
         ! In/Out:
@@ -367,6 +368,7 @@ contains
         integer, intent(in) :: idet, iteration
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: H00
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
         type(particle_t), intent(in) :: psip_list
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
@@ -429,7 +431,7 @@ contains
             ! Reduced density matrices.
             if (dmqmc_in%rdm%doing_rdm) call update_reduced_density_matrix_heisenberg&
                 (sys%basis, est, dmqmc_in%rdm, cdet, excitation, psip_list%pops(:,idet), &
-                 iteration, nload_slots, dmqmc_in%start_av_rdm, weighted_sampling%probs)
+                 iteration, proc_map, nload_slots, dmqmc_in%start_av_rdm, weighted_sampling%probs)
 
             weighted_sampling%probs_old = weighted_sampling%probs
 
@@ -828,7 +830,7 @@ contains
     end subroutine update_full_renyi_2
 
     subroutine update_reduced_density_matrix_heisenberg(basis, dmqmc_estimates, rdm_in, cdet, excitation, walker_pop, &
-                                                        iteration, nload_slots, start_av_rdm, accumulated_probs)
+                                                        iteration, proc_map, nload_slots, start_av_rdm, accumulated_probs)
 
         ! Add the contribution from the current walker to the reduced density
         ! matrices being sampled. This is performed by 'tracing out' the
@@ -855,6 +857,7 @@ contains
         !        removed before any estimates can be calculated.
         !    iteration: interation number.  No accumulation of the RDM is
         !        performed if iteration <= start_av_rdm.
+        !    proc_map: array which maps determinants to processors.
         !    nload_slots: number of load balancing slots (per processor).
         !    start_av_rdm: iteration we start averaging the rdm on.
         !    accumulated_probs: factors by which the population on each
@@ -877,6 +880,7 @@ contains
         integer, intent(in) :: iteration
         integer(int_p), intent(in) :: walker_pop(:)
         type(excit_t), intent(in) :: excitation
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
         integer, intent(in) :: start_av_rdm
         real(p), intent(in) :: accumulated_probs(0:)
@@ -939,7 +943,7 @@ contains
                 do ireplica = 1, size(walker_pop)
                 if (abs(walker_pop(ireplica)) > 0) then
                     call create_spawned_particle_rdm(rdm_info(irdm), walker_pop(ireplica), &
-                        ireplica, dmqmc_estimates%inst_rdm%spawn(irdm), nload_slots)
+                        ireplica, dmqmc_estimates%inst_rdm%spawn(irdm), proc_map, nload_slots)
                 end if
                 end do
             end if

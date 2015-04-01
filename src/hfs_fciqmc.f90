@@ -184,7 +184,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
                             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                             qs%spawn_store%spawn, load_bal_in%nslots)
+                                                             qs%spawn_store%spawn, qs%par_info%load%proc_map, load_bal_in%nslots)
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
@@ -195,7 +195,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
                             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
-                                                             qs%spawn_store%spawn, load_bal_in%nslots)
+                                                             qs%spawn_store%spawn, qs%par_info%load%proc_map, load_bal_in%nslots)
 
                     end do
 
@@ -211,7 +211,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) &
                             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
-                                                             qs%spawn_store%spawn, load_bal_in%nslots)
+                                                             qs%spawn_store%spawn, qs%par_info%load%proc_map, load_bal_in%nslots)
 
                     end do
 
@@ -250,7 +250,8 @@ contains
                     call stochastic_hf_cloning(rng, qs%tau, qs%shift(2), qs%psip_list%dat(2,idet), &
                                                qs%psip_list%pops(1,idet), nspawned)
                     if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, &
-                                                                        qs%spawn_store%spawn, load_bal_in%nslots)
+                                                                        qs%spawn_store%spawn, qs%par_info%load%proc_map, &
+                                                                        load_bal_in%nslots)
 
                     ! Clone or die: Hamiltonian walkers.
                     call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
