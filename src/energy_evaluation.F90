@@ -354,7 +354,7 @@ contains
             ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
         end do
 
-        associate(lb=>par_info%load)
+        associate(lb=>qs%par_info%load)
             if (present(doing_lb)) then
                 if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
                     pop_av = sum(nparticles_proc(1,:nprocs))/nprocs

@@ -251,10 +251,10 @@ contains
                         call direct_annihilation_received_list(sys, rng, qmc_in, qs%ref, annihilation_flags, &
                                                                pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
-                        if (par_info%load%needed) then
+                        if (qs%par_info%load%needed) then
                             call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn, &
                                                         load_bal_in%nslots)
-                            par_info%load%needed = .false.
+                            qs%par_info%load%needed = .false.
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &
                                                               send_counts, req_data_s, qs%par_info%report_comm%nb_spawn, nspawn_events)

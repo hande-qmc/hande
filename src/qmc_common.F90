@@ -702,7 +702,7 @@ contains
     end subroutine init_report_loop
 
     subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
-                             psip_list, spawn, nattempts, ndeath, min_attempts, doing_lb, nb_comm, determ)
+                             psip_list, spawn, par_info, nattempts, ndeath, min_attempts, nb_comm, determ)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -722,6 +722,8 @@ contains
         !       nattempts and population is redistributed if requested by the
         !       load balancing approach.
         !    spawn: spawn_t object for holding spawned particles.  Reset on exit.
+        !    par_info: type containing parallel information of the state of the
+        !       system (load balancing and non-blocking).
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
         !        processor) this cycle.
@@ -729,7 +731,6 @@ contains
         !        cycle.  Reset to 0 on output.
         ! In (optional):
         !    min_attempts: if present, set nattempts to be at least this value.
-        !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
         ! In/Out (optional):
         !    determ: The deterministic space being used, as required for
@@ -739,6 +740,7 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
         use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t, particle_t, annihilation_flags_t
+        use qmc_data, only: parallel_t
         use system, only: sys_t
         use spawn_data, only: spawn_t
 
@@ -749,12 +751,13 @@ contains
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
+        type(parallel_t), intent(inout) :: par_info
         type(load_bal_in_t), intent(in) :: load_bal_in
         integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
-        logical, optional, intent(in) :: doing_lb, nb_comm
+        logical, optional, intent(in) :: nb_comm
         type(semi_stoch_t), optional, intent(inout) :: determ
 
         logical :: nb_comm_local
@@ -790,15 +793,13 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
-        if (present(doing_lb)) then
-            if (doing_lb .and. par_info%load%needed) then
-                call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
-                call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%states, real_factor, determ, &
-                                                      psip_list, spawn, load_bal_in%nslots, annihilation_flags)
-                ! If using non-blocking communications we still need this flag to
-                ! be set.
-                if (.not. nb_comm_local) par_info%load%needed = .false.
-            end if
+        if (par_info%load%needed) then
+            call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
+            call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%states, real_factor, determ, &
+                                                  psip_list, spawn, load_bal_in%nslots, annihilation_flags)
+            ! If using non-blocking communications we still need this flag to
+            ! be set.
+            if (.not. nb_comm_local) par_info%load%needed = .false.
         end if
 
     end subroutine init_mc_cycle
