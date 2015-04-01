@@ -701,29 +701,16 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, &
-                             psip_list, spawn, par_info, nattempts, ndeath, min_attempts, nb_comm, determ)
+    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
 
         ! In/Out:
-        !    rng: random number generator.
-        ! In:
-        !    sys: system being studied
-        !    qmc_in: input options relating to QMC methods.
-        !    reference: current reference determinant.
-        !    load_bal_in: input options for load balancing.
-        !    annihilation_flags: calculation specific annihilation flags.
-        !    real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
-        ! In/Out:
         !    psip_list: total population (on this proccesor) is used to set
         !       nattempts and population is redistributed if requested by the
         !       load balancing approach.
         !    spawn: spawn_t object for holding spawned particles.  Reset on exit.
-        !    par_info: type containing parallel information of the state of the
-        !       system (load balancing and non-blocking).
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
         !        processor) this cycle.
@@ -732,39 +719,17 @@ contains
         ! In (optional):
         !    min_attempts: if present, set nattempts to be at least this value.
         !    nb_comm: true if using non-blocking communications.
-        ! In/Out (optional):
-        !    determ: The deterministic space being used, as required for
-        !        semi-stochastic calculations.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
-        use dSFMT_interface, only: dSFMT_t
-        use load_balancing, only: do_load_balancing
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, semi_stoch_t, particle_t, annihilation_flags_t
-        use qmc_data, only: parallel_t
-        use system, only: sys_t
+        use qmc_data, only: particle_t
         use spawn_data, only: spawn_t
 
-        type(dSFMT_t), intent(inout) :: rng
-        type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
-        type(reference_t), intent(in) :: reference
-        type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
-        type(parallel_t), intent(inout) :: par_info
-        type(load_bal_in_t), intent(in) :: load_bal_in
-        integer(int_p), intent(in) :: real_factor
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
-        logical, optional, intent(in) :: nb_comm
-        type(semi_stoch_t), optional, intent(inout) :: determ
 
-        logical :: nb_comm_local
-
-        ! Using non-blocking communications?
-        nb_comm_local = .false.
-        if (present(nb_comm)) nb_comm_local = nb_comm
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
@@ -793,17 +758,62 @@ contains
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
+    end subroutine init_mc_cycle
+
+    subroutine load_balancing_wrapper(sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, nb_comm, &
+                                      rng, psip_list, spawn, par_info, determ)
+
+        ! In:
+        !    sys: system being studied
+        !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
+        !    load_bal_in: input options for load balancing.
+        !    annihilation_flags: calculation specific annihilation flags.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
+        !    nb_comm: true if using non-blocking communications.
+        ! In/Out:
+        !    rng: random number generator.
+        !    psip_list: total population (on this proccesor) is used to set
+        !       nattempts and population is redistributed if requested by the
+        !       load balancing approach.
+        !    spawn: spawn_t object for holding spawned particles.  Reset on exit.
+        !    par_info: type containing parallel information of the state of the
+        !       system (load balancing and non-blocking).
+        ! In/Out (optional):
+        !    determ: The deterministic space being used, as required for
+        !        semi-stochastic calculations.
+
+        use system, only: sys_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t, particle_t
+        use qmc_data, only: parallel_t, semi_stoch_t
+        use dSFMT_interface, only: dSFMT_t
+        use load_balancing, only: do_load_balancing
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
+        type(load_bal_in_t), intent(in) :: load_bal_in
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
+        integer(int_p), intent(in) :: real_factor
+        logical, intent(in) :: nb_comm
+        type(dSFMT_t), intent(inout) :: rng
+        type(particle_t), intent(inout) :: psip_list
+        type(spawn_t), intent(inout) :: spawn
+        type(parallel_t), intent(inout) :: par_info
+        type(semi_stoch_t), optional, intent(inout) :: determ
+
+
         if (par_info%load%needed) then
             call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
             call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%states, real_factor, determ, &
                                                   psip_list, spawn, load_bal_in%nslots, annihilation_flags)
             ! If using non-blocking communications we still need this flag to
             ! be set.
-            if (.not. nb_comm_local) par_info%load%needed = .false.
+            if (.not. nb_comm) par_info%load%needed = .false.
         end if
 
-    end subroutine init_mc_cycle
-
+    end subroutine load_balancing_wrapper
 ! --- QMC loop and cycle termination routines ---
 
     subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,             &

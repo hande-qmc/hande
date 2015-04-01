@@ -170,9 +170,10 @@ contains
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(rng, sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
-                                   qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, doing_lb=fciqmc_in%doing_load_balancing, &
-                                   nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
+                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
+                call load_balancing_wrapper(sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
+                                            fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
+                                            qs%par_info, determ)
                 ideterm = 0
 
                 do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
