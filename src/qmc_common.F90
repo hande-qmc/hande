@@ -909,11 +909,11 @@ contains
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
+            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, update_tau, bloom_stats, &
                                           qs%par_info%report_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
             call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
-                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau_now, &
+                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau, &
                                                bloom_stats)
             ! Send current report loop quantities.
             qs%par_info%report_comm%rep_info = rep_info_copy
