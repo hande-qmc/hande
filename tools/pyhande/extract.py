@@ -89,7 +89,7 @@ calc_data : list of `:class:`pandas.Series`
     # ... input (echoed in output)
     md_input = dict(
         calc_type = '^ *(simple_fciqmc|fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc|\
-                         |estimate_canonical_kinetic_energy) *$',
+                         |estimate_canonical_kinetic_energy|kinetic_energy)',
         sym = r'\bsym\b +\d+',
         ms = r'\bms\b +-*\d+',
         nel = r'\bnel\b|\belectrons\b',
@@ -216,6 +216,10 @@ calc_data : list of `:class:`pandas.Series`
             break
     f.close()
 
+    # Remapping to match old and new input files
+    if metadata['calc_type'] == 'estimate_canonical_kinetic_energy':
+        metadata['calc_type'] = 'kinetic_energy'
+
     if column_names:
         # Hunt for the end of the table.
         skip_footer = 0
@@ -326,8 +330,8 @@ val:
     fields in the line) is in md_int or md_float.
 '''
     val = line.split()[-1]
-    if val[-1] == '.':
-        # Remove trailing full-stops.
+    if val[-1] in ('.', ','):
+        # Remove trailing commas and full-stops.
         val = val[:-1]
     if key in md_int:
         if "*" not in val:
