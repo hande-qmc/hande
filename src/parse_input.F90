@@ -15,7 +15,6 @@ use fciqmc_data
 use restart_hdf5, only: restart_info_global, restart_info_global_shift
 use hfs_data
 use semi_stoch
-use qmc_data, only: par_info
 
 implicit none
 
