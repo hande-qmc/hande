@@ -504,5 +504,4 @@ integer :: real_bit_shift
 ! [todo] - compile-time parameter
 integer(int_p) :: real_factor
 ! [todo] - procedures for encoding and decoding the populations.
-
 end module qmc_data

@@ -268,7 +268,7 @@ contains
             end if
 
             if (nprocs == 1 .or. .not. fciqmc_in_loc%doing_load_balancing) load_bal_in%nslots = 1
-            call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, par_info, &
+            call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, qmc_state%par_info, &
                                  load_bal_in%nslots)
 
             allocate(reference%f0(sys%basis%string_len), stat=ierr)
@@ -361,7 +361,7 @@ contains
                     ! If it doesn't, set the walkers array to be empty.
                     call assign_particle_processor(reference%f0, sys%basis%string_len, spawn%hash_seed, &
                                                    spawn%hash_shift, spawn%move_freq, nprocs, &
-                                                   D0_proc, slot, load_bal_in%nslots)
+                                                   D0_proc, slot, qmc_state%par_info%load%proc_map, load_bal_in%nslots)
                     if (D0_proc /= iproc) pl%nstates = 0
                 end if
 
@@ -400,7 +400,8 @@ contains
 
                     call assign_particle_processor(f0_inv, sys%basis%string_len, spawn%hash_seed, &
                                                    spawn%hash_shift, spawn%move_freq, nprocs, &
-                                                   D0_inv_proc, slot, load_bal_in%nslots)
+                                                   D0_inv_proc, slot, qmc_state%par_info%load%proc_map, &
+                                                   load_bal_in%nslots)
 
                     ! Store if not identical to reference det.
                     if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then

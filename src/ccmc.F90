@@ -414,7 +414,8 @@ contains
 
                 associate(spawn=>qs%spawn_store%spawn)
                     call assign_particle_processor(qs%ref%f0, sys%basis%string_len, spawn%hash_seed, spawn%hash_shift, &
-                                                   spawn%move_freq, nprocs, D0_proc, slot, load_bal_in%nslots)
+                                                   spawn%move_freq, nprocs, D0_proc, slot, qs%par_info%load%proc_map, &
+                                                   load_bal_in%nslots)
 
                     ! Update the shift of the excitor locations to be the end of this
                     ! current iteration.
@@ -469,8 +470,8 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(rng(0), sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
-                                   qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, nint(D0_normalisation,int_64))
+                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
+                                   min_attempts=nint(D0_normalisation,int_64))
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
@@ -636,10 +637,12 @@ contains
                            if (nspawned /= 0_int_p) then
                                if (cluster(it)%excitation_level == huge(0)) then
                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, &
-                                                                    nspawned, 1, qs%spawn_store%spawn, load_bal_in%nslots, fexcit)
+                                                                    nspawned, 1, qs%spawn_store%spawn, qs%par_info%load%proc_map, &
+                                                                    load_bal_in%nslots, fexcit)
                                else
                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, 1, &
-                                                                    qs%spawn_store%spawn, load_bal_in%nslots)
+                                                                    qs%spawn_store%spawn, qs%par_info%load%proc_map, &
+                                                                    load_bal_in%nslots)
                                end if
                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
                            end if
@@ -690,7 +693,7 @@ contains
                 ! that we need to deal with.
                 if (nprocs > 1) call redistribute_particles(qs%psip_list%states, real_factor, qs%psip_list%pops, &
                                                             qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
-                                                            load_bal_in%nslots)
+                                                            qs%par_info%load%proc_map, load_bal_in%nslots)
 
                 call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
                                          qs%spawn_store%spawn, nspawn_events)
@@ -1576,7 +1579,8 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn, nload_slots)
+            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn, qs%par_info%load%proc_map, &
+                                             nload_slots)
         end if
 
     end subroutine stochastic_ccmc_death

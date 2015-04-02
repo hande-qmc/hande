@@ -119,7 +119,7 @@ contains
         ! In/Out:
         !     rep_comm: nb_rep_t object containing report loop information.
 
-        use calc, only: nb_rep_t
+        use qmc_data, only: nb_rep_t
         use parallel
 
         type(nb_rep_t), intent(inout) :: rep_comm
@@ -303,7 +303,6 @@ contains
         !    update_tau: if true, tau should be automatically rescaled.
         !    comms_found: whether a HANDE.COMM file exists
 
-        use fciqmc_data, only: par_info
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -354,7 +353,7 @@ contains
             ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
         end do
 
-        associate(lb=>par_info%load)
+        associate(lb=>qs%par_info%load)
             if (present(doing_lb)) then
                 if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
                     pop_av = sum(nparticles_proc(1,:nprocs))/nprocs

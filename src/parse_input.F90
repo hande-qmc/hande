@@ -757,7 +757,7 @@ contains
             end if
             if (load_bal_in%nslots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
             if (load_bal_in%pop < 0) call stop_all(this, 'Load balancing population must be positive.')
-            if (load_bal_in%percent < 0 .or. par_info%load%percent > 1.0) &
+            if (load_bal_in%percent < 0 .or. load_bal_in%percent > 1.0) &
                 call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
             if (load_bal_in%max_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
         end if

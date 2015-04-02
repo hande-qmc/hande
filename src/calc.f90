@@ -254,15 +254,6 @@ type load_t
     integer, allocatable :: proc_map(:)
 end type load_t
 
-type parallel_t
-    ! Type containing information on current state of load imbalance of
-    ! particles, including proc_map.
-    type(load_t) :: load
-    ! Type containing arrays necessary for report communication when using
-    ! non-blocking communications.
-    type(nb_rep_t) :: report_comm
-end type parallel_t
-
 contains
 
     subroutine init_calc_defaults(git_sha1, uuid, seed)
@@ -354,6 +345,7 @@ contains
 
         use parallel, only: nprocs
         use checking, only: check_allocate
+        use qmc_data, only: parallel_t
 
         integer, intent(in) :: ntypes, ndata
         logical, intent(in) :: non_blocking_comm
@@ -390,6 +382,7 @@ contains
         !        see definitions above.
 
         use checking, only: check_deallocate
+        use qmc_data, only: parallel_t
 
         logical, intent(in) :: non_blocking_comm
         type(parallel_t), intent(inout) :: par_calc

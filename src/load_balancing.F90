@@ -123,9 +123,8 @@ contains
         use parallel
         use spawn_data, only: spawn_t
         use ranking, only: insertion_rank
-        use calc, only: parallel_t
         use checking, only: check_allocate, check_deallocate
-        use qmc_data, only: load_bal_in_t, particle_t
+        use qmc_data, only: load_bal_in_t, particle_t, parallel_t
 
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(in) :: spawn
@@ -543,7 +542,7 @@ contains
         slot_pop = 0.0_p
         do i = 1, psip_list%nstates
             call assign_particle_processor(psip_list%states(:,i), tensor_label_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_slot, det_pos, nslots)
+                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_slot, det_pos, proc_map, nslots)
             slot_pop(det_pos) = slot_pop(det_pos) + abs(real(psip_list%pops(1,i),p))
         end do
 

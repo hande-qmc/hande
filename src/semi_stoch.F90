@@ -100,7 +100,8 @@ implicit none
 contains
 
     subroutine init_semi_stoch_t(determ, sys, psip_list, reference, annihilation_flags, spawn, space_type, &
-                                 target_size, separate_annihilation, mpi_barriers, write_determ_in, nload_slots)
+                                 target_size, separate_annihilation, mpi_barriers, write_determ_in, proc_map, &
+                                 nload_slots)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
@@ -126,6 +127,7 @@ contains
         !        load balancing before semi-stochastic communication.
         !    write_determ_in: If true then write out the deterministic states to
         !        a file.
+        !    proc_map: array which maps determinants to processors.
         !    nload_slots: number of slots proc map is divided into.
 
         use checking, only: check_allocate, check_deallocate
@@ -149,6 +151,7 @@ contains
         logical, intent(in) :: separate_annihilation
         logical, intent(in) :: mpi_barriers
         logical, intent(in) :: write_determ_in
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
 
         integer :: i, ierr, determ_dets_mem, max_nstates
@@ -212,11 +215,11 @@ contains
         ! deterministic space will be used. This is the default behaviour
         ! (space_type = empty_determ_space).
         if (space_type == high_pop_determ_space) then
-            call create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ%sizes(iproc), nload_slots)
+            call create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ%sizes(iproc), proc_map, nload_slots)
         else if (space_type == read_determ_space) then
-            call read_determ_from_file(dets_this_proc, determ, spawn, sys, nload_slots, print_info)
+            call read_determ_from_file(dets_this_proc, determ, spawn, sys, proc_map, nload_slots, print_info)
         else if (space_type == reuse_determ_space) then
-            call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc), nload_slots)
+            call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc), proc_map, nload_slots)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -840,7 +843,7 @@ contains
 
     end subroutine determ_projection_separate_annihil
 
-    subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc, nload_slots)
+    subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc, proc_map, nload_slots)
 
         ! In/Out:
         !    determ_size_this_proc: Size of the deterministic space being
@@ -852,6 +855,7 @@ contains
         !    f: det to be added to the determ object.
         !    check_proc: If true then first check if f belongs to this
         !        processor. If not then don't add it.
+        !    proc_map: array which maps determinants to processors.
         !    nload_slots: number of slots proc map is divided into.
 
         use hashing, only: murmurhash_bit_string
@@ -864,6 +868,7 @@ contains
         type(spawn_t), intent(in) :: spawn
         integer(i0), intent(in) :: f(:)
         logical, intent(in) :: check_proc
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
 
         integer :: proc, slot
@@ -872,7 +877,7 @@ contains
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
             call assign_particle_processor(f, size(f), spawn%hash_seed, spawn%hash_shift, &
-                                            spawn%move_freq, nprocs, proc, slot, nload_slots)
+                                            spawn%move_freq, nprocs, proc, slot, proc_map, nload_slots)
         else
             proc = iproc
         end if
@@ -884,7 +889,7 @@ contains
 
     end subroutine add_det_to_determ_space
 
-    subroutine create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ_size_this_proc, nload_slots)
+    subroutine create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ_size_this_proc, proc_map, nload_slots)
 
         ! Find the most highly populated determinants in psip_list%states and use
         ! these to define the deterministic space.
@@ -898,6 +903,7 @@ contains
         !    target_size: Size of deterministic space to use if possible. If
         !        not then use the largest space possible (all determinants in
         !        psip_list%states).
+        !    proc_map: array which maps determinants to processors.
         !    nload_slots: number of slots proc map is divided into.
         ! Out:
         !    determ_size_this_proc: Size of the deterministic space created,
@@ -913,6 +919,7 @@ contains
         type(spawn_t), intent(in) :: spawn
         integer, intent(in) :: target_size
         integer, intent(out) :: determ_size_this_proc
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
 
         integer :: ndets, ndets_tot, determ_size
@@ -991,7 +998,7 @@ contains
                 ! contains determinants on this processor.
                 ind_local = indices(i) - displs(iproc)
                 call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, &
-                                             determ_dets(:,ind_local), .false., nload_slots)
+                                             determ_dets(:,ind_local), .false., proc_map, nload_slots)
             end if
         end do
 
@@ -1138,7 +1145,7 @@ contains
 
     end subroutine find_indices_of_most_populated_dets
 
-    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, nload_slots, print_info)
+    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, proc_map, nload_slots, print_info)
 
         ! Use states read in from a HDF5 file to form the deterministic space.
 
@@ -1154,6 +1161,7 @@ contains
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    sys: system being studied.
+        !    proc_map: array mapping determinants to processors.
         !    nload_slots: number of slots in proc_map
         !    print_info: Should we print information to the screen?
 
@@ -1172,6 +1180,7 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
         logical, intent(in) :: print_info
 
@@ -1220,7 +1229,7 @@ contains
             determ%sizes = 0
             do i = 1, ndeterm
                 call assign_particle_processor(determ%dets(:,i), size(determ%dets,1), spawn%hash_seed, &
-                                                spawn%hash_shift, spawn%move_freq, nprocs, proc, slot, nload_slots)
+                                                spawn%hash_shift, spawn%move_freq, nprocs, proc, slot, proc_map, nload_slots)
                 determ%sizes(proc) = determ%sizes(proc) + 1
             end do
 
@@ -1323,7 +1332,7 @@ contains
 
     end subroutine write_determ_to_file
 
-    subroutine recreate_determ_space(dets_this_proc, dets_all_procs, spawn, determ_size_this_proc, nload_slots)
+    subroutine recreate_determ_space(dets_this_proc, dets_all_procs, spawn, determ_size_this_proc, proc_map, nload_slots)
 
         ! Generate the deterministic space on this processor from the
         ! already-generated list of deterministic states on *all* processors.
@@ -1338,6 +1347,7 @@ contains
         !    dets_all_procs: The full list of all deterministic states on all
         !        processes.
         !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    proc_map: array which maps determinants to processors.
         !    nload_slots: number of slots proc map is divided into (per
         !        processor).
 
@@ -1346,6 +1356,7 @@ contains
         integer(i0), intent(out) :: dets_this_proc(:,:)
         integer(i0), intent(in) :: dets_all_procs(:,:)
         type(spawn_t), intent(in) :: spawn
+        integer, intent(in) :: proc_map(0:)
         integer, intent(in) :: nload_slots
         integer, intent(out) :: determ_size_this_proc
 
@@ -1359,7 +1370,7 @@ contains
         ! following routine will add it and update the space size accordingly.
         do idet = 1, size(dets_all_procs,2)
             call add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, &
-                                         dets_all_procs(:,idet), .true., nload_slots)
+                                         dets_all_procs(:,idet), .true., proc_map, nload_slots)
         end do
 
     end subroutine recreate_determ_space

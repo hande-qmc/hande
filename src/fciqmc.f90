@@ -123,10 +123,11 @@ contains
             call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
                                    semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
                                    semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
-                                   load_bal_in%nslots)
+                                   qs%par_info%load%proc_map, load_bal_in%nslots)
         else
             call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                   empty_determ_space, 0, .false., .false., .false., load_bal_in%nslots)
+                                   empty_determ_space, 0, .false., .false., .false., qs%par_info%load%proc_map, &
+                                   load_bal_in%nslots)
         end if
 
         ! In case this is not set.
@@ -144,8 +145,7 @@ contains
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
-            call initial_fciqmc_status(sys, qmc_in, qs, .true., par_info%report_comm, &
-                                       send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
+            call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
         else
             call initial_fciqmc_status(sys, qmc_in, qs)
         end if
@@ -167,13 +167,14 @@ contains
                     call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
                                            semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
                                            semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
-                                           load_bal_in%nslots)
+                                           qs%par_info%load%proc_map, load_bal_in%nslots)
                     semi_stochastic = .true.
                 end if
 
-                call init_mc_cycle(rng, sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
-                                   qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, doing_lb=fciqmc_in%doing_load_balancing, &
-                                   nb_comm=fciqmc_in%non_blocking_comm, determ=determ)
+                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
+                call load_balancing_wrapper(sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
+                                            fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
+                                            qs%par_info, determ)
                 ideterm = 0
 
                 do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
@@ -224,13 +225,15 @@ contains
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
                                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
-                                                                     1, qs%spawn_store%spawn, load_bal_in%nslots, f_child)
+                                                                     1, qs%spawn_store%spawn, qs%par_info%load%proc_map, &
+                                                                     load_bal_in%nslots, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
                                 call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                                 qs%spawn_store%spawn, load_bal_in%nslots)
+                                                                 qs%spawn_store%spawn, qs%par_info%load%proc_map, &
+                                                                 load_bal_in%nslots)
                             end if
                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -252,14 +255,15 @@ contains
                         call direct_annihilation_received_list(sys, rng, qmc_in, qs%ref, annihilation_flags, &
                                                                pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
-                        if (par_info%load%needed) then
+                        if (qs%par_info%load%needed) then
                             call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn, &
-                                                        load_bal_in%nslots)
-                            par_info%load%needed = .false.
+                                                        qs%par_info%load%proc_map, load_bal_in%nslots)
+                            qs%par_info%load%needed = .false.
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &
-                                                              send_counts, req_data_s, par_info%report_comm%nb_spawn, nspawn_events)
-                        call end_mc_cycle(par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
+                                                              send_counts, req_data_s, qs%par_info%report_comm%nb_spawn, &
+                                                              nspawn_events)
+                        call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic
                         ! projection step.
@@ -288,7 +292,7 @@ contains
             call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
-                                 nb_comm=fciqmc_in%non_blocking_comm, rep_comm=par_info%report_comm)
+                                 nb_comm=fciqmc_in%non_blocking_comm)
 
             if (update_tau) call rescale_tau(qs%tau)
 
@@ -316,8 +320,8 @@ contains
 
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
-                                                                    par_info%report_comm%request, t1, nparticles_old, qs%shift(1), &
-                                                                    restart_in%dump_restart, load_bal_in)
+                                                                    qs%par_info%report_comm%request, t1, nparticles_old, &
+                                                                    qs%shift(1), restart_in%dump_restart, load_bal_in)
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
@@ -427,7 +431,7 @@ contains
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then
                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send, &
-                                                     nload_slots)
+                                                     qs%par_info%load%proc_map, nload_slots)
                 end if
 
             end do
