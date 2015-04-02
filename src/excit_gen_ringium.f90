@@ -52,7 +52,7 @@ contains
         if (allowed) then
             ! 3. Calculate the generation probability of the excitation.
             ! For one-band systems this depends only upon the orbitals excited from.
-            pgen = calc_pgen_ringium(sys, connection%from_orb(1), connection%from_orb(2))
+            pgen = calc_pgen_ringium(sys)
 
             call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
@@ -137,12 +137,11 @@ contains
 
     end subroutine choose_ab_ringium
 
-    pure function calc_pgen_ringium(sys, i, j) result(pgen)
+    pure function calc_pgen_ringium(sys) result(pgen)
 
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, j
         real(p) :: pgen
 
         ! i and j are chosen uniformly from the nel*(nel-1)/2 possible pairs
