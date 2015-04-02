@@ -258,7 +258,7 @@ contains
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
-        use fciqmc_data, only: mc_cycles_done, write_fciqmc_report, &
+        use fciqmc_data, only: write_fciqmc_report, &
                                write_fciqmc_report_header, real_factor
         use qmc, only: init_qmc
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
@@ -393,7 +393,7 @@ contains
 
         associate(spawn=>qs%spawn_store%spawn)
             ! Initialise hash shift if restarting...
-            spawn%hash_shift = mc_cycles_done
+            spawn%hash_shift = qs%mc_cycles_done
             ! Hard code how frequently (ie 2^10) a determinant can move.
             spawn%move_freq = ccmc_in%move_freq
         end associate
@@ -410,7 +410,7 @@ contains
 
             do icycle = 1, qmc_in%ncycles
 
-                iter = mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
+                iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                 associate(spawn=>qs%spawn_store%spawn)
                     call assign_particle_processor(qs%ref%f0, sys%basis%string_len, spawn%hash_seed, spawn%hash_shift, &
@@ -731,13 +731,13 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qs%spawn_store%spawn%mpi_time)
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
+            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
+            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done, nparticles_old, .false.)
+            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if
 

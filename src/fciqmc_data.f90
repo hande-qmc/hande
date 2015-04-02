@@ -37,11 +37,6 @@ integer(int_p) :: real_factor
 ! there are relativley few of them and they are expensive to calculate
 real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
-!--- Restart data ---
-
-! Restart data.
-integer :: mc_cycles_done = 0
-
 contains
 
     !--- Statistics. ---
@@ -225,7 +220,7 @@ contains
         ! DMQMC output.
         if (doing_calc(dmqmc_calc)) then
             write (6,'(i10,2X,es17.10,2X,es17.10)',advance = 'no') &
-                (mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), dmqmc_estimates%trace(1)
+                (qs%mc_cycles_done+mc_cycles-qmc_in%ncycles), qs%shift(1), dmqmc_estimates%trace(1)
             ! The trace on the second replica.
             if (doing_dmqmc_calc(dmqmc_full_r2)) then
                 write(6, '(3X,es17.10)',advance = 'no') dmqmc_estimates%trace(2)
@@ -286,14 +281,14 @@ contains
 
         else if (doing_calc(hfs_fciqmc_calc)) then
             write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,X,es17.10)', advance = 'no') &
-                                             mc_cycles_done+mc_cycles, qs%shift(1),   &
+                                             qs%mc_cycles_done+mc_cycles, qs%shift(1),   &
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &
                                              qs%shift(2), qs%estimators%proj_hf_O_hpsip, qs%estimators%proj_hf_H_hfpsip, &
                                              qs%estimators%D0_hf_population, &
                                              ntot_particles
         else
             write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,es17.10)', advance='no') &
-                                             mc_cycles_done+mc_cycles, qs%shift(1),   &
+                                             qs%mc_cycles_done+mc_cycles, qs%shift(1),   &
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &
                                              ntot_particles
         end if

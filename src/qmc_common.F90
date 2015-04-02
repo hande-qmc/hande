@@ -957,10 +957,10 @@ contains
 
         if (dump_restart_file_shift .and. any(qs%vary_shift)) then
             dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, qs, mc_cycles_done+ncycles*ireport, &
+            call dump_restart_hdf5(restart_info_global_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
                                    ntot_particles, nb_comm)
         else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done+ncycles*ireport, &
+            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done+ncycles*ireport, &
                                    ntot_particles, nb_comm)
         end if
 

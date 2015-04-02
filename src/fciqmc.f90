@@ -159,7 +159,7 @@ contains
 
             do icycle = 1, qmc_in%ncycles
 
-                iter = mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
+                iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter) then
@@ -333,13 +333,13 @@ contains
         end associate
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
+            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
+            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
+            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
             if (parent) write (6,'()')
         end if
 

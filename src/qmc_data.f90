@@ -446,6 +446,8 @@ type qmc_state_t
     real(p) :: dmqmc_factor = 1.0_p
     ! timestep
     real(p) :: tau
+    ! number of Monte Carlo cycles done in previous runs (ie from restarts, etc).
+    integer :: mc_cycles_done = 0
     ! Energy offset (shift) applied to the Hamiltonian.
     real(p), allocatable :: shift(:) ! (psip_list%nspaces)
     ! The shift is updated at the end of each report loop when vary_shift is true.
@@ -469,10 +471,6 @@ type annihilation_flags_t
     logical :: propagate_to_beta = .false.
 end type annihilation_flags_t
 ! --- GLOBAL STATE (TEMPORARY) ---
-
-! Restart data.
-! [todo] - return from read_restart_hdf5, which will be called from inside the do_* algos...
-integer :: mc_cycles_done = 0
 
 ! Global handle for purity work.
 type(qmc_in_t) :: qmc_in_global
