@@ -296,16 +296,15 @@ contains
 
             if (update_tau) call rescale_tau(qs%tau)
 
+            call cpu_time(t2)
             if (parent) then
-                call cpu_time(t2)
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
                 call write_fciqmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., &
                                          fciqmc_in%non_blocking_comm)
             end if
 
-            ! TODO: Check if this is needed.
-            ! cpu_time outputs an elapsed time, so update the reference timer.
-            !report_time = curr_time
+            ! Update the time for the start of the next iteration.
+            t1 = t2
 
             call dump_restart_file_wrapper(qs, dump_restart_file_shift, nparticles_old, ireport, qmc_in%ncycles, &
                                            fciqmc_in%non_blocking_comm)

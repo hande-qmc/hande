@@ -708,11 +708,14 @@ contains
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats)
 
+            call cpu_time(t2)
             if (parent) then
-                call cpu_time(t2)
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
                 call write_fciqmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false.)
             end if
+
+            ! Update the time for the start of the next iteration.
+            t1 = t2
 
             call dump_restart_file_wrapper(qs, dump_restart_file_shift, nparticles_old, ireport, qmc_in%ncycles, .false.)
 

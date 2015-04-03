@@ -281,12 +281,15 @@ contains
                                      nspawn_events, unused_int_1, unused_int_2, soft_exit, &
                                      load_bal_in, .false., bloom_stats=bloom_stats)
 
+                call cpu_time(t2)
                 if (parent) then
-                    call cpu_time(t2)
                     if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
                     call write_fciqmc_report(qmc_in, qs, ireport, tot_nparticles_old, t2-t1, .false., &
                                              .false., dmqmc_in, dmqmc_estimates)
                 end if
+
+                ! Update the time for the start of the next iteration.
+                t1 = t2
 
                 if (soft_exit) exit
 
