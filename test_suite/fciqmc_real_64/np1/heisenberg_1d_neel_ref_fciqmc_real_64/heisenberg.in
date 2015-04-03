@@ -23,3 +23,4 @@ tau 0.002
 varyshift_target 200
 vary_shift_from -18
 seed 7
+init_pop 10

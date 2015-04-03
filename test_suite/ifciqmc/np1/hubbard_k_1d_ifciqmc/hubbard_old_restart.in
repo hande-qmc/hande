@@ -20,3 +20,4 @@ sym 4
 seed 7
 
 restart 0
+init_pop 10

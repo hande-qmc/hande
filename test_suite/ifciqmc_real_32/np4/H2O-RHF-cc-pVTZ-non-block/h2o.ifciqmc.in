@@ -18,3 +18,4 @@ non_blocking_comm
 real_amplitudes
 ms 0
 sym 0
+init_pop 10

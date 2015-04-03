@@ -40,3 +40,4 @@ dump_restart 0
 #    scf_restrict_sym 3
 #    $end
 seed 7
+init_pop 10

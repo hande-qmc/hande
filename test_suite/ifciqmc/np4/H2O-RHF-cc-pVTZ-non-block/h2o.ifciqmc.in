@@ -17,3 +17,4 @@ non_blocking_comm
 
 ms 0
 sym 0
+init_pop 10

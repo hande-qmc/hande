@@ -7,8 +7,6 @@ use parallel, only: parallel_timing_t
 
 implicit none
 
-! [todo] - update kinds following Ruth's single precision work.  Check kind when removing each variable from fciqmc_data.
-
 ! --- QMC input ---
 
 type qmc_in_t
@@ -34,7 +32,7 @@ type qmc_in_t
     real(p) :: pattempt_single = -1, pattempt_double = -1
 
     ! timestep
-    ! Note: qmc_data_t%tau is used and (if desired) updated during the course of a simulation)
+    ! Note: qmc_state_t%tau is used and (if desired) updated during the course of a simulation)
     real(p) :: tau
     ! Are we doing a timestep search
     logical :: tau_search = .false.
@@ -62,8 +60,7 @@ type qmc_in_t
 
     ! The initial population on the reference determinant/trace of the density matrix.
     ! Overridden by a restart file.
-    ! [todo] - remove default?
-    real(p) :: D0_population = 10.0_p
+    real(p) :: D0_population
     ! Number of particles before which varyshift mode is turned on.
     real(p) :: target_particles = huge(1.0_p)
 
@@ -131,7 +128,6 @@ type semi_stoch_in_t
 end type semi_stoch_in_t
 
 type ccmc_in_t
-    ! [todo] - rename components: no need for ccmc_ stem.
     ! How frequently (in log_2) an excitor can be moved to a different processor.
     ! See comments in spawn_t and assign_particle_processor.
     integer :: move_freq = 5
@@ -357,7 +353,6 @@ type particle_t
     ! Walker information: main list.
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
     ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
-    ! [todo] - rename sampling_size -> nspaces?
     integer :: nspaces
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.

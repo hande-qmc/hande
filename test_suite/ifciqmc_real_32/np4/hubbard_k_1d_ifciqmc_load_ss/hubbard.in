@@ -26,3 +26,4 @@ write_load_info
 ms 0
 sym 4
 seed 7
+init_pop 10

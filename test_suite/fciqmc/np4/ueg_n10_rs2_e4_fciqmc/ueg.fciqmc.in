@@ -19,3 +19,4 @@ tau 0.005
 
 nreports 1000
 mc_cycles 10
+init_pop 10

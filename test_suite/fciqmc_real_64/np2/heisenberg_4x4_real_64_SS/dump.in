@@ -26,3 +26,4 @@ varyshift_target 10000
 seed 7
 
 write_determ_space
+init_pop 10

@@ -20,3 +20,4 @@ mc_cycles 10
 
 walker_length 50000
 spawned_walker_length 50000
+init_pop 10

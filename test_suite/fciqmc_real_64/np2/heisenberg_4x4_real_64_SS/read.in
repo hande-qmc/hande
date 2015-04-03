@@ -23,3 +23,4 @@ mc_cycles 1
 tau 0.05
 varyshift_target 10000
 seed 7
+init_pop 10
