@@ -335,7 +335,6 @@ end type semi_stoch_t
 
 ! --- Estimators ---
 
-! [todo] - rename walker -> particle
 type particle_t
     ! Current number of walkers stored in the main list (processor dependent).
     ! This is updated during annihilation and merging of the spawned walkers into
@@ -497,4 +496,5 @@ integer :: real_bit_shift
 ! [todo] - compile-time parameter
 integer(int_p) :: real_factor
 ! [todo] - procedures for encoding and decoding the populations.
+
 end module qmc_data
