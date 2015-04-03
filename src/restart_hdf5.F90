@@ -378,7 +378,6 @@ Module restart_hdf5
             use errors, only: stop_all
             use const
 
-            use fciqmc_data, only: mc_cycles_done
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
             use parallel, only: nprocs
             use spawn_data, only: spawn_t
@@ -503,7 +502,7 @@ Module restart_hdf5
                 ! --- qmc/state group ---
                 call h5gopen_f(group_id, gstate, subgroup_id, ierr)
 
-                    call hdf5_read(subgroup_id, dncycles, mc_cycles_done)
+                    call hdf5_read(subgroup_id, dncycles, qs%mc_cycles_done)
 
                     call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift), qs%shift)
 

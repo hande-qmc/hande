@@ -310,14 +310,13 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qs%spawn_store%spawn%mpi_time)
 
         if (soft_exit) then
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*ireport
+            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
-            mc_cycles_done = mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
+            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
         if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, mc_cycles_done, &
-                                   qs%psip_list%tot_nparticles, .false.)
+            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
 
