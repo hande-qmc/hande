@@ -215,11 +215,14 @@ contains
         ! deterministic space will be used. This is the default behaviour
         ! (space_type = empty_determ_space).
         if (space_type == high_pop_determ_space) then
-            call create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ%sizes(iproc), proc_map, nload_slots)
+            call create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ%sizes(iproc), &
+                 proc_map, nload_slots)
         else if (space_type == read_determ_space) then
-            call read_determ_from_file(dets_this_proc, determ, spawn, sys, proc_map, nload_slots, print_info)
+            call read_determ_from_file(dets_this_proc, determ, spawn, sys, proc_map, nload_slots, &
+                print_info)
         else if (space_type == reuse_determ_space) then
-            call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc), proc_map, nload_slots)
+            call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc), &
+                proc_map, nload_slots)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -1166,10 +1169,13 @@ contains
         !    print_info: Should we print information to the screen?
 
 #ifndef DISABLE_HDF5
-        use checking, only: check_allocate, check_deallocate
-        use hashing, only: murmurhash_bit_string
         use hdf5
         use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init
+#else
+        use errors, only: stop_all
+#endif
+        use checking, only: check_allocate, check_deallocate
+        use hashing, only: murmurhash_bit_string
         use parallel
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor
@@ -1184,13 +1190,17 @@ contains
         integer, intent(in) :: nload_slots
         logical, intent(in) :: print_info
 
+#ifndef DISABLE_HDF5
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
         character(255) :: filename
         integer :: i, proc, slot, ndeterm, ndeterm_this_proc, ierr
         integer :: displs(0:nprocs-1)
         integer(HSIZE_T) :: dims(2), maxdims(2)
-
+#endif
+#ifdef DISABLE_HDF5
+        call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
+#else
         ! Read the deterministic states in on just the parent processor.
         if (parent) then
             call get_unique_filename("SEMI.STOCH", ".H5", .false., 0, filename)
@@ -1262,20 +1272,6 @@ contains
             call check_deallocate('determ%dets', ierr)
         end if
 
-#else
-        use parallel
-        use spawn_data, only: spawn_t
-        use system, only: sys_t
-        use errors, only: stop_all
-
-        integer(i0), intent(out) :: dets_this_proc(:,:)
-        type(semi_stoch_t), intent(inout) :: determ
-        type(spawn_t), intent(in) :: spawn
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: nload_slots
-        logical, intent(in) :: print_info
-
-        call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
 #endif
 
     end subroutine read_determ_from_file
