@@ -424,7 +424,7 @@ contains
     end subroutine find_rdm_masks
 
     subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags, &
-                                             target_nparticles_tot, psip_list, spawn, proc_map, nload_slots)
+                                             target_nparticles_tot, psip_list, spawn, proc_map)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -447,7 +447,6 @@ contains
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
         !    proc_map: array which maps determinants to processors.
-        !    nload_slots: number of load balancing slots (per processor).
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
@@ -457,7 +456,7 @@ contains
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
-        use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t, proc_map_t
         use spawn_data, only:spawn_t
         use dmqmc_data, only: dmqmc_in_t
         use calc, only: sym_in
@@ -471,8 +470,7 @@ contains
         integer(int_64), intent(in) :: target_nparticles_tot
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
-        integer, intent(in) :: proc_map(0:)
-        integer, intent(in) :: nload_slots
+        type(proc_map_t), intent(in) :: proc_map
 
         real(p) :: nparticles_temp(psip_list%nspaces)
         integer :: nel, ireplica, ierr
@@ -563,7 +561,7 @@ contains
             ! new determinants being accepted. So we need to reorganise the
             ! determinants appropriately.
             call redistribute_particles(psip_list%states, real_factor, psip_list%pops, &
-                                        psip_list%nstates, psip_list%nparticles, spawn, proc_map, nload_slots)
+                                        psip_list%nstates, psip_list%nparticles, spawn, proc_map)
             call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         end if
 

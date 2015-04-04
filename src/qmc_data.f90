@@ -196,6 +196,15 @@ type load_bal_in_t
     logical :: write_info = .false.
 end type load_bal_in_t
 
+type proc_map_t
+    integer :: nslots
+    ! Array which maps particles to processors. If attempting load balancing then
+    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
+    ! map particles to processors using modular arithmetic. Otherwise it's entries are
+    ! 0,1,..,nprocs-1.
+    integer, allocatable :: map(:) ! nslots*nprocs
+end type proc_map_t
+
 type load_bal_state_t
     ! Tag to check which stage if load balancing is required. This is reset to false
     ! once redistribution of determinants has taken place to ensure load balancing
@@ -203,11 +212,7 @@ type load_bal_state_t
     logical :: needed = .false.
     ! Current number of load balancing attempts.
     integer :: nattempts = 0
-    ! Array which maps particles to processors. If attempting load balancing then
-    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
-    ! map particles to processors using modular arithmetic. Otherwise it's entries are
-    ! 0,1,..,nprocs-1.
-    integer, allocatable :: proc_map(:)
+    type(proc_map_t) :: proc_map
 end type load_bal_state_t
 
 type parallel_t
@@ -458,6 +463,11 @@ type qmc_state_t
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
     type(reference_t) :: ref
+    ! WARNING: par_info is the 'reference/master' (ie correct) version
+    ! of parallel_t, in particular of proc_map_t.  However, copies of it
+    ! are kept in spawn_t objects, and it is these copies which are used
+    ! to determine the processor location of a particle.  It is the programmer's
+    ! responsibility to ensure these are kept up to date...
     type(parallel_t) :: par_info
     type(estimators_t) :: estimators
 end type qmc_state_t

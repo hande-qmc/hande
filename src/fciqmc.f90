@@ -123,11 +123,10 @@ contains
             call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
                                    semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
                                    semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
-                                   qs%par_info%load%proc_map, load_bal_in%nslots)
+                                   qs%par_info%load%proc_map)
         else
             call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                   empty_determ_space, 0, .false., .false., .false., qs%par_info%load%proc_map, &
-                                   load_bal_in%nslots)
+                                   empty_determ_space, 0, .false., .false., .false., qs%par_info%load%proc_map)
         end if
 
         ! In case this is not set.
@@ -167,7 +166,7 @@ contains
                     call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
                                            semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
                                            semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
-                                           qs%par_info%load%proc_map, load_bal_in%nslots)
+                                           qs%par_info%load%proc_map)
                     semi_stochastic = .true.
                 end if
 
@@ -225,15 +224,15 @@ contains
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
                                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
-                                                                     1, qs%spawn_store%spawn, qs%par_info%load%proc_map, &
-                                                                     load_bal_in%nslots, f_child)
+                                                                     1, qs%spawn_store%spawn, qs%par_info%load%proc_map%map, &
+                                                                     qs%par_info%load%proc_map%nslots, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
                                 call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                                 qs%spawn_store%spawn, qs%par_info%load%proc_map, &
-                                                                 load_bal_in%nslots)
+                                                                 qs%spawn_store%spawn, qs%par_info%load%proc_map%map, &
+                                                                 qs%par_info%load%proc_map%nslots)
                             end if
                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -257,7 +256,7 @@ contains
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
                             call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn, &
-                                                        qs%par_info%load%proc_map, load_bal_in%nslots)
+                                                        qs%par_info%load%proc_map)
                             qs%par_info%load%needed = .false.
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &
@@ -430,7 +429,7 @@ contains
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then
                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send, &
-                                                     qs%par_info%load%proc_map, nload_slots)
+                                                     qs%par_info%load%proc_map%map, qs%par_info%load%proc_map%nslots)
                 end if
 
             end do

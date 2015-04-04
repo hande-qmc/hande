@@ -310,7 +310,7 @@ Module restart_hdf5
                         call hdf5_write(subgroup_id, dnspawn, head(0,0))
                     end associate
                 end if
-                call hdf5_write(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map), qs%par_info%load%proc_map)
+                call hdf5_write(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map), qs%par_info%load%proc_map%map)
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
@@ -495,7 +495,7 @@ Module restart_hdf5
 
                 call h5lexists_f(subgroup_id, dproc_map, exists, ierr)
                 if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map), &
-                                           qs%par_info%load%proc_map)
+                                           qs%par_info%load%proc_map%map)
 
                 call h5gclose_f(subgroup_id, ierr)
 

@@ -331,7 +331,7 @@ contains
 
     subroutine init_parallel_t(ntypes, ndata, non_blocking_comm, par_calc, nslots)
 
-        ! Allocate parallel_t object.
+        ! Allocate and initialise a parallel_t object.
 
         ! In:
         !    ntypes: number of types of walkers sampled (see sampling_size).
@@ -363,10 +363,11 @@ contains
             end if
         end associate
 
-        associate(lb=>par_calc%load)
-            allocate(lb%proc_map(0:nslots*nprocs-1), stat=ierr)
-            call check_allocate('lb%proc_map', size(lb%proc_map), ierr)
-            forall (i=0:nslots*nprocs-1) lb%proc_map(i) = modulo(i,nprocs)
+        associate(proc_map=>par_calc%load%proc_map)
+            proc_map%nslots = nslots
+            allocate(proc_map%map(0:nslots*nprocs-1), stat=ierr)
+            call check_allocate('proc_map', size(proc_map%map), ierr)
+            forall (i=0:nslots*nprocs-1) proc_map%map(i) = modulo(i,nprocs)
         end associate
 
     end subroutine init_parallel_t
@@ -402,10 +403,10 @@ contains
             end if
         end associate
 
-        associate(lb=>par_calc%load)
-            if (allocated(lb%proc_map)) then
-                deallocate(lb%proc_map, stat=ierr)
-                call check_deallocate('lb%proc_mapr', ierr)
+        associate(proc_map=>par_calc%load%proc_map)
+            if (allocated(proc_map%map)) then
+                deallocate(proc_map%map, stat=ierr)
+                call check_deallocate('proc_map%map', ierr)
             end if
         end associate
 

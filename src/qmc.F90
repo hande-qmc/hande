@@ -359,9 +359,10 @@ contains
                     ! Finally, we need to check if the reference determinant actually
                     ! belongs on this processor.
                     ! If it doesn't, set the walkers array to be empty.
-                    call assign_particle_processor(reference%f0, sys%basis%string_len, spawn%hash_seed, &
-                                                   spawn%hash_shift, spawn%move_freq, nprocs, &
-                                                   D0_proc, slot, qmc_state%par_info%load%proc_map, load_bal_in%nslots)
+                    associate(pm=>qmc_state%par_info%load%proc_map)
+                        call assign_particle_processor(reference%f0, sys%basis%string_len, spawn%hash_seed, &
+                                                       spawn%hash_shift, spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
+                    end associate
                     if (D0_proc /= iproc) pl%nstates = 0
                 end if
 
@@ -398,10 +399,10 @@ contains
                         call encode_det(sys%basis, occ_list0_inv, f0_inv)
                     end select
 
-                    call assign_particle_processor(f0_inv, sys%basis%string_len, spawn%hash_seed, &
-                                                   spawn%hash_shift, spawn%move_freq, nprocs, &
-                                                   D0_inv_proc, slot, qmc_state%par_info%load%proc_map, &
-                                                   load_bal_in%nslots)
+                    associate(pm=>qmc_state%par_info%load%proc_map)
+                        call assign_particle_processor(f0_inv, sys%basis%string_len, spawn%hash_seed, spawn%hash_shift, &
+                                                       spawn%move_freq, nprocs, D0_inv_proc, slot, pm%map, pm%nslots)
+                    end associate
 
                     ! Store if not identical to reference det.
                     if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then
