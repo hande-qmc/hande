@@ -772,12 +772,19 @@ contains
         !    psip_list: total population (on this proccesor) is used to set
         !       nattempts and population is redistributed if requested by the
         !       load balancing approach.
-        !    spawn: spawn_t object for holding spawned particles.  Reset on exit.
+        !    spawn: spawn_t object for holding spawned particles.  Reset on exit
+        !       and updated with the new version of par_info%load%proc_map.
         !    par_info: type containing parallel information of the state of the
-        !       system (load balancing and non-blocking).
+        !       system (load balancing and non-blocking).  Holds the 'master' copy
+        !       of the updated proc_map on exit.
         ! In/Out (optional):
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
+
+        ! WARNIGN: all spawn_t objects (bar the spawn argument provided) which operate
+        ! on the same particle_t object must be updated with the proc_info from the
+        ! master copy (par_info%load%proc_map).  It is the programmer's responsibility
+        ! to ensure this happens.
 
         use system, only: sys_t
         use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t, particle_t
@@ -1035,12 +1042,12 @@ contains
         !       improves load balancing by sending/receiving particles from
         !       other processors.  All components are updated as required for
         !       consistency.
-        !    spawn: spawn_t object.  Used to send particles to their new
+        !    spawn: spawn_t object.  Used to assign and send particles to their new
         !       processor.
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, particle_t, annihilation_flags_t, proc_map_t
+        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, particle_t, annihilation_flags_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 

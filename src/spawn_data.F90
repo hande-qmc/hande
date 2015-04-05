@@ -9,13 +9,17 @@ use, intrinsic :: iso_c_binding, only: c_int
 
 implicit none
 
+! Holder for mapping the hash of a state to a processor.
 type proc_map_t
     ! Number of slots (initially) assigned to each processor.
     integer :: nslots
-    ! Array which maps particles to processors. If attempting load balancing then
-    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
-    ! map particles to processors using modular arithmetic. Otherwise it's entries are
+    ! Array which maps particles to processors. If attempting load balancing
+    ! then proc_map is initially subdivided into load_balancing_slots number of
+    ! slots which cyclically map particles to processors using modular
+    ! arithmetic. Otherwise it's entries are
     ! 0,1,..,nprocs-1.
+    ! map(modulo(hash(state),nslots*nprocs)) gives the processor to which the
+    ! state is assigned.
     integer, allocatable :: map(:) ! nslots*nprocs
 end type proc_map_t
 

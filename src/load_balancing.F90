@@ -115,10 +115,13 @@ contains
         !    load_bal_in: number of load balancing slots.
         ! In/Out:
         !    parallel_info: parallel_t type object containing information for
-        !       parallel calculation see calc.f90 for description.
+        !       parallel calculation.  See qmc_calc.f90 for description.  Updated
+        !       on exit with the new processor map.
         !    psip_list: psip locations and populations.  On output
         !       nparticles_proc (number of particles on each processor) is updated.
         !    spawn: spawn_t object which defines processor locations of particles.
+        !       It's copy of proc_map (spawn%proc_map) is updated on exit to match
+        !       that in parallel_info.
 
         use parallel
         use spawn_data, only: spawn_t
