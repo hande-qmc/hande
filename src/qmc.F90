@@ -235,6 +235,12 @@ contains
 
             ! --- Memory allocation ---
 
+            if (nprocs == 1 .or. .not. fciqmc_in_loc%doing_load_balancing) load_bal_in%nslots = 1
+            call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, qmc_state%par_info, &
+                                 load_bal_in%nslots)
+
+            allocate(reference%f0(sys%basis%string_len), stat=ierr)
+
             ! Allocate main walker lists.
             call alloc_particle_t(max_nstates, sys%basis%tensor_label_len, pl)
 
@@ -260,18 +266,13 @@ contains
             spawn_cutoff = qmc_in%spawn_cutoff
             if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
-            call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, &
-                             max_nspawned_states, spawn_cutoff, real_bit_shift, 7, use_mpi_barriers, spawn)
+            call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, max_nspawned_states, &
+                               spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, use_mpi_barriers, spawn)
             if (fciqmc_in_loc%non_blocking_comm) then
-                call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, &
-                                   max_nspawned_states, spawn_cutoff, real_bit_shift, 7, .false., spawn_recv)
+                call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, max_nspawned_states, &
+                                   spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, .false., spawn_recv)
             end if
 
-            if (nprocs == 1 .or. .not. fciqmc_in_loc%doing_load_balancing) load_bal_in%nslots = 1
-            call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, qmc_state%par_info, &
-                                 load_bal_in%nslots)
-
-            allocate(reference%f0(sys%basis%string_len), stat=ierr)
             call check_allocate('reference%f0',sys%basis%string_len,ierr)
             allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
             call check_allocate('reference%hs_f0', size(reference%hs_f0), ierr)
@@ -359,7 +360,7 @@ contains
                     ! Finally, we need to check if the reference determinant actually
                     ! belongs on this processor.
                     ! If it doesn't, set the walkers array to be empty.
-                    associate(pm=>qmc_state%par_info%load%proc_map)
+                    associate(pm=>spawn%proc_map)
                         call assign_particle_processor(reference%f0, sys%basis%string_len, spawn%hash_seed, &
                                                        spawn%hash_shift, spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
                     end associate
@@ -399,7 +400,7 @@ contains
                         call encode_det(sys%basis, occ_list0_inv, f0_inv)
                     end select
 
-                    associate(pm=>qmc_state%par_info%load%proc_map)
+                    associate(pm=>spawn%proc_map)
                         call assign_particle_processor(f0_inv, sys%basis%string_len, spawn%hash_seed, spawn%hash_shift, &
                                                        spawn%move_freq, nprocs, D0_inv_proc, slot, pm%map, pm%nslots)
                     end associate

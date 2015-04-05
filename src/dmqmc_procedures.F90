@@ -177,14 +177,14 @@ contains
         !     inst_rdms (optional): estimates of instantaneous
         !         (temperature-dependent) reduced density matrices.
 
-        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers
+        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, use_mpi_barriers, init_proc_map_t
         use checking, only: check_allocate
         use dmqmc_data, only: rdm_t, dmqmc_inst_rdms_t
         use errors
         use fciqmc_data, only: real_bit_shift
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
-        use spawn_data, only: alloc_spawn_t
+        use spawn_data, only: alloc_spawn_t, proc_map_t
         use system, only: sys_t, heisenberg
         use utils, only: int_fmt
 
@@ -205,6 +205,7 @@ contains
         integer :: size_spawned_rdm, total_size_spawned_rdm
         integer :: nbytes_int, spawn_length_loc
         logical :: calc_ground_rdm
+        type(proc_map_t) :: pm_dummy
 
         ! If this routine was not called from DMQMC then we must be doing a
         ! ground state RDM calculation.
@@ -281,6 +282,8 @@ contains
                 total_size_spawned_rdm = 0
                 nbytes_int = bit_size(i)/8
 
+                ! Hard-code default load balancing settings for rdm particles.
+                call init_proc_map_t(1, pm_dummy)
                 do i = 1, nrdms
                     ! Allocate the spawn_t and hash table instances for this RDM.
                     if (.not.present(qmc_in)) call stop_all('setup_rdm_arrays', 'qmc_in not supplied.')
@@ -300,8 +303,8 @@ contains
                     end if
 
                     ! Note the initiator approximation is not implemented for density matrix calculations.
-                    call alloc_spawn_t(rdm_info(i)%string_len*2, nreplicas, .false., &
-                                         spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, &
+                    call alloc_spawn_t(rdm_info(i)%string_len*2, nreplicas, .false., spawn_length_loc, &
+                                         qmc_in%spawn_cutoff, real_bit_shift, pm_dummy, &
                                          27, use_mpi_barriers, inst_rdms%spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and

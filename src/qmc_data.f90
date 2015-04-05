@@ -1,7 +1,7 @@
 module qmc_data
 
 use const
-use spawn_data, only: spawn_t
+use spawn_data, only: spawn_t, proc_map_t
 use csr, only: csrp_t
 use parallel, only: parallel_timing_t
 
@@ -195,15 +195,6 @@ type load_bal_in_t
     ! Input option: write_load_info
     logical :: write_info = .false.
 end type load_bal_in_t
-
-type proc_map_t
-    integer :: nslots
-    ! Array which maps particles to processors. If attempting load balancing then
-    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
-    ! map particles to processors using modular arithmetic. Otherwise it's entries are
-    ! 0,1,..,nprocs-1.
-    integer, allocatable :: map(:) ! nslots*nprocs
-end type proc_map_t
 
 type load_bal_state_t
     ! Tag to check which stage if load balancing is required. This is reset to false

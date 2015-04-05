@@ -814,6 +814,7 @@ contains
         end if
 
     end subroutine load_balancing_wrapper
+
 ! --- QMC loop and cycle termination routines ---
 
     subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,             &

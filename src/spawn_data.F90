@@ -9,6 +9,16 @@ use, intrinsic :: iso_c_binding, only: c_int
 
 implicit none
 
+type proc_map_t
+    ! Number of slots (initially) assigned to each processor.
+    integer :: nslots
+    ! Array which maps particles to processors. If attempting load balancing then
+    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
+    ! map particles to processors using modular arithmetic. Otherwise it's entries are
+    ! 0,1,..,nprocs-1.
+    integer, allocatable :: map(:) ! nslots*nprocs
+end type proc_map_t
+
 ! Holder for spawned objects.
 ! Each object consists of a single entry, containing:
 ! * bit string identifying location of the spawned particle(s).
@@ -99,6 +109,10 @@ type spawn_t
     ! will change once in every 2^move_freq blocks of values for hash_shift.
     ! See assign_particle_processor.
     integer :: move_freq = 0
+    ! Processor map for assigning states to a given processor.
+    ! WARNING: it is the programmer's responsibility to ensure this is consistent
+    ! across all spawn_t objects being used with the same set of particles.
+    type(proc_map_t) :: proc_map
     ! Information on timings related to MPI communication.
     type(parallel_timing_t) :: mpi_time
     ! Private storage arrays for communication.
@@ -122,7 +136,7 @@ contains
 
 !--- Initialisation/finalisation ---
 
-    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, cutoff, bit_shift, hash_seed, mpi_barriers, spawn)
+    subroutine alloc_spawn_t(bit_str_len, ntypes, flag, array_len, cutoff, bit_shift, proc_map, hash_seed, mpi_barriers, spawn)
 
         ! Allocate and initialise a spawn_t object.
 
@@ -149,6 +163,7 @@ contains
         integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift
         real(p) :: cutoff
         logical, intent(in) :: flag, mpi_barriers
+        type(proc_map_t), intent(in) :: proc_map
         type(spawn_t), intent(out) :: spawn
 
         integer :: ierr, block_size, i, j
@@ -176,6 +191,11 @@ contains
         ! nearest integer. (It may not be possible to use the exact cutoff
         ! requested. This will be the case if rounding is required).
         spawn%cutoff = ceiling(cutoff*(2_int_p**int(bit_shift,int_p)), int_p)
+
+        ! Dare not risk allocate(A, mold=B) from F2008 yet...
+        allocate(spawn%proc_map%map(lbound(proc_map%map,dim=1):ubound(proc_map%map,dim=1)), stat=ierr)
+        call check_allocate('spawn%proc_map%map', size(spawn%proc_map%map), ierr)
+        spawn%proc_map = proc_map
 
         allocate(spawn%store1(spawn%element_len, spawn%array_len), stat=ierr)
         call check_allocate('spawn%store1', size(spawn%store1), ierr)

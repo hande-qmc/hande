@@ -326,7 +326,7 @@ contains
 
     end subroutine update_shift_dmqmc
 
-    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, proc_map, psip_list, &
+    subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, psip_list, &
                                        dmqmc_estimates, weighted_sampling)
 
         ! This function calls the processes to update the estimators which have
@@ -342,7 +342,6 @@ contains
         !    idet: Current position in the main particle list.
         !    iteration: current Monte Carlo cycle.
         !    H00: diagonal Hamiltonian element for the reference.
-        !    proc_map: array which maps determinants to processors.
         !    nload_slots: number of load balancing slots (per processor).
         !    psip_list: particle information/lists.
         ! In/Out:
@@ -359,7 +358,7 @@ contains
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
-        use qmc_data, only: reference_t, particle_t, proc_map_t
+        use qmc_data, only: reference_t, particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind, &
                               correlation_fn_ind, staggered_mag_ind, full_r2_ind, dmqmc_weighted_sampling_t
 
@@ -368,7 +367,6 @@ contains
         integer, intent(in) :: idet, iteration
         type(det_info_t), intent(inout) :: cdet
         real(p), intent(in) :: H00
-        type(proc_map_t), intent(in) :: proc_map
         type(particle_t), intent(in) :: psip_list
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
@@ -430,7 +428,7 @@ contains
             ! Reduced density matrices.
             if (dmqmc_in%rdm%doing_rdm) call update_reduced_density_matrix_heisenberg&
                 (sys%basis, est, dmqmc_in%rdm, cdet, excitation, psip_list%pops(:,idet), &
-                 iteration, proc_map, dmqmc_in%start_av_rdm, weighted_sampling%probs)
+                 iteration, dmqmc_in%start_av_rdm, weighted_sampling%probs)
 
             weighted_sampling%probs_old = weighted_sampling%probs
 
@@ -829,7 +827,7 @@ contains
     end subroutine update_full_renyi_2
 
     subroutine update_reduced_density_matrix_heisenberg(basis, dmqmc_estimates, rdm_in, cdet, excitation, walker_pop, &
-                                                        iteration, proc_map, start_av_rdm, accumulated_probs)
+                                                        iteration, start_av_rdm, accumulated_probs)
 
         ! Add the contribution from the current walker to the reduced density
         ! matrices being sampled. This is performed by 'tracing out' the
@@ -856,7 +854,6 @@ contains
         !        removed before any estimates can be calculated.
         !    iteration: interation number.  No accumulation of the RDM is
         !        performed if iteration <= start_av_rdm.
-        !    proc_map: array which maps determinants to processors.
         !    start_av_rdm: iteration we start averaging the rdm on.
         !    accumulated_probs: factors by which the population on each
         !        excitation level are reduced.
@@ -869,7 +866,6 @@ contains
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
         use fciqmc_data, only: real_factor
-        use qmc_data, only: proc_map_t
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
@@ -879,7 +875,6 @@ contains
         integer, intent(in) :: iteration
         integer(int_p), intent(in) :: walker_pop(:)
         type(excit_t), intent(in) :: excitation
-        type(proc_map_t), intent(in) :: proc_map
         integer, intent(in) :: start_av_rdm
         real(p), intent(in) :: accumulated_probs(0:)
 
@@ -941,7 +936,9 @@ contains
                 do ireplica = 1, size(walker_pop)
                 if (abs(walker_pop(ireplica)) > 0) then
                     call create_spawned_particle_rdm(rdm_info(irdm), walker_pop(ireplica), &
-                        ireplica, dmqmc_estimates%inst_rdm%spawn(irdm), proc_map%map, proc_map%nslots)
+                        ireplica, dmqmc_estimates%inst_rdm%spawn(irdm), &
+                        dmqmc_estimates%inst_rdm%spawn(irdm)%spawn%proc_map%map, &
+                        dmqmc_estimates%inst_rdm%spawn(irdm)%spawn%proc_map%nslots)
                 end if
                 end do
             end if

@@ -412,7 +412,7 @@ contains
 
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
-                associate(spawn=>qs%spawn_store%spawn, pm=>qs%par_info%load%proc_map)
+                associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map)
                     call assign_particle_processor(qs%ref%f0, sys%basis%string_len, spawn%hash_seed, spawn%hash_shift, &
                                                    spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
 
@@ -635,12 +635,12 @@ contains
 
                            if (nspawned /= 0_int_p) then
                                if (cluster(it)%excitation_level == huge(0)) then
-                                   associate(pm=>qs%par_info%load%proc_map)
+                                   associate(pm=>qs%spawn_store%spawn%proc_map)
                                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, &
                                                                         1, qs%spawn_store%spawn, pm%map, pm%nslots, fexcit)
                                    end associate
                                else
-                                   associate(pm=>qs%par_info%load%proc_map)
+                                   associate(pm=>qs%spawn_store%spawn%proc_map)
                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, 1, &
                                                                     qs%spawn_store%spawn, pm%map, pm%nslots)
                                    end associate
@@ -694,7 +694,7 @@ contains
                 ! that we need to deal with.
                 if (nprocs > 1) call redistribute_particles(qs%psip_list%states, real_factor, qs%psip_list%pops, &
                                                             qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
-                                                            qs%par_info%load%proc_map)
+                                                            qs%spawn_store%spawn%proc_map)
 
                 call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
                                          qs%spawn_store%spawn, nspawn_events)
@@ -1581,7 +1581,7 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            associate(pm=>qs%par_info%load%proc_map)
+            associate(pm=>spawn%proc_map)
                 call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn, pm%map, pm%nslots)
             end associate
         end if
