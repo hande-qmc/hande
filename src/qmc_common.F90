@@ -445,8 +445,7 @@ contains
 
     end subroutine load_balancing_report
 
-    subroutine redistribute_particles(states, real_factor, pops, nstates, nparticles, spawn, &
-                                      proc_map)
+    subroutine redistribute_particles(states, real_factor, pops, nstates, nparticles, spawn)
 
         ! [todo] JSS: - update comments to be more general than just for CCMC.
 
@@ -464,7 +463,6 @@ contains
         !    states: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    proc_map: array which maps determinants to processors.
         ! In/Out:
         !    nparticles: number of excips on the current processor.
         !    pops: Population on occupied excitors.  On output the
@@ -476,7 +474,6 @@ contains
         !        the spawned store.
 
         use const, only: i0, dp
-        use qmc_data, only: proc_map_t
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor, add_spawned_particles
         use parallel, only: iproc, nprocs
@@ -487,7 +484,6 @@ contains
         integer, intent(inout) :: nstates
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
-        type(proc_map_t), intent(in) :: proc_map
 
         real(p) :: nsent(size(nparticles))
 
@@ -497,12 +493,12 @@ contains
         string_len = size(states, dim=1)
 
         !$omp parallel do default(none) &
-        !$omp shared(nstates, states, pops, spawn, iproc, nprocs, string_len, nload_slots, proc_map) &
+        !$omp shared(nstates, states, pops, spawn, iproc, nprocs, string_len, nload_slots) &
         !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, nstates
             !  - set hash_shift and move_freq
-            call assign_particle_processor(states(:,iexcitor), string_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot, proc_map%map, proc_map%nslots)
+            call assign_particle_processor(states(:,iexcitor), string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                           nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
             if (pproc /= iproc) then
                 ! Need to move.
                 ! Add to spawned array so it will be sent to the correct
@@ -528,7 +524,7 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, spawn, determ, proc_map)
+    subroutine redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, spawn, determ)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
@@ -551,7 +547,7 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_data, only: reference_t, semi_stoch_t, empty_determ_space, reuse_determ_space, particle_t
-        use qmc_data, only: annihilation_flags_t, proc_map_t
+        use qmc_data, only: annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -559,7 +555,6 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
-        type(proc_map_t), intent(in) :: proc_map
 
         logical :: sep_annihil_copy
 
@@ -573,7 +568,7 @@ contains
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
             call init_semi_stoch_t(determ, sys, psip_list, reference, annihilation_flags, spawn, reuse_determ_space, &
-                                    0, sep_annihil_copy, .false., .true., proc_map)
+                                   0, sep_annihil_copy, .false., .true.)
         end if
 
     end subroutine redistribute_semi_stoch_t
@@ -807,7 +802,7 @@ contains
         if (par_info%load%needed) then
             call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
             call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%states, real_factor, determ, &
-                                                  psip_list, spawn, par_info%load%proc_map, annihilation_flags)
+                                                  psip_list, spawn, annihilation_flags)
             ! If using non-blocking communications we still need this flag to
             ! be set.
             if (.not. nb_comm) par_info%load%needed = .false.
@@ -1012,7 +1007,7 @@ contains
     end subroutine rescale_tau
 
     subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, reference, states, real_factor, &
-                                                determ, psip_list, spawn, proc_map, annihilation_flags)
+                                                determ, psip_list, spawn, annihilation_flags)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -1030,7 +1025,6 @@ contains
         !    states: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
-        !    proc_map: array which maps determinants to processors.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    rng: random number generator.
@@ -1059,19 +1053,16 @@ contains
         type(semi_stoch_t), optional, intent(inout) :: determ
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
-        type(proc_map_t), intent(in) :: proc_map
         type(annihilation_flags_t), intent(in) :: annihilation_flags
 
-        call redistribute_particles(psip_list%states, real_factor, psip_list%pops, &
-                                    psip_list%nstates, psip_list%nparticles, spawn, proc_map)
+        call redistribute_particles(psip_list%states, real_factor, psip_list%pops, psip_list%nstates, psip_list%nparticles, spawn)
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
         call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         spawn%head = spawn%head_start
 
-        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, &
-                                                            spawn, determ, proc_map)
+        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, spawn, determ)
 
     end subroutine redistribute_load_balancing_dets
 

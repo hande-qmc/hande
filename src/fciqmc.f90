@@ -122,11 +122,10 @@ contains
         if (semi_stoch_iter == 0) then
             call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
                                    semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
-                                   semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
-                                   qs%spawn_store%spawn%proc_map)
+                                   semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
         else
             call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                   empty_determ_space, 0, .false., .false., .false., qs%spawn_store%spawn%proc_map)
+                                   empty_determ_space, 0, .false., .false., .false.)
         end if
 
         ! In case this is not set.
@@ -165,8 +164,7 @@ contains
                     call dealloc_semi_stoch_t(determ, .false.)
                     call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
                                            semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
-                                           semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space, &
-                                           qs%spawn_store%spawn%proc_map)
+                                           semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
                     semi_stochastic = .true.
                 end if
 
@@ -174,7 +172,6 @@ contains
                 call load_balancing_wrapper(sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
                                             fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
                                             qs%par_info, determ)
-                qs%spawn_store%spawn%proc_map = qs%par_info%load%proc_map
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                 ideterm = 0
 
@@ -255,8 +252,7 @@ contains
                                                                pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
-                            call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn, &
-                                                        spawn%proc_map)
+                            call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn)
                             qs%par_info%load%needed = .false.
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &

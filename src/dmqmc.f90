@@ -130,8 +130,7 @@ contains
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs%ref, annihilation_flags, &
-                                               init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, &
-                                               qs%spawn_store%spawn%proc_map)
+                                               init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.

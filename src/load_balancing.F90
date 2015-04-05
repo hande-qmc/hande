@@ -127,9 +127,9 @@ contains
         use qmc_data, only: load_bal_in_t, particle_t, parallel_t
 
         type(particle_t), intent(inout) :: psip_list
-        type(spawn_t), intent(in) :: spawn
         integer(int_p), intent(in) :: real_factor
         type(parallel_t), intent(inout) :: parallel_info
+        type(spawn_t), intent(inout) :: spawn
         type(load_bal_in_t), intent(in) :: load_bal_in
 
         real(p) :: slot_pop(0:size(parallel_info%load%proc_map%map)-1)
@@ -146,10 +146,10 @@ contains
         associate(lb=>parallel_info%load, proc_map=>parallel_info%load%proc_map)
 
         ! Find slot populations.
-        call initialise_slot_pop(psip_list, proc_map, spawn, real_factor, slot_pop)
+        call initialise_slot_pop(psip_list, spawn, real_factor, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
-        call MPI_AllReduce(slot_pop, slot_list, size(proc_map%map), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call MPI_AllReduce(slot_pop, slot_list, size(slot_pop), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
         ! Whether load balancing is required or not is decided based on the
         ! populations across processors during the report loop. For non-blocking
@@ -196,6 +196,9 @@ contains
         call redistribute_slots(donor_bins, donors, receivers, up_thresh, low_thresh, proc_map%map, &
                                 psip_list%nparticles_proc(1,:nprocs))
         lb%nattempts = lb%nattempts + 1
+
+        ! Update spawn%proc_map with the 'master' version.
+        spawn%proc_map = proc_map
 
         if (load_bal_in%write_info .and. parent) &
             call write_load_balancing_info(psip_list%nparticles_proc, donor_bins%pop)
@@ -509,29 +512,25 @@ contains
 
     end subroutine find_processors
 
-    subroutine initialise_slot_pop(psip_list, proc_map, spawn, real_factor, slot_pop)
+    subroutine initialise_slot_pop(psip_list, spawn, real_factor, slot_pop)
 
         ! In:
         !   psip_list: particle_t object containing the current psip locations and
         !       populations.
-        !   proc_map: proc_map_t object containing array which maps determinants to
-        !       processors and the number of slots which we divide slot_pop (and similar
-        !       arrays) into.  proc_map%map(modulo(hash(d),proc_map%nslots*nprocs))=processor
-        !   spawn: spawn_t object.
+        !   spawn: spawn_t object containing 'active' proc_map used to map states to processors.
         !   real_factor: The factor by which populations are multiplied to
         !       enable non-integer populations.
         ! In/Out:
         !   slot_pop: array containing population of slots in proc_map. Processor dependendent.
 
         use parallel, only: nprocs, iproc
-        use qmc_data, only: particle_t, proc_map_t
+        use qmc_data, only: particle_t
         use spawning, only: assign_particle_processor
         use spawn_data, only: spawn_t
 
         type(particle_t), intent(in) :: psip_list
         type(spawn_t), intent(in) :: spawn
         integer(int_p), intent(in) :: real_factor
-        type(proc_map_t), intent(in) :: proc_map
         real(p), intent(out) :: slot_pop(0:)
 
         integer :: i, det_pos, iproc_slot, tensor_label_len
@@ -542,7 +541,7 @@ contains
         do i = 1, psip_list%nstates
             call assign_particle_processor(psip_list%states(:,i), tensor_label_len, spawn%hash_seed,       &
                                            spawn%hash_shift, spawn%move_freq, nprocs, iproc_slot, det_pos, &
-                                           proc_map%map, proc_map%nslots)
+                                           spawn%proc_map%map, spawn%proc_map%nslots)
             slot_pop(det_pos) = slot_pop(det_pos) + abs(real(psip_list%pops(1,i),p))
         end do
 

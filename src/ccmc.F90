@@ -688,12 +688,11 @@ contains
                 ! The spawned excips were sent to the correct processors with
                 ! the current hash shift, so it's just those in the main list
                 ! that we need to deal with.
-                if (nprocs > 1) call redistribute_particles(qs%psip_list%states, real_factor, qs%psip_list%pops, &
-                                                            qs%psip_list%nstates, qs%psip_list%nparticles, qs%spawn_store%spawn, &
-                                                            qs%spawn_store%spawn%proc_map)
+                associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
+                    if (nprocs > 1) call redistribute_particles(pl%states, real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
 
-                call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
-                                         qs%spawn_store%spawn, nspawn_events)
+                    call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events)
+                end associate
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn, qs%spawn_store%rspawn)
 
