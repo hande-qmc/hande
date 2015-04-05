@@ -934,12 +934,10 @@ contains
 
             if (rdm_in%calc_inst_rdm) then
                 do ireplica = 1, size(walker_pop)
-                if (abs(walker_pop(ireplica)) > 0) then
-                    call create_spawned_particle_rdm(rdm_info(irdm), walker_pop(ireplica), &
-                        ireplica, dmqmc_estimates%inst_rdm%spawn(irdm), &
-                        dmqmc_estimates%inst_rdm%spawn(irdm)%spawn%proc_map%map, &
-                        dmqmc_estimates%inst_rdm%spawn(irdm)%spawn%proc_map%nslots)
-                end if
+                    if (abs(walker_pop(ireplica)) > 0) then
+                        call create_spawned_particle_rdm(rdm_info(irdm), walker_pop(ireplica), ireplica, &
+                                                         dmqmc_estimates%inst_rdm%spawn(irdm))
+                    end if
                 end do
             end if
 

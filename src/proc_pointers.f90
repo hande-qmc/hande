@@ -121,7 +121,7 @@ abstract interface
         integer, intent(in) :: determ_flag
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
-    subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, proc_map, nslots, f)
+    subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
         use qmc_data, only: reference_t
@@ -133,13 +133,10 @@ abstract interface
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: particle_indx
-        integer, intent(in) :: proc_map(0:)
-        integer, intent(in) :: nslots
         integer(i0), intent(in), optional, target :: f(:)
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
-    subroutine i_create_spawned_particle_dm(basis, f1, f2, connection, nspawned, spawning_end, particle_indx, spawn, &
-                                            proc_map, nslots)
+    subroutine i_create_spawned_particle_dm(basis, f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
         use spawn_data, only: spawn_t
         use basis_types, only: basis_t
         import :: excit_t, i0, int_p
@@ -150,8 +147,6 @@ abstract interface
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: spawning_end, particle_indx
-        integer, intent(in) :: proc_map(0:)
-        integer, intent(in) :: nslots
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
     subroutine i_trial_fn(sys, cdet, connection, weights, hmatel)

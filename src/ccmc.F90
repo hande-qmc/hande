@@ -635,15 +635,11 @@ contains
 
                            if (nspawned /= 0_int_p) then
                                if (cluster(it)%excitation_level == huge(0)) then
-                                   associate(pm=>qs%spawn_store%spawn%proc_map)
-                                       call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, &
-                                                                        1, qs%spawn_store%spawn, pm%map, pm%nslots, fexcit)
-                                   end associate
+                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, &
+                                                                    1, qs%spawn_store%spawn, fexcit)
                                else
-                                   associate(pm=>qs%spawn_store%spawn%proc_map)
                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, 1, &
-                                                                    qs%spawn_store%spawn, pm%map, pm%nslots)
-                                   end associate
+                                                                    qs%spawn_store%spawn)
                                end if
                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
                            end if
@@ -1581,9 +1577,7 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            associate(pm=>spawn%proc_map)
-                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn, pm%map, pm%nslots)
-            end associate
+            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn)
         end if
 
     end subroutine stochastic_ccmc_death

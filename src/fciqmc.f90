@@ -226,15 +226,13 @@ contains
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
                                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
-                                                                     1, qs%spawn_store%spawn, qs%spawn_store%spawn%proc_map%map, &
-                                                                     qs%spawn_store%spawn%proc_map%nslots, f_child)
+                                                                     1, qs%spawn_store%spawn, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
                                 call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                                 qs%spawn_store%spawn, qs%spawn_store%spawn%proc_map%map, &
-                                                                 qs%spawn_store%spawn%proc_map%nslots)
+                                                                 qs%spawn_store%spawn)
                             end if
                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -430,8 +428,7 @@ contains
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then
-                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send, &
-                                                     spawn_to_send%proc_map%map, spawn_to_send%proc_map%nslots)
+                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send)
                 end if
 
             end do

@@ -184,8 +184,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
-                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                                 spawn, spawn%proc_map%map, spawn%proc_map%nslots)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn)
                             end associate
                         end if
 
@@ -198,8 +197,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
-                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
-                                                                 spawn, spawn%proc_map%map, spawn%proc_map%nslots)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, spawn)
                             end associate
                         end if
                     end do
@@ -216,8 +214,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
-                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
-                                                                 spawn, spawn%proc_map%map, spawn%proc_map%nslots)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, spawn)
                              end associate
                          end if
 
@@ -259,8 +256,7 @@ contains
                                                qs%psip_list%pops(1,idet), nspawned)
                     if (nspawned /= 0) then
                         associate(spawn=>qs%spawn_store%spawn)
-                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, &
-                                                             spawn, spawn%proc_map%map, spawn%proc_map%nslots)
+                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, spawn)
                         end associate
                     end if
 

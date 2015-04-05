@@ -205,9 +205,7 @@ contains
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, cdet1%f, cdet2%f, connection, nspawned, &
-                                                                            spawning_end, ireplica, qs%spawn_store%spawn,      &
-                                                                            qs%spawn_store%spawn%proc_map%map, &
-                                                                            qs%spawn_store%spawn%proc_map%nslots)
+                                                                            spawning_end, ireplica, qs%spawn_store%spawn)
 
                                         if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -221,9 +219,7 @@ contains
                                                          weighted_sampling%probs, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, cdet2%f, cdet1%f, connection, nspawned, &
-                                                                                spawning_end, ireplica, qs%spawn_store%spawn, &
-                                                                                qs%spawn_store%spawn%proc_map%map, &
-                                                                                qs%spawn_store%spawn%proc_map%nslots)
+                                                                                spawning_end, ireplica, qs%spawn_store%spawn)
 
                                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                                 call accumulate_bloom_stats(bloom_stats, nspawned)
