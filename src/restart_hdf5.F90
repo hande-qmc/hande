@@ -494,7 +494,7 @@ Module restart_hdf5
                 end if
 
                 call h5lexists_f(subgroup_id, dproc_map, exists, ierr)
-                if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map), &
+                if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map%map), &
                                            qs%par_info%load%proc_map%map)
 
                 call h5gclose_f(subgroup_id, ierr)
