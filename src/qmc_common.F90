@@ -592,13 +592,12 @@ contains
         !       processor to other processors.  Relevant only when restarting
         !       non-blocking calculations.
 
-        use calc, only: nb_rep_t
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -860,9 +859,8 @@ contains
         use interact, only: calc_interact, check_interact, check_comms_file
         use parallel, only: parent, nprocs
         use system, only: sys_t
-        use calc, only: nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
-        use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in

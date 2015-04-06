@@ -192,67 +192,9 @@ integer, parameter :: dmqmc_energy_squared = 2**2
 integer, parameter :: dmqmc_correlation = 2**3
 integer, parameter :: dmqmc_rdm_r2 = 2**4
 integer, parameter :: dmqmc_full_r2 = 2**5
-! Propagate a trial density matrix to a specific temeperature.
-logical :: propagate_to_beta = .false.
 
 ! If true then allow the use of MPI barrier calls.
 logical :: use_mpi_barriers = .false.
-
-! Combine information required for non-blocking report loop quantities
-! into one type for convenience.
-type nb_rep_t
-    ! Array to store report loop estimators such as projected energy
-    ! etc.
-    ! This array must not be deallocated, copied or inspected in any
-    ! way in between report loop communication.
-    real(dp), allocatable :: rep_info(:)
-    ! Array whose entries will contain:
-    ! 1. The total number of spawned walkers in a given report loop
-    !    which is to be used for calculating the spawning rate.
-    ! 2. The number of walkers spawned from a given processor
-    !    to all other processors except the current one, which
-    !    is used for calculating the total number of walkers for a given
-    !    report loop.
-    integer :: nb_spawn(2)
-    ! Array of requests used for non blocking communications.
-    ! This array must not be deallocated, copied or inspected in any
-    ! way in between report loop communication. request(nprocs)
-    integer, allocatable :: request(:)
-end type nb_rep_t
-
-type load_t
-    ! Number of slots walker lists are initially subdivided into for proc_map
-    ! Default = 20. This reverts to 1 when run in serial.
-    ! Input option: load_balancing_slots
-    integer :: nslots = 20
-    ! Population which must be reached before load balancing is attempted.
-    ! Default = 1000.
-    ! Input option: load_balancing_pop
-    integer(int_64) :: pop = 1000
-    ! Percentage load imbalance we aim to achieve when performing load balancing.
-    ! i.e. min_pop = (1-percent_imbal)*av_pop, max_pop = (1+percent_imbal)*av_pop.
-    ! Default = 0.05
-    ! Input option: percent_imbal
-    real(p) :: percent = 0.05
-    ! Maximum number of load balancing attempts.
-    ! Default = 2.
-    ! Input option: max_load_attempts
-    integer :: max_attempts = 2
-    ! Write load balancing information every time load balancing is attempted.
-    ! Input option: write_load_info
-    logical :: write_info = .false.
-    ! Tag to check which stage if load balancing is required. This is reset to false
-    ! once redistribution of determinants has taken place to ensure load balancing
-    ! occurs once during a report loop.
-    logical :: needed = .false.
-    ! Current number of load balancing attempts.
-    integer :: nattempts = 0
-    ! Array which maps particles to processors. If attempting load balancing then
-    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
-    ! map particles to processors using modular arithmetic. Otherwise it's entries are
-    ! 0,1,..,nprocs-1.
-    integer, allocatable :: proc_map(:)
-end type load_t
 
 contains
 
