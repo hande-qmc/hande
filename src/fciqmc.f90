@@ -110,29 +110,21 @@ contains
         ! Allocate det_info_t components.
         call alloc_det_info_t(sys, cdet, .false.)
 
-        ! The iteration on which to start performing semi-stochastic.
-        semi_stoch_iter = semi_stoch_in%start_iter
-
         ! Should we dump a restart file just before the shift is turned on?
         dump_restart_file_shift = restart_in%dump_restart_file_shift
-
-        ! Create the semi_stoch_t object, determ.
-        ! If the user has asked to use semi-stochastic from the first iteration
-        ! then turn it on now. Otherwise, use an empty deterministic space.
-        if (semi_stoch_iter == 0) then
-            call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                   semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
-                                   semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
-        else
-            call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                   empty_determ_space, 0, .false., .false., .false.)
-        end if
 
         ! In case this is not set.
         nspawn_events = 0
 
-        ! Are we using a non-empty semi-stochastic space?
-        semi_stochastic = .not. (determ%space_type == empty_determ_space)
+        ! Some initial semi-stochastic parameters:
+        semi_stochastic = .false.
+        ! The iteration on which to start using the semi-stochastic adaptation.
+        semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
+        ! Allocate array of flags to specify if a state is deterministic or not.
+        allocate(determ%flags(size(qs%psip_list%states, dim=2)), stat=ierr)
+        call check_allocate('determ%flags', size(determ%flags), ierr)
+        ! To begin with there are no deterministic states.
+        determ%flags = 1
 
         ! from restart
         nparticles_old = qs%psip_list%tot_nparticles
@@ -160,12 +152,10 @@ contains
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                 ! Should we turn semi-stochastic on now?
-                if (iter == semi_stoch_iter) then
-                    call dealloc_semi_stoch_t(determ, .false.)
-                    call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                           semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
-                                           semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
+                if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                     semi_stochastic = .true.
+                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%psip_list, qs%ref, annihilation_flags, &
+                                           qs%spawn_store%spawn, use_mpi_barriers)
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
@@ -338,7 +328,7 @@ contains
             if (parent) write (6,'()')
         end if
 
-        call dealloc_semi_stoch_t(determ, .false.)
+        if (semi_stochastic) call dealloc_semi_stoch_t(determ, .false.)
 
         call dealloc_det_info_t(cdet, .false.)
 

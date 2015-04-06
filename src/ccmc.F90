@@ -399,7 +399,7 @@ contains
         end associate
 
         ! The iteration on which to start performing semi-stochastic.
-        semi_stoch_iter = semi_stoch_in%start_iter
+        semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
 
         ! Should we dump a restart file just before the shift is turned on?
         dump_restart_file_shift = restart_in%dump_restart_file_shift

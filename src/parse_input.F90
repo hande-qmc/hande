@@ -276,10 +276,10 @@ contains
                 qmc_in%real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
-                semi_stoch_in%determ_space_type = high_pop_determ_space
+                semi_stoch_in%space_type = high_pop_determ_space
                 call readi(semi_stoch_in%target_size)
             case('SEMI_STOCH_READ')
-                semi_stoch_in%determ_space_type = read_determ_space
+                semi_stoch_in%space_type = read_determ_space
                 ! Not needed.
                 semi_stoch_in%target_size = -1
             case('WRITE_DETERM_SPACE')
@@ -712,10 +712,10 @@ contains
         end if
 
         ! Semi-stochastic checks.
-        if (semi_stoch_in%start_iter /= 0 .and. semi_stoch_in%determ_space_type == empty_determ_space .and. parent) &
+        if (semi_stoch_in%start_iter /= 0 .and. semi_stoch_in%space_type == empty_determ_space .and. parent) &
             call warning(this,'You have specified an iteration to turn semi-stochastic on but have not &
                          &specified a deterministic space to use.')
-        if (semi_stoch_in%determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. &
+        if (semi_stoch_in%space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. &
                                    doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc))) &
               call stop_all(this, 'Semi-stochastic is only implemented with the FCIQMC method.')
 
@@ -885,7 +885,7 @@ contains
         call mpi_bcast(qmc_in%spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(semi_stoch_in%determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(semi_stoch_in%separate_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
