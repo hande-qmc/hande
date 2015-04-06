@@ -607,8 +607,8 @@ contains
         integer, intent(in) :: nslots
         integer, intent(out) :: particle_proc, slot_pos
 
-        integer :: hash, offset, i, tmp1, tmp2
-        integer(i0) :: mod_label(size(particle_label))
+        integer :: hash, i, tmp1, tmp2
+        integer(i0) :: offset, mod_label(size(particle_label))
 
         ! (Extra credit for parallel calculations)
         ! Hash the label to get a (hopefully uniform) distribution across all
@@ -633,18 +633,13 @@ contains
             ! 2^freq values of the shift and hence the assigned processor
             ! changes at most once in this window.
             offset = ishft(hash+shift, -freq)
-! [review] - AJWT: I had a recollection that offset only added to the lowest element of the array - or at least that's how I had
-! [review] - AJWT: conceived of it.  I don't think it makes much difference to add it to all of the elements if the hash function is any good, so might save some coding and space just to add it to the last element?
-            if (i0_length == 32) then
-                mod_label = particle_label + offset
-            else
-                ! Ensure the offset is applied bitwise identically every 32 bits.
-                do i = 1, size(particle_label)
-                    tmp1 = transfer(particle_label(i), tmp1) + offset
-                    tmp2 = transfer(ishft(particle_label(i),-32), tmp1) + offset
-                    mod_label(i) = ior(transfer(tmp1, 0_i0), ishft(transfer(tmp2,0_i0),32))
-                end do
-            end if
+            ! Note that as freq is positive, offset must also be positive (ie at
+            ! most the last 32-freq bis are set).  Hence, an exclusive or with
+            ! the first element in the label and the offset yields a bit-wise
+            ! identical result for DET_SIZE=32 and DET_SIZE=64 (ie integer(i0)
+            ! containing 32- and 64-bits respectively).
+            mod_label = particle_label
+            mod_label(1) = ieor(mod_label(1), offset)
             hash = murmurhash_bit_string(mod_label, nbits, seed)
             slot_pos = modulo(hash, np*nslots)
             particle_proc = proc_map(slot_pos)
