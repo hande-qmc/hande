@@ -120,7 +120,7 @@ contains
         !    psip_list: psip locations and populations.  On output
         !       nparticles_proc (number of particles on each processor) is updated.
         !    spawn: spawn_t object which defines processor locations of particles.
-        !       It's copy of proc_map (spawn%proc_map) is updated on exit to match
+        !       Its copy of proc_map (spawn%proc_map) is updated on exit to match
         !       that in parallel_info.
 
         use parallel
