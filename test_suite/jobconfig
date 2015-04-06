@@ -3,6 +3,8 @@
 # deterministic methods
 [fci/*/]
 [lanczos/*/]
+#Lanczos jobs are fragile and don't like too many processors for small test jobs
+max_nprocs = 2
 [lanczos/*sparse/]
 max_nprocs = 1
 [lanczos/*direct/]

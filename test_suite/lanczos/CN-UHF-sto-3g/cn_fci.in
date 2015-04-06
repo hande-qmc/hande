@@ -5,7 +5,7 @@ ms 1
 sym 0
 
 lanczos
-lanczos_solns 20
+lanczos_solns 40
 
 (    SCF calculation produced by Q-Chem using:  )
 

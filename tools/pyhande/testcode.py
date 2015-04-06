@@ -38,6 +38,8 @@ output : dict
             select_data = calc[:min(len(calc),5)].to_frame().T
             if underscore:
                 select_data.rename(columns=lambda x: 'eigv_%s' % (x,), inplace=True)
+            else:
+                select_data.rename(columns=lambda x: 'eigv %s' % (x,), inplace=True)
         elif 'Hilbert space' in calc.name:
             select_data = calc.to_frame().T
             if underscore:
