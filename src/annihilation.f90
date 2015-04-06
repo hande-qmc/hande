@@ -52,13 +52,17 @@ contains
         type(semi_stoch_t), intent(inout), optional :: determ
 
         integer, parameter :: thread_id = 0
+        logical :: doing_semi_stoch
+
+        doing_semi_stoch = .false.
+        if (present(determ)) doing_semi_stoch = determ%doing_semi_stoch
 
         if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(spawn)
 
         ! If performing a semi-stochastic calculation then the annihilation
         ! process is slightly different, so call the correct routines depending
         ! on the situation.
-        if (present(determ)) then
+        if (doing_semi_stoch) then
             if (determ%separate_annihilation) then
                 call deterministic_annihilation(sys, rng, psip_list, determ)
                 call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx)

@@ -84,7 +84,7 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
 
         logical :: soft_exit, dump_restart_file_shift
-        logical :: semi_stochastic, determ_parent, determ_child
+        logical :: determ_parent, determ_child
 
         real :: t1, t2
 
@@ -118,7 +118,6 @@ contains
 
         ! Some initial semi-stochastic parameters. Semi-stochastic is
         ! always turned off to begin with.
-        semi_stochastic = .false.
         ! The iteration on which to start using the semi-stochastic adaptation.
         semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
         ! Allocate array of flags to specify if a state is deterministic or not.
@@ -154,7 +153,7 @@ contains
 
                 ! Should we turn semi-stochastic on now?
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
-                    semi_stochastic = .true.
+                    determ%doing_semi_stoch = .true.
                     call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%psip_list, qs%ref, annihilation_flags, &
                                            qs%spawn_store%spawn, use_mpi_barriers)
                 end if
@@ -244,15 +243,10 @@ contains
                                                               nspawn_events)
                         call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
                     else
+                        ! If using semi-stochastic then perform the deterministic projection step.
+                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
-                        if (semi_stochastic) then
-                            ! If using semi-stochastic then perform the
-                            ! deterministic projection step.
-                            call determ_projection(rng, qmc_in, qs, spawn, determ)
-                            call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
-                        else
-                            call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events)
-                        end if
+                        call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
 
                         call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
                     end if
@@ -298,7 +292,7 @@ contains
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
-            if (semi_stochastic .and. determ%separate_annihilation) then
+            if (determ%doing_semi_stoch .and. determ%separate_annihilation) then
                 call load_balancing_report(pl%nparticles, pl%nstates, spawn%mpi_time, determ%mpi_time)
             else
                 call load_balancing_report(pl%nparticles, pl%nstates, spawn%mpi_time)
@@ -316,7 +310,7 @@ contains
             if (parent) write (6,'()')
         end if
 
-        if (semi_stochastic) call dealloc_semi_stoch_t(determ, .false.)
+        if (determ%doing_semi_stoch) call dealloc_semi_stoch_t(determ, .false.)
 
         call dealloc_det_info_t(cdet, .false.)
 

@@ -279,17 +279,19 @@ type determ_hash_t
 end type determ_hash_t
 
 type semi_stoch_t
+    ! True if a semi-stochastic calculation is being performed with this object.
+    logical :: doing_semi_stoch = .false.
     ! If true, then the deterministic 'spawning' will be performed in a routine
     ! with an extra MPI call. This routine handles all of the annihilation of
     ! deterministic spawnings with a simple summing of vectors.
     ! If false, then the deterministic spawnings are added to the spawned list
     ! and treated with the standard annihilation routine.
-    logical :: separate_annihilation
+    logical :: separate_annihilation = .false.
     ! Integer to specify which type of deterministic space is being used.
     ! See the various determ_space parameters defined above.
     integer :: space_type = empty_determ_space
     ! The total number of deterministic states on all processes.
-    integer :: tot_size
+    integer :: tot_size = 0
     ! sizes(i) holds the number of deterministic states belonging to process i.
     integer, allocatable :: sizes(:) ! (0:nproc-1)
     ! The Hamiltonian in the deterministic space, stored in a sparse CSR form.
