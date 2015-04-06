@@ -331,7 +331,7 @@ contains
 
     subroutine init_parallel_t(ntypes, ndata, non_blocking_comm, par_calc, nslots)
 
-        ! Allocate parallel_t object.
+        ! Allocate and initialise a parallel_t object.
 
         ! In:
         !    ntypes: number of types of walkers sampled (see sampling_size).
@@ -363,13 +363,33 @@ contains
             end if
         end associate
 
-        associate(lb=>par_calc%load)
-            allocate(lb%proc_map(0:nslots*nprocs-1), stat=ierr)
-            call check_allocate('lb%proc_map', size(lb%proc_map), ierr)
-            forall (i=0:nslots*nprocs-1) lb%proc_map(i) = modulo(i,nprocs)
-        end associate
+        call init_proc_map_t(nslots, par_calc%load%proc_map)
 
     end subroutine init_parallel_t
+
+    subroutine init_proc_map_t(nslots, pm)
+
+        ! In:
+        !    nslots: number of slots (per processor) we divide proc_map_t into.
+        ! In/Out:
+        !    pm: proc_map_t object containing a mapping of slot to processor index.
+
+        use checking, only: check_allocate
+
+        use parallel, only: nprocs
+        use spawn_data, only: proc_map_t
+
+        integer, intent(in) :: nslots
+        type(proc_map_t), intent(out) :: pm
+
+        integer :: i, ierr
+
+        pm%nslots = nslots
+        allocate(pm%map(0:nslots*nprocs-1), stat=ierr)
+        call check_allocate('pm%map', size(pm%map), ierr)
+        forall (i=0:nslots*nprocs-1) pm%map(i) = modulo(i,nprocs)
+
+    end subroutine init_proc_map_t
 
     subroutine dealloc_parallel_t(non_blocking_comm, par_calc)
 
@@ -402,10 +422,10 @@ contains
             end if
         end associate
 
-        associate(lb=>par_calc%load)
-            if (allocated(lb%proc_map)) then
-                deallocate(lb%proc_map, stat=ierr)
-                call check_deallocate('lb%proc_mapr', ierr)
+        associate(proc_map=>par_calc%load%proc_map)
+            if (allocated(proc_map%map)) then
+                deallocate(proc_map%map, stat=ierr)
+                call check_deallocate('proc_map%map', ierr)
             end if
         end associate
 

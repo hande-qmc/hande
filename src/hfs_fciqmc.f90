@@ -182,9 +182,11 @@ contains
                                          qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, &
                                          nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0_int_p) &
-                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                             qs%spawn_store%spawn, qs%par_info%load%proc_map, load_bal_in%nslots)
+                        if (nspawned /= 0_int_p) then
+                            associate(spawn=>qs%spawn_store%spawn)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn)
+                            end associate
+                        end if
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
@@ -193,10 +195,11 @@ contains
                                              qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, neel_singlet_amp, &
                                              nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0_int_p) &
-                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
-                                                             qs%spawn_store%spawn, qs%par_info%load%proc_map, load_bal_in%nslots)
-
+                        if (nspawned /= 0_int_p) then
+                            associate(spawn=>qs%spawn_store%spawn)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, spawn)
+                            end associate
+                        end if
                     end do
 
                     cdet%initiator_flag = hf_initiator_flag
@@ -209,9 +212,11 @@ contains
                                          qs%psip_list%pops(2,idet), gen_excit_ptr, neel_singlet_amp, &
                                          nspawned, connection)
                         ! Spawn if attempt was successful.
-                        if (nspawned /= 0_int_p) &
-                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, &
-                                                             qs%spawn_store%spawn, qs%par_info%load%proc_map, load_bal_in%nslots)
+                        if (nspawned /= 0_int_p) then
+                            associate(spawn=>qs%spawn_store%spawn)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, spawn)
+                             end associate
+                         end if
 
                     end do
 
@@ -249,9 +254,11 @@ contains
                     ! [todo] - JSS: real populations for HFS spawner.
                     call stochastic_hf_cloning(rng, qs%tau, qs%shift(2), qs%psip_list%dat(2,idet), &
                                                qs%psip_list%pops(1,idet), nspawned)
-                    if (nspawned /= 0) call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, &
-                                                                        qs%spawn_store%spawn, qs%par_info%load%proc_map, &
-                                                                        load_bal_in%nslots)
+                    if (nspawned /= 0) then
+                        associate(spawn=>qs%spawn_store%spawn)
+                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, spawn)
+                        end associate
+                    end if
 
                     ! Clone or die: Hamiltonian walkers.
                     call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
