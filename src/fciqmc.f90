@@ -46,8 +46,8 @@ contains
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
-        use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection, determ_projection_separate_annihil
-        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
+        use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, set_determ_info
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
@@ -116,7 +116,8 @@ contains
         ! In case this is not set.
         nspawn_events = 0
 
-        ! Some initial semi-stochastic parameters:
+        ! Some initial semi-stochastic parameters. Semi-stochastic is
+        ! always turned off to begin with.
         semi_stochastic = .false.
         ! The iteration on which to start using the semi-stochastic adaptation.
         semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
@@ -177,14 +178,7 @@ contains
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array.
-                    if (determ%flags(idet) == 0) then
-                        ideterm = ideterm + 1
-                        determ%vector(ideterm) = real_population
-                        if (determ%separate_annihilation) determ%indices(ideterm) = idet
-                        determ_parent = .true.
-                    else
-                        determ_parent = .false.
-                    end if
+                    call set_determ_info(idet, real_population, ideterm, determ, determ_parent)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
@@ -250,22 +244,16 @@ contains
                                                               nspawn_events)
                         call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
                     else
-                        ! If using semi-stochastic then perform the deterministic
-                        ! projection step.
-                        if (semi_stochastic) then
-                            if (determ%separate_annihilation) then
-                                call determ_projection_separate_annihil(determ, qs)
-                                call deterministic_annihilation(sys, rng, pl, determ)
-                            else
-                                call determ_projection(rng, qmc_in, qs, spawn, determ)
-                            end if
-                        end if
 
                         if (semi_stochastic) then
+                            ! If using semi-stochastic then perform the
+                            ! deterministic projection step.
+                            call determ_projection(rng, qmc_in, qs, spawn, determ)
                             call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
                         else
                             call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events)
                         end if
+
                         call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate

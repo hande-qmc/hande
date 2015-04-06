@@ -641,7 +641,69 @@ contains
 
     end function check_if_determ
 
+    subroutine set_determ_info(idet, real_pop, ndeterm_found, determ, determ_parent)
+
+        ! In:
+        !    idet: index of the determinant (in determ%flags, also matches that in the main
+        !        determinant list).
+        !    real_pop: (decoded) population on the determinant.
+        ! In/Out:
+        !    ndeterm_found: number of determinants in the deterministic space found.
+        !        Incrememted if idet corresponds to a determinant in the deterministic space.
+        !    determ: semi_stoch_t object.  vector and indices components are updated if the
+        !        determinant is in the deterministic space.
+        ! Out:
+        !    determ_parent: true if the determinant is in the deterministic space.
+
+        integer, intent(in) ::idet
+        real(p), intent(in) :: real_pop
+        integer, intent(inout) :: ndeterm_found
+        type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(out) :: determ_parent
+
+        if (determ%flags(idet) == 0) then
+            ndeterm_found = ndeterm_found + 1
+            determ%vector(ndeterm_found) = real_pop
+            if (determ%separate_annihilation) determ%indices(ndeterm_found) = idet
+            determ_parent = .true.
+        else
+            determ_parent = .false.
+        end if
+
+    end subroutine set_determ_info
+
     subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
+
+        ! A wrapper function for calling the correct routine for deterministic
+        ! projection.
+
+        ! In/Out:
+        !    rng: random number generator.
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    determ: deterministic space being used.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
+        !    qs: state of the QMC calculation. Timestep and shift are used.
+
+        use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
+        use spawn_data, only: spawn_t
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qs
+        type(spawn_t), intent(inout) :: spawn
+        type(semi_stoch_t), intent(inout) :: determ
+
+        if (determ%separate_annihilation) then
+            call determ_proj_separate_annihil(determ, qs)
+        else
+            call determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
+        end if
+
+    end subroutine determ_projection
+
+    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -748,9 +810,9 @@ contains
 
             end subroutine create_spawned_particle_determ
 
-    end subroutine determ_projection
+    end subroutine determ_proj_combined_annihil
 
-    subroutine determ_projection_separate_annihil(determ, qs)
+    subroutine determ_proj_separate_annihil(determ, qs)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
@@ -822,7 +884,7 @@ contains
         ! deterministic projection.
         call csrpgemv(.true., .false., -1.0_p*qs%tau, determ%hamil, determ%full_vector, determ%vector)
 
-    end subroutine determ_projection_separate_annihil
+    end subroutine determ_proj_separate_annihil
 
     subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc)
 
