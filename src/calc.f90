@@ -45,16 +45,6 @@ integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
 integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
-! Ms of determinants.  If not set, then all possible values of Ms are considered
-! in FCI.  FCIQMC assumes ms = 0 if not given in input.
-integer :: ms_in = huge(1)
-
-! Symmetry block of determinants.  Ignored for real space formulation.  Refers
-! to a wavevector in momentum space formulation.  If not set, then determinants
-! of all possible momenta are considered in FCI.  FCIQMC assumes determinants
-! with 0 momentum are to be considered if not specified in input.
-integer :: sym_in = huge(1)
-
 !--- Info for FCI calculations ---
 
 ! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
@@ -137,32 +127,12 @@ integer :: distribute = distribute_off
 logical :: truncate_space = .false.
 integer :: truncation_level
 
-! RAS-CI (only in QMC currently)
-! The ras1 space can have at most truncation_level holes.
-! The ras3 space can have at most ras3_max electrons.
-! If all orbitals are either in the frozen core, ras1 or ras3 spaces, then
-! ras3_max must equal truncation_level.
-! The RAS2 space is analogous to the complete active space (CAS).
-! Number of spatial orbitals in RAS1 and RAS3 spaces (counting from lowest
-! orbitals up and highest orbitals down, respectively).
-integer :: RAS(2) = (/ -1, -1 /)
-! Min number of electrons in RAS1 space.
-integer :: ras1_min
-! Max number of electrons in RAS3 space.
-integer :: ras3_max
-! Bit masks for showing only orbitals in RAS1 and RAS3 spaces.
-integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
-
-! --- QMC reference state and trial (importance-sampling) functions ---
+! --- QMC trial (importance-sampling) functions ---
 
 ! For the Heisenberg model, several different trial functions can be used in the
 ! energy estimator. Only a single determinant can be used for the Hubbard model.
 integer, parameter :: single_basis = 0
 integer, parameter :: neel_singlet = 1
-
-! Which trial function are we using? Only relevant to the Heisneberg model.
-! trial_function will always be 0 for other models to represent a single determinant.
-integer :: trial_function = 0
 
 ! For the Heisenberd model, a guiding function may be used,
 ! |psi_G> = \sum_{i} a_i |psi_i>, so that the new Hamiltonian matrix elements are
@@ -172,10 +142,6 @@ integer, parameter :: no_guiding = 0
 ! Note that when we use the Neel singlet state as a guiding function, it must also
 ! be used as the trial function in calculating the projected energy.
 integer, parameter :: neel_singlet_guiding = 1
-
-! If we are not using importance sampling, this is set to 0. Else it is set to one
-! of the above values to specify the corresponding guiding function being used.
-integer :: guiding_function = 0
 
 !--- Info for DMQMC calculations ---
 
@@ -192,6 +158,42 @@ integer, parameter :: dmqmc_energy_squared = 2**2
 integer, parameter :: dmqmc_correlation = 2**3
 integer, parameter :: dmqmc_rdm_r2 = 2**4
 integer, parameter :: dmqmc_full_r2 = 2**5
+
+!--- global data (to deal with)
+
+! Ms of determinants.  If not set, then all possible values of Ms are considered
+! in FCI.  FCIQMC assumes ms = 0 if not given in input.
+integer :: ms_in = huge(1)
+
+! Symmetry block of determinants.  Ignored for real space formulation.  Refers
+! to a wavevector in momentum space formulation.  If not set, then determinants
+! of all possible momenta are considered in FCI.  FCIQMC assumes determinants
+! with 0 momentum are to be considered if not specified in input.
+integer :: sym_in = huge(1)
+
+! Which trial function are we using? Only relevant to the Heisneberg model.
+! trial_function will always be 0 for other models to represent a single determinant.
+integer :: trial_function = 0
+
+! If we are not using importance sampling, this is set to 0. Else it is set to one
+! of the above values to specify the corresponding guiding function being used.
+integer :: guiding_function = 0
+
+! RAS-CI (only in QMC currently)
+! The ras1 space can have at most truncation_level holes.
+! The ras3 space can have at most ras3_max electrons.
+! If all orbitals are either in the frozen core, ras1 or ras3 spaces, then
+! ras3_max must equal truncation_level.
+! The RAS2 space is analogous to the complete active space (CAS).
+! Number of spatial orbitals in RAS1 and RAS3 spaces (counting from lowest
+! orbitals up and highest orbitals down, respectively).
+integer :: RAS(2) = (/ -1, -1 /)
+! Min number of electrons in RAS1 space.
+integer :: ras1_min
+! Max number of electrons in RAS3 space.
+integer :: ras3_max
+! Bit masks for showing only orbitals in RAS1 and RAS3 spaces.
+integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
 
 ! If true then allow the use of MPI barrier calls.
 logical :: use_mpi_barriers = .false.
