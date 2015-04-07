@@ -72,6 +72,9 @@ contains
                               reference, dmqmc_in_global, dmqmc_estimates_global%rdm_info)
 
         call init_system(sys)
+        ! Note: can't set ex_level to be full space if not set until *after* sys%nel is defined.
+        ! It's not set until init_system for the Heisenberg model.
+        if (reference%ex_level < 0) reference%ex_level = sys%nel
 
         call check_input(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, semi_stoch_in_global, &
                          restart_in_global, reference, load_bal_in_global, dmqmc_in_global)
@@ -279,7 +282,7 @@ contains
         type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers.
-        call init_proc_pointers(sys, qmc_in, dmqmc_in)
+        call init_proc_pointers(sys, qmc_in, dmqmc_in, reference)
 
         ! Set spin variables.
         ! [todo] - handle all_spin_sectors more gracefully.  It should probably be handled by DMQMC-specific code but must be done before set_spin_polarisation.

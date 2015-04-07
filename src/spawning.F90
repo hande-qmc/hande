@@ -895,7 +895,6 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use spawn_data, only: spawn_t
@@ -922,7 +921,7 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(reference%hs_f0, f_new) <= truncation_level) then
+        if (get_excitation_level(reference%hs_f0, f_new) <= reference%ex_level) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
                                            iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
@@ -957,7 +956,6 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use spawn_data, only: spawn_t
@@ -984,7 +982,7 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(reference%hs_f0, f_new) <= truncation_level) then
+        if (get_excitation_level(reference%hs_f0, f_new) <= reference%ex_level) then
 
             call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
                                            iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
@@ -1019,7 +1017,7 @@ contains
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
-        use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
+        use calc, only: ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
@@ -1081,7 +1079,7 @@ contains
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
-        use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
+        use calc, only: ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
@@ -1119,13 +1117,16 @@ contains
 
     end subroutine create_spawned_particle_initiator_ras
 
-    subroutine create_spawned_particle_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
+                                                      particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1145,9 +1146,11 @@ contains
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
@@ -1187,7 +1190,8 @@ contains
 
     end subroutine create_spawned_particle_density_matrix
 
-    subroutine create_spawned_particle_half_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_half_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
+                                                           particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! If walker tries to spawn in the lower triangle of density matrix
@@ -1196,6 +1200,8 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1213,13 +1219,14 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
@@ -1264,14 +1271,14 @@ contains
 
     end subroutine create_spawned_particle_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_half_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, &
+    subroutine create_spawned_particle_truncated_half_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
                                                                      particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! A spawned walker is only created on (f1', f2) if f1' and f2 do not differ by
-        ! more than truncation_level basis functions, where f1' is obtained by
+        ! more than reference%ex_level basis functions, where f1' is obtained by
         ! applying the connection to f1.
 
         ! Note: This is the half density matrix version of create_spawned_particle_truncated_density_matrix
@@ -1281,6 +1288,8 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1298,13 +1307,14 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
@@ -1324,7 +1334,7 @@ contains
         ! bitstring is eventually stored in f_new_tot.
         call create_excited_det(basis, f1, connection, f_new)
 
-        if (get_excitation_level(f2, f_new) <= truncation_level) then
+        if (get_excitation_level(f2, f_new) <= reference%ex_level) then
 
             f_new_tot = 0_i0
             ! Test to see whether the new determinant resides in the upper
@@ -1353,18 +1363,20 @@ contains
 
     end subroutine create_spawned_particle_truncated_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, &
-                                                                spawn)
+    subroutine create_spawned_particle_truncated_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
+                                                                particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! A spawned walker is only created on (f1', f2) if f1' and f2 do not
-        ! differ by more than truncation_level basis functions, where f1' is
+        ! differ by more than reference%ex_level basis functions, where f1' is
         ! obtained by applying the connection to f1.
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1381,13 +1393,14 @@ contains
         !    spawn: spawn_t object to which the spawned particle will be added.
 
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
@@ -1408,7 +1421,7 @@ contains
         ! bitstring is eventually stored in f_new_tot.
         call create_excited_det(basis, f1, connection, f_new)
 
-        if (get_excitation_level(f2, f_new) <= truncation_level) then
+        if (get_excitation_level(f2, f_new) <= reference%ex_level) then
 
             f_new_tot = 0_i0
             if (spawning_end==1) then

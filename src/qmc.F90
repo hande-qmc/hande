@@ -581,7 +581,7 @@ contains
 
     end subroutine init_qmc
 
-    subroutine init_proc_pointers(sys, qmc_in, dmqmc_in)
+    subroutine init_proc_pointers(sys, qmc_in, dmqmc_in, reference)
 
         ! Set function pointers for QMC calculations.
 
@@ -589,13 +589,17 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
+        !    reference: reference_t object defining the reference state/determinant.
 
         ! System and calculation data
-        use calc
+        use calc, only: doing_calc, doing_dmqmc_calc, dmqmc_calc, hfs_fciqmc_calc, &
+                        ras, &
+                        trial_function, guiding_function, single_basis, neel_singlet, neel_singlet_guiding, &
+                        dmqmc_correlation, dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use hfs_data
         use system
         use parallel, only: parent
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, reference_t
         use dmqmc_data, only: dmqmc_in_t
 
         ! Procedures to be pointed to.
@@ -631,6 +635,9 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(reference_t), intent(in) :: reference
+
+        logical :: truncate_space
 
         ! 0. In general, use the default spawning routine.
         spawner_ptr => spawn_standard
@@ -745,6 +752,7 @@ contains
         end select
 
         ! 2. Set calculation-specific procedure pointers
+        truncate_space = reference%ex_level /= sys%nel
 
         ! 2: initiator-approximation
         if (qmc_in%initiator_approx) then

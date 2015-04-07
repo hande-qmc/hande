@@ -111,22 +111,6 @@ integer, parameter :: distribute_cols = 2
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
 
-!--- Input data: Hilbert space truncation ---
-
-! CI/CIQMC:
-! If true, truncate the Slater determinant space such that it contains
-! determinants which differ from the reference determinant (e.g. Hartree--Fock
-! determinant) by at most truncation_level excitations.
-! truncation_level excitations.  A truncation level equal to the number of
-! electrons corresponds to the full space
-! DMQMC:
-! If true, truncate the density matrix space such that it only contains matrix
-! elements corresponding to two determinants which differ by at most
-! truncation_level excitations.  A truncation level equal to the number of
-! electrons corresponds to the full space.
-logical :: truncate_space = .false.
-integer :: truncation_level
-
 ! --- QMC trial (importance-sampling) functions ---
 
 ! For the Heisenberg model, several different trial functions can be used in the
@@ -178,6 +162,14 @@ integer :: trial_function = 0
 ! If we are not using importance sampling, this is set to 0. Else it is set to one
 ! of the above values to specify the corresponding guiding function being used.
 integer :: guiding_function = 0
+
+! If true, truncate the Slater determinant space such that it contains
+! determinants which differ from the reference determinant (e.g. Hartree--Fock
+! determinant) by at most truncation_level excitations.
+! truncation_level excitations.  A truncation level equal to the number of
+! electrons corresponds to the full space
+logical :: truncate_space = .false.
+integer :: truncation_level
 
 ! RAS-CI (only in QMC currently)
 ! The ras1 space can have at most truncation_level holes.

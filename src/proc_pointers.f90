@@ -57,7 +57,6 @@ abstract interface
     subroutine i_update_dmqmc_estimators(sys, cdet, excitation, H00, walker_pop, estimate)
         use system, only: sys_t
         use determinants, only: det_info_t
-        use qmc_data, only: reference_t
         import :: excit_t, p
         implicit none
         type(sys_t), intent(in) :: sys
@@ -69,7 +68,6 @@ abstract interface
     subroutine i_update_dmqmc_correlation_function(sys, cdet, excitation, H00, walker_pop, mask, cfunc)
         use system, only: sys_t
         use determinants, only: det_info_t
-        use qmc_data, only: reference_t
         import :: excit_t, p, i0
         implicit none
         type(sys_t), intent(in) :: sys
@@ -136,12 +134,14 @@ abstract interface
         integer(i0), intent(in), optional, target :: f(:)
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
-    subroutine i_create_spawned_particle_dm(basis, f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
+    subroutine i_create_spawned_particle_dm(basis, reference, f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
         use spawn_data, only: spawn_t
         use basis_types, only: basis_t
+        use qmc_data, only: reference_t
         import :: excit_t, i0, int_p
         implicit none
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len)
         integer(i0), intent(in) :: f2(basis%string_len)
         type(excit_t), intent(in) :: connection
