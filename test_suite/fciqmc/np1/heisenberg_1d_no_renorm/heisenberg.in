@@ -17,3 +17,4 @@ mc_cycles 10
 nreports 500
 
 varyshift_target 5000
+init_pop 10

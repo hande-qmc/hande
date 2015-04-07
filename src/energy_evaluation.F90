@@ -37,7 +37,7 @@ contains
     ! buffer(1:nparticles_start_ind-1)
     !   single-valued data given by the (descriptive) name in the enumerator
     !   above.
-    ! buffer(nparticles_start_ind+iproc*sampling_size:nparticles_start_ind-1+(iproc+1)*sampling_size)
+    ! buffer(nparticles_start_ind+iproc*particle_t%nspaces:nparticles_start_ind-1+(iproc+1)*particle_t%nspaces)
     !   the total population of each particle type on processor iproc.  Prior to
     !   communication, each processor only sets its only value.
 
@@ -49,7 +49,8 @@ contains
 
     ! All other elements are set to zero.
 
-    subroutine update_energy_estimators(nspawn_events, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles_old, load_bal_in, doing_lb, &
+                                        comms_found, update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -57,8 +58,12 @@ contains
         ! Should be called every report loop in an FCIQMC/iFCIQMC calculation.
 
         ! In:
+        !    qmc_in: input options relating to QMC methods.
         !    nspawn_events: The total number of spawning events to this process.
+        !    doing_lb (optional): true if performing load balancing.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
+        !    qs: qmc state. Estimators are updated on output.
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
@@ -72,21 +77,25 @@ contains
         !       their respective components.
 
         use bloom_handler, only: bloom_stats_t
-        use fciqmc_data, only: sampling_size
+        use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t
 
         use parallel
 
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: nspawn_events
-        real(p), intent(inout) :: ntot_particles_old(sampling_size)
+        type(qmc_state_t), intent(inout) :: qs
+        real(p), intent(inout) :: ntot_particles_old(qs%psip_list%nspaces)
+        logical, optional, intent(in) :: doing_lb
         logical, intent(inout) :: comms_found
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
+        type(load_bal_in_t), intent(in) :: load_bal_in
 
-        real(dp) :: rep_loop_loc(sampling_size*nprocs+nparticles_start_ind-1)
-        real(dp) :: rep_loop_sum(sampling_size*nprocs+nparticles_start_ind-1)
+        real(dp) :: rep_loop_loc(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
+        real(dp) :: rep_loop_sum(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
-        call local_energy_estimators(rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats)
+        call local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats)
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
 
@@ -97,7 +106,8 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, &
+                                            doing_lb, qs%psip_list%nparticles_proc, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators
 
@@ -109,7 +119,7 @@ contains
         ! In/Out:
         !     rep_comm: nb_rep_t object containing report loop information.
 
-        use calc, only: nb_rep_t
+        use qmc_data, only: nb_rep_t
         use parallel
 
         type(nb_rep_t), intent(inout) :: rep_comm
@@ -124,17 +134,27 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(rep_request_s, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine update_energy_estimators_recv(qmc_in, qs, ntypes, rep_request_s, ntot_particles_old, nparticles_proc, &
+                                             load_bal_in, doing_lb, comms_found, update_tau, bloom_stats)
 
         ! Receive report loop quantities from all other processors and reduce.
 
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
+        !    ntypes: number of particle types/spaces being sampled.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
+        !    qs: qmc_state_t object containing estimators that are upadted.
         !    rep_request_s: array of requests initialised during non-blocking send of
         !        information.
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
+        ! Out:
+        !    nparticles_proc: number of particles in each space on each processor.
+        ! In (optional):
+        !    doing_lb: true if performing load balancing.
         ! In/Out (optional):
         !    bloom_stats: Bloom stats.  The report loop quantities are accumulated into
         !       their respective components.
@@ -142,25 +162,31 @@ contains
         !    comms_found: whether HANDE.COMM exists
         !    update_tau: if true, tau should be automatically rescaled.
 
-        use fciqmc_data, only: sampling_size
         use bloom_handler, only: bloom_stats_t
+        use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t
         use parallel
 
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qs
+        integer :: ntypes
         integer, intent(inout) :: rep_request_s(:)
         real(p), intent(inout) :: ntot_particles_old(:)
-        type(bloom_stats_t), intent(inout), optional :: bloom_stats
+        type(load_bal_in_t), intent(in) :: load_bal_in
+        real(p), intent(out) :: nparticles_proc(:,:)
+        logical, optional, intent(in) :: doing_lb
         logical, intent(out), optional :: comms_found
         logical, intent(out), optional :: update_tau
+        type(bloom_stats_t), intent(inout), optional :: bloom_stats
 
-        real(dp) :: rep_info_sum(nprocs*sampling_size+nparticles_start_ind-1)
-        real(dp) :: rep_loop_reduce(nprocs*(nprocs*sampling_size+nparticles_start_ind-1))
+        real(dp) :: rep_info_sum(nprocs*ntypes+nparticles_start_ind-1)
+        real(dp) :: rep_loop_reduce(nprocs*(nprocs*ntypes+nparticles_start_ind-1))
         integer :: rep_request_r(0:nprocs-1)
 #ifdef PARALLEL
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
         integer :: i, j, data_size
 
-        data_size = nprocs*sampling_size + nparticles_start_ind-1
+        data_size = nprocs*ntypes+ nparticles_start_ind-1
 #ifdef PARALLEL
         do i = 0, nprocs-1
             call MPI_IRecv(rep_loop_reduce(i*data_size+1:(i+1)*data_size), data_size, MPI_REAL8, &
@@ -176,18 +202,22 @@ contains
         do i = 1, nparticles_start_ind-1
             rep_info_sum(i) = sum(rep_loop_reduce(i::data_size))
         end do
-        forall (i=nparticles_start_ind:nparticles_start_ind+sampling_size-1,j=0:nprocs-1) &
+        forall (i=nparticles_start_ind:nparticles_start_ind+ntypes-1,j=0:nprocs-1) &
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
-        call communicated_energy_estimators(rep_info_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, qs, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
+                                            nparticles_proc, comms_found, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators_recv
 
-    subroutine local_energy_estimators(rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats, spawn_elsewhere)
+    subroutine local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, update_tau, &
+                                       bloom_stats, spawn_elsewhere)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
 
+        ! In:
+        !    qs: qmc_state_t object containing estimators.
         ! In (optional):
         !    nspawn_events: The total number of spawning events to this process.
         !    comms_found: whether HANDE.COMM exists on this processor
@@ -199,13 +229,12 @@ contains
         !    rep_loop_loc: array containing local quantities required for energy
         !       evaluation.
 
-        use fciqmc_data, only: nparticles, sampling_size, target_particles, ncycles, rspawn,   &
-                               proj_energy, D0_population, tot_walkers
-        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, D0_hf_population
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs, iproc
+        use qmc_data, only: qmc_state_t
 
+        type(qmc_state_t), intent(in) :: qs
         real(dp), intent(out) :: rep_loop_loc(:)
         type(bloom_stats_t), intent(in), optional :: bloom_stats
         integer, intent(in), optional :: nspawn_events
@@ -217,9 +246,9 @@ contains
 
         rep_loop_loc = 0.0_dp
 
-        rep_loop_loc(proj_energy_ind) = proj_energy
-        rep_loop_loc(D0_pop_ind) = D0_population
-        rep_loop_loc(rspawn_ind) = rspawn
+        rep_loop_loc(proj_energy_ind) = qs%estimators%proj_energy
+        rep_loop_loc(D0_pop_ind) = qs%estimators%D0_population
+        rep_loop_loc(rspawn_ind) = qs%spawn_store%rspawn
         if (present(update_tau)) then
             if (update_tau) rep_loop_loc(update_tau_ind) = 1.0_p
         end if
@@ -227,18 +256,19 @@ contains
             rep_loop_loc(bloom_tot_ind) = bloom_stats%tot_bloom_curr
             rep_loop_loc(bloom_num_ind) = bloom_stats%nblooms_curr
         end if
-        if (doing_calc(hfs_fciqmc_calc)) rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop()
-        rep_loop_loc(hf_proj_O_ind) = proj_hf_O_hpsip
-        rep_loop_loc(hf_proj_H_ind) = proj_hf_H_hfpsip
-        rep_loop_loc(hf_D0_pop_ind) = D0_hf_population
-        rep_loop_loc(nocc_states_ind) = tot_walkers
+        if (doing_calc(hfs_fciqmc_calc)) &
+            rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(qs%psip_list%nstates, qs%psip_list%pops)
+        rep_loop_loc(hf_proj_O_ind) = qs%estimators%proj_hf_O_hpsip
+        rep_loop_loc(hf_proj_H_ind) = qs%estimators%proj_hf_H_hfpsip
+        rep_loop_loc(hf_D0_pop_ind) = qs%estimators%D0_hf_population
+        rep_loop_loc(nocc_states_ind) = qs%psip_list%nstates
         if (present(nspawn_events)) rep_loop_loc(nspawned_ind) = nspawn_events
 
-        offset = nparticles_start_ind-1 + iproc*sampling_size
+        offset = nparticles_start_ind-1 + iproc*qs%psip_list%nspaces
         if (present(spawn_elsewhere)) then
-            rep_loop_loc(offset+1:offset+sampling_size) = nparticles + spawn_elsewhere
+            rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles + spawn_elsewhere
         else
-            rep_loop_loc(offset+1:offset+sampling_size) = nparticles
+            rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles
         end if
         if (present(comms_found)) then
             if (comms_found) rep_loop_loc(comms_found_ind) = 1.0_p
@@ -246,46 +276,58 @@ contains
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(rep_loop_sum, ntot_particles_old, comms_found, update_tau, bloom_stats)
+    subroutine communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, &
+                                              doing_lb, nparticles_proc, comms_found, update_tau, bloom_stats)
 
         ! Update report loop quantites with information received from other
         ! processors.
 
         ! In:
+        !    qmc_in: input options relating to QMC methods.
         !    rep_loop_sum: array containing quantites required for energy
         !        evaluation.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
+        !    qs: QMC state containing estimators.
         !    ntot_particles_old: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop.
         ! Out:
-        !     comms_found: whether a HANDE.COMM file exists
+        !    nparticles_proc: number of particles in each space on each processor.
+        ! In (optional):
+        !    doing_lb: true if performing load balancing.
+        ! In/Out (optional):
+        !    bloom_stats: blooming stats.
         ! Out (optional):
-        !     update_tau: if true, tau should be automatically rescaled.
+        !    update_tau: if true, tau should be automatically rescaled.
+        !    comms_found: whether a HANDE.COMM file exists
 
-        use fciqmc_data, only: sampling_size, target_particles, ncycles, rspawn,               &
-                               proj_energy, shift, vary_shift, vary_shift_from,                &
-                               vary_shift_from_proje, D0_population, nparticles_proc, par_info,&
-                               tot_nocc_states, tot_nspawn_events
-        use hfs_data, only: proj_hf_O_hpsip, proj_hf_H_hfpsip, hf_signed_pop, D0_hf_population, hf_shift
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
-        use calc, only: doing_calc, hfs_fciqmc_calc, doing_load_balancing
+        use calc, only: doing_calc, hfs_fciqmc_calc
         use parallel, only: nprocs
+        use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qs
         real(dp), intent(in) :: rep_loop_sum(:)
-        real(p), intent(inout) :: ntot_particles_old(sampling_size)
+        real(p), intent(inout) :: ntot_particles_old(:)
+        real(p), intent(out) :: nparticles_proc(:,:)
+        type(load_bal_in_t), intent(in) :: load_bal_in
+        logical, optional, intent(in) :: doing_lb
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found
         logical, intent(out), optional :: update_tau
 
-        real(p) :: ntot_particles(sampling_size), new_hf_signed_pop, pop_av
-        integer :: i
+        real(p) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop, pop_av
+        integer :: i, ntypes
 
-        proj_energy = rep_loop_sum(proj_energy_ind)
-        D0_population = rep_loop_sum(D0_pop_ind)
-        rspawn = rep_loop_sum(rspawn_ind)
+        ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
+
+        qs%estimators%proj_energy = rep_loop_sum(proj_energy_ind)
+        qs%estimators%D0_population = rep_loop_sum(D0_pop_ind)
+        qs%spawn_store%rspawn = rep_loop_sum(rspawn_ind)
         if (present(update_tau)) then
             update_tau = abs(rep_loop_sum(update_tau_ind)) > depsilon
         end if
@@ -297,64 +339,70 @@ contains
             bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
         end if
         new_hf_signed_pop = rep_loop_sum(hf_signed_pop_ind)
-        proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
-        proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
-        D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
-        tot_nocc_states = rep_loop_sum(nocc_states_ind)
-        tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        qs%estimators%proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
+        qs%estimators%proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
+        qs%estimators%D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
+        qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
+        qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if
 
-        do i = 1, sampling_size
-            nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::sampling_size)
+        do i = 1, ntypes
+            nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::ntypes)
             ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
-        end do 
+        end do
 
-        associate(lb=>par_info%load)
-            if(doing_load_balancing .and. ntot_particles(1) > lb%pop .and. lb%nattempts < lb%max_attempts) then
-                pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
-                ! Check if there is at least one processor with load imbalance.
-                call check_imbalance(nparticles_proc, pop_av, lb%percent, lb%needed)
+        associate(lb=>qs%par_info%load)
+            if (present(doing_lb)) then
+                if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
+                    pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
+                    ! Check if there is at least one processor with load imbalance.
+                    call check_imbalance(nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
+                end if
             end if
         end associate
 
-        if (vary_shift(1)) then
-            call update_shift(shift(1), ntot_particles_old(1), ntot_particles(1), ncycles)
+        if (qs%vary_shift(1)) then
+            call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
             if (doing_calc(hfs_fciqmc_calc)) then
-                call update_hf_shift(ntot_particles_old(1), ntot_particles(1), hf_signed_pop, &
-                                     new_hf_signed_pop, ncycles)
+                call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
+                                     qs%estimators%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         end if
         ntot_particles_old = ntot_particles
-        hf_signed_pop = new_hf_signed_pop
-        if (ntot_particles(1) > target_particles .and. .not.vary_shift(1)) then
-            vary_shift(1) = .true.
-            if (vary_shift_from_proje) then
-              ! Set shift to be instantaneous projected energy.
-              shift = proj_energy/D0_population
-              hf_shift = proj_hf_O_hpsip/D0_population + proj_hf_H_hfpsip/D0_population &
-                                                       - (proj_energy*D0_hf_population)/D0_population**2
+        qs%estimators%hf_signed_pop = new_hf_signed_pop
+        if (ntot_particles(1) > qmc_in%target_particles .and. .not.qs%vary_shift(1)) then
+            qs%vary_shift(1) = .true.
+            if (qmc_in%vary_shift_from_proje) then
+                ! Set shift to be instantaneous projected energy.
+                associate(est=>qs%estimators)
+                    qs%shift = est%proj_energy/est%D0_population
+                    if (doing_calc(hfs_fciqmc_calc)) then
+                        qs%shift(2) = est%proj_hf_O_hpsip/est%D0_population + est%proj_hf_H_hfpsip/est%D0_population &
+                                                             - (est%proj_energy*est%D0_hf_population)/est%D0_population**2
+                    end if
+                end associate
             else
-                shift = vary_shift_from
+                qs%shift = qmc_in%vary_shift_from
             end if
         end if
 
         ! average energy quantities over report loop.
-        proj_energy = proj_energy/ncycles
-        D0_population = D0_population/ncycles
+        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
+        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
         ! Similarly for the HFS estimator
-        D0_hf_population = D0_hf_population/ncycles
-        proj_hf_O_hpsip = proj_hf_O_hpsip/ncycles
-        proj_hf_H_hfpsip = proj_hf_H_hfpsip/ncycles
+        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
+        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
+        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
         ! average spawning rate over report loop and processor.
-        rspawn = rspawn/(ncycles*nprocs)
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
 
     end subroutine communicated_energy_estimators
 
 !--- Shift updates ---
 
-    subroutine update_shift(loc_shift, nparticles_old, nparticles, nupdate_steps)
+    subroutine update_shift(qmc_in, qs, loc_shift, nparticles_old, nparticles, nupdate_steps)
 
         ! Update the shift according to:
         !  shift(beta) = shift(beta-A*tau) - xi*log(N_w(tau)/N_w(beta-A*tau))/(A*tau)
@@ -365,41 +413,58 @@ contains
         !  * xi is a damping factor (0.05-0.10 is appropriate) to prevent large fluctations;
         !  * N_w(beta) is the total number of particles at imaginary time beta.
         ! The running average of the shift is also updated.
+
         ! In:
+        !    qmc_in: Input options relating to QMC methods.
+        !    qs: qmc state.
         !    nparticles_old: N_w(beta-A*tau).
         !    nparticles: N_w(beta).
+        !    nupdate_steps: number of iterations between shift updates.
+        ! In/Out:
+        !    loc_shift: energy shift/offset.  Set to S(beta-A*tau) on input and S(beta) on output.
 
-        use fciqmc_data, only: shift, tau, shift_damping, dmqmc_factor
+        use qmc_data, only: qmc_in_t, qmc_state_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qs
         real(p), intent(inout) :: loc_shift
         real(p), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - log(nparticles/nparticles_old)*shift_damping/(dmqmc_factor*tau*nupdate_steps)
+        loc_shift = loc_shift - log(nparticles/nparticles_old)*qmc_in%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps)
 
     end subroutine update_shift
 
-    subroutine update_hf_shift(nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
+    subroutine update_hf_shift(qmc_in, qs, hf_shift, nparticles_old, nparticles, nhf_particles_old, nhf_particles, nupdate_steps)
 
         ! Update the Hellmann-Feynman shift, \tilde{S}.
+
         ! In:
+        !    qmc_in: Input options relating to QMC methods.
+        !    qs: qmc state.
         !    nparticles_old: N_w(beta-A*tau); total Hamiltonian population at beta-Atau.
         !    nparticles: N_w(beta); total Hamiltonian population at beta.
         !    nhf_particles_old: N_w(beta-A*tau); total Hellmann-Feynman (signed) population at beta-Atau.
         !    nhf_particles: N_w(beta); total Hellmann-Feynman (signed) population at beta.
-        !
+        !    nupdate_steps: number of iterations between shift updates.
+        ! In/Out:
+        !    hf_shift: Hellmann--Feynman shift.  Set to \tilde{S}(beta-A*tau) on input and
+        !       \tilde{S}(beta) on output.
+
         ! WARNING:
         ! The Hellmann-Feynman signed population is not simply the sum over
         ! Hellmann-Feynman walkers but also involves the Hamiltonian walkers and
         ! *must* be calculated using calculate_hf_signed_pop.
 
-        use fciqmc_data, only: tau, shift_damping
-        use hfs_data, only: hf_shift
+        use qmc_data, only: qmc_in_t, qmc_state_t
 
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qs
         real(p), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
+        real(p), intent(inout) :: hf_shift
 
         ! Given the definition of the shift, S, \tilde{S} \equiv \frac{dS}{d\alpha}|_{\alpha=0}.
         ! Hence \tilde{S}(\beta) =
@@ -411,12 +476,12 @@ contains
         ! The latter quantity is calculated in calculate_hf_signed fpop.
 
         hf_shift = hf_shift - &
-                 (shift_damping/(tau*nupdate_steps)) &
+                 (qmc_in%shift_damping/(qs%tau*nupdate_steps)) &
                  *(nhf_particles/nparticles - nhf_particles_old/nparticles_old)
 
     end subroutine update_hf_shift
 
-    function calculate_hf_signed_pop() result(hf_signed_pop)
+    function calculate_hf_signed_pop(nstates_active, populations) result(hf_signed_pop)
 
         ! Find
         !    \sum_j sign(N_j(\beta)) \tilde{N}_j(\beta)
@@ -424,25 +489,29 @@ contains
         ! \beta and \tilde{N}_j(\beta) is the Hellmann-Feynman population on
         ! j at imaginary time \beta.
 
-        use fciqmc_data, only: walker_population, tot_walkers, real_factor, sampling_size
-        use hfs_data, only: alpha0
+        ! In:
+        !    nstates_active: number of occupied states in the populations list
+        !       (ie the limit in the sum over j).
+        !    populations: populations in the Hamiltonian and Hellmann-Feynman
+        !       spaces on each occupied state.
+
+        use fciqmc_data, only: real_factor
+
+        integer, intent(in) :: nstates_active
+        integer(int_p), intent(in) :: populations(:,:)
 
         real(p) :: hf_signed_pop
-        real(p) :: real_population(sampling_size)
+        real(p) :: real_population(size(populations,dim=1))
 
         integer :: i
 
         hf_signed_pop = 0.0_dp
-        do i = 1, tot_walkers
-            real_population = real(abs(walker_population(:,i)),p)/real_factor
-            if (walker_population(1,i) == 0_int_p) then
-                if (alpha0 < 0) then
-                    ! letting alpha->0_-
-                    hf_signed_pop = hf_signed_pop - real_population(2)
-                else
-                    ! letting alpha->0_+
-                    hf_signed_pop = hf_signed_pop + real_population(2)
-                end if
+        do i = 1, nstates_active
+            real_population = real(abs(populations(:,i)),p)/real_factor
+            if (populations(1,i) == 0_int_p) then
+                ! An approximation: let alpha->0_+ (using alpha->0_- appears not to make much of a difference).
+                ! letting alpha->0_+
+                hf_signed_pop = hf_signed_pop + real_population(2)
             else
                 hf_signed_pop = hf_signed_pop + sign(1.0_p, real_population(1))*&
                                                  real_population(2)

@@ -19,3 +19,4 @@ spawned_walker_length 100000
 
 nreports 600
 mc_cycles 10
+init_pop 10

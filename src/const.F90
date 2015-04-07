@@ -33,7 +33,7 @@ integer, parameter :: i0 = int_64
 integer, parameter :: c_i0 = c_int64_t
 #endif
 
-! int_p determines whether 32 or 64 integers are used for walker_population.
+! int_p determines whether 32 or 64 integers are used for particle populations.
 #if POP_SIZE == 32
 integer, parameter :: int_p = int_32
 #elif POP_SIZE == 64

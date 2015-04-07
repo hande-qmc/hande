@@ -10,23 +10,23 @@ implicit none
 
 contains
 
-    subroutine diagonalise(sys)
+    subroutine diagonalise(sys, reference)
 
         ! Construct and diagonalise the Hamiltonian matrix using Lanczos and/or
         ! exact diagonalisation.
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: reference determinant to specify symmetry block to consider.
 
+        use calc, only: fci_rdm, fci_rdm_info
         use checking, only: check_allocate, check_deallocate
         use errors
         use system, only: sys_t, set_spin_polarisation, copy_sys_spin_info
         use determinant_enumeration, only: enumerate_determinants
         use determinants, only: spin_orb_list
-        use fciqmc_data, only: occ_list0
         use dmqmc_procedures, only: setup_rdm_arrays
         use lanczos
-        use fciqmc_data, only: doing_exact_rdm_eigv, reduced_density_matrix
         use full_diagonalisation
         use hamiltonian, only: get_hmatel
         use reference_determinant
@@ -35,8 +35,10 @@ contains
         use errors, only: stop_all
         use utils, only: int_fmt, get_free_unit
         use ranking, only: insertion_rank
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
 
         type soln
             integer :: ms
@@ -110,17 +112,17 @@ contains
         end if
 
         spin_flip = .false.
-        if (allocated(occ_list0)) then
+        if (allocated(reference%occ_list0)) then
             ! If a reference determinant was supplied, then we need to only
             ! consider that spin and symmetry.
             if (isym_min /= isym_max) then
-                isym_min = symmetry_orb_list(sys, occ_list0)
+                isym_min = symmetry_orb_list(sys, reference%occ_list0)
                 isym_max = isym_min
             else
                 spin_flip = .true.
             end if
             if (ms_min /= ms_max) then
-                ms_min = spin_orb_list(sys%basis%basis_fns, occ_list0)
+                ms_min = spin_orb_list(sys%basis%basis_fns, reference%occ_list0)
                 ms_max = ms_min
             else
                 spin_flip = .true.
@@ -128,7 +130,7 @@ contains
         endif
 
         if (truncate_space) then
-            if (.not. allocated(occ_list0)) then
+            if (.not. allocated(reference%occ_list0)) then
                 if (isym_min /= isym_max .or. ms_min /= ms_max) then
                     call stop_all('diagonalise', 'Symmetry and spin must be &
                         &specified or a reference determinant supplied for &
@@ -136,9 +138,9 @@ contains
                 end if
                 ! Create reference det based upon symmetry labels.
                 call set_spin_polarisation(sys%basis%nbasis, ms_min, sys)
-                allocate(occ_list0(sys%nel), stat=ierr)
-                call check_allocate('occ_list0', sys%nel, ierr)
-                call set_reference_det(sys, occ_list0, .true., isym_min)
+                allocate(reference%occ_list0(sys%nel), stat=ierr)
+                call check_allocate('reference%occ_list0', sys%nel, ierr)
+                call set_reference_det(sys, reference%occ_list0, .true., isym_min)
             end if
         end if
 
@@ -157,8 +159,8 @@ contains
 
             ! Find and set information about the space.
             call set_spin_polarisation(sys%basis%nbasis, ms, sys)
-            if (allocated(occ_list0)) then
-                call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets, occ_list0=occ_list0)
+            if (allocated(reference%occ_list0)) then
+                call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets, occ_list0=reference%occ_list0)
             else
                 call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets)
             end if
@@ -196,8 +198,8 @@ contains
                 end if
 
                 ! Find all determinants with this spin.
-                if (allocated(occ_list0)) then
-                    call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, isym, occ_list0)
+                if (allocated(reference%occ_list0)) then
+                    call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, isym, reference%occ_list0)
                 else
                     call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, isym)
                 end if
@@ -279,13 +281,13 @@ contains
                                                         &routine. Skipping this calculation.', 3)
                         else if (doing_calc(exact_diag)) then
                             write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                            call setup_rdm_arrays(sys)
-                            rdm_size = size(reduced_density_matrix, 1)
+                            call setup_rdm_arrays(sys, .false., fci_rdm_info, fci_rdm)
+                            rdm_size = size(fci_rdm, 1)
 
                             allocate(rdm_eigenvalues(rdm_size), stat=ierr)
                             call check_allocate('rdm_eigenvalues',rdm_size,ierr)
 
-                            call get_rdm_eigenvalues(sys%basis, ndets, dets, rdm_eigenvalues)
+                            call get_rdm_eigenvalues(sys%basis, fci_rdm_info, ndets, dets, rdm_eigenvalues)
                         end if
                     end if
                 end if
@@ -341,12 +343,12 @@ contains
             call check_deallocate('eigv_rank',ierr)
             if (doing_exact_rdm_eigv) then
                 write(6, '(1x,a35,/,1X,35("-"))') 'Reduced density matrix eigenvalues:'
-                do i = 1, size(reduced_density_matrix, 1)
+                do i = 1, size(fci_rdm, 1)
                     write(6, '(1x,i6,1x,es15.8)') i, rdm_eigenvalues(i)
                 end do
                 write(6,'()')
-                deallocate(reduced_density_matrix, stat=ierr)
-                call check_deallocate('reduced_density_matrix',ierr)
+                deallocate(fci_rdm, stat=ierr)
+                call check_deallocate('fci_rdm',ierr)
                 deallocate(rdm_eigenvalues, stat=ierr)
                 call check_deallocate('rdm_eigenvalues',ierr)
             end if
@@ -621,17 +623,19 @@ contains
 
     end subroutine generate_hamil
 
-    subroutine get_rdm_eigenvalues(basis, ndets, dets, rdm_eigenvalues)
+    subroutine get_rdm_eigenvalues(basis, rdm_info, ndets, dets, rdm_eigenvalues)
 
         use basis_types, only: basis_t
+        use calc, only: fci_rdm
         use checking, only: check_allocate, check_deallocate
+        use dmqmc_data, only: rdm_t
         use dmqmc_procedures, only: decode_dm_bitstring
-        use fciqmc_data, only: reduced_density_matrix, rdms
 
         type(basis_t), intent(in) :: basis
+        type(rdm_t), intent(inout) :: rdm_info(:)
         integer, intent(in) :: ndets
         integer(i0), intent(in) :: dets(:,:)
-        real(p), intent(out) :: rdm_eigenvalues(size(reduced_density_matrix,1))
+        real(p), intent(out) :: rdm_eigenvalues(size(fci_rdm,1))
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(2*basis%string_len)
         integer :: i, j, rdm_size, info, ierr, lwork
@@ -644,8 +648,8 @@ contains
         ! Loop over all elements of the density matrix and add all contributing elements to the RDM.
         do i = 1, ndets
             do j = 1, ndets
-                f1 = iand(rdms(1)%B_masks(:,1),dets(:,i))
-                f2 = iand(rdms(1)%B_masks(:,1),dets(:,j))
+                f1 = iand(rdm_info(1)%B_masks(:,1),dets(:,i))
+                f2 = iand(rdm_info(1)%B_masks(:,1),dets(:,j))
                 ! If the two bitstrings are the same after bits corresponding to subsystem B have
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
@@ -654,15 +658,15 @@ contains
                     f3(basis%string_len+1:basis%string_len*2) = dets(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
-                    call decode_dm_bitstring(basis,f3,1,1)
-                    rdms(1)%end1 = rdms(1)%end1 + 1
-                    rdms(1)%end2 = rdms(1)%end2 + 1
+                    call decode_dm_bitstring(basis, f3, 1, rdm_info(1))
+                    rdm_info(1)%end1 = rdm_info(1)%end1 + 1
+                    rdm_info(1)%end2 = rdm_info(1)%end2 + 1
 
                     ! The ground state wave function is stored in hamil(:,1).
                     rdm_element = hamil(i,1)*hamil(j,1)
                     ! Finally add in the contribution from this density matrix element.
-                    reduced_density_matrix(rdms(1)%end1(1),rdms(1)%end2(1)) = &
-                        reduced_density_matrix(rdms(1)%end1(1),rdms(1)%end2(1)) + rdm_element
+                    fci_rdm(rdm_info(1)%end1(1),rdm_info(1)%end2(1)) = &
+                        fci_rdm(rdm_info(1)%end1(1),rdm_info(1)%end2(1)) + rdm_element
                 end if
             end do
         end do
@@ -672,14 +676,14 @@ contains
         ! Calculate the eigenvalues:
         write(6,'(1x,a39,/)') "Diagonalising reduced density matrix..."
 
-        rdm_size = size(reduced_density_matrix, 1)
+        rdm_size = size(fci_rdm, 1)
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
 #ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, rdm_eigenvalues, work, -1, info)
+        call ssyev('N', 'U', rdm_size, fci_rdm, rdm_size, rdm_eigenvalues, work, -1, info)
 #else
-        call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, rdm_eigenvalues, work, -1, info)
+        call dsyev('N', 'U', rdm_size, fci_rdm, rdm_size, rdm_eigenvalues, work, -1, info)
 #endif
         lwork = nint(work(1))
         deallocate(work)
@@ -690,9 +694,9 @@ contains
         call check_allocate('work',lwork,ierr)
 
 #ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, rdm_eigenvalues, work, lwork, info)
+        call ssyev('N', 'U', rdm_size, fci_rdm, rdm_size, rdm_eigenvalues, work, lwork, info)
 #else
-        call dsyev('N', 'U', rdm_size, reduced_density_matrix, rdm_size, rdm_eigenvalues, work, lwork, info)
+        call dsyev('N', 'U', rdm_size, fci_rdm, rdm_size, rdm_eigenvalues, work, lwork, info)
 #endif
 
     end subroutine get_rdm_eigenvalues

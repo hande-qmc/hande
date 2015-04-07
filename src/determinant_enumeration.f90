@@ -77,8 +77,8 @@ contains
         use utils, only: binom_i, get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string, count_set_bits
 
-        use calc, only: truncate_space, truncation_level, ras, ras1, ras3, ras1_min, ras3_max
-        use excitations, only: get_excitation_level, in_ras
+        use calc, only: truncate_space, truncation_level
+        use excitations, only: get_excitation_level
         use system
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
@@ -162,7 +162,7 @@ contains
             call encode_det(sys%basis, occ_list0, d0%f)
             ! Check symmetries of reference matches the desired symmetries.  If
             ! not, are doing spin flip and need to do a full enumeration!
-            if (spin_flip .or. all(ras > 0)) then
+            if (spin_flip) then
                 force_full = .true.
             else
                 call decode_det_spinocc_spinunocc(sys, d0%f, d0)
@@ -299,10 +299,7 @@ contains
                         ! actually produces the correct truncated space without
                         ! requiring this test...
                         in_space = .true.
-                        if (all(ras > 0)) then
-                            call encode_det(sys%basis, occ, f)
-                            in_space = in_ras(ras1, ras3, ras1_min, ras3_max, f)
-                        else if (truncate_space) then
+                        if (truncate_space) then
                             call encode_det(sys%basis, occ, f)
                             in_space = get_excitation_level(d0%f,f) <= truncation_level
                         end if

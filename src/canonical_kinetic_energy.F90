@@ -31,25 +31,31 @@ end enum
 
 contains
 
-    subroutine estimate_kinetic_energy(sys)
+    subroutine estimate_kinetic_energy(sys, qmc_in, dmqmc_in)
 
         ! From the Fermi factors calculated in the grand canonical ensemble we can
         ! estimate the total energy in the canonical ensemble by generating determinants
         ! with arbitrary particle number and only keeping those with <N> = nel.
 
         ! In:
+        !    qmc_in: input options relating to QMC methods.
+        ! In/Out:
         !    sys: system being studied.
+        !    dmqmc_in: input options relating to DMQMC.
 
         use system
+        use dmqmc_data, only: dmqmc_in_t
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use parallel
-        use calc, only: ms_in, seed, fermi_temperature
-        use fciqmc_data, only: init_beta, D0_population
-        use utils, only: rng_init_info
+        use calc, only: ms_in
         use hamiltonian_ueg, only: sum_sp_eigenvalues, potential_energy_ueg
         use interact, only: calc_interact, check_comms_file
+        use qmc_data, only: qmc_in_t
+        use utils, only: rng_init_info
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         real(dp) :: r
@@ -65,13 +71,13 @@ contains
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
 
-        if (fermi_temperature) then
-            init_beta = init_beta / sys%ueg%ef
+        if (dmqmc_in%fermi_temperature) then
+            dmqmc_in%init_beta = dmqmc_in%init_beta / sys%ueg%ef
         end if
 
         if (parent) then
@@ -83,14 +89,14 @@ contains
         if (parent) write (6,'(1X,a12,6X,a3,19X,a7,15X,a4,18X,a10)') '# iterations', 'E_0', 'E_Error', 'E_HF', 'E_HF-Error'
 
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
+                                            (1+exp(dmqmc_in%init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
         iaccept = 0 ! running total number of samples.
         delta = 0.0_p
         mean = 0.0_p
         local_estimators = 0.0_p
         do ireport = 1, nkinetic_cycles
-            do while (iaccept < ireport*D0_population)
+            do while (iaccept < ireport*qmc_in%D0_population)
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
                                                                        1, occ_list(:sys%nalpha), gen)
                 if (.not. gen) cycle

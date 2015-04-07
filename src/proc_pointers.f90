@@ -42,45 +42,63 @@ abstract interface
         type(excit_t), intent(in) :: excitation
         real(p), intent(inout) :: D0_hf_pop, proj_hf_O_hpsip, proj_hf_H_hfpsip
     end subroutine i_update_proj_hfs
-    subroutine i_update_dmqmc_energy_and_trace(sys, excitation, d, walker_pop, diag, trace, energy)
+    subroutine i_update_dmqmc_energy_and_trace(sys, excitation, d, H00, walker_pop, diag, trace, energy)
         use system, only: sys_t
         import :: excit_t, p, det_info_t
         implicit none
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
         type(det_info_t), intent(in) :: d
-        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: H00, walker_pop
         real(p), intent(in) :: diag
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
     end subroutine i_update_dmqmc_energy_and_trace
-    subroutine i_update_dmqmc_estimators(sys, idet,excitation,walker_pop)
+    subroutine i_update_dmqmc_estimators(sys, cdet, excitation, H00, walker_pop, estimate)
         use system, only: sys_t
+        use determinants, only: det_info_t
         import :: excit_t, p
         implicit none
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: idet
+        type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: walker_pop
+        real(p), intent(in) :: H00, walker_pop
+        real(p), intent(inout) :: estimate
     end subroutine i_update_dmqmc_estimators
-    subroutine i_gen_excit(rng, sys, d, pgen, connection, hmatel)
+    subroutine i_update_dmqmc_correlation_function(sys, cdet, excitation, H00, walker_pop, mask, cfunc)
+        use system, only: sys_t
+        use determinants, only: det_info_t
+        import :: excit_t, p, i0
+        implicit none
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: excitation
+        real(p), intent(in) :: H00, walker_pop
+        integer(i0), allocatable, intent(in) :: mask(:)
+        real(p), intent(inout) :: cfunc
+    end subroutine i_update_dmqmc_correlation_function
+    subroutine i_gen_excit(rng, sys, qmc_in, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
     end subroutine i_gen_excit
-    subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
+    subroutine i_gen_excit_finalise(rng, sys, qmc_in, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(in) :: d
         type(excit_t), intent(inout) :: connection
         real(p), intent(out) :: hmatel
@@ -93,20 +111,22 @@ abstract interface
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
     end function i_sc0
-    subroutine i_set_parent_flag(pop, f, determ_flag, flag)
+    subroutine i_set_parent_flag(pop, init_pop, f, determ_flag, flag)
         import :: i0, p
         implicit none
-        real(p), intent(in) :: pop
+        real(p), intent(in) :: pop, init_pop
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: determ_flag
         integer, intent(out) :: flag
     end subroutine i_set_parent_flag
-    subroutine i_create_spawned_particle(basis, d, connection, nspawned, particle_indx, spawn, f)
+    subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
         import :: excit_t, det_info_t, int_p, i0
         implicit none
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: d
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawned
@@ -114,12 +134,14 @@ abstract interface
         integer(i0), intent(in), optional, target :: f(:)
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
-    subroutine i_create_spawned_particle_dm(basis, f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
+    subroutine i_create_spawned_particle_dm(basis, reference, f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
         use spawn_data, only: spawn_t
         use basis_types, only: basis_t
+        use qmc_data, only: reference_t
         import :: excit_t, i0, int_p
         implicit none
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len)
         integer(i0), intent(in) :: f2(basis%string_len)
         type(excit_t), intent(in) :: connection
@@ -127,12 +149,13 @@ abstract interface
         integer, intent(in) :: spawning_end, particle_indx
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
-    subroutine i_trial_fn(sys, cdet, connection, hmatel)
+    subroutine i_trial_fn(sys, cdet, connection, weights, hmatel)
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
+        real(p), allocatable, intent(in) :: weights(:)
         real(p), intent(inout) :: hmatel
     end subroutine i_trial_fn
 
@@ -150,7 +173,7 @@ procedure(i_update_proj_hfs), pointer :: update_proj_hfs_ptr => null()
 procedure(i_update_dmqmc_energy_and_trace), pointer :: update_dmqmc_energy_and_trace_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
-procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_correlation_ptr => null()
+procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlation_ptr => null()
 
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
@@ -176,18 +199,23 @@ end type gen_excit_ptr_t
 type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
-    subroutine i_spawner(rng, sys, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, nspawned, connection)
+    subroutine i_spawner(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, weights, &
+                         nspawned, connection)
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
-        import :: det_info_t, excit_t, gen_excit_ptr_t, int_p
+        import :: det_info_t, excit_t, gen_excit_ptr_t, int_p, p, dp
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: d
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawned
         type(excit_t), intent(out) :: connection
     end subroutine i_spawner

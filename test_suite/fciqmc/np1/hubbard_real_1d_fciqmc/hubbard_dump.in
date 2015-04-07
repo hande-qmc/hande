@@ -23,3 +23,4 @@ dump_restart 1
 ms 1
 sym 1
 seed 7
+init_pop 10

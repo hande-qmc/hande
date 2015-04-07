@@ -1071,6 +1071,8 @@ The following options are valid for FCIQMC calculations.
 **select_reference_det** [*N* [*pop_fac*]]
     Default: off, 20 and 1.5.
 
+    This option is only available when using the *fciqmc* method.
+
     Set the reference determinant to be the determinant with the largest
     population every *N* cycles if that population is greater than the
     population on the current reference determinant by a factor larger than
@@ -1316,13 +1318,6 @@ Note: The DMQMC features have only been coded and tested for the Heisenberg mode
 
     Set the number of beta loops. This is the number of times that the complete range of beta values
     will be looped over before the simulation finishes.
-**dmqmc_average_shift** *N*
-    Integer.
-
-    For the first *N* beta loops, the shift as a function of beta is stored. It is then averaged, and
-    this average shift profile is used in all future beta loops. Using a constant shift profile for
-    all beta loops will remove shift biases. Note that large fluctuations in the population may
-    occur on many beta loops when using this option.
 **dmqmc_energy**
     Calculate the thermal expectation value of the Hamiltonian operator.
 

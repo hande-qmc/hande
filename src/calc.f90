@@ -2,6 +2,7 @@ module calc
 
 use const
 use csr, only: csrp_t
+use dmqmc_data, only: rdm_t
 use parallel, only: blacs_info
 
 implicit none
@@ -44,29 +45,6 @@ integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
 integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
-! Using the initiator approximation in FCIQMC or CCMC?
-logical :: initiator_approximation = .false.
-
-! [review] - AJWT: Both these options only refer to CCMC, so should they be in calc?
-! [review] - JSS: calc is a bit of a dumping ground until the purication/lua-ification
-! [review] - JSS: hits it.  I'd say it's fine to leave it here for now.
-
-! Use the full non-composite algorithm in CCMC?
-logical :: ccmc_full_nc = .false.
-
-! Sample only linked clusters in CCMC?
-logical :: linked_ccmc = .false.
-
-! Ms of determinants.  If not set, then all possible values of Ms are considered
-! in FCI.  FCIQMC assumes ms = 0 if not given in input.
-integer :: ms_in = huge(1)
-
-! Symmetry block of determinants.  Ignored for real space formulation.  Refers
-! to a wavevector in momentum space formulation.  If not set, then determinants
-! of all possible momenta are considered in FCI.  FCIQMC assumes determinants
-! with 0 momentum are to be considered if not specified in input.
-integer :: sym_in = huge(1)
-
 !--- Info for FCI calculations ---
 
 ! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
@@ -102,6 +80,23 @@ character(255) :: hamiltonian_file = 'HAMIL'
 ! BLACS info for diagonalisation
 type(blacs_info) :: proc_blacs_info
 
+! Variables relating to FCI RDM calculation.
+
+! If true then, if doing an exact diagonalisation, calculate and output the
+! eigenvalues of the reduced density matrix requested.
+logical :: doing_exact_rdm_eigv = .false.
+
+! Used to hold the RDM in FCI calculations.
+real(p), allocatable :: fci_rdm(:,:)
+
+! The total number of RDMs beings calculated.
+! NOTE: This can only be equal to 1 currently.
+integer :: fci_nrdms = 0
+
+! This stores  information for the various RDMs that the user asks to be
+! calculated. Each element of this array corresponds to one of these RDMs.
+type(rdm_t), allocatable :: fci_rdm_info(:) ! (fci_nrdms)
+
 !--- Parallel info for FCI calculations ---
 
 ! Distribution of Hamiltonian matrix across the processors.
@@ -115,26 +110,64 @@ integer, parameter :: distribute_cols = 2
 
 ! Flag which stores which distribution mode is in use.
 integer :: distribute = distribute_off
-! Flag for using non-blocking communications.
-! Default: False.
-logical :: non_blocking_comm = .false.
-! Flag for using load balancing.
-! Default: False.
-logical :: doing_load_balancing = .false.
 
-!--- Input data: Hilbert space truncation ---
+! --- QMC trial (importance-sampling) functions ---
 
-! CI/CIQMC:
+! For the Heisenberg model, several different trial functions can be used in the
+! energy estimator. Only a single determinant can be used for the Hubbard model.
+integer, parameter :: single_basis = 0
+integer, parameter :: neel_singlet = 1
+
+! For the Heisenberd model, a guiding function may be used,
+! |psi_G> = \sum_{i} a_i |psi_i>, so that the new Hamiltonian matrix elements are
+! H_ij^new = (a_i*H_ij)/a_j. This is just importance sampling. These functions
+! represent the different types of functions whihc may be used.
+integer, parameter :: no_guiding = 0
+! Note that when we use the Neel singlet state as a guiding function, it must also
+! be used as the trial function in calculating the projected energy.
+integer, parameter :: neel_singlet_guiding = 1
+
+!--- Info for DMQMC calculations ---
+
+! For DMQMC, the user may want to calculate many different combinations
+! of estimators. The above variable, calc-type, does a similar thing
+! for the types of calculation used. dmqmc_calc_type is a variable
+! which works in the same way, to allow the user to choose any combination
+! of estimators in a general way. The new function doing_dmqmc_calc works
+! in exactly the same way to doing_calc.
+integer :: dmqmc_calc_type = 0
+integer, parameter :: dmqmc_energy = 2**0
+integer, parameter :: dmqmc_staggered_magnetisation = 2**1
+integer, parameter :: dmqmc_energy_squared = 2**2
+integer, parameter :: dmqmc_correlation = 2**3
+integer, parameter :: dmqmc_rdm_r2 = 2**4
+integer, parameter :: dmqmc_full_r2 = 2**5
+
+!--- global data (to deal with)
+
+! Ms of determinants.  If not set, then all possible values of Ms are considered
+! in FCI.  FCIQMC assumes ms = 0 if not given in input.
+integer :: ms_in = huge(1)
+
+! Symmetry block of determinants.  Ignored for real space formulation.  Refers
+! to a wavevector in momentum space formulation.  If not set, then determinants
+! of all possible momenta are considered in FCI.  FCIQMC assumes determinants
+! with 0 momentum are to be considered if not specified in input.
+integer :: sym_in = huge(1)
+
+! Which trial function are we using? Only relevant to the Heisneberg model.
+! trial_function will always be 0 for other models to represent a single determinant.
+integer :: trial_function = 0
+
+! If we are not using importance sampling, this is set to 0. Else it is set to one
+! of the above values to specify the corresponding guiding function being used.
+integer :: guiding_function = 0
+
 ! If true, truncate the Slater determinant space such that it contains
 ! determinants which differ from the reference determinant (e.g. Hartree--Fock
 ! determinant) by at most truncation_level excitations.
 ! truncation_level excitations.  A truncation level equal to the number of
 ! electrons corresponds to the full space
-! DMQMC:
-! If true, truncate the density matrix space such that it only contains matrix
-! elements corresponding to two determinants which differ by at most
-! truncation_level excitations.  A truncation level equal to the number of
-! electrons corresponds to the full space.
 logical :: truncate_space = .false.
 integer :: truncation_level
 
@@ -154,128 +187,12 @@ integer :: ras3_max
 ! Bit masks for showing only orbitals in RAS1 and RAS3 spaces.
 integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
 
-!--- Info for stocastic calculations ---
-
-! Seed used to initialise the dSFMT random number generator.
-! Default: hash of global UUID and time.
-integer :: seed
-
-! --- QMC reference state and trial (importance-sampling) functions ---
-
-! For the Heisenberg model, several different trial functions can be used in the
-! energy estimator. Only a single determinant can be used for the Hubbard model.
-integer, parameter :: single_basis = 0
-integer, parameter :: neel_singlet = 1
-
-! Which trial function are we using? Only relevant to the Heisneberg model.
-! trial_function will always be 0 for other models to represent a single determinant.
-integer :: trial_function = 0
-
-! For the Heisenberd model, a guiding function may be used,
-! |psi_G> = \sum_{i} a_i |psi_i>, so that the new Hamiltonian matrix elements are
-! H_ij^new = (a_i*H_ij)/a_j. This is just importance sampling. These functions
-! represent the different types of functions whihc may be used.
-integer, parameter :: no_guiding = 0
-! Note that when we use the Neel singlet state as a guiding function, it must also
-! be used as the trial function in calculating the projected energy.
-integer, parameter :: neel_singlet_guiding = 1
-
-! If we are not using importance sampling, this is set to 0. Else it is set to one
-! of the above values to specify the corresponding guiding function being used.
-integer :: guiding_function = 0
-
-!--- Info for DMQMC calculations ---
-
-! For DMQMC, the user may want to calculate many different combinations
-! of estimators. The above variable, calc-type, does a similar thing
-! for the types of calculation used. dmqmc_calc_type is a variable
-! which works in the same way, to allow the user to choose any combination
-! of estimators in a general way. The new function doing_dmqmc_calc works
-! in exactly the same way to doing_calc.
-integer :: dmqmc_calc_type = 0
-integer, parameter :: dmqmc_energy = 2**0
-integer, parameter :: dmqmc_staggered_magnetisation = 2**1
-integer, parameter :: dmqmc_energy_squared = 2**2
-integer, parameter :: dmqmc_correlation = 2**3
-integer, parameter :: dmqmc_rdm_r2 = 2**4
-integer, parameter :: dmqmc_full_r2 = 2**5
-! Propagate a trial density matrix to a specific temeperature.
-logical :: propagate_to_beta = .false.
-! Use the free electron Hamiltonian as the trial density matrix.
-! Default: Use the "Hartree-Fock" trial density matrix.
-logical :: free_electron_trial = .false.
-! Use the grand canonical partition function to inititally distribute the psips.
-logical :: grand_canonical_initialisation = .false.
-! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
-logical :: fermi_temperature = .false.
-
-! Combine information required for non-blocking report loop quantities
-! into one type for convenience.
-type nb_rep_t
-    ! Array to store report loop estimators such as projected energy
-    ! etc.
-    ! This array must not be deallocated, copied or inspected in any
-    ! way in between report loop communication.
-    real(dp), allocatable :: rep_info(:)
-    ! Array whose entries will contain:
-    ! 1. The total number of spawned walkers in a given report loop
-    !    which is to be used for calculating the spawning rate.
-    ! 2. The number of walkers spawned from a given processor
-    !    to all other processors except the current one, which
-    !    is used for calculating the total number of walkers for a give
-    !    report loop.
-    integer :: nb_spawn(2)
-    ! Array of requests used for non blocking communications.
-    ! This array must not be deallocated, copied or inspected in any
-    ! way in between report loop communication. request(nprocs)
-    integer, allocatable :: request(:)
-end type nb_rep_t
-
-type load_t
-    ! Number of slots walker lists are initially subdivided into for proc_map
-    ! Default = 20. This reverts to 1 when run in serial.
-    ! Input option: load_balancing_slots
-    integer :: nslots = 20
-    ! Population which must be reached before load balancing is attempted.
-    ! Default = 1000.
-    ! Input option: load_balancing_pop
-    integer(int_64) :: pop = 1000
-    ! Percentage load imbalance we aim to achieve when performing load balancing.
-    ! i.e. min_pop = (1-percent_imbal)*av_pop, max_pop = (1+percent_imbal)*av_pop.
-    ! Default = 0.05
-    ! Input option: percent_imbal
-    real(p) :: percent= 0.05
-    ! Maximum number of load balancing attempts.
-    ! Default = 2.
-    ! Input option: max_load_attempts
-    integer :: max_attempts = 2
-    ! Write load balancing information every time load balancing is attempted.
-    ! Input option: write_load_info
-    logical :: write_info = .false.
-    ! Tag to check which stage if load balancing is required. This is reset to false
-    ! once redistribution of determinants has taken place to ensure load balancing
-    ! occurs once during a report loop.
-    logical :: needed = .false.
-    ! Current number of load balancing attempts.
-    integer :: nattempts = 0
-    ! Array which maps particles to processors. If attempting load balancing then
-    ! proc_map is initially subdivided into load_balancing_slots number of slots which cyclically
-    ! map particles to processors using modular arithmetic. Otherwise it's entries are
-    ! 0,1,..,nprocs-1.
-    integer, allocatable :: proc_map(:)
-end type load_t
-
-type parallel_t
-    type(load_t) :: load
-    type(nb_rep_t) :: report_comm
-end type parallel_t
-
 ! If true then allow the use of MPI barrier calls.
 logical :: use_mpi_barriers = .false.
 
 contains
 
-    subroutine init_calc_defaults(git_sha1, uuid)
+    subroutine init_calc_defaults(git_sha1, uuid, seed)
 
         ! Initialise calculation defaults which cannot be set at compile-time.
 
@@ -283,6 +200,8 @@ contains
         !    git_sha1: git SHA1 hash of the calculation.  Note that only the first 40
         !       characters (the length of the SHA1 hash) are actually used.
         !    uuid: UUID of the calculation.
+        ! Out:
+        !    seed: seed used to initialise the dSFMT random number generator.
 
         use iso_c_binding, only: c_loc, c_ptr, c_char, c_int
         use hashing, only: MurmurHash2
@@ -290,6 +209,8 @@ contains
 
         character(*), intent(in) :: git_sha1
         character(36), intent(in) :: uuid
+        integer, intent(out) :: seed
+
         character(len=len(uuid)+10) :: seed_data
         character(kind=c_char), target :: cseed_data(len(seed_data)+1)
         type(c_ptr) :: cseed_data_ptr
@@ -344,25 +265,27 @@ contains
 
     end function doing_dmqmc_calc
 
-    subroutine init_parallel_t(ntypes, ndata, non_blocking_comm, par_calc)
+    subroutine init_parallel_t(ntypes, ndata, non_blocking_comm, par_calc, nslots)
 
-        ! Allocate parallel_t object.
+        ! Allocate and initialise a parallel_t object.
 
         ! In:
         !    ntypes: number of types of walkers sampled (see sampling_size).
         !    ndata: the number of additional data elements accumulated over all
         !        processors (nparticles_start_ind-1).
         !    non_blocking_comm: true if using non-blocking communications
-        !    load_balancing: true if attempting load balancing.
+        !    nslots: number of slots we divide proc_map into
         ! In/Out:
         !    par_calc: type containing parallel information for calculation
         !        see definitions above.
 
         use parallel, only: nprocs
         use checking, only: check_allocate
+        use qmc_data, only: parallel_t
 
         integer, intent(in) :: ntypes, ndata
         logical, intent(in) :: non_blocking_comm
+        integer, intent(in) :: nslots
         type(parallel_t), intent(inout) :: par_calc
 
         integer :: i, ierr
@@ -376,24 +299,48 @@ contains
             end if
         end associate
 
-        associate(lb=>par_calc%load)
-            allocate(lb%proc_map(0:lb%nslots*nprocs-1), stat=ierr)
-            call check_allocate('lb%proc_map', size(lb%proc_map), ierr)
-            forall (i=0:lb%nslots*nprocs-1) lb%proc_map(i) = modulo(i,nprocs)
-        end associate
+        call init_proc_map_t(nslots, par_calc%load%proc_map)
 
     end subroutine init_parallel_t
 
-    subroutine dealloc_parallel_t(par_calc)
+    subroutine init_proc_map_t(nslots, pm)
+
+        ! In:
+        !    nslots: number of slots (per processor) we divide proc_map_t into.
+        ! In/Out:
+        !    pm: proc_map_t object containing a mapping of slot to processor index.
+
+        use checking, only: check_allocate
+
+        use parallel, only: nprocs
+        use spawn_data, only: proc_map_t
+
+        integer, intent(in) :: nslots
+        type(proc_map_t), intent(out) :: pm
+
+        integer :: i, ierr
+
+        pm%nslots = nslots
+        allocate(pm%map(0:nslots*nprocs-1), stat=ierr)
+        call check_allocate('pm%map', size(pm%map), ierr)
+        forall (i=0:nslots*nprocs-1) pm%map(i) = modulo(i,nprocs)
+
+    end subroutine init_proc_map_t
+
+    subroutine dealloc_parallel_t(non_blocking_comm, par_calc)
 
         ! Deallocate parallel_t object.
 
+        ! In:
+        !    non_blocking_comm: true if using non-blocking communications
         ! In/Out:
         !    par_calc: type containing parallel information for calculation
         !        see definitions above.
 
         use checking, only: check_deallocate
+        use qmc_data, only: parallel_t
 
+        logical, intent(in) :: non_blocking_comm
         type(parallel_t), intent(inout) :: par_calc
 
         integer :: ierr
@@ -411,10 +358,10 @@ contains
             end if
         end associate
 
-        associate(lb=>par_calc%load)
-            if (allocated(lb%proc_map)) then
-                deallocate(lb%proc_map, stat=ierr)
-                call check_deallocate('lb%proc_mapr', ierr)
+        associate(proc_map=>par_calc%load%proc_map)
+            if (allocated(proc_map%map)) then
+                deallocate(proc_map%map, stat=ierr)
+                call check_deallocate('proc_map%map', ierr)
             end if
         end associate
 

@@ -10,7 +10,7 @@ contains
 
 ! --- Utility routines ---
 
-    subroutine select_ref_det(sys)
+    subroutine select_ref_det(sys, ref_det_factor, qs)
 
         ! Change the reference determinant to be the determinant with the
         ! greatest population if it exceeds some threshold relative to the
@@ -25,6 +25,12 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    ref_det_factor: factor by which population on a determinant must
+        !        exceed the reference population in order to be accepted as
+        !        the new reference.
+        ! In/Out:
+        !    qs: qmc_state_t object. On output the reference determinant may be
+        !        updated, and the diagagonal matrix elements in psip_list also.
 
         use calc, only: doing_calc, hfs_fciqmc_calc
         use determinants, only: decode_det, write_det
@@ -32,8 +38,11 @@ contains
 
         use parallel
         use errors, only: stop_all
+        use qmc_data, only: qmc_state_t
 
         type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: ref_det_factor
+        type(qmc_state_t), intent(inout) :: qs
 
         integer, parameter :: particle_type = 1
         integer :: i, D0_proc
@@ -46,18 +55,18 @@ contains
         real(p) :: H00_max, H00_old
         logical :: updated
 
-        allocate(fmax(lbound(walker_dets, dim=1):ubound(walker_dets, dim=1)))
+        allocate(fmax(lbound(qs%psip_list%states, dim=1):ubound(qs%psip_list%states, dim=1)))
 
-        H00_old = H00
+        H00_old = qs%ref%H00
 
         updated = .false.
         ! Find determinant with largest population.
         max_pop = 0_int_p
-        do i = 1, tot_walkers
-            if (abs(walker_population(particle_type,i)) > abs(max_pop)) then
-                max_pop = walker_population(particle_type,i)
-                fmax = walker_dets(:,i)
-                H00_max = walker_data(particle_type, i)
+        do i = 1, qs%psip_list%nstates
+            if (abs(qs%psip_list%pops(particle_type,i)) > abs(max_pop)) then
+                max_pop = qs%psip_list%pops(particle_type,i)
+                fmax = qs%psip_list%states(:,i)
+                H00_max = qs%psip_list%dat(particle_type, i)
             end if
         end do
 
@@ -71,10 +80,10 @@ contains
 
 #ifdef PARALLEL
 
-        if (all(fmax == f0)) then
+        if (all(fmax == qs%ref%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
             in_data = (/ 0_int_p, int(iproc,int_p) /)
-        else if (abs(max_pop) > ref_det_factor*abs(D0_population)) then
+        else if (abs(max_pop) > ref_det_factor*abs(qs%estimators%D0_population)) then
             in_data = (/ max_pop, int(iproc,int_p) /)
         else
             ! No det with sufficient population to become reference det on this
@@ -88,44 +97,45 @@ contains
             max_pop = out_data(1)
             updated = .true.
             D0_proc = out_data(2)
-            f0 = fmax
-            H00 = H00_max
+            qs%ref%f0 = fmax
+            qs%ref%H00 = H00_max
             ! Broadcast updated data
-            call mpi_bcast(f0, size(f0), mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
-            call mpi_bcast(H00, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(qs%ref%f0, size(qs%ref%f0), mpi_det_integer, D0_proc, MPI_COMM_WORLD, ierr)
+            call mpi_bcast(qs%ref%H00, 1, mpi_preal, D0_proc, MPI_COMM_WORLD, ierr)
         end if
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(D0_population) .and. any(fmax /= f0)) then
+        if (abs(max_pop) > ref_det_factor*abs(qs%estimators%D0_population) .and. any(fmax /= qs%ref%f0)) then
             updated = .true.
-            f0 = fmax
-            H00 = H00_max
+            qs%ref%f0 = fmax
+            qs%ref%H00 = H00_max
         end if
 
 #endif
 
         if (updated) then
             ! Update occ_list.
-            call decode_det(sys%basis, f0, occ_list0)
-            ! walker_data(1,i) holds <D_i|H|D_i> - H00_old.  Update.
+            call decode_det(sys%basis, qs%ref%f0, qs%ref%occ_list0)
+            ! psip_list%dat(1,i) holds <D_i|H|D_i> - H00_old.  Update.
             ! H00 is currently <D_0|H|D_0> - H00_old.
-            ! Want walker_data(1,i) to be <D_i|H|D_i> - <D_0|H|D_0>
-            ! We'll fix H00 later and avoid an extra tot_walkers*additions.
-            do i = 1, tot_walkers
-                walker_data(1,i) = walker_data(1,i) - H00
+            ! Want psip_list%dat(1,i) to be <D_i|H|D_i> - <D_0|H|D_0>
+            ! We'll fix H00 later and avoid an extra nstates*additions.
+            do i = 1, qs%psip_list%nstates
+                qs%psip_list%dat(1,i) = qs%psip_list%dat(1,i) - qs%ref%H00
             end do
             ! Now set H00 = <D_0|H|D_0> so that future references to it are
             ! correct.
-            H00 = H00 + H00_old
+            qs%ref%H00 = qs%ref%H00 + H00_old
             if (doing_calc(hfs_fciqmc_calc)) call stop_all('select_ref_det', 'Not implemented for HFS.')
             if (parent) then
                 write (6,'(1X,"#",1X,62("-"))')
                 write (6,'(1X,"#",1X,"Changed reference det to:",1X)',advance='no')
-                call write_det(sys%basis, sys%nel, f0, new_line=.true.)
-                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') D0_population
+                call write_det(sys%basis, sys%nel, qs%ref%f0, new_line=.true.)
+                write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
+                            qs%estimators%D0_population
                 write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
-                write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') H00
+                write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
                 write (6,'(1X,"#",1X,62("-"))')
             end if
@@ -338,9 +348,11 @@ contains
 
     end function decide_nattempts
 
-    subroutine load_balancing_report(spawn_mpi_time, determ_mpi_time)
+    subroutine load_balancing_report(nparticles, nstates_active, spawn_mpi_time, determ_mpi_time)
 
         ! In:
+        !    nparticles: number of particles in each space, on this process only.
+        !    nstates_active: number of occupied states, on this process only.
         !    spawn_mpi_time: MPI timings for the spawned list, on this process
         !        only.
         ! In (optional):
@@ -355,10 +367,12 @@ contains
         use parallel
         use utils, only: int_fmt
 
+        real(p), intent(in) :: nparticles(:)
+        integer, intent(in) :: nstates_active
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 
-        real(dp) :: load_data(sampling_size, nprocs)
+        real(dp) :: load_data(size(nparticles), nprocs)
         integer :: load_data_int(nprocs)
         integer :: i, ierr
         real(p) :: barrier_this_proc
@@ -370,17 +384,17 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, sampling_size, mpi_preal, load_data, sampling_size, &
+            call mpi_gather(nparticles, size(nparticles), mpi_preal, load_data, size(nparticles), &
                             mpi_preal, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
-                do i = 1, sampling_size
-                    if (sampling_size > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
+                do i = 1, size(nparticles)
+                    if (size(nparticles) > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
                     write (6,'(1X,"Min # of particles on a processor:",6X,es12.6)') minval(load_data(i,:))
                     write (6,'(1X,"Max # of particles on a processor:",6X,es12.6)') maxval(load_data(i,:))
                     write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
-            call mpi_gather(tot_walkers, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nstates_active, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
             call mpi_gather(spawn_mpi_time%comm_time, 1, mpi_preal, spawn_comms, 1, mpi_preal, 0, MPI_COMM_WORLD, ierr)
 
             if (present(determ_mpi_time)) call mpi_gather(determ_mpi_time%comm_time, 1, mpi_preal, determ_comms, 1, &
@@ -423,13 +437,15 @@ contains
 #else
         use parallel, only: parallel_timing_t
 
+        real(p), intent(in) :: nparticles(:)
+        integer, intent(in) :: nstates_active
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 #endif
 
     end subroutine load_balancing_report
 
-    subroutine redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+    subroutine redistribute_particles(states, real_factor, pops, nstates, nparticles, spawn)
 
         ! [todo] JSS: - update comments to be more general than just for CCMC.
 
@@ -444,15 +460,15 @@ contains
         ! clusters from being on the same processor at the same time.
 
         ! In:
-        !    walker_dets: list of occupied excitors on the current processor.
+        !    states: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         ! In/Out:
         !    nparticles: number of excips on the current processor.
-        !    walker_populations: Population on occupied excitors.  On output the
+        !    pops: Population on occupied excitors.  On output the
         !        populations of excitors which are sent to other processors are
         !        set to zero.
-        !    tot_walkers: number of occupied excitors on the current processor.
+        !    nstates: number of occupied excitors on the current processor.
         !    spawn: spawn_t object.  On output particles which need to be sent
         !        to another processor have been added to the correct position in
         !        the spawned store.
@@ -462,10 +478,10 @@ contains
         use spawning, only: assign_particle_processor, add_spawned_particles
         use parallel, only: iproc, nprocs
 
-        integer(i0), intent(in) :: walker_dets(:,:)
+        integer(i0), intent(in) :: states(:,:)
         integer(int_p), intent(in) :: real_factor
-        integer(int_p), intent(inout) :: walker_populations(:,:)
-        integer, intent(inout) :: tot_walkers
+        integer(int_p), intent(inout) :: pops(:,:)
+        integer, intent(inout) :: nstates
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
 
@@ -474,15 +490,15 @@ contains
         integer :: iexcitor, pproc, string_len, slot
 
         nsent = 0.0_dp
-        string_len = size(walker_dets, dim=1)
+        string_len = size(states, dim=1)
 
         !$omp parallel do default(none) &
-        !$omp shared(tot_walkers, walker_dets, walker_populations, spawn, iproc, nprocs, string_len) &
+        !$omp shared(nstates, states, pops, spawn, iproc, nprocs, string_len, nload_slots) &
         !$omp private(pproc, slot) reduction(+:nsent)
-        do iexcitor = 1, tot_walkers
+        do iexcitor = 1, nstates
             !  - set hash_shift and move_freq
-            call assign_particle_processor(walker_dets(:,iexcitor), string_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, pproc, slot)
+            call assign_particle_processor(states(:,iexcitor), string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                           nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
             if (pproc /= iproc) then
                 ! Need to move.
                 ! Add to spawned array so it will be sent to the correct
@@ -491,12 +507,12 @@ contains
                 ! population no matter what.  This relies upon the
                 ! (undocumented) 'feature' that a flag of 0 indicates the parent
                 ! was an initiator...
-                call add_spawned_particles(walker_dets(:,iexcitor), walker_populations(:,iexcitor), pproc, spawn)
+                call add_spawned_particles(states(:,iexcitor), pops(:,iexcitor), pproc, spawn)
                 ! Update population on the sending processor.
-                nsent = nsent + abs(real(walker_populations(:,iexcitor),p))
+                nsent = nsent + abs(real(pops(:,iexcitor),p))
                 ! Zero population here.  Will be pruned on this determinant
-                ! automatically during annihilation (which will also update tot_walkers).
-                walker_populations(:,iexcitor) = 0_int_p
+                ! automatically during annihilation (which will also update nstates).
+                pops(:,iexcitor) = 0_int_p
             end if
         end do
         !$omp end parallel do
@@ -508,49 +524,59 @@ contains
 
     end subroutine redistribute_particles
 
-    subroutine redistribute_semi_stoch_t(sys, spawn, determ)
+    subroutine redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, spawn, determ)
 
         ! Recreate the semi_stoch_t object (if a non-empty space is in use).
         ! This requires sending deterministic states to their new processes
         ! and recreating the related objects, such as the deterministic
         ! Hamiltonian.
 
-        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
-
         ! In:
         !    sys: system being studied.
+        !    reference: information on the current reference determinant.
+        !    annihilation_flags: calculation specific annihilation flags.
+        !    psip_list: list of particles and their locations.
         !    spawn: spawn_t object, required for determining the new processes
         !        labels for deterministic states.
         ! In/Out:
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
 
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
+
         use spawn_data, only: spawn_t
         use system, only: sys_t
+        use qmc_data, only: reference_t, semi_stoch_t, empty_determ_space, reuse_determ_space, particle_t
+        use qmc_data, only: annihilation_flags_t, semi_stoch_in_t
 
         type(sys_t), intent(in) :: sys
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
+        type(reference_t), intent(in) :: reference
+        type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
 
-        logical :: sep_annihil_copy
+        type(semi_stoch_in_t) :: ss_in_new
 
         if (determ%space_type /= empty_determ_space) then
-            ! Copy this logical to re-pass into the initialisation routine.
-            sep_annihil_copy = determ%separate_annihilation
+            ! Create a temporary semi_stoch_in_t object to pass into the
+            ! init_semi_stoch routine to update the determ object.
+            ss_in_new%space_type = reuse_determ_space
+            ss_in_new%separate_annihil = determ%separate_annihilation
 
             ! Deallocate the semi_stoch_t instance, except for the list of all
             ! deterministic states, which we want to reuse.
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, sys, spawn, reuse_determ_space, 0, sep_annihil_copy, .false., .true.)
+            call init_semi_stoch_t(determ, ss_in_new, sys, psip_list, reference, annihilation_flags, spawn, .false.)
         end if
 
     end subroutine redistribute_semi_stoch_t
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, rep_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -558,28 +584,36 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
+        ! In/Out:
+        !    qs: qmc_state_t object.
         ! In (optional):
-        ! Out (Optional):
-        !    rep_comm: nb_rep_t object containg report loop information.
+        !    nb_comm: using non-blocking communications?
+        !    spawn_elsewhere: number of particles spawned from the current
+        !       processor to other processors.  Relevant only when restarting
+        !       non-blocking calculations.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
+        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
+        use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
         use system, only: sys_t
-        use calc, only: non_blocking_comm, nb_rep_t
-        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
 
         type(sys_t), intent(in) :: sys
-        type(nb_rep_t), optional, intent(inout) :: rep_comm
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout), target :: qs
+        logical, optional, intent(in) :: nb_comm
         integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet
-        real(p) :: ntot_particles(sampling_size)
-        real(p) :: real_population(sampling_size)
+        real(p) :: ntot_particles(qs%psip_list%nspaces)
+        real(p) :: real_population(qs%psip_list%nspaces)
         type(det_info_t) :: cdet
         real(p) :: hmatel
         type(excit_t) :: D0_excit
+        logical :: nb_comm_local
 #ifdef PARALLEL
         integer :: ierr
         real(p) :: proj_energy_sum, D0_population_sum
@@ -588,115 +622,113 @@ contains
         ! Calculate the projected energy based upon the initial walker
         ! distribution.  proj_energy and D0_population are both accumulated in
         ! update_proj_energy.
-        proj_energy = 0.0_p
-        D0_population = 0.0_p
+        qs%estimators%proj_energy = 0.0_p
+        qs%estimators%D0_population = 0.0_p
         call alloc_det_info_t(sys, cdet)
-        do idet = 1, tot_walkers
-            cdet%f = walker_dets(:,idet)
+        do idet = 1, qs%psip_list%nstates
+            cdet%f = qs%psip_list%states(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
-            cdet%data => walker_data(:,idet)
-            real_population = real(walker_population(:,idet),p)/real_factor
+            cdet%data => qs%psip_list%dat(:,idet)
+            real_population = real(qs%psip_list%pops(:,idet),p)/real_factor
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
-            D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, f0)
-            call update_proj_energy_ptr(sys, f0, cdet, real_population(1), &
-                                        D0_population, proj_energy, D0_excit, hmatel)
+            D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
+            call update_proj_energy_ptr(sys, qs%ref%f0, cdet, real_population(1), &
+                                        qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info_t(cdet)
 
+        ! Using non blocking communications?
+        nb_comm_local = .false.
+        if (present(nb_comm)) nb_comm_local = nb_comm
 #ifdef PARALLEL
-        if (present(rep_comm)) then
+        if (nb_comm_local) then
             ! The output in non-blocking comms is delayed one report loop, so initialise
             ! the send here.
             ! For simplicity, hook into the normal estimator communications, which normalises
             ! by the number of MC cycles in a report loop (hence need to rescale to fake it).
-            D0_population = D0_population*ncycles
-            proj_energy = proj_energy*ncycles
-            call local_energy_estimators(rep_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
-            call update_energy_estimators_send(rep_comm)
+            qs%estimators%D0_population = qs%estimators%D0_population*qmc_in%ncycles
+            qs%estimators%proj_energy = qs%estimators%proj_energy*qmc_in%ncycles
+            call local_energy_estimators(qs, qs%par_info%report_comm%rep_info, spawn_elsewhere=spawn_elsewhere)
+            call update_energy_estimators_send(qs%par_info%report_comm)
         else
-            call mpi_allreduce(proj_energy, proj_energy_sum, sampling_size, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(nparticles, ntot_particles, sampling_size, MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
-            proj_energy = proj_energy_sum
-            D0_population = D0_population_sum
+            call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_PREAL, &
+                               MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
+            call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+            qs%estimators%proj_energy = proj_energy_sum
+            qs%estimators%D0_population = D0_population_sum
             ! TODO: HFS, DMQMC quantities
         end if
 #else
-        ntot_particles = nparticles
+        ntot_particles = qs%psip_list%nparticles
 #endif
 
-        if (.not. non_blocking_comm .and. parent) then
+        if (.not. nb_comm_local .and. parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            call write_fciqmc_report(0, ntot_particles, 0.0, .true.)
+            call write_fciqmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false.)
         end if
 
     end subroutine initial_fciqmc_status
 
 ! --- QMC loop and cycle initialisation routines ---
 
-    subroutine init_report_loop(bloom_stats)
+    subroutine init_report_loop(qs, bloom_stats)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
 
         use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
+        use qmc_data, only: qmc_state_t
 
+        type(qmc_state_t), intent(inout) :: qs
         type(bloom_stats_t), intent(inout) :: bloom_stats
 
         call bloom_stats_init_report_loop(bloom_stats)
 
-        proj_energy = 0.0_p
-        rspawn = 0.0_p
-        D0_population = 0.0_p
-
-        ! DMQMC-specific...
-        if (calculate_excit_distribution) excit_distribution = 0.0_p
-        if (allocated(trace)) trace = 0.0_p
-        estimator_numerators = 0.0_p
+        qs%estimators%proj_energy = 0.0_p
+        qs%spawn_store%rspawn = 0.0_p
+        qs%estimators%D0_population = 0.0_p
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(rng, sys, real_factor, nattempts, ndeath, min_attempts, determ)
+    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
 
         ! In/Out:
-        !    rng: random number generator.
-        ! In:
-        !    sys: system being studied
-        !    real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
-        !    min_attempts (optional): if present, set nattempts to be at least this value.
+        !    psip_list: total population (on this proccesor) is used to set
+        !       nattempts and population is redistributed if requested by the
+        !       load balancing approach.
+        !    spawn: spawn_t object for holding spawned particles.  Reset on exit.
         ! Out:
         !    nattempts: number of spawning attempts to be made (on the current
         !        processor) this cycle.
         !    ndeath: number of particle deaths that occur in a Monte Carlo
         !        cycle.  Reset to 0 on output.
-        ! In/Out (optional):
-        !    determ: The deterministic space being used, as required for
-        !        semi-stochastic calculations.
+        ! In (optional):
+        !    min_attempts: if present, set nattempts to be at least this value.
+        !    nb_comm: true if using non-blocking communications.
 
-        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc, doing_load_balancing
-        use calc, only: non_blocking_comm
-        use dSFMT_interface, only: dSFMT_t
-        use load_balancing, only: do_load_balancing
-        use system, only: sys_t
+        use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
+        use qmc_data, only: particle_t
+        use spawn_data, only: spawn_t
 
-        type(dSFMT_t), intent(inout) :: rng
-        type(sys_t), intent(in) :: sys
-        integer(int_p), intent(in) :: real_factor
+        type(particle_t), intent(inout) :: psip_list
+        type(spawn_t), intent(inout) :: spawn
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
-        type(semi_stoch_t), optional, intent(inout) :: determ
+
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
-        qmc_spawn%head = qmc_spawn%head_start
+        spawn%head = spawn%head_start
 
         ! Reset death counter
         ndeath = 0_int_p
@@ -708,98 +740,158 @@ contains
             ! ct algorithm: kinda poorly defined.
             ! ccmc: number of excitor clusters we'll randomly generate and
             ! attempt to spawn from.
-            nattempts = nparticles(1)
+            nattempts = psip_list%nparticles(1)
         else if (doing_calc(dmqmc_calc)) then
             ! Each particle and each end gets to attempt to spawn onto a
             ! connected determinant and a chance to die/clone.
-            nattempts = nint(4*nparticles(1)*sampling_size)
+            nattempts = nint(4*psip_list%nparticles(1)*psip_list%nspaces)
         else
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
-            nattempts = nint(2*nparticles(1))
+            nattempts = nint(2*psip_list%nparticles(1))
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
 
-        if (doing_load_balancing .and. par_info%load%needed) then
-            call do_load_balancing(real_factor, par_info)
-            call redistribute_load_balancing_dets(rng, sys, walker_dets, real_factor, determ, walker_population, &
-                                                  tot_walkers, nparticles, qmc_spawn)
+    end subroutine init_mc_cycle
+
+    subroutine load_balancing_wrapper(sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, nb_comm, &
+                                      rng, psip_list, spawn, par_info, determ)
+
+        ! In:
+        !    sys: system being studied
+        !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
+        !    load_bal_in: input options for load balancing.
+        !    annihilation_flags: calculation specific annihilation flags.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
+        !    nb_comm: true if using non-blocking communications.
+        ! In/Out:
+        !    rng: random number generator.
+        !    psip_list: total population (on this proccesor) is used to set
+        !       nattempts and population is redistributed if requested by the
+        !       load balancing approach.
+        !    spawn: spawn_t object for holding spawned particles.  Reset on exit
+        !       and updated with the new version of par_info%load%proc_map.
+        !    par_info: type containing parallel information of the state of the
+        !       system (load balancing and non-blocking).  Holds the 'master' copy
+        !       of the updated proc_map on exit.
+        ! In/Out (optional):
+        !    determ: The deterministic space being used, as required for
+        !        semi-stochastic calculations.
+
+        ! WARNIGN: all spawn_t objects (bar the spawn argument provided) which operate
+        ! on the same particle_t object must be updated with the proc_info from the
+        ! master copy (par_info%load%proc_map).  It is the programmer's responsibility
+        ! to ensure this happens.
+
+        use system, only: sys_t
+        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t, particle_t
+        use qmc_data, only: parallel_t, semi_stoch_t
+        use dSFMT_interface, only: dSFMT_t
+        use load_balancing, only: do_load_balancing
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
+        type(load_bal_in_t), intent(in) :: load_bal_in
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
+        integer(int_p), intent(in) :: real_factor
+        logical, intent(in) :: nb_comm
+        type(dSFMT_t), intent(inout) :: rng
+        type(particle_t), intent(inout) :: psip_list
+        type(spawn_t), intent(inout) :: spawn
+        type(parallel_t), intent(inout) :: par_info
+        type(semi_stoch_t), optional, intent(inout) :: determ
+
+
+        if (par_info%load%needed) then
+            call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
+            call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%states, real_factor, determ, &
+                                                  psip_list, spawn, annihilation_flags)
             ! If using non-blocking communications we still need this flag to
             ! be set.
-            if (.not. non_blocking_comm) par_info%load%needed = .false.
+            if (.not. nb_comm) par_info%load%needed = .false.
         end if
 
-    end subroutine init_mc_cycle
+    end subroutine load_balancing_wrapper
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, ireport, iteration, update_tau, ntot_particles, nspawn_events, report_time, &
-                               semi_stoch_shift_it, semi_stoch_start_it, soft_exit, update_estimators, bloom_stats, rep_comm)
+    subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,             &
+                                nspawn_events, semi_stoch_shift_it, semi_stoch_start_it,           &
+                                soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, &
+                                nb_comm)
 
         ! In:
         !    sys: system being studied.
-        !    ireport: index of current report loop.
         !    iteration: The current iteration of the simulation.
-        !    update_tau: true if the processor thinks the timestep should be rescaled.
-        !             Only used if not in variable shift mode and if tau_search is being
-        !             used.
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
-        !    update_estimators (optional): update the (FCIQMC/CCMC) energy estimators.  Default: true.
+        !    load_bal_in: input options for load balancing.
         ! In/Out:
+        !    qmc_in: input optons relating to QMC methods.
+        !    update_tau: true if the processor thinks the timestep should be
+        !        rescaled. This will be updated on output to only be true if
+        !        in variable shift mode and if tau_search is being used.
+        !    qs: qmc_state_t object. Energy estimators are updated.
         !    ntot_particles: total number (across all processors) of
         !        particles in the simulation at end of the previous report loop.
         !        Returns the current total number of particles for use in the
         !        next report loop if update_estimators is true.
         !    semi_stoch_start_it: The iteration on which to start performing
         !        semi-stochastic.
-        !    report_time: time at the start of the current report loop.  Returns
-        !        the current time (ie the time for the start of the next report
-        !        loop.
         ! Out:
         !    soft_exit: true if the user has requested an immediate exit of the
         !        QMC algorithm via the interactive functionality.
+        ! In (optional):
+        !    update_estimators: update the (FCIQMC/CCMC) energy estimators.  Default: true.
+        !    doing_lb: true if doing load balancing.
+        !    nb_comm: true if using non-blocking communications.
+        !    load_bal_in: input options for load balancing.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
-        !    rep_comm: nb_rep_t object containing report loop info. Used for
-        !        non-blocking communications where we receive report information
-        !        from previous iteration and communicate the current iterations
-        !        estimators.
 
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
         use interact, only: calc_interact, check_interact, check_comms_file
         use parallel, only: parent, nprocs
-        use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
         use system, only: sys_t
-        use calc, only: non_blocking_comm, nb_rep_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
+        use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: ireport, iteration
-        logical, intent(in) :: update_tau
+        type(qmc_in_t), intent(inout) :: qmc_in
+        integer, intent(in) :: iteration
+        logical, intent(inout) :: update_tau
+        type(qmc_state_t), intent(inout) :: qs
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
-        real(p), intent(inout) :: ntot_particles(sampling_size)
-        real, intent(inout) :: report_time
+        real(p), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
-        type(nb_rep_t), optional, intent(inout) :: rep_comm
+
+        type(load_bal_in_t), intent(in) :: load_bal_in
+        logical, optional, intent(in) :: doing_lb, nb_comm
 
         real :: curr_time
-        logical :: update, update_tau_now, vary_shift_before, comms_found
-        real(dp) :: rep_info_copy(nprocs*sampling_size+nparticles_start_ind-1)
+        logical :: update, vary_shift_before, nb_comm_local, comms_found
+        real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
-        update_tau_now = update_tau .and. .not. vary_shift(1) .and. tau_search
+        update_tau = update_tau .and. .not. qs%vary_shift(1) .and. qmc_in%tau_search
+
+        ! Using non-blocking communications?
+        nb_comm_local = .false.
+        if (present(nb_comm)) nb_comm_local = nb_comm
 
         ! Are all the shifts currently varying?
-        vary_shift_before = all(vary_shift)
+        vary_shift_before = all(qs%vary_shift)
 
         ! Test for a comms file so MPI communication can be combined with
         ! energy_estimators communication
@@ -808,57 +900,71 @@ contains
         ! Update the energy estimators (shift & projected energy).
         update = .true.
         if (present(update_estimators)) update = update_estimators
-        if (update .and. .not. non_blocking_comm) then
-            call update_energy_estimators(nspawn_events, ntot_particles, comms_found, update_tau_now, bloom_stats)
+        if (update .and. .not. nb_comm_local) then
+            call update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles, load_bal_in, doing_lb, &
+                                          comms_found, update_tau, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(rep_info_copy, nspawn_events, comms_found, update_tau_now, bloom_stats, &
-                                          rep_comm%nb_spawn(2))
+            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, update_tau, bloom_stats, &
+                                          qs%par_info%report_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(rep_comm%request, ntot_particles, comms_found, update_tau_now, bloom_stats)
+            call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
+                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau, &
+                                               bloom_stats)
             ! Send current report loop quantities.
-            rep_comm%rep_info = rep_info_copy
-            call update_energy_estimators_send(rep_comm)
+            qs%par_info%report_comm%rep_info = rep_info_copy
+            call update_energy_estimators_send(qs%par_info%report_comm)
         else
-            update_tau_now = .false.
+            update_tau = .false.
             call check_interact(comms_found)
         end if
 
         ! If we have just started varying the shift, then we can calculate the
         ! iteration at which to start semi-stochastic, if it is being turned on
         ! relative to the shift start.
-        if ((.not. vary_shift_before) .and. all(vary_shift) .and. (semi_stoch_shift_it /= -1)) &
+        if ((.not. vary_shift_before) .and. all(qs%vary_shift) .and. (semi_stoch_shift_it /= -1)) &
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
-        call cpu_time(curr_time)
-
-        ! report_time was the time at the previous iteration.
-        ! curr_time - report_time is thus the time taken by this report loop.
-        if (parent) then
-            if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
-            call write_fciqmc_report(ireport, ntot_particles, curr_time-report_time, .false.)
-        end if
-
-        ! Write restart file if required.
-        if (dump_restart_file_shift .and. any(vary_shift)) then
-            dump_restart_file_shift = .false.
-            call dump_restart_hdf5(restart_info_global_shift, mc_cycles_done+ncycles*ireport, ntot_particles)
-        else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, ntot_particles)
-        end if
-        ! cpu_time outputs an elapsed time, so update the reference timer.
-        report_time = curr_time
-
-        call calc_interact(comms_found, soft_exit)
-        if (.not.soft_exit .and. mod(ireport, select_ref_det_every_nreports) == 0) call select_ref_det(sys)
-
-        if (update_tau_now) call rescale_tau()
+        call calc_interact(comms_found, soft_exit, qmc_in)
 
     end subroutine end_report_loop
 
-    subroutine end_mc_cycle(nspawn_events, ndeath, nattempts)
+    subroutine dump_restart_file_wrapper(qs, dump_restart_file_shift, ntot_particles, ireport, ncycles, nb_comm)
+
+        ! Check if a restart file needs to be written, and if so then do so.
+
+        ! In:
+        !     qs: qmc_state_t object. Energy estimators are updated.
+        !     ireport: index of current report loop.
+        !     ncycles: the number of iterations per report loop.
+        !     nb_comm: true if using non-blocking communications.
+        ! In/Out:
+        !     dump_restart_file_shift: should we dump a restart file just before
+        !         the shift turns on?
+
+        use qmc_data, only: qmc_state_t
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_global, restart_info_global_shift
+
+        type(qmc_state_t), intent(in) :: qs
+        logical, intent(inout) :: dump_restart_file_shift
+        real(p), intent(in) :: ntot_particles(qs%psip_list%nspaces)
+        integer, intent(in) :: ireport, ncycles
+        logical, optional, intent(in) :: nb_comm
+
+        if (dump_restart_file_shift .and. any(qs%vary_shift)) then
+            dump_restart_file_shift = .false.
+            call dump_restart_hdf5(restart_info_global_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
+                                   ntot_particles, nb_comm)
+        else if (mod(ireport,restart_info_global%write_restart_freq) == 0) then
+            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done+ncycles*ireport, &
+                                   ntot_particles, nb_comm)
+        end if
+
+    end subroutine dump_restart_file_wrapper
+
+    subroutine end_mc_cycle(nspawn_events, ndeath, nattempts, rspawn)
 
         ! Execute common code at the end of a Monte Carlo cycle.
 
@@ -866,10 +972,13 @@ contains
         !    nspawn_events: number of successful spawning events in the cycle.
         !    ndeath: (unscaled) number of particle deaths in the cycle.
         !    nattempts: number of attempted spawning events in the cycle.
+        ! In/Out:
+        !    rspawn: running total of spawning rate.
 
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath
         integer(int_64), intent(in) :: nattempts
+        real(p), intent(inout) :: rspawn
 
         ! Add the spawning rate (for the processor) to the running
         ! total.
@@ -877,19 +986,21 @@ contains
 
     end subroutine end_mc_cycle
 
-    subroutine rescale_tau(factor)
+    subroutine rescale_tau(tau, factor)
 
         ! Scale the timestep by across all the processors.  This is performed if at least
         ! one processor thinks it should be.
 
         ! In:
+        !    tau: timestep to be updated.
         !    factor: factor to scale the timestep by (default: 0.95).
 
         use parallel
 
-        integer :: ierr
+        real(p), intent(inout) :: tau
         real(p), intent(in), optional :: factor
 
+        integer :: ierr
         logical :: update_tau_global
 
         if (present(factor)) then
@@ -901,9 +1012,8 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(rng, sys, walker_dets, real_factor, &
-                                                determ, walker_populations, tot_walkers, &
-                                                nparticles, spawn)
+    subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, reference, states, real_factor, &
+                                                determ, psip_list, spawn, annihilation_flags)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -916,45 +1026,49 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    walker_dets: list of occupied excitors on the current processor.
+        !    qmc_in: input options relating to QMC methods.
+        !    reference: current reference determinant.
+        !    states: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
+        !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    rng: random number generator.
         !    determ (optional): The deterministic space being used, as required for
         !        semi-stochastic calculations.
-        !    nparticles: number of excips on the current processor.
-        !    walker_populations: Population on occupied excitors.  On output the
-        !        populations of excitors which are sent to other processors are
-        !        set to zero.
-        !    tot_walkers: number of occupied excitors on the current processor.
-        !    spawn: spawn_t object.  On output particles which need to be sent
-        !        to another processor have been added to the correct position in
-        !        the spawned store.
+        !    psip_list: particle_t object containing current distribution of
+        !       psips.  On exit the list contains a set which (in principle)
+        !       improves load balancing by sending/receiving particles from
+        !       other processors.  All components are updated as required for
+        !       consistency.
+        !    spawn: spawn_t object.  Used to assign and send particles to their new
+        !       processor.
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, particle_t, annihilation_flags_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: walker_dets(:,:)
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: reference
+        integer(i0), intent(in) :: states(:,:)
         integer(int_p), intent(in) :: real_factor
         type(semi_stoch_t), optional, intent(inout) :: determ
-        integer(int_p), intent(inout) :: walker_populations(:,:)
-        integer, intent(inout) :: tot_walkers
-        real(p), intent(inout) :: nparticles(:)
+        type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
+        type(annihilation_flags_t), intent(in) :: annihilation_flags
 
-        call redistribute_particles(walker_dets, real_factor, walker_populations, tot_walkers, nparticles, spawn)
+        call redistribute_particles(psip_list%states, real_factor, psip_list%pops, psip_list%nstates, psip_list%nparticles, spawn)
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
-        call direct_annihilation(sys, rng, tinitiator = .false.)
+        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         spawn%head = spawn%head_start
 
-        if (present(determ)) call redistribute_semi_stoch_t(sys, spawn, determ)
+        if (present(determ)) call redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, spawn, determ)
 
     end subroutine redistribute_load_balancing_dets
 

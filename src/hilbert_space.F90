@@ -11,7 +11,7 @@ public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space, ge
 
 contains
 
-    subroutine estimate_hilbert_space(sys)
+    subroutine estimate_hilbert_space(sys, reference, seed)
 
         ! Based on Appendix A in George Booth's thesis.
 
@@ -29,22 +29,27 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: reference determinant.
+        ! In:
+        !    seed: seed for the dSFMT random number generator.
 
         use basis, only: write_basis_fn
-        use calc, only: sym_in, ms_in, truncate_space, truncation_level, seed
+        use calc, only: sym_in, ms_in, truncate_space, truncation_level
         use const, only: dp
         use checking, only: check_allocate, check_deallocate
         use determinants, only: encode_det, det_info_t, alloc_det_info_t,  &
                                 dealloc_det_info_t, decode_det_spinocc_spinunocc
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
-        use fciqmc_data, only: occ_list0
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
         use system
         use parallel
         use utils, only: binom_r, rng_init_info
+        use qmc_data, only: reference_t
 
         type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: reference
+        integer, intent(in) :: seed
 
         integer :: icycle, i, ierr, a
         integer :: ref_sym, det_sym
@@ -104,14 +109,14 @@ contains
                 ! Perform a Monte Carlo sampling of the space.
 
                 if (sym_in < sys%sym_max) then
-                    call set_reference_det(sys, occ_list0, .false., sym_in)
+                    call set_reference_det(sys, reference%occ_list0, .false., sym_in)
                 else
-                    call set_reference_det(sys, occ_list0, .false.)
+                    call set_reference_det(sys, reference%occ_list0, .false.)
                 end if
-                call encode_det(sys%basis, occ_list0, f0)
+                call encode_det(sys%basis, reference%occ_list0, f0)
 
                 ! Symmetry of the reference determinant.
-                ref_sym = symmetry_orb_list(sys, occ_list0)
+                ref_sym = symmetry_orb_list(sys, reference%occ_list0)
 
                 if (truncate_space) then
                     ! Generate a determinant with a given excitation level up to

@@ -13,13 +13,14 @@ contains
 
 !--- Excitation generation ---
 
-    subroutine gen_excit_mol(rng, sys, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_mol(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
         !    sys: system object being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -35,15 +36,16 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: gamma_sym
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -54,7 +56,7 @@ contains
 
         ! 1. Select single or double.
 
-        if (get_rand_close_open(rng) < pattempt_single) then
+        if (get_rand_close_open(rng) < qmc_in%pattempt_single) then
 
             ! 2a. Select orbital to excite from and orbital to excite into.
             call choose_ia_mol(rng, sys, gamma_sym, cdet%f, cdet%occ_list, cdet%symunocc, connection%from_orb(1), &
@@ -63,13 +65,15 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = pattempt_single*calc_pgen_single_mol(sys, gamma_sym, cdet%occ_list, cdet%symunocc, connection%to_orb(1))
+                pgen = qmc_in%pattempt_single*calc_pgen_single_mol(sys, gamma_sym, cdet%occ_list, &
+                                                                   cdet%symunocc, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
+                                                  connection%perm)
             else
                 ! We have a highly restrained system and this det has no single
                 ! excitations at all.  To avoid reweighting pattempt_single and
@@ -90,7 +94,7 @@ contains
             if (allowed_excitation) then
 
                 ! 3b. Probability of generating this excitation.
-                pgen = pattempt_double*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), connection%to_orb(2), &
+                pgen = qmc_in%pattempt_double*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), connection%to_orb(2), &
                                             ij_spin, cdet%symunocc)
 
                 ! 4b. Parity of permutation required to line up determinants.
@@ -113,7 +117,7 @@ contains
 
     end subroutine gen_excit_mol
 
-    subroutine gen_excit_mol_no_renorm(rng, sys, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_mol_no_renorm(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -127,6 +131,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -142,15 +147,16 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: pattempt_single, pattempt_double
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
         use point_group_symmetry, only: gamma_sym
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -161,7 +167,7 @@ contains
 
         ! 1. Select single or double.
 
-        if (get_rand_close_open(rng) < pattempt_single) then
+        if (get_rand_close_open(rng) < qmc_in%pattempt_single) then
 
             ! 2a. Select orbital to excite from and orbital to excite into.
             call find_ia_mol(rng, sys, gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
@@ -170,7 +176,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+                pgen = qmc_in%pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
@@ -194,7 +200,8 @@ contains
 
             if (allowed_excitation) then
                 ! 3b. Probability of generating this excitation.
-                pgen = pattempt_double*calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), connection%to_orb(2), ij_spin)
+                pgen = qmc_in%pattempt_double*calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), &
+                                                                             connection%to_orb(2), ij_spin)
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.

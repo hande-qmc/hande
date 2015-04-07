@@ -20,3 +20,4 @@ vary_shift_from -44.0
 
 neel_singlet_guiding
 seed 7
+init_pop 10

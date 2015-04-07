@@ -31,7 +31,8 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn_standard(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_standard(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+                              gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -42,6 +43,8 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
+        !    tau: timestep.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -54,6 +57,7 @@ contains
         !    gen_excit_ptr: procedure pointer to excitation generators.
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -62,31 +66,36 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
+        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_standard
 
-    subroutine spawn_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_importance_sampling(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+                                         gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -101,6 +110,8 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
+        !    tau: timestep.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -113,6 +124,7 @@ contains
         !    gen_excit_ptr: procedure pointer to excitation generators.
         !        gen_excit_ptr%full *must* be set to a procedure which generates
         !        a complete excitation.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -123,32 +135,37 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
+        use qmc_data, only: qmc_in_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(sys, cdet, connection, hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+                                       gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -170,6 +187,8 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
+        !    tau: timestep.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -185,6 +204,7 @@ contains
         !        gen_excit_ptr%init must return (at least) the connecting matrix
         !        element and gen_excit_ptr%finalise must fill in the rest of the
         !        information about the excitation.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -194,17 +214,20 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
+        use qmc_data, only: qmc_in_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -212,7 +235,7 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, cdet, pgen, connection, abs_hmatel)
+        call gen_excit_ptr%init(rng, sys, qmc_in, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
         nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs_hmatel/pgen)
@@ -220,7 +243,7 @@ contains
         if (nspawn /= 0_int_p) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(rng, sys, qmc_in, cdet, connection, hmatel)
 
             ! 4. Find sign of offspring.
             call set_child_sign(hmatel, parent_sign, nspawn)
@@ -229,8 +252,8 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                                           gen_excit_ptr, nspawn, connection)
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+                                                           gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -249,6 +272,8 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
+        !    tau: timestep.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -264,6 +289,7 @@ contains
         !        gen_excit_ptr%init must return (at least) the connecting matrix
         !        element and gen_excit_ptr%finalise must fill in the rest of the
         !        information about the excitation.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -273,17 +299,20 @@ contains
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
-        use fciqmc_data, only: tau
         use proc_pointers, only: gen_excit_ptr_t
+        use qmc_data, only: qmc_in_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -291,10 +320,10 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, cdet, pgen, connection, tilde_hmatel)
+        call gen_excit_ptr%init(rng, sys, qmc_in, cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
-        call gen_excit_ptr%trial_fn(sys, cdet, connection, tilde_hmatel)
+        call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel)
 
         ! 3. Attempt spawning.
         nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs(tilde_hmatel)/pgen)
@@ -304,7 +333,7 @@ contains
             ! 4. Complete excitation and find sign of connecting matrix element.
             ! *NOTE*: this returns the original matrix element and *not* the
             ! matrix element after the trial function transformation.
-            call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(rng, sys, qmc_in, cdet, connection, hmatel)
 
             ! 5. Find sign of offspring.
             ! Note that we don't care about the value of H_ij at this step, only
@@ -315,7 +344,8 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(rng, sys, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, nspawn, connection)
+    subroutine spawn_null(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, weights, &
+                          nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -325,6 +355,8 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
+        !    tau: timestep.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -335,6 +367,7 @@ contains
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
+        !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
@@ -345,15 +378,19 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
+        use qmc_data, only: qmc_in_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: tau
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        real(dp), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawn
         type(excit_t), intent(out) :: connection
 
@@ -400,7 +437,7 @@ contains
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
         ! when we later divide this factor back out. (See comments for
-        ! walker_population).
+        ! particle_t%pops).
         pspawn = probability*real_factor
 
         if (abs(pspawn) < spawn_cutoff) then
@@ -460,9 +497,10 @@ contains
 
     end subroutine set_child_sign
 
-    function attempt_to_spawn(rng, spawn_cutoff, real_factor, hmatel, pgen, parent_sign) result(nspawn)
+    function attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign) result(nspawn)
 
         ! In:
+        !    tau: timestep being used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -480,11 +518,10 @@ contains
         !    unsuccessful.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: tau
 
         integer(int_p) :: nspawn
 
-        real(p), intent(in) :: pgen, hmatel
+        real(p), intent(in) :: tau, pgen, hmatel
         integer(int_p), intent(in) :: parent_sign
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(in) :: spawn_cutoff
@@ -498,7 +535,7 @@ contains
         ! We then stochastically round this probability either up or down to
         ! the nearest integers. This allows a resolution of 2^(-real_spawning)
         ! when we later divide this factor back out. (See comments for
-        ! walker_population).
+        ! particle_t%pops).
         pspawn = pspawn*real_factor
 
         if (pspawn < spawn_cutoff) then
@@ -540,7 +577,8 @@ contains
 
 !--- Assuming spawning is successful, create new particle appropriately ---
 
-    subroutine assign_particle_processor(particle_label, length, seed, shift, freq, np, particle_proc, slot_pos)
+    subroutine assign_particle_processor(particle_label, length, seed, shift, freq, np, particle_proc, slot_pos, &
+                                         proc_map, nslots)
 
         ! In:
         !    particle_label: bit string which describes the location/basis
@@ -554,15 +592,18 @@ contains
         !       than 32.
         !    np: number of processors over which the particles are to be
         !       distributed.
+        !    proc_map: array which maps determinants to processors.
+        !    nslots: number of slots proc_map is divided into.
         ! Out:
         !    particle_proc: processor where determinant resides
         !    slot_pos: position in proc_map for this determinant
 
         use hashing, only: murmurhash_bit_string
-        use fciqmc_data, only: par_info
 
         integer(i0), intent(in) :: particle_label(length)
         integer, intent(in) :: length, seed, shift, freq, np
+        integer, intent(in) :: proc_map(0:)
+        integer, intent(in) :: nslots
         integer, intent(out) :: particle_proc, slot_pos
 
         integer :: hash, offset
@@ -571,12 +612,12 @@ contains
         ! (Extra credit for parallel calculations)
         ! Hash the label to get a (hopefully uniform) distribution across all
         ! possible particle labels and then modulo it to assign each label in
-        ! a (hopefully uniform) fashion.
+        ! a (hopefully uniform) fasion.
         hash = murmurhash_bit_string(particle_label, length, seed)
         if (shift == 0) then
             ! p = hash(label) % np
-            slot_pos = modulo(hash, np*par_info%load%nslots)
-            particle_proc = par_info%load%proc_map(slot_pos)
+            slot_pos = modulo(hash, np*nslots)
+            particle_proc = proc_map(slot_pos)
         else
             ! o = [ hash(label) + shift ] >> freq
             ! p = [ hash(label) + o ] % np
@@ -593,8 +634,8 @@ contains
             offset = ishft(hash+shift, -freq)
             mod_label = particle_label + offset
             hash = murmurhash_bit_string(mod_label, length, seed)
-            slot_pos = modulo(hash, np*par_info%load%nslots)
-            particle_proc = par_info%load%proc_map(slot_pos)
+            slot_pos = modulo(hash, np*nslots)
+            particle_proc = proc_map(slot_pos)
         end if
 
     end subroutine assign_particle_processor
@@ -721,13 +762,14 @@ contains
 
     end subroutine add_spawned_particles
 
-    subroutine create_spawned_particle(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -746,8 +788,10 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -766,20 +810,21 @@ contains
             f_new => f_local
         end if
 
-        call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+        call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                       iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -798,8 +843,10 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -818,22 +865,21 @@ contains
             f_new => f_local
         end if
 
-        call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+        call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                       iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
     end subroutine create_spawned_particle_initiator
 
-    subroutine create_spawned_particle_truncated(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_truncated(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
-        ! TODO: comment
-
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant that excitation level is calculated from.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -849,13 +895,13 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -875,10 +921,10 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
+        if (get_excitation_level(reference%hs_f0, f_new) <= reference%ex_level) then
 
-            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                           iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -886,15 +932,15 @@ contains
 
     end subroutine create_spawned_particle_truncated
 
-    subroutine create_spawned_particle_initiator_truncated(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_truncated(basis, reference, cdet, connection, nspawn, particle_type, &
+                                                           spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
-        ! TODO: comment
-
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -910,13 +956,13 @@ contains
         use parallel, only: nprocs
 
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
-        use fciqmc_data, only: hs_f0
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -936,10 +982,10 @@ contains
         end if
 
         ! Only accept spawning if it's within the truncation level.
-        if (get_excitation_level(hs_f0, f_new) <= truncation_level) then
+        if (get_excitation_level(reference%hs_f0, f_new) <= reference%ex_level) then
 
-            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                           iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
@@ -947,15 +993,14 @@ contains
 
     end subroutine create_spawned_particle_initiator_truncated
 
-    subroutine create_spawned_particle_ras(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
-        ! TODO: comment
-
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -972,12 +1017,14 @@ contains
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
-        use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
+        use calc, only: ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -999,8 +1046,8 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                           iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -1008,15 +1055,14 @@ contains
 
     end subroutine create_spawned_particle_ras
 
-    subroutine create_spawned_particle_initiator_ras(basis, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
-        ! TODO: comment
-
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connecting the current determinant to its
@@ -1033,12 +1079,14 @@ contains
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
-        use calc, only: truncation_level, ras1, ras3, ras1_min, ras3_max
+        use calc, only: ras1, ras3, ras1_min, ras3_max
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
+        use qmc_data, only: reference_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
         integer(int_p), intent(in) :: nspawn
@@ -1060,8 +1108,8 @@ contains
         ! Only accept spawning if it's within the RAS space.
         if (in_ras(ras1, ras3, ras1_min, ras3_max, f_new)) then
 
-            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, &
-                spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+            call assign_particle_processor(f_new, basis%string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                           iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
 
@@ -1069,13 +1117,16 @@ contains
 
     end subroutine create_spawned_particle_initiator_ras
 
-    subroutine create_spawned_particle_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
+                                                      particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1095,9 +1146,11 @@ contains
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
@@ -1126,8 +1179,8 @@ contains
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+        call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                       nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_spawned_particle_density_matrix',&
@@ -1137,7 +1190,8 @@ contains
 
     end subroutine create_spawned_particle_density_matrix
 
-    subroutine create_spawned_particle_half_density_matrix(basis, f1, f2, connection, nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_half_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
+                                                           particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! If walker tries to spawn in the lower triangle of density matrix
@@ -1146,6 +1200,8 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1163,13 +1219,14 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
@@ -1203,8 +1260,8 @@ contains
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
-        call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                       spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+        call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                       nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
         if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
             call stop_all('create_spawned_particle_half_density_matrix',&
@@ -1214,14 +1271,14 @@ contains
 
     end subroutine create_spawned_particle_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_half_density_matrix(basis, f1, f2, connection, nspawn, &
-                                                                          spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_truncated_half_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
+                                                                     particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! A spawned walker is only created on (f1', f2) if f1' and f2 do not differ by
-        ! more than truncation_level basis functions, where f1' is obtained by
+        ! more than reference%ex_level basis functions, where f1' is obtained by
         ! applying the connection to f1.
 
         ! Note: This is the half density matrix version of create_spawned_particle_truncated_density_matrix
@@ -1231,6 +1288,8 @@ contains
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1248,13 +1307,14 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
@@ -1274,7 +1334,7 @@ contains
         ! bitstring is eventually stored in f_new_tot.
         call create_excited_det(basis, f1, connection, f_new)
 
-        if (get_excitation_level(f2, f_new) <= truncation_level) then
+        if (get_excitation_level(f2, f_new) <= reference%ex_level) then
 
             f_new_tot = 0_i0
             ! Test to see whether the new determinant resides in the upper
@@ -1290,8 +1350,8 @@ contains
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+            call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                           nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_half_density_matrix',&
@@ -1303,18 +1363,20 @@ contains
 
     end subroutine create_spawned_particle_truncated_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_density_matrix(basis, f1, f2, connection, &
-            nspawn, spawning_end, particle_type, spawn)
+    subroutine create_spawned_particle_truncated_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
+                                                                particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
 
         ! A spawned walker is only created on (f1', f2) if f1' and f2 do not
-        ! differ by more than truncation_level basis functions, where f1' is
+        ! differ by more than reference%ex_level basis functions, where f1' is
         ! obtained by applying the connection to f1.
 
         ! In:
         !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
         !    f1: bitstring corresponding to the end which is currently
         !         being spawned from.
         !    f2: bitstring corresponding to the 'inactive' end, which
@@ -1331,19 +1393,21 @@ contains
         !    spawn: spawn_t object to which the spawned particle will be added.
 
         use basis_types, only: basis_t
-        use calc, only: truncation_level
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
+
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1357,7 +1421,7 @@ contains
         ! bitstring is eventually stored in f_new_tot.
         call create_excited_det(basis, f1, connection, f_new)
 
-        if (get_excitation_level(f2, f_new) <= truncation_level) then
+        if (get_excitation_level(f2, f_new) <= reference%ex_level) then
 
             f_new_tot = 0_i0
             if (spawning_end==1) then
@@ -1368,8 +1432,8 @@ contains
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
-            call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_spawn, slot)
+            call assign_particle_processor(f_new_tot, basis%tensor_label_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                           nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
                 call stop_all('create_spawned_particle_truncated_density_matrix', &
@@ -1393,11 +1457,11 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    rdm_spawn: rdm_spawn_t object to which the spanwed particle
-        !    will be added.
+        !        will be added.
 
         use bit_utils, only: operator(.bitstrgt.)
+        use dmqmc_data, only: rdm_t, rdm_spawn_t
         use errors, only: stop_all
-        use fciqmc_data, only: rdm_t, rdm_spawn_t
         use parallel, only: iproc, nprocs, nthreads
         use hash_table, only: hash_table_pos_t, lookup_hash_table_entry
         use hash_table, only: assign_hash_table_entry
@@ -1409,7 +1473,7 @@ contains
         type(rdm_spawn_t), intent(inout) :: rdm_spawn
         integer(int_p) :: nspawn
 
-        integer(i0) :: f_new_tot(2*rdm%rdm_string_len)
+        integer(i0) :: f_new_tot(2*rdm%string_len)
 
         integer :: iproc_spawn, slot
         ! WARNING!  The below algorithm is *not* suitable for conversion to
@@ -1423,7 +1487,7 @@ contains
         logical :: hit
         integer :: err_code
 
-        associate(f1=>rdm%end1, f2=>rdm%end2, rdm_bl=>rdm%rdm_string_len, spawn=>rdm_spawn%spawn, &
+        associate(f1=>rdm%end1, f2=>rdm%end2, rdm_bl=>rdm%string_len, spawn=>rdm_spawn%spawn, &
                   ht=>rdm_spawn%ht, bsl=>rdm_spawn%spawn%bit_str_len)
 
             nspawn = nspawn_in
@@ -1445,7 +1509,7 @@ contains
             end if
 
             call assign_particle_processor(f_new_tot, 2*rdm_bl, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                          nprocs, iproc_spawn, slot)
+                                          nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
             call lookup_hash_table_entry(ht, f_new_tot, pos, hit)
 

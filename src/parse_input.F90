@@ -20,21 +20,35 @@ implicit none
 
 contains
 
-    subroutine read_input(sys)
+    subroutine read_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, &
+                          load_bal_in, dmqmc_in, dmqmc_rdm_info)
 
         ! Read input options from a file (if specified on the command line) or via
         ! STDIN.
 
         ! In/Out:
-        !   sys: system being studied.  Parameters specified in the input file
-        !        are set directly in the system object, components which are not
-        !        mentioned in the input file are not altered.
+        !    sys: system being studied.  Parameters specified in the input file
+        !         are set directly in the system object, components which are not
+        !         mentioned in the input file are not altered.
+        !    qmc_in: input options relating to QMC methods.
+        !    fciqmc_in: input options relating to FCIQMC.
+        !    ccmc_in: input options relating to CCMC.
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    restart_in: input options for HDF5 restart files.
+        !    reference: information on the reference determinant to use.
+        !    load_bal_in: input options for load balancing.
+        !    dmqmc_in: input options relating to DMQMC.
+        !    dmqmc_rdm_info: information about RDMs to be calculated from DMQMC.
 
 ! nag doesn't automatically bring in command-line option handling.
 #ifdef NAGF95
         use f90_unix_env
 #endif
 
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
+        use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
+        use qmc_data, only: read_determ_space, high_pop_determ_space
+        use dmqmc_data, only: dmqmc_in_t
         use system
 
         use input
@@ -47,7 +61,16 @@ contains
         integer :: iargc ! External function.
 #endif
 
-        type (sys_t), intent(inout) :: sys
+        type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
+        type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
+        type(restart_in_t), intent(inout) :: restart_in
+        type(reference_t), intent(inout) :: reference
+        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(rdm_t), allocatable, intent(inout) :: dmqmc_rdm_info(:)
 
         character(255) :: cInp
         character(100) :: w
@@ -194,7 +217,7 @@ contains
                 calc_type = calc_type + fciqmc_calc
             case('IFCIQMC')
                 calc_type = calc_type + fciqmc_calc
-                initiator_approximation = .true.
+                qmc_in%initiator_approx = .true.
             case('CT_FCIQMC')
                 calc_type = calc_type + ct_fciqmc_calc
             case('DMQMC')
@@ -203,7 +226,7 @@ contains
                 calc_type = calc_type + ccmc_calc
             case('ICCMC')
                 calc_type = calc_type + ccmc_calc
-                initiator_approximation = .true.
+                qmc_in%initiator_approx = .true.
             case('HELLMANN-FEYNMAN')
                 calc_type = calc_type + hfs_fciqmc_calc
             case('ESTIMATE_HILBERT_SPACE')
@@ -215,54 +238,54 @@ contains
                 call readi(nkinetic_cycles)
 
             case('REPLICA_TRICKS')
-                replica_tricks = .true.
+                dmqmc_in%replica_tricks = .true.
             case('PROPAGATE_TO_BETA')
-                propagate_to_beta = .true.
+                dmqmc_in%propagate_to_beta = .true.
             case('INIT_BETA')
-                call readf(init_beta)
+                call readf(dmqmc_in%init_beta)
             case('METROPOLIS_ATTEMPTS')
-                call readi(metropolis_attempts)
+                call readi(dmqmc_in%metropolis_attempts)
             case('MAX_METROPOLIS_MOVE')
-                call readi(max_metropolis_move)
+                call readi(dmqmc_in%max_metropolis_move)
             case('FREE_ELECTRON_TRIAL')
-                free_electron_trial = .true.
+                dmqmc_in%free_electron_trial = .true.
             case('CHEM_POT')
                 call readf(sys%ueg%chem_pot)
             case('GRAND_CANONICAL_INITIALISATION')
-                grand_canonical_initialisation = .true.
+                dmqmc_in%grand_canonical_initialisation = .true.
             case('FERMI_TEMPERATURE')
-                fermi_temperature = .true.
+                dmqmc_in%fermi_temperature = .true.
 
             case('CCMC_FULL_NC')
-                ccmc_full_nc = .true.
+                ccmc_in%full_nc = .true.
             case('CCMC_LINKED')
-                linked_ccmc = .true.
+                ccmc_in%linked = .true.
 
             case('REAL_AMPLITUDES')
-                real_amplitudes = .true.
+                qmc_in%real_amplitudes = .true.
             case('SPAWN_CUTOFF')
-                call readf(spawn_cutoff)
+                call readf(qmc_in%spawn_cutoff)
 
             ! Semi-stochastic options.
             case('SEMI_STOCH_ITERATION')
-                call readi(semi_stoch_start_iter)
-                real_amplitudes = .true.
+                call readi(semi_stoch_in%start_iter)
+                qmc_in%real_amplitudes = .true.
             case('SEMI_STOCH_SHIFT_START')
-                call readi(semi_stoch_shift_iter)
-                semi_stoch_start_iter = -1
-                real_amplitudes = .true.
+                call readi(semi_stoch_in%shift_iter)
+                semi_stoch_in%start_iter = -1
+                qmc_in%real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
-                determ_space_type = high_pop_determ_space
-                call readi(determ_target_size)
+                semi_stoch_in%space_type = high_pop_determ_space
+                call readi(semi_stoch_in%target_size)
             case('SEMI_STOCH_READ')
-                determ_space_type = read_determ_space
+                semi_stoch_in%space_type = read_determ_space
                 ! Not needed.
-                determ_target_size = -1
+                semi_stoch_in%target_size = -1
             case('WRITE_DETERM_SPACE')
-                write_determ_space = .true.
+                semi_stoch_in%write_determ_space = .true.
             case('SEMI_STOCH_COMBINE_ANNIHIL')
-                separate_determ_annihil = .false.
+                semi_stoch_in%separate_annihil = .false.
 
             ! DMQMC expectation values to be calculated.
             case('DMQMC_FULL_RENYI_2')
@@ -273,73 +296,91 @@ contains
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy_squared
             case('DMQMC_CORRELATION_FUNCTION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
-                allocate(correlation_sites(nitems-1), stat=ierr)
-                call check_allocate('correlation_sites',nitems-1,ierr)
+                allocate(dmqmc_in%correlation_sites(nitems-1), stat=ierr)
+                call check_allocate('dmqmc_in%correlation_sites',nitems-1,ierr)
                 do i = 1, nitems-1
-                    call readi(correlation_sites(i))
+                    call readi(dmqmc_in%correlation_sites(i))
                 end do
             case('DMQMC_STAGGERED_MAGNETISATION')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             case('DMQMC_WEIGHTED_SAMPLING')
                 call readi(nweights)
-                allocate(dmqmc_sampling_probs(nweights), stat=ierr)
-                call check_allocate('dmqmc_sampling_probs', nweights, ierr)
-                dmqmc_weighted_sampling = .true.
+                allocate(dmqmc_in%sampling_probs(nweights), stat=ierr)
+                call check_allocate('dmqmc_in%sampling_probs', nweights, ierr)
+                dmqmc_in%weighted_sampling = .true.
                 call read_line(eof)
                 if (eof) call stop_all('read_input', 'Unexpected end of file reading DMQMC weights.')
                 do i = 1, nweights
-                    call readf(dmqmc_sampling_probs(i))
+                    call readf(dmqmc_in%sampling_probs(i))
                 end do
             case('DMQMC_VARY_WEIGHTS')
-                call readi(finish_varying_weights)
-                dmqmc_vary_weights = .true.
+                call readi(dmqmc_in%finish_varying_weights)
+                dmqmc_in%vary_weights = .true.
             case('DMQMC_FIND_WEIGHTS')
-                dmqmc_find_weights = .true.
-                dmqmc_weighted_sampling = .true.
+                dmqmc_in%find_weights = .true.
+                dmqmc_in%weighted_sampling = .true.
             case('OUTPUT_EXCITATION_DISTRIBUTION')
-                calculate_excit_distribution = .true.
+                dmqmc_in%calc_excit_dist = .true.
             case('USE_ALL_SYM_SECTORS')
-                all_sym_sectors = .true.
+                dmqmc_in%all_sym_sectors = .true.
             case('USE_ALL_SPIN_SECTORS')
-                all_spin_sectors = .true.
+                dmqmc_in%all_spin_sectors = .true.
             case('REDUCED_DENSITY_MATRIX')
-                call readi(nrdms)
-                allocate(rdms(nrdms), stat=ierr)
-                call check_allocate('rdms', nrdms, ierr)
-                doing_reduced_dm = .true.
-                do i = 1, nrdms
+                call readi(dmqmc_in%rdm%nrdms)
+                allocate(dmqmc_rdm_info(dmqmc_in%rdm%nrdms), stat=ierr)
+                call check_allocate('dmqmc_rdm_info', dmqmc_in%rdm%nrdms, ierr)
+                dmqmc_in%rdm%doing_rdm = .true.
+                do i = 1, dmqmc_in%rdm%nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
-                    rdms(i)%A_nsites = nitems
-                    allocate(rdms(i)%subsystem_A(nitems))
-                    call check_allocate('rdms(i)%subsystem_A',nitems,ierr)
+                    dmqmc_rdm_info(i)%A_nsites = nitems
+                    allocate(dmqmc_rdm_info(i)%subsystem_A(nitems))
+                    call check_allocate('dmqmc_rdm_info(i)%subsystem_A',nitems,ierr)
                     do j = 1, nitems
-                        call readi(rdms(i)%subsystem_A(j))
+                        call readi(dmqmc_rdm_info(i)%subsystem_A(j))
+                    end do
+                end do
+
+            case('FCI_REDUCED_DENSITY_MATRIX')
+                call readi(fci_nrdms)
+                allocate(fci_rdm_info(fci_nrdms), stat=ierr)
+                call check_allocate('fci_rdm_info', fci_nrdms, ierr)
+                dmqmc_in%rdm%doing_rdm = .true.
+                do i = 1, fci_nrdms
+                    call read_line(eof)
+                    if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
+                    fci_rdm_info(i)%A_nsites = nitems
+                    allocate(fci_rdm_info(i)%subsystem_A(nitems))
+                    call check_allocate('fci_rdm_info(i)%subsystem_A',nitems,ierr)
+                    do j = 1, nitems
+                        call readi(fci_rdm_info(i)%subsystem_A(j))
                     end do
                 end do
             case('GROUND_STATE_RDM')
-                calc_ground_rdm = .true.
+                dmqmc_in%rdm%calc_ground_rdm = .true.
             case('INSTANTANEOUS_RDM')
-                calc_inst_rdm = .true.
+                dmqmc_in%rdm%calc_inst_rdm = .true.
             case('OUTPUT_RDM')
-                output_rdm = .true.
+                dmqmc_in%rdm%output_rdm = .true.
             case('EXACT_RDM_EIGENVALUES')
                 doing_exact_rdm_eigv = .true.
-                calc_ground_rdm = .true.
             case('CONCURRENCE')
-                doing_concurrence = .true.
+                dmqmc_in%rdm%doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
-                doing_von_neumann_entropy = .true.
+                dmqmc_in%rdm%doing_vn_entropy = .true.
             case('RENYI_ENTROPY_2')
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
-            case('START_AVERAGING')
-                call readi(start_averaging)
+            case('START_AVERAGING_EXCITATION_DIST')
+                call readi(dmqmc_in%start_av_excit_dist)
+            case('START_AVERAGING_RDM')
+                call readi(dmqmc_in%start_av_rdm)
             ! calculation options: DMQMC
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
                 call readi(truncation_level)
+                reference%ex_level = truncation_level
             case('HALF_DENSITY_MATRIX')
-                half_density_matrix = .true.
+                dmqmc_in%half_density_matrix = .true.
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
@@ -360,95 +401,93 @@ contains
 
             ! Calculation options: fciqmc.
             case('MC_CYCLES')
-                call readi(ncycles)
+                call readi(qmc_in%ncycles)
             case('NREPORTS')
-                call readi(nreport)
-                if (nreport < 0) nreport = huge(nreport)
+                call readi(qmc_in%nreport)
+                if (qmc_in%nreport < 0) qmc_in%nreport = huge(qmc_in%nreport)
             case('BETA_LOOPS')
-                call readi(beta_loops)
+                call readi(dmqmc_in%beta_loops)
             case('WALKER_LENGTH')
-                call readi(walker_length)
+                call readi(qmc_in%walker_length)
                 if (item /= nitems) then
                     call readu(w)
                     if (w == 'MB') then
-                        walker_length = -walker_length
+                        qmc_in%walker_length = -qmc_in%walker_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
                 end if
             case('SPAWNED_WALKER_LENGTH')
-                call readi(spawned_walker_length)
+                call readi(qmc_in%spawned_walker_length)
                 if (item /= nitems) then
                     call readu(w)
                     if (w == 'MB') then
-                        spawned_walker_length = -spawned_walker_length
+                        qmc_in%spawned_walker_length = -qmc_in%spawned_walker_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
                 end if
             case('SPAWNED_RDM_LENGTH')
-                call readi(spawned_rdm_length)
+                call readi(dmqmc_in%rdm%spawned_length)
                 if (item /= nitems) then
                     call readu(w)
                     if (w == 'MB') then
-                        spawned_rdm_length = -spawned_rdm_length
+                        dmqmc_in%rdm%spawned_length = -dmqmc_in%rdm%spawned_length
                     else
                         call report('Keyword '//trim(w)//' not recognized.', .true.)
                     end if
                 end if
             case('TAU')
-                call readf(tau)
+                call readf(qmc_in%tau)
             case('TAU_SEARCH')
-                tau_search = .true.
+                qmc_in%tau_search = .true.
             case('INITIAL_SHIFT')
-                call readf(initial_shift)
+                call readf(qmc_in%initial_shift)
                 ! We assume the user is sensible/knows what he/she is doing if
                 ! initial_shift and vary_shift_from are set.
-                vary_shift_from = initial_shift
+                qmc_in%vary_shift_from = qmc_in%initial_shift
             case('VARY_SHIFT_FROM')
                 call readu(w)
                 if (w == 'PROJE') then
-                    vary_shift_from_proje = .true.
+                    qmc_in%vary_shift_from_proje = .true.
                 else
                     call reread(0)
-                    call readf(vary_shift_from)
+                    call readf(qmc_in%vary_shift_from)
                 end if
-            case('DMQMC_AVERAGE_SHIFT')
-                call readi(average_shift_until)
             case('VARYSHIFT_TARGET')
-                call readf(target_particles)
+                call readf(qmc_in%target_particles)
             case('INIT_POP')
-                call readf(D0_population)
+                call readf(qmc_in%D0_population)
             case('REFERENCE_DET')
-                allocate(occ_list0(nitems-1), stat=ierr)
-                call check_allocate('occ_list0',nitems-1,ierr)
+                allocate(reference%occ_list0(nitems-1), stat=ierr)
+                call check_allocate('reference%occ_list0',nitems-1,ierr)
                 do i = 1, nitems-1
-                    call readi(occ_list0(i))
+                    call readi(reference%occ_list0(i))
                 end do
             case('HS_REFERENCE_DET')
-                allocate(hs_occ_list0(nitems-1), stat=ierr)
-                call check_allocate('hs_occ_list0',nitems-1,ierr)
+                allocate(reference%hs_occ_list0(nitems-1), stat=ierr)
+                call check_allocate('reference%hs_occ_list0',nitems-1,ierr)
                 do i = 1, nitems-1
-                    call readi(hs_occ_list0(i))
+                    call readi(reference%hs_occ_list0(i))
                 end do
             case('NO_RENORM')
-                no_renorm = .true.
+                qmc_in%no_renorm = .true.
             case('SELECT_REFERENCE_DET')
-                select_ref_det_every_nreports = 20
-                if (item /= nitems) call readi(select_ref_det_every_nreports)
-                if (item /= nitems) call readf(ref_det_factor)
+                fciqmc_in%select_ref_det_every_nreports = 20
+                if (item /= nitems) call readi(fciqmc_in%select_ref_det_every_nreports)
+                if (item /= nitems) call readf(fciqmc_in%ref_det_factor)
             case('ATTEMPT_SPAWN_PROB')
-                call readf(pattempt_single)
-                call readf(pattempt_double)
+                call readf(qmc_in%pattempt_single)
+                call readf(qmc_in%pattempt_double)
 
             ! Calculation options: CCMC.
             case('move_freq')
-                call readi(ccmc_move_freq)
+                call readi(ccmc_in%move_freq)
 
             ! use a negative number to indicate that the restart numbers have
             ! been fixed.
             case('RESTART')
-                restart = .true.
+                restart_in%read_restart = .true.
                 if (item /= nitems) then
                     call readi(restart_info_global%read_id)
                     restart_info_global%read_id = -restart_info_global%read_id -1
@@ -458,7 +497,7 @@ contains
                     call readu(w)
                     ! Do we want to dump a restart file, when the shift turns on.
                     if(w == 'SHIFT') then
-                        dump_restart_file_shift = .true.
+                        restart_in%dump_restart_file_shift = .true.
                         ! Do we have a restart number for when the shift turns on.
                         if (item /= nitems) then
                             call readi(restart_info_global_shift%write_id)
@@ -469,29 +508,29 @@ contains
                         call reread(0)
                         call readi(restart_info_global%write_id)
                         restart_info_global%write_id = -restart_info_global%write_id-1
-                        dump_restart_file = .true.
+                        restart_in%dump_restart = .true.
                     end if
                 else
-                dump_restart_file = .true.
+                restart_in%dump_restart = .true.
                 end if
                 
                 ! If semi-stochastic is being used then a semi-stoch file will
                 ! automatically be dumped when using this option.
-                write_determ_space = .true.
+                semi_stoch_in%write_determ_space = .true.
             case('DUMP_RESTART_FREQUENCY')
                 call readi(restart_info_global%write_restart_freq)
             case('SEED')
-                call readi(seed)
+                call readi(qmc_in%seed)
             case('SHIFT_DAMPING')
-                call readf(shift_damping)
+                call readf(qmc_in%shift_damping)
             case('CLUSTER_MULTISPAWN_THRESHOLD')
-                call readf(cluster_multispawn_threshold)
+                call readf(ccmc_in%cluster_multispawn_threshold)
             case('INIT_SPIN_INVERSE_REFERENCE_DET')
-                init_spin_inv_D0 = .true.
+                fciqmc_in%init_spin_inv_D0 = .true.
 
             ! Calculation options: initiator-fciqmc.
             case('INITIATOR_POPULATION')
-                call readf(initiator_population)
+                call readf(qmc_in%initiator_pop)
 
             ! Calculation options: operators sampled using Hellmann--Feynman.
             case('OPERATOR')
@@ -507,8 +546,6 @@ contains
                     hf_operator = dipole_operator
                 end select
             ! Integral file for dipole moment.
-            case('ALPHA0')
-                call readi(alpha0)
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
@@ -522,19 +559,19 @@ contains
             case('BLOCK_SIZE')
                 call readi(block_size)
             case('NON_BLOCKING_COMM')
-                non_blocking_comm = .true.
+                fciqmc_in%non_blocking_comm = .true.
             case('LOAD_BALANCING')
-                doing_load_balancing = .true.
+                fciqmc_in%doing_load_balancing = .true.
             case('LOAD_BALANCING_SLOTS')
-                call readi(par_info%load%nslots)
+                call readi(load_bal_in%nslots)
             case('LOAD_BALANCING_POP')
-                call readli(par_info%load%pop)
+                call readli(load_bal_in%pop)
             case('PERCENT_IMBAL')
-                call readf(par_info%load%percent)
+                call readf(load_bal_in%percent)
             case('MAX_LOAD_ATTEMPTS')
-                call readi(par_info%load%max_attempts)
+                call readi(load_bal_in%max_attempts)
             case('WRITE_LOAD_INFO')
-                par_info%load%write_info = .true.
+                load_bal_in%write_info = .true.
             case('USE_MPI_BARRIERS')
                 use_mpi_barriers = .true.
 
@@ -564,18 +601,38 @@ contains
 
     end subroutine read_input
 
-    subroutine check_input(sys)
+    subroutine check_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, reference, load_bal_in, dmqmc_in)
 
         ! I don't pretend this is the most comprehensive of tests, but at least
         ! make sure a few things are not completely insane.
 
         ! In/Out:
         !    sys: system object, as set in read_input (invalid settings are overridden).
+        !    qmc_in: input options relating to QMC methods.
+        !    fciqmc_in: input options relating to FCIQMC.
+        !    ccmc_in: input options relating to CCMC.
+        !    load_bal_in: input options for load balancing.
+        ! In:
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    restart_in: input options for HDF5 restart files.
+        !    reference: reference determinant.
+        !    dmqmc_in: input options relating to DMQMC.
 
         use const
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
+        use qmc_data, only: restart_in_t, reference_t, load_bal_in_t, empty_determ_space
+        use dmqmc_data, only: dmqmc_in_t
         use system
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
+        type(semi_stoch_in_t), intent(in) :: semi_stoch_in
+        type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(in) :: reference
+        type(load_bal_in_t), intent(in) :: load_bal_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
 
         integer :: ivec, jvec
         character(*), parameter :: this='check_input'
@@ -587,7 +644,7 @@ contains
             if (guiding_function /= no_guiding) &
                 call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
                                          & currently.')
-            if (all_spin_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
+            if (dmqmc_in%all_spin_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
                                          & available for the Heisenberg model.')
         end if
 
@@ -615,11 +672,12 @@ contains
             end if
 
             if (sys%system == heisenberg) then
-                if (ms_in > sys%lattice%nsites .and. (.not. all_spin_sectors)) call stop_all(this,'Value of Ms given is&
-                                                                             & too large for this lattice.')
-                if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
-                if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
-                                                                              & possible for this lattice.')
+                if (.not. dmqmc_in%all_spin_sectors) then
+                    if (ms_in > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+                    if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
+                    if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
+                                                                                          & possible for this lattice.')
+                end if
                 if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. (.not.sys%lattice%bipartite_lattice)) &
                     call stop_all(this, 'Cannot set a staggered field&
                                         & for this lattice because it is frustrated.')
@@ -643,7 +701,7 @@ contains
         end if
 
         ! Real amplitude checks.
-        if (real_amplitudes) then
+        if (qmc_in%real_amplitudes) then
             if (doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc)) then
                 call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
             end if
@@ -655,23 +713,23 @@ contains
         end if
 
         ! Semi-stochastic checks.
-        if (semi_stoch_start_iter /= 0 .and. determ_space_type == empty_determ_space .and. parent) &
+        if (semi_stoch_in%start_iter /= 0 .and. semi_stoch_in%space_type == empty_determ_space .and. parent) &
             call warning(this,'You have specified an iteration to turn semi-stochastic on but have not &
                          &specified a deterministic space to use.')
-        if (determ_space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. doing_calc(ct_fciqmc_calc) .or. &
-              doing_calc(hfs_fciqmc_calc))) &
+        if (semi_stoch_in%space_type /= empty_determ_space .and. (doing_calc(dmqmc_calc) .or. &
+                                   doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc))) &
               call stop_all(this, 'Semi-stochastic is only implemented with the FCIQMC method.')
 
-        if (init_spin_inv_D0 .and. ms_in /= 0) then
+        if (fciqmc_in%init_spin_inv_D0 .and. ms_in /= 0) then
             if (parent) call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
-            init_spin_inv_D0 = .false.
+            fciqmc_in%init_spin_inv_D0 = .false.
         end if
 
-        if (allocated(correlation_sites) .and. size(correlation_sites) /= 2) call stop_all(this, 'You must enter exactly two &
-               &sites for the correlation function option.')
+        if (allocated(dmqmc_in%correlation_sites) .and. size(dmqmc_in%correlation_sites) /= 2) &
+                            call stop_all(this, 'You must enter exactly two sites for the correlation function option.')
 
-          if (dmqmc_find_weights .and. calculate_excit_distribution) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
+          if (dmqmc_in%find_weights .and. dmqmc_in%calc_excit_dist) call stop_all(this, 'DMQMC_FIND_WEIGHTS and OUTPUT_EXCITATION&
               &_DISTRIBUTION options cannot be used together.')
 
         ! Calculation specific checking.
@@ -684,31 +742,31 @@ contains
                'You are not performing a DMQMC calculation but have requested DMQMC options to be calculated.')
         if (doing_calc(fciqmc_calc)) then
             if (.not.doing_calc(simple_fciqmc_calc)) then
-                if (walker_length == 0) call stop_all(this,'Walker length zero.')
-                if (spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
+                if (qmc_in%walker_length == 0) call stop_all(this,'Walker length zero.')
+                if (qmc_in%spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
             end if
-            if (calc_inst_rdm .and. spawned_rdm_length == 0) call stop_all(this,'Spawned RDM length zero.')
-            if (tau <= 0) call stop_all(this,'Tau not positive.')
-            if (shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
-            if (allocated(occ_list0)) then
-                if (size(occ_list0) /= sys%nel) then
+            if (dmqmc_in%rdm%calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
+            if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
+            if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
+            if (allocated(reference%occ_list0)) then
+                if (size(reference%occ_list0) /= sys%nel) then
                     if (sys%system /= heisenberg) then
                         call stop_all(this,'Number of electrons specified is different from &
                         &number of electrons used in the reference determinant.')
                     end if
                 end if
             end if
-            if (par_info%load%nslots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
-            if (par_info%load%pop < 0) call stop_all(this, 'Load balancing population must be positive.')
-            if (par_info%load%percent < 0 .or. par_info%load%percent > 1.0) &
+            if (load_bal_in%nslots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
+            if (load_bal_in%pop < 0) call stop_all(this, 'Load balancing population must be positive.')
+            if (load_bal_in%percent < 0 .or. load_bal_in%percent > 1.0) &
                 call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
-            if (par_info%load%max_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
+            if (load_bal_in%max_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
         end if
-        if (doing_calc(ct_fciqmc_calc)) ncycles = 1
+        if (doing_calc(ct_fciqmc_calc)) qmc_in%ncycles = 1
 
-        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. replica_tricks)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%replica_tricks)) call stop_all(this,&
                     'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
-        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. calc_inst_rdm)) call stop_all(this,&
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%rdm%calc_inst_rdm)) call stop_all(this,&
                     'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
 
         ! If the FINITE_CLUSTER keyword was detected then make sure that
@@ -720,25 +778,25 @@ contains
             sys%real_lattice%finite_cluster = .false.
         end if
 
-        if (all_spin_sectors) then
+        if (dmqmc_in%all_spin_sectors) then
             if (.not. doing_calc(dmqmc_calc)) call stop_all(this, 'The use_all_spin_sectors option can only be used in&
                                                                    & DMQMC calculations.')
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
                     call stop_all(this, 'The use_all_spin_sectors option cannot be used with magnetic fields.')
-            if (calc_ground_rdm) call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options cannot be&
-                                                      & used together.')
+            if (dmqmc_in%rdm%calc_ground_rdm) call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options&
+                                                      & cannot be used together.')
         end if
 
-        if (dump_restart_file_shift) then
+        if (restart_in%dump_restart_file_shift) then
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_id<0 &
                  .and. restart_info_global%write_id == restart_info_global_shift%write_id) &
                  call stop_all(this, 'The ids of the restart files are the same.')
              if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
                  call stop_all(this, 'The ids of the restart files could be the same')
         end if   
-        if (dmqmc_vary_weights .and. (.not. dmqmc_weighted_sampling)) then
-            call stop_all(this, 'The dmqmc_vary_weights option can only be used together with the dmqmc_weighted_sampling option.')
+        if (dmqmc_in%vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
+            call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
         if (sys%system /= heisenberg .and. dmqmc_calc_type > dmqmc_energy) then
             call stop_all(this, 'The observable requested is not currently implemented for this Hamiltonian.')
@@ -748,7 +806,8 @@ contains
 
     end subroutine check_input
 
-    subroutine distribute_input(sys)
+    subroutine distribute_input(sys, qmc_in, fciqmc_in, ccmc_in, semi_stoch_in, restart_in, &
+                                load_bal_in, reference, dmqmc_in, dmqmc_rdm_info)
 
         ! Distribute the data read in by the parent processor to all other
         ! processors.
@@ -759,12 +818,33 @@ contains
         ! In/Out:
         !    sys: object describing the system.  All parameters which can be set
         !       in the input file are distributed to other processors.
+        !    fciqmc_in: input options relating to FCIQMC.
+        !    ccmc_in: input options relating to CCMC.
+        !    qmc_in: input options relating to QMC methods.
+        !    semi_stoch_in: Input options for the semi-stochastic adaptation.
+        !    restart_in: input options for HDF5 restart files.
+        !    reference: current reference determinant.
+        !    dmqmc_in: input options relating to DMQMC.
+        !    dmqmc_rdm_info: information about RDMs to be calculated from DMQMC.
+
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
+        use qmc_data, only: restart_in_t, load_bal_in_t, reference_t
+        use dmqmc_data, only: dmqmc_in_t, rdm_t
 
 #ifndef PARALLEL
 
         use system, only: sys_t
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
+        type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
+        type(restart_in_t), intent(inout) :: restart_in
+        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(reference_t), intent(inout) :: reference
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(rdm_t), allocatable, intent(inout) :: dmqmc_rdm_info(:)
 
 #else
 
@@ -775,6 +855,15 @@ contains
         use system
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(inout) :: qmc_in
+        type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(ccmc_in_t), intent(inout) :: ccmc_in
+        type(semi_stoch_in_t), intent(inout) :: semi_stoch_in
+        type(restart_in_t), intent(inout) :: restart_in
+        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(reference_t), intent(inout) :: reference
+        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(rdm_t), allocatable, intent(inout) :: dmqmc_rdm_info(:)
 
         integer :: i, ierr, occ_list_size
         logical :: option_set
@@ -793,17 +882,17 @@ contains
             end if
             call mpi_bcast(sys%lattice%lattice, sys%lattice%ndim*sys%lattice%ndim, mpi_integer, 0, mpi_comm_world, ierr)
         end if
-        call mpi_bcast(real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(semi_stoch_start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(semi_stoch_shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(determ_space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(determ_target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(separate_determ_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(ccmc_full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(linked_ccmc, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%real_amplitudes, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%spawn_cutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%start_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%shift_iter, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%space_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%target_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%write_determ_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(semi_stoch_in%separate_annihil, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%full_nc, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%linked, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%real_lattice%finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -826,8 +915,8 @@ contains
         call mpi_bcast(sys%ueg%r_s, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%ecutoff, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%read_in%dipole_int_file, len(sys%read_in%dipole_int_file), mpi_character, 0, mpi_comm_world, ierr)
-        call mpi_bcast(select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%select_ref_det_every_nreports, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%ref_det_factor, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%cas, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras3_max, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -849,149 +938,170 @@ contains
         call mpi_bcast(print_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(analyse_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(spawned_rdm_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(average_shift_until, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(target_particles, 1, mpi_integer8, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_reduced_dm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%beta_loops, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%spawned_walker_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%spawned_length, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%tau, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%tau_search, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%initial_shift, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%vary_shift_from, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%vary_shift_from_proje, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_von_neumann_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(start_averaging, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dmqmc_weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dmqmc_vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dmqmc_find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(calculate_excit_distribution, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%rdm%doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%start_av_excit_dist, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%start_av_rdm, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%weighted_sampling, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%vary_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%find_weights, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%all_sym_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%all_spin_sectors, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%finish_varying_weights, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%propagate_to_beta, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%free_electron_trial, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%init_beta, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%half_density_matrix, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%calc_excit_dist, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%metropolis_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%max_metropolis_move, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%ueg%chem_pot, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(grand_canonical_initialisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%grand_canonical_initialisation, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(dmqmc_in%fermi_temperature, 1, mpi_logical, 0, mpi_comm_world, ierr)
         option_set = .false.
-        if (parent) option_set = allocated(dmqmc_sampling_probs)
+        if (parent) option_set = allocated(dmqmc_in%sampling_probs)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(dmqmc_sampling_probs)
+            occ_list_size = size(dmqmc_in%sampling_probs)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(dmqmc_sampling_probs(occ_list_size), stat=ierr)
-                call check_allocate('dmqmc_sampling_probs',occ_list_size,ierr)
+                allocate(dmqmc_in%sampling_probs(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_in%sampling_probs',occ_list_size,ierr)
             end if
-            call mpi_bcast(dmqmc_sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
+            call mpi_bcast(dmqmc_in%sampling_probs, occ_list_size, mpi_preal, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
-        if (parent) option_set = allocated(rdms)
+        if (parent) option_set = allocated(dmqmc_rdm_info)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(rdms)
+            occ_list_size = size(dmqmc_rdm_info)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(rdms(occ_list_size), stat=ierr)
-                call check_allocate('rdms',occ_list_size,ierr)
+                allocate(dmqmc_rdm_info(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_rdm_info',occ_list_size,ierr)
             end if
             do i = 1, occ_list_size
-                call mpi_bcast(rdms(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                call mpi_bcast(dmqmc_rdm_info(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
                 if (.not.parent) then
-                    allocate(rdms(i)%subsystem_A(rdms(i)%A_nsites), stat=ierr)
-                    call check_allocate('rdms(i)%subsystem_A',rdms(i)%A_nsites,ierr)
+                    allocate(dmqmc_rdm_info(i)%subsystem_A(dmqmc_rdm_info(i)%A_nsites), stat=ierr)
+                    call check_allocate('dmqmc_rdm_info(i)%subsystem_A',dmqmc_rdm_info(i)%A_nsites,ierr)
                 end if
-                call mpi_bcast(rdms(i)%subsystem_A, rdms(i)%A_nsites, mpi_integer, 0, mpi_comm_world, ierr)
+                call mpi_bcast(dmqmc_rdm_info(i)%subsystem_A, dmqmc_rdm_info(i)%A_nsites, mpi_integer, &
+                               0, mpi_comm_world, ierr)
             end do
         end if
         option_set = .false.
-        if (parent) option_set = allocated(correlation_sites)
+        if (parent) option_set = allocated(fci_rdm_info)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(correlation_sites)
+            occ_list_size = size(fci_rdm_info)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(correlation_sites(occ_list_size), stat=ierr)
-                call check_allocate('correlation_sites',occ_list_size,ierr)
+                allocate(fci_rdm_info(occ_list_size), stat=ierr)
+                call check_allocate('fci_rdm_info',occ_list_size,ierr)
             end if
-            call mpi_bcast(correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            do i = 1, occ_list_size
+                call mpi_bcast(fci_rdm_info(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                if (.not.parent) then
+                    allocate(fci_rdm_info(i)%subsystem_A(fci_rdm_info(i)%A_nsites), stat=ierr)
+                    call check_allocate('fci_rdm_info(i)%subsystem_A',fci_rdm_info(i)%A_nsites,ierr)
+                end if
+                call mpi_bcast(fci_rdm_info(i)%subsystem_A, fci_rdm_info(i)%A_nsites, mpi_integer, 0, mpi_comm_world, ierr)
+            end do
+        end if
+        option_set = .false.
+        if (parent) option_set = allocated(dmqmc_in%correlation_sites)
+        call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        if (option_set) then
+            occ_list_size = size(dmqmc_in%correlation_sites)
+            call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+            if (.not.parent) then
+                allocate(dmqmc_in%correlation_sites(occ_list_size), stat=ierr)
+                call check_allocate('dmqmc_in%correlation_sites',occ_list_size,ierr)
+            end if
+            call mpi_bcast(dmqmc_in%correlation_sites, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         option_set = .false.
         call mpi_bcast(truncate_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(truncation_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        if (parent) option_set = allocated(occ_list0)
+        call mpi_bcast(reference%ex_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        if (parent) option_set = allocated(reference%occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             ! Have not yet set sys%nel in the Heisenberg model.
-            occ_list_size = size(occ_list0)
+            occ_list_size = size(reference%occ_list0)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(occ_list0(occ_list_size), stat=ierr)
-                call check_allocate('occ_list0', occ_list_size, ierr)
+                allocate(reference%occ_list0(occ_list_size), stat=ierr)
+                call check_allocate('reference%occ_list0', occ_list_size, ierr)
             end if
-            call mpi_bcast(occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(reference%occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
-        if (parent) option_set = allocated(hs_occ_list0)
+        if (parent) option_set = allocated(reference%hs_occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
             ! Have not yet set sys%nel in the Heisenberg model.
-            occ_list_size = size(hs_occ_list0)
+            occ_list_size = size(reference%hs_occ_list0)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(hs_occ_list0(occ_list_size), stat=ierr)
-                call check_allocate('hs_occ_list0', occ_list_size, ierr)
+                allocate(reference%hs_occ_list0(occ_list_size), stat=ierr)
+                call check_allocate('reference%hs_occ_list0', occ_list_size, ierr)
             end if
-            call mpi_bcast(hs_occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
+            call mpi_bcast(reference%hs_occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
-        call mpi_bcast(restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dump_restart_file, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(dump_restart_file_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%read_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%dump_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%dump_restart_file_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global%write_restart_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(restart_info_global_shift%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%D0_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%no_renorm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%pattempt_single, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%pattempt_double, 1, mpi_preal, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(ccmc_move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(ccmc_in%move_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_population, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(initiator_approximation, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%init_spin_inv_D0, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%initiator_pop, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%initiator_approx, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(alpha0, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(par_info%load%nslots, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(par_info%load%pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
-        call mpi_bcast(par_info%load%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)
-        call mpi_bcast(par_info%load%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(par_info%load%write_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(load_bal_in%nslots, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(load_bal_in%pop, 1, mpi_integer8, 0, mpi_comm_world, ierr)
+        call mpi_bcast(load_bal_in%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)
+        call mpi_bcast(load_bal_in%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(load_bal_in%write_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(use_mpi_barriers, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
 #endif

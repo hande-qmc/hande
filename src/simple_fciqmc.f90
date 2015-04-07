@@ -18,7 +18,7 @@ implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, ndets, dets, ref_det)
+    subroutine init_simple_fciqmc(sys, qmc_in, reference, qs, restart, ndets, dets, ref_det, psip_list, spawn)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -28,10 +28,20 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: reference determinant. Set on output.
+        !    qs: state of QMC calculation.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
+        !    restart: true is restarting from a HDF5 file.
         ! Out:
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space.
         !    ref_det: location of reference in dets.
+        !    psip_list: particle_t object for storing psips sampling the Hilbert
+        !       space and related information.  Allocated and initialised on
+        !       output.
+        !    spawn: spawn_t object for holding the spawned psips.  Allocated on
+        !       output, with one slot for each determinant in thie Hilbert space.
 
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
@@ -39,10 +49,18 @@ contains
 
         use determinant_enumeration
         use diagonalisation, only: generate_hamil
+        use qmc_data, only: qmc_in_t, reference_t, particle_t, qmc_state_t
+        use spawn_data, only: spawn_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(inout) :: reference
+        type(qmc_state_t), intent(inout) :: qs
+        logical, intent(in) :: restart
         integer, intent(out) :: ref_det
+        type(particle_t), intent(out) :: psip_list
+        type(spawn_t), intent(out) :: spawn
 
         integer, allocatable :: sym_space_size(:)
         integer :: ndets
@@ -57,15 +75,15 @@ contains
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
-        if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=occ_list0)
+        if (allocated(reference%occ_list0)) then
+            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=reference%occ_list0)
         else
             call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets)
         end if
 
         ! Find all determinants with desired spin and symmetry.
-        if (allocated(occ_list0)) then
-            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, occ_list0)
+        if (allocated(reference%occ_list0)) then
+            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, reference%occ_list0)
         else
             call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in)
         end if
@@ -95,38 +113,40 @@ contains
 
         ! Allocate main and spawned lists to hold population of walkers.
         ! Don't need to hold determinants, so can just set spawned_size to be 1.
-        allocate(walker_population(1,ndets), stat=ierr)
-        call check_allocate('walker_population',ndets,ierr)
-        allocate(qmc_spawn%sdata(1,ndets), stat=ierr)
-        call check_allocate('qmc_spawn%sdata',ndets,ierr)
+        allocate(psip_list%pops(1,ndets), stat=ierr)
+        call check_allocate('psip_list%pops',ndets,ierr)
+        allocate(spawn%sdata(1,ndets), stat=ierr)
+        call check_allocate('spawn%sdata',ndets,ierr)
         ! Zero these.
-        walker_population = 0_int_p
-        qmc_spawn%sdata = 0_int_s
+        psip_list%pops = 0_int_p
+        spawn%sdata = 0_int_s
 
-        allocate(shift(1), stat=ierr)
-        call check_allocate('shift', size(shift), ierr)
-        shift = initial_shift
+        allocate(qs%shift(1), stat=ierr)
+        call check_allocate('qs%shift', size(qs%shift), ierr)
+        qs%shift = qmc_in%initial_shift
 
-        allocate(vary_shift(1), stat=ierr)
-        call check_allocate('vary_shift', size(vary_shift), ierr)
-        vary_shift = .false.
+        allocate(qs%vary_shift(1), stat=ierr)
+        call check_allocate('qs%vary_shift', size(qs%vary_shift), ierr)
+        qs%vary_shift = .false.
+
+        qs%tau = qmc_in%tau
 
         ! Now we need to set the reference determinant.
         ! We choose the determinant with the lowest Hamiltonian matrix element.
         if (restart) then
-            allocate(occ_list0(sys%nel), stat=ierr)
-            call check_allocate('occ_list0',sys%nel,ierr)
-            allocate(f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('f0',sys%basis%string_len,ierr)
+            allocate(reference%occ_list0(sys%nel), stat=ierr)
+            call check_allocate('reference%occ_list0',sys%nel,ierr)
+            allocate(reference%f0(sys%basis%string_len), stat=ierr)
+            call check_allocate('reference%f0',sys%basis%string_len,ierr)
         else
             if (use_sparse_hamil) then
-                H00 = huge(1.0_p)
+                reference%H00 = huge(1.0_p)
                 do i = 1, ndets
                     ! mat(k) is M_{ij}, so row_ptr(i) <= k < row_ptr(i+1) and col_ind(k) = j
                     do j = hamil_csr%row_ptr(i), hamil_csr%row_ptr(i+1)-1
                         if (hamil_csr%col_ind(j) == i) then
-                            if (hamil_csr%mat(j) < H00) then
-                                H00 = hamil_csr%mat(j)
+                            if (hamil_csr%mat(j) < reference%H00) then
+                                reference%H00 = hamil_csr%mat(j)
                                 ref_det = i
                             end if
                         end if
@@ -134,31 +154,31 @@ contains
                 end do
             else
                 ref_det = 1
-                H00 = hamil(1,1)
+                reference%H00 = hamil(1,1)
                 do i = 2, ndets
-                    if (hamil(i,i) < H00) then
+                    if (hamil(i,i) < reference%H00) then
                         ref_det = i
-                        H00 = hamil(ref_det,ref_det)
+                        reference%H00 = hamil(ref_det,ref_det)
                     end if
                 end do
             end if
 
-            if (.not.allocated(f0)) then
-                allocate(f0(sys%basis%string_len), stat=ierr)
-                call check_allocate('f0',sys%basis%string_len,ierr)
+            if (.not.allocated(reference%f0)) then
+                allocate(reference%f0(sys%basis%string_len), stat=ierr)
+                call check_allocate('reference%f0',sys%basis%string_len,ierr)
             end if
-            if (.not.allocated(occ_list0)) then
-                allocate(occ_list0(sys%nel), stat=ierr)
-                call check_allocate('occ_list0',sys%nel,ierr)
+            if (.not.allocated(reference%occ_list0)) then
+                allocate(reference%occ_list0(sys%nel), stat=ierr)
+                call check_allocate('reference%occ_list0',sys%nel,ierr)
             end if
-            f0 = dets(:,ref_det)
-            call decode_det(sys%basis, f0, occ_list0)
-            walker_population(1,ref_det) = nint(D0_population)
+            reference%f0 = dets(:,ref_det)
+            call decode_det(sys%basis, reference%f0, reference%occ_list0)
+            psip_list%pops(1,ref_det) = nint(qmc_in%D0_population)
         end if
 
         write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
         call write_det(sys%basis, sys%nel, dets(:,ref_det), new_line=.true.)
-        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',H00
+        write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',reference%H00
         write (6,'(/,1X,a68,/)') 'Note that FCIQMC calculates the correlation energy relative to |D0>.'
 
         ! Return sys in an unaltered state.
@@ -168,21 +188,30 @@ contains
 
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc(sys)
+    subroutine do_simple_fciqmc(sys, qmc_in, restart_in, reference)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
+        !    reference: current reference determinant. May be set on input, will be on output.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
+        !    restart_in: input options for HDF5 restart files.
 
-        use calc, only: seed
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t, qmc_state_t
+        use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_global
 
         type(sys_t), intent(inout) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(restart_in_t), intent(in) :: restart_in
+        type(reference_t), intent(inout) :: reference
+
         integer :: ireport, icycle, idet, ipart, j
         real(p) :: nparticles, nparticles_old
         integer :: nattempts
@@ -191,30 +220,33 @@ contains
         integer :: ref_det, ndets
         integer(i0), allocatable :: dets(:,:)
         real(p) :: H0i, Hii
+        type(particle_t) :: psip_list
+        type(spawn_t) :: spawn
+        type(qmc_state_t) :: qs
 
-        call init_simple_fciqmc(sys, ndets, dets, ref_det)
+        call init_simple_fciqmc(sys, qmc_in, reference, qs, restart_in%read_restart, ndets, dets, ref_det, psip_list, spawn)
 
-        if (parent) call rng_init_info(seed+iproc)
-        call dSFMT_init(seed+iproc, 50000, rng)
+        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
-        nparticles = real(sum(abs(walker_population(1,:))),p)
+        nparticles = real(sum(abs(psip_list%pops(1,:))),p)
         nparticles_old = nparticles
 
-        call write_fciqmc_report_header()
+        call write_fciqmc_report_header(1)
 
         call cpu_time(t1)
 
-        do ireport = 1, nreport
+        do ireport = 1, qmc_in%nreport
 
             ! Zero report cycle quantities.
-            proj_energy = 0.0_p
-            rspawn = 0.0_p
-            D0_population = 0.0_p
+            qs%estimators%proj_energy = 0.0_p
+            qs%spawn_store%rspawn = 0.0_p
+            qs%estimators%D0_population = 0.0_p
 
-            do icycle = 1, ncycles
+            do icycle = 1, qmc_in%ncycles
 
                 ! Zero spawning arrays.
-                qmc_spawn%sdata = 0_int_s
+                spawn%sdata = 0_int_s
 
                 ! Number of spawning attempts that will be made.
                 nattempts = int(nparticles)
@@ -236,57 +268,59 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det == idet, H0i, walker_population(1,idet), proj_energy)
+                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs, qs%estimators%proj_energy)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
                     if (use_sparse_hamil) then
                         associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
-                            do ipart = 1, abs(walker_population(1,idet))
-                                call attempt_spawn(rng, idet, walker_population(1,idet), hamil_csr%mat(hstart:hend), &
+                            do ipart = 1, abs(psip_list%pops(1,idet))
+                                call attempt_spawn(rng, spawn, qs%tau, idet, &
+                                                   psip_list%pops(1,idet), hamil_csr%mat(hstart:hend), &
                                                    hamil_csr%col_ind(hstart:hend))
                             end do
                         end associate
                     else
-                        do ipart = 1, abs(walker_population(1,idet))
-                            call attempt_spawn(rng, idet, walker_population(1,idet), hamil(:,idet))
+                        do ipart = 1, abs(psip_list%pops(1,idet))
+                            call attempt_spawn(rng, spawn, qs%tau, idet, psip_list%pops(1,idet), hamil(:,idet))
                         end do
                     end if
 
-                    call simple_death(rng, Hii, walker_population(1,idet))
+                    call simple_death(rng, qs%tau, qs, Hii, reference%H00, psip_list%pops(1,idet))
 
                 end do
 
                 ! Find the spawning rate and add to the running
                 ! total.
-                rspawn = rspawn + real(sum(abs(qmc_spawn%sdata(1,:))))/nattempts
+                qs%spawn_store%rspawn = qs%spawn_store%rspawn + real(sum(abs(spawn%sdata(1,:))))/nattempts
 
-                call simple_annihilation()
+                call simple_annihilation(spawn, psip_list%pops)
 
             end do
 
             ! Update the shift
-            nparticles = real(sum(abs(walker_population(1,:))),p)
-            if (vary_shift(1)) then
-                call update_shift(shift(1), nparticles_old, nparticles, ncycles)
+            nparticles = real(sum(abs(psip_list%pops(1,:))),p)
+            if (qs%vary_shift(1)) then
+                call update_shift(qmc_in, qs, qs%shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
             nparticles_old = nparticles
-            if (nparticles > target_particles .and. .not.vary_shift(1)) then
-                vary_shift(1) = .true.
+            if (nparticles > qmc_in%target_particles .and. .not.qs%vary_shift(1)) then
+                qs%vary_shift(1) = .true.
             end if
 
             ! Average these quantities over the report cycle.
-            proj_energy = proj_energy/ncycles
-            D0_population = D0_population/ncycles
-            rspawn = rspawn/ncycles
+            qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
+            qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+            qs%spawn_store%rspawn = qs%spawn_store%rspawn/qmc_in%ncycles
 
             call cpu_time(t2)
 
             ! Output stats
-            call write_fciqmc_report(ireport, (/nparticles/), t2-t1, .false.)
+            call write_fciqmc_report(qmc_in, qs, ireport, (/nparticles/), t2-t1, .false., .false.)
 
             ! Write restart file if required.
             if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*ireport, (/nparticles_old/))
+                call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done+qmc_in%ncycles*ireport, &
+                                       (/nparticles_old/), .false.)
 
             t1 = t2
 
@@ -294,8 +328,9 @@ contains
 
         if (parent) write (6,'()')
 
-        if (dump_restart_file) then
-            call dump_restart_hdf5(restart_info_global, mc_cycles_done+ncycles*nreport, (/nparticles_old/))
+        if (restart_in%dump_restart) then
+            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
+                                   (/nparticles_old/), .false.)
             if (parent) write (6,'()')
         end if
 
@@ -303,22 +338,34 @@ contains
 
     end subroutine do_simple_fciqmc
 
-    subroutine attempt_spawn(rng, idet, pop, hrow, det_indx)
+    subroutine attempt_spawn(rng, spawn, tau, idet, pop, hrow, det_indx)
 
         ! Simulate spawning part of FCIQMC algorithm.
         ! We attempt to spawn on all determinants connected to the current
         ! determinant (given by iwalker) with probability tau|K_ij|.  Note this
         ! is different from the optimised FCIQMC algorithm where each walker
         ! only gets one opportunity per FCIQMC cycle to spawn.
+
         ! In:
-        !    iwalker: walker whose particles attempt to clone/die.
+        !    tau: timestep being used.
+        !    idet: determinant index from which we attempt to spawn.
+        !    pop: population on the parent determinant.
+        !    hrow: row of the Hamitlonian matrix i.e. H(:,idet).
+        !    det_indx (optional): list of indices for which hrow contains an
+        !       entry (i.e. if H(j,idet) is present, then an entry in det_indx
+        !       must be set to j.  Must be present if H doesn't contain an entry
+        !       for each determinant (ie is in sparse format).
         ! In/Out:
         !    rng: random number generator.
+        !    spawn: spawn_t object holding the newly spawned particles.
+
+        use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(in) :: idet
         integer(int_p), intent(in) :: pop
-        real(p), intent(in) :: hrow(:)
+        real(p), intent(in) :: tau, hrow(:)
+        type(spawn_t), intent(inout) :: spawn
         integer, intent(in), optional :: det_indx(:)
 
         integer :: j, jdet
@@ -345,7 +392,7 @@ contains
             ! Spawn with probability tau|K_ij|.
             ! As K_ij = H_ij for off-diagonal elements, we can just use the
             ! stored Hamiltonian matrix directly.
-            rate = abs(Tau*hrow(j))
+            rate = abs(tau*hrow(j))
             nspawn = int(rate, int_s)
             rate = rate - nspawn
             r = get_rand_close_open(rng)
@@ -356,17 +403,17 @@ contains
                 ! Flip child sign.
                 if (pop < 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) - nspawn
                 end if
             else
                 ! Same sign as parent.
                 if (pop > 0) then
                     ! Positive offspring.
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) + nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) + nspawn
                 else
-                    qmc_spawn%sdata(1,jdet) = qmc_spawn%sdata(1,jdet) - nspawn
+                    spawn%sdata(1,jdet) = spawn%sdata(1,jdet) - nspawn
                 end if
             end if
 
@@ -374,18 +421,24 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(rng, Hii, pop)
+    subroutine simple_death(rng, tau, qs, Hii, H00, pop)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
+
         ! In:
+        !    tau: timestep being used.
         !    Hii: diagonal matrix element, <D_i|H|D_i>
+        !    H00: energy of the reference.
         ! In/Out:
         !    rng: random number generator.
         !    pop: population on |D_i>.  On output, the population is updated from applying
         !         the death step.
 
+        use qmc_data, only: qmc_state_t
+
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: Hii
+        real(p), intent(in) :: tau, Hii, H00
+        type(qmc_state_t), intent(in) :: qs
         integer(int_p), intent(inout) :: pop
 
         integer :: nkill
@@ -399,7 +452,7 @@ contains
         ! We store the Hamiltonian matrix rather than the K matrix.
         ! It is efficient to allow all particles on a given determinant to
         ! attempt to die in one go (like lemmings) in a stochastic process.
-        rate = abs(pop)*tau*(Hii-H00-shift(1))
+        rate = abs(pop)*qs%tau*(Hii-H00-qs%shift(1))
         ! Number to definitely kill.
         nkill = int(rate)
         rate = rate - nkill
@@ -416,7 +469,7 @@ contains
 
         ! Don't allow creation of anti-particles in simple_fciqmc.
         if (nkill > abs(pop)) then
-            write (6,*) pop, abs(pop)*tau*(Hii-H00-shift(1))
+            write (6,*) pop, abs(pop)*qs%tau*(Hii-H00-qs%shift(1))
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 
@@ -432,19 +485,28 @@ contains
 
     end subroutine simple_death
 
-    subroutine simple_annihilation()
+    subroutine simple_annihilation(spawn, pop)
 
         ! Annihilation: merge main and spawned lists.
 
-        ! This is especially easy as we store the walker populations for all
+        ! This is especially easy as we store the populations for all
         ! determinants for both the main and spawned lists so it just amounts to
         ! adding the two arrays together,
 
-        walker_population = walker_population + int(qmc_spawn%sdata, int_p)
+        ! In:
+        !    spawn: spawn_t object containing the spawned particles.
+        ! In/Out:
+        !    pop: main population on each site before (input) and after (output)
+        !         annihilation.
+ 
+        type(spawn_t), intent(in)  :: spawn
+        integer(int_p), intent(inout) :: pop(:,:)
+
+        pop = pop + int(spawn%sdata, int_p)
 
     end subroutine simple_annihilation
 
-    subroutine simple_update_proj_energy(ref, H0i, pop, proj_energy)
+    subroutine simple_update_proj_energy(ref, H0i, pop, qs, proj_energy)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -466,16 +528,19 @@ contains
         !    proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !    This is updated if |D_i> is connected to |D_0> (and isn't |D_0>).
 
+        use qmc_data, only: qmc_state_t
+
         logical, intent(in) :: ref
         real(p), intent(in) :: H0i
         integer(int_p), intent(in) :: pop
+        type(qmc_state_t), intent(inout) :: qs
         real(p), intent(inout) :: proj_energy
 
         if (ref) then
             ! Have reference determinant.
-            D0_population = D0_population + pop
+            qs%estimators%D0_population = qs%estimators%D0_population + pop
         else
-            proj_energy = proj_energy + H0i*pop
+            qs%estimators%proj_energy = qs%estimators%proj_energy + H0i*pop
         end if
 
     end subroutine simple_update_proj_energy

@@ -21,3 +21,4 @@ nreports 100
 
 varyshift_target 30000
 vary_shift_from -14.7
+init_pop 10
