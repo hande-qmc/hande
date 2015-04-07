@@ -119,7 +119,8 @@ contains
         ! Some initial semi-stochastic parameters. Semi-stochastic is
         ! always turned off to begin with.
         ! The iteration on which to start using the semi-stochastic adaptation.
-        semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
+        ! Turn semi-stochastic on immediately unless asked otherwise.
+        semi_stoch_iter = max(semi_stoch_in%start_iter, qs%mc_cycles_done+1)
         ! Allocate array of flags to specify if a state is deterministic or not.
         allocate(determ%flags(size(qs%psip_list%states, dim=2)), stat=ierr)
         call check_allocate('determ%flags', size(determ%flags), ierr)
