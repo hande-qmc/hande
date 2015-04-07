@@ -62,7 +62,7 @@ contains
         ! Get arguments passed to us by lua (if appropriate).
 
         ! Now do our work...
-        write (6,'(1X,"Hello from fortran! Processor: ",i2,/)'), iproc
+        write (6,'(1X,"Hello from fortran! Processor: ",i2,/)') iproc
 
     end function test_lua_api
 

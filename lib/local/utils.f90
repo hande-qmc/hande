@@ -410,7 +410,7 @@ contains
         do
             line = ''
             do
-                read(iunit, '(A)', advance='no', iostat=stat, size=chunk_size), chunk
+                read(iunit, '(A)', advance='no', iostat=stat, size=chunk_size) chunk
                 if (stat /= 0 .and. .not. (stat == iostat_eor .or. stat == iostat_end)) then
                     if (present(fname)) call stop_all('read_file_to_buffer', 'Problem reading file: '//trim(fname))
                     if (present(in_unit)) call stop_all('read_file_to_buffer', 'Problem reading file from given unit.')
