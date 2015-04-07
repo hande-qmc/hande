@@ -99,37 +99,28 @@ implicit none
 
 contains
 
-    subroutine init_semi_stoch_t(determ, sys, psip_list, reference, annihilation_flags, spawn, space_type, &
-                                 target_size, separate_annihilation, mpi_barriers, write_determ_in)
+    subroutine init_semi_stoch_t(determ, ss_in, sys, psip_list, reference, annihilation_flags, &
+                                 spawn, mpi_barriers)
 
         ! Create a semi_stoch_t object which holds all of the necessary
         ! information to perform a semi-stochastic calculation. The type of
-        ! deterministic space is determined by space_type.
+        ! deterministic space is determined by ss_in%space_type.
 
         ! In/Out:
         !    determ: Deterministic space being used.
         !    psip_list: particle_t object containing psip information.
         ! In:
+        !    ss_in: Type containing various input semi-stochastic input options.
         !    sys: system being studied
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         !    spawn: spawn_t object to which deterministic spawning will occur.
-        !    space_type: Integer parameter specifying which type of
-        !        deterministic space to use.
-        !    target_size: A size of deterministic space to aim for. This
-        !        is only necessary for particular deterministic spaces.
-        !    separate_annihilation: If true then routines which use the created
-        !        determ object will not use the standard annihilation routine
-        !        to treat deterministic spawnings, but will handle them
-        !        separately.
         !    mpi_barriers: If true then use an mpi_barrier call to measure
         !        load balancing before semi-stochastic communication.
-        !    write_determ_in: If true then write out the deterministic states to
-        !        a file.
 
         use checking, only: check_allocate, check_deallocate
         use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, &
-                            reuse_determ_space, particle_t, annihilation_flags_t
+                            reuse_determ_space, particle_t, annihilation_flags_t, semi_stoch_in_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -138,16 +129,13 @@ contains
         use qmc_data, only: reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
+        type(semi_stoch_in_t), intent(in) :: ss_in
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(inout) :: psip_list
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(spawn_t), intent(in) :: spawn
-        integer, intent(in) :: space_type
-        integer, intent(in) :: target_size
-        logical, intent(in) :: separate_annihilation
         logical, intent(in) :: mpi_barriers
-        logical, intent(in) :: write_determ_in
 
         integer :: i, ierr, determ_dets_mem, max_nstates
         integer :: displs(0:nprocs-1)
@@ -158,10 +146,10 @@ contains
 
         ! Only print information if the parent processor and if we are using a
         ! non-trivial deterministic space.
-        print_info = parent .and. space_type /= empty_determ_space
+        print_info = parent .and. ss_in%space_type /= empty_determ_space
 
         ! Copy across this input option to the derived type instance.
-        determ%separate_annihilation = separate_annihilation
+        determ%separate_annihilation = ss_in%separate_annihil
 
         ! Zero the semi-stochastic MPI times, just in case this determ object
         ! is being reused.
@@ -170,19 +158,16 @@ contains
         determ%mpi_time%barrier_time = 0.0_p
 
         ! If an empty space is being used then don't dump a semi-stoch file.
-        write_determ = write_determ_in .and. space_type /= empty_determ_space
+        write_determ = ss_in%write_determ_space .and. ss_in%space_type /= empty_determ_space
 
         if (print_info) then
-            if (space_type == reuse_determ_space) then
+            if (ss_in%space_type == reuse_determ_space) then
                 write(6,'(1X,"# Recreating semi-stochastic objects.")')
             else
                 write(6,'(1X,"# Beginning semi-stochastic initialisation.")')
             end if
         end if
 
-        max_nstates = size(psip_list%states, dim=2)
-        allocate(determ%flags(max_nstates), stat=ierr)
-        call check_allocate('determ%flags', size(determ%flags), ierr)
         allocate(determ%sizes(0:nprocs-1), stat=ierr)
         call check_allocate('determ%sizes', nprocs, ierr)
 
@@ -190,10 +175,11 @@ contains
 
         ! If we're reusing the determ object, then don't overwrite the
         ! space type.
-        if (.not. space_type == reuse_determ_space) determ%space_type = space_type
+        if (.not. ss_in%space_type == reuse_determ_space) determ%space_type = ss_in%space_type
 
         ! Create temporary space for enumerating the deterministic space
         ! belonging to this processor only.
+        max_nstates = size(psip_list%states, dim=2)
         allocate(dets_this_proc(sys%basis%tensor_label_len, max_nstates), stat=ierr)
         call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
         dets_this_proc = 0_i0
@@ -209,11 +195,11 @@ contains
         ! If space_type does not take one of the below values then an empty
         ! deterministic space will be used. This is the default behaviour
         ! (space_type = empty_determ_space).
-        if (space_type == high_pop_determ_space) then
-            call create_high_pop_space(dets_this_proc, psip_list, spawn, target_size, determ%sizes(iproc))
-        else if (space_type == read_determ_space) then
+        if (ss_in%space_type == high_pop_determ_space) then
+            call create_high_pop_space(dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc))
+        else if (ss_in%space_type == read_determ_space) then
             call read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
-        else if (space_type == reuse_determ_space) then
+        else if (ss_in%space_type == reuse_determ_space) then
             call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc))
         end if
 
@@ -263,7 +249,7 @@ contains
 
         ! If we're reusing the deterministic space then we don't need to
         ! allocate the dets array. It's already allocated to the correct size.
-        if (space_type /= reuse_determ_space) then
+        if (ss_in%space_type /= reuse_determ_space) then
             ! Array to hold all deterministic states from all processes.
             ! The memory required in MB.
             determ_dets_mem = sys%basis%tensor_label_len*determ%tot_size*i0_length/(8*10**6)
@@ -350,7 +336,7 @@ contains
             deallocate(determ%dets, stat=ierr)
             call check_deallocate('determ%dets', ierr)
         end if
-        if (allocated(determ%flags)) then
+        if ((.not. keep_dets) .and. allocated(determ%flags)) then
             deallocate(determ%flags, stat=ierr)
             call check_deallocate('determ%flags', ierr)
         end if
@@ -655,7 +641,69 @@ contains
 
     end function check_if_determ
 
+    subroutine set_determ_info(idet, real_pop, ndeterm_found, determ, determ_parent)
+
+        ! In:
+        !    idet: index of the determinant (in determ%flags, also matches that in the main
+        !        determinant list).
+        !    real_pop: (decoded) population on the determinant.
+        ! In/Out:
+        !    ndeterm_found: number of determinants in the deterministic space found.
+        !        Incrememted if idet corresponds to a determinant in the deterministic space.
+        !    determ: semi_stoch_t object.  vector and indices components are updated if the
+        !        determinant is in the deterministic space.
+        ! Out:
+        !    determ_parent: true if the determinant is in the deterministic space.
+
+        integer, intent(in) ::idet
+        real(p), intent(in) :: real_pop
+        integer, intent(inout) :: ndeterm_found
+        type(semi_stoch_t), intent(inout) :: determ
+        logical, intent(out) :: determ_parent
+
+        if (determ%flags(idet) == 0) then
+            ndeterm_found = ndeterm_found + 1
+            determ%vector(ndeterm_found) = real_pop
+            if (determ%separate_annihilation) determ%indices(ndeterm_found) = idet
+            determ_parent = .true.
+        else
+            determ_parent = .false.
+        end if
+
+    end subroutine set_determ_info
+
     subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
+
+        ! A wrapper function for calling the correct routine for deterministic
+        ! projection.
+
+        ! In/Out:
+        !    rng: random number generator.
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    determ: deterministic space being used.
+        ! In:
+        !    qmc_in: input options relating to QMC methods.
+        !    qs: state of the QMC calculation. Timestep and shift are used.
+
+        use dSFMT_interface, only: dSFMT_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
+        use spawn_data, only: spawn_t
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qs
+        type(spawn_t), intent(inout) :: spawn
+        type(semi_stoch_t), intent(inout) :: determ
+
+        if (determ%separate_annihilation) then
+            call determ_proj_separate_annihil(determ, qs)
+        else
+            call determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
+        end if
+
+    end subroutine determ_projection
+
+    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -762,9 +810,9 @@ contains
 
             end subroutine create_spawned_particle_determ
 
-    end subroutine determ_projection
+    end subroutine determ_proj_combined_annihil
 
-    subroutine determ_projection_separate_annihil(determ, qs)
+    subroutine determ_proj_separate_annihil(determ, qs)
 
         ! Perform the deterministic part of the projection. This is done here
         ! without adding deterministic spawnings to the spawned list, but
@@ -836,7 +884,7 @@ contains
         ! deterministic projection.
         call csrpgemv(.true., .false., -1.0_p*qs%tau, determ%hamil, determ%full_vector, determ%vector)
 
-    end subroutine determ_projection_separate_annihil
+    end subroutine determ_proj_separate_annihil
 
     subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc)
 

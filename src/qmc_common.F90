@@ -547,7 +547,7 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use qmc_data, only: reference_t, semi_stoch_t, empty_determ_space, reuse_determ_space, particle_t
-        use qmc_data, only: annihilation_flags_t
+        use qmc_data, only: annihilation_flags_t, semi_stoch_in_t
 
         type(sys_t), intent(in) :: sys
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -556,19 +556,20 @@ contains
         type(spawn_t), intent(in) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
 
-        logical :: sep_annihil_copy
+        type(semi_stoch_in_t) :: ss_in_new
 
         if (determ%space_type /= empty_determ_space) then
-            ! Copy this logical to re-pass into the initialisation routine.
-            sep_annihil_copy = determ%separate_annihilation
+            ! Create a temporary semi_stoch_in_t object to pass into the
+            ! init_semi_stoch routine to update the determ object.
+            ss_in_new%space_type = reuse_determ_space
+            ss_in_new%separate_annihil = determ%separate_annihilation
 
             ! Deallocate the semi_stoch_t instance, except for the list of all
             ! deterministic states, which we want to reuse.
             call dealloc_semi_stoch_t(determ, keep_dets=.true.)
             ! Recreate the semi_stoch_t instance, by reusing the deterministic
             ! space already generated, but with states on their new processes.
-            call init_semi_stoch_t(determ, sys, psip_list, reference, annihilation_flags, spawn, reuse_determ_space, &
-                                   0, sep_annihil_copy, .false., .true.)
+            call init_semi_stoch_t(determ, ss_in_new, sys, psip_list, reference, annihilation_flags, spawn, .false.)
         end if
 
     end subroutine redistribute_semi_stoch_t

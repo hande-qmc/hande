@@ -46,8 +46,8 @@ contains
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
-        use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection, determ_projection_separate_annihil
-        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t
+        use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, set_determ_info
         use system, only: sys_t
         use restart_hdf5, only: restart_info_global, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
@@ -84,7 +84,7 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
 
         logical :: soft_exit, dump_restart_file_shift
-        logical :: semi_stochastic, determ_parent, determ_child
+        logical :: determ_parent, determ_child
 
         real :: t1, t2
 
@@ -110,29 +110,21 @@ contains
         ! Allocate det_info_t components.
         call alloc_det_info_t(sys, cdet, .false.)
 
-        ! The iteration on which to start performing semi-stochastic.
-        semi_stoch_iter = semi_stoch_in%start_iter
-
         ! Should we dump a restart file just before the shift is turned on?
         dump_restart_file_shift = restart_in%dump_restart_file_shift
-
-        ! Create the semi_stoch_t object, determ.
-        ! If the user has asked to use semi-stochastic from the first iteration
-        ! then turn it on now. Otherwise, use an empty deterministic space.
-        if (semi_stoch_iter == 0) then
-            call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                   semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
-                                   semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
-        else
-            call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                   empty_determ_space, 0, .false., .false., .false.)
-        end if
 
         ! In case this is not set.
         nspawn_events = 0
 
-        ! Are we using a non-empty semi-stochastic space?
-        semi_stochastic = .not. (determ%space_type == empty_determ_space)
+        ! Some initial semi-stochastic parameters. Semi-stochastic is
+        ! always turned off to begin with.
+        ! The iteration on which to start using the semi-stochastic adaptation.
+        semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
+        ! Allocate array of flags to specify if a state is deterministic or not.
+        allocate(determ%flags(size(qs%psip_list%states, dim=2)), stat=ierr)
+        call check_allocate('determ%flags', size(determ%flags), ierr)
+        ! To begin with there are no deterministic states.
+        determ%flags = 1
 
         ! from restart
         nparticles_old = qs%psip_list%tot_nparticles
@@ -160,12 +152,10 @@ contains
                 iter = qs%mc_cycles_done + (ireport-1)*qmc_in%ncycles + icycle
 
                 ! Should we turn semi-stochastic on now?
-                if (iter == semi_stoch_iter) then
-                    call dealloc_semi_stoch_t(determ, .false.)
-                    call init_semi_stoch_t(determ, sys, qs%psip_list, qs%ref, annihilation_flags, qs%spawn_store%spawn, &
-                                           semi_stoch_in%determ_space_type, semi_stoch_in%target_size, &
-                                           semi_stoch_in%separate_annihil, use_mpi_barriers, semi_stoch_in%write_determ_space)
-                    semi_stochastic = .true.
+                if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
+                    determ%doing_semi_stoch = .true.
+                    call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%psip_list, qs%ref, annihilation_flags, &
+                                           qs%spawn_store%spawn, use_mpi_barriers)
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
@@ -187,14 +177,7 @@ contains
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array.
-                    if (determ%flags(idet) == 0) then
-                        ideterm = ideterm + 1
-                        determ%vector(ideterm) = real_population
-                        if (determ%separate_annihilation) determ%indices(ideterm) = idet
-                        determ_parent = .true.
-                    else
-                        determ_parent = .false.
-                    end if
+                    call set_determ_info(idet, real_population, ideterm, determ, determ_parent)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
@@ -260,22 +243,11 @@ contains
                                                               nspawn_events)
                         call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
                     else
-                        ! If using semi-stochastic then perform the deterministic
-                        ! projection step.
-                        if (semi_stochastic) then
-                            if (determ%separate_annihilation) then
-                                call determ_projection_separate_annihil(determ, qs)
-                                call deterministic_annihilation(sys, rng, pl, determ)
-                            else
-                                call determ_projection(rng, qmc_in, qs, spawn, determ)
-                            end if
-                        end if
+                        ! If using semi-stochastic then perform the deterministic projection step.
+                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
-                        if (semi_stochastic) then
-                            call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
-                        else
-                            call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events)
-                        end if
+                        call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
+
                         call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate
@@ -320,7 +292,7 @@ contains
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
-            if (semi_stochastic .and. determ%separate_annihilation) then
+            if (determ%doing_semi_stoch .and. determ%separate_annihilation) then
                 call load_balancing_report(pl%nparticles, pl%nstates, spawn%mpi_time, determ%mpi_time)
             else
                 call load_balancing_report(pl%nparticles, pl%nstates, spawn%mpi_time)
@@ -338,7 +310,7 @@ contains
             if (parent) write (6,'()')
         end if
 
-        call dealloc_semi_stoch_t(determ, .false.)
+        if (determ%doing_semi_stoch) call dealloc_semi_stoch_t(determ, .false.)
 
         call dealloc_det_info_t(cdet, .false.)
 
