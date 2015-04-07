@@ -254,7 +254,6 @@ contains
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
-        use calc, only: truncation_level, truncate_space
         use ccmc_data
         use determinants, only: det_info_t, dealloc_det_info_t
         use excitations, only: excit_t, get_excitation_level, get_excitation
@@ -331,20 +330,10 @@ contains
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=real_factor)
 
-        if (.not.truncate_space) then
-            ! User did not specify a truncation level.
-            ! We're hence doing Full CC (equivalent but more expensive than
-            ! FCI), for reasons best known to the user---perhaps testing?
-            ! Anyway, need to set truncation level as it's used in the
-            ! select_cluster routine.
-            truncation_level = sys%nel
-        end if
-
-        if (truncation_level+2 > 12) then
-            call stop_all('do_ccmc', 'CCMC can currently only handle clusters up &
-                                     &to size 12 due to integer overflow in &
-                                     &factorial routines for larger clusters.  Please &
-                                     &implement better factorial routines.')
+        if (qs%ref%ex_level+2 > 12 .and. .not. ccmc_in%linked) then
+            call stop_all('do_ccmc', 'CCMC can currently only handle clusters up to size 12 due to&
+                                     &integer overflow in factorial routines for larger clusters.  &
+                                     &Please implement better factorial routines or use linked-CCMC.')
         end if
 
         ! Allocate and initialise per thread...
@@ -359,7 +348,7 @@ contains
             call init_cluster(sys, 4, ldet, left_cluster)
             call init_cluster(sys, 4, rdet, right_cluster)
         else
-            call init_cluster(sys, truncation_level+2, cdet, cluster)
+            call init_cluster(sys, qs%ref%ex_level+2, cdet, cluster)
         end if
 
         do i = 0, nthreads-1
@@ -459,7 +448,7 @@ contains
                     ! excitors.
                     ! Can't include the reference in the cluster, so -1 from the
                     ! total number of excitors.
-                    max_cluster_size = min(sys%nel, truncation_level+2, qs%psip_list%nstates-nD0_proc)
+                    max_cluster_size = min(sys%nel, qs%ref%ex_level+2, qs%psip_list%nstates-nD0_proc)
                 end if
 
 #ifdef PARALLEL
@@ -541,7 +530,7 @@ contains
                 !$omp         nspawnings_left, nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
-                !$omp        max_cluster_size, cdet, cluster, truncation_level,      &
+                !$omp        max_cluster_size, cdet, cluster, &
                 !$omp        D0_normalisation, D0_pos, nD0_select, qs,               &
                 !$omp        sys, bloom_threshold, bloom_stats,                      &
                 !$omp        proj_energy_cycle, real_factor, min_cluster_size,       &
@@ -560,7 +549,7 @@ contains
                     ! For OpenMP scalability, have this test inside a single loop rather
                     ! than attempt to parallelise over three separate loops.
                     if (iattempt <= nstochastic_clusters) then
-                        call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, real_factor, ccmc_in%linked, &
+                        call select_cluster(rng(it), sys, qs%psip_list, qs%ref%f0, qs%ref%ex_level, real_factor, ccmc_in%linked, &
                                             nstochastic_clusters, D0_normalisation, qmc_in%initiator_pop, D0_pos, &
                                             cumulative_abs_nint_pops, tot_abs_nint_pop, min_cluster_size, max_cluster_size, &
                                             cdet(it), cluster(it))
@@ -586,7 +575,7 @@ contains
                                                           D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
                     end if
 
-                    if (cluster(it)%excitation_level <= truncation_level+2 .or. &
+                    if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &
                             (ccmc_in%linked .and. cluster(it)%excitation_level == huge(0))) then
                         ! cluster%excitation_level == huge(0) indicates a cluster
                         ! where two excitors share an elementary operator
@@ -649,7 +638,7 @@ contains
                         ! a determinant is in the truncation space?  If so, also
                         ! need to attempt a death/cloning step.
                         ! optimisation: call only once per iteration for clusters of size 0 or 1 for ccmc_in%full_nc.
-                        if (cluster(it)%excitation_level <= truncation_level) then
+                        if (cluster(it)%excitation_level <= qs%ref%ex_level) then
                             ! Clusters above size 2 can't die in linked ccmc.
                             if ((.not. ccmc_in%linked) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
@@ -832,8 +821,8 @@ contains
 
     end subroutine find_D0
 
-    subroutine select_cluster(rng, sys, psip_list, f0, real_factor, linked_ccmc, nattempts, normalisation, initiator_pop, D0_pos, &
-                              cumulative_excip_pop, tot_excip_pop, min_size, max_size, cdet, cluster)
+    subroutine select_cluster(rng, sys, psip_list, f0, ex_level, real_factor, linked_ccmc, nattempts, normalisation, &
+                              initiator_pop, D0_pos, cumulative_excip_pop, tot_excip_pop, min_size, max_size, cdet, cluster)
 
         ! Select a random cluster of excitors from the excitors on the
         ! processor.  A cluster of excitors is itself an excitor.  For clarity
@@ -845,7 +834,9 @@ contains
         !    sys: system being studied
         !    psip_list: particle_t object containing current excip distribution on
         !       this processor.
-        !    f0: bit string of the reference
+        !    f0: bit string of the reference.
+        !    ex_level: max number of excitations from the reference to include in
+        !        the Hilbert space.
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
         !    real_factor: the encoding factor by which the stored populations are multiplied
@@ -882,7 +873,6 @@ contains
         !        allocated to the maximum number of excitors in a cluster.  On
         !        output all fields in cluster have been set.
 
-        use calc, only: truncation_level
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
         use excitations, only: get_excitation_level
@@ -898,6 +888,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(in), target :: psip_list
         integer(i0), intent(in) :: f0(sys%basis%string_len)
+        integer, intent(in) :: ex_level
         integer(int_64), intent(in) :: nattempts
         integer(int_p), intent(in) :: real_factor
         logical, intent(in) :: linked_ccmc
@@ -940,12 +931,12 @@ contains
         cluster%pselect = nattempts*nprocs
 
         ! Select the cluster size, i.e. the number of excitors in a cluster.
-        ! For a given truncation_level, only clusters containing at most
-        ! truncation_level+2 excitors.
+        ! For a given truncation level, only clusters containing at most
+        ! ex_level+2 excitors.
         ! Following the process described by Thom in 'Initiator Stochastic
         ! Coupled Cluster Theory' (unpublished), each size, n_s, has probability
-        ! p(n_s) = 1/2^(n_s+1), n_s=0,truncation_level and p(truncation_level+2)
-        ! is such that \sum_{n_s=0}^{truncation_level+2} p(n_s) = 1.
+        ! p(n_s) = 1/2^(n_s+1), n_s=0,ex_level and p(ex_level+2)
+        ! is such that \sum_{n_s=0}^{ex_level+2} p(n_s) = 1.
 
         ! This procedure is modified so that clusters of size min_size+n_s
         ! has probability 1/2^(n_s+1), and the max_size picks up the remaining
@@ -1057,7 +1048,7 @@ contains
             if (allowed) cluster%excitation_level = get_excitation_level(f0, cdet%f)
             ! To contribute the cluster must be within a double excitation of
             ! the maximum excitation included in the CC wavefunction.
-            if (cluster%excitation_level > truncation_level+2) allowed = .false.
+            if (cluster%excitation_level > ex_level+2) allowed = .false.
 
             if (allowed.or.linked_ccmc) then
                 ! We chose excitors with a probability proportional to their

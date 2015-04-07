@@ -228,6 +228,12 @@ type reference_t
     integer(i0), allocatable :: hs_f0(:)
     ! hs_f0:hs_occ_list0 as f0:occ_list0.
     integer, allocatable :: hs_occ_list0(:)
+    ! CCMC/CIQMC: max number of excitations from the reference to include in
+    ! the calculation.
+    ! DMQMC: permit density matrix elements to be non-zero only if the two
+    ! determinants differ by at most ex_level excitations.
+    ! Set to the number of electrons in the system to use the full space.
+    integer :: ex_level = -1
     ! Energy of reference determinant.
     real(p) :: H00
     ! Value of <D0|O|D0>, where O is the operator we are sampling.

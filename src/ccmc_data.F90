@@ -14,7 +14,7 @@ end type bit_string_ptr
 type cluster_t
     ! Pointers to the determinants formed by applying individual excitors to the
     ! reference determinant.
-    type(bit_string_ptr), allocatable :: excitors(:) ! max: truncation_level+2
+    type(bit_string_ptr), allocatable :: excitors(:) ! max: ex_level+2
     ! Number of excitors in cluster
     integer :: nexcitors
     ! Excitation level relative to the reference determinant of the determinant

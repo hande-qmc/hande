@@ -378,6 +378,7 @@ contains
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
                 call readi(truncation_level)
+                reference%ex_level = truncation_level
             case('HALF_DENSITY_MATRIX')
                 dmqmc_in%half_density_matrix = .true.
 
@@ -1042,6 +1043,7 @@ contains
         option_set = .false.
         call mpi_bcast(truncate_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(truncation_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(reference%ex_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(reference%occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
