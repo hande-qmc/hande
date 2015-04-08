@@ -9,7 +9,6 @@ use hilbert_space
 use calc
 use tmp_input_var
 use determinants
-use determinant_enumeration, only: write_determinants, determinant_file
 use fciqmc_data
 use hfs_data
 use semi_stoch
@@ -63,7 +62,7 @@ contains
         character(100) :: w
         integer :: ios
         logical :: eof, t_exists
-        integer :: ivec, i, j, ierr, nweights
+        integer :: ivec, i, j, ierr, nweights, fci_nrdms
 
         if (command_argument_count() > 0) then
             ! Input file specified on the command line.
@@ -363,8 +362,7 @@ contains
             ! calculation options: DMQMC
             case('TRUNCATION_LEVEL')
                 truncate_space = .true.
-                call readi(truncation_level)
-                reference%ex_level = truncation_level
+                call readi(reference%ex_level)
             case('HALF_DENSITY_MATRIX')
                 dmqmc_in%half_density_matrix = .true.
 
@@ -926,7 +924,6 @@ contains
         call mpi_bcast(dmqmc_in%rdm%calc_ground_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(fci_nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
@@ -1014,7 +1011,6 @@ contains
         end if
         option_set = .false.
         call mpi_bcast(truncate_space, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(truncation_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(reference%ex_level, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(reference%occ_list0)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)

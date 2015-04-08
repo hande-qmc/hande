@@ -11,14 +11,14 @@ use const
 use dSFMT_interface
 use errors
 
-use calc
+use calc, only: use_sparse_hamil
 use fciqmc_data
 
 implicit none
 
 contains
 
-    subroutine init_simple_fciqmc(sys, qmc_in, reference, qs, restart, ndets, dets, ref_det, psip_list, spawn)
+    subroutine init_simple_fciqmc(sys, qmc_in, reference, qs, restart, ndets, dets, ref_det, psip_list, spawn, hamil, hamil_csr)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -42,7 +42,10 @@ contains
         !       output.
         !    spawn: spawn_t object for holding the spawned psips.  Allocated on
         !       output, with one slot for each determinant in thie Hilbert space.
+        !    hamil, hamil_csr: Hamiltonian matrix.  hamil_csr is set if use_sparse_hamil
+        !       is true, otherwise hamil is used.
 
+        use csr, only: csrp_t
         use parallel, only: nprocs, parent
         use checking, only: check_allocate
         use utils, only: int_fmt
@@ -63,6 +66,8 @@ contains
         integer, intent(out) :: ref_det
         type(particle_t), intent(out) :: psip_list
         type(spawn_t), intent(out) :: spawn
+        real(p), allocatable, intent(out) :: hamil(:,:)
+        type(csrp_t), intent(out) :: hamil_csr
 
         integer, allocatable :: sym_space_size(:)
         integer :: ndets
@@ -78,16 +83,18 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
         if (allocated(reference%occ_list0)) then
-            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets, occ_list0=reference%occ_list0)
+            call enumerate_determinants(sys, .true., .false., reference%ex_level, sym_space_size, ndets, dets, &
+                                        occ_list0=reference%occ_list0)
         else
-            call enumerate_determinants(sys, .true., .false., sym_space_size, ndets, dets)
+            call enumerate_determinants(sys, .true., .false., reference%ex_level, sym_space_size, ndets, dets)
         end if
 
         ! Find all determinants with desired spin and symmetry.
         if (allocated(reference%occ_list0)) then
-            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in, reference%occ_list0)
+            call enumerate_determinants(sys, .false., .false., reference%ex_level, sym_space_size, ndets, dets, sym_in, &
+                                        reference%occ_list0)
         else
-            call enumerate_determinants(sys, .false., .false., sym_space_size, ndets, dets, sym_in)
+            call enumerate_determinants(sys, .false., .false., reference%ex_level, sym_space_size, ndets, dets, sym_in)
         end if
 
 
@@ -95,7 +102,7 @@ contains
         if (use_sparse_hamil) then
             call generate_hamil(sys, ndets, dets, hamil_csr=hamil_csr, full_mat=.true.)
         else
-            call generate_hamil(sys, ndets, dets, hamil=hamil, full_mat=.true.)
+            call generate_hamil(sys, ndets, dets, hamil, full_mat=.true.)
         end if
 
         write (6,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
@@ -223,8 +230,11 @@ contains
         type(qmc_state_t) :: qs
         logical :: write_restart_shift
         type(restart_info_t) :: ri, ri_shift
+        real(p), allocatable :: hamil(:,:)
+        type(csrp_t) :: hamil_csr
 
-        call init_simple_fciqmc(sys, qmc_in, reference, qs, restart_in%read_restart, ndets, dets, ref_det, psip_list, spawn)
+        call init_simple_fciqmc(sys, qmc_in, reference, qs, restart_in%read_restart, ndets, dets, ref_det, psip_list, spawn, &
+                                hamil, hamil_csr)
 
         if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)

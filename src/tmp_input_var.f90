@@ -10,4 +10,10 @@ module tmp_input_var
 
     logical :: direct_lanczos = .false.
 
+    logical :: truncate_space = .false.
+
+    ! If true then the determinant list is written to determinant_file.
+    logical :: write_determinants = .false.
+    character(255) :: determinant_file = 'DETS'
+
 end module tmp_input_var

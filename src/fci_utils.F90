@@ -58,11 +58,11 @@ contains
 
         ! Construct space
         if (allocated(ref%occ_list0)) then
-            call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets, occ_list0=ref%occ_list0)
-            call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, sym_in, ref%occ_list0)
+            call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets, occ_list0=ref%occ_list0)
+            call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sym_in, ref%occ_list0)
         else
-            call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets)
-            call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, sym_in)
+            call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets)
+            call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sym_in)
         end if
 
         ! Info (symmetry, spin, ex_level).
@@ -150,11 +150,11 @@ contains
             do i = 1, proc_blacs_info%nrows, block_size
                 do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
                     ilocal = i - 1 + ii
-                    iglobal = (i-1)*nproc_rows + proc_blacs_info%procx*block_size + ii
+                    iglobal = (i-1)*proc_blacs_info%nproc_rows + proc_blacs_info%procx*block_size + ii
                     do j = 1, proc_blacs_info%ncols, block_size
                         do jj = 1, min(block_size, proc_blacs_info%ncols - j + 1)
                             jlocal = j - 1 + jj
-                            jglobal = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj
+                            jglobal = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*block_size + jj
                             hamil(ilocal, jlocal) = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
                         end do
                     end do
@@ -193,7 +193,7 @@ contains
                     end do
                     !$omp end parallel
                     if (imode == 1) then
-                        write (6,'(1X,a50,i8/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
+                        write (6,'(1X,a50,i8)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
                         call init_csrp(hamil_csr, ndets, nnz, .true.)
                         hamil_csr%row_ptr(1:ndets) = 0
                     else

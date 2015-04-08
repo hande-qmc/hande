@@ -25,9 +25,6 @@ integer :: iproc
 ! Number of processors.
 integer :: nprocs
 
-! Processor grid dimensions (for use with scalapack and blacs)
-integer :: nproc_cols, nproc_rows
-
 ! Choose root processor to have rank 0.
 integer, parameter :: root = 0
 
@@ -57,6 +54,8 @@ type blacs_info
     ! Location of the processor within the grid.  Negative if the processor
     ! isn't involved in the grid.
     integer :: procx, procy
+    ! Processor grid dimensions
+    integer :: nproc_cols, nproc_rows
     ! Number of rows and columns of the global matrix stored on the processor.
     ! Zero if no rows/columns stored on the processor.
     integer :: nrows, ncols
@@ -210,7 +209,7 @@ contains
         type(blacs_info) :: my_blacs_info
         integer, intent(in) :: matrix_size
         integer, intent(in), optional :: proc_grid(2)
-        integer :: i, j, k
+        integer :: i, j, k, nproc_rows, nproc_cols
         integer :: procy, procx, nrows, ncols
         integer :: desc_m(9), desc_v(9)
 #if PARALLEL
@@ -256,13 +255,15 @@ contains
 #else
         procx = 0
         procy = 0
+        nproc_cols = 1
+        nproc_rows = 1
         nrows = matrix_size
         ncols = matrix_size
         desc_m = 0
         desc_v = 0
 #endif
 
-        my_blacs_info = blacs_info(procx, procy, nrows, ncols, desc_m, desc_v)
+        my_blacs_info = blacs_info(procx, procy, nproc_cols, nproc_rows, nrows, ncols, desc_m, desc_v)
 
     end function get_blacs_info
 

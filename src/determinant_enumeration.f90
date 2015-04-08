@@ -9,37 +9,11 @@ use determinants
 
 implicit none
 
-! If true then the determinant list is written to determinant_file.
-logical :: write_determinants = .false.
-character(255) :: determinant_file = 'DETS'
-
 contains
-
-!--- Initialisation and finalisation ---
-
-    subroutine init_determinant_enumeration()
-
-        ! Initialise determinant enumeration info,
-        ! Note that memory allocation is done in the determinant enumeration
-        ! routines.
-
-        use utils, only: get_free_unit
-        use parallel, only: parent
-
-        integer :: det_unit
-
-        if (write_determinants .and. parent) then
-            ! Overwrite any existing file...
-            det_unit = get_free_unit()
-            open(det_unit, file=determinant_file, status='unknown')
-            close(det_unit, status='delete')
-        end if
-
-    end subroutine init_determinant_enumeration
 
 !--- Hilbert space enumeration ---
 
-    subroutine enumerate_determinants(sys, init, spin_flip, sym_space_size, ndets, dets_list, ref_sym, occ_list0)
+    subroutine enumerate_determinants(sys, init, spin_flip, ex_level, sym_space_size, ndets, dets_list, ref_sym, occ_list0)
 
         ! Find the Slater determinants of a given system that can be formed from
         ! the basis functions.
@@ -57,12 +31,15 @@ contains
         !        subsequent calls to store the determinants.
         !    spin_flip: if true doing a spin-flip calculation (so the reference
         !        has a different spin & symmetry to the desired space).
+        !    ex_level: max excitation level.  Set to number of electrons to enumerate the
+        !        full space.
         !    ref_sym(optional): index of an irreducible representation.  Only determinants
         !        with the same symmetry  are stored.  *MUST* be specified if
         !        init is false.
         !    occ_list0(optional): list of occupied orbitals in a determinant.
         !        Used as the reference determinant if a truncated CI space is
-        !        being used.  *MUST* be specified if truncate_space is true.
+        !        being used.  *MUST* be specified if ex_level is not the number
+        !        of electrons in the system.
         ! In/Out:
         !    sym_space_size: number of determinants of each symmetry.  Output if init
         !        is true, input if init is false.
@@ -77,14 +54,16 @@ contains
         use utils, only: binom_i, get_free_unit, int_fmt
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string, count_set_bits
 
-        use calc, only: truncate_space, truncation_level
         use excitations, only: get_excitation_level
         use system
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
 
+        use tmp_input_var, only: write_determinants, determinant_file
+
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: init, spin_flip
+        integer, intent(in) :: ex_level
         integer, intent(in), optional :: ref_sym
         integer, intent(in), optional :: occ_list0(sys%nel)
         integer, intent(inout), allocatable :: sym_space_size(:) ! (nsym)
@@ -100,7 +79,9 @@ contains
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim), det_unit
         type(det_info_t) :: d0
-        logical :: in_space, force_full
+        logical :: in_space, force_full, truncate_space
+
+        truncate_space = ex_level /= sys%nel
 
         force_full = .false.
         if (init) then
@@ -149,12 +130,12 @@ contains
             allocate(nalpha_combinations(0:sys%nbeta), stat=ierr)
             nalpha_combinations = 0
             nbeta_combinations = 0
-            ! Identical to the settings in the else statements if truncation_level == nel.
+            ! Identical to the settings in the else statements if ex_level == nel.
             associate(na=>sys%nalpha, nb=>sys%nbeta, &
                       nva=>sys%nvirt_alpha , nvb=>sys%nvirt_beta)
-                do i = 0, minval([truncation_level, nb, nvb])
+                do i = 0, minval([ex_level, nb, nvb])
                     nbeta_combinations = nbeta_combinations + binom_i(nb, i)*binom_i(nvb, i)
-                    do j = 0, minval([truncation_level-i, na, nva])
+                    do j = 0, minval([ex_level-i, na, nva])
                         nalpha_combinations(i) = nalpha_combinations(i) + binom_i(na, j)*binom_i(nva, j)
                     end do
                 end do
@@ -173,10 +154,9 @@ contains
             allocate(nalpha_combinations(0:0), stat=ierr)
             nbeta_combinations = binom_i(sys%basis%nbasis/2, sys%nbeta)
             nalpha_combinations = binom_i(sys%basis%nbasis/2, sys%nalpha)
-            truncation_level = sys%nel
         end if
         call check_allocate('nalpha_combinations',size(nalpha_combinations),ierr)
-        allocate(comb(2*truncation_level, 2), stat=ierr)
+        allocate(comb(2*ex_level, 2), stat=ierr)
         call check_allocate('comb', size(comb), ierr)
 
         allocate(occ(sys%nel), stat=ierr)
@@ -198,9 +178,9 @@ contains
                 ! the Hilbert space.  No need to enumerate them all first.
                 if (truncate_space) then
                     sym_space_size = 0
-                    do i = 0, truncation_level
+                    do i = 0, ex_level
                         associate(nsites=>sys%lattice%nsites, nel=>sys%nel)
-                            sym_space_size = sym_space_size + binom_i(nel, truncation_level)*binom_i(nsites-nel, truncation_level)
+                            sym_space_size = sym_space_size + binom_i(nel, ex_level)*binom_i(nsites-nel, ex_level)
                         end associate
                     end do
                 else
@@ -214,7 +194,7 @@ contains
                     call decode_bit_string(d0%f(1), unocc)
                     do i = 1, ndets
                         call next_string(i==1, .false., sys%basis%nbasis, sys%nel, d0%occ_list, &
-                                         unocc, truncation_level, force_full, comb(:,1),  &
+                                         unocc, ex_level, force_full, comb(:,1),  &
                                          occ, excit_level_alpha)
                         call encode_det(sys%basis, occ, dets_list(:,i))
                     end do
@@ -260,7 +240,7 @@ contains
 
                     ! Get beta orbitals.
                     call next_string(i==1, .false., sys%basis%nbasis/2, sys%nbeta, d0%occ_list_beta, &
-                                     d0%unocc_list_beta, truncation_level, force_full, comb(:,1),  &
+                                     d0%unocc_list_beta, ex_level, force_full, comb(:,1),  &
                                      occ(1:sys%nbeta), excit_level_beta)
 
                     ! Symmetry.
@@ -280,7 +260,7 @@ contains
 
                         ! Get alpha orbitals.
                         call next_string(j==1, .true., sys%basis%nbasis/2, sys%nalpha, d0%occ_list_alpha, &
-                                         d0%unocc_list_alpha, truncation_level-excit_level_beta, force_full, &
+                                         d0%unocc_list_alpha, ex_level-excit_level_beta, force_full, &
                                          comb(:,2), occ(sys%nbeta+1:), excit_level_alpha)
 
                         ! Symmetry of all orbitals.
@@ -301,7 +281,7 @@ contains
                         in_space = .true.
                         if (truncate_space) then
                             call encode_det(sys%basis, occ, f)
-                            in_space = get_excitation_level(d0%f,f) <= truncation_level
+                            in_space = get_excitation_level(d0%f,f) <= ex_level
                         end if
 
                         if (in_space) then
@@ -334,8 +314,8 @@ contains
                      'The table below gives the number of determinants for each symmetry with Ms=', &
                      Ms,"."
             if (truncate_space) then
-                write (6,'(1X,a24,'//int_fmt(truncation_level,1)//',1X,a54)') &
-                    'Only determinants within', truncation_level, &
+                write (6,'(1X,a24,'//int_fmt(ex_level,1)//',1X,a54)') &
+                    'Only determinants within', ex_level, &
                     'excitations of the reference determinant are included.'
                 write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
                 call write_det(sys%basis, sys%nel, d0%f, new_line=.true.)
@@ -349,7 +329,7 @@ contains
             ! Output the determinants.
             fmt1 = int_fmt(ndets, padding=1)
             det_unit = get_free_unit()
-            open(det_unit, file=determinant_file, status='unknown', position='append')
+            open(det_unit, file=determinant_file, status='unknown')
             do i = 1, ndets
                 write (det_unit,'('//fmt1//',4X)',advance='no') i
                 call write_det(sys%basis, sys%nel, dets_list(:,i), det_unit, new_line=.true.)

@@ -47,17 +47,11 @@ integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
 !--- Info for FCI calculations ---
 
-! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
-! size is horrendous.  We only store one symmetry block at a time though.
-! Best contained within a module to allow easy access from the Lanczos
-! matrix-vector multiplication routines.
-real(p), allocatable :: hamil(:,:) ! (ndets, ndets)
-! For single-node calculations, we can also store the hamiltonian matrix in
-! sparse format.  This is typically *far* smaller than hamil and hence it is
-! usually better to run on a single node than distribute the Hamiltonian matrix.
-! Of course, perhaps one day a kind soul will implement a parallel sparse matrix
-! storage format.
-type(csrp_t) :: hamil_csr
+! This stores  information for the various RDMs that the user asks to be
+! calculated. Each element of this array corresponds to one of these RDMs.
+! NOTE: This can only be equal to 1 currently.
+type(rdm_t), allocatable :: fci_rdm_info(:)
+
 ! Use sparse matrix rather than dense matrix?
 logical :: use_sparse_hamil = .false.
 
@@ -77,25 +71,11 @@ integer :: analyse_fci_wfn = 0
 logical :: write_hamiltonian = .false.
 character(255) :: hamiltonian_file = 'HAMIL'
 
-! BLACS info for diagonalisation
-type(blacs_info) :: proc_blacs_info
-
 ! Variables relating to FCI RDM calculation.
 
 ! If true then, if doing an exact diagonalisation, calculate and output the
 ! eigenvalues of the reduced density matrix requested.
 logical :: doing_exact_rdm_eigv = .false.
-
-! Used to hold the RDM in FCI calculations.
-real(p), allocatable :: fci_rdm(:,:)
-
-! The total number of RDMs beings calculated.
-! NOTE: This can only be equal to 1 currently.
-integer :: fci_nrdms = 0
-
-! This stores  information for the various RDMs that the user asks to be
-! calculated. Each element of this array corresponds to one of these RDMs.
-type(rdm_t), allocatable :: fci_rdm_info(:) ! (fci_nrdms)
 
 ! --- QMC trial (importance-sampling) functions ---
 
@@ -148,14 +128,6 @@ integer :: trial_function = 0
 ! If we are not using importance sampling, this is set to 0. Else it is set to one
 ! of the above values to specify the corresponding guiding function being used.
 integer :: guiding_function = 0
-
-! If true, truncate the Slater determinant space such that it contains
-! determinants which differ from the reference determinant (e.g. Hartree--Fock
-! determinant) by at most truncation_level excitations.
-! truncation_level excitations.  A truncation level equal to the number of
-! electrons corresponds to the full space
-logical :: truncate_space = .false.
-integer :: truncation_level
 
 ! RAS-CI (only in QMC currently)
 ! The ras1 space can have at most truncation_level holes.
