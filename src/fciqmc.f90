@@ -116,9 +116,7 @@ contains
         ! In case this is not set.
         nspawn_events = 0
 
-        ! Some initial semi-stochastic parameters. Semi-stochastic is
-        ! always turned off to begin with.
-        ! The iteration on which to start using the semi-stochastic adaptation.
+        ! Some initial semi-stochastic parameters.
         ! Turn semi-stochastic on immediately unless asked otherwise.
         semi_stoch_iter = max(semi_stoch_in%start_iter, qs%mc_cycles_done+1)
         ! Allocate array of flags to specify if a state is deterministic or not.

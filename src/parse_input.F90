@@ -272,7 +272,7 @@ contains
                 qmc_in%real_amplitudes = .true.
             case('SEMI_STOCH_SHIFT_START')
                 call readi(semi_stoch_in%shift_iter)
-                semi_stoch_in%start_iter = -1
+                semi_stoch_in%start_iter = huge(0)
                 qmc_in%real_amplitudes = .true.
             ! Deterministic spaces.
             case('SEMI_STOCH_HIGH_POP')
