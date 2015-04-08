@@ -346,7 +346,7 @@ contains
         !    dets: list of determinants in the Hilbert space (bit string representation).
 
         use const, only: i0, p
-        use calc, only: proc_blacs_info, distribute, distribute_off
+        use calc, only: proc_blacs_info
         use parallel
         use system
 
@@ -456,7 +456,7 @@ contains
         !    dets: list of determinants in the Hilbert space (bit string representation).
 
         use const, only: i0, p
-        use calc, only: proc_blacs_info, distribute, distribute_off
+        use calc, only: proc_blacs_info
 
         use checking, only: check_allocate, check_deallocate
         use utils, only: get_free_unit

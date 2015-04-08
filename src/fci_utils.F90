@@ -4,6 +4,78 @@ implicit none
 
 contains
 
+    subroutine init_fci(sys, ref, ndets, dets)
+
+        use const, only: i0
+
+        use determinants, only: spin_orb_list, encode_det, write_det
+        use determinant_enumeration, only: enumerate_determinants
+        use qmc_data, only: reference_t
+        use symmetry, only: symmetry_orb_list
+
+        use errors, only: stop_all
+        use utils, only: get_free_unit, int_fmt
+
+        use system, only: sys_t, set_spin_polarisation
+
+        use calc, only: print_fci_wfn, print_fci_wfn_file
+        use calc, only: ms_in, sym_in
+
+        type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(inout) :: ref
+        integer, intent(out) :: ndets
+        integer(i0), allocatable, intent(out) :: dets(:,:)
+
+        integer, allocatable :: sym_space_size(:)
+        integer :: iunit, ref_ms, ref_sym
+        logical :: spin_flip
+        integer :: f0(sys%basis%string_len)
+
+        write (6,'(1X,"FCI")')
+        write (6,'(1X,"---",/)')
+
+        if (print_fci_wfn /= 0) then
+            ! Overwrite any existing file...
+            ! Open a fresh file here so we can just append to it later.
+            iunit = get_free_unit()
+            open(iunit, file=print_fci_wfn_file, status='unknown')
+            close(iunit, status='delete')
+        end if
+
+        spin_flip = .false.
+        if (allocated(ref%occ_list0)) then
+            ! detect if doing spin-flip
+            ref_ms = spin_orb_list(sys%basis%basis_fns, ref%occ_list0)
+            ref_sym = symmetry_orb_list(sys, ref%occ_list0)
+            if (ms_in == huge(1)) ms_in = ref_ms
+            if (sym_in == huge(1)) sym_in = ref_sym
+            spin_flip = ms_in /= ref_ms
+        else if (ms_in == huge(1) .or. sym_in == huge(1)) then
+            call stop_all('init_fci', 'Spin and/or symmetry of Hilbert space not defined.')
+        end if
+
+        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+
+        ! Construct space
+        if (allocated(ref%occ_list0)) then
+            call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets, occ_list0=ref%occ_list0)
+            call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, sym_in, ref%occ_list0)
+        else
+            call enumerate_determinants(sys, .true., spin_flip, sym_space_size, ndets, dets)
+            call enumerate_determinants(sys, .false., spin_flip, sym_space_size, ndets, dets, sym_in)
+        end if
+
+        ! Info (symmetry, spin, ex_level).
+        write (6,'(1X,"Symmetry of selected Hilbert subspace:",'//int_fmt(sym_in,1)//',".")') sym_in
+        write (6,'(1X,"Spin of selected Hilbert subspace:",'//int_fmt(ms_in,1)//',".")') ms_in
+        if (ref%ex_level /= sys%nel) then
+            call encode_det(sys%basis, ref%occ_list0, f0)
+            write (6,'(1X,"Reference determinant, |D0> =",1X)',advance='no')
+            call write_det(sys%basis, sys%nel, f0, new_line=.true.)
+        end if
+
+    end subroutine init_fci
+
     subroutine generate_hamil(sys, ndets, dets, hamil, hamil_csr, proc_blacs_info, full_mat)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
@@ -14,15 +86,7 @@ contains
         !    sys: system to be studied.
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space (bit-string representation).
-        !    sparse_mode: if true, generate the Hamiltonian in sparse format (in hamil_csr)
-        !        rather than in non-sparse format (in hamil).
-        !    distribute_mode (optional): flag for determining how the
-        !        Hamiltonian matrix is distributed among processors.  It is
-        !        irrelevant if only one processor is used: the distribution schemes
-        !        all reduce to the storing the entire matrix on the single
-        !        processor.  Can take the values given by the distribute_off,
-        !        distribute_blocks and distribute_cols parameters.  See above
-        !        for descriptions of the different behaviours.
+        ! [todo] - hamil, hamil_csr, proc_blacs_info
         !    full_mat (optional): if present and true generate the full matrix rather than
         !        just storing one triangle.
 
@@ -159,5 +223,60 @@ contains
         end if
 
     end subroutine generate_hamil
+
+    subroutine write_hamil(hamiltonian_file, proc_blacs_info, block_size, ndets, hamil, hamil_csr)
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p, depsilon
+        use parallel, only: blacs_info, nprocs
+        use utils, only: get_free_unit
+
+        use csr, only: csrp_t
+
+        character(*), intent(in) :: hamiltonian_file
+        type(blacs_info), intent(in) :: proc_blacs_info
+        integer, intent(in) :: block_size, ndets
+        real(p), intent(in), optional :: hamil(:,:)
+        type(csrp_t), intent(in), optional :: hamil_csr
+
+        integer :: iunit, i, j, ierr
+        real(p), allocatable :: work_print(:)
+
+        iunit = get_free_unit()
+        open(iunit, file=hamiltonian_file, status='unknown')
+        if (nprocs > 1 .and. present(hamil)) then
+            ! Note that this uses a different format to the serial case...
+            allocate(work_print(block_size**2), stat=ierr)
+            call check_allocate('work_print', block_size**2, ierr)
+#ifdef PARALLEL
+#ifdef SINGLE_PRECISION
+            call pslaprnt(ndets, ndets, hamil, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil', iunit, work_print)
+#else
+            call pdlaprnt(ndets, ndets, hamil, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil', iunit, work_print)
+#endif
+#endif
+            deallocate(work_print)
+            call check_deallocate('work_print', ierr)
+        else
+            if (present(hamil)) then
+                do i=1, ndets
+                    write (iunit,*) i,i,hamil(i,i)
+                    do j=i+1, ndets
+                        if (abs(hamil(i,j)) > depsilon) write (iunit,*) i,j,hamil(i,j)
+                    end do
+                end do
+            else if (present(hamil_csr)) then
+                j = 1
+                do i = 1, size(hamil_csr%mat)
+                    if (abs(hamil_csr%mat(i)) > depsilon) then
+                        if (hamil_csr%row_ptr(j+1) <= i) j = j+1
+                        write (iunit,*) j, hamil_csr%col_ind(i), hamil_csr%mat(i)
+                    end if
+                end do
+            end if
+        end if
+        close(iunit, status='keep')
+
+    end subroutine write_hamil
 
 end module fci_utils

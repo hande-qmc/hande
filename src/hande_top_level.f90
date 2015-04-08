@@ -132,7 +132,8 @@ contains
         !    during initialisation.
 
         use calc
-        use diagonalisation, only: diagonalise
+        use fci_lapack, only: do_fci_lapack
+        use fci_lanczos, only: do_fci_lanczos
         use hilbert_space, only: estimate_hilbert_space, nhilbert_cycles
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
@@ -147,7 +148,8 @@ contains
         type(sys_t), intent(inout) :: sys
         type(reference_t), intent(inout) :: reference
 
-        if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys, reference)
+        if (doing_calc(exact_diag)) call do_fci_lapack(sys, reference)
+        if (doing_calc(lanczos_diag)) call do_fci_lanczos(sys, reference)
 
         if (doing_calc(mc_hilbert_space)) then
             if (.not. truncate_space) truncation_level = -1
@@ -186,7 +188,6 @@ contains
         use system, only: sys_t, end_lattice_system
         use determinants, only: end_determinants
         use excitations, only: end_excitations
-        use diagonalisation, only: end_hamil
         use fciqmc_data, only: end_fciqmc
         use real_lattice, only: end_real_space
         use momentum_symmetry, only: end_momentum_symmetry
@@ -214,7 +215,6 @@ contains
         call end_momentum_symmetry()
         call end_ueg_indexing(sys%ueg)
         call end_determinants()
-        call end_hamil()
         call end_real_space(sys%heisenberg)
         call end_fciqmc(fciqmc_in_global%non_blocking_comm, reference)
 

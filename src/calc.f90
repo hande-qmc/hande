@@ -97,20 +97,6 @@ integer :: fci_nrdms = 0
 ! calculated. Each element of this array corresponds to one of these RDMs.
 type(rdm_t), allocatable :: fci_rdm_info(:) ! (fci_nrdms)
 
-!--- Parallel info for FCI calculations ---
-
-! Distribution of Hamiltonian matrix across the processors.
-! No distribution.
-integer, parameter :: distribute_off = 0
-! Block cyclic distribution (see comments in parallel.F90 and the blacs and
-! scalapack documentation).  Used for parallel exact diagonalisation.
-integer, parameter :: distribute_blocks = 1
-! Distribute matrix by columns.  Used for parallel Lanczos.
-integer, parameter :: distribute_cols = 2
-
-! Flag which stores which distribution mode is in use.
-integer :: distribute = distribute_off
-
 ! --- QMC trial (importance-sampling) functions ---
 
 ! For the Heisenberg model, several different trial functions can be used in the

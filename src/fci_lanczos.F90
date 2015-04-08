@@ -8,6 +8,90 @@ implicit none
 
 contains
 
+    subroutine do_fci_lanczos(sys, ref_in)
+
+        use fci_utils, only: init_fci, generate_hamil
+        use hamiltonian, only: get_hmatel
+        use qmc_data, only: reference_t
+        use reference_determinant, only: copy_reference_t
+        use system, only: sys_t, copy_sys_spin_info
+
+        use checking, only: check_allocate
+        use errors, only: warning, stop_all
+        use parallel, only: parent, nprocs, get_blacs_info
+        use utils, only: int_fmt
+
+        use calc, only: hamil, hamil_csr, proc_blacs_info, use_sparse_hamil
+        use parallel, only: block_size
+
+        type(sys_t), intent(inout) :: sys
+        type(reference_t), intent(in) :: ref_in
+
+        type(sys_t) :: sys_bak
+        type(reference_t) :: ref
+        integer(i0), allocatable :: dets(:,:)
+        real(p), allocatable :: eigv(:)
+        integer :: ndets, ierr, i, nfound
+
+        call copy_sys_spin_info(sys, sys_bak)
+        call copy_reference_t(ref_in, ref)
+
+        if (nprocs > 1) then
+            if (direct_lanczos) call stop_all('do_fci_lanczos', 'Direct Lanczos not implemented with MPI parallelism.')
+            if (use_sparse_hamil) call stop_all('do_fci_lanczos', &
+                                                'Lanczos with sparse matrices not implemented with MPI parallelism.')
+        end if
+
+        call init_fci(sys, ref, ndets, dets)
+
+        allocate(eigv(nlanczos_eigv), stat=ierr)
+        call check_allocate('eigv', nlanczos_eigv, ierr)
+
+        ! TRLan assumes that the only the rows of the matrix are distributed.  Furthermore,
+        ! it seems TRLan assumes all processors store at least some of the matrix.
+        ! Useful to have this for consistency, even as a dummy object in serial.
+        proc_blacs_info = get_blacs_info(ndets, [1, nprocs])
+        if (nprocs*block_size > ndets) then
+            if (parent) then
+                call warning('do_fci_lanczos','Reducing block size so that all processors contain at least a single row.',3)
+                write (6,'(1X,"Consider running on fewer processors or reducing block size in input.")')
+                write (6,'(1X,"Old block size was:"'//int_fmt(block_size,1)//')') block_size
+            end if
+            block_size = ndets/nprocs
+            if (parent) write (6,'(1X,("New block size is:"'//int_fmt(block_size,1)//')') block_size
+        end if
+
+        if (ndets == 1) then
+            ! The trivial case seems to trip things up...
+            eigv(1) = get_hmatel(sys, dets(:,1), dets(:,1))
+        else
+            if (nprocs == 1) then
+                if (use_sparse_hamil) then
+                    call generate_hamil(sys, ndets, dets, hamil_csr=hamil_csr)
+                else
+                    call generate_hamil(sys, ndets, dets, hamil)
+                end if
+            else
+                call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
+            end if
+            call lanczos_diagonalisation(sys, dets, nfound, eigv)
+        end if
+
+        if (parent) then
+            write (6,'(1X,"Lanczos diagonalisation results")')
+            write (6,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
+            write (6,'(1X," State",1X,4X,"Energy")')
+            do i = 1, nfound
+                write (6,'(1X,i6,1X,f18.12)') i, eigv(i)
+            end do
+            write (6,'()')
+        end if
+
+        ! Return sys in an unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
+
+    end subroutine do_fci_lanczos
+
     subroutine lanczos_diagonalisation(sys, dets, nfound, eigv)
 
         ! Perform a Lanczos diagonalisation of the current (spin) block of the
@@ -72,20 +156,6 @@ contains
             else
                 write (6,'(/,1X,a37,/)') 'Performing Lanczos diagonalisation...'
             end if
-        end if
-
-        if (distribute /= distribute_off .and. distribute /= distribute_cols) then
-            call stop_all('lanczos_diagonalisation','Incorrect distribution mode used.')
-        end if
-
-        if (.not.doing_calc(exact_diag) .and. direct_lanczos) then
-            ! Didn't execute generate_hamil so need to set up
-            ! the processor grid.
-            proc_blacs_info = get_blacs_info(ndets, (/1, nprocs/))
-        end if
-
-        if (direct_lanczos .and. nprocs > 1) then
-            call stop_all('lanczos_diagonalisation','Direct Lanczos not implemented in parallel.')
         end if
 
         nrows = proc_blacs_info%nrows

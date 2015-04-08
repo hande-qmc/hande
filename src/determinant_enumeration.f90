@@ -330,7 +330,6 @@ contains
         if (init .and. parent) then
             ! Output information about the size of the space.
             Ms = sys%nalpha - sys%nbeta
-            write (6,'(1X,a25,/,1X,25("-"),/)') 'Size of determinant space'
             write (6,'(1X,a75,'//int_fmt(Ms,0)//',a1)') &
                      'The table below gives the number of determinants for each symmetry with Ms=', &
                      Ms,"."
