@@ -103,7 +103,10 @@ contains
             if (ms_in == huge(1)) ms_in = ref_ms
             if (sym_in == huge(1)) sym_in = ref_sym
             spin_flip = ms_in /= ref_ms
-        else if (ms_in == huge(1) .or. sym_in == huge(1)) then
+        else if (sym_in == huge(1) .and. sys%nsym == 1) then
+            ! Only one option, so don't force it to be set.
+            sym_in = sys%sym0
+        else if (ms_in == huge(1) .or. (sym_in == huge(1))) then
             call stop_all('init_fci', 'Spin and/or symmetry of Hilbert space not defined.')
         end if
 
