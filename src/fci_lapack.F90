@@ -12,7 +12,7 @@ contains
     subroutine do_fci_lapack(sys, fci_in, ref_in)
 
         use dmqmc_procedures, only: setup_rdm_arrays
-        use fci_utils, only: init_fci, generate_hamil
+        use fci_utils, only: fci_in_t, init_fci, generate_hamil
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
@@ -21,8 +21,6 @@ contains
         use checking, only: check_allocate
         use errors, only: warning
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
-
-        use tmp_input_var, only: fci_in_t
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(inout) :: fci_in
@@ -111,7 +109,7 @@ contains
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
 
-        use tmp_input_var, only: fci_in_t
+        use fci_utils, only: fci_in_t
         use operators
 
         type(sys_t), intent(in) :: sys

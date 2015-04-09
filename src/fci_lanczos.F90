@@ -2,15 +2,13 @@ module fci_lanczos
 
 use const
 
-use tmp_input_var
-
 implicit none
 
 contains
 
     subroutine do_fci_lanczos(sys, fci_in, ref_in, sparse_hamil)
 
-        use fci_utils, only: init_fci, generate_hamil
+        use fci_utils, only: fci_in_t, init_fci, generate_hamil
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
@@ -127,6 +125,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use parallel, only: parent, nprocs
 
+        use fci_utils, only: fci_in_t
         use operators
 #endif
 
