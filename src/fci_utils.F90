@@ -4,12 +4,12 @@ implicit none
 
 contains
 
-    subroutine init_fci(sys, ref, ndets, dets)
+    subroutine init_fci(sys, fci_in, ref, ndets, dets)
 
         use const, only: i0
 
         use determinants, only: spin_orb_list, encode_det, write_det
-        use determinant_enumeration, only: enumerate_determinants
+        use determinant_enumeration, only: enumerate_determinants, print_dets_list
         use qmc_data, only: reference_t
         use symmetry, only: symmetry_orb_list
 
@@ -18,10 +18,11 @@ contains
 
         use system, only: sys_t, set_spin_polarisation
 
-        use tmp_input_var, only: fci_in_global
+        use tmp_input_var, only: fci_in_t
         use calc, only: ms_in, sym_in
 
         type(sys_t), intent(inout) :: sys
+        type(fci_in_t), intent(in) :: fci_in
         type(reference_t), intent(inout) :: ref
         integer, intent(out) :: ndets
         integer(i0), allocatable, intent(out) :: dets(:,:)
@@ -34,11 +35,11 @@ contains
         write (6,'(1X,"FCI")')
         write (6,'(1X,"---",/)')
 
-        if (fci_in_global%print_fci_wfn /= 0) then
+        if (fci_in%print_fci_wfn /= 0) then
             ! Overwrite any existing file...
             ! Open a fresh file here so we can just append to it later.
             iunit = get_free_unit()
-            open(iunit, file=fci_in_global%print_fci_wfn_file, status='unknown')
+            open(iunit, file=fci_in%print_fci_wfn_file, status='unknown')
             close(iunit, status='delete')
         end if
 
@@ -64,6 +65,7 @@ contains
             call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets)
             call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sym_in)
         end if
+        if (fci_in%write_determinants) call print_dets_list(sys, ndets, dets, fci_in%determinant_file)
 
         ! Info (symmetry, spin, ex_level).
         write (6,'(1X,"Symmetry of selected Hilbert subspace:",'//int_fmt(sym_in,1)//',".")') sym_in

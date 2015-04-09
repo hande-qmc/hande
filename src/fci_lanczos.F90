@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine do_fci_lanczos(sys, ref_in, sparse_hamil)
+    subroutine do_fci_lanczos(sys, fci_in, ref_in, sparse_hamil)
 
         use fci_utils, only: init_fci, generate_hamil
         use hamiltonian, only: get_hmatel
@@ -25,6 +25,7 @@ contains
         use parallel, only: block_size
 
         type(sys_t), intent(inout) :: sys
+        type(fci_in_t), intent(in) :: fci_in
         type(reference_t), intent(in) :: ref_in
         logical, intent(in) :: sparse_hamil
 
@@ -41,16 +42,16 @@ contains
         call copy_reference_t(ref_in, ref)
 
         if (nprocs > 1) then
-            if (fci_in_global%direct_lanczos) call stop_all('do_fci_lanczos', &
+            if (fci_in%direct_lanczos) call stop_all('do_fci_lanczos', &
                                                             'Direct Lanczos not implemented with MPI parallelism.')
             if (sparse_hamil) call stop_all('do_fci_lanczos', &
                                             'Lanczos with sparse matrices not implemented with MPI parallelism.')
         end if
 
-        call init_fci(sys, ref, ndets, dets)
+        call init_fci(sys, fci_in, ref, ndets, dets)
 
-        allocate(eigv(fci_in_global%nlanczos_eigv), stat=ierr)
-        call check_allocate('eigv', fci_in_global%nlanczos_eigv, ierr)
+        allocate(eigv(fci_in%nlanczos_eigv), stat=ierr)
+        call check_allocate('eigv', fci_in%nlanczos_eigv, ierr)
 
         ! TRLan assumes that the only the rows of the matrix are distributed.  Furthermore,
         ! it seems TRLan assumes all processors store at least some of the matrix.
@@ -81,9 +82,9 @@ contains
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
             if (sparse_hamil) then
-                call lanczos_diagonalisation(sys, dets, proc_blacs_info, nfound, eigv, hamil_csr=hamil_csr)
+                call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil_csr=hamil_csr)
             else
-                call lanczos_diagonalisation(sys, dets, proc_blacs_info, nfound, eigv, hamil)
+                call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil)
             end if
         end if
 
@@ -102,12 +103,13 @@ contains
 
     end subroutine do_fci_lanczos
 
-    subroutine lanczos_diagonalisation(sys, dets, proc_blacs_info, nfound, eigv, hamil, hamil_csr)
+    subroutine lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil, hamil_csr)
 
         ! Perform a Lanczos diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
         ! In:
         !    sys: system to be studied.
+        !    fci_in: fci input options.
         !    dets: list of determinants in the Hilbert space in the bit
         !        string representation.
         !    proc_blacs_info: BLACS description of distribution of the Hamiltonian.
@@ -115,7 +117,7 @@ contains
         !    hamil_csr (optional): Hamiltonian matrix in sparse format.
         ! Out:
         !    nfound: number of solutions found from this block.  This is
-        !        min(number of determinants with current spin, fci_in_global%nlanczos_eigv).
+        !        min(number of determinants with current spin, fci_in%nlanczos_eigv).
         !    eigv(:nfound): Lanczos eigenvalues of the current block of the
         !        Hamiltonian matrix.
 
@@ -134,6 +136,7 @@ contains
         use parallel, only: blacs_info
 
         type(sys_t), intent(in) :: sys
+        type(fci_in_t), intent(in) :: fci_in
         integer(i0), intent(in) :: dets(:,:)
         type(blacs_info), intent(in) :: proc_blacs_info
         integer, intent(out) :: nfound
@@ -172,10 +175,10 @@ contains
 
         ! mev: number of eigenpairs that can be stored in eval and evec.
         ! twice the number of eigenvalues to be found is a reasonable default.
-        mev = min(2*fci_in_global%nlanczos_eigv, ndets)
+        mev = min(2*fci_in%nlanczos_eigv, ndets)
 
         if (parent) then
-            if (fci_in_global%direct_lanczos) then
+            if (fci_in%direct_lanczos) then
                 write (6,'(/,1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
             else
                 write (6,'(/,1X,a37,/)') 'Performing Lanczos diagonalisation...'
@@ -187,11 +190,11 @@ contains
         ! Initialise trlan.
         ! info: type(trl_info_t).  Used by trl to store calculation info.
         ! nrows: number of rows of matrix on processor.
-        ! fci_in_global%lanczos_string_len: maximum Lanczos basis size.
+        ! fci_in%lanczos_string_len: maximum Lanczos basis size.
         ! lohi: -1 means calculate the smallest eigenvalues first (1 to calculate
         !       the largest).
-        ! fci_in_global%nlanczos_eigv: number of eigenvalues to compute.
-        call trl_init_info(info, nrows, fci_in_global%lanczos_string_len, lohi, min(fci_in_global%nlanczos_eigv,ndets))
+        ! fci_in%nlanczos_eigv: number of eigenvalues to compute.
+        call trl_init_info(info, nrows, fci_in%lanczos_string_len, lohi, min(fci_in%nlanczos_eigv,ndets))
 
         allocate(eval(mev), stat=ierr)
         call check_allocate('eval',mev,ierr)
@@ -207,7 +210,7 @@ contains
         ! eval: array to store eigenvalue
         ! evec: array to store the eigenvectors
         ! lde: the leading dimension of evec (in serial case: ndets).
-        if (fci_in_global%direct_lanczos) then
+        if (fci_in%direct_lanczos) then
             call trlan(HPsi_direct, info, nrows, mev, eval, evec, nrows)
         else
             call trlan(HPsi, info, nrows, mev, eval, evec, nrows)
@@ -232,10 +235,10 @@ contains
         call trl_print_info(info, 2*(ndets**2+2*ndets))
         if (parent) write (6,'()')
 
-        nfound = min(fci_in_global%nlanczos_eigv,ndets)
+        nfound = min(fci_in%nlanczos_eigv,ndets)
         eigv(1:nfound) = real(eval(1:nfound),p)
 
-        nwfn = fci_in_global%analyse_fci_wfn
+        nwfn = fci_in%analyse_fci_wfn
         if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
         do i = 1, nwfn
 #ifdef SINGLE_PRECISION
@@ -244,13 +247,13 @@ contains
             call analyse_wavefunction(sys, evec(:,i), dets, proc_blacs_info)
 #endif
         end do
-        nwfn = fci_in_global%print_fci_wfn
+        nwfn = fci_in%print_fci_wfn
         if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
         do i = 1, nwfn
 #ifdef SINGLE_PRECISION
-            call print_wavefunction(fci_in_global%print_fci_wfn_file, evec_copy(:,i), dets, proc_blacs_info)
+            call print_wavefunction(fci_in%print_fci_wfn_file, evec_copy(:,i), dets, proc_blacs_info)
 #else
-            call print_wavefunction(fci_in_global%print_fci_wfn_file, evec(:,i), dets, proc_blacs_info)
+            call print_wavefunction(fci_in%print_fci_wfn_file, evec(:,i), dets, proc_blacs_info)
 #endif
         end do
 

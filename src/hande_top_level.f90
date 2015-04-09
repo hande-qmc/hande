@@ -150,8 +150,8 @@ contains
 
         integer :: truncation_level
 
-        if (doing_calc(exact_diag)) call do_fci_lapack(sys, reference)
-        if (doing_calc(lanczos_diag)) call do_fci_lanczos(sys, reference, use_sparse_hamil)
+        if (doing_calc(exact_diag)) call do_fci_lapack(sys, fci_in_global, reference)
+        if (doing_calc(lanczos_diag)) call do_fci_lanczos(sys, fci_in_global, reference, use_sparse_hamil)
 
         if (doing_calc(mc_hilbert_space)) then
             if (.not. truncate_space) then

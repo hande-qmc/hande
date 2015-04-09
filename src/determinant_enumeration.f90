@@ -51,15 +51,13 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
-        use utils, only: binom_i, get_free_unit, int_fmt
+        use utils, only: binom_i, int_fmt
         use bit_utils, only: first_perm, bit_permutation, decode_bit_string, count_set_bits
 
         use excitations, only: get_excitation_level
         use system
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
-
-        use tmp_input_var, only: fci_in_global
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: init, spin_flip
@@ -74,7 +72,6 @@ contains
         integer :: nbeta_combinations
         integer, allocatable :: nalpha_combinations(:)
         integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
-        character(4) :: fmt1
         integer(i0) :: f(sys%basis%string_len)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim), det_unit
@@ -325,16 +322,6 @@ contains
                 write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
             end do
             write (6,'()')
-        else if (.not. init .and. fci_in_global%write_determinants .and. parent) then
-            ! Output the determinants.
-            fmt1 = int_fmt(ndets, padding=1)
-            det_unit = get_free_unit()
-            open(det_unit, file=fci_in_global%determinant_file, status='unknown')
-            do i = 1, ndets
-                write (det_unit,'('//fmt1//',4X)',advance='no') i
-                call write_det(sys%basis, sys%nel, dets_list(:,i), det_unit, new_line=.true.)
-            end do
-            close(det_unit, status='keep')
         end if
 
         deallocate(occ, stat=ierr)
@@ -346,6 +333,39 @@ contains
         call dealloc_det_info_t(d0)
 
     end subroutine enumerate_determinants
+
+    subroutine print_dets_list(sys, ndets, dets, filename)
+
+        ! Print out the determinants.
+
+        ! In:
+        !   sys: system of interest.
+        !   ndets: number of determinants to print out.
+        !   dets: bit-string representation of determinants.
+        !   filename: filename to write determinants to.  Overwritten.
+
+        use system, only: sys_t
+        use utils, only: get_free_unit, int_fmt
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: ndets
+        integer(i0), intent(in) :: dets(:,:)
+        character(*), intent(in) :: filename
+
+        integer :: det_unit, i
+        character(4) :: fmt1
+
+        ! Output the determinants.
+        fmt1 = int_fmt(ndets, padding=1)
+        det_unit = get_free_unit()
+        open(det_unit, file=filename, status='unknown')
+        do i = 1, ndets
+            write (det_unit,'('//fmt1//',4X)',advance='no') i
+            call write_det(sys%basis, sys%nel, dets(:,i), det_unit, new_line=.true.)
+        end do
+        close(det_unit, status='keep')
+
+    end subroutine print_dets_list
 
 !--- Obtain the next basis function string ---
 

@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_fci_lapack(sys, ref_in)
+    subroutine do_fci_lapack(sys, fci_in, ref_in)
 
         use dmqmc_procedures, only: setup_rdm_arrays
         use fci_utils, only: init_fci, generate_hamil
@@ -22,9 +22,10 @@ contains
         use errors, only: warning
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
 
-        use tmp_input_var, only: fci_in_global
+        use tmp_input_var, only: fci_in_t
 
         type(sys_t), intent(inout) :: sys
+        type(fci_in_t), intent(inout) :: fci_in
         type(reference_t), intent(in) :: ref_in
 
         type(sys_t) :: sys_bak
@@ -37,7 +38,7 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call copy_reference_t(ref_in, ref)
 
-        call init_fci(sys, ref, ndets, dets)
+        call init_fci(sys, fci_in, ref, ndets, dets)
 
         allocate(eigv(ndets), stat=ierr)
         call check_allocate('eigv',ndets,ierr)
@@ -53,19 +54,19 @@ contains
                 proc_blacs_info = get_blacs_info(ndets)
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
-            call lapack_diagonalisation(sys, dets, proc_blacs_info, hamil, eigv)
+            call lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
         end if
 
-        if (allocated(fci_in_global%fci_rdm_info)) then
+        if (allocated(fci_in%fci_rdm_info)) then
             if (nprocs > 1) then
                 if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. Skipping.', 3)
             else
                 write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                call setup_rdm_arrays(sys, .false., fci_in_global%fci_rdm_info, rdm)
+                call setup_rdm_arrays(sys, .false., fci_in%fci_rdm_info, rdm)
                 rdm_size = size(rdm, 1)
                 allocate(rdm_eigv(rdm_size), stat=ierr)
                 call check_allocate('rdm_eigv',rdm_size,ierr)
-                call get_rdm_eigenvalues(sys%basis, fci_in_global%fci_rdm_info, ndets, dets, hamil, rdm, rdm_eigv)
+                call get_rdm_eigenvalues(sys%basis, fci_in%fci_rdm_info, ndets, dets, hamil, rdm, rdm_eigv)
             end if
         end if
 
@@ -84,7 +85,7 @@ contains
 
     end subroutine do_fci_lapack
 
-    subroutine lapack_diagonalisation(sys, dets, proc_blacs_info, hamil, eigv)
+    subroutine lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
 
         ! Perform an exact diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
@@ -92,6 +93,7 @@ contains
         ! In:
         !    sys: system being studied.  Only used if the wavefunction is
         !        analysed.
+        !    fci_in: fci input options.
         !    dets: list of determinants in the Hilbert space in the bit
         !        string representation.
         !    proc_blacs_info: BLACS description of distribution of the Hamiltonian.
@@ -109,10 +111,11 @@ contains
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
 
-        use tmp_input_var, only: fci_in_global
+        use tmp_input_var, only: fci_in_t
         use operators
 
         type(sys_t), intent(in) :: sys
+        type(fci_in_t), intent(in) :: fci_in
         integer(i0), intent(in) :: dets(:,:)
         type(blacs_info), intent(in) :: proc_blacs_info
         real(p), intent(inout) :: hamil(:,:)
@@ -127,8 +130,8 @@ contains
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
-        if (fci_in_global%analyse_fci_wfn /= 0 .or. fci_in_global%print_fci_wfn /= 0 &
-                    .or. allocated(fci_in_global%fci_rdm_info)) then
+        if (fci_in%analyse_fci_wfn /= 0 .or. fci_in%print_fci_wfn /= 0 &
+                    .or. allocated(fci_in%fci_rdm_info)) then
             job = 'V'
         else
             job = 'N'
@@ -195,7 +198,7 @@ contains
         deallocate(work, stat=ierr)
         call check_deallocate('work',ierr)
 
-        nwfn = fci_in_global%analyse_fci_wfn
+        nwfn = fci_in%analyse_fci_wfn
         if (nwfn < 0) nwfn = ndets
         do i = 1, nwfn
             if (nprocs == 1) then
@@ -204,13 +207,13 @@ contains
                 call analyse_wavefunction(sys, eigvec(:,i), dets, proc_blacs_info)
             end if
         end do
-        nwfn = fci_in_global%print_fci_wfn
+        nwfn = fci_in%print_fci_wfn
         if (nwfn < 0) nwfn = ndets
         do i = 1, nwfn
             if (nprocs == 1) then
-                call print_wavefunction(fci_in_global%print_fci_wfn_file, hamil(:,i), dets, proc_blacs_info)
+                call print_wavefunction(fci_in%print_fci_wfn_file, hamil(:,i), dets, proc_blacs_info)
             else
-                call print_wavefunction(fci_in_global%print_fci_wfn_file, eigvec(:,i), dets, proc_blacs_info)
+                call print_wavefunction(fci_in%print_fci_wfn_file, eigvec(:,i), dets, proc_blacs_info)
             end if
         end do
 
