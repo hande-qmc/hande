@@ -2,10 +2,7 @@
 '''Usage:
 send_softexit.py [options] walltime &
 
-This is a version of watchdog which will work on computers without a
-queueing system or using a queueing system other than Torque.
-
-send_softexit must run in the same working directory as the NECI calculation.
+send_softexit must run in the same working directory as the HANDE calculation.
 
 Care must be taken that the send_softexit is terminated when the job finishes
 (rather than waiting for the send_softexit to finish!).  send_softexit
