@@ -49,7 +49,7 @@ contains
                 call generate_hamil(sys, ndets, dets, hamil)
             else
                 ! Use as square a processor grid as possible.
-                proc_blacs_info = get_blacs_info(ndets)
+                proc_blacs_info = get_blacs_info(ndets, fci_in%block_size)
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
             call lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)

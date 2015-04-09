@@ -42,12 +42,6 @@ integer :: nthreads
 
 !--- BLACS/ScaLAPACK ---
 
-! blacs and scalapack split a matrix up into n x n blocks which are then
-! distributed around the processors in a cyclic fashion.
-! The block size is critical to performance.  64 seems to be a good value (see
-! scalapack documentation).
-integer :: block_size = 64
-
 ! Type for storing information about a processor as used in blacs and scalapack.
 ! Conveniently filled by the function get_blacs_info.
 type blacs_info
@@ -59,6 +53,8 @@ type blacs_info
     ! Number of rows and columns of the global matrix stored on the processor.
     ! Zero if no rows/columns stored on the processor.
     integer :: nrows, ncols
+    ! size of n x n blocks of a array which are cyclicly distributed around processors.
+    integer :: block_size
     ! blacs and scalapack use a 9 element integer array as a description of how
     ! a matrix is distributed throughout the processor grid.
     ! Descriptor for distributing an NxN matrix:
@@ -191,11 +187,13 @@ contains
 
     end subroutine end_parallel
 
-    function get_blacs_info(matrix_size, proc_grid) result(my_blacs_info)
+    function get_blacs_info(matrix_size, block_size, proc_grid) result(my_blacs_info)
 
         ! In:
         !    matrix_size: leading dimension of the square array to be
         !                 distributed amongst the processor mesh.
+        !   block_size: size of n x n blocks of a array which are cyclicly
+        !                 distributed around processors.
         !   proc_grid(2) (optional): set the processor mesh to be
         !                 (/ nproc_cols, nproc_rows /).  If not present then
         !                 a mesh as close to square as possible is used.
@@ -207,7 +205,7 @@ contains
         !                   descriptor arrays, which are set to zero.
 
         type(blacs_info) :: my_blacs_info
-        integer, intent(in) :: matrix_size
+        integer, intent(in) :: matrix_size, block_size
         integer, intent(in), optional :: proc_grid(2)
         integer :: i, j, k, nproc_rows, nproc_cols
         integer :: procy, procx, nrows, ncols
@@ -263,7 +261,7 @@ contains
         desc_v = 0
 #endif
 
-        my_blacs_info = blacs_info(procx, procy, nproc_cols, nproc_rows, nrows, ncols, desc_m, desc_v)
+        my_blacs_info = blacs_info(procx, procy, nproc_cols, nproc_rows, nrows, ncols, block_size, desc_m, desc_v)
 
     end function get_blacs_info
 

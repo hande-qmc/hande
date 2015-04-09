@@ -26,6 +26,12 @@ type fci_in_t
     ! NOTE: This can only be equal to 1 currently.
     type(rdm_t), allocatable :: fci_rdm_info(:)
 
+    ! blacs and scalapack split a matrix up into n x n blocks which are then
+    ! distributed around the processors in a cyclic fashion.
+    ! The block size is critical to performance.  64 seems to be a good value (see
+    ! scalapack documentation).
+    integer :: block_size = 64
+
     ! -- Lanczos only settings --
 
     ! Number of Lanczos eigenpairs to find.
@@ -184,14 +190,14 @@ contains
             ! the corrent loop over processors and the position within the
             ! current block.
             ! Similarly for the other indices.
-            do i = 1, proc_blacs_info%nrows, block_size
-                do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
+            do i = 1, proc_blacs_info%nrows, proc_blacs_info%block_size
+                do ii = 1, min(proc_blacs_info%block_size, proc_blacs_info%nrows - i + 1)
                     ilocal = i - 1 + ii
-                    iglobal = (i-1)*proc_blacs_info%nproc_rows + proc_blacs_info%procx*block_size + ii
-                    do j = 1, proc_blacs_info%ncols, block_size
-                        do jj = 1, min(block_size, proc_blacs_info%ncols - j + 1)
+                    iglobal = (i-1)*proc_blacs_info%nproc_rows + proc_blacs_info%procx*proc_blacs_info%block_size + ii
+                    do j = 1, proc_blacs_info%ncols, proc_blacs_info%block_size
+                        do jj = 1, min(proc_blacs_info%block_size, proc_blacs_info%ncols - j + 1)
                             jlocal = j - 1 + jj
-                            jglobal = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*block_size + jj
+                            jglobal = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*proc_blacs_info%block_size + jj
                             hamil(ilocal, jlocal) = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
                         end do
                     end do

@@ -393,10 +393,10 @@ contains
                 end do
             end do
         else
-            do i = 1, proc_blacs_info%nrows, block_size
-                do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
+            do i = 1, proc_blacs_info%nrows, proc_blacs_info%block_size
+                do ii = 1, min(proc_blacs_info%block_size, proc_blacs_info%nrows - i + 1)
                     ilocal = i - 1 + ii
-                    idet =  (i-1)*proc_blacs_info%nproc_rows + proc_blacs_info%procx* block_size + ii
+                    idet =  (i-1)*proc_blacs_info%nproc_rows + proc_blacs_info%procx* proc_blacs_info%block_size + ii
                     select case(sys%system)
                     case(hub_k)
                         expectation_val(1) = expectation_val(1) + wfn(ilocal)**2*kinetic0_hub_k(sys, dets(:,idet))
@@ -406,10 +406,10 @@ contains
                     case(read_in)
                         expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(sys, dets(:,idet))
                     end select
-                    do j = 1, proc_blacs_info%ncols, block_size
-                        do jj = 1, min(block_size, proc_blacs_info%nrows - j + 1)
+                    do j = 1, proc_blacs_info%ncols, proc_blacs_info%block_size
+                        do jj = 1, min(proc_blacs_info%block_size, proc_blacs_info%nrows - j + 1)
                             jlocal = j - 1 + jj
-                            jdet = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*block_size + jj
+                            jdet = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*proc_blacs_info%block_size + jj
                             cicj = wfn(ilocal) * wfn(jlocal)
                             select case(sys%system)
                             case(hub_k)
@@ -523,10 +523,10 @@ contains
                 integer, intent(in) :: nrows, procx
                 real(p), intent(in) :: wfn_curr(nrows)
 
-                do i = 1, nrows, block_size
-                    do ii = 1, min(block_size, nrows - i + 1)
+                do i = 1, nrows, proc_blacs_info%block_size
+                    do ii = 1, min(proc_blacs_info%block_size, nrows - i + 1)
                         ilocal = i - 1 + ii
-                        idet =  (i-1)*proc_blacs_info%nproc_rows + procx* block_size + ii
+                        idet =  (i-1)*proc_blacs_info%nproc_rows + procx* proc_blacs_info%block_size + ii
                         write (iunit,*) idet, dets(:,idet), wfn_curr(ilocal)
                     end do
                 end do

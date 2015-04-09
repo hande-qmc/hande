@@ -20,7 +20,6 @@ contains
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
         use utils, only: int_fmt
 
-        use parallel, only: block_size
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(in) :: fci_in
@@ -31,7 +30,7 @@ contains
         type(reference_t) :: ref
         integer(i0), allocatable :: dets(:,:)
         real(p), allocatable :: eigv(:)
-        integer :: ndets, ierr, i, nfound
+        integer :: ndets, ierr, i, nfound, block_size
         type(blacs_info) :: proc_blacs_info
         real(p), allocatable :: hamil(:,:)
         type(csrp_t) :: hamil_csr
@@ -54,7 +53,7 @@ contains
         ! TRLan assumes that the only the rows of the matrix are distributed.  Furthermore,
         ! it seems TRLan assumes all processors store at least some of the matrix.
         ! Useful to have this for consistency, even as a dummy object in serial.
-        proc_blacs_info = get_blacs_info(ndets, [1, nprocs])
+        block_size = fci_in%block_size
         if (nprocs*block_size > ndets) then
             if (parent) then
                 call warning('do_fci_lanczos','Reducing block size so that all processors contain at least a single row.',3)
@@ -64,6 +63,7 @@ contains
             block_size = ndets/nprocs
             if (parent) write (6,'(1X,("New block size is:"'//int_fmt(block_size,1)//')') block_size
         end if
+        proc_blacs_info = get_blacs_info(ndets, block_size, [1, nprocs])
 
         if (ndets == 1) then
             ! The trivial case seems to trip things up...

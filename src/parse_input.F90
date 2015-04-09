@@ -3,7 +3,7 @@ module parse_input
 
 use const
 
-use parallel, only: parent, block_size
+use parallel, only: parent
 use errors
 use hilbert_space
 use calc
@@ -531,7 +531,7 @@ contains
 
             ! Parameters for parallel calculations.
             case('BLOCK_SIZE')
-                call readi(block_size)
+                call readi(fci_in_global%block_size)
             case('NON_BLOCKING_COMM')
                 fciqmc_in%non_blocking_comm = .true.
             case('LOAD_BALANCING')
@@ -1060,7 +1060,7 @@ contains
         call mpi_bcast(fci_in_global%write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(fci_in_global%write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_in_global%block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(fciqmc_in%non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(fciqmc_in%doing_load_balancing, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_bal_in%nslots, 1, mpi_integer, 0, mpi_comm_world, ierr)
