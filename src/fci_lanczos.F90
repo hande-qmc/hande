@@ -8,6 +8,14 @@ contains
 
     subroutine do_fci_lanczos(sys, fci_in, ref_in, sparse_hamil)
 
+        ! Perform an FCI calculation via the Lanczos algorithm.
+
+        ! In:
+        !    sys: system of interest.
+        !    fci_in: fci input options.
+        !    ref_in: reference determinant defining (if relevant) a
+        !        truncated Hilbert space.
+
         use fci_utils, only: fci_in_t, init_fci, generate_hamil
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t

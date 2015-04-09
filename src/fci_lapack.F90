@@ -11,6 +11,14 @@ contains
 
     subroutine do_fci_lapack(sys, fci_in, ref_in)
 
+        ! Perform an FCI calculation using LAPACK/ScaLAPACK diagonalisation.
+
+        ! In:
+        !    sys: system of interest.
+        !    fci_in: fci input options.
+        !    ref_in: reference determinant defining (if relevant) a
+        !        truncated Hilbert space.
+
         use dmqmc_procedures, only: setup_rdm_arrays
         use fci_utils, only: fci_in_t, init_fci, generate_hamil
         use hamiltonian, only: get_hmatel

@@ -1,9 +1,12 @@
 module fci_utils
 
+! Utility/common procedures and data structures for FCI code.
+
 use dmqmc_data, only: rdm_t
 
 implicit none
 
+! Input options.
 type fci_in_t
     ! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
     logical :: write_hamiltonian = .false.
@@ -42,11 +45,19 @@ type fci_in_t
     logical :: direct_lanczos = .false.
 end type fci_in_t
 
-
-
 contains
 
     subroutine init_fci(sys, fci_in, ref, ndets, dets)
+
+        ! Initialisation of FCI calculations.  (Boilerplate, determinant initialisation.)
+
+        ! In:
+        !   sys: system of interest.
+        !   fci_in: fci input options.
+        !   ref: reference determinant.
+        ! Out:
+        !   ndets, dets: number of and bit-string representation of determinants in the
+        !        selected Hilbert subspace.
 
         use const, only: i0
 
@@ -64,7 +75,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(in) :: fci_in
-        type(reference_t), intent(inout) :: ref
+        type(reference_t), intent(in) :: ref
         integer, intent(out) :: ndets
         integer(i0), allocatable, intent(out) :: dets(:,:)
 
