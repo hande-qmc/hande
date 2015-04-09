@@ -22,7 +22,7 @@ contains
         use errors, only: warning
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
 
-        use calc, only: doing_exact_rdm_eigv, fci_rdm_info
+        use tmp_input_var, only: fci_in_global
 
         type(sys_t), intent(inout) :: sys
         type(reference_t), intent(in) :: ref_in
@@ -56,16 +56,16 @@ contains
             call lapack_diagonalisation(sys, dets, proc_blacs_info, hamil, eigv)
         end if
 
-        if (doing_exact_rdm_eigv) then
+        if (allocated(fci_in_global%fci_rdm_info)) then
             if (nprocs > 1) then
                 if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. Skipping.', 3)
             else
                 write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                call setup_rdm_arrays(sys, .false., fci_rdm_info, rdm)
+                call setup_rdm_arrays(sys, .false., fci_in_global%fci_rdm_info, rdm)
                 rdm_size = size(rdm, 1)
                 allocate(rdm_eigv(rdm_size), stat=ierr)
                 call check_allocate('rdm_eigv',rdm_size,ierr)
-                call get_rdm_eigenvalues(sys%basis, fci_rdm_info, ndets, dets, hamil, rdm, rdm_eigv)
+                call get_rdm_eigenvalues(sys%basis, fci_in_global%fci_rdm_info, ndets, dets, hamil, rdm, rdm_eigv)
             end if
         end if
 
@@ -109,8 +109,7 @@ contains
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
 
-        use calc, only: analyse_fci_wfn, print_fci_wfn, print_fci_wfn_file, doing_exact_rdm_eigv
-
+        use tmp_input_var, only: fci_in_global
         use operators
 
         type(sys_t), intent(in) :: sys
@@ -128,7 +127,8 @@ contains
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
-        if (analyse_fci_wfn /= 0 .or. print_fci_wfn /= 0 .or. doing_exact_rdm_eigv) then
+        if (fci_in_global%analyse_fci_wfn /= 0 .or. fci_in_global%print_fci_wfn /= 0 &
+                    .or. allocated(fci_in_global%fci_rdm_info)) then
             job = 'V'
         else
             job = 'N'
@@ -195,7 +195,7 @@ contains
         deallocate(work, stat=ierr)
         call check_deallocate('work',ierr)
 
-        nwfn = analyse_fci_wfn
+        nwfn = fci_in_global%analyse_fci_wfn
         if (nwfn < 0) nwfn = ndets
         do i = 1, nwfn
             if (nprocs == 1) then
@@ -204,13 +204,13 @@ contains
                 call analyse_wavefunction(sys, eigvec(:,i), dets, proc_blacs_info)
             end if
         end do
-        nwfn = print_fci_wfn
+        nwfn = fci_in_global%print_fci_wfn
         if (nwfn < 0) nwfn = ndets
         do i = 1, nwfn
             if (nprocs == 1) then
-                call print_wavefunction(print_fci_wfn_file, hamil(:,i), dets, proc_blacs_info)
+                call print_wavefunction(fci_in_global%print_fci_wfn_file, hamil(:,i), dets, proc_blacs_info)
             else
-                call print_wavefunction(print_fci_wfn_file, eigvec(:,i), dets, proc_blacs_info)
+                call print_wavefunction(fci_in_global%print_fci_wfn_file, eigvec(:,i), dets, proc_blacs_info)
             end if
         end do
 

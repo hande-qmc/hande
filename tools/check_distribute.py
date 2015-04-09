@@ -84,11 +84,11 @@ def test_input(input_file):
             distributed.update([bcast_match.group(0).upper()])
 
     # special case: output filenames are not needed apart from on the head node, reading the restart file is only read on the head node.
-    for v in ['HAMILTONIAN_FILE', 'DETERMINANT_FILE', 'BINARY_FMT_IN', 'BINARY_FMT_OUT', 'NWEIGHTS', 'DMQMC_RDM_INFO', 'FCI_RDM_INFO', 'PRINT_FCI_WFN_FILE', 'FCI_NRDMS']:
+    for v in ['FCI_IN_GLOBAL%HAMILTONIAN_FILE', 'FCI_IN_GLOBAL%DETERMINANT_FILE', 'BINARY_FMT_IN', 'BINARY_FMT_OUT', 'NWEIGHTS', 'DMQMC_RDM_INFO', 'FCI_IN_GLOBAL%FCI_RDM_INFO', 'FCI_IN_GLOBAL%PRINT_FCI_WFN_FILE', 'FCI_NRDMS']:
         if v in variables:
             variables.remove(v)
     # special case: option_set is used only for some book-keeping in distribute_input; comms_read is similarly used in fciqmc_interact; occ_list_size is used when nel is not yet determined.
-    for v in ['OPTION_SET', 'OCC_LIST_SIZE', 'COMMS_READ', 'DMQMC_RDM_INFO(I)%A_NSITES', 'FCI_RDM_INFO(I)%A_NSITES', 'DMQMC_RDM_INFO(I)%SUBSYSTEM_A', 'FCI_RDM_INFO(I)%SUBSYSTEM_A']:
+    for v in ['OPTION_SET', 'OCC_LIST_SIZE', 'COMMS_READ', 'DMQMC_RDM_INFO(I)%A_NSITES', 'DMQMC_RDM_INFO(I)%SUBSYSTEM_A', 'RDM_INFO%SUBSYSTEM_A', 'FCI_IN_GLOBAL%FCI_RDM_INFO(I)%A_NSITES']:
         if v in distributed:
             distributed.remove(v)
 

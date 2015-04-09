@@ -18,7 +18,7 @@ contains
 
         use system, only: sys_t, set_spin_polarisation
 
-        use calc, only: print_fci_wfn, print_fci_wfn_file
+        use tmp_input_var, only: fci_in_global
         use calc, only: ms_in, sym_in
 
         type(sys_t), intent(inout) :: sys
@@ -34,11 +34,11 @@ contains
         write (6,'(1X,"FCI")')
         write (6,'(1X,"---",/)')
 
-        if (print_fci_wfn /= 0) then
+        if (fci_in_global%print_fci_wfn /= 0) then
             ! Overwrite any existing file...
             ! Open a fresh file here so we can just append to it later.
             iunit = get_free_unit()
-            open(iunit, file=print_fci_wfn_file, status='unknown')
+            open(iunit, file=fci_in_global%print_fci_wfn_file, status='unknown')
             close(iunit, status='delete')
         end if
 

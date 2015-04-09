@@ -59,7 +59,7 @@ contains
         use symmetry, only: cross_product, symmetry_orb_list
         use ueg_system, only: ueg_basis_index
 
-        use tmp_input_var, only: write_determinants, determinant_file
+        use tmp_input_var, only: fci_in_global
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: init, spin_flip
@@ -325,11 +325,11 @@ contains
                 write (6,'(6X,i4,4X,i13)') i, sym_space_size(i)
             end do
             write (6,'()')
-        else if (.not. init .and. write_determinants .and. parent) then
+        else if (.not. init .and. fci_in_global%write_determinants .and. parent) then
             ! Output the determinants.
             fmt1 = int_fmt(ndets, padding=1)
             det_unit = get_free_unit()
-            open(det_unit, file=determinant_file, status='unknown')
+            open(det_unit, file=fci_in_global%determinant_file, status='unknown')
             do i = 1, ndets
                 write (det_unit,'('//fmt1//',4X)',advance='no') i
                 call write_det(sys%basis, sys%nel, dets_list(:,i), det_unit, new_line=.true.)

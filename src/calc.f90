@@ -45,38 +45,6 @@ integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
 integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
-!--- Info for FCI calculations ---
-
-! This stores  information for the various RDMs that the user asks to be
-! calculated. Each element of this array corresponds to one of these RDMs.
-! NOTE: This can only be equal to 1 currently.
-type(rdm_t), allocatable :: fci_rdm_info(:)
-
-! Use sparse matrix rather than dense matrix?
-logical :: use_sparse_hamil = .false.
-
-! If either of the following options are true, then the eigenvectors are found
-! during exact diagonalisation as well as the eigenvalues.  Doing this is
-! substantially more expensive.
-
-! Number of FCI wavefunctions to print out.
-integer :: print_fci_wfn = 0
-! ...and file to write them to.
-character(255) :: print_fci_wfn_file = 'FCI_WFN'
-
-! Number of FCI wavefunctions to compute properties of.
-integer :: analyse_fci_wfn = 0
-
-! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
-logical :: write_hamiltonian = .false.
-character(255) :: hamiltonian_file = 'HAMIL'
-
-! Variables relating to FCI RDM calculation.
-
-! If true then, if doing an exact diagonalisation, calculate and output the
-! eigenvalues of the reduced density matrix requested.
-logical :: doing_exact_rdm_eigv = .false.
-
 ! --- QMC trial (importance-sampling) functions ---
 
 ! For the Heisenberg model, several different trial functions can be used in the

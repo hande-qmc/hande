@@ -151,7 +151,7 @@ contains
         integer :: truncation_level
 
         if (doing_calc(exact_diag)) call do_fci_lapack(sys, reference)
-        if (doing_calc(lanczos_diag)) call do_fci_lanczos(sys, reference)
+        if (doing_calc(lanczos_diag)) call do_fci_lanczos(sys, reference, use_sparse_hamil)
 
         if (doing_calc(mc_hilbert_space)) then
             if (.not. truncate_space) then
@@ -169,7 +169,7 @@ contains
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call do_simple_fciqmc(sys, qmc_in_global, restart_in_global, reference)
+                call do_simple_fciqmc(sys, qmc_in_global, restart_in_global, reference, use_sparse_hamil)
             else
                 call do_qmc(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, semi_stoch_in_global, &
                             restart_in_global, reference, load_bal_in_global, dmqmc_in_global, &

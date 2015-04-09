@@ -193,7 +193,7 @@ contains
                 calc_type = calc_type + exact_diag
             case('LANCZOS_DIRECT')
                 calc_type = calc_type + lanczos_diag
-                direct_lanczos = .true.
+                fci_in_global%direct_lanczos = .true.
             case('LANCZOS')
                 calc_type = calc_type + lanczos_diag
             case('SIMPLE_FCIQMC')
@@ -328,17 +328,16 @@ contains
 
             case('FCI_REDUCED_DENSITY_MATRIX')
                 call readi(fci_nrdms)
-                allocate(fci_rdm_info(fci_nrdms), stat=ierr)
-                call check_allocate('fci_rdm_info', fci_nrdms, ierr)
-                dmqmc_in%rdm%doing_rdm = .true.
+                allocate(fci_in_global%fci_rdm_info(fci_nrdms), stat=ierr)
+                call check_allocate('fci_in_global%fci_rdm_info', fci_nrdms, ierr)
                 do i = 1, fci_nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
-                    fci_rdm_info(i)%A_nsites = nitems
-                    allocate(fci_rdm_info(i)%subsystem_A(nitems))
-                    call check_allocate('fci_rdm_info(i)%subsystem_A',nitems,ierr)
+                    fci_in_global%fci_rdm_info(i)%A_nsites = nitems
+                    allocate(fci_in_global%fci_rdm_info(i)%subsystem_A(nitems))
+                    call check_allocate('fci_in_global%fci_rdm_info(i)%subsystem_A',nitems,ierr)
                     do j = 1, nitems
-                        call readi(fci_rdm_info(i)%subsystem_A(j))
+                        call readi(fci_in_global%fci_rdm_info(i)%subsystem_A(j))
                     end do
                 end do
             case('GROUND_STATE_RDM')
@@ -347,8 +346,6 @@ contains
                 dmqmc_in%rdm%calc_inst_rdm = .true.
             case('OUTPUT_RDM')
                 dmqmc_in%rdm%output_rdm = .true.
-            case('EXACT_RDM_EIGENVALUES')
-                doing_exact_rdm_eigv = .true.
             case('CONCURRENCE')
                 dmqmc_in%rdm%doing_concurrence = .true.
             case('VON_NEUMANN_ENTROPY')
@@ -368,20 +365,20 @@ contains
 
             ! Calculation options: lanczos.
             case('LANCZOS_BASIS')
-                call readi(lanczos_string_len)
+                call readi(fci_in_global%lanczos_string_len)
             case('LANCZOS_SOLUTIONS','LANCZOS_SOLNS')
-                call readi(nlanczos_eigv)
+                call readi(fci_in_global%nlanczos_eigv)
             case('SPARSE_HAMILTONIAN')
                 use_sparse_hamil = .true.
 
             ! Calculation options: lanczos/exact diagonalisation.
             case('PRINT_FCI_WFN')
-                print_fci_wfn = -1
-                if (item /= nitems) call readi(print_fci_wfn)
-                if (item /= nitems) call reada(print_fci_wfn_file)
+                fci_in_global%print_fci_wfn = -1
+                if (item /= nitems) call readi(fci_in_global%print_fci_wfn)
+                if (item /= nitems) call reada(fci_in_global%print_fci_wfn_file)
             case('ANALYSE_FCI_WFN')
-                analyse_fci_wfn = -1
-                if (item /= nitems) call readi(analyse_fci_wfn)
+                fci_in_global%analyse_fci_wfn = -1
+                if (item /= nitems) call readi(fci_in_global%analyse_fci_wfn)
 
             ! Calculation options: fciqmc.
             case('MC_CYCLES')
@@ -526,11 +523,11 @@ contains
 
             ! Output information.
             case('HAMIL','HAMILTONIAN')
-                write_hamiltonian = .true.
-                if (item /= nitems) call reada(hamiltonian_file)
+                fci_in_global%write_hamiltonian = .true.
+                if (item /= nitems) call reada(fci_in_global%hamiltonian_file)
             case('DET','DETERMINANTS')
-                write_determinants = .true.
-                if (item /= nitems) call reada(determinant_file)
+                fci_in_global%write_determinants = .true.
+                if (item /= nitems) call reada(fci_in_global%determinant_file)
 
             ! Parameters for parallel calculations.
             case('BLOCK_SIZE')
@@ -627,10 +624,10 @@ contains
 
         if (sys%system == read_in) then
 
-            if (analyse_fci_wfn /= 0 .and. sys%read_in%dipole_int_file == '') then
+            if (fci_in_global%analyse_fci_wfn /= 0 .and. sys%read_in%dipole_int_file == '') then
                 if (parent) call warning(this, 'Cannot analyse FCI wavefunction without a dipole &
-                             &integrals file.  Turning analyse_fci_wfn option off...')
-                analyse_fci_wfn = 0
+                             &integrals file.  Turning fci_in_global%analyse_fci_wfn option off...')
+                fci_in_global%analyse_fci_wfn = 0
             end if
 
         else
@@ -711,8 +708,8 @@ contains
 
         ! Calculation specific checking.
         if (doing_calc(lanczos_diag)) then
-            if (lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
-            if (nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
+            if (fci_in_global%lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
+            if (fci_in_global%nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
 
         if (.not.doing_calc(dmqmc_calc) .and. dmqmc_calc_type /= 0 .and. parent) call warning(this,&
@@ -897,16 +894,16 @@ contains
 
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_in_global%direct_lanczos, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(nhilbert_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(nkinetic_cycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(lanczos_string_len, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_in_global%lanczos_string_len, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_in_global%nlanczos_eigv, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(use_sparse_hamil, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(print_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(analyse_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_in_global%print_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_in_global%analyse_fci_wfn, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(qmc_in%ncycles, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%nreport, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -925,7 +922,6 @@ contains
         call mpi_bcast(dmqmc_in%rdm%calc_inst_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%output_rdm, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%nrdms, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(doing_exact_rdm_eigv, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%doing_vn_entropy, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%rdm%doing_concurrence, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(dmqmc_in%start_av_excit_dist, 1, mpi_integer, 0, mpi_comm_world, ierr)
@@ -979,22 +975,24 @@ contains
             end do
         end if
         option_set = .false.
-        if (parent) option_set = allocated(fci_rdm_info)
+        if (parent) option_set = allocated(fci_in_global%fci_rdm_info)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(fci_rdm_info)
+            occ_list_size = size(fci_in_global%fci_rdm_info)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(fci_rdm_info(occ_list_size), stat=ierr)
-                call check_allocate('fci_rdm_info',occ_list_size,ierr)
+                allocate(fci_in_global%fci_rdm_info(occ_list_size), stat=ierr)
+                call check_allocate('fci_in_global%fci_rdm_info',occ_list_size,ierr)
             end if
             do i = 1, occ_list_size
-                call mpi_bcast(fci_rdm_info(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                call mpi_bcast(fci_in_global%fci_rdm_info(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
                 if (.not.parent) then
-                    allocate(fci_rdm_info(i)%subsystem_A(fci_rdm_info(i)%A_nsites), stat=ierr)
-                    call check_allocate('fci_rdm_info(i)%subsystem_A',fci_rdm_info(i)%A_nsites,ierr)
+                    allocate(fci_in_global%fci_rdm_info(i)%subsystem_A(fci_in_global%fci_rdm_info(i)%A_nsites), stat=ierr)
+                    call check_allocate('fci_in_global%fci_rdm_info(i)%subsystem_A',fci_in_global%fci_rdm_info(i)%A_nsites,ierr)
                 end if
-                call mpi_bcast(fci_rdm_info(i)%subsystem_A, fci_rdm_info(i)%A_nsites, mpi_integer, 0, mpi_comm_world, ierr)
+                associate(rdm_info=>fci_in_global%fci_rdm_info(i))
+                    call mpi_bcast(rdm_info%subsystem_A, rdm_info%A_nsites, mpi_integer, 0, mpi_comm_world, ierr)
+                end associate
             end do
         end if
         option_set = .false.
@@ -1059,8 +1057,8 @@ contains
 
         call mpi_bcast(hf_operator, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_in_global%write_hamiltonian, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fci_in_global%write_determinants, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(block_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(fciqmc_in%non_blocking_comm, 1, mpi_logical, 0, mpi_comm_world, ierr)
