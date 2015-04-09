@@ -69,7 +69,7 @@ contains
                 write (6,'(1X,"Old block size was:"'//int_fmt(block_size,1)//')') block_size
             end if
             block_size = ndets/nprocs
-            if (parent) write (6,'(1X,("New block size is:"'//int_fmt(block_size,1)//')') block_size
+            if (parent) write (6,'(1X,"New block size is:"'//int_fmt(block_size,1)//')') block_size
         end if
         proc_blacs_info = get_blacs_info(ndets, block_size, [1, nprocs])
 
