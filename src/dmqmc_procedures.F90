@@ -458,7 +458,7 @@ contains
         use errors
         use fciqmc_data, only: real_factor
         use parallel
-        use system, only: sys_t, heisenberg, ueg, hub_k, hub_real
+        use system, only: sys_t, heisenberg, ueg, hub_k, hub_real, read_in
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
         use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
@@ -517,7 +517,7 @@ contains
                     ! of psips.
                     call random_distribution_heisenberg(rng, sys%basis, sys%nel, npsips_this_proc, ireplica, spawn)
                 end if
-            case(ueg, hub_k)
+            case(ueg, hub_k, read_in)
                 if (dmqmc_in%propagate_to_beta) then
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
@@ -728,7 +728,7 @@ contains
         use fciqmc_data, only: real_factor
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
-        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr
+        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
         use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
@@ -775,12 +775,13 @@ contains
                     E_old = trial_dm_ptr(sys, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
-                    call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
                     if (dmqmc_in%all_sym_sectors) then
+                        call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
                         call gen_random_det_truncate_space(rng, sys, dmqmc_in%max_metropolis_move, cdet, move_prob, occ_list)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, occ_list, f_new)
                     else
+                        call decoder_ptr(sys, cdet%f, cdet)
                         call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.

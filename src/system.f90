@@ -514,6 +514,9 @@ contains
                 sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
             case default
                 sys%max_number_excitations = sys%nel
+                if (all(sys%CAS > 0)) then
+                    sys%max_number_excitations = sys%CAS(1)
+                end if
             end select
 
         end associate

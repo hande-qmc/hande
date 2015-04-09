@@ -872,6 +872,10 @@ contains
                         trial_dm_ptr => slater_condon0_hub_k
                     end if
                 end if
+            case(read_in)
+                if (dmqmc_in%propagate_to_beta) then
+                    trial_dm_ptr => slater_condon0_mol
+                end if
             end select
 
         end if
