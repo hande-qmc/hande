@@ -430,10 +430,10 @@ nread : int
     Number of lines read.
 '''
     nread = 0
-    if 'Exact' in line or 'Lanczos' in line:
-        if 'Exact' in line:
+    if any(key in line for key in ('Exact', 'Lanczos', 'LAPACK', 'LANCZOS')):
+        if 'Exact' in line or 'LAPACK' in line:
             title = 'FCI (LAPACK)'
-        elif 'Lanczos' in line:
+        elif 'Lanczos' in line or 'LANCZOS' in line:
             title = 'FCI (Lanczos)'
         for line in fh:
             nread += 1
