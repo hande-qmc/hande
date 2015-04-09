@@ -927,7 +927,7 @@ contains
         if ((.not. vary_shift_before) .and. all(qs%vary_shift) .and. (semi_stoch_shift_it /= -1)) &
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
-        call calc_interact(comms_found, soft_exit, qmc_in)
+        call calc_interact(comms_found, soft_exit, qmc_in, qs)
 
     end subroutine end_report_loop
 
