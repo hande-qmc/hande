@@ -4,4 +4,6 @@ lattice
 4
 electrons 4
 fci
+ms 0
+sym 4
 end

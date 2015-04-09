@@ -1,0 +1,204 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr  9 2015 at 13:52:19
+ Compiled using gfortran.lapack.mpi.(optimised)
+ VCS BASE repository version:
+     b4d473884c50419afe805529e9d590d9afa07dd7-dirty
+ Hostname:
+     localhost
+ Working directory: 
+     /home/james/projects/hande.lua/test_suite/lanczos/CN-UHF-sto-3g
+ Started running on 09/04/2015 at 14:00:28
+ Calculation UUID: b0f39c08-4852-480e-b210-54ea3b709342.
+ ================================================================
+
+ Input options
+ -------------
+
+read INTDUMP
+nel 13
+
+ms 1
+sym 0
+
+lanczos
+lanczos_solns 40
+
+(    SCF calculation produced by Q-Chem using:  )
+
+#    $molecule
+#    0 2
+#    6  0  0  0
+#    7  0  0  1.1941
+#    $end
+#
+#    $rem
+#    basis sto-3g
+#    exchange hf
+#    correlation idump
+#    scf_convergence 14
+#    thresh 16
+#    jobtype sp
+#    iprint 20000011
+#    geom_opt_coords 0
+#    print_orbitals 999
+#    unrestricted false
+#    use_abelian_subgroup true
+#    scf_restrict_sym 3
+#    $end
+
+ -------------
+
+ aotus/lua error code:           3
+ WARNING: error in run_lua_hande.
+ cn_fci.in:1: syntax error near 'INTDUMP'.  Assuming traditional input file...
+
+
+ WARNING: error in check_input.
+ You have specified an iteration to turn semi-stochastic on but have not specified a deterministic space to use.
+
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms     <i|h|i>
+     1      1       0       1       0       1    -15.39740598
+     2      1       0       2       0      -1    -15.39377308
+     3      2       0       3       0       1    -11.10902584
+     4      2       0       4       0      -1    -11.08011644
+     5      3       0       5       0       1     -1.18877138
+     6      3       0       6       0      -1     -1.15136153
+     7      4       0       7       0       1     -0.58600882
+     8      4       0       8       0      -1     -0.50444394
+     9      5       0       9       0       1     -0.55950937
+    10      5       3       1      -1      -1     -0.42014971
+    11      6       3       2      -1       1     -0.44719796
+    12      6       2       1       1      -1     -0.42014971
+    13      7       2       2       1       1     -0.44719796
+    14      7       0      10       0      -1      0.09220112
+    15      8       3       3      -1       1      0.30088987
+    16      8       3       4      -1      -1      0.34571830
+    17      9       2       3       1       1      0.30088987
+    18      9       2       4       1      -1      0.34571830
+    19     10       0      11       0       1      1.04454506
+    20     10       0      12       0      -1      1.11295876
+
+ E_core =   18.612714887955
+ Number of electrons: 13
+ Number of basis functions: 20
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 4
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3
+  1  0  3  2
+  2  3  0  1
+  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     12       6          6
+   1     0    1      0       0          0
+   2     0    2      4       2          2
+   3     0    3      4       2          2
+
+ FCI
+ ---
+
+ The table below gives the number of determinants for each symmetry with Ms=1.
+
+ Symmetry index      # dets
+         0             6240
+         1             6352
+         2             6304
+         3             6304
+
+ Symmetry of selected Hilbert subspace: 0.
+ Spin of selected Hilbert subspace: 1.
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2015/04/09 14:03:00.167 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         43 (computed),         40 (wanted)
+Times the operator is applied:       1374 (MAX:             6240 ).
+Problem size:                        6240 (PE:   0),        6240 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.359E-06 (abs)
+Maximum basis size:                    80
+Restarting scheme:                      0
+Number of re-orthogonalizations      1374
+Number of (re)start loops:             36
+Number of eigenpairs locked:           26
+OP(MATVEC):             1.3915E+02 sec, -2.4389E+06 FLOP/S (-3.3936E+08 FLOP)
+Re-Orthogonalization:   3.6710E+00 sec,  5.7319E+08 FLOP/S ( 2.1042E+09 FLOP)
+Restarting:             2.0440E+00 sec,  4.2626E+08 FLOP/S ( 8.7127E+08 FLOP)
+TRLAN on this PE:       2.1476E+06 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ Lanczos diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1   -91.177672131060
+      2   -91.032825562772
+      3   -90.949714393713
+      4   -90.882270887625
+      5   -90.828944366538
+      6   -90.797076966570
+      7   -90.784443534616
+      8   -90.780235781793
+      9   -90.726410611042
+     10   -90.716622996879
+     11   -90.675367196816
+     12   -90.630314810382
+     13   -90.588971583818
+     14   -90.588136083159
+     15   -90.549884502821
+     16   -90.535666473225
+     17   -90.507877389090
+     18   -90.466235474099
+     19   -90.463123303989
+     20   -90.460680962221
+     21   -90.420840543565
+     22   -90.406294191723
+     23   -90.382980461714
+     24   -90.377910902580
+     25   -90.359785261588
+     26   -90.357702782766
+     27   -90.342123060864
+     28   -90.327454993585
+     29   -90.321605713255
+     30   -90.314584201727
+     31   -90.302155544716
+     32   -90.276177522202
+     33   -90.260537511449
+     34   -90.258311968684
+     35   -90.239059401994
+     36   -90.235736370385
+     37   -90.204394559091
+     38   -90.192310666199
+     39   -90.189146662111
+     40   -90.168899813567
+
+ ================================================================
+ Finished running on 09/04/2015 at 14:03:00
+ Wall time (seconds):                         151.95
+ CPU time (per processor, seconds):           149.89
+ ================================================================
+

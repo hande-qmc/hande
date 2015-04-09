@@ -3,5 +3,6 @@ lattice
 2 0
 0 2
 electrons 4
+ms 2
 fci
 lanczos_direct
