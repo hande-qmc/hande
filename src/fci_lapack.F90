@@ -239,7 +239,26 @@ contains
 
     end subroutine lapack_diagonalisation
 
-    subroutine get_rdm_eigenvalues(basis, rdm_info, ndets, dets, eigvec, rdm, rdm_eigenvalues)
+    subroutine get_rdm_eigenvalues(basis, rdm_info, ndets, dets, eigvec, rdm, rdm_eigv)
+
+        ! Take an FCI ground-state wave function (eigvec) and use it to
+        ! calculate and return the RDM eigenvalues, for the RDM specified by
+        ! rdm_info.
+
+        ! In:
+        !    basis: type containing information about the basis set.
+        !    ndets: number of determinants in the Hilbert space.
+        !    dets: list of determinants in the Hilbert space (bit-string
+        !        representation).
+        !    eigvec: the eigenvector from which the RDM is to be calculated.
+        ! In/Out:
+        !    rdm_info: information about the subsystem for the RDM to be
+        !        calculated.
+        ! Out:
+        !    rdm: space for the RDM to be accumulated. The array passed in
+        !        must be the correct size. On output the RDM will have been
+        !        destroyed and so should *not* be used.
+        !    rdm_eigv: The eigenvalues of the calculated RDM.
 
         use basis_types, only: basis_t
         use checking, only: check_allocate, check_deallocate
@@ -252,7 +271,8 @@ contains
         integer(i0), intent(in) :: dets(:,:)
         real(p), intent(in) :: eigvec(:,:)
         real(p), intent(out) :: rdm(:,:)
-        real(p), intent(out) :: rdm_eigenvalues(size(rdm,1))
+        real(p), intent(out) :: rdm_eigv(size(rdm,1))
+
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(2*basis%string_len)
         integer :: i, j, rdm_size, info, ierr, lwork
@@ -298,9 +318,9 @@ contains
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
 #ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigenvalues, work, -1, info)
+        call ssyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, -1, info)
 #else
-        call dsyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigenvalues, work, -1, info)
+        call dsyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, -1, info)
 #endif
         lwork = nint(work(1))
         deallocate(work)
@@ -311,9 +331,9 @@ contains
         call check_allocate('work',lwork,ierr)
 
 #ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigenvalues, work, lwork, info)
+        call ssyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, lwork, info)
 #else
-        call dsyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigenvalues, work, lwork, info)
+        call dsyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, lwork, info)
 #endif
 
     end subroutine get_rdm_eigenvalues
