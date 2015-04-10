@@ -592,10 +592,12 @@ contains
                 ! Note that this uses a different format to the serial case...
                 allocate(work_print(block_size**2), stat=ierr)
                 call check_allocate('work_print', block_size**2, ierr)
+#ifdef PARALLEL
 #ifdef SINGLE_PRECISION
                 call pslaprnt(ndets, ndets, hamil, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil', iunit, work_print)
 #else
                 call pdlaprnt(ndets, ndets, hamil, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil', iunit, work_print)
+#endif
 #endif
                 deallocate(work_print)
                 call check_deallocate('work_print', ierr)
