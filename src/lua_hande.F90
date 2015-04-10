@@ -164,6 +164,9 @@ contains
         ! Calculations
         call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)
         call flu_register(lua_state, 'kinetic_energy', lua_kinetic_energy)
+        call flu_register(lua_state, 'simple_fciqmc', lua_simple_fciqmc)
+        call flu_register(lua_state, 'fciqmc', lua_fciqmc)
+        call flu_register(lua_state, 'ccmc', lua_ccmc)
 
     end subroutine register_lua_hande_api
 

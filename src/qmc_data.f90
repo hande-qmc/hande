@@ -55,8 +55,8 @@ type qmc_in_t
     ! CARE: as we don't modify qmc_in_t objects, one should inspect the sizes
     ! used in particle_t and spawned_particle_t for the exact values used (which may
     ! be rounded for various reasons).
-    integer :: walker_length = 0
-    integer :: spawned_walker_length = 0
+    integer :: walker_length
+    integer :: spawned_walker_length
 
     ! The initial population on the reference determinant/trace of the density matrix.
     ! Overridden by a restart file.
