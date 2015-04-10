@@ -326,8 +326,11 @@ contains
                     end do
                 end do
 
-            case('FCI_REDUCED_DENSITY_MATRIX')
-                call readi(fci_nrdms)
+            case('FCI_RDM')
+                ! Currently only one RDM can be calculated in a single FCI
+                ! calculation. If this restriction is lifted later then
+                ! fci_nrdms should be read in instead.
+                fci_nrdms = 1
                 allocate(fci_in_global%fci_rdm_info(fci_nrdms), stat=ierr)
                 call check_allocate('fci_in_global%fci_rdm_info', fci_nrdms, ierr)
                 do i = 1, fci_nrdms
