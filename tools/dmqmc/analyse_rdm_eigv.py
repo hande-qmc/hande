@@ -6,7 +6,6 @@ import sys
 
 def extract_data(data_file):
     eigv = []
-    regex = '^ Reduced density matrix eigenvalues:'
     
     for data_file in data_file:
 
@@ -17,10 +16,9 @@ def extract_data(data_file):
             if not line.strip():
                 have_data = False
             if have_data:
-                if '----' not in line:
-                    words = line.split()
-                    eigv.append(float(words[1]))
-            if re.match(regex, line):
+                words = line.split()
+                eigv.append(float(words[1]))
+            if 'State' in line and 'RDM eigenvalue' in line:
                 have_data = True
             
         f.close()
