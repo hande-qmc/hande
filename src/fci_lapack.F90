@@ -74,16 +74,16 @@ contains
         end if
 
         ! If requested, calculate and print eigenvalues for an RDM.
-        if (allocated(fci_in%fci_rdm_info)) then
+        if (allocated(fci_in%rdm_info)) then
             if (nprocs > 1) then
                 if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. Skipping.', 3)
             else
                 write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                call setup_rdm_arrays(sys, .false., fci_in%fci_rdm_info, rdm)
+                call setup_rdm_arrays(sys, .false., fci_in%rdm_info, rdm)
                 rdm_size = size(rdm, 1)
                 allocate(rdm_eigv(rdm_size), stat=ierr)
                 call check_allocate('rdm_eigv',rdm_size,ierr)
-                call get_rdm_eigenvalues(sys%basis, fci_in%fci_rdm_info, ndets, dets, hamil, rdm, rdm_eigv)
+                call get_rdm_eigenvalues(sys%basis, fci_in%rdm_info, ndets, dets, hamil, rdm, rdm_eigv)
 
                 write (6,'(1X,"RDM eigenvalues")')
                 write (6,'(1X,"^^^^^^^^^^^^^^^",/)')
@@ -146,7 +146,7 @@ contains
         end if
 
         if (fci_in%analyse_fci_wfn /= 0 .or. fci_in%print_fci_wfn /= 0 &
-                    .or. allocated(fci_in%fci_rdm_info)) then
+                    .or. allocated(fci_in%rdm_info)) then
             job = 'V'
         else
             job = 'N'

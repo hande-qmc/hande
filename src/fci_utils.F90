@@ -24,10 +24,10 @@ type fci_in_t
     ! Number of FCI wavefunctions to compute properties of.
     integer :: analyse_fci_wfn = 0
 
-    ! This stores  information for the various RDMs that the user asks to be
+    ! This stores information for the various RDMs that the user asks to be
     ! calculated. Each element of this array corresponds to one of these RDMs.
     ! NOTE: This can only be equal to 1 currently.
-    type(rdm_t), allocatable :: fci_rdm_info(:)
+    type(rdm_t), allocatable :: rdm_info(:)
 
     ! blacs and scalapack split a matrix up into n x n blocks which are then
     ! distributed around the processors in a cyclic fashion.

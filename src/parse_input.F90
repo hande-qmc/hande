@@ -331,16 +331,16 @@ contains
                 ! calculation. If this restriction is lifted later then
                 ! fci_nrdms should be read in instead.
                 fci_nrdms = 1
-                allocate(fci_in_global%fci_rdm_info(fci_nrdms), stat=ierr)
-                call check_allocate('fci_in_global%fci_rdm_info', fci_nrdms, ierr)
+                allocate(fci_in_global%rdm_info(fci_nrdms), stat=ierr)
+                call check_allocate('fci_in_global%rdm_info', fci_nrdms, ierr)
                 do i = 1, fci_nrdms
                     call read_line(eof)
                     if (eof) call stop_all('read_input','Unexpected end of file reading reduced density matrices.')
-                    fci_in_global%fci_rdm_info(i)%A_nsites = nitems
-                    allocate(fci_in_global%fci_rdm_info(i)%subsystem_A(nitems))
-                    call check_allocate('fci_in_global%fci_rdm_info(i)%subsystem_A',nitems,ierr)
+                    fci_in_global%rdm_info(i)%A_nsites = nitems
+                    allocate(fci_in_global%rdm_info(i)%subsystem_A(nitems))
+                    call check_allocate('fci_in_global%rdm_info(i)%subsystem_A',nitems,ierr)
                     do j = 1, nitems
-                        call readi(fci_in_global%fci_rdm_info(i)%subsystem_A(j))
+                        call readi(fci_in_global%rdm_info(i)%subsystem_A(j))
                     end do
                 end do
             case('GROUND_STATE_RDM')
@@ -978,22 +978,22 @@ contains
             end do
         end if
         option_set = .false.
-        if (parent) option_set = allocated(fci_in_global%fci_rdm_info)
+        if (parent) option_set = allocated(fci_in_global%rdm_info)
         call mpi_bcast(option_set, 1, mpi_logical, 0, mpi_comm_world, ierr)
         if (option_set) then
-            occ_list_size = size(fci_in_global%fci_rdm_info)
+            occ_list_size = size(fci_in_global%rdm_info)
             call mpi_bcast(occ_list_size, 1, mpi_integer, 0, mpi_comm_world, ierr)
             if (.not.parent) then
-                allocate(fci_in_global%fci_rdm_info(occ_list_size), stat=ierr)
-                call check_allocate('fci_in_global%fci_rdm_info',occ_list_size,ierr)
+                allocate(fci_in_global%rdm_info(occ_list_size), stat=ierr)
+                call check_allocate('fci_in_global%rdm_info',occ_list_size,ierr)
             end if
             do i = 1, occ_list_size
-                call mpi_bcast(fci_in_global%fci_rdm_info(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
+                call mpi_bcast(fci_in_global%rdm_info(i)%A_nsites, 1, mpi_integer, 0, mpi_comm_world, ierr)
                 if (.not.parent) then
-                    allocate(fci_in_global%fci_rdm_info(i)%subsystem_A(fci_in_global%fci_rdm_info(i)%A_nsites), stat=ierr)
-                    call check_allocate('fci_in_global%fci_rdm_info(i)%subsystem_A',fci_in_global%fci_rdm_info(i)%A_nsites,ierr)
+                    allocate(fci_in_global%rdm_info(i)%subsystem_A(fci_in_global%rdm_info(i)%A_nsites), stat=ierr)
+                    call check_allocate('fci_in_global%rdm_info(i)%subsystem_A',fci_in_global%rdm_info(i)%A_nsites,ierr)
                 end if
-                associate(rdm_info=>fci_in_global%fci_rdm_info(i))
+                associate(rdm_info=>fci_in_global%rdm_info(i))
                     call mpi_bcast(rdm_info%subsystem_A, rdm_info%A_nsites, mpi_integer, 0, mpi_comm_world, ierr)
                 end associate
             end do
