@@ -63,6 +63,17 @@ contains
             call lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
         end if
 
+        if (parent) then
+            write (6,'(1X,"LAPACK diagonalisation results")')
+            write (6,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
+            write (6,'(1X," State",5X,"Energy")')
+            do i = 1, ndets
+                write (6,'(1X,i6,1X,f18.12)') i, eigv(i)
+            end do
+            write (6,'()')
+        end if
+
+        ! If requested, calculate and print eigenvalues for an RDM.
         if (allocated(fci_in%fci_rdm_info)) then
             if (nprocs > 1) then
                 if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. Skipping.', 3)
@@ -73,17 +84,15 @@ contains
                 allocate(rdm_eigv(rdm_size), stat=ierr)
                 call check_allocate('rdm_eigv',rdm_size,ierr)
                 call get_rdm_eigenvalues(sys%basis, fci_in%fci_rdm_info, ndets, dets, hamil, rdm, rdm_eigv)
-            end if
-        end if
 
-        if (parent) then
-            write (6,'(1X,"LAPACK diagonalisation results")')
-            write (6,'(1X,"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",/)')
-            write (6,'(1X," State",1X,4X,"Energy")')
-            do i = 1, ndets
-                write (6,'(1X,i6,1X,f18.12)') i, eigv(i)
-            end do
-            write (6,'()')
+                write (6,'(1X,"RDM eigenvalues")')
+                write (6,'(1X,"^^^^^^^^^^^^^^^",/)')
+                write (6,'(1X," State",5X,"RDM eigenvalue")')
+                do i = 1, rdm_size
+                    write (6,'(1X,i6,1X,f18.12)') i, rdm_eigv(i)
+                end do
+                write (6,'()')
+            end if
         end if
 
         ! Return sys in an unaltered state.
