@@ -24,7 +24,7 @@ contains
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
-        use system, only: sys_t, copy_sys_spin_info
+        use system, only: sys_t, copy_sys_spin_info, heisenberg
 
         use checking, only: check_allocate
         use errors, only: warning
@@ -76,7 +76,9 @@ contains
         ! If requested, calculate and print eigenvalues for an RDM.
         if (allocated(fci_in%rdm_info)) then
             if (nprocs > 1) then
-                if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. Skipping.', 3)
+                if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. Skipping.',3)
+            else if (sys%system /= heisenberg) then
+                if (parent) call warning('diagonalise','RDM calculations are only implemented for Heisenberg systems. Skipping.',3)
             else
                 write(6,'(1x,a46)') "Performing reduced density matrix calculation."
                 call setup_rdm_arrays(sys, .false., fci_in%rdm_info, rdm)
@@ -122,7 +124,6 @@ contains
         !        Hamiltonian matrix.
 
         use checking, only: check_allocate, check_deallocate
-        use errors, only: stop_all
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
 
