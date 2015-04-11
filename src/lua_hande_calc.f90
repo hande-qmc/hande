@@ -266,7 +266,7 @@ contains
 
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_fciqmc_in(lua_state, opts, fciqmc_in)
-        call read_semi_stoch_in(lua_state, opts, semi_stoch_in)
+        call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         ! [todo] - implement
         !call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
@@ -340,7 +340,7 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_ccmc_in(lua_state, opts, ccmc_in)
         ! note that semi-stochastic is not (yet) available in CCMC.
-        !call read_semi_stoch_in(lua_state, opts, semi_stoch_in)
+        !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         ! [todo] - implement
         !call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
@@ -627,7 +627,7 @@ contains
 
     end subroutine read_fciqmc_in
 
-    subroutine read_semi_stoch_in(lua_state, opts, semi_stoch_in)
+    subroutine read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
 
         ! Read in an semi_stoch table (if it exists) to an semi_stoch_in object.
 
@@ -642,6 +642,8 @@ contains
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
+        !    qmc_in: qmc_in_t object containing qmc input options.  If semi-stochastic
+        !        options are present, then qmc_in%real_amplitudes is forced to be true.
         ! In:
         !    opts: handle for the table containing the semi_stoch table.
         ! Out:
@@ -651,11 +653,12 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use errors, only: stop_all
 
-        use qmc_data, only: semi_stoch_in_t, high_pop_determ_space, read_determ_space
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space
         use lua_hande_utils, only: warn_unused_args
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
+        type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(out) :: semi_stoch_in
 
         integer :: semi_stoch_table, ref_det, err
@@ -663,6 +666,8 @@ contains
         logical :: ref_det_flag
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
+
+            qmc_in%real_amplitudes = .true.
 
             call aot_table_open(lua_state, opts, semi_stoch_table, 'semi_stoch')
 
