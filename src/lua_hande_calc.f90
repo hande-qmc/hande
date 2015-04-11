@@ -360,6 +360,22 @@ contains
 
     subroutine read_hilbert_args(lua_state, opts, nel, ncycles, ex_level, ref_det, rng_seed, have_seed)
 
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+        ! In:
+        !    opts: handle to the table which is input to the Lua hilbert_space
+        !        routine.
+        !    nel: The number of electrons in the system.
+        ! Out:
+        !    ncycles: number of cycles i.e. number of random determinants to
+        !        generate.
+        !    ex_level: maximum excitation level relative to the reference
+        !        determinant to include in the Hilbert space.
+        !    ref_det: reference determinant.  If not supplied by the user then
+        !        this will be deallocated on output.
+        !    rng_seed: seed to initialise the random number generator.
+        !    have_seed: True is the user inputs an RNG seed, false otherwise.
+
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use aot_vector_module, only: aot_get_val
@@ -394,6 +410,20 @@ contains
     end subroutine read_hilbert_args
 
     subroutine read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+        ! In:
+        !    opts: handle to the table which is input to the Lua kinetic_energy
+        !        routine.
+        ! Out:
+        !    fermi_temperature: if true, rescale beta as the inverse reduced
+        !        temperature.
+        !    beta: target temperature.
+        !    nattempts: number of samples to use each cycle.
+        !    ncycles: number of Monte Carlo cycles to perform.
+        !    rng_seed: seed to initialise the random number generator.
+        !    have_seed: True is the user inputs an RNG seed, false otherwise.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close

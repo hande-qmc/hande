@@ -40,7 +40,7 @@ contains
         !    sys: system being studied.
         !    beta: target temperature.
         !    fermi_temperature: if true, rescale beta as the inverse reduced temperature:
-        !        beta = 1/\Theta = T_F/T.  If false, then beta is in atomic units..
+        !        beta = 1/\Theta = T_F/T.  If false, then beta is in atomic units.
         !    nsamples: number of samples to use each cycle
         !    ncycles: number of Monte Carlo cycles to perform, over which the kinetic energy is
         !        estimated, along with an estimate of the standard error.
