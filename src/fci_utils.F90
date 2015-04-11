@@ -143,9 +143,16 @@ contains
         !    sys: system to be studied.
         !    ndets: number of determinants in the Hilbert space.
         !    dets: list of determinants in the Hilbert space (bit-string representation).
-        ! [todo] - hamil, hamil_csr, proc_blacs_info
+        !    proc_blacs_info (optional):
         !    full_mat (optional): if present and true generate the full matrix rather than
         !        just storing one triangle.
+        ! Out:
+        !    hamil (optional): Hamiltonian matrix in a square array.
+        !    hamil_csr (optional): Hamiltonian matrix in a sparse (compressed sparse row)
+        !        format.
+
+        ! Note: either hamil or hamil_csr must be supplied.  If both are supplied then only
+        ! hamil is used.
 
         use checking, only: check_allocate, check_deallocate
         use csr, only: init_csrp, end_csrp, csrp_t
