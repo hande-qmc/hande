@@ -133,13 +133,13 @@ contains
         use checking, only: check_allocate, check_deallocate
         use parallel, only: parent, nprocs
 
-        use fci_utils, only: fci_in_t
         use operators
 #endif
 
         use csr, only: csrp_t
         use errors, only: stop_all
         use system, only: sys_t
+        use fci_utils, only: fci_in_t
         use parallel, only: blacs_info
 
         type(sys_t), intent(in) :: sys
@@ -150,6 +150,7 @@ contains
         real(p), intent(out) :: eigv(:)
         real(p), intent(in), optional :: hamil(:,:)
         type(csrp_t), intent(in), optional :: hamil_csr
+        logical :: sparse_hamil
 
         integer :: ndets
 
@@ -166,7 +167,6 @@ contains
         real(dp), allocatable :: evec(:,:) ! (ndets, mev)
         integer :: ierr, nrows, i, nwfn
         type(trl_info_t) :: info
-        logical :: sparse_hamil
 
 #ifdef SINGLE_PRECISION
         ! TRLan requires a double precision interface; elsewhere we need single precision
