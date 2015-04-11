@@ -96,14 +96,15 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    kinetic_energy{
-        !           sys = sys_t,
-        !           nattempts = npop,
-        !           ncycles = n,
-        !           beta = beta,
-        !           fermi_temperature = true/false,
-        !           rng_seed = seed,
+        !    kin_args = {
+        !        nattempts = npop,
+        !        ncycles = n,
+        !        beta = beta,
+        !        fermi_temperature = true/false,
+        !        rng_seed = seed
         !    }
+        !
+        !    kinetic_energy {sys = sys_t, kinetic = kin_args}
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
         use const, only: p
@@ -129,32 +130,17 @@ contains
         type(c_ptr) :: sys_ptr
         type(sys_t), pointer :: sys
         integer :: opts, err, seed, ncycles, nattempts
-        real(p) :: beta
         logical :: fermi_temperature, have_seed
-        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'nattempts', 'ncycles', 'beta', &
-                                                                'fermi_temperature', 'rng_seed']
+        real(p) :: beta
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
-        opts = aot_table_top(lua_state)
-
-        call aot_get_val(nattempts, err, lua_state, opts, 'nattempts')
-        if (err /= 0) call stop_all('lua_kinetic_energy', 'nattempts: Number of attempts/cycle not supplied.')
-        call aot_get_val(ncycles, err, lua_state, opts, 'ncycles')
-        if (err /= 0) call stop_all('lua_kinetic_energy', 'ncycles: Number of cycles not supplied.')
-
-        call aot_get_val(beta, err, lua_state, opts, 'beta')
-        if (err /= 0) call stop_all('lua_kinetic_energy', 'beta: target temperature not supplied.')
-        call aot_get_val(fermi_temperature, err, lua_state, opts, 'fermi_temperature', default=.false.)
-
         if (sys%ueg%chem_pot == huge(1.0_p)) call stop_all('lua_kinetic_energy', &
                                                            'chem_pot: chemical potential not supplied.')
 
-        have_seed = aot_exists(lua_state, opts, 'rng_seed')
-        call aot_get_val(seed, err, lua_state, opts, 'rng_seed')
-
-        call warn_unused_args(lua_state, keys, opts)
+        opts = aot_table_top(lua_state)
+        call read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, seed, have_seed)
         call aot_table_close(lua_state, opts)
 
         if (have_seed) then
@@ -385,7 +371,46 @@ contains
 
     end function lua_ccmc
 
-    ! --- table->derived type wrappers ---
+    ! --- table-derived type wrappers ---
+
+    subroutine read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, seed, have_seed)
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+
+        use const, only: p
+        use errors, only: stop_all
+        use lua_hande_utils, only: warn_unused_args
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        logical, intent(out) :: fermi_temperature, have_seed
+        integer, intent(out) :: nattempts, ncycles, seed
+        real(p), intent(out) :: beta
+
+        integer :: kinetic_table, err
+        character(10), parameter :: keys(5) = [character(17) :: 'nattempts', 'ncycles', 'beta', &
+                                                                'fermi_temperature', 'rng_seed']
+
+        if (.not. aot_exists(lua_state, opts, 'kinetic')) call stop_all('read_kinetic_args','"kinetic" table not found.')
+        call aot_table_open(lua_state, opts, kinetic_table, 'kinetic')
+
+        call aot_get_val(nattempts, err, lua_state, kinetic_table, 'nattempts')
+        if (err /= 0) call stop_all('read_kinetic_args', 'nattempts: Number of attempts/cycle not supplied.')
+        call aot_get_val(ncycles, err, lua_state, kinetic_table, 'ncycles')
+        if (err /= 0) call stop_all('read_kinetic_args', 'ncycles: Number of cycles not supplied.')
+
+        call aot_get_val(beta, err, lua_state, kinetic_table, 'beta')
+        if (err /= 0) call stop_all('read_kinetic_args', 'beta: target temperature not supplied.')
+        call aot_get_val(fermi_temperature, err, lua_state, kinetic_table, 'fermi_temperature', default=.false.)
+
+        have_seed = aot_exists(lua_state, kinetic_table, 'rng_seed')
+        call aot_get_val(seed, err, lua_state, kinetic_table, 'rng_seed')
+
+        call warn_unused_args(lua_state, keys, kinetic_table)
+        call aot_table_close(lua_state, kinetic_table)
+
+    end subroutine read_kinetic_args
 
     subroutine read_qmc_in(lua_state, opts, qmc_in)
 
