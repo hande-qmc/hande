@@ -234,7 +234,7 @@ contains
 
     end function lua_simple_fciqmc
 
-    function lua_fciqmc(L) result(nresult)
+    function lua_fciqmc(L) result(nresult) bind(c)
 
         ! In/Out:
         !    L: lua state (bare C pointer).
@@ -311,7 +311,7 @@ contains
 
     end function lua_fciqmc
 
-    function lua_ccmc(L) result(nresult)
+    function lua_ccmc(L) result(nresult) bind(c)
 
         ! In/Out:
         !    L: lua state (bare C pointer).
