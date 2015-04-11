@@ -320,6 +320,7 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t, hub_real, init_system
         use basis, only: init_model_basis_fns
+        use real_lattice, only: init_real_space
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -354,6 +355,7 @@ contains
             call init_system(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
+            call init_real_space(sys)
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -432,8 +434,8 @@ contains
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
         use basis, only: init_model_basis_fns
-        use momentum_symmetry, only: init_momentum_symmetry
         use lua_hande_utils, only: warn_unused_args
+        use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
         use system, only: sys_t, read_in, init_system
 
@@ -447,8 +449,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -474,6 +476,7 @@ contains
             call init_system(sys)
             call read_in_integrals(sys, cas_info=sys%cas)
             call init_generic_system_basis(sys)
+            call print_pg_symmetry_info(sys)
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -510,6 +513,7 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t, heisenberg, init_system
         use basis, only: init_model_basis_fns
+        use real_lattice, only: init_real_space
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -546,6 +550,7 @@ contains
             call init_system(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
+            call init_real_space(sys)
         end if
 
         call warn_unused_args(lua_state, keys, opts)
