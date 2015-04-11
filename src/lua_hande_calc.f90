@@ -18,24 +18,22 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    hilbert_space{
-        !           sys = sys_t,
-        !           ncycles = n,
-        !           ex_level = level,
-        !           rng_seed = seed,
-        !           reference = { ... },  -- nel-dimensional vector.
+        !     hilbert_args = {
+        !         ncycles = n,
+        !         ex_level = level,
+        !         rng_seed = seed,
+        !         reference = { ... },  -- nel-dimensional vector.
         !    }
+        !
+        !    hilbert_space {sys = sys_t, hilbert = hilbert_args}
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
 
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_top_module, only: aot_top_get_val
-        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
-        use aot_vector_module, only: aot_get_val
+        use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
 
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
 
         use hilbert_space, only: estimate_hilbert_space
@@ -50,23 +48,13 @@ contains
         integer :: truncation_level, ncycles, rng_seed
         integer, allocatable :: ref_det(:)
         integer :: opts, err
-        integer, allocatable :: err_arr(:)
         logical :: have_seed
-        character(10), parameter :: keys(5) = [character(10) :: 'sys', 'ncycles', 'ex_level', 'reference', 'rng_seed']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-
-        call aot_get_val(ncycles, err, lua_state, opts, 'ncycles')
-        if (err /= 0) call stop_all('lua_hilbert_space', 'Number of cycles not supplied.')
-        call aot_get_val(truncation_level, err, lua_state, opts, 'ex_level', default=-1)
-        call aot_get_val(ref_det, err_arr, sys%nel, lua_state, opts, key='reference')
-        have_seed = aot_exists(lua_state, opts, 'rng_seed')
-        call aot_get_val(rng_seed, err, lua_state, opts, 'rng_seed')
-
-        call warn_unused_args(lua_state, keys, opts)
+        call read_hilbert_args(lua_state, opts, sys%nel, ncycles, truncation_level, ref_det, rng_seed, have_seed)
         call aot_table_close(lua_state, opts)
 
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
@@ -110,14 +98,11 @@ contains
         use const, only: p
 
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_top_module, only: aot_top_get_val
-        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
-        use aot_vector_module, only: aot_get_val
+        use aot_table_module, only: aot_table_top, aot_table_close
 
         use calc, only: ms_in
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
 
         use canonical_kinetic_energy, only: estimate_kinetic_energy
@@ -129,7 +114,7 @@ contains
 
         type(c_ptr) :: sys_ptr
         type(sys_t), pointer :: sys
-        integer :: opts, err, seed, ncycles, nattempts
+        integer :: opts, err, rng_seed, ncycles, nattempts
         logical :: fermi_temperature, have_seed
         real(p) :: beta
 
@@ -140,11 +125,11 @@ contains
                                                            'chem_pot: chemical potential not supplied.')
 
         opts = aot_table_top(lua_state)
-        call read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, seed, have_seed)
+        call read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
         call aot_table_close(lua_state, opts)
 
         if (have_seed) then
-            call estimate_kinetic_energy(sys, fermi_temperature, beta, nattempts, ncycles, seed)
+            call estimate_kinetic_energy(sys, fermi_temperature, beta, nattempts, ncycles, rng_seed)
         else
             call estimate_kinetic_energy(sys, fermi_temperature, beta, nattempts, ncycles)
         end if
@@ -373,7 +358,42 @@ contains
 
     ! --- table-derived type wrappers ---
 
-    subroutine read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, seed, have_seed)
+    subroutine read_hilbert_args(lua_state, opts, nel, ncycles, ex_level, ref_det, rng_seed, have_seed)
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use aot_vector_module, only: aot_get_val
+
+        use const, only: p
+        use errors, only: stop_all
+        use lua_hande_utils, only: warn_unused_args
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts, nel
+        integer, intent(out) :: ncycles, ex_level, rng_seed
+        integer, allocatable :: ref_det(:)
+        logical, intent(out) :: have_seed
+
+        integer :: hilbert_table, err
+        integer, allocatable :: err_arr(:)
+        character(10), parameter :: keys(5) = [character(10) :: 'sys', 'ncycles', 'ex_level', 'reference', 'rng_seed']
+
+        if (.not. aot_exists(lua_state, opts, 'hilbert')) call stop_all('read_hilbert_args','"hilbert" table not present.')
+        call aot_table_open(lua_state, opts, hilbert_table, 'hilbert')
+
+        call aot_get_val(ncycles, err, lua_state, hilbert_table, 'ncycles')
+        if (err /= 0) call stop_all('read_hilbert_args', 'Number of cycles not supplied.')
+        call aot_get_val(ex_level, err, lua_state, hilbert_table, 'ex_level', default=-1)
+        call aot_get_val(ref_det, err_arr, nel, lua_state, hilbert_table, key='reference')
+        have_seed = aot_exists(lua_state, hilbert_table, 'rng_seed')
+        call aot_get_val(rng_seed, err, lua_state, hilbert_table, 'rng_seed')
+
+        call warn_unused_args(lua_state, keys, hilbert_table)
+        call aot_table_close(lua_state, hilbert_table)
+
+    end subroutine read_hilbert_args
+
+    subroutine read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
@@ -385,14 +405,14 @@ contains
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         logical, intent(out) :: fermi_temperature, have_seed
-        integer, intent(out) :: nattempts, ncycles, seed
+        integer, intent(out) :: nattempts, ncycles, rng_seed
         real(p), intent(out) :: beta
 
         integer :: kinetic_table, err
-        character(10), parameter :: keys(5) = [character(17) :: 'nattempts', 'ncycles', 'beta', &
+        character(17), parameter :: keys(5) = [character(17) :: 'nattempts', 'ncycles', 'beta', &
                                                                 'fermi_temperature', 'rng_seed']
 
-        if (.not. aot_exists(lua_state, opts, 'kinetic')) call stop_all('read_kinetic_args','"kinetic" table not found.')
+        if (.not. aot_exists(lua_state, opts, 'kinetic')) call stop_all('read_kinetic_args','"kinetic" table not present.')
         call aot_table_open(lua_state, opts, kinetic_table, 'kinetic')
 
         call aot_get_val(nattempts, err, lua_state, kinetic_table, 'nattempts')
@@ -405,7 +425,7 @@ contains
         call aot_get_val(fermi_temperature, err, lua_state, kinetic_table, 'fermi_temperature', default=.false.)
 
         have_seed = aot_exists(lua_state, kinetic_table, 'rng_seed')
-        call aot_get_val(seed, err, lua_state, kinetic_table, 'rng_seed')
+        call aot_get_val(rng_seed, err, lua_state, kinetic_table, 'rng_seed')
 
         call warn_unused_args(lua_state, keys, kinetic_table)
         call aot_table_close(lua_state, kinetic_table)
