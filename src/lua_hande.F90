@@ -79,7 +79,11 @@ contains
         integer, intent(out) :: lua_err
 
         character(255) :: inp_file, err_string
+#if __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
         character(:), allocatable :: buffer
+#else
+        character(1024**2) :: buffer
+#endif
         integer :: buf_len, ierr
         type(flu_State) :: lua_state
         logical :: t_exists
@@ -98,14 +102,16 @@ contains
             if (parent) then
                 write (6,'(a14,/,1X,13("-"),/)') 'Input options'
                 call read_file_to_buffer(buffer, inp_file)
-                write (6,'(A)') buffer
+                write (6,'(A)') trim(buffer)
                 buf_len = len(buffer)
                 write (6,'(/,1X,13("-"),/)')
             end if
 
 #ifdef PARALLEL
             call mpi_bcast(buf_len, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
+#if __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             if (.not.parent) allocate(character(len=buf_len) :: buffer)
+#endif
             call mpi_bcast(buffer, buf_len, MPI_CHARACTER, 0, mpi_comm_world, ierr)
 #endif
 

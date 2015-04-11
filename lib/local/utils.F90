@@ -384,16 +384,29 @@ contains
         !    buffer: set to the contents in the file.  Enlarged to hold the entire
         !        contents of the file.
 
+        ! NOTE: for GCC 4.7 and below, we take a fixed buffer and assume that
+        ! it is large enough to hold the entire file and lines are (at most)
+        ! 1024 characters long.  For all other compilers we take an allocatalbe
+        ! character string and dynamically resize it.
+
         use, intrinsic :: iso_fortran_env
 
         use errors, only: stop_all
 
         character(*), optional, intent(in) :: fname
         integer, optional, intent(in) :: in_unit
+        ! GCC 4.7 and below don't have sufficient F2003 support for
+        ! allocatable strings.
+#if __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
         character(:), allocatable, intent(out) :: buffer
 
         character(:), allocatable :: line
-        character(1024) :: chunk
+#else
+        character(*), intent(out) :: buffer
+
+        character(1024) :: line
+#endif
+        character(256) :: chunk
         integer :: chunk_size, stat, iunit
 
         if (present(in_unit)) then
@@ -407,6 +420,9 @@ contains
 
         ! NOTE: we use Fortran 2003's left-hand-side reallocation feature for both line and buffer...
         stat = 0
+#if (__GNUC__ == 4 && (__GNUC_MINOR__ < 8))
+        buffer = ''
+#endif
         do
             line = ''
             do
@@ -415,15 +431,23 @@ contains
                     if (present(fname)) call stop_all('read_file_to_buffer', 'Problem reading file: '//trim(fname))
                     if (present(in_unit)) call stop_all('read_file_to_buffer', 'Problem reading file from given unit.')
                 end if
-                line = line // chunk(:chunk_size)
+                line = trim(line) // chunk(:chunk_size)
                 if (stat == iostat_eor .or. stat == iostat_end) exit
             end do
             if (stat == iostat_end) exit
+#if __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             if (allocated(buffer)) then
                 buffer = buffer // new_line(line) // line
             else
                 buffer = line
             end if
+#else
+            if (trim(buffer) /= '') then
+                buffer = trim(buffer) // new_line(line) // line
+            else
+                buffer = line
+            end if
+#endif
         end do
 
         if (present(fname)) close(iunit, status='keep')
