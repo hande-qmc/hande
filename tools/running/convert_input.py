@@ -9,6 +9,7 @@ def read_old(filename):
     '''Read the old input file in and convert it to a dictionary.'''
 
     inp = {}
+    comments = []
     lattice = False
     idim = 0
     ndim = 3
@@ -17,6 +18,8 @@ def read_old(filename):
             words = line.lower().split()
             if not words:
                 pass
+            elif line.strip().startswith('('):
+                comments.append(line.strip()[1:-1])
             elif words[0] in ('read', 'dipole_integrals'):
                 # don't lower-case filenames!
                 inp[words[0]] = line.split()[1:]
@@ -49,7 +52,7 @@ def read_old(filename):
                 inp[words[0]] = None
             else:
                 inp[words[0]] = words[1:]
-    return inp
+    return (comments, inp)
 
 def read_to_dict(inp, keys, remap, store):
     '''Select keys (and possibly remap them) from the input dictionary and copy them to the store.'''
@@ -89,9 +92,9 @@ def get_sys(inp):
         if inp['read']:
             system['int_file'] = inp['read']
 
-    system_keys = ('electrons nel lattice ms sym u t ktwist finite_cluster '
-                   'triangular_lattice Lz cas 2d 3d ecutoff rs chem_pot '
-                   'dipole_integrals'.split())
+    system_keys = ('electrons nel lattice ms sym u t j ktwist finite_cluster '
+                   'triangular_lattice lz cas 2d 3d ecutoff rs chem_pot '
+                   'dipole_integrals magnetic_field staggered_magnetic_field'.split())
 
     remap = {
                 'finite_cluster':'finite',
@@ -99,7 +102,10 @@ def get_sys(inp):
                 'dipole_integrals':'dipole_int_file',
                 'twist':'ktwist',
                 'u': 'U',
+                'j': 'J',
+                'lz': 'Lz',
                 'cas': 'CAS',
+                'triangular_lattice': 'triangular',
             }
 
     read_to_dict(inp, system_keys, remap, system)
@@ -134,6 +140,10 @@ def get_calc(inp):
                 'seed':'rng_seed',
             }
     read_to_dict(inp, keys, remap, opts['hilbert'])
+    # legacy -- forgot to set ncycles for cases which don't go via Monte Carlo in a couple of the tests.
+    if 'ncycles' in opts['hilbert']:
+        if opts['hilbert']['ncycles'][0] == 'true':
+            opts['hilbert']['ncycles'] = [0]
 
     opts['kinetic'] = collections.OrderedDict()
     keys = 'init_beta init_pop num_kinetic_cycles seed fermi_temperature'.split()
@@ -147,10 +157,11 @@ def get_calc(inp):
     read_to_dict(inp, keys, remap, opts['kinetic'])
 
     opts['qmc'] = collections.OrderedDict()
-    keys = 'tau initiator tau_search initial_shift init_pop mc_cycles nreports varyshift_target real_amplitudes spawn_cutoff no_renorm shift_damping initiator_population pattempt_single pattempt_double state_size spawned_state_size'.split()
+    keys = 'tau initiator tau_search initial_shift seed init_pop mc_cycles nreports varyshift_target vary_shift_from real_amplitudes spawn_cutoff no_renorm shift_damping initiator_population pattempt_single pattempt_double state_size spawned_state_size'.split()
     remap = {
                 'varyshift_target': 'target_population',
                 'initiator_population': 'initiator_threshold',
+                'seed':'rng_seed',
             }
     read_to_dict(inp, keys, remap, opts['qmc'])
 
@@ -160,7 +171,7 @@ def get_calc(inp):
     read_to_dict(inp, keys, remap, opts['fciqmc'])
 
     opts['ccmc'] = collections.OrderedDict()
-    keys = 'move_freq cluster_multispawn_threshold ccmc_linked ccmc_full_nc'
+    keys = 'move_freq cluster_multispawn_threshold ccmc_linked ccmc_full_nc'.split()
     remap = {
                 'ccmc_linked': 'linked',
                 'ccmc_full_nc': 'full_non_composite',
@@ -168,7 +179,7 @@ def get_calc(inp):
     read_to_dict(inp, keys, remap, opts['ccmc'])
 
     opts['semi_stoch'] = collections.OrderedDict()
-    keys = 'semi_stoch_high_pop semi_stoch_read write_determ_space semi_stoch_combine_annihil semi_stoch_shift_start semi_stoch_iteration'
+    keys = 'semi_stoch_high_pop semi_stoch_read write_determ_space semi_stoch_combine_annihil semi_stoch_shift_start semi_stoch_iteration'.split()
     remap = {
                 'semi_stoch_high_pop': 'size',
                 'semi_stoch_combine_annihil': 'separate_annihilation',
@@ -179,16 +190,16 @@ def get_calc(inp):
     # Need to do some juggling.
     # We've switched true and false on the semi_stoch_combine_annihil option.  Default is true.
     if 'separate_annihilation' in opts['semi_stoch']:
-            opts['semi_stoch']['separate_annihilation'] = False
+            opts['semi_stoch']['separate_annihilation'] = [False]
     # And have a new option for specifying the space.
     if 'size' in opts['semi_stoch']:
-        opts['space'] = 'high'
-    elif 'SEMI_STOCH_READ' in opts['semi_stoch']:
-        opts['space'] = 'read'
-        opts.pop('SEMI_STOCH_READ')
+        opts['semi_stoch']['space'] = ['high']
+    elif 'semi_stoch_read' in opts['semi_stoch']:
+        opts['semi_stoch']['space'] = ['read']
+        opts['semi_stoch'].pop('semi_stoch_read')
 
     opts['load_bal'] = collections.OrderedDict()
-    keys = 'load_balancing_slots load_balancing_pop percent_imbal max_load_attempts write_load_info'
+    keys = 'load_balancing_slots load_balancing_pop percent_imbal max_load_attempts write_load_info'.split()
     remap = {
                 'load_balancing_slots':'nslots',
                 'load_balancing_pop':'min_pop',
@@ -199,7 +210,7 @@ def get_calc(inp):
     read_to_dict(inp, keys, remap, opts['load_bal'])
 
     opts['reference'] = collections.OrderedDict()
-    keys = 'truncation_level reference_det hs_reference_det'
+    keys = 'truncation_level reference_det hs_reference_det'.split()
     remap = {
                 'truncation_level': 'ex_level',
                 'reference_det': 'det',
@@ -238,10 +249,10 @@ def dict_to_table(d, indent=4, prefix=''):
             # have a (numerical) vector.
             s.append(space+'%s = {%s},' % (key, ', '.join(val)))
     if prefix:
-        s.append(' '*(indent-4)+'}')
+        s.append(' '*(indent-4)+'},')
     return '\n'.join(s)
 
-def print_new(sys, calcs, opts):
+def print_new(comments, sys, calcs, opts):
     '''Print out the input file in lua format.'''
 
     print('sys = %s {' % sys['type'])
@@ -265,14 +276,17 @@ def print_new(sys, calcs, opts):
             elif calc == 'ccmc':
                 if 'ccmc' in opts:
                     print(dict_to_table(opts['ccmc'], indent=8, prefix='ccmc ='))
-            for table in ('reference'): # ('restart', 'reference'):
+            for table in ('reference',): # ('restart', 'reference'):
                 if table in opts:
                     print(dict_to_table(opts[table], indent=8, prefix='%s =' % table))
         print('}')
 
+    for comment in comments:
+        print('--%s' % comment)
+
 if __name__ == '__main__':
 
-    inp = read_old(sys.argv[1])
+    (comments, inp) = read_old(sys.argv[1])
     sys = get_sys(inp)
     (calcs, opts) = get_calc(inp)
-    print_new(sys, calcs, opts)
+    print_new(comments, sys, calcs, opts)
