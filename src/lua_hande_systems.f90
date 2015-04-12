@@ -503,6 +503,8 @@ contains
         !        J = J,
         !        finite = true/false,
         !        triangular = true/false,
+        !        staggered_magnetic_field = field,
+        !        magnetic_field = field,
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
@@ -524,8 +526,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(15), parameter :: keys(8) = [character(10) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', 'staggered_field', &
-                                                                'triangular', 'finite']
+        character(15), parameter :: keys(8) = [character(10) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
+                                                                'staggered_magnetic_field', 'triangular', 'finite']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -538,7 +540,7 @@ contains
         call set_common_sys_options(lua_state, sys, opts)
         call aot_get_val(sys%heisenberg%J, err, lua_state, opts, 'J')
         call aot_get_val(sys%heisenberg%magnetic_field, err, lua_state, opts, 'magnetic_field')
-        call aot_get_val(sys%heisenberg%staggered_magnetic_field, err, lua_state, opts, 'staggered_field')
+        call aot_get_val(sys%heisenberg%staggered_magnetic_field, err, lua_state, opts, 'staggered_magnetic_field')
         call aot_get_val(sys%real_lattice%finite_cluster, err, lua_state, opts, 'finite')
         call aot_get_val(sys%lattice%triangular_lattice, err, lua_state, opts, 'triangular')
 

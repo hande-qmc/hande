@@ -36,6 +36,7 @@ contains
         use lua_hande_system, only: get_sys_t
         use system, only: sys_t
 
+        use calc, only: calc_type, mc_hilbert_space
         use hilbert_space, only: estimate_hilbert_space
 
         integer(c_int) :: nresult
@@ -64,6 +65,7 @@ contains
                             'Reference determinant does not match the number of electrons in system.')
         end if
 
+        calc_type = mc_hilbert_space
         if (have_seed) then
             call estimate_hilbert_space(sys, truncation_level, ncycles, ref_det, rng_seed)
         else
@@ -105,6 +107,7 @@ contains
         use lua_hande_system, only: get_sys_t
         use system, only: sys_t
 
+        use calc, only: calc_type, mc_canonical_kinetic_energy
         use canonical_kinetic_energy, only: estimate_kinetic_energy
 
         integer(c_int) :: nresult
@@ -128,6 +131,7 @@ contains
         call read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
         call aot_table_close(lua_state, opts)
 
+        calc_type = mc_canonical_kinetic_energy
         if (have_seed) then
             call estimate_kinetic_energy(sys, fermi_temperature, beta, nattempts, ncycles, rng_seed)
         else
@@ -170,6 +174,7 @@ contains
         use system, only: sys_t
 
         use calc, only: ms_in
+        use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
         use system, only: set_spin_polarisation
 
         integer :: nresult
@@ -191,14 +196,14 @@ contains
 
         ! Get main table.
         opts = aot_table_top(lua_state)
-        call read_qmc_in(lua_state, opts, qmc_in)
+        call read_qmc_in(lua_state, opts, qmc_in, .true.)
         ! [todo] - implement
         !call read_restart_in(lua_state, opts, restart_in)
         call read_reference_t(lua_state, opts, sys, reference)
-        reference%ex_level = sys%nel
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
+        calc_type = simple_fciqmc_calc + fciqmc_calc
         call do_simple_fciqmc(sys, qmc_in, restart_in, reference)
 
         nresult = 0
@@ -237,6 +242,7 @@ contains
         use system, only: sys_t
 
         use calc, only: ms_in
+        use calc, only: calc_type, fciqmc_calc
         use system, only: set_spin_polarisation
 
         integer :: nresult
@@ -271,10 +277,10 @@ contains
         !call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, sys, reference)
-        reference%ex_level = sys%nel
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
+        calc_type = fciqmc_calc
         call init_proc_pointers(sys, qmc_in, dmqmc_defaults, reference)
         call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
 
@@ -312,6 +318,7 @@ contains
         use system, only: sys_t
 
         use calc, only: ms_in
+        use calc, only: calc_type, ccmc_calc
         use system, only: set_spin_polarisation
 
         integer :: nresult
@@ -345,10 +352,10 @@ contains
         !call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, sys, reference)
-        reference%ex_level = sys%nel
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
+        calc_type = ccmc_calc
         call init_proc_pointers(sys, qmc_in, dmqmc_defaults, reference)
         call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
 
@@ -462,7 +469,7 @@ contains
 
     end subroutine read_kinetic_args
 
-    subroutine read_qmc_in(lua_state, opts, qmc_in)
+    subroutine read_qmc_in(lua_state, opts, qmc_in, short)
 
         ! Read in a qmc table to a qmc_in_t object.
 
@@ -473,6 +480,7 @@ contains
         !     nreports = nreport,                         -- required
         !     state_size = walker_length,                 -- required
         !     spawned_state_size = spawned_walker_length, -- required
+        !     rng_seed = seed,
         !     target_population = pop,
         !     real_amplitudes = true/false,
         !     spawn_cutoff = cutoff,
@@ -490,6 +498,8 @@ contains
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
         !    opts: handle for the table containing the qmc table.
+        !    short (optional): if true, then don't read in otherwise critical
+        !       options not required for simple_fciqmc.  Default: false.
         ! Out:
         !    qmc_in: qmc_in_t object containing generic QMC input options.
 
@@ -504,9 +514,17 @@ contains
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type(qmc_in_t), intent(out) :: qmc_in
+        logical, intent(in), optional :: short
 
         integer :: qmc_table, err
         character(len=10) :: str
+        logical :: skip
+
+        if (present(short)) then
+            skip = short
+        else
+            skip = .false.
+        end if
 
         call aot_table_open(lua_state, opts, qmc_table, 'qmc')
 
@@ -519,10 +537,12 @@ contains
         if (err /= 0) call stop_all('read_qmc_in', 'mc_cycles not set.')
         call aot_get_val(qmc_in%nreport, err, lua_state, qmc_table, 'nreports')
         if (err /= 0) call stop_all('read_qmc_in', 'nreports not set.')
-        call aot_get_val(qmc_in%walker_length, err, lua_state, qmc_table, 'state_size')
-        if (err /= 0) call stop_all('read_qmc_in', 'state_size not set.')
-        call aot_get_val(qmc_in%spawned_walker_length, err, lua_state, qmc_table, 'spawned_state_size')
-        if (err /= 0) call stop_all('read_qmc_in', 'spawned_state_size not set.')
+        if (.not. skip) then
+            call aot_get_val(qmc_in%walker_length, err, lua_state, qmc_table, 'state_size')
+            if (err /= 0) call stop_all('read_qmc_in', 'state_size not set.')
+            call aot_get_val(qmc_in%spawned_walker_length, err, lua_state, qmc_table, 'spawned_state_size')
+            if (err /= 0) call stop_all('read_qmc_in', 'spawned_state_size not set.')
+        end if
 
         ! Optional arguments (defaults set in derived type).
         call aot_get_val(qmc_in%real_amplitudes, err, lua_state, qmc_table, 'real_amplitudes')
@@ -536,6 +556,11 @@ contains
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
+
+        ! If user sets initial shift and vary_shift_from, assume they know what
+        ! they're doing.  Otherwise, vary the shift from the initial shift
+        ! value.
+        qmc_in%vary_shift_from = qmc_in%initial_shift
 
         ! Optional arguments requiring special care.
         if (aot_exists(lua_state, qmc_table, 'rng_seed')) then
@@ -713,7 +738,7 @@ contains
 
         ! ccmc = {
         !     move_freq = frequency,
-        !     cluster_multispawn_threhold = threshold,
+        !     cluster_multispawn_threshold = threshold,
         !     full_non_composite = true/false,
         !     linked = true/false,
         ! }
@@ -745,7 +770,7 @@ contains
 
             ! Optional arguments (defaults set in derived type).
             call aot_get_val(ccmc_in%move_freq, err, lua_state, ccmc_table, 'move_frequency')
-            call aot_get_val(ccmc_in%cluster_multispawn_threshold, err, lua_state, ccmc_table, 'cluster_multispawn_threhold')
+            call aot_get_val(ccmc_in%cluster_multispawn_threshold, err, lua_state, ccmc_table, 'cluster_multispawn_threshold')
             call aot_get_val(ccmc_in%full_nc, err, lua_state, ccmc_table, 'full_non_composite')
             call aot_get_val(ccmc_in%linked, err, lua_state, ccmc_table, 'linked')
 

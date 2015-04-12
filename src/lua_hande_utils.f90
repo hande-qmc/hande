@@ -22,6 +22,7 @@ contains
         use, intrinsic :: iso_c_binding,  only: c_null_char
 
         use errors, only: warning
+        use parallel, only: parent
 
         type(flu_State), intent(inout) :: lua_state
         character(*), intent(in) :: valid_keys(:)
@@ -55,7 +56,7 @@ contains
             deallocate(key)
         end do
 
-        if (allocated(key_list)) then
+        if (allocated(key_list) .and. parent) then
             call warning('warn_unused_args', 'The following keywords are not recognised and have been ignored: '//key_list//'.')
         end if
 
