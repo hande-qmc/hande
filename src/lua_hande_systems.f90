@@ -237,7 +237,7 @@ contains
         !        sym = sym_index,
         !        U = U,
         !        t = t,
-        !        ktwist = {...},    -- D-dimensional vector.
+        !        twist = {...},    -- D-dimensional vector.
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
@@ -259,7 +259,7 @@ contains
         logical :: new, new_basis
         integer :: err
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'ms', 'sym', 'ktwist']
+                                                                'ms', 'sym', 'twist']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -578,7 +578,7 @@ contains
         !        cutoff = ecutoff,
         !        ms = Ms,
         !        sym = sym_index,
-        !        ktwist = {...},    -- D-dimensional vector
+        !        twist = {...},    -- D-dimensional vector
         !        chem_pot = cp
         !    }
         !    Returns: sys_t object.
@@ -605,7 +605,7 @@ contains
         integer :: err
 
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
-                                               'ms', 'sym', 'ktwist', 'chem_pot']
+                                               'ms', 'sym', 'twist', 'chem_pot']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
