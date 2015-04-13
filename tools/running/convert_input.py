@@ -10,7 +10,6 @@ def read_old(filename):
 
     inp = {}
     comments = []
-    lattice = False
     idim = 0
     ndim = 3
     with open(filename) as f:
@@ -24,8 +23,14 @@ def read_old(filename):
                 # don't lower-case filenames!
                 inp[words[0]] = line.split()[1:]
             elif words[0] == 'lattice':
-                inp[words[0]] = []
-                lattice = True
+                inp['lattice'] = []
+                # read the next lines containing the lattice block
+                words = next(f).split()
+                inp['lattice'].append(words)
+                ndim = len(words)
+                for i in range(1, ndim):
+                    words = next(f).split()
+                    inp['lattice'].append(words)
             elif words[0] == 'select_reference_det':
                 if len(words) == 1:
                     inp[words[0]] = None
@@ -41,10 +46,6 @@ def read_old(filename):
             elif words[0] == 'attempt_spawn_prob':
                 inp['pattempt_single'] = words[1]
                 inp['pattempt_double'] = words[2]
-            elif lattice and idim != ndim :
-                ndim = len(words)
-                idim += 1
-                inp['lattice'].append(words)
             elif len(words) == 1:
                 if words[0] in ('iccmc', 'ifciqmc'):
                     words[0] = words[0][1:]
