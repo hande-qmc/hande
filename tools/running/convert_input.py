@@ -31,6 +31,8 @@ def read_old(filename):
                 for i in range(1, ndim):
                     words = next(f).split()
                     inp['lattice'].append(words)
+            elif words[0] == 'fci_rdm':
+                inp[words[0]] = next(f).split()
             elif words[0] == 'select_reference_det':
                 if len(words) == 1:
                     inp[words[0]] = None
@@ -60,6 +62,29 @@ def read_old(filename):
                         inp['write_shift'] = words[2:]
                 else:
                     inp[words[0]] = words[1:]
+            elif words[0] == 'print_fci_wfn':
+                if len(words) == 1:
+                    inp['write_wfn'] = [-1]
+                else:
+                    inp['write_wfn'] = [words[1]]
+                    if len(words) == 3:
+                        inp['wfn_file'] = [words[2]]
+            elif words[0] == 'analyse_fci_wfn' and len(words) == 1:
+                inp[words[0]] = [-1]
+            elif words[0] in ('hamil', 'hamiltonian'):
+                inp['write_hamiltonian'] = None
+                if len(words) == 2:
+                    inp['hamiltonian_file'] = [words[1]]
+            elif words[0] in ('dets', 'determinants'):
+                inp['write_determinants'] = None
+                if len(words) == 2:
+                    inp['determinant_file'] = [words[1]]
+            elif words[0] == 'print_fci_wfn':
+                inp['write_wfns'] = [-1]
+                if len(words) > 1:
+                    inp['write_wfns'] = [words[1]]
+                    if len(words) == 3:
+                        inp['wfn_file'] = [words[2]]
             elif len(words) == 1:
                 if words[0] in ('iccmc', 'ifciqmc'):
                     words[0] = words[0][1:]
@@ -107,7 +132,7 @@ def get_sys(inp):
         if inp['read']:
             system['int_file'] = inp['read']
 
-    system_keys = ('electrons nel lattice ms sym u t j ktwist finite_cluster '
+    system_keys = ('electrons nel lattice ms sym u t j twist finite_cluster '
                    'triangular_lattice lz cas 2d 3d ecutoff rs chem_pot '
                    'dipole_integrals magnetic_field staggered_magnetic_field'.split())
 
@@ -115,7 +140,6 @@ def get_sys(inp):
                 'finite_cluster':'finite',
                 'ecutoff':'cutoff',
                 'dipole_integrals':'dipole_int_file',
-                'twist':'ktwist',
                 'u': 'U',
                 'j': 'J',
                 'lz': 'Lz',
@@ -133,9 +157,11 @@ def get_calc(inp):
     remap = {
                 'estimate_canonical_kinetic_energy':'kinetic_energy',
                 'estimate_hilbert_space':'hilbert_space',
+                'lanczos': 'fci',
+                'lanczos_direct': 'fci',
             }
 
-    calc_types = 'estimate_hilbert_space estimate_canonical_kinetic_energy fciqmc ccmc simple_fciqmc dmqmc'.split()
+    calc_types = 'fci lanczos lanczos_direct estimate_hilbert_space estimate_canonical_kinetic_energy fciqmc ccmc simple_fciqmc dmqmc'.split()
 
     calcs = []
     for calc_type in calc_types:
@@ -146,6 +172,26 @@ def get_calc(inp):
                 calcs.append(calc_type)
 
     opts = {}
+
+    opts['fci'] = collections.OrderedDict()
+    keys = 'write_hamiltonian hamiltonian_file write_determinants determinant_file write_wfn wfn_file analyse_fci_wfn block_size fci_rdm'.split()
+    remap = {
+                'fci_rdm': 'rdm',
+                'block_size': 'blacs_block_size',
+                'analyse_fci_wfn': 'nanalyse',
+            }
+    read_to_dict(inp, keys, remap, opts['fci'])
+
+    opts['lanczos'] = collections.OrderedDict()
+    keys = 'lanczos_basis lanczos_solutions lanczos_solns direct_lanczos'.split()
+    remap = {
+                'lanczos_basis': 'nbasis',
+                'lanczos_solns': 'neigv',
+                'lanczos_solutions': 'neigv',
+                'direct_lanczos': 'direct',
+            }
+    read_to_dict(inp, keys, remap, opts['lanczos'])
+    lanczos = 'lanczos' in inp.keys()
 
     opts['hilbert'] = collections.OrderedDict()
     keys = 'estimate_hilbert_space truncation_level seed reference'.split()
@@ -246,6 +292,8 @@ def get_calc(inp):
     for (k, v) in opts.items():
         if v:
             opts_slim[k] = v
+        elif (k == 'lanczos' and lanczos):
+            opts_slim[k] = v
 
     return (calcs, opts_slim)
 
@@ -287,7 +335,11 @@ def print_new(comments, sys, calcs, opts):
     for calc in calcs:
         print('%s {' % calc)
         print('    sys = sys,')
-        if calc == 'hilbert_space':
+        if calc == 'fci':
+            for table in ('fci', 'lanczos', 'reference'):
+                if table in opts:
+                    print(dict_to_table(opts[table], indent=8, prefix='%s =' % table))
+        elif calc == 'hilbert_space':
             print(dict_to_table(opts['hilbert'], indent=8, prefix='hilbert ='))
         elif calc == 'kinetic_energy':
             print(dict_to_table(opts['kinetic'], indent=8, prefix='kinetic ='))
