@@ -311,57 +311,13 @@ contains
         !        finite = true/false,
         !    }
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
-        use aot_top_module, only: aot_top_get_val
-        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
-
-        use lua_hande_utils, only: warn_unused_args
-        use system, only: sys_t, hub_real, init_system
-        use basis, only: init_model_basis_fns
-        use real_lattice, only: init_real_space
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use system, only: hub_real
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
-        type(flu_State) :: lua_state
 
-        type(sys_t), pointer :: sys
-        integer :: opts
-        logical :: new, new_basis
-        integer :: err
-
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'ms', 'finite']
-
-        lua_state = flu_copyptr(L)
-        call get_sys_t(lua_state, sys, new)
-
-        ! get a handle to the table...
-        opts = aot_table_top(lua_state)
-
-        sys%system = hub_real
-
-        call set_common_sys_options(lua_state, sys, opts)
-        call aot_get_val(sys%hubbard%u, err, lua_state, opts, 'U')
-        call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
-        call aot_get_val(sys%real_lattice%finite_cluster, err, lua_state, opts, 'finite')
-
-        new_basis = aot_exists(lua_state, opts, 'lattice') .or. new
-
-        if (new_basis) then
-            call get_lattice(lua_state, sys, opts)
-            ! [todo] - deallocate existing basis info and start afresh.
-            call init_system(sys)
-            call init_model_basis_fns(sys)
-            call init_generic_system_basis(sys)
-            call init_real_space(sys)
-        end if
-
-        call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
-
-        call flu_pushlightuserdata(lua_state, c_loc(sys))
-        nreturn = 1
+        nreturn = real_lattice_wrapper(L, hub_real)
 
     end function lua_hubbard_real
 
@@ -383,30 +339,85 @@ contains
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
-        use flu_binding, only: flu_State, flu_copyptr
-        use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
-
-        use errors, only: warning
+        use system, only: chung_landau
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
-        type(flu_State) :: lua_state
-        integer :: opts
 
         ! The Hamiltonian used by Chung-Landau is essentially the spin-polarised Hubbard model in real
         ! space with a different diagonal matrix element.  Therefore piggy-back on lua_hubbard_real.
-
-        lua_state = flu_copyptr(L)
-        opts = aot_table_top(lua_state)
-        if (aot_exists(lua_state, opts, 'ms')) then
-            call warning('lua_chung_landau', 'The Chung-Landau Hamiltonian is for spinless fermions.  Ignoring the ms keyword.')
-        end if
-
-        ! The Hamiltonian used by Chung-Landau is essentially the spin-polarised Hubbard model in real
-        ! space with a different diagonal matrix element.  Therefore piggy-back on lua_hubbard_real.
-        nreturn = lua_hubbard_real(L)
+        nreturn = real_lattice_wrapper(L, chung_landau)
 
     end function lua_chung_landau
+
+    function real_lattice_wrapper(L, system_type) result(nreturn)
+
+        ! Create/modify a Chung--Landau or Hubbard (real-space basis) system.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+        ! In:
+        !    system_type: system type to create/modify.
+
+        ! See comments for lua_hubbard_real and lua_chung_landau for accepted keys.
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+
+        use lua_hande_utils, only: warn_unused_args
+        use system, only: sys_t, hub_real, chung_landau, init_system
+        use basis, only: init_model_basis_fns
+        use real_lattice, only: init_real_space
+
+        integer(c_int) :: nreturn
+        type(c_ptr) :: L
+        integer, intent(in) :: system_type
+        type(flu_State) :: lua_state
+
+        type(sys_t), pointer :: sys
+        integer :: opts
+        logical :: new, new_basis
+        integer :: err
+
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'finite', 'ms']
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys, new)
+
+        ! get a handle to the table...
+        opts = aot_table_top(lua_state)
+
+        sys%system = system_type
+
+        call set_common_sys_options(lua_state, sys, opts)
+        call aot_get_val(sys%hubbard%u, err, lua_state, opts, 'U')
+        call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
+        call aot_get_val(sys%real_lattice%finite_cluster, err, lua_state, opts, 'finite')
+
+        new_basis = aot_exists(lua_state, opts, 'lattice') .or. new
+
+        if (new_basis) then
+            call get_lattice(lua_state, sys, opts)
+            ! [todo] - deallocate existing basis info and start afresh.
+            call init_system(sys)
+            call init_model_basis_fns(sys)
+            call init_generic_system_basis(sys)
+            call init_real_space(sys)
+        end if
+
+        if (system_type == chung_landau) then
+            call warn_unused_args(lua_state, keys(:size(keys)-1), opts)
+        else
+            call warn_unused_args(lua_state, keys, opts)
+        end if
+        call aot_table_close(lua_state, opts)
+
+        call flu_pushlightuserdata(lua_state, c_loc(sys))
+        nreturn = 1
+
+    end function real_lattice_wrapper
 
     function lua_read_in(L) result(nreturn) bind(c)
 
