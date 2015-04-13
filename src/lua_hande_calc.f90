@@ -9,6 +9,62 @@ contains
 
     ! --- Calculation wrappers ---
 
+    function lua_fci(L) result(nresult) bind(c)
+
+        ! Run an FCI calculation.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    fci {
+        !           sys = system,
+        !           fci = { ... },
+        !           lanczos = { ... },
+        !           reference = { ... },
+        !    }
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
+
+        use calc, only: calc_type, exact_diag, lanczos_diag
+        use fci_lanczos, only: do_fci_lanczos
+        use fci_lapack, only: do_fci_lapack
+        use fci_utils, only: fci_in_t
+        use lua_hande_system, only: get_sys_t
+        use qmc_data, only: reference_t
+        use system, only: sys_t
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+        integer :: opts
+        type(sys_t), pointer :: sys
+        type(fci_in_t) :: fci_in
+        type(reference_t) :: ref
+        logical :: lanczos
+
+        lua_state = flu_copyptr(l)
+        call get_sys_t(lua_state, sys)
+
+        opts = aot_table_top(lua_state)
+        lanczos = aot_exists(lua_state, opts, 'lanczos')
+        call read_fci_in(lua_state, opts, sys%basis, fci_in)
+        call read_reference_t(lua_state, opts, sys, ref)
+        call aot_table_close(lua_state, opts)
+
+        if (lanczos) then
+            calc_type = lanczos_diag
+            call do_fci_lanczos(sys, fci_in, ref, .false.)
+        else
+            calc_type = exact_diag
+            call do_fci_lapack(sys, fci_in, ref)
+        end if
+
+    end function lua_fci
+
     function lua_hilbert_space(L) result(nresult) bind(c)
 
         ! Run a Monte Carlo calculation to estimate the size of the Hilbert
@@ -51,7 +107,7 @@ contains
         integer :: opts, err
         logical :: have_seed
 
-        lua_state = flu_copyptr(L)
+        lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
@@ -366,10 +422,89 @@ contains
 
     ! --- table-derived type wrappers ---
 
+    subroutine read_fci_in(lua_state, opts, basis, fci_in)
+
+        ! Read in the fci and (optionally) lanczos tables to a fci_in_t object.
+
+        ! fci = {
+        !     write_hamiltonian = true/false,
+        !     hamiltonian_file = filename,
+        !     write_determinants = true/false,
+        !     determinant_file = filename,
+        !     nanalyse = N,
+        !     blacs_block_size = block_size,
+        !     rdm = { ... } -- L-d vector containing the sites to include in subsystem A.
+        ! }
+        ! lanczos = {
+        !     neigv = N,
+        !     nbasis = M,
+        !     direct = true/false,
+        ! }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the fci and (optionally) the lanczos table(s).
+        !    basis: information about the single-particle basis set of the system.
+        ! Out:
+        !    fci_in: fci_in_t object containing generic fci/lanczos input options.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use aot_vector_module, only: aot_get_val
+
+        use basis_types, only: basis_t
+        use checking, only: check_allocate
+        use errors, only: stop_all
+        use fci_utils, only: fci_in_t
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(basis_t), intent(in) :: basis
+        type(fci_in_t), intent(inout) :: fci_in
+
+        integer :: fci_table, err, fci_nrdms
+        integer, allocatable :: err_arr(:)
+
+        if (.not. aot_exists(lua_state, opts, 'fci')) call stop_all('read_fci_in','"fci" table not present.')
+
+        call aot_table_open(lua_state, opts, fci_table, 'fci')
+
+        ! Optional arguments
+        call aot_get_val(fci_in%write_hamiltonian, err, lua_state, fci_table, 'write_hamiltonian')
+        call aot_get_val(fci_in%hamiltonian_file, err, lua_state, fci_table, 'hamiltonian_file')
+        call aot_get_val(fci_in%write_determinants, err, lua_state, fci_table, 'write_determinants')
+        call aot_get_val(fci_in%determinant_file, err, lua_state, fci_table, 'determinant_file')
+        call aot_get_val(fci_in%analyse_fci_wfn, err, lua_state, fci_table, 'nanalyse')
+        call aot_get_val(fci_in%block_size, err, lua_state, fci_table, 'blacs_block_size')
+
+        ! Optional arguments requiring special care.
+        if (aot_exists(lua_state, fci_table, 'rdm')) then
+            ! Currently restricted to one RDM in a single FCI calculation.
+            fci_nrdms = 1
+            allocate(fci_in%rdm_info(fci_nrdms), stat=err)
+            call check_allocate('fci_in%rdm_info', fci_nrdms, err)
+            call aot_get_val(fci_in%rdm_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state)
+            fci_in%rdm_info(fci_nrdms)%A_nsites = size(fci_in%rdm_info(fci_nrdms)%subsystem_A)
+        end if
+
+        call aot_table_close(lua_state, fci_table)
+
+        ! Lanczos table: optional and indicates doing a Lanczos calculation.
+        if (aot_exists(lua_state, opts, 'lanczos')) then
+            call aot_table_open(lua_state, opts, fci_table, 'lanczos')
+            call aot_get_val(fci_in%nlanczos_eigv, err, lua_state, fci_table, 'neigv')
+            call aot_get_val(fci_in%lanczos_string_len, err, lua_state, fci_table, 'nbasis')
+            call aot_get_val(fci_in%direct_lanczos, err, lua_state, fci_table, 'direct')
+            call aot_table_close(lua_state, fci_table)
+        end if
+
+    end subroutine read_fci_in
+
     subroutine read_hilbert_args(lua_state, opts, nel, ncycles, ex_level, ref_det, rng_seed, have_seed)
 
         ! In/Out:
-        !    L: lua state (bare C pointer).
+        !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
         !    opts: handle to the table which is input to the Lua hilbert_space
         !        routine.
@@ -420,7 +555,7 @@ contains
     subroutine read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
 
         ! In/Out:
-        !    L: lua state (bare C pointer).
+        !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
         !    opts: handle to the table which is input to the Lua kinetic_energy
         !        routine.
