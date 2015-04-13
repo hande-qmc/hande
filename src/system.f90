@@ -433,7 +433,10 @@ contains
 
                 end select
 
-                if (.not.allocated(sk%ktwist)) then
+                if (allocated(sk%ktwist)) then
+                    if (size(sk%ktwist) /= sl%ndim) &
+                        call stop_all('init_system', 'Twist vector dimensions not consistent with lattice dimenstions.')
+                else
                     allocate(sk%ktwist(sl%ndim), stat=ierr)
                     call check_allocate('sys%lattice%ktwist',sl%ndim,ierr)
                     sk%ktwist = 0.0_p
