@@ -1,0 +1,120 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr  9 2015 at 13:52:19
+ Compiled using gfortran.lapack.mpi.(optimised)
+ VCS BASE repository version:
+     b4d473884c50419afe805529e9d590d9afa07dd7-dirty
+ Hostname:
+     localhost
+ Working directory: 
+     /home/james/projects/hande.lua/test_suite/lanczos/heisenberg_2d_tri_lanczos
+ Started running on 09/04/2015 at 14:03:00
+ Calculation UUID: 6f232f74-22c5-41bb-93dc-3fc2c2d9cd0b.
+ ================================================================
+
+ Input options
+ -------------
+
+heisenberg
+
+lattice
+4 0
+0 4
+ms 2
+triangular_lattice
+
+J -4
+
+lanczos
+
+ -------------
+
+ aotus/lua error code:           3
+ WARNING: error in run_lua_hande.
+ heisenberg.in:3: syntax error near 'lattice'.  Assuming traditional input file...
+
+
+ WARNING: error in check_input.
+ You have specified an iteration to turn semi-stochastic on but have not specified a deterministic space to use.
+
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Site positions given in terms of the primitive lattice vectors.
+
+ index   site           
+     1   ( -1, -1)
+     2   (  0, -1)
+     3   (  1, -1)
+     4   (  2, -1)
+     5   ( -1,  0)
+     6   (  0,  0)
+     7   (  1,  0)
+     8   (  2,  0)
+     9   ( -1,  1)
+    10   (  0,  1)
+    11   (  1,  1)
+    12   (  2,  1)
+    13   ( -1,  2)
+    14   (  0,  2)
+    15   (  1,  2)
+    16   (  2,  2)
+
+ Number of alpha spins: 9
+ Number of basis functions: 16
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1            11440
+
+ Symmetry of selected Hilbert subspace: 1.
+ Spin of selected Hilbert subspace: 2.
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2015/04/09 14:04:06.198 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          5 (computed),          5 (wanted)
+Times the operator is applied:        147 (MAX:             5000 ).
+Problem size:                       11440 (PE:   0),       11440 (Global)
+Convergence tolerance:           1.49E-08 (rel),       7.153E-07 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations       148
+Number of (re)start loops:              5
+Number of eigenpairs locked:            0
+OP(MATVEC):             4.9846E+01 sec, -3.4334E+06 FLOP/S (-1.7114E+08 FLOP)
+Re-Orthogonalization:   3.1100E-01 sec,  5.6395E+08 FLOP/S ( 1.7539E+08 FLOP)
+Restarting:             1.2100E-01 sec,  4.3869E+08 FLOP/S ( 5.3082E+07 FLOP)
+TRLAN on this PE:       5.0301E+01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ Lanczos diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1   -30.690921406679
+      2   -30.355948966893
+      3   -30.350802035334
+      4   -30.070724321002
+      5   -29.841428810565
+
+ ================================================================
+ Finished running on 09/04/2015 at 14:04:06
+ Wall time (seconds):                          65.95
+ CPU time (per processor, seconds):            64.95
+ ================================================================
+

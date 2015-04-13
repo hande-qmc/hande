@@ -148,7 +148,7 @@ calc_data : list of `:class:`pandas.Series`
     have_git_hash_next = False
     have_input = 0
     calc_data = []
-    calc_titles = ['diagonalisation results', 'Hilbert space']
+    calc_titles = ['diagonalisation results', 'RDM eigenvalues', 'Hilbert space']
     column_names = []
     for line in f:
         hit = False
@@ -430,11 +430,13 @@ nread : int
     Number of lines read.
 '''
     nread = 0
-    if 'Exact' in line or 'Lanczos' in line:
-        if 'Exact' in line:
+    if any(key in line for key in ('Exact', 'Lanczos', 'LAPACK', 'LANCZOS', 'RDM')):
+        if 'Exact' in line or 'LAPACK' in line:
             title = 'FCI (LAPACK)'
-        elif 'Lanczos' in line:
+        elif 'Lanczos' in line or 'LANCZOS' in line:
             title = 'FCI (Lanczos)'
+        elif 'RDM' in line:
+            title = 'FCI RDM'
         for line in fh:
             nread += 1
             if 'State' in line:

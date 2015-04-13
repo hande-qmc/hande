@@ -1,0 +1,12 @@
+heisenberg
+
+lattice
+4
+
+J -0.25
+ms 0
+
+fci_rdm
+1 2
+
+fci

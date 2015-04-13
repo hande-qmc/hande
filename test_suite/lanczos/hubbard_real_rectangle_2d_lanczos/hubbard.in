@@ -3,5 +3,6 @@ lattice
 2 0
 0 4
 electrons 6
+ms 0
 lanczos
 lanczos_solns 6

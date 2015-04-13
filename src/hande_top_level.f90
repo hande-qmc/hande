@@ -57,7 +57,6 @@ contains
         use basis, only: init_model_basis_fns
         use basis_types, only: init_basis_strings, print_basis_metadata
         use determinants, only: init_determinants
-        use determinant_enumeration, only: init_determinant_enumeration
         use dmqmc_data, only: dmqmc_in_global, dmqmc_estimates_global
         use excitations, only: init_excitations
         use parallel, only: parent
@@ -100,8 +99,7 @@ contains
 
         call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
-        call init_determinants(sys)
-        call init_determinant_enumeration()
+        call init_determinants(sys, reference%ex_level)
 
         call init_excitations(sys%basis)
 
@@ -132,7 +130,8 @@ contains
         !    during initialisation.
 
         use calc
-        use diagonalisation, only: diagonalise
+        use fci_lapack, only: do_fci_lapack
+        use fci_lanczos, only: do_fci_lanczos
         use hilbert_space, only: estimate_hilbert_space, nhilbert_cycles
         use canonical_kinetic_energy, only: estimate_kinetic_energy
         use parallel, only: iproc, parent
@@ -144,13 +143,22 @@ contains
         use simple_fciqmc, only: do_simple_fciqmc
         use system, only: sys_t
 
+        use tmp_input_var
+
         type(sys_t), intent(inout) :: sys
         type(reference_t), intent(inout) :: reference
 
-        if (doing_calc(exact_diag+lanczos_diag)) call diagonalise(sys, reference)
+        integer :: truncation_level
+
+        if (doing_calc(exact_diag)) call do_fci_lapack(sys, fci_in_global, reference)
+        if (doing_calc(lanczos_diag)) call do_fci_lanczos(sys, fci_in_global, reference, use_sparse_hamil)
 
         if (doing_calc(mc_hilbert_space)) then
-            if (.not. truncate_space) truncation_level = -1
+            if (.not. truncate_space) then
+                truncation_level = -1
+            else
+                truncation_level = reference%ex_level
+            end if
             call estimate_hilbert_space(sys, truncation_level, nhilbert_cycles, reference%occ_list0, qmc_in_global%seed)
         end if
 
@@ -161,7 +169,7 @@ contains
 
         if (doing_calc(fciqmc_calc+hfs_fciqmc_calc+ct_fciqmc_calc+dmqmc_calc+ccmc_calc)) then
             if (doing_calc(simple_fciqmc_calc)) then
-                call do_simple_fciqmc(sys, qmc_in_global, restart_in_global, reference)
+                call do_simple_fciqmc(sys, qmc_in_global, restart_in_global, reference, use_sparse_hamil)
             else
                 call do_qmc(sys, qmc_in_global, fciqmc_in_global, ccmc_in_global, semi_stoch_in_global, &
                             restart_in_global, reference, load_bal_in_global, dmqmc_in_global, &
@@ -186,7 +194,6 @@ contains
         use system, only: sys_t, end_lattice_system
         use determinants, only: end_determinants
         use excitations, only: end_excitations
-        use diagonalisation, only: end_hamil
         use fciqmc_data, only: end_fciqmc
         use real_lattice, only: end_real_space
         use momentum_symmetry, only: end_momentum_symmetry
@@ -214,7 +221,6 @@ contains
         call end_momentum_symmetry()
         call end_ueg_indexing(sys%ueg)
         call end_determinants()
-        call end_hamil()
         call end_real_space(sys%heisenberg)
         call end_fciqmc(fciqmc_in_global%non_blocking_comm, reference)
 

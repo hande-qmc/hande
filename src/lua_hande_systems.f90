@@ -201,7 +201,6 @@ contains
 
         use basis_types, only: init_basis_strings, print_basis_metadata
         use determinants, only: init_determinants
-        use determinant_enumeration, only: init_determinant_enumeration
         use excitations, only: init_excitations
 
         use system, only: sys_t, heisenberg
@@ -213,8 +212,8 @@ contains
 
         call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
-        call init_determinants(sys)
-        call init_determinant_enumeration()
+        ! NOTE: RAS is currently disabled.
+        call init_determinants(sys, sys%nel)
 
         call init_excitations(sys%basis)
 

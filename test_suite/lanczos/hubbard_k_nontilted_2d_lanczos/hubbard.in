@@ -4,6 +4,8 @@ lattice
 4 0
 0 4
 electrons 4
+ms 0
+sym 4
 lanczos
 lanczos_basis 20
 lanczos_solns 8

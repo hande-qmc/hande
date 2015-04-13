@@ -4,6 +4,8 @@ lattice
 2  2
 2 -2
 electrons 4
+ms 0
+sym 1
 fci
 block_size 2
 twist 0.1 0.1

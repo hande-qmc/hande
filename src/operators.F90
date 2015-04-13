@@ -335,23 +335,24 @@ contains
 
 !== Debug/test routines for operating on exact wavefunction ===
 
-    subroutine analyse_wavefunction(sys, wfn, dets)
+    subroutine analyse_wavefunction(sys, wfn, dets, proc_blacs_info)
 
         ! Analyse an exact wavefunction using the desired operator(s).
 
         ! In:
         !    sys: system being studied.
         !    wfn: exact wavefunction to be analysed.  wfn(i) = c_i, where
-        !    |\Psi> = \sum_i c_i|D_i>.
+        !         |\Psi> = \sum_i c_i|D_i>.
         !    dets: list of determinants in the Hilbert space (bit string representation).
+        !    proc_blacs_info: BLACS information describing distribution of wfn.
 
         use const, only: i0, p
-        use calc, only: proc_blacs_info, distribute, distribute_off
         use parallel
         use system
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: wfn(proc_blacs_info%nrows)
+        type(blacs_info), intent(in) :: proc_blacs_info
+        real(p), intent(in) :: wfn(:)
         integer(i0), intent(in) :: dets(:,:)
 
         real(p) :: expectation_val(2), cicj
@@ -392,10 +393,10 @@ contains
                 end do
             end do
         else
-            do i = 1, proc_blacs_info%nrows, block_size
-                do ii = 1, min(block_size, proc_blacs_info%nrows - i + 1)
+            do i = 1, proc_blacs_info%nrows, proc_blacs_info%block_size
+                do ii = 1, min(proc_blacs_info%block_size, proc_blacs_info%nrows - i + 1)
                     ilocal = i - 1 + ii
-                    idet =  (i-1)*nproc_rows + proc_blacs_info%procx* block_size + ii
+                    idet =  (i-1)*proc_blacs_info%nproc_rows + proc_blacs_info%procx* proc_blacs_info%block_size + ii
                     select case(sys%system)
                     case(hub_k)
                         expectation_val(1) = expectation_val(1) + wfn(ilocal)**2*kinetic0_hub_k(sys, dets(:,idet))
@@ -405,10 +406,10 @@ contains
                     case(read_in)
                         expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(sys, dets(:,idet))
                     end select
-                    do j = 1, proc_blacs_info%ncols, block_size
-                        do jj = 1, min(block_size, proc_blacs_info%nrows - j + 1)
+                    do j = 1, proc_blacs_info%ncols, proc_blacs_info%block_size
+                        do jj = 1, min(proc_blacs_info%block_size, proc_blacs_info%nrows - j + 1)
                             jlocal = j - 1 + jj
-                            jdet = (j-1)*nproc_cols + proc_blacs_info%procy*block_size + jj
+                            jdet = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*proc_blacs_info%block_size + jj
                             cicj = wfn(ilocal) * wfn(jlocal)
                             select case(sys%system)
                             case(hub_k)
@@ -445,7 +446,7 @@ contains
 
     end subroutine analyse_wavefunction
 
-    subroutine print_wavefunction(filename, wfn, dets)
+    subroutine print_wavefunction(filename, wfn, dets, proc_blacs_info)
 
         ! Print out an exact wavefunction.
 
@@ -454,16 +455,17 @@ contains
         !    wfn: exact wavefunction to be printed out.  wfn(i) = c_i, where
         !    |\Psi> = \sum_i c_i|D_i>.
         !    dets: list of determinants in the Hilbert space (bit string representation).
+        !    proc_blacs_info: BLACS information describing distribution of wfn.
 
         use const, only: i0, p
-        use calc, only: proc_blacs_info, distribute, distribute_off
 
         use checking, only: check_allocate, check_deallocate
         use utils, only: get_free_unit
         use parallel
 
         character(*), intent(in) :: filename
-        real(p), intent(in) :: wfn(proc_blacs_info%nrows)
+        type(blacs_info), intent(in) :: proc_blacs_info
+        real(p), intent(in) :: wfn(:)
         integer(i0), intent(in) :: dets(:,:)
 
         integer :: idet, i, ii, ilocal, iunit
@@ -521,10 +523,10 @@ contains
                 integer, intent(in) :: nrows, procx
                 real(p), intent(in) :: wfn_curr(nrows)
 
-                do i = 1, nrows, block_size
-                    do ii = 1, min(block_size, nrows - i + 1)
+                do i = 1, nrows, proc_blacs_info%block_size
+                    do ii = 1, min(proc_blacs_info%block_size, nrows - i + 1)
                         ilocal = i - 1 + ii
-                        idet =  (i-1)*nproc_rows + procx* block_size + ii
+                        idet =  (i-1)*proc_blacs_info%nproc_rows + procx* proc_blacs_info%block_size + ii
                         write (iunit,*) idet, dets(:,idet), wfn_curr(ilocal)
                     end do
                 end do

@@ -204,7 +204,8 @@ contains
         call aot_table_close(lua_state, opts)
 
         calc_type = simple_fciqmc_calc + fciqmc_calc
-        call do_simple_fciqmc(sys, qmc_in, restart_in, reference)
+        ! NOTE: sparse_hamil is currently disabled.
+        call do_simple_fciqmc(sys, qmc_in, restart_in, reference, .false.)
 
         nresult = 0
 

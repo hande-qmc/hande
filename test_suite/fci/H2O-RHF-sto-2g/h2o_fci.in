@@ -3,6 +3,9 @@ nel 10
 
 fci
 
+sym 0
+ms 0
+
 (   SCF calculation produced by Q-Chem using:   )
 #
 #    $molecule

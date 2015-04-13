@@ -45,72 +45,6 @@ integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
 integer, parameter :: mc_canonical_kinetic_energy = 2**10
 
-!--- Info for FCI calculations ---
-
-! Hamiltonian matrix.  Clearly the scaling of the memory demands with system
-! size is horrendous.  We only store one symmetry block at a time though.
-! Best contained within a module to allow easy access from the Lanczos
-! matrix-vector multiplication routines.
-real(p), allocatable :: hamil(:,:) ! (ndets, ndets)
-! For single-node calculations, we can also store the hamiltonian matrix in
-! sparse format.  This is typically *far* smaller than hamil and hence it is
-! usually better to run on a single node than distribute the Hamiltonian matrix.
-! Of course, perhaps one day a kind soul will implement a parallel sparse matrix
-! storage format.
-type(csrp_t) :: hamil_csr
-! Use sparse matrix rather than dense matrix?
-logical :: use_sparse_hamil = .false.
-
-! If either of the following options are true, then the eigenvectors are found
-! during exact diagonalisation as well as the eigenvalues.  Doing this is
-! substantially more expensive.
-
-! Number of FCI wavefunctions to print out.
-integer :: print_fci_wfn = 0
-! ...and file to write them to.
-character(255) :: print_fci_wfn_file = 'FCI_WFN'
-
-! Number of FCI wavefunctions to compute properties of.
-integer :: analyse_fci_wfn = 0
-
-! If true then the non-zero elements of the Hamiltonian matrix are written to hamiltonian_file.
-logical :: write_hamiltonian = .false.
-character(255) :: hamiltonian_file = 'HAMIL'
-
-! BLACS info for diagonalisation
-type(blacs_info) :: proc_blacs_info
-
-! Variables relating to FCI RDM calculation.
-
-! If true then, if doing an exact diagonalisation, calculate and output the
-! eigenvalues of the reduced density matrix requested.
-logical :: doing_exact_rdm_eigv = .false.
-
-! Used to hold the RDM in FCI calculations.
-real(p), allocatable :: fci_rdm(:,:)
-
-! The total number of RDMs beings calculated.
-! NOTE: This can only be equal to 1 currently.
-integer :: fci_nrdms = 0
-
-! This stores  information for the various RDMs that the user asks to be
-! calculated. Each element of this array corresponds to one of these RDMs.
-type(rdm_t), allocatable :: fci_rdm_info(:) ! (fci_nrdms)
-
-!--- Parallel info for FCI calculations ---
-
-! Distribution of Hamiltonian matrix across the processors.
-! No distribution.
-integer, parameter :: distribute_off = 0
-! Block cyclic distribution (see comments in parallel.F90 and the blacs and
-! scalapack documentation).  Used for parallel exact diagonalisation.
-integer, parameter :: distribute_blocks = 1
-! Distribute matrix by columns.  Used for parallel Lanczos.
-integer, parameter :: distribute_cols = 2
-
-! Flag which stores which distribution mode is in use.
-integer :: distribute = distribute_off
-
 ! --- QMC trial (importance-sampling) functions ---
 
 ! For the Heisenberg model, several different trial functions can be used in the
@@ -163,14 +97,6 @@ integer :: trial_function = 0
 ! of the above values to specify the corresponding guiding function being used.
 integer :: guiding_function = 0
 
-! If true, truncate the Slater determinant space such that it contains
-! determinants which differ from the reference determinant (e.g. Hartree--Fock
-! determinant) by at most truncation_level excitations.
-! truncation_level excitations.  A truncation level equal to the number of
-! electrons corresponds to the full space
-logical :: truncate_space = .false.
-integer :: truncation_level
-
 ! RAS-CI (only in QMC currently)
 ! The ras1 space can have at most truncation_level holes.
 ! The ras3 space can have at most ras3_max electrons.
@@ -189,11 +115,6 @@ integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
 
 ! If true then allow the use of MPI barrier calls.
 logical :: use_mpi_barriers = .false.
-
-! --- legacy input parser only ---
-
-! Number of report loops use to estimate the energy.
-integer :: nkinetic_cycles
 
 contains
 
