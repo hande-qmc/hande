@@ -461,29 +461,30 @@ contains
         integer :: fci_table, err, fci_nrdms
         integer, allocatable :: err_arr(:)
 
-        if (.not. aot_exists(lua_state, opts, 'fci')) call stop_all('read_fci_in','"fci" table not present.')
+        if (aot_exists(lua_state, opts, 'fci')) then
+            call aot_table_open(lua_state, opts, fci_table, 'fci')
 
-        call aot_table_open(lua_state, opts, fci_table, 'fci')
+            ! Optional arguments
+            call aot_get_val(fci_in%write_hamiltonian, err, lua_state, fci_table, 'write_hamiltonian')
+            call aot_get_val(fci_in%hamiltonian_file, err, lua_state, fci_table, 'hamiltonian_file')
+            call aot_get_val(fci_in%write_determinants, err, lua_state, fci_table, 'write_determinants')
+            call aot_get_val(fci_in%determinant_file, err, lua_state, fci_table, 'determinant_file')
+            call aot_get_val(fci_in%analyse_fci_wfn, err, lua_state, fci_table, 'nanalyse')
+            call aot_get_val(fci_in%block_size, err, lua_state, fci_table, 'blacs_block_size')
 
-        ! Optional arguments
-        call aot_get_val(fci_in%write_hamiltonian, err, lua_state, fci_table, 'write_hamiltonian')
-        call aot_get_val(fci_in%hamiltonian_file, err, lua_state, fci_table, 'hamiltonian_file')
-        call aot_get_val(fci_in%write_determinants, err, lua_state, fci_table, 'write_determinants')
-        call aot_get_val(fci_in%determinant_file, err, lua_state, fci_table, 'determinant_file')
-        call aot_get_val(fci_in%analyse_fci_wfn, err, lua_state, fci_table, 'nanalyse')
-        call aot_get_val(fci_in%block_size, err, lua_state, fci_table, 'blacs_block_size')
+            ! Optional arguments requiring special care.
+            if (aot_exists(lua_state, fci_table, 'rdm')) then
+                ! Currently restricted to one RDM in a single FCI calculation.
+                fci_nrdms = 1
+                allocate(fci_in%rdm_info(fci_nrdms), stat=err)
+                call check_allocate('fci_in%rdm_info', fci_nrdms, err)
+                call aot_get_val(fci_in%rdm_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state)
+                fci_in%rdm_info(fci_nrdms)%A_nsites = size(fci_in%rdm_info(fci_nrdms)%subsystem_A)
+            end if
 
-        ! Optional arguments requiring special care.
-        if (aot_exists(lua_state, fci_table, 'rdm')) then
-            ! Currently restricted to one RDM in a single FCI calculation.
-            fci_nrdms = 1
-            allocate(fci_in%rdm_info(fci_nrdms), stat=err)
-            call check_allocate('fci_in%rdm_info', fci_nrdms, err)
-            call aot_get_val(fci_in%rdm_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state)
-            fci_in%rdm_info(fci_nrdms)%A_nsites = size(fci_in%rdm_info(fci_nrdms)%subsystem_A)
+            call aot_table_close(lua_state, fci_table)
+
         end if
-
-        call aot_table_close(lua_state, fci_table)
 
         ! Lanczos table: optional and indicates doing a Lanczos calculation.
         if (aot_exists(lua_state, opts, 'lanczos')) then
