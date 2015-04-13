@@ -478,7 +478,7 @@ contains
                 fci_nrdms = 1
                 allocate(fci_in%rdm_info(fci_nrdms), stat=err)
                 call check_allocate('fci_in%rdm_info', fci_nrdms, err)
-                call aot_get_val(fci_in%rdm_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state)
+                call aot_get_val(fci_in%rdm_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state, fci_table, 'rdm')
                 fci_in%rdm_info(fci_nrdms)%A_nsites = size(fci_in%rdm_info(fci_nrdms)%subsystem_A)
             end if
 
