@@ -122,7 +122,7 @@ contains
         ! Should we dump a restart file just before the shift is turned on?
         dump_restart_file_shift = restart_in%dump_restart_file_shift
 
-        do beta_cycle = 1, dmqmc_in%beta_loops
+        outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
             call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, qs%psip_list%nstates, &
                                       qs%psip_list%nparticles, qs%spawn_store%spawn, weighted_sampling%probs)
@@ -288,7 +288,7 @@ contains
                 ! Update the time for the start of the next iteration.
                 t1 = t2
 
-                if (soft_exit) exit
+                if (soft_exit) exit outer_loop
 
             end do
 
@@ -300,7 +300,7 @@ contains
             if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, &
                                                                      dmqmc_estimates%excit_dist, weighted_sampling)
 
-        end do
+        end do outer_loop
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
