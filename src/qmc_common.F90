@@ -576,7 +576,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, guiding_function)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -592,10 +592,14 @@ contains
         !    spawn_elsewhere: number of particles spawned from the current
         !       processor to other processors.  Relevant only when restarting
         !       non-blocking calculations.
+        !    guiding_function: parameter specifying the guiding trial function
+        !       used.  FCIQMC-only.  If not present, assume no importance
+        !       sampling is being used.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
+        use importance_sampling, only: importance_sampling_weight
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
         use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
@@ -605,11 +609,11 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
         logical, optional, intent(in) :: nb_comm
-        integer, optional, intent(in) :: spawn_elsewhere
+        integer, optional, intent(in) :: spawn_elsewhere, guiding_function
 
-        integer :: idet
+        integer :: idet, ispace
         real(p) :: ntot_particles(qs%psip_list%nspaces)
-        real(p) :: real_population(qs%psip_list%nspaces)
+        real(p) :: real_population(qs%psip_list%nspaces), weighted_population
         type(det_info_t) :: cdet
         real(p) :: hmatel
         type(excit_t) :: D0_excit
@@ -630,10 +634,15 @@ contains
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
             cdet%data => qs%psip_list%dat(:,idet)
             real_population = real(qs%psip_list%pops(:,idet),p)/real_factor
+            if (present(guiding_function)) then
+                weighted_population = importance_sampling_weight(guiding_function, cdet, real_population(1))
+            else
+                weighted_population = real_population(1)
+            end if
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, cdet, real_population(1), &
+            call update_proj_energy_ptr(sys, qs%ref%f0, cdet, weighted_population, &
                                         qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info_t(cdet)

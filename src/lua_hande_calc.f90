@@ -314,7 +314,6 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
 
-        type(dmqmc_in_t) :: dmqmc_defaults
         integer :: opts
         character(10), parameter :: keys(7) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
                                                                 'load_bal', 'reference']
@@ -338,7 +337,7 @@ contains
         call aot_table_close(lua_state, opts)
 
         calc_type = fciqmc_calc
-        call init_proc_pointers(sys, qmc_in, dmqmc_defaults, reference)
+        call init_proc_pointers(sys, qmc_in, reference, fciqmc_in=fciqmc_in)
         call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
 
         nresult = 0
@@ -390,7 +389,6 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
 
-        type(dmqmc_in_t) :: dmqmc_defaults
         integer :: opts
         character(10), parameter :: keys(5) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference']
 
@@ -413,7 +411,7 @@ contains
         call aot_table_close(lua_state, opts)
 
         calc_type = ccmc_calc
-        call init_proc_pointers(sys, qmc_in, dmqmc_defaults, reference)
+        call init_proc_pointers(sys, qmc_in, reference)
         call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
 
         nresult = 0
