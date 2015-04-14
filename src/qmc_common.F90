@@ -389,9 +389,9 @@ contains
             if (parent) then
                 do i = 1, size(nparticles)
                     if (size(nparticles) > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
-                    write (6,'(1X,"Min # of particles on a processor:",6X,es12.6)') minval(load_data(i,:))
-                    write (6,'(1X,"Max # of particles on a processor:",6X,es12.6)') maxval(load_data(i,:))
-                    write (6,'(1X,"Mean # of particles on a processor:",5X,es12.6,/)') real(sum(load_data(i,:)), p)/nprocs
+                    write (6,'(1X,"Min # of particles on a processor:",6X,es13.6)') minval(load_data(i,:))
+                    write (6,'(1X,"Max # of particles on a processor:",6X,es13.6)') maxval(load_data(i,:))
+                    write (6,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') real(sum(load_data(i,:)), p)/nprocs
                 end do
             end if
             call mpi_gather(nstates_active, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
@@ -413,7 +413,7 @@ contains
                 lfmt = int_fmt(maxval(load_data_int),0)
                 write (6,'(1X,"Min # of determinants on a processor:",3X,'//lfmt//')') minval(load_data_int)
                 write (6,'(1X,"Max # of determinants on a processor:",3X,'//lfmt//')') maxval(load_data_int)
-                write (6,'(1X,"Mean # of determinants on a processor:",2X,es12.6)') real(sum(load_data_int), p)/nprocs
+                write (6,'(1X,"Mean # of determinants on a processor:",2X,es13.6)') real(sum(load_data_int), p)/nprocs
                 write (6,'()')
                 if (use_mpi_barriers) then
                     write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
@@ -1008,7 +1008,7 @@ contains
         else
             tau = 0.950_p*tau
         end if
-        if (parent) write(6, '(1X, "# Warning timestep changed to: ",f7.5)') tau
+        if (parent) write(6, '(1X, "# Warning timestep changed to: ",f8.5)') tau
 
     end subroutine rescale_tau
 
