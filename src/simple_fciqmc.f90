@@ -202,10 +202,11 @@ contains
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t, qmc_state_t
+        use qmc_common, only: dump_restart_file_wrapper
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: rng_init_info
-        use restart_hdf5, only: dump_restart_hdf5, restart_info_global
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -223,6 +224,8 @@ contains
         type(particle_t) :: psip_list
         type(spawn_t) :: spawn
         type(qmc_state_t) :: qs
+        logical :: write_restart_shift
+        type(restart_info_t) :: ri, ri_shift
 
         call init_simple_fciqmc(sys, qmc_in, reference, qs, restart_in%read_restart, ndets, dets, ref_det, psip_list, spawn)
 
@@ -235,6 +238,9 @@ contains
         call write_fciqmc_report_header(1)
 
         call cpu_time(t1)
+        write_restart_shift = restart_in%write_restart_shift
+        call init_restart_info_t(ri, write_id=restart_in%write_id)
+        call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
 
         do ireport = 1, qmc_in%nreport
 
@@ -318,9 +324,8 @@ contains
             call write_fciqmc_report(qmc_in, qs, ireport, (/nparticles/), t2-t1, .false., .false.)
 
             ! Write restart file if required.
-            if (mod(ireport,restart_info_global%write_restart_freq) == 0) &
-                call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done+qmc_in%ncycles*ireport, &
-                                       (/nparticles_old/), .false.)
+            call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, [nparticles_old], &
+                                           ireport, qmc_in%ncycles, ri, ri_shift)
 
             t1 = t2
 
@@ -328,8 +333,8 @@ contains
 
         if (parent) write (6,'()')
 
-        if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
+        if (restart_in%write_restart) then
+            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
                                    (/nparticles_old/), .false.)
             if (parent) write (6,'()')
         end if

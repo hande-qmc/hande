@@ -143,10 +143,18 @@ end type ccmc_in_t
 type restart_in_t
     ! Restart calculation from file.
     logical :: read_restart = .false.
+    ! Index to read from (huge indicates not set).
+    integer :: read_id = huge(0)
     ! Print out restart file.
-    logical :: dump_restart = .false.
+    logical :: write_restart = .false.
+    ! Index to write to (huge indicates not set).
+    integer :: write_id = huge(0)
+    ! Print out restart file every X iterations (in addition to at the end).
+    integer :: write_freq = huge(0)
     ! Print out a restart file just before the shift turns on.
-    logical :: dump_restart_file_shift = .false.
+    logical :: write_restart_shift = .false.
+    ! Index to write to (huge indicates not set).
+    integer :: write_shift_id = huge(0)
 end type restart_in_t
 
 ! --- Parallel info ---

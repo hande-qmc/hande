@@ -68,30 +68,20 @@ Module restart_hdf5
     implicit none
 
     private
-    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_global, restart_info_global_shift
+    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_t, init_restart_info_t
 
     type restart_info_t
-        ! If write_id is negative, then it was set by the user in the input file.  Set
-        ! Y=-ID-1 to undo the transformation in parse_input, where Y is in the restart
+        ! If write_id is negative, then set Y=-ID-1 in parse_input, where Y is in the restart
         ! filename below.  If non-negative, generate Y such that the restart filename is unique.
         integer :: write_id ! ID number to write to.
-        ! As for write_id but if positive find the highest possible value of Y  out of the
+        ! As for write_id but if negative find the highest possible value of Y  out of the
         ! existing restart files (assuming they have sequential values of Y).
         integer :: read_id  ! ID number to write to.
-        ! Number of QMC iterations between writing out a restart file.
-        integer :: write_restart_freq
         ! Stem to use for creating restart filenames (of the format restart_stem.Y.pX.H5,
         ! where X is the processor rank and Y is a common positive integer related to
         ! write_id/read_id.
         character(8), private :: restart_stem = 'HANDE.RS'
     end type restart_info_t
-
-    ! Global restart info store until we have a calc type which is passed
-    ! around...
-    type(restart_info_t) :: restart_info_global = restart_info_t(0,0,huge(0))
-    ! Global restart info to store the restart information about when the shift turns
-    ! on.
-    type(restart_info_t) :: restart_info_global_shift = restart_info_t(0,0,huge(0))
 
     ! Version id of the restart file *produced*.  Please increment if you add
     ! anything to dump_restart_hdf5!
@@ -129,6 +119,36 @@ Module restart_hdf5
                                dhsref = 'Hilbert space reference determinant'
 
     contains
+
+        subroutine init_restart_info_t(ri, write_id, read_id)
+
+            ! In:
+            !    write_id: id used to write restart file out to.  Default: lowest non-existing file.
+            !    read_id: id used to read restart file from.  Default: highest existing file.
+            ! Out:
+            !    ri: restart_info_t object with fields appropriately set.  (See above.)
+
+            type(restart_info_t), intent(out) :: ri
+            integer, intent(in), optional :: write_id, read_id
+
+            ri = restart_info_t(0,0)
+            ! ri%read_id or ri%write_id should be non-negative if input is huge(0) (i.e. unset)
+            if (present(write_id)) then
+                if (write_id == huge(0)) then
+                    ri%write_id = 0
+                else
+                    ri%write_id = -write_id-1
+                end if
+            end if
+            if (present(read_id)) then
+                if (read_id == huge(0)) then
+                    ri%read_id = 0
+                else
+                    ri%read_id = -read_id-1
+                end if
+            end if
+
+        end subroutine init_restart_info_t
 
 #ifndef DISABLE_HDF5
         subroutine init_restart_hdf5(ri, write_mode, filename, kinds)
