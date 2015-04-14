@@ -50,6 +50,16 @@ def read_old(filename):
                 inp['guiding_function'] = ['neel_singlet']
             elif words[0] == 'neel_singlet_estimator':
                 inp['trial_function'] = ['neel_singlet']
+            elif words[0] == 'dump_restart':
+                if len(words) == 1:
+                    inp[words[0]] = None
+                elif words[1] == 'shift':
+                    if len(words) == 2:
+                        inp['write_shift'] = None
+                    else:
+                        inp['write_shift'] = words[2:]
+                else:
+                    inp[words[0]] = words[1:]
             elif len(words) == 1:
                 if words[0] in ('iccmc', 'ifciqmc'):
                     words[0] = words[0][1:]
@@ -195,7 +205,7 @@ def get_calc(inp):
     # Need to do some juggling.
     # We've switched true and false on the semi_stoch_combine_annihil option.  Default is true.
     if 'separate_annihilation' in opts['semi_stoch']:
-            opts['semi_stoch']['separate_annihilation'] = [False]
+            opts['semi_stoch']['separate_annihilation'] = ['false']
     # And have a new option for specifying the space.
     if 'size' in opts['semi_stoch']:
         opts['semi_stoch']['space'] = ['high']
@@ -213,6 +223,15 @@ def get_calc(inp):
                 'write_load_info': 'write',
             }
     read_to_dict(inp, keys, remap, opts['load_bal'])
+
+    opts['restart'] = collections.OrderedDict()
+    keys = 'restart dump_restart write_shift dump_restart_frequency'.split()
+    remap = {
+                'dump_restart_frequency':'write_frequency',
+                'dump_restart':'write',
+                'restart':'read',
+            }
+    read_to_dict(inp, keys, remap, opts['restart'])
 
     opts['reference'] = collections.OrderedDict()
     keys = 'truncation_level reference_det hs_reference_det'.split()
@@ -281,7 +300,7 @@ def print_new(comments, sys, calcs, opts):
             elif calc == 'ccmc':
                 if 'ccmc' in opts:
                     print(dict_to_table(opts['ccmc'], indent=8, prefix='ccmc ='))
-            for table in ('reference',): # ('restart', 'reference'):
+            for table in ('restart', 'reference'):
                 if table in opts:
                     print(dict_to_table(opts[table], indent=8, prefix='%s =' % table))
         print('}')

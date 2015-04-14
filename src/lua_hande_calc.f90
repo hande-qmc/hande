@@ -253,8 +253,7 @@ contains
         ! Get main table.
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in, .true.)
-        ! [todo] - implement
-        !call read_restart_in(lua_state, opts, restart_in)
+        call read_restart_in(lua_state, opts, restart_in)
         call read_reference_t(lua_state, opts, sys, reference)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
@@ -329,8 +328,7 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_fciqmc_in(lua_state, opts, fciqmc_in)
         call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
-        ! [todo] - implement
-        !call read_restart_in(lua_state, opts, restart_in)
+        call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, sys, reference)
         call warn_unused_args(lua_state, keys, opts)
@@ -403,8 +401,7 @@ contains
         call read_ccmc_in(lua_state, opts, ccmc_in)
         ! note that semi-stochastic is not (yet) available in CCMC.
         !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
-        ! [todo] - implement
-        !call read_restart_in(lua_state, opts, restart_in)
+        call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, sys, reference)
         call warn_unused_args(lua_state, keys, opts)
@@ -1060,5 +1057,83 @@ contains
         end if
 
     end subroutine read_reference_t
+
+    subroutine read_restart_in(lua_state, opts, restart_in)
+
+        ! Read in a restart table (if it exists) to a restart_in_t object.
+
+        ! restart = {
+        !    read = true/false/id,
+        !    write = true/false/id,
+        !    write_shift = true/false/id,
+        !    write_frequency = niterations,
+        ! }
+
+        ! where id is an integer and sets the id for the restart file of the relevant type.
+        ! If an id is provided, then the corresponding flag is also set to true.
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the restart table.
+        ! Out:
+        !    restart_in: restart_in_t object contianing the input options describing restart files.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_exists, aot_table_open, aot_table_close, aot_get_val
+
+        use qmc_data, only: restart_in_t
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(restart_in_t), intent(out) :: restart_in
+
+        integer :: err, restart_table
+
+        if (aot_exists(lua_state, opts, 'restart')) then
+
+            call aot_table_open(lua_state, opts, restart_table, 'restart')
+
+            call aot_get_val(restart_in%write_freq, err, lua_state, restart_table, 'write_frequency')
+
+            write (6,*) 'restart', restart_in%write_restart, restart_in%read_restart
+            associate(r_in=>restart_in)
+                call get_flag_and_id(lua_state, restart_table, r_in%read_restart, r_in%read_id, 'read')
+                call get_flag_and_id(lua_state, restart_table, r_in%write_restart, r_in%write_id, 'write')
+                call get_flag_and_id(lua_state, restart_table, r_in%write_restart_shift, r_in%write_shift_id, 'write_shift')
+            end associate
+            write (6,*) 'restart', restart_in%write_restart, restart_in%read_restart
+
+            ! [todo] - check unused args.
+            !call warn_unused_args(lua_state, [], load_bal_table)
+
+            call aot_table_close(lua_state, restart_table)
+
+        end if
+
+        contains
+
+            subroutine get_flag_and_id(lua_state, restart_table, flag, id, key)
+
+                type(flu_State), intent(inout) :: lua_state
+                integer, intent(in) :: restart_table
+                logical, intent(inout) :: flag
+                integer, intent(inout) :: id
+                character(*), intent(in) :: key
+
+                integer :: err
+
+                if (aot_exists(lua_state, restart_table, key)) then
+                    call aot_get_val(flag, err, lua_state, restart_table, key)
+                    if (err /= 0) then
+                        ! Passed an id instead.
+                        flag = .true.
+                        call aot_get_val(id, err, lua_state, restart_table, key)
+                    end if
+                end if
+
+            end subroutine get_flag_and_id
+
+    end subroutine read_restart_in
 
 end module lua_hande_calc
