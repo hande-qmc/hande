@@ -726,6 +726,8 @@ contains
         !     non_blocking_comm = true/false,
         !     load_balancing = true/false,
         !     init_spin_inverse_reference_det = true/false,
+        !     guiding_function = 'none'/'neel_singlet',
+        !     trial_function = 'single_basis'/'neel_singlet',
         !     select_reference_det = true, -- OR
         !     select_reference_det = {
         !        update_every = mc_cycles,
@@ -743,15 +745,16 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
-        use qmc_data, only: fciqmc_in_t
+        use qmc_data, only: fciqmc_in_t, neel_singlet, neel_singlet_guiding
         use lua_hande_utils, only: warn_unused_args
+        use errors, only: stop_all
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
         type(fciqmc_in_t), intent(out) :: fciqmc_in
 
         integer :: fciqmc_table, ref_det, err
-        character(len=10) :: str
+        character(len=12) :: str
         logical :: ref_det_flag
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
@@ -775,6 +778,30 @@ contains
                     call aot_get_val(fciqmc_in%select_ref_det_every_nreports, err, lua_state, ref_det, 'update_every', default=20)
                     call aot_get_val(fciqmc_in%ref_det_factor, err, lua_state, ref_det, 'pop_factor')
                 end if
+            end if
+            if (aot_exists(lua_state, fciqmc_table, 'guiding_function')) then
+                call aot_get_val(str, err, lua_state, fciqmc_table, 'guiding_function')
+                select case(trim(str))
+                case('none')
+                    ! use default
+                case('neel_singlet')
+                    fciqmc_in%guiding_function = neel_singlet_guiding
+                    fciqmc_in%trial_function = neel_singlet
+                case default
+                    call stop_all('read_fciqmc_in', 'Unknown guiding function')
+                end select
+            end if
+            if (aot_exists(lua_state, fciqmc_table, 'trial_function')) then
+                call aot_get_val(str, err, lua_state, fciqmc_table, 'trial_function')
+                select case(trim(str))
+                case('none')
+                    ! use default
+                case('neel_singlet')
+                    fciqmc_in%trial_function = neel_singlet
+                case default
+                    write (6,*) trim(str)
+                    call stop_all('read_fciqmc_in', 'Unknown trial wavefunction')
+                end select
             end if
 
             ! [todo] - check unused args.

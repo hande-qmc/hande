@@ -46,6 +46,10 @@ def read_old(filename):
             elif words[0] == 'attempt_spawn_prob':
                 inp['pattempt_single'] = words[1]
                 inp['pattempt_double'] = words[2]
+            elif words[0] == 'neel_singlet_guiding':
+                inp['guiding_function'] = ['neel_singlet']
+            elif words[0] == 'neel_singlet_estimator':
+                inp['trial_function'] = ['neel_singlet']
             elif len(words) == 1:
                 if words[0] in ('iccmc', 'ifciqmc'):
                     words[0] = words[0][1:]
@@ -167,7 +171,7 @@ def get_calc(inp):
     read_to_dict(inp, keys, remap, opts['qmc'])
 
     opts['fciqmc'] = collections.OrderedDict()
-    keys = 'non_blocking_comm load_balancing init_spin_inverse_reference_det select_reference_det'.split()
+    keys = 'non_blocking_comm load_balancing init_spin_inverse_reference_det guiding_function trial_function select_reference_det'.split()
     remap = {}
     read_to_dict(inp, keys, remap, opts['fciqmc'])
 
