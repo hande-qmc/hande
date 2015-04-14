@@ -72,7 +72,7 @@ contains
 
     pure subroutine update_proj_energy_heisenberg_neel_singlet(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
-        ! Add the contribution of the current basis fuction to the
+        ! Add the contribution of the current basis function to the
         ! projected energy.
         ! This uses the Neel singlet state as a trial function.
         ! This function is an integral over the Neel states in all directions
