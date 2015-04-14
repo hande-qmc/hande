@@ -12,7 +12,6 @@ use lanczos
 use determinants
 use determinant_enumeration, only: write_determinants, determinant_file
 use fciqmc_data
-use restart_hdf5, only: restart_info_global, restart_info_global_shift
 use hfs_data
 use semi_stoch
 
@@ -488,37 +487,30 @@ contains
             ! been fixed.
             case('RESTART')
                 restart_in%read_restart = .true.
-                if (item /= nitems) then
-                    call readi(restart_info_global%read_id)
-                    restart_info_global%read_id = -restart_info_global%read_id -1
-                end if
+                if (item /= nitems) call readi(restart_in%read_id)
             case('DUMP_RESTART')
                 if (item /= nitems) then
                     call readu(w)
                     ! Do we want to dump a restart file, when the shift turns on.
                     if(w == 'SHIFT') then
-                        restart_in%dump_restart_file_shift = .true.
+                        restart_in%write_restart_shift = .true.
                         ! Do we have a restart number for when the shift turns on.
-                        if (item /= nitems) then
-                            call readi(restart_info_global_shift%write_id)
-                            restart_info_global_shift%write_id = -restart_info_global_shift%write_id-1
-                        end if
+                        if (item /= nitems) call readi(restart_in%write_shift_id)
                     ! Otherwise we have read a restart number.
                     else
                         call reread(0)
-                        call readi(restart_info_global%write_id)
-                        restart_info_global%write_id = -restart_info_global%write_id-1
-                        restart_in%dump_restart = .true.
+                        call readi(restart_in%write_id)
+                        restart_in%write_restart = .true.
                     end if
                 else
-                restart_in%dump_restart = .true.
+                    restart_in%write_restart = .true.
                 end if
                 
                 ! If semi-stochastic is being used then a semi-stoch file will
                 ! automatically be dumped when using this option.
                 semi_stoch_in%write_determ_space = .true.
             case('DUMP_RESTART_FREQUENCY')
-                call readi(restart_info_global%write_restart_freq)
+                call readi(restart_in%write_freq)
             case('SEED')
                 call readi(qmc_in%seed)
             case('SHIFT_DAMPING')
@@ -788,13 +780,6 @@ contains
                                                       & cannot be used together.')
         end if
 
-        if (restart_in%dump_restart_file_shift) then
-             if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_id<0 &
-                 .and. restart_info_global%write_id == restart_info_global_shift%write_id) &
-                 call stop_all(this, 'The ids of the restart files are the same.')
-             if (restart_info_global_shift%write_id<0 .and. restart_info_global%write_restart_freq /= huge(0) )&
-                 call stop_all(this, 'The ids of the restart files could be the same')
-        end if   
         if (dmqmc_in%vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
             call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
@@ -1069,12 +1054,12 @@ contains
             call mpi_bcast(reference%hs_occ_list0, occ_list_size, mpi_integer, 0, mpi_comm_world, ierr)
         end if
         call mpi_bcast(restart_in%read_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(restart_in%dump_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(restart_in%dump_restart_file_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(restart_info_global%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(restart_info_global%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(restart_info_global%write_restart_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(restart_info_global_shift%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%write_restart, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%write_restart_shift, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%read_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%write_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%write_freq, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(restart_in%write_shift_id, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%seed, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(qmc_in%shift_damping, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(ccmc_in%cluster_multispawn_threshold, 1, mpi_preal, 0, mpi_comm_world, ierr)

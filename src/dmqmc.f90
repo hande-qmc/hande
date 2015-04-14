@@ -41,7 +41,7 @@ contains
         use excitations, only: excit_t
         use qmc, only: init_qmc
         use qmc_common
-        use restart_hdf5, only: restart_info_global, dump_restart_hdf5
+        use restart_hdf5, only: restart_info_t, dump_restart_hdf5, init_restart_info_t
         use system
         use dSFMT_interface, only: dSFMT_t
         use utils, only: rng_init_info
@@ -67,13 +67,14 @@ contains
         integer(int_p) :: nspawned, ndeath
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
-        logical :: soft_exit, dump_restart_file_shift, update_tau
+        logical :: soft_exit, write_restart_shift, update_tau
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
         type(dmqmc_weighted_sampling_t) :: weighted_sampling
+        type(restart_info_t) :: ri
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -120,7 +121,8 @@ contains
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
 
         ! Should we dump a restart file just before the shift is turned on?
-        dump_restart_file_shift = restart_in%dump_restart_file_shift
+        write_restart_shift = restart_in%write_restart_shift
+        call init_restart_info_t(ri, write_id=restart_in%write_id)
 
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
@@ -312,8 +314,8 @@ contains
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, .false.)
+        if (restart_in%write_restart) then
+            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, .false.)
             if (parent) write (6,'()')
         end if
 

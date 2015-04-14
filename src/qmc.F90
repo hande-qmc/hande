@@ -124,7 +124,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
-        use restart_hdf5, only: restart_info_global, read_restart_hdf5
+        use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, &
                             annihilation_flags_t, qmc_state_t, reference_t
@@ -149,7 +149,7 @@ contains
         integer(int_64) :: tmp_int_64
         real(p) :: spawn_cutoff
         type(fciqmc_in_t) :: fciqmc_in_loc
-
+        type(restart_info_t) :: ri
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
 
@@ -285,7 +285,8 @@ contains
                     allocate(reference%occ_list0(sys%nel), stat=ierr)
                     call check_allocate('reference%occ_list0',sys%nel,ierr)
                 end if
-                call read_restart_hdf5(restart_info_global, fciqmc_in_loc%non_blocking_comm, qmc_state)
+                call init_restart_info_t(ri, read_id=restart_in%read_id)
+                call read_restart_hdf5(ri, fciqmc_in_loc%non_blocking_comm, qmc_state)
                 ! Need to re-calculate the reference determinant data
                 call decode_det(sys%basis, reference%f0, reference%occ_list0)
                 if (trial_function == neel_singlet) then

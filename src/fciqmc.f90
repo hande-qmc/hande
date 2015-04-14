@@ -49,7 +49,7 @@ contains
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, set_determ_info
         use system, only: sys_t
-        use restart_hdf5, only: restart_info_global, dump_restart_hdf5
+        use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t
@@ -82,8 +82,9 @@ contains
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
+        type(restart_info_t) :: ri, ri_shift
 
-        logical :: soft_exit, dump_restart_file_shift
+        logical :: soft_exit, write_restart_shift
         logical :: determ_parent, determ_child
 
         real :: t1, t2
@@ -111,7 +112,9 @@ contains
         call alloc_det_info_t(sys, cdet, .false.)
 
         ! Should we dump a restart file just before the shift is turned on?
-        dump_restart_file_shift = restart_in%dump_restart_file_shift
+        write_restart_shift = restart_in%write_restart_shift
+        call init_restart_info_t(ri, write_id=restart_in%write_id)
+        call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
 
         ! In case this is not set.
         nspawn_events = 0
@@ -272,8 +275,8 @@ contains
             ! Update the time for the start of the next iteration.
             t1 = t2
 
-            call dump_restart_file_wrapper(qs, dump_restart_file_shift, nparticles_old, ireport, qmc_in%ncycles, &
-                                           fciqmc_in%non_blocking_comm)
+            call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
+                                           qmc_in%ncycles, ri, ri_shift, fciqmc_in%non_blocking_comm)
 
             if (soft_exit) exit
 
@@ -286,7 +289,7 @@ contains
         if (fciqmc_in%non_blocking_comm) call end_non_blocking_comm(sys, rng, qmc_in, annihilation_flags, ireport, &
                                                                     qs, qs%spawn_store%spawn_recv,  req_data_s,  &
                                                                     qs%par_info%report_comm%request, t1, nparticles_old, &
-                                                                    qs%shift(1), restart_in%dump_restart, load_bal_in)
+                                                                    qs%shift(1), restart_in%write_restart, load_bal_in)
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
@@ -304,8 +307,8 @@ contains
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
+        if (restart_in%write_restart) then
+            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, fciqmc_in%non_blocking_comm)
             if (parent) write (6,'()')
         end if
 

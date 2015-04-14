@@ -58,7 +58,7 @@ contains
         use proc_pointers
         use qmc, only: init_qmc
         use system, only: sys_t
-        use restart_hdf5, only: restart_info_global, dump_restart_hdf5
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t, reference_t
 
         type(sys_t), intent(in) :: sys
@@ -80,6 +80,7 @@ contains
         type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
+        type(restart_info_t) :: ri
 
         logical :: soft_exit, comms_found
 
@@ -114,6 +115,8 @@ contains
 
         ! Initialise timer.
         call cpu_time(t1)
+
+        call init_restart_info_t(ri, write_id=restart_in%write_id)
 
         do ireport = 1, qmc_in%nreport
 
@@ -305,8 +308,8 @@ contains
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done, nparticles_old, .false.)
+        if (restart_in%write_restart) then
+            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if
 

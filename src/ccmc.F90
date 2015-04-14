@@ -249,7 +249,7 @@ contains
         use errors, only: stop_all
         use utils, only: rng_init_info
         use parallel
-        use restart_hdf5, only: dump_restart_hdf5, restart_info_global
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
@@ -294,7 +294,7 @@ contains
         type(dSFMT_t), allocatable :: rng(:)
         real(p) :: junk, bloom_threshold
 
-        logical :: soft_exit, dump_restart_file_shift
+        logical :: soft_exit, dump_restart_shift
 
         integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
@@ -303,6 +303,7 @@ contains
         type(bloom_stats_t) :: bloom_stats
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
+        type(restart_info_t) :: ri, ri_shift
 
         real :: t1, t2
 
@@ -391,7 +392,9 @@ contains
         semi_stoch_iter = qs%mc_cycles_done + semi_stoch_in%start_iter
 
         ! Should we dump a restart file just before the shift is turned on?
-        dump_restart_file_shift = restart_in%dump_restart_file_shift
+        dump_restart_shift = restart_in%write_restart_shift
+        call init_restart_info_t(ri, write_id=restart_in%write_id)
+        call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
 
         do ireport = 1, qmc_in%nreport
 
@@ -702,7 +705,8 @@ contains
             ! Update the time for the start of the next iteration.
             t1 = t2
 
-            call dump_restart_file_wrapper(qs, dump_restart_file_shift, nparticles_old, ireport, qmc_in%ncycles, .false.)
+            call dump_restart_file_wrapper(qs, dump_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
+                                           qmc_in%ncycles, ri, ri_shift)
 
             if (soft_exit) exit
 
@@ -721,8 +725,8 @@ contains
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
         end if
 
-        if (restart_in%dump_restart) then
-            call dump_restart_hdf5(restart_info_global, qs, qs%mc_cycles_done, nparticles_old, .false.)
+        if (restart_in%write_restart) then
+            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, .false.)
             if (parent) write (6,'()')
         end if
 
