@@ -57,13 +57,15 @@ Compilation
 -----------
 
 HANDE requires the lapack (http://www.netlib.org/lapack/), blas
-(http://www.netlib.org/blas) and TRLan
-(http://crd-legacy.lbl.gov/~kewu/trlan.html) libaries.  The dependency upon TRLan
+(http://www.netlib.org/blas), TRLan
+(http://crd-legacy.lbl.gov/~kewu/trlan.html), and lua (http://www.lua.org) (version 5.2) libaries.
+The dependency upon TRLan
 can be removed at compile-time by disabling the Lanczos functionality.
 In addition, it requires the HDF5 library compiled with fortran 2003 support (see,
 for example, http://www.cmth.ph.ic.ac.uk/computing/software/hdf5.html#admin-notes )
 and the libuuid library (from, for example the uuid-dev Ubuntu package).
 
+The code imports the AOTUS library which functions with lua 5.2 but not lua 5.3
 
 After meeting these requirements, produce a makefile by running the mkconfig.py
 (residing in the tools subdirectory) script in the root directory:
