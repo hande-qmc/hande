@@ -132,8 +132,21 @@ Module restart_hdf5
             integer, intent(in), optional :: write_id, read_id
 
             ri = restart_info_t(0,0)
-            if (present(write_id)) ri%write_id = -write_id-1
-            if (present(read_id)) ri%read_id = -read_id-1
+            ! ri%read_id or ri%write_id should be non-negative if input is huge(0) (i.e. unset)
+            if (present(write_id)) then
+                if (write_id == huge(0)) then
+                    ri%write_id = 0
+                else
+                    ri%write_id = -write_id-1
+                end if
+            end if
+            if (present(read_id)) then
+                if (read_id == huge(0)) then
+                    ri%read_id = 0
+                else
+                    ri%read_id = -read_id-1
+                end if
+            end if
 
         end subroutine init_restart_info_t
 
