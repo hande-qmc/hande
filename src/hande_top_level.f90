@@ -312,7 +312,7 @@ contains
         type(sys_t) :: sys_bak
 
         ! Initialise procedure pointers.
-        call init_proc_pointers(sys, qmc_in, dmqmc_in, reference)
+        call init_proc_pointers(sys, qmc_in, reference, dmqmc_in, fciqmc_in)
 
         ! Set spin variables.
         ! [todo] - handle all_spin_sectors more gracefully.  It should probably be handled by DMQMC-specific code but must be done before set_spin_polarisation.

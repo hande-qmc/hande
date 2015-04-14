@@ -800,11 +800,10 @@ contains
         !    ref: reference determinant.
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
-        use calc, only: trial_function, neel_singlet
         use heisenberg_estimators, only: neel_singlet_data
         use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr
         use system, only: sys_t
-        use qmc_data, only: particle_t, annihilation_flags_t, reference_t
+        use qmc_data, only: particle_t, annihilation_flags_t, reference_t, neel_singlet
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(inout) :: psip_list
@@ -821,7 +820,7 @@ contains
         ! Calculate and insert all new components of psip_list%dat.
         psip_list%dat(1,pos) = sc0_ptr(sys, det) - ref%H00
         associate(pl=>psip_list)
-            if (trial_function == neel_singlet) &
+            if (annihilation_flags%trial_function == neel_singlet) &
                 pl%dat(pl%nspaces+1:pl%nspaces+2,pos) = neel_singlet_data(sys, det)
         end associate
         if (doing_calc(hfs_fciqmc_calc)) then

@@ -102,6 +102,15 @@ type fciqmc_in_t
     ! Default: False.
     logical :: doing_load_balancing = .false.
 
+    ! Importance sampling (see enumerators below for allowed values).  Currently
+    ! only relevant to the Heisenberg model.  trial_function will always be
+    ! single_basis for other models to represent a single determinant.
+    integer :: trial_function = 0
+    ! If we are not using importance sampling, this is set to no_guiding, otherwise
+    ! to a specific enumerator belwo to specify the corresponding guiding function
+    ! being used.
+    integer :: guiding_function = 0
+
 end type fciqmc_in_t
 
 type semi_stoch_in_t
@@ -345,6 +354,26 @@ type semi_stoch_t
     type(parallel_timing_t) :: mpi_time
 end type semi_stoch_t
 
+! --- Importance sampling ---
+
+! For the Heisenberg model, several different trial functions can be used in the
+! energy estimator. Only a single determinant can be used for the Hubbard model.
+enum, bind(c)
+    enumerator :: single_basis
+    enumerator :: neel_singlet
+end enum
+
+! For the Heisenberd model, a guiding function may be used,
+! |psi_G> = \sum_{i} a_i |psi_i>, so that the new Hamiltonian matrix elements are
+! H_ij^new = (a_i*H_ij)/a_j. This is just importance sampling. These functions
+! represent the different types of functions whihc may be used.
+enum, bind(c)
+    enumerator :: no_guiding
+    ! Note that when we use the Neel singlet state as a guiding function, it must also
+    ! be used as the trial function in calculating the projected energy.
+    enumerator :: neel_singlet_guiding
+end enum
+
 ! --- Estimators ---
 
 type particle_t
@@ -479,13 +508,18 @@ type qmc_state_t
     type(estimators_t) :: estimators
 end type qmc_state_t
 
+! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
+! structs/flags for various settings.  Set in init_qmc.
 type annihilation_flags_t
     ! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
     ! Currently only implemented for DMQMC.
     logical :: replica_tricks = .false.
     ! Propagate a trial density matrix to a specific temeperature.
     logical :: propagate_to_beta = .false.
+    ! Trial function used (FCIQMC & Heisenberg model only)
+    integer :: trial_function
 end type annihilation_flags_t
+
 ! --- GLOBAL STATE (TEMPORARY) ---
 
 ! Global handle for purity work.

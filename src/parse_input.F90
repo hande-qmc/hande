@@ -40,6 +40,7 @@ contains
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t
         use qmc_data, only: read_determ_space, high_pop_determ_space
+        use qmc_data, only: neel_singlet, neel_singlet_guiding, no_guiding, single_basis
         use dmqmc_data, only: dmqmc_in_t
         use system
 
@@ -561,10 +562,10 @@ contains
                 sys%lattice%triangular_lattice = .true.
 
             case('NEEL_SINGLET_ESTIMATOR')
-                trial_function = neel_singlet
+                fciqmc_in%trial_function = neel_singlet
             case('NEEL_SINGLET_GUIDING')
-                guiding_function = neel_singlet_guiding
-                trial_function = neel_singlet
+                fciqmc_in%guiding_function = neel_singlet_guiding
+                fciqmc_in%trial_function = neel_singlet
 
             case('END')
                 exit
@@ -598,6 +599,7 @@ contains
         use const
         use qmc_data, only: qmc_in_t, fciqmc_in_t, ccmc_in_t, semi_stoch_in_t
         use qmc_data, only: restart_in_t, reference_t, load_bal_in_t, empty_determ_space
+        use qmc_data, only: neel_singlet, neel_singlet_guiding, no_guiding, single_basis
         use dmqmc_data, only: dmqmc_in_t
         use system
 
@@ -616,9 +618,9 @@ contains
 
         if (sys%system /= heisenberg) then
             if (sys%nel <= 0) call stop_all(this,'Number of electrons must be positive.')
-            if (trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the reference&
-                                                     & state for this system. Other trial functions are not avaliable.')
-            if (guiding_function /= no_guiding) &
+            if (fciqmc_in%trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the&
+                                                     & reference state for this system. Other trial functions are not avaliable.')
+            if (fciqmc_in%guiding_function /= no_guiding) &
                 call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model&
                                          & currently.')
             if (dmqmc_in%all_spin_sectors) call stop_all(this,'The option to use all symmetry sectors at the same time is only&
@@ -660,9 +662,9 @@ contains
                                         & for this lattice because it is frustrated.')
                 if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. sys%heisenberg%magnetic_field /= 0.0_p) &
                     call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
-                if ((guiding_function==neel_singlet_guiding) .and. trial_function /= neel_singlet) call stop_all(this, 'This &
-                                                         &guiding function is only avaliable when using the Neel singlet state &
-                                                         &as an energy estimator.')
+                if ((fciqmc_in%guiding_function==neel_singlet_guiding) .and. fciqmc_in%trial_function /= neel_singlet) &
+                    call stop_all(this, 'This &guiding function is only avaliable when using the Neel singlet state &
+                                        &as an energy estimator.')
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) then
                     if (parent) call warning(this,'Staggered magnetisation can only be calculated on a bipartite lattice.&
                                           & This is not a bipartite lattice. Changing options so that it will not be calculated.')
@@ -865,8 +867,8 @@ contains
         call mpi_bcast(dmqmc_in%replica_tricks, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%real_lattice%finite_cluster, 1, mpi_logical, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%lattice%triangular_lattice, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(guiding_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%trial_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(fciqmc_in%guiding_function, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%nel, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%hubbard%t, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%hubbard%u, 1, mpi_preal, 0, mpi_comm_world, ierr)
