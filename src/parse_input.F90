@@ -663,7 +663,7 @@ contains
                 if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. sys%heisenberg%magnetic_field /= 0.0_p) &
                     call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
                 if ((fciqmc_in%guiding_function==neel_singlet_guiding) .and. fciqmc_in%trial_function /= neel_singlet) &
-                    call stop_all(this, 'This &guiding function is only avaliable when using the Neel singlet state &
+                    call stop_all(this, 'This guiding function is only avaliable when using the Neel singlet state &
                                         &as an energy estimator.')
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) then
                     if (parent) call warning(this,'Staggered magnetisation can only be calculated on a bipartite lattice.&

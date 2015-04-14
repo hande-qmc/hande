@@ -107,7 +107,7 @@ type fciqmc_in_t
     ! single_basis for other models to represent a single determinant.
     integer :: trial_function = 0
     ! If we are not using importance sampling, this is set to no_guiding, otherwise
-    ! to a specific enumerator belwo to specify the corresponding guiding function
+    ! to a specific enumerator below to specify the corresponding guiding function
     ! being used.
     integer :: guiding_function = 0
 
@@ -363,10 +363,10 @@ enum, bind(c)
     enumerator :: neel_singlet
 end enum
 
-! For the Heisenberd model, a guiding function may be used,
+! For the Heisenberg model, a guiding function may be used,
 ! |psi_G> = \sum_{i} a_i |psi_i>, so that the new Hamiltonian matrix elements are
 ! H_ij^new = (a_i*H_ij)/a_j. This is just importance sampling. These functions
-! represent the different types of functions whihc may be used.
+! represent the different types of functions which may be used.
 enum, bind(c)
     enumerator :: no_guiding
     ! Note that when we use the Neel singlet state as a guiding function, it must also
@@ -516,7 +516,7 @@ type annihilation_flags_t
     logical :: replica_tricks = .false.
     ! Propagate a trial density matrix to a specific temeperature.
     logical :: propagate_to_beta = .false.
-    ! Trial function used (FCIQMC & Heisenberg model only)
+    ! Trial function used (FCIQMC & Heisenberg model only).
     integer :: trial_function
 end type annihilation_flags_t
 
