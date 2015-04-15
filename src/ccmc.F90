@@ -706,7 +706,7 @@ contains
             t1 = t2
 
             call dump_restart_file_wrapper(qs, dump_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
-                                           qmc_in%ncycles, ri, ri_shift)
+                                           qmc_in%ncycles, ri, ri_shift, .false.)
 
             if (soft_exit) exit
 

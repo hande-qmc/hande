@@ -960,7 +960,7 @@ contains
         real(p), intent(in) :: ntot_particles(qs%psip_list%nspaces)
         integer, intent(in) :: ireport, ncycles, dump_freq
         type(restart_info_t), intent(in) :: ri_freq, ri_shift
-        logical, optional, intent(in) :: nb_comm
+        logical, intent(in) :: nb_comm
 
         if (dump_restart_shift .and. any(qs%vary_shift)) then
             dump_restart_shift = .false.
