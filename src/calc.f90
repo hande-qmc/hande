@@ -61,13 +61,7 @@ integer, parameter :: dmqmc_correlation = 2**3
 integer, parameter :: dmqmc_rdm_r2 = 2**4
 integer, parameter :: dmqmc_full_r2 = 2**5
 
-!--- global data (to deal with)
-
-! Symmetry block of determinants.  Ignored for real space formulation.  Refers
-! to a wavevector in momentum space formulation.  If not set, then determinants
-! of all possible momenta are considered in FCI.  FCIQMC assumes determinants
-! with 0 momentum are to be considered if not specified in input.
-integer :: sym_in = huge(1)
+!--- global data (to deal with in HANDE 1.1)
 
 ! RAS-CI (only in QMC currently)
 ! The ras1 space can have at most truncation_level holes.

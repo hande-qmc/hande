@@ -115,7 +115,6 @@ contains
         use checking, only: check_allocate
 
         use system, only: sys_t
-        use calc, only: sym_in
 
         type(sys_t), intent(inout) :: sys
 
@@ -174,10 +173,10 @@ contains
         Lz_offset = 3*maxLz*Lz_divisor
         gamma_sym = Lz_offset
 
-        if(sym_in /= huge(1)) then
-            ! If one wished to specify Lz in sym_in, it would be added in here.
+        if(sys%symmetry /= huge(1)) then
+            ! If one wished to specify Lz in sys%symmetry, it would be added in here.
             ! Need to modify to include Lz:
-            sym_in = sym_in + Lz_offset
+            sys%symmetry = sys%symmetry + Lz_offset
         endif
 
         ! nsym, sym0 and sym_max allow one to iterate over the symmetries that occur in

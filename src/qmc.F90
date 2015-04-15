@@ -312,8 +312,8 @@ contains
                 ! single-particle eigenvalues which satisfy the spin polarisation.
                 ! Note: this is for testing only!  The symmetry input is currently
                 ! ignored.
-                if (sym_in < sys%sym_max) then
-                    call set_reference_det(sys, reference%occ_list0, .false., sym_in)
+                if (sys%symmetry < sys%sym_max) then
+                    call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
                 else
                     call set_reference_det(sys, reference%occ_list0, .false.)
                 end if

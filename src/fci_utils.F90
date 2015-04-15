@@ -71,8 +71,6 @@ contains
 
         use system, only: sys_t, set_spin_polarisation
 
-        use calc, only: sym_in
-
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(in) :: fci_in
         type(reference_t), intent(in) :: ref
@@ -101,12 +99,12 @@ contains
             ref_ms = spin_orb_list(sys%basis%basis_fns, ref%occ_list0)
             ref_sym = symmetry_orb_list(sys, ref%occ_list0)
             if (sys%Ms == huge(1)) sys%Ms = ref_ms
-            if (sym_in == huge(1)) sym_in = ref_sym
+            if (sys%symmetry == huge(1)) sys%symmetry = ref_sym
             spin_flip = sys%Ms /= ref_ms
-        else if (sym_in == huge(1) .and. sys%nsym == 1) then
+        else if (sys%symmetry == huge(1) .and. sys%nsym == 1) then
             ! Only one option, so don't force it to be set.
-            sym_in = sys%sym0
-        else if (sys%Ms == huge(1) .or. (sym_in == huge(1))) then
+            sys%symmetry = sys%sym0
+        else if (sys%Ms == huge(1) .or. (sys%symmetry == huge(1))) then
             call stop_all('init_fci', 'Spin and/or symmetry of Hilbert space not defined.')
         end if
 
@@ -115,15 +113,16 @@ contains
         ! Construct space
         if (allocated(ref%occ_list0)) then
             call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets, occ_list0=ref%occ_list0)
-            call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sym_in, ref%occ_list0)
+            call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, &
+                                        sys%symmetry, ref%occ_list0)
         else
             call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets)
-            call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sym_in)
+            call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sys%symmetry)
         end if
         if (fci_in%write_determinants) call print_dets_list(sys, ndets, dets, fci_in%determinant_file)
 
         ! Info (symmetry, spin, ex_level).
-        write (6,'(1X,"Symmetry of selected Hilbert subspace:",'//int_fmt(sym_in,1)//',".")') sym_in
+        write (6,'(1X,"Symmetry of selected Hilbert subspace:",'//int_fmt(sys%symmetry,1)//',".")') sys%symmetry
         write (6,'(1X,"Spin of selected Hilbert subspace:",'//int_fmt(sys%Ms,1)//',".")') sys%Ms
         if (ref%ex_level /= sys%nel) then
             call encode_det(sys%basis, ref%occ_list0, f0)

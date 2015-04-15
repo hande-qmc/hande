@@ -82,8 +82,6 @@ contains
         use flu_binding, only: flu_State
         use system, only: sys_t
 
-        use calc, only: sym_in
-
         type(flu_State), intent(inout) :: lua_state
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: opts
@@ -94,7 +92,7 @@ contains
         call aot_get_val(sys%nel, err, lua_state, opts, 'electrons')
         call aot_get_val(sys%nel, err, lua_state, opts, 'nel')
         call aot_get_val(sys%Ms, err, lua_state, opts, 'ms')
-        call aot_get_val(sym_in, err, lua_state, opts, 'sym')
+        call aot_get_val(sys%symmetry, err, lua_state, opts, 'sym')
 
         call aot_get_val(cas, err_arr, 2, lua_state, opts, key='CAS')
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.

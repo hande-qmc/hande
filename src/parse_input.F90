@@ -170,7 +170,7 @@ contains
             case('MS')
                 call readi(sys%Ms)
             case('SYM','SYMMETRY')
-                call readi(sym_in)
+                call readi(sys%symmetry)
             case("LZ")
                 sys%read_in%useLz=.true.
             case('CAS')
@@ -842,7 +842,7 @@ contains
 
         call mpi_bcast(sys%system, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%read_in%fcidump, len(sys%read_in%fcidump), mpi_character, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%symmetry, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(sys%lattice%ndim, 1, mpi_integer, 0, mpi_comm_world, ierr)
         if (parent) option_set = allocated(sys%lattice%lattice)
@@ -894,7 +894,7 @@ contains
         call mpi_bcast(ras3_max, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(sys%Ms, 1, mpi_integer, 0, mpi_comm_world, ierr)
-        call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%symmetry, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%read_in%useLz, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
         call mpi_bcast(calc_type, 1, mpi_integer, 0, mpi_comm_world, ierr)

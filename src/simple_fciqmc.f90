@@ -55,8 +55,6 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
-        use calc, only: sym_in
-
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(inout) :: reference
@@ -90,10 +88,10 @@ contains
 
         ! Find all determinants with desired spin and symmetry.
         if (allocated(reference%occ_list0)) then
-            call enumerate_determinants(sys, .false., .false., reference%ex_level, sym_space_size, ndets, dets, sym_in, &
+            call enumerate_determinants(sys, .false., .false., reference%ex_level, sym_space_size, ndets, dets, sys%symmetry, &
                                         reference%occ_list0)
         else
-            call enumerate_determinants(sys, .false., .false., reference%ex_level, sym_space_size, ndets, dets, sym_in)
+            call enumerate_determinants(sys, .false., .false., reference%ex_level, sym_space_size, ndets, dets, sys%symmetry)
         end if
 
 
@@ -111,8 +109,8 @@ contains
                               &spin polarization required.'
         write (6,'(1X,a104,/)') 'This is slow and memory demanding: consider using the &
                                 &fciqmc option instead of the simple_fciqmc option.'
-        write (6,'(1X,a46,'//int_fmt(sym_in,1)//',1X,a9,'//int_fmt(sys%Ms,1)//',a1,/)') &
-            'Considering determinants belonging to symmetry',sym_in,'with spin',sys%Ms,"."
+        write (6,'(1X,a46,'//int_fmt(sys%symmetry,1)//',1X,a9,'//int_fmt(sys%Ms,1)//',a1,/)') &
+            'Considering determinants belonging to symmetry',sys%symmetry,'with spin',sys%Ms,"."
 
         ! Allocate main and spawned lists to hold population of walkers.
         ! Don't need to hold determinants, so can just set spawned_size to be 1.

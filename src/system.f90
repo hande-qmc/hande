@@ -322,6 +322,9 @@ type sys_t
     ! # number of virtual alpha, beta spin-orbitals
     integer :: nvirt_alpha, nvirt_beta
 
+    ! The specific symmetry sector to be used.
+    integer :: symmetry = huge(1)
+
     ! Number of symmetries.  These are specified for orbitals.
     integer :: nsym = 1
     ! Index of lowest symmetry (normally 0 or 1).

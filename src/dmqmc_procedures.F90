@@ -461,7 +461,6 @@ contains
         use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
         use spawn_data, only:spawn_t
         use dmqmc_data, only: dmqmc_in_t
-        use calc, only: sym_in
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -520,21 +519,21 @@ contains
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, dmqmc_in, sym_in, npsips_this_proc, spawn, rng)
+                        call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, rng)
                     else
-                        call init_uniform_ensemble(sys, npsips_this_proc, sym_in, reference%f0, ireplica, &
+                        call init_uniform_ensemble(sys, npsips_this_proc, reference%f0, ireplica, &
                                                    dmqmc_in%all_sym_sectors, rng, spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
                     if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, &
-                                                                               npsips_this_proc, sym_in, ireplica, spawn)
+                                                                               npsips_this_proc, ireplica, spawn)
                 else
-                    call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, &
+                    call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                         dmqmc_in%all_sym_sectors, spawn)
                 end if
             case(hub_real)
-                call random_distribution_electronic(rng, sys, sym_in, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors, spawn)
+                call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors, spawn)
             case default
                 call stop_all('create_initial_density_matrix','DMQMC not implemented for this system.')
             end select
@@ -639,7 +638,7 @@ contains
 
     end subroutine random_distribution_heisenberg
 
-    subroutine random_distribution_electronic(rng, sys, sym, npsips, ireplica, all_sym_sectors, spawn)
+    subroutine random_distribution_electronic(rng, sys, npsips, ireplica, all_sym_sectors, spawn)
 
         ! For the electronic Hamiltonians only. Distribute the initial number of psips
         ! along the main diagonal. Each diagonal element should be chosen
@@ -650,7 +649,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    sym: only keep determinants in this symmetry sector.
         !    npsips: The total number of psips to be created.
         !    ireplica: index of replica (ie which of the possible concurrent
         !       DMQMC populations are we initialising)
@@ -668,7 +666,6 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
         logical, intent(in) :: all_sym_sectors
@@ -683,7 +680,7 @@ contains
                 ! Generate a random determinant uniformly in this specific
                 ! symmetry sector and spin polarisation.
                 call gen_random_det_full_space(rng, sys, f, occ_list)
-                if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                         sys%basis%tensor_label_len, real_factor, ireplica, spawn)
                     exit
@@ -693,7 +690,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, sym, ireplica, spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, ireplica, spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -713,7 +710,6 @@ contains
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
-        !    sym: symmetry index of determinant space we wish to sample.
         !    npsips: number of psips to distribute in this sector.
         !    ireplica: replica index.
         ! In/Out:
@@ -738,7 +734,6 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
-        integer, intent(in) :: sym
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
         type(dSFMT_t), intent(inout) :: rng
@@ -813,7 +808,7 @@ contains
 
     end subroutine initialise_dm_metropolis
 
-    subroutine init_uniform_ensemble(sys, npsips, sym, f0, ireplica, all_sym_sectors, rng, spawn)
+    subroutine init_uniform_ensemble(sys, npsips, f0, ireplica, all_sym_sectors, rng, spawn)
 
         ! Create an initital distribution of psips along the diagonal.
         ! This subroutine will return a list of occupied determinants in
@@ -823,7 +818,6 @@ contains
         ! In:
         !    sys: system being studied.
         !    npsips: number of psips to distribute on the diagonal.
-        !    sym: symmetry of determinants being occupied.
         !    f0: bit string of reference determinant
         !    ireplica: replica index.
         !    all_sym_sectors: create determinants in all symmetry sectors?
@@ -842,7 +836,6 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(int_64), intent(in) :: npsips
-        integer, intent(in) :: sym
         integer(i0), intent(in) :: f0(sys%basis%string_len)
         integer, intent(in) :: ireplica
         logical, intent(in) :: all_sym_sectors
@@ -875,7 +868,7 @@ contains
             ! excitation level.
             do
                 call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
-                if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+                if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                     call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                                 sys%basis%tensor_label_len, real_factor, ireplica, spawn)
@@ -888,7 +881,7 @@ contains
 
     end subroutine init_uniform_ensemble
 
-    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, sym, npsips, spawn, rng)
+    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, spawn, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -896,7 +889,6 @@ contains
         ! In:
         !    sys: system being studied.
         !    dmqmc_in: input options for dmqmc.
-        !    sym: symmetry sector under consideration.
         !    npsips: number of psips to create on the diagonal.
         ! In/Out:
         !    spawn: spawned list.
@@ -912,7 +904,6 @@ contains
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: sym
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
         type(spawn_t), intent(inout) :: spawn
@@ -953,7 +944,7 @@ contains
             if (sys%nbeta > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
             if (.not. gen) cycle
             ! Create the determinant.
-            if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sym) then
+            if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                                             sys%basis%tensor_label_len, real_factor, ireplica, spawn)

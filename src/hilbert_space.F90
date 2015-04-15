@@ -42,7 +42,7 @@ contains
         !    rng_seed (optional): seed to initialise the random number generator.
         !       Default: seed based upon the hash of the time and calculation UUID.
 
-        use calc, only: GLOBAL_META, gen_seed, sym_in
+        use calc, only: GLOBAL_META, gen_seed
 
         use basis, only: write_basis_fn
         use const, only: dp
@@ -132,8 +132,8 @@ contains
 
                 ! Perform a Monte Carlo sampling of the space.
 
-                if (sym_in < sys%sym_max) then
-                    call set_reference_det(sys, occ_list0, .false., sym_in)
+                if (sys%symmetry < sys%sym_max) then
+                    call set_reference_det(sys, occ_list0, .false., sys%symmetry)
                 else
                     call set_reference_det(sys, occ_list0, .false.)
                 end if
