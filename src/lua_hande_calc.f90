@@ -634,6 +634,7 @@ contains
         !     shift_damping = damp_factor,
         !     initiator = true/false,
         !     initiator_threshold = pop,
+        !     use_mpi_barriers = true/false,
         ! }
 
         ! In/Out:
@@ -698,6 +699,7 @@ contains
         call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'target_population')
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
+        call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
 
         ! If user sets initial shift and vary_shift_from, assume they know what
         ! they're doing.  Otherwise, vary the shift from the initial shift
