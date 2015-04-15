@@ -44,20 +44,20 @@ contains
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
-        logical :: lanczos
+        logical :: use_sparse_hamil, lanczos
 
         lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
         lanczos = aot_exists(lua_state, opts, 'lanczos')
-        call read_fci_in(lua_state, opts, sys%basis, fci_in)
+        call read_fci_in(lua_state, opts, sys%basis, fci_in, use_sparse_hamil)
         call read_reference_t(lua_state, opts, sys, ref)
         call aot_table_close(lua_state, opts)
 
         if (lanczos) then
             calc_type = lanczos_diag
-            call do_fci_lanczos(sys, fci_in, ref, .false.)
+            call do_fci_lanczos(sys, fci_in, ref, use_sparse_hamil)
         else
             calc_type = exact_diag
             call do_fci_lapack(sys, fci_in, ref)
@@ -419,7 +419,7 @@ contains
 
     ! --- table-derived type wrappers ---
 
-    subroutine read_fci_in(lua_state, opts, basis, fci_in)
+    subroutine read_fci_in(lua_state, opts, basis, fci_in, use_sparse_hamil)
 
         ! Read in the fci and (optionally) lanczos tables to a fci_in_t object.
 
@@ -432,7 +432,8 @@ contains
         !     wfn_file = filename,
         !     nanalyse = N,
         !     blacs_block_size = block_size,
-        !     rdm = { ... } -- L-d vector containing the sites to include in subsystem A.
+        !     rdm = { ... }, -- L-d vector containing the sites to include in subsystem A.
+        !     sparse_hamil = true/false
         ! }
         ! lanczos = {
         !     neigv = N,
@@ -447,6 +448,7 @@ contains
         !    basis: information about the single-particle basis set of the system.
         ! Out:
         !    fci_in: fci_in_t object containing generic fci/lanczos input options.
+        !    use_sparse_hamil: should the Hamiltonian be stored in a sparse format?
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
@@ -461,6 +463,7 @@ contains
         integer, intent(in) :: opts
         type(basis_t), intent(in) :: basis
         type(fci_in_t), intent(inout) :: fci_in
+        logical, intent(out) :: use_sparse_hamil
 
         integer :: fci_table, err, fci_nrdms
         integer, allocatable :: err_arr(:)
@@ -498,6 +501,7 @@ contains
             call aot_get_val(fci_in%nlanczos_eigv, err, lua_state, fci_table, 'neigv')
             call aot_get_val(fci_in%lanczos_string_len, err, lua_state, fci_table, 'nbasis')
             call aot_get_val(fci_in%direct_lanczos, err, lua_state, fci_table, 'direct')
+            call aot_get_val(use_sparse_hamil, err, lua_state, fci_table, 'sparse_hamil', default=.true.)
             call aot_table_close(lua_state, fci_table)
         end if
 
