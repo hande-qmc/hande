@@ -16,7 +16,7 @@ contains
         !    ref_in: reference determinant defining (if relevant) a
         !        truncated Hilbert space.
 
-        use fci_utils, only: fci_in_t, init_fci, generate_hamil
+        use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
@@ -88,8 +88,10 @@ contains
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
             if (sparse_hamil) then
+                if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil_csr=hamil_csr)
                 call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil_csr=hamil_csr)
             else
+                if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
                 call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil)
             end if
         end if

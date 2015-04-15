@@ -20,7 +20,7 @@ contains
         !        truncated Hilbert space.
 
         use dmqmc_procedures, only: setup_rdm_arrays
-        use fci_utils, only: fci_in_t, init_fci, generate_hamil
+        use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
@@ -60,6 +60,7 @@ contains
                 proc_blacs_info = get_blacs_info(ndets, fci_in%block_size)
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
+            if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             call lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
         end if
 
