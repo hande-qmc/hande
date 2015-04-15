@@ -426,6 +426,8 @@ contains
         !     hamiltonian_file = filename,
         !     write_determinants = true/false,
         !     determinant_file = filename,
+        !     write_nwfns = M,
+        !     wfn_file = filename,
         !     nanalyse = N,
         !     blacs_block_size = block_size,
         !     rdm = { ... } -- L-d vector containing the sites to include in subsystem A.
@@ -469,6 +471,8 @@ contains
             call aot_get_val(fci_in%hamiltonian_file, err, lua_state, fci_table, 'hamiltonian_file')
             call aot_get_val(fci_in%write_determinants, err, lua_state, fci_table, 'write_determinants')
             call aot_get_val(fci_in%determinant_file, err, lua_state, fci_table, 'determinant_file')
+            call aot_get_val(fci_in%print_fci_wfn, err, lua_state, fci_table, 'write_nwfns')
+            call aot_get_val(fci_in%print_fci_wfn_file, err, lua_state, fci_table, 'wfn_file')
             call aot_get_val(fci_in%analyse_fci_wfn, err, lua_state, fci_table, 'nanalyse')
             call aot_get_val(fci_in%block_size, err, lua_state, fci_table, 'blacs_block_size')
 

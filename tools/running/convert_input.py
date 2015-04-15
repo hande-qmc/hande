@@ -64,9 +64,9 @@ def read_old(filename):
                     inp[words[0]] = words[1:]
             elif words[0] == 'print_fci_wfn':
                 if len(words) == 1:
-                    inp['write_wfn'] = [-1]
+                    inp['write_nwfns'] = [-1]
                 else:
-                    inp['write_wfn'] = [words[1]]
+                    inp['write_nwfns'] = [words[1]]
                     if len(words) == 3:
                         inp['wfn_file'] = [words[2]]
             elif words[0] == 'analyse_fci_wfn' and len(words) == 1:
@@ -79,12 +79,6 @@ def read_old(filename):
                 inp['write_determinants'] = None
                 if len(words) == 2:
                     inp['determinant_file'] = [words[1]]
-            elif words[0] == 'print_fci_wfn':
-                inp['write_wfns'] = [-1]
-                if len(words) > 1:
-                    inp['write_wfns'] = [words[1]]
-                    if len(words) == 3:
-                        inp['wfn_file'] = [words[2]]
             elif len(words) == 1:
                 if words[0] in ('iccmc', 'ifciqmc'):
                     words[0] = words[0][1:]
@@ -174,7 +168,7 @@ def get_calc(inp):
     opts = {}
 
     opts['fci'] = collections.OrderedDict()
-    keys = 'write_hamiltonian hamiltonian_file write_determinants determinant_file write_wfn wfn_file analyse_fci_wfn block_size fci_rdm'.split()
+    keys = 'write_hamiltonian hamiltonian_file write_determinants determinant_file write_nwfns wfn_file analyse_fci_wfn block_size fci_rdm'.split()
     remap = {
                 'fci_rdm': 'rdm',
                 'block_size': 'blacs_block_size',
