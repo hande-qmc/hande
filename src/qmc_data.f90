@@ -76,6 +76,9 @@ type qmc_in_t
     ! at the end of each report cycle.
     integer :: nreport
 
+    ! If true then allow the use of MPI barrier calls.
+    logical :: use_mpi_barriers = .false.
+
 end type qmc_in_t
 
 type fciqmc_in_t

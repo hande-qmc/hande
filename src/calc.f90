@@ -89,9 +89,6 @@ integer :: ras3_max
 ! Bit masks for showing only orbitals in RAS1 and RAS3 spaces.
 integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
 
-! If true then allow the use of MPI barrier calls.
-logical :: use_mpi_barriers = .false.
-
 contains
 
     subroutine init_calc_defaults(git_sha1, uuid, seed)

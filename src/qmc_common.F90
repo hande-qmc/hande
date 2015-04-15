@@ -348,11 +348,13 @@ contains
 
     end function decide_nattempts
 
-    subroutine load_balancing_report(nparticles, nstates_active, spawn_mpi_time, determ_mpi_time)
+    subroutine load_balancing_report(nparticles, nstates_active, use_mpi_barriers, spawn_mpi_time, determ_mpi_time)
 
         ! In:
         !    nparticles: number of particles in each space, on this process only.
         !    nstates_active: number of occupied states, on this process only.
+        !    use mpi_barriers: if true then MPI_Barrier calls have been
+        !        performed and timed, and their timings will be considered here.
         !    spawn_mpi_time: MPI timings for the spawned list, on this process
         !        only.
         ! In (optional):
@@ -363,12 +365,12 @@ contains
         ! determinants and walkers/particles are distributed over the processors.
 
 #ifdef PARALLEL
-        use calc, only: use_mpi_barriers
         use parallel
         use utils, only: int_fmt
 
         real(p), intent(in) :: nparticles(:)
         integer, intent(in) :: nstates_active
+        logical, intent(in) :: use_mpi_barriers
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 

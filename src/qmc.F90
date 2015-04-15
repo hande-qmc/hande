@@ -275,7 +275,7 @@ contains
             if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
             call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, max_nspawned_states, &
-                               spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, use_mpi_barriers, spawn)
+                               spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, qmc_in%use_mpi_barriers, spawn)
             if (fciqmc_in_loc%non_blocking_comm) then
                 call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, max_nspawned_states, &
                                    spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, .false., spawn_recv)

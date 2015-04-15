@@ -38,7 +38,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
-        use calc, only: doing_calc, use_mpi_barriers
+        use calc, only: doing_calc
         use death, only: stochastic_death
         use importance_sampling, only: importance_sampling_weight
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
@@ -159,7 +159,7 @@ contains
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                     determ%doing_semi_stoch = .true.
                     call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%psip_list, qs%ref, annihilation_flags, &
-                                           qs%spawn_store%spawn, use_mpi_barriers)
+                                           qs%spawn_store%spawn, qmc_in%use_mpi_barriers)
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
@@ -297,9 +297,9 @@ contains
         call write_bloom_report(bloom_stats)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
             if (determ%doing_semi_stoch .and. determ%separate_annihilation) then
-                call load_balancing_report(pl%nparticles, pl%nstates, spawn%mpi_time, determ%mpi_time)
+                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, determ%mpi_time)
             else
-                call load_balancing_report(pl%nparticles, pl%nstates, spawn%mpi_time)
+                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time)
             end if
         end associate
 

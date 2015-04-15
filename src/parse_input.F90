@@ -551,7 +551,7 @@ contains
             case('WRITE_LOAD_INFO')
                 load_bal_in%write_info = .true.
             case('USE_MPI_BARRIERS')
-                use_mpi_barriers = .true.
+                qmc_in%use_mpi_barriers = .true.
 
             case('FINITE_CLUSTER')
                 ! this will be checked in check_input to ensure that it
@@ -1073,7 +1073,7 @@ contains
         call mpi_bcast(load_bal_in%percent, 1, mpi_preal, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_bal_in%max_attempts, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(load_bal_in%write_info, 1, mpi_logical, 0, mpi_comm_world, ierr)
-        call mpi_bcast(use_mpi_barriers, 1, mpi_logical, 0, mpi_comm_world, ierr)
+        call mpi_bcast(qmc_in%use_mpi_barriers, 1, mpi_logical, 0, mpi_comm_world, ierr)
 
 #endif
 
