@@ -11,8 +11,6 @@ use const
 use dSFMT_interface
 use errors
 
-use fciqmc_data
-
 implicit none
 
 contains
@@ -205,8 +203,11 @@ contains
         !    restart_in: input options for HDF5 restart files.
         !    sparse_hamil: true if using a sparse matrix for the Hamiltonian.
 
+        use csr, only: csrp_t
+
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
+        use fciqmc_data, only: write_fciqmc_report_header, write_fciqmc_report
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t, qmc_state_t
         use qmc_common, only: dump_restart_file_wrapper
         use spawn_data, only: spawn_t
@@ -287,7 +288,7 @@ contains
                     call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs, qs%estimators%proj_energy)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
-                    if (sparse_hamil) then
+                    if (sparse_hamil .and. allocated(hamil_csr%mat)) then
                         associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
                             do ipart = 1, abs(psip_list%pops(1,idet))
                                 call attempt_spawn(rng, spawn, qs%tau, idet, &
@@ -514,6 +515,8 @@ contains
         !    pop: main population on each site before (input) and after (output)
         !         annihilation.
  
+        use spawn_data, only: spawn_t
+
         type(spawn_t), intent(in)  :: spawn
         integer(int_p), intent(inout) :: pop(:,:)
 
