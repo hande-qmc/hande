@@ -177,7 +177,7 @@ contains
         !     inst_rdms (optional): estimates of instantaneous
         !         (temperature-dependent) reduced density matrices.
 
-        use calc, only: ms_in, doing_dmqmc_calc, dmqmc_rdm_r2, init_proc_map_t
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2, init_proc_map_t
         use checking, only: check_allocate
         use dmqmc_data, only: rdm_t, dmqmc_inst_rdms_t
         use errors
@@ -249,12 +249,12 @@ contains
         ! the total size of the reduced density matrix will be 2**(number of
         ! spins in subsystem A).
         if (calc_ground_rdm) then
-            if (ms_in == 0 .and. rdm_info(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
+            if (sys%Ms == 0 .and. rdm_info(1)%A_nsites <= floor(real(sys%lattice%nsites,p)/2.0_p)) then
                 allocate(ground_rdm(2**rdm_info(1)%A_nsites,2**rdm_info(1)%A_nsites), stat=ierr)
                 call check_allocate('ground_rdm', 2**(2*rdm_info(1)%A_nsites),ierr)
                 ground_rdm = 0.0_p
             else
-                if (ms_in /= 0) then
+                if (sys%Ms /= 0) then
                     call stop_all("setup_rdm_arrays","Reduced density matrices can only be used for Ms=0 &
                                    &calculations.")
                 else if (rdm_info(1)%A_nsites > floor(real(sys%lattice%nsites,p)/2.0_p)) then
@@ -589,7 +589,6 @@ contains
         !       DMQMC populations are we initialising)
 
         use basis_types, only: basis_t
-        use calc, only: ms_in
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: real_factor
         use spawn_data, only: spawn_t

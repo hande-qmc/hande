@@ -55,7 +55,7 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
-        use calc, only: ms_in, sym_in
+        use calc, only: sym_in
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -80,7 +80,7 @@ contains
 
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
         if (allocated(reference%occ_list0)) then
             call enumerate_determinants(sys, .true., .false., reference%ex_level, sym_space_size, ndets, dets, &
                                         occ_list0=reference%occ_list0)
@@ -111,8 +111,8 @@ contains
                               &spin polarization required.'
         write (6,'(1X,a104,/)') 'This is slow and memory demanding: consider using the &
                                 &fciqmc option instead of the simple_fciqmc option.'
-        write (6,'(1X,a46,'//int_fmt(sym_in,1)//',1X,a9,'//int_fmt(ms_in,1)//',a1,/)') &
-            'Considering determinants belonging to symmetry',sym_in,'with spin',ms_in,"."
+        write (6,'(1X,a46,'//int_fmt(sym_in,1)//',1X,a9,'//int_fmt(sys%Ms,1)//',a1,/)') &
+            'Considering determinants belonging to symmetry',sym_in,'with spin',sys%Ms,"."
 
         ! Allocate main and spawned lists to hold population of walkers.
         ! Don't need to hold determinants, so can just set spawned_size to be 1.

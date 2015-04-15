@@ -42,7 +42,7 @@ contains
         !    rng_seed (optional): seed to initialise the random number generator.
         !       Default: seed based upon the hash of the time and calculation UUID.
 
-        use calc, only: GLOBAL_META, gen_seed, sym_in, ms_in
+        use calc, only: GLOBAL_META, gen_seed, sym_in
 
         use basis, only: write_basis_fn
         use const, only: dp
@@ -95,7 +95,7 @@ contains
         call dSFMT_init(seed+iproc, 50000, rng)
 
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         select case(sys%system)
 

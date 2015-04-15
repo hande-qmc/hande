@@ -63,10 +63,6 @@ integer, parameter :: dmqmc_full_r2 = 2**5
 
 !--- global data (to deal with)
 
-! Ms of determinants.  If not set, then all possible values of Ms are considered
-! in FCI.  FCIQMC assumes ms = 0 if not given in input.
-integer :: ms_in = huge(1)
-
 ! Symmetry block of determinants.  Ignored for real space formulation.  Refers
 ! to a wavevector in momentum space formulation.  If not set, then determinants
 ! of all possible momenta are considered in FCI.  FCIQMC assumes determinants

@@ -317,11 +317,11 @@ contains
         ! Set spin variables.
         ! [todo] - handle all_spin_sectors more gracefully.  It should probably be handled by DMQMC-specific code but must be done before set_spin_polarisation.
         if (dmqmc_in%all_spin_sectors) then
-            if (sys%system /= read_in .and. sys%system /= ueg) ms_in = sys%lattice%nsites
+            if (sys%system /= read_in .and. sys%system /= ueg) sys%Ms = sys%lattice%nsites
             if (sys%system == heisenberg) sys%max_number_excitations = sys%lattice%nsites/2
         end if
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         ! Calculation-specifc initialisation and then run QMC calculation.
 

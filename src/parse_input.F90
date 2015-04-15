@@ -168,7 +168,7 @@ contains
 
             ! Select symmetry of wavefunction.
             case('MS')
-                call readi(ms_in)
+                call readi(sys%Ms)
             case('SYM','SYMMETRY')
                 call readi(sym_in)
             case("LZ")
@@ -652,9 +652,9 @@ contains
 
             if (sys%system == heisenberg) then
                 if (.not. dmqmc_in%all_spin_sectors) then
-                    if (ms_in > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
-                    if ((-ms_in) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
-                    if (mod(abs(ms_in),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
+                    if (sys%Ms > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too large for this lattice.')
+                    if ((-sys%Ms) > sys%lattice%nsites) call stop_all(this,'Value of Ms given is too small for this lattice.')
+                    if (mod(abs(sys%Ms),2) /=  mod(sys%lattice%nsites,2)) call stop_all(this, 'Ms value specified is not&
                                                                                           & possible for this lattice.')
                 end if
                 if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. (.not.sys%lattice%bipartite_lattice)) &
@@ -699,7 +699,7 @@ contains
                                    doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc))) &
               call stop_all(this, 'Semi-stochastic is only implemented with the FCIQMC method.')
 
-        if (fciqmc_in%init_spin_inv_D0 .and. ms_in /= 0) then
+        if (fciqmc_in%init_spin_inv_D0 .and. sys%Ms /= 0) then
             if (parent) call warning(this, 'Flipping the reference state will give &
                                             &a state which has a different value of Ms and so cannot be used here.')
             fciqmc_in%init_spin_inv_D0 = .false.
@@ -893,7 +893,7 @@ contains
         call mpi_bcast(ras, 2, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(ras3_max, 1, mpi_integer, 0, mpi_comm_world, ierr)
 
-        call mpi_bcast(ms_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
+        call mpi_bcast(sys%Ms, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sym_in, 1, mpi_integer, 0, mpi_comm_world, ierr)
         call mpi_bcast(sys%read_in%useLz, 1, mpi_logical, 0, mpi_comm_world, ierr)
 

@@ -52,7 +52,7 @@ contains
         use parallel
         use utils, only: rng_init_info
 
-        use calc, only: ms_in, GLOBAL_META, gen_seed
+        use calc, only: GLOBAL_META, gen_seed
         use hamiltonian_ueg, only: sum_sp_eigenvalues, potential_energy_ueg
         use interact, only: calc_interact, check_comms_file
 
@@ -86,7 +86,7 @@ contains
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         beta_loc = beta
         if (fermi_temperature) then

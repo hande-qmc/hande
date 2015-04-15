@@ -69,7 +69,6 @@ contains
         !
         ! Includes an uniform external field, if one is added.
 
-        use calc, only: ms_in
         use bit_utils, only: count_set_bits
         use system, only: sys_t
 
@@ -108,8 +107,8 @@ contains
         ! Each spin up (bit set) up gives a contribution of -magnetic_field/2. Each spin down
         ! gives a contribution of +magnetic_field/2. There are bits_set spins up, and
         ! (nsites - bits_set) spins down, so the total contribution is
-        ! -(magnetic_field/2)*(2*bits_set-nsites) = -h_field*ms_in/2
-        hmatel = hmatel - sys%heisenberg%magnetic_field*ms_in/2
+        ! -(magnetic_field/2)*(2*bits_set-nsites) = -h_field*Ms/2
+        hmatel = hmatel - sys%heisenberg%magnetic_field*sys%Ms/2
 
     end function diagonal_element_heisenberg
 

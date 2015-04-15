@@ -71,7 +71,7 @@ contains
 
         use system, only: sys_t, set_spin_polarisation
 
-        use calc, only: ms_in, sym_in
+        use calc, only: sym_in
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(in) :: fci_in
@@ -100,17 +100,17 @@ contains
             ! detect if doing spin-flip
             ref_ms = spin_orb_list(sys%basis%basis_fns, ref%occ_list0)
             ref_sym = symmetry_orb_list(sys, ref%occ_list0)
-            if (ms_in == huge(1)) ms_in = ref_ms
+            if (sys%Ms == huge(1)) sys%Ms = ref_ms
             if (sym_in == huge(1)) sym_in = ref_sym
-            spin_flip = ms_in /= ref_ms
+            spin_flip = sys%Ms /= ref_ms
         else if (sym_in == huge(1) .and. sys%nsym == 1) then
             ! Only one option, so don't force it to be set.
             sym_in = sys%sym0
-        else if (ms_in == huge(1) .or. (sym_in == huge(1))) then
+        else if (sys%Ms == huge(1) .or. (sym_in == huge(1))) then
             call stop_all('init_fci', 'Spin and/or symmetry of Hilbert space not defined.')
         end if
 
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         ! Construct space
         if (allocated(ref%occ_list0)) then
@@ -124,7 +124,7 @@ contains
 
         ! Info (symmetry, spin, ex_level).
         write (6,'(1X,"Symmetry of selected Hilbert subspace:",'//int_fmt(sym_in,1)//',".")') sym_in
-        write (6,'(1X,"Spin of selected Hilbert subspace:",'//int_fmt(ms_in,1)//',".")') ms_in
+        write (6,'(1X,"Spin of selected Hilbert subspace:",'//int_fmt(sys%Ms,1)//',".")') sys%Ms
         if (ref%ex_level /= sys%nel) then
             call encode_det(sys%basis, ref%occ_list0, f0)
             write (6,'(1X,"Reference determinant, |D0> =",1X)',advance='no')

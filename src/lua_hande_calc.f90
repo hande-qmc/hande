@@ -158,7 +158,6 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close
 
-        use calc, only: ms_in
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
         use system, only: sys_t
@@ -230,7 +229,6 @@ contains
         use qmc, only: init_proc_pointers
         use system, only: sys_t
 
-        use calc, only: ms_in
         use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
         use system, only: set_spin_polarisation
 
@@ -250,7 +248,7 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -299,7 +297,6 @@ contains
         use qmc, only: init_proc_pointers
         use system, only: sys_t
 
-        use calc, only: ms_in
         use calc, only: calc_type, fciqmc_calc
         use system, only: set_spin_polarisation
 
@@ -322,7 +319,7 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
@@ -373,7 +370,6 @@ contains
         use qmc, only: init_proc_pointers
         use system, only: sys_t
 
-        use calc, only: ms_in
         use calc, only: calc_type, ccmc_calc
         use system, only: set_spin_polarisation
 
@@ -395,7 +391,7 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
         ! [todo] - do spin polarisation in system setup.
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         ! Get main table.
         opts = aot_table_top(lua_state)
