@@ -213,6 +213,7 @@ contains
         !       qmc = { ... },
         !       restart = { ... },
         !       reference = { ... },
+        !       sparse_hamil = true/false,
         !    }
 
         ! See interface documentation for the relevant read_TYPE procedure to
@@ -220,7 +221,7 @@ contains
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_table_module, only: aot_table_top, aot_table_close
+        use aot_table_module, only: aot_table_top, aot_table_close, aot_get_val
 
         use simple_fciqmc, only: do_simple_fciqmc
         use lua_hande_system, only: get_sys_t
@@ -241,9 +242,10 @@ contains
         type(qmc_in_t) :: qmc_in
         type(restart_in_t) :: restart_in
         type(reference_t) :: reference
+        logical :: use_sparse_hamil
 
-        integer :: opts
-        character(10), parameter :: keys(4) = [character(10) :: 'sys', 'qmc', 'restart', 'reference']
+        integer :: opts, err
+        character(12), parameter :: keys(5) = [character(12) :: 'sys', 'qmc', 'restart', 'reference', 'sparse_hamil']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -255,12 +257,12 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in, .true.)
         call read_restart_in(lua_state, opts, restart_in)
         call read_reference_t(lua_state, opts, sys, reference)
+        call aot_get_val(use_sparse_hamil, err, lua_state, opts, 'sparse_hamil', default=.true.)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         calc_type = simple_fciqmc_calc + fciqmc_calc
-        ! NOTE: sparse_hamil is currently disabled.
-        call do_simple_fciqmc(sys, qmc_in, restart_in, reference, .false.)
+        call do_simple_fciqmc(sys, qmc_in, restart_in, reference, use_sparse_hamil)
 
         nresult = 0
 
