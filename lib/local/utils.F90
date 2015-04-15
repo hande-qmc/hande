@@ -397,7 +397,7 @@ contains
         integer, optional, intent(in) :: in_unit
         ! GCC 4.7 and below don't have sufficient F2003 support for
         ! allocatable strings.
-#if __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
+#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
         character(:), allocatable, intent(out) :: buffer
 
         character(:), allocatable :: line
@@ -420,7 +420,8 @@ contains
 
         ! NOTE: we use Fortran 2003's left-hand-side reallocation feature for both line and buffer...
         stat = 0
-#if (__GNUC__ == 4 && (__GNUC_MINOR__ < 8))
+#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
+#else
         buffer = ''
 #endif
         do
@@ -435,7 +436,7 @@ contains
                 if (stat == iostat_eor .or. stat == iostat_end) exit
             end do
             if (stat == iostat_end) exit
-#if __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
+#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             if (allocated(buffer)) then
                 buffer = buffer // new_line(line) // line
             else
