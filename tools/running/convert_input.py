@@ -177,14 +177,18 @@ def get_calc(inp):
     read_to_dict(inp, keys, remap, opts['fci'])
 
     opts['lanczos'] = collections.OrderedDict()
-    keys = 'lanczos_basis lanczos_solutions lanczos_solns direct_lanczos'.split()
+    keys = 'lanczos_basis lanczos_solutions lanczos_solns direct_lanczos sparse_hamiltonian'.split()
     remap = {
                 'lanczos_basis': 'nbasis',
                 'lanczos_solns': 'neigv',
                 'lanczos_solutions': 'neigv',
                 'direct_lanczos': 'direct',
+                'sparse_hamiltonian': 'sparse',
             }
     read_to_dict(inp, keys, remap, opts['lanczos'])
+    # Toggled the default for sparse Hamiltonians...
+    if 'sparse' not in opts['lanczos'].keys():
+        opts['lanczos']['sparse'] = ['false']
     lanczos = 'lanczos' in inp.keys()
 
     opts['hilbert'] = collections.OrderedDict()
@@ -212,7 +216,7 @@ def get_calc(inp):
     read_to_dict(inp, keys, remap, opts['kinetic'])
 
     opts['qmc'] = collections.OrderedDict()
-    keys = 'tau initiator tau_search initial_shift seed init_pop mc_cycles nreports varyshift_target vary_shift_from real_amplitudes spawn_cutoff no_renorm shift_damping initiator_population pattempt_single pattempt_double state_size spawned_state_size'.split()
+    keys = 'tau initiator tau_search initial_shift seed init_pop mc_cycles nreports varyshift_target vary_shift_from real_amplitudes spawn_cutoff no_renorm shift_damping initiator_population pattempt_single pattempt_double state_size spawned_state_size use_mpi_barriers'.split()
     remap = {
                 'varyshift_target': 'target_population',
                 'initiator_population': 'initiator_threshold',
@@ -282,6 +286,15 @@ def get_calc(inp):
             }
     read_to_dict(inp, keys, remap, opts['reference'])
 
+    # options that go in the top-level table rather than in their own table.
+    opts['top'] = collections.OrderedDict()
+    keys = 'sparse_hamiltonian'.split()
+    remap = { 'sparse_hamiltonian':'sparse' }
+    read_to_dict(inp, keys, remap, opts['top'])
+    # Toggled the default from old input...
+    if 'sparse' not in opts['top'].keys():
+        opts['top']['sparse'] = ['false']
+
     opts_slim = {}
     for (k, v) in opts.items():
         if v:
@@ -346,6 +359,8 @@ def print_new(comments, sys, calcs, opts):
             elif calc == 'ccmc':
                 if 'ccmc' in opts:
                     print(dict_to_table(opts['ccmc'], indent=8, prefix='ccmc ='))
+            elif calc == 'simple_fciqmc':
+                print(dict_to_table(opts['top']))
             for table in ('restart', 'reference'):
                 if table in opts:
                     print(dict_to_table(opts[table], indent=8, prefix='%s =' % table))
