@@ -33,6 +33,7 @@ contains
         use fci_lapack, only: do_fci_lapack
         use fci_utils, only: fci_in_t
         use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
         use qmc_data, only: reference_t
         use system, only: sys_t
 
@@ -45,6 +46,7 @@ contains
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
         logical :: use_sparse_hamil, lanczos
+        character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'lanczos', 'reference']
 
         lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
@@ -53,6 +55,7 @@ contains
         lanczos = aot_exists(lua_state, opts, 'lanczos')
         call read_fci_in(lua_state, opts, sys%basis, fci_in, use_sparse_hamil)
         call read_reference_t(lua_state, opts, sys, ref)
+        call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         if (lanczos) then
@@ -86,6 +89,7 @@ contains
 
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
 
         use calc, only: calc_type, mc_hilbert_space
@@ -102,12 +106,14 @@ contains
         integer, allocatable :: ref_det(:)
         integer :: opts, err
         logical :: have_seed
+        character(12), parameter :: keys(2) = [character(12) :: 'sys', 'hilbert']
 
         lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
         call read_hilbert_args(lua_state, opts, sys%nel, ncycles, truncation_level, ref_det, rng_seed, have_seed)
+        call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
@@ -151,6 +157,7 @@ contains
 
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
 
         use calc, only: calc_type, mc_canonical_kinetic_energy
@@ -166,6 +173,7 @@ contains
         integer :: opts, err, rng_seed, ncycles, nattempts
         logical :: fermi_temperature, have_seed
         real(p) :: beta
+        character(12), parameter :: keys(2) = [character(12) :: 'sys', 'kinetic']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -175,6 +183,7 @@ contains
 
         opts = aot_table_top(lua_state)
         call read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
+        call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         calc_type = mc_canonical_kinetic_energy
@@ -785,7 +794,7 @@ contains
         end if
 
         ! [todo] - check unused args.
-        call warn_unused_args(lua_state, ['tau'], qmc_table)
+        !call warn_unused_args(lua_state, ['tau'], qmc_table)
 
         call aot_table_close(lua_state, qmc_table)
 
@@ -829,6 +838,9 @@ contains
         integer :: fciqmc_table, ref_det, err
         character(len=12) :: str
         logical :: ref_det_flag
+        character(31), parameter :: keys(6) = [character(31) :: 'non_blocking_comm', 'load_balancing', 'guiding_function', &
+                                                                'init_spin_inverse_reference_det', 'trial_function', &
+                                                                'select_reference_det']
 
         if (aot_exists(lua_state, opts, 'fciqmc')) then
 
@@ -877,8 +889,7 @@ contains
                 end select
             end if
 
-            ! [todo] - check unused args.
-            !call warn_unused_args(lua_state, [], fciqmc_table)
+            call warn_unused_args(lua_state, keys, fciqmc_table)
 
             call aot_table_close(lua_state, fciqmc_table)
 
@@ -923,6 +934,8 @@ contains
         integer :: semi_stoch_table, ref_det, err
         character(len=10) :: str
         logical :: ref_det_flag
+        character(21), parameter :: keys(6) = [character(21) :: 'space', 'size', 'start_iteration', 'write_determ_space', &
+                                                                'separate_annihilation', 'shift_start_iteration']
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
@@ -957,8 +970,7 @@ contains
                 call aot_get_val(semi_stoch_in%shift_iter, err, lua_state, semi_stoch_table, 'shift_start_iteration')
             end if
 
-            ! [todo] - check unused args.
-            !call warn_unused_args(lua_state, [], semi_stoch_table)
+            call warn_unused_args(lua_state, keys, semi_stoch_table)
 
             call aot_table_close(lua_state, semi_stoch_table)
 
@@ -971,7 +983,7 @@ contains
         ! Read in an ccmc table (if it exists) to an ccmc_in object.
 
         ! ccmc = {
-        !     move_freq = frequency,
+        !     move_frequency = frequency,
         !     cluster_multispawn_threshold = threshold,
         !     full_non_composite = true/false,
         !     linked = true/false,
@@ -997,6 +1009,8 @@ contains
         integer :: ccmc_table, ref_det, err
         character(len=10) :: str
         logical :: ref_det_flag
+        character(28), parameter :: keys(4) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+                                                                'full_non_composite', 'linked']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1008,8 +1022,7 @@ contains
             call aot_get_val(ccmc_in%full_nc, err, lua_state, ccmc_table, 'full_non_composite')
             call aot_get_val(ccmc_in%linked, err, lua_state, ccmc_table, 'linked')
 
-            ! [todo] - check unused args.
-            !call warn_unused_args(lua_state, [], ccmc_table)
+            call warn_unused_args(lua_state, keys, ccmc_table)
 
             call aot_table_close(lua_state, ccmc_table)
 
@@ -1076,6 +1089,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t, rdm_t
         use checking, only: check_allocate
         use errors, only: stop_all
+        use lua_hande_utils, only: warn_unused_args
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: nbasis, opts
@@ -1085,6 +1099,18 @@ contains
         integer :: table, subtable, err, i
         integer, allocatable :: err_arr(:)
         logical :: op
+
+        character(30), parameter :: dmqmc_keys(7)     = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
+                                                                          'all_spin_sectors', 'beta_loops', 'sampling_weights', &
+                                                                          'find_weights']
+        character(30), parameter :: ipdmqmc_keys(5)   = [character(30) :: 'initial_beta', 'free_electron_partition', &
+                                                                          'grand_canonical_initialisation', 'metropolis_attempts', &
+                                                                          'max_metropolis_moves']
+        character(30), parameter :: operators_keys(7) = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation', &
+                                                                          'correlation', 'excit_dist', 'excit_dist_start']
+        character(30), parameter :: rdm_keys(9)       = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state', &
+                                                                          'ground_state_start', 'instantaneous', 'write', &
+                                                                          'concurrence', 'von_neumann', 'renyi2']
 
         dmqmc_calc_type = 0
 
@@ -1103,6 +1129,7 @@ contains
                 ! Certainly can't have more excitation levels than basis functions, so that's a handy upper-limit.
                 call aot_get_val(dmqmc_in%sampling_probs, err_arr, nbasis, lua_state, table, 'sampling_weights')
             end if
+            call warn_unused_args(lua_state, dmqmc_keys, table)
             call aot_table_close(lua_state, table)
         end if
 
@@ -1114,6 +1141,7 @@ contains
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
             call aot_get_val(dmqmc_in%max_metropolis_move, err, lua_state, table, 'max_metropolis_moves')
+            call warn_unused_args(lua_state, ipdmqmc_keys, table)
             call aot_table_close(lua_state, table)
         end if
 
@@ -1131,6 +1159,7 @@ contains
             end if
             call aot_get_val(dmqmc_in%calc_excit_dist, err, lua_state, table, 'excit_dist')
             call aot_get_val(dmqmc_in%start_av_excit_dist, err, lua_state, table, 'excit_dist_start')
+            call warn_unused_args(lua_state, operators_keys, table)
             call aot_table_close(lua_state, table)
         end if
 
@@ -1162,11 +1191,9 @@ contains
             call aot_get_val(dmqmc_in%rdm%doing_vn_entropy, err, lua_state, table, 'von_neumann')
             call aot_get_val(op, err, lua_state, table, 'renyi2', default=.false.)
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
+            call warn_unused_args(lua_state, rdm_keys, table)
             call aot_table_close(lua_state, table)
         end if
-
-        ! [todo] - check unused args for each table...
-        !call warn_unused_args(lua_state, [], load_bal_table)
 
     end subroutine read_dmqmc_in
 
@@ -1192,8 +1219,8 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
-        use qmc_data, only: load_bal_in_t
         use lua_hande_utils, only: warn_unused_args
+        use qmc_data, only: load_bal_in_t
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
@@ -1202,6 +1229,7 @@ contains
         integer :: load_bal_table, ref_det, err
         character(len=10) :: str
         logical :: ref_det_flag
+        character(12), parameter :: keys(5) = [character(12) :: 'nslots', 'min_pop', 'target', 'max_attempts', 'write']
 
         if (aot_exists(lua_state, opts, 'load_bal')) then
 
@@ -1214,8 +1242,7 @@ contains
             call aot_get_val(load_bal_in%max_attempts, err, lua_state, load_bal_table, 'max_attempts')
             call aot_get_val(load_bal_in%write_info, err, lua_state, load_bal_table, 'write')
 
-            ! [todo] - check unused args.
-            !call warn_unused_args(lua_state, [], load_bal_table)
+            call warn_unused_args(lua_state, keys, load_bal_table)
 
             call aot_table_close(lua_state, load_bal_table)
 
@@ -1248,6 +1275,7 @@ contains
         use aot_vector_module, only: aot_get_val
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
+        use lua_hande_utils, only: warn_unused_args
         use qmc_data, only: reference_t
         use system, only: sys_t
 
@@ -1258,6 +1286,7 @@ contains
 
         integer :: ref_table, err
         integer, allocatable :: err_arr(:)
+        character(17), parameter :: keys(3) = [character(17) :: 'det', 'hilbert_space_det', 'ex_level']
 
         ! Set to full space by default.
         ref%ex_level = sys%nel
@@ -1278,8 +1307,7 @@ contains
 
             call aot_get_val(ref%ex_level, err, lua_state, ref_table, 'ex_level')
 
-            ! [todo] - check unused args.
-            !call warn_unused_args(lua_state, [], load_bal_table)
+            call warn_unused_args(lua_state, keys, ref_table)
 
             call aot_table_close(lua_state, ref_table)
 
@@ -1311,6 +1339,7 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_exists, aot_table_open, aot_table_close, aot_get_val
 
+        use lua_hande_utils, only: warn_unused_args
         use qmc_data, only: restart_in_t
 
         type(flu_State), intent(inout) :: lua_state
@@ -1318,6 +1347,7 @@ contains
         type(restart_in_t), intent(out) :: restart_in
 
         integer :: err, restart_table
+        character(15), parameter :: keys(4) = [character(15) :: 'read', 'write', 'write_shift', 'write_frequency']
 
         if (aot_exists(lua_state, opts, 'restart')) then
 
@@ -1333,8 +1363,7 @@ contains
             end associate
             write (6,*) 'restart', restart_in%write_restart, restart_in%read_restart
 
-            ! [todo] - check unused args.
-            !call warn_unused_args(lua_state, [], load_bal_table)
+            call warn_unused_args(lua_state, keys, restart_table)
 
             call aot_table_close(lua_state, restart_table)
 
