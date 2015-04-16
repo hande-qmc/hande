@@ -1100,17 +1100,17 @@ contains
         integer, allocatable :: err_arr(:)
         logical :: op
 
-        character(30), parameter :: dmqmc_keys(7)     = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
-                                                                          'all_spin_sectors', 'beta_loops', 'sampling_weights', &
-                                                                          'find_weights']
-        character(30), parameter :: ipdmqmc_keys(5)   = [character(30) :: 'initial_beta', 'free_electron_partition', &
-                                                                          'grand_canonical_initialisation', 'metropolis_attempts', &
-                                                                          'max_metropolis_moves']
-        character(30), parameter :: operators_keys(7) = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation', &
-                                                                          'correlation', 'excit_dist', 'excit_dist_start']
-        character(30), parameter :: rdm_keys(9)       = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state', &
-                                                                          'ground_state_start', 'instantaneous', 'write', &
-                                                                          'concurrence', 'von_neumann', 'renyi2']
+        character(30), parameter :: dmqmc_keys(7) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
+                                                                      'all_spin_sectors', 'beta_loops', 'sampling_weights',     &
+                                                                      'find_weights']
+        character(30), parameter :: ip_keys(5)    = [character(30) :: 'initial_beta', 'free_electron_partition',                &
+                                                                      'grand_canonical_initialisation', 'metropolis_attempts',  &
+                                                                      'max_metropolis_moves']
+        character(30), parameter :: op_keys(7)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation', &
+                                                                      'correlation', 'excit_dist', 'excit_dist_start']
+        character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',             &
+                                                                      'ground_state_start', 'instantaneous', 'write',           &
+                                                                      'concurrence', 'von_neumann', 'renyi2']
 
         dmqmc_calc_type = 0
 
@@ -1141,7 +1141,7 @@ contains
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
             call aot_get_val(dmqmc_in%max_metropolis_move, err, lua_state, table, 'max_metropolis_moves')
-            call warn_unused_args(lua_state, ipdmqmc_keys, table)
+            call warn_unused_args(lua_state, ip_keys, table)
             call aot_table_close(lua_state, table)
         end if
 
@@ -1159,7 +1159,7 @@ contains
             end if
             call aot_get_val(dmqmc_in%calc_excit_dist, err, lua_state, table, 'excit_dist')
             call aot_get_val(dmqmc_in%start_av_excit_dist, err, lua_state, table, 'excit_dist_start')
-            call warn_unused_args(lua_state, operators_keys, table)
+            call warn_unused_args(lua_state, op_keys, table)
             call aot_table_close(lua_state, table)
         end if
 
