@@ -212,7 +212,7 @@ contains
         !       qmc = { ... },
         !       restart = { ... },
         !       reference = { ... },
-        !       sparse_hamil = true/false,
+        !       sparse = true/false,
         !    }
 
         ! See interface documentation for the relevant read_TYPE procedure to
@@ -243,7 +243,7 @@ contains
         logical :: use_sparse_hamil
 
         integer :: opts, err
-        character(12), parameter :: keys(5) = [character(12) :: 'sys', 'qmc', 'restart', 'reference', 'sparse_hamil']
+        character(12), parameter :: keys(5) = [character(12) :: 'sys', 'qmc', 'restart', 'reference', 'sparse']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -255,7 +255,7 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in, .true.)
         call read_restart_in(lua_state, opts, restart_in)
         call read_reference_t(lua_state, opts, sys, reference)
-        call aot_get_val(use_sparse_hamil, err, lua_state, opts, 'sparse_hamil', default=.true.)
+        call aot_get_val(use_sparse_hamil, err, lua_state, opts, 'sparse', default=.true.)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -502,12 +502,12 @@ contains
         !     nanalyse = N,
         !     blacs_block_size = block_size,
         !     rdm = { ... }, -- L-d vector containing the sites to include in subsystem A.
-        !     sparse_hamil = true/false
         ! }
         ! lanczos = {
         !     neigv = N,
         !     nbasis = M,
         !     direct = true/false,
+        !     sparse = true/false, -- default true
         ! }
 
         ! In/Out:
@@ -570,7 +570,7 @@ contains
             call aot_get_val(fci_in%nlanczos_eigv, err, lua_state, fci_table, 'neigv')
             call aot_get_val(fci_in%lanczos_string_len, err, lua_state, fci_table, 'nbasis')
             call aot_get_val(fci_in%direct_lanczos, err, lua_state, fci_table, 'direct')
-            call aot_get_val(use_sparse_hamil, err, lua_state, fci_table, 'sparse_hamil', default=.true.)
+            call aot_get_val(use_sparse_hamil, err, lua_state, fci_table, 'sparse', default=.true.)
             call aot_table_close(lua_state, fci_table)
         end if
 
