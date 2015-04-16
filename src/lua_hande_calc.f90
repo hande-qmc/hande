@@ -738,6 +738,8 @@ contains
             skip = .false.
         end if
 
+        if (.not. aot_exists(lua_state, opts, 'qmc')) call stop_all('read_qmc_in','"qmc" table not present.')
+
         call aot_table_open(lua_state, opts, qmc_table, 'qmc')
 
         ! Required arguments
