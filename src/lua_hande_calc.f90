@@ -18,7 +18,7 @@ contains
 
         ! Lua:
         !    fci {
-        !           sys = system,
+        !           sys = system,        -- required
         !           fci = { ... },
         !           lanczos = { ... },
         !           reference = { ... },
@@ -74,14 +74,10 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !     hilbert_args = {
-        !         ncycles = n,
-        !         ex_level = level,
-        !         rng_seed = seed,
-        !         reference = { ... },  -- nel-dimensional vector.
+        !    hilbert_space {
+        !       sys = system,      -- required
+        !       hilbert = { ... }, -- required
         !    }
-        !
-        !    hilbert_space {sys = sys_t, hilbert = hilbert_args}
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
 
@@ -142,15 +138,10 @@ contains
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    kin_args = {
-        !        nattempts = npop,
-        !        ncycles = n,
-        !        beta = beta,
-        !        fermi_temperature = true/false,
-        !        rng_seed = seed
+        !    kinetic_energy {
+        !       sys = system,      -- required
+        !       kinetic = { ... }, -- required
         !    }
-        !
-        !    kinetic_energy {sys = sys_t, kinetic = kin_args}
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
         use const, only: p
@@ -208,8 +199,8 @@ contains
 
         ! Lua:
         !    simple_fciqmc {
-        !       sys = system,
-        !       qmc = { ... },
+        !       sys = system,         -- required
+        !       qmc = { ... },        -- required
         !       restart = { ... },
         !       reference = { ... },
         !       sparse = true/false,
@@ -273,8 +264,8 @@ contains
 
         ! Lua:
         !    fciqmc {
-        !       sys = system,
-        !       qmc = { ... },
+        !       sys = system,          -- required
+        !       qmc = { ... },         -- required
         !       fciqmc = { ... },
         !       semi_stoch = { ... },
         !       restart = { ... },
@@ -348,8 +339,8 @@ contains
 
         ! Lua:
         !    ccmc{
-        !       sys = system,
-        !       qmc = { ... },
+        !       sys = system,         --  required
+        !       qmc = { ... },        --  required
         !       ccmc = { ... }
         !       restart = { ... },
         !       reference = { ... },
@@ -420,8 +411,8 @@ contains
 
         ! Lua:
         !    dmqmc{
-        !       sys = system,
-        !       qmc = { ... },
+        !       sys = system,         -- required
+        !       qmc = { ... },        -- required
         !       dmqmc = { ... },
         !       ipdmqmc = { ... },
         !       operators = { ... },
