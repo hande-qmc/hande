@@ -462,7 +462,8 @@ contains
         type(reference_t) :: reference
 
         integer :: opts
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', 'restart', 'reference']
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
+                                                                'restart', 'reference']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
