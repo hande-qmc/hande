@@ -413,6 +413,79 @@ contains
 
     end function lua_ccmc
 
+    function lua_dmqmc(L) result(nresult) bind(c)
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    dmqmc{
+        !       sys = system,
+        !       qmc = { ... },
+        !       dmqmc = { ... },
+        !       ipdmqmc = { ... },
+        !       operators = { ... },
+        !       rdm = { ... },
+        !       restart = { ... },
+        !       reference = { ... },
+        !    }
+
+        ! See interface documentation for the relevant read_TYPE procedure to
+        ! understand the options available within a given subtable.
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_table_module, only: aot_table_top, aot_table_close
+
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
+        use dmqmc, only: do_dmqmc
+        use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
+        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, reference_t
+        use qmc, only: init_proc_pointers
+        use system, only: sys_t
+
+
+        use calc, only: calc_type, dmqmc_calc
+        use system, only: set_spin_polarisation
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_state) :: lua_state
+        type(sys_t), pointer :: sys
+        type(qmc_in_t) :: qmc_in
+        type(dmqmc_in_t) :: dmqmc_in
+        type(dmqmc_estimates_t) :: dmqmc_estimates
+        type(restart_in_t) :: restart_in
+        type(load_bal_in_t) :: load_bal_in
+        type(reference_t) :: reference
+
+        integer :: opts
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', 'restart', 'reference']
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys)
+        ! [todo] - do spin polarisation in system setup.
+        call set_spin_polarisation(sys%basis%nbasis, sys)
+
+        opts = aot_table_top(lua_state)
+        call read_qmc_in(lua_state, opts, qmc_in)
+        call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, dmqmc_in, dmqmc_estimates%rdm_info)
+        call read_restart_in(lua_state, opts, restart_in)
+        call read_reference_t(lua_state, opts, sys, reference)
+        ! load balancing not implemented in DMQMC--just use defaults.
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
+
+        calc_type = dmqmc_calc
+        call init_proc_pointers(sys, qmc_in, reference, dmqmc_in)
+        call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference)
+
+        nresult = 0
+
+    end function lua_dmqmc
+
     ! --- table-derived type wrappers ---
 
     subroutine read_fci_in(lua_state, opts, basis, fci_in, use_sparse_hamil)
@@ -949,6 +1022,159 @@ contains
         end if
 
     end subroutine read_ccmc_in
+
+    subroutine read_dmqmc_in(lua_state, nbasis, opts, dmqmc_in, rdm_info)
+
+        ! Read in DMQMC-related input options from various tables to a dmqmc_in_t object.
+
+        ! dmqmc = {
+        !     replica_tricks = true/false,
+        !     fermi_temperature = true/false,
+        !     all_sym_sectors = true/false,
+        !     all_spin_sectors = true/false,
+        !     beta_loops = Nb,
+        !     sampling_weights = { ... },
+        !     find_weights = true/false,
+        ! }
+        ! ipdmqmc = { -- sets propagate_to_beta to true
+        !     initial_beta = b,
+        !     free_electron_partition = true/false,
+        !     grand_canonical_initialisation = true/false,
+        !     metropolis_attempts = nattempts,
+        !     max_metropolis_moves = nexcit,
+        ! }
+        ! operators = {
+        !     renyi2 = true/false,
+        !     energy = true/false,
+        !     energy2 = true/false,
+        !     staggered_magnetisation = true/false,
+        !     correlation = { ... }
+        !     excit_dist = true/false,
+        !     excit_dist_start = iteration,
+        ! }
+        ! rdm = {
+        !     spawned_state_size = X,
+        !     rdms = { { ... } , { ... } , { ... } ... }
+        !     ground_state = true/false,
+        !     ground_state_start = iteration,
+        !     instantaneous = true/false,
+        !     write = true/false,
+        !     concurrence = true/false,
+        !     von_neumann = true/false,
+        !     renyi2 = true/false,
+        ! }
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    opts: handle for the table containing the above tables.
+        !    nbasis: number of single-particle basis functions in the basis set of the system.
+        ! Out:
+        !    dmqmc_in: dmqmc_in_t object containing DMQMC input options.
+        !    rdm_info: array of rdm_t objects containing the subsystem for each
+        !       RDM of interest.  Unallocated if no RDMs are specified.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_exists, aot_table_open, aot_table_close, aot_get_val, aot_table_length
+        use aot_vector_module, only: aot_get_val
+
+        use calc
+        use dmqmc_data, only: dmqmc_in_t, rdm_t
+        use checking, only: check_allocate
+        use errors, only: stop_all
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: nbasis, opts
+        type(dmqmc_in_t), intent(out) :: dmqmc_in
+        type(rdm_t), intent(out), allocatable :: rdm_info(:)
+
+        integer :: table, subtable, err, i
+        integer, allocatable :: err_arr(:)
+        logical :: op
+
+        dmqmc_calc_type = 0
+
+        ! All optional and straightfoward except the vector quantities.
+
+        if (aot_exists(lua_state, opts, 'dmqmc')) then
+            call aot_table_open(lua_state, opts, table, 'dmqmc')
+            call aot_get_val(dmqmc_in%replica_tricks, err, lua_state, table, 'replica_tricks')
+            call aot_get_val(dmqmc_in%fermi_temperature, err, lua_state, table, 'fermi_temperature')
+            call aot_get_val(dmqmc_in%all_sym_sectors, err, lua_state, table, 'all_sym_sectors')
+            call aot_get_val(dmqmc_in%all_spin_sectors, err, lua_state, table, 'all_spin_sectors')
+            call aot_get_val(dmqmc_in%beta_loops, err, lua_state, table, 'beta_loops')
+            call aot_get_val(dmqmc_in%find_weights, err, lua_state, table, 'find_weights')
+            if (aot_exists(lua_state, table, 'sampling_weights')) then
+                dmqmc_in%weighted_sampling = .true.
+                ! Certainly can't have more excitation levels than basis functions, so that's a handy upper-limit.
+                call aot_get_val(dmqmc_in%sampling_probs, err_arr, nbasis, lua_state, table, 'sampling_weights')
+            end if
+            call aot_table_close(lua_state, table)
+        end if
+
+        if (aot_exists(lua_state, opts, 'ipdmqmc')) then
+            dmqmc_in%propagate_to_beta = .true.
+            call aot_table_open(lua_state, opts, table, 'ipdmqmc')
+            call aot_get_val(dmqmc_in%init_beta, err, lua_state, table, 'initial_beta')
+            call aot_get_val(dmqmc_in%free_electron_trial, err, lua_state, table, 'free_electron_partition')
+            call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
+            call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
+            call aot_get_val(dmqmc_in%max_metropolis_move, err, lua_state, table, 'max_metropolis_moves')
+            call aot_table_close(lua_state, table)
+        end if
+
+        if (aot_exists(lua_state, opts, 'operators')) then
+            call aot_table_open(lua_state, opts, table, 'operators')
+            call aot_get_val(op, err, lua_state, table, 'renyi2', default=.false.)
+            if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_full_r2
+            call aot_get_val(op, err, lua_state, table, 'energy', default=.false.)
+            if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
+            call aot_get_val(op, err, lua_state, table, 'staggered_magnetisation', default=.false.)
+            if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
+            if (aot_exists(lua_state, table, 'correlation')) then
+                dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
+                call aot_get_val(dmqmc_in%correlation_sites, err_arr, nbasis, lua_state, table, 'correlation')
+            end if
+            call aot_get_val(dmqmc_in%calc_excit_dist, err, lua_state, table, 'excit_dist')
+            call aot_get_val(dmqmc_in%start_av_excit_dist, err, lua_state, table, 'excit_dist_start')
+            call aot_table_close(lua_state, table)
+        end if
+
+        if (aot_exists(lua_state, opts, 'rdm')) then
+            call aot_table_open(lua_state, opts, table, 'rdm')
+            ! If doing rdms, must specify them and the spawned state size.
+            call aot_get_val(dmqmc_in%rdm%spawned_length, err, lua_state, table, 'spawned_state_size')
+            if (err /= 0) call stop_all('read_dmqmc_in', 'spawned_state_size not specified in rdm table.')
+            if (aot_exists(lua_state, table, 'rdms')) then
+                dmqmc_in%rdm%doing_rdm = .true.
+                call aot_table_open(lua_state, table, subtable, 'rdm')
+                dmqmc_in%rdm%nrdms = aot_table_length(lua_state, subtable)
+                allocate(rdm_info(dmqmc_in%rdm%nrdms), stat=err)
+                call check_allocate('rdm_info', dmqmc_in%rdm%nrdms, err)
+                do i = 1, dmqmc_in%rdm%nrdms
+                    call aot_get_val(rdm_info(i)%subsystem_A, err_arr, nbasis, lua_state, subtable, pos=i)
+                    rdm_info(i)%A_nsites = size(rdm_info(i)%subsystem_A)
+                end do
+            else
+                call stop_all('read_dmqmc_in', 'rdms not specified in rdm table.')
+            end if
+
+            ! Optional arguments.
+            call aot_get_val(dmqmc_in%rdm%calc_ground_rdm, err, lua_state, table, 'ground_state')
+            call aot_get_val(dmqmc_in%start_av_rdm, err, lua_state, table, 'ground_state_start')
+            call aot_get_val(dmqmc_in%rdm%calc_inst_rdm, err, lua_state, table, 'instantaneous')
+            call aot_get_val(dmqmc_in%rdm%output_rdm, err, lua_state, table, 'write')
+            call aot_get_val(dmqmc_in%rdm%doing_concurrence, err, lua_state, table, 'concurrence')
+            call aot_get_val(dmqmc_in%rdm%doing_vn_entropy, err, lua_state, table, 'von_neumann')
+            call aot_get_val(op, err, lua_state, table, 'renyi2', default=.false.)
+            if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
+            call aot_table_close(lua_state, table)
+        end if
+
+        ! [todo] - check unused args for each table...
+        !call warn_unused_args(lua_state, [], load_bal_table)
+
+    end subroutine read_dmqmc_in
 
     subroutine read_load_bal_in(lua_state, opts, load_bal_in)
 
