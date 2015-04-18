@@ -24,8 +24,12 @@ contains
         !    qmc_in (optional): Input options relating to QMC methods.
         !    qs (optional): QMC calculation state. The shift and/or timestep may be updated.
 
-        use input, line=>char
-        use utils, only: get_free_unit
+        use aotus_module, only: open_config_chunk
+        use aot_table_module, only: aot_get_val
+        use aot_vector_module, only: aot_get_val
+        use flu_binding, only: flu_State
+
+        use utils, only: get_free_unit, read_file_to_buffer
         use parallel
 
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -36,12 +40,18 @@ contains
         type(qmc_state_t), optional, intent(inout) :: qs
 
         logical :: comms_exists, comms_read, eof
-        integer :: proc, i
+        integer :: proc, i, j, ierr, lua_err, iunit
+        integer, allocatable :: ierr_arr(:)
 #ifdef PARALLEL
-        integer :: ierr
+        integer :: buf_len
 #endif
-
-        character(100) :: w
+#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
+        character(:), allocatable :: buffer
+#else
+        character(1024**2) :: buffer
+#endif
+        type(flu_State) :: lua_state
+        character(255) :: err_str
 
         ! Note that all output in this subroutine *must* be prepended with #.
         ! This enables the blocking script to ignore these lines whilst doing
@@ -81,55 +91,12 @@ contains
             do proc = 0, nprocs-1
                 if (proc == iproc .and. comms_exists) then
                     ! Read in file.
-                    ir = get_free_unit()
-                    open(ir, file=comms_file, status='old')
-                    ! Will do our own echoing as want to prepend lines with '#'
-                    call input_options(echo_lines=.false., skip_blank_lines=.true.)
-
-                    do ! loop over lines in HANDE.COMM.
-                        call read_line(eof)
-                        if (eof) exit
-                        write (6,'(1X,"#",1X,a)') trim(line)
-
-                        call readu(w)
-                        select case(w)
-                        case('SOFTEXIT')
-                            ! Exit calculation immediately.
-                            soft_exit = .true.
-                        case('TAU')
-                            ! Change timestep.
-                            if (present(qs)) then
-                                call readf(qs%tau)
-                            else
-                                write (6, '(1X,"#",1X,a)') 'TAU ignored'
-                            end if
-                        case('VARYSHIFT_TARGET')
-                            if (present(qmc_in)) then
-                                call readf(qmc_in%target_particles)
-                                if (qmc_in%target_particles < 0) then
-                                    ! start varying the shift now.
-                                    if (present(qs)) then
-                                        qs%vary_shift = .true.
-                                    end if
-                                end if
-                            else
-                                write (6, '(1X,"#",1X,a)') 'VARYSHIFT_TARGET ignored'
-                            end if
-                        case('SHIFT')
-                            if (present(qs)) then
-                                do i = 1,size(qs%shift)
-                                    call readf(qs%shift(i))
-                                end do
-                            end if
-                        case default
-                            write (6, '(1X,"#",1X,a24,1X,a)') 'Unknown keyword ignored:', trim(w)
-                        end select
-
-                    end do ! end reading of HANDE.COMM.
-
-                    ! Don't want to keep HANDE.COMM around to be detected
-                    ! again on the next iteration.
-                    close(ir, status="delete")
+                    iunit = get_free_unit()
+                    open(iunit, file=comms_file, status='old')
+                    call read_file_to_buffer(buffer, in_unit=iunit)
+                    ! Don't want to keep HANDE.COMM around to be detected again on
+                    ! the next Monte Carlo iteration.
+                    close(iunit, status="delete")
                     comms_read = .true.
                 end if
 #ifdef PARALLEL
@@ -139,20 +106,52 @@ contains
             end do
 
 #ifdef PARALLEL
-            ! If in parallel need to broadcast data.
-            call mpi_bcast(soft_exit, 1, mpi_logical, proc, mpi_comm_world, ierr)
-            if (present(qs)) then
-                call mpi_bcast(qs%tau, 1, mpi_preal, proc, mpi_comm_world, ierr)
-                call mpi_bcast(qs%shift, size(qs%shift), mpi_preal, proc, mpi_comm_world, ierr)
-                call mpi_bcast(qs%vary_shift, 1, mpi_logical, proc, mpi_comm_world, ierr)
-            end if
-            if (present(qmc_in)) then
-                call mpi_bcast(qmc_in%target_particles, 1, mpi_preal, proc, mpi_comm_world, ierr)
-            end if
+#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
+            call mpi_bcast(buf_len, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
+            if (.not.parent) allocate(character(len=buf_len) :: buffer)
+#endif
+            call mpi_bcast(buffer, buf_len, MPI_CHARACTER, 0, mpi_comm_world, ierr)
 #endif
 
-            if (parent) write (6,'(1X,"#",/,1X,"#",1X,a59,/,1X,"#",1X,62("-"))')  &
-                   "From now on we use the information provided in "//comms_file//"."
+            ! Only print out the HANDE.COMM file from the parent processor;
+            ! prepend each line with # to ease data extraction.
+            if (parent) then
+                i = 1
+                do
+                    j = index(buffer(i:), new_line(buffer))
+                    if (j == 0) exit
+                    write (6,'(a1,a)', advance='no') '#', trim(buffer(i:j))
+                    i = j+1
+                end do
+                write (6,'(1X, "#", a)') trim(buffer(i:))
+            end if
+
+            ! Now each processor has the HANDE.COMM script, attempt to execute it...
+            call open_config_chunk(lua_state, buffer, lua_err, err_str)
+
+            if (lua_err == 0) then
+                ! ... and get variables from global state.
+                call aot_get_val(soft_exit, ierr, lua_state, key='softexit')
+                if (present(qs)) then
+                    call aot_get_val(qs%tau, ierr, lua_state, key='tau')
+                    call aot_get_val(qs%shift, ierr_arr, size(qs%shift), lua_state, key='shift')
+                end if
+                if (present(qmc_in)) then
+                    call aot_get_val(qmc_in%target_particles, ierr, lua_state, key='target_population')
+                    if (qmc_in%target_particles < 0 .and. present(qs)) qs%vary_shift = .true.
+                end if
+            end if
+
+            if (parent) then
+                if (lua_err == 0) then
+                    write (6,'(1X,"#",/,1X,"#",1X,a)') "From now on we use the information provided in "//comms_file//"."
+                else
+                    write (6,'(1X,"# aotus/lua error code:", i3)') ierr
+                    write (6,'(1X,"# error message:", a)') trim(err_str)
+                    write (6,'(1X,"# Ignoring variables in ",a)') trim(comms_file)
+                end if
+                write (6,'(1X,"#",1X,62("-"))')
+            end if
 
         end if
 
