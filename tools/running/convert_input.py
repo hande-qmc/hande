@@ -40,11 +40,17 @@ def read_old(filename):
                     inp[words[0]] = '{ update_every = %s }' % (words[1])
                 else:
                     inp[words[0]] = '{ update_every = %s, pop_factor = %s }' % (words[1], words[2])
-            elif words[0] in ('walker_length', 'spawned_walker_length'):
+            elif words[0] in ('walker_length', 'spawned_walker_length', 'spawned_rdm_length'):
                 words[0] = words[0].replace('walker_length', 'state_size')
                 if words[-1] == 'mb':
                     words[1] = '-%s' % (words[1])
                 inp[words[0]] = [words[1]]
+            elif words[0] == 'dmqmc_weighted_sampling':
+                inp[words[0]] = next(f).split()
+            elif words[0] == 'reduced_density_matrix':
+                inp[words[0]] = []
+                for i in range(int(words[1])):
+                    inp[words[0]].append(next(f).split())
             elif words[0] == 'attempt_spawn_prob':
                 inp['pattempt_single'] = words[1]
                 inp['pattempt_double'] = words[2]
@@ -237,6 +243,53 @@ def get_calc(inp):
             }
     read_to_dict(inp, keys, remap, opts['ccmc'])
 
+    opts['dmqmc'] = collections.OrderedDict()
+    keys = 'replica_tricks fermi_temperature use_all_sym_sectors use_all_spin_sectors beta_loops dmqmc_weighted_sampling find_weights half_density_matrix'.split()
+    remap = {
+                'use_all_spin_sectors':'all_spin_sectors',
+                'use_all_sym_sectors': 'all_sym_sectors',
+                'dmqmc_weighted_sampling':'sampling_weights',
+                'half_density_matrix':'symmetrize',
+            }
+    read_to_dict(inp, keys, remap, opts['dmqmc'])
+
+    opts['ipdmqmc'] = collections.OrderedDict()
+    keys = 'init_beta free_electron_trial grand_canonical_initialisation metropolis_attempts max_metropolis_move'.split()
+    remap = {
+                'init_beta': 'initial_beta',
+                'max_metropolis_move':'max_metropolis_moves',
+                'free_electron_trial':'free_electron_partition',
+            }
+    read_to_dict(inp, keys, remap, opts['ipdmqmc'])
+    ipdmqmc = 'propagate_to_beta' in inp.keys()
+
+    opts['operators'] = collections.OrderedDict()
+    keys = 'dmqmc_full_renyi_2 dmqmc_energy dmqmc_energy_squared dmqmc_correlation_function dmqmc_staggered_magnetisation dmqmc_correlation_function output_excitation_distribution start_averaging_excitation_dist'.split()
+    remap = {
+                'dmqmc_full_renyi_2':'renyi2',
+                'dmqmc_energy':'energy',
+                'dmqmc_energy_squared':'energy2',
+                'dmqmc_staggered_magnetisation':'staggered_magnetisation',
+                'dmqmc_correlation_function':'correlation',
+                'output_excitation_distribution':'excit_dist',
+                'start_averaging_excitation_dist':'excit_dist_start',
+            }
+    read_to_dict(inp, keys, remap, opts['operators'])
+
+    opts['rdm'] = collections.OrderedDict()
+    keys = 'spawned_rdm_length reduced_density_matrix ground_start_rdm start_averaging_rdm instantaneous_rdm output_rdm concurrence von_neumann_entropy renyi_entropy_2'.split()
+    remap = {
+                'spawned_rdm_length':'spawned_state_size',
+                'reduced_density_matrix':'rdms',
+                'ground_rdm':'ground_state',
+                'ground_start_rdm':'ground_start_start',
+                'instantaneous_rdm':'instantaneous',
+                'output_rdm':'write',
+                'von_neumann_entropy':'von_neumann',
+                'renyi_entropy_2':'renyi2',
+            }
+    read_to_dict(inp, keys, remap, opts['rdm'])
+
     opts['semi_stoch'] = collections.OrderedDict()
     keys = 'semi_stoch_high_pop semi_stoch_read write_determ_space semi_stoch_combine_annihil semi_stoch_shift_start semi_stoch_iteration'.split()
     remap = {
@@ -299,7 +352,7 @@ def get_calc(inp):
     for (k, v) in opts.items():
         if v:
             opts_slim[k] = v
-        elif (k == 'lanczos' and lanczos):
+        elif (k == 'lanczos' and lanczos) or (k == 'ipdmqmc' and ipdmqmc):
             opts_slim[k] = v
 
     return (calcs, opts_slim)
@@ -312,7 +365,7 @@ def dict_to_table(d, indent=4, prefix=''):
         s.append(' '*(indent-4)+'%s {' % (prefix))
     space = ' '*indent
     for (key, val) in d.items():
-        if key == 'lattice':
+        if key == 'lattice' or key == 'rdms':
             lattice = '{ {%s} }' % ('}, {'.join(', '.join(x) for x in val))
             s.append(space+'%s = %s,' % (key, lattice))
         elif len(val) == 1:
@@ -361,6 +414,10 @@ def print_new(comments, sys, calcs, opts):
                     print(dict_to_table(opts['ccmc'], indent=8, prefix='ccmc ='))
             elif calc == 'simple_fciqmc':
                 print(dict_to_table(opts['top']))
+            elif calc == 'dmqmc':
+                for table in ('dmqmc', 'ipdmqmc', 'operators', 'rdm'):
+                    if table in opts:
+                        print(dict_to_table(opts[table], indent=8, prefix='%s =' % table))
             for table in ('restart', 'reference'):
                 if table in opts:
                     print(dict_to_table(opts[table], indent=8, prefix='%s =' % table))
