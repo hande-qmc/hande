@@ -472,11 +472,6 @@ contains
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, dmqmc_in, dmqmc_estimates%rdm_info)
-        call read_restart_in(lua_state, opts, restart_in)
-        call read_reference_t(lua_state, opts, sys, reference)
-        ! load balancing not implemented in DMQMC--just use defaults.
-        call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
 
         ! I'm sure we can handle this more gracefully than hack it in here...!
         if (dmqmc_in%all_spin_sectors) then
@@ -493,6 +488,13 @@ contains
 
         ! [todo] - do spin polarisation in system setup.
         call set_spin_polarisation(sys%basis%nbasis, sys)
+
+        ! Now system initialisation is complete (boo), act on the other options.
+        call read_restart_in(lua_state, opts, restart_in)
+        call read_reference_t(lua_state, opts, sys, reference)
+        ! load balancing not implemented in DMQMC--just use defaults.
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
 
         calc_type = dmqmc_calc
         call init_proc_pointers(sys, qmc_in, reference, dmqmc_in)
