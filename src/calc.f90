@@ -81,7 +81,7 @@ integer(i0), allocatable :: ras1(:), ras3(:) ! (string_len)
 
 contains
 
-    subroutine init_calc_defaults(git_sha1, uuid, seed)
+    subroutine init_calc_defaults(git_sha1, uuid)
 
         ! Initialise calculation defaults which cannot be set at compile-time.
 
@@ -89,15 +89,11 @@ contains
         !    git_sha1: git SHA1 hash of the calculation.  Note that only the first 40
         !       characters (the length of the SHA1 hash) are actually used.
         !    uuid: UUID of the calculation.
-        ! Out:
-        !    seed: seed used to initialise the dSFMT random number generator.
 
         character(*), intent(in) :: git_sha1
         character(36), intent(in) :: uuid
-        integer, intent(out) :: seed
 
         GLOBAL_META = metadata_t(git_sha1, uuid)
-        seed = gen_seed(uuid)
 
     end subroutine init_calc_defaults
 

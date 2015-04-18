@@ -525,18 +525,6 @@ end type annihilation_flags_t
 
 ! --- GLOBAL STATE (TEMPORARY) ---
 
-! Global handle for purity work.
-type(qmc_in_t) :: qmc_in_global
-type(fciqmc_in_t) :: fciqmc_in_global
-type(semi_stoch_in_t) :: semi_stoch_in_global
-type(ccmc_in_t) :: ccmc_in_global
-type(restart_in_t) :: restart_in_global
-type(load_bal_in_t) :: load_bal_in_global
-
-type(annihilation_flags_t) :: annihilation_flags_global
-
-type(particle_t), target :: walker_global
-
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate

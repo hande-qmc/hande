@@ -61,13 +61,9 @@ implicit none
 
 contains
 
-    subroutine run_lua_hande(lua_err)
+    subroutine run_lua_hande()
 
         ! Generic entry point from which a lua script is run.
-
-        ! Out:
-        !    lua_err: error code.  Non-zero if there was any problem reading or running
-        !          the lua script.
 
         use aotus_module, only: open_config_file
         use flu_binding, only: flu_State, fluL_newstate, flu_close
@@ -76,14 +72,13 @@ contains
         use parallel
         use utils, only: read_file_to_buffer
 
-        integer, intent(out) :: lua_err
-
         character(255) :: inp_file, err_string
 #if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
         character(:), allocatable :: buffer
 #else
         character(1024**2) :: buffer
 #endif
+        integer :: lua_err
         integer :: buf_len, ierr
         type(flu_State) :: lua_state
         logical :: t_exists
@@ -108,8 +103,8 @@ contains
             end if
 
 #ifdef PARALLEL
-            call mpi_bcast(buf_len, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
 #if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
+            call mpi_bcast(buf_len, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
             if (.not.parent) allocate(character(len=buf_len) :: buffer)
 #endif
             call mpi_bcast(buffer, buf_len, MPI_CHARACTER, 0, mpi_comm_world, ierr)
@@ -118,12 +113,11 @@ contains
             ! Attempt to run script.  If it fails (ie lua_err is non-zero) then try
             ! parsing it as traditional input file for now.
             call open_config_file(lua_state, inp_file, lua_err, err_string)
-            ! [todo] - Change to stop once traditional input mode has been removed.
             if (lua_err == 0) then
                 call flu_close(lua_state)
             else
                 write (6,*) 'aotus/lua error code:', lua_err
-                call warning('run_lua_hande', trim(err_string)//'.  Assuming traditional input file...', 2)
+                call stop_all('run_lua_hande', trim(err_string))
             end if
 
 #ifdef PARALLEL
@@ -131,9 +125,7 @@ contains
 #endif
 
         else
-            ! Maybe read via STDIN?  Only in traditional mode for now...
-            ! [todo] - STDIN functionality with lua?
-            lua_err = 1
+            call stop_all('run_lua_hande', 'No input file supplied.')
         end if
 
     end subroutine run_lua_hande
