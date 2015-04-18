@@ -443,10 +443,11 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, reference_t
         use qmc, only: init_proc_pointers
-        use system, only: sys_t
+        use system, only: sys_t, heisenberg, read_in, ueg
 
-
-        use calc, only: calc_type, dmqmc_calc
+        use calc, only: calc_type, dmqmc_calc, doing_dmqmc_calc, dmqmc_energy_squared
+        use checking, only: check_allocate
+        use real_lattice, only: create_next_nearest_orbs
         use system, only: set_spin_polarisation
 
         integer(c_int) :: nresult
@@ -461,14 +462,12 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
 
-        integer :: opts
+        integer :: opts, ierr
         character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
                                                                 'restart', 'reference']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
-        ! [todo] - do spin polarisation in system setup.
-        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
@@ -478,6 +477,22 @@ contains
         ! load balancing not implemented in DMQMC--just use defaults.
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
+
+        ! I'm sure we can handle this more gracefully than hack it in here...!
+        if (dmqmc_in%all_spin_sectors) then
+            if (sys%system /= read_in .and. sys%system /= ueg) sys%Ms = sys%lattice%nsites
+            if (sys%system == heisenberg) sys%max_number_excitations = sys%lattice%nsites/2
+        end if
+        sys%basis%tensor_label_len = 2*sys%basis%string_len
+        if (doing_dmqmc_calc(dmqmc_energy_squared)) then
+            ! Create info no longer set in init_real_space.
+            allocate(sys%real_lattice%next_nearest_orbs(sys%basis%nbasis,sys%basis%nbasis), stat=ierr)
+            call check_allocate('sys%real_lattice%next_nearest_orbs',sys%basis%nbasis*sys%basis%nbasis,ierr)
+            call create_next_nearest_orbs(sys%basis, sys%real_lattice)
+        end if
+
+        ! [todo] - do spin polarisation in system setup.
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         calc_type = dmqmc_calc
         call init_proc_pointers(sys, qmc_in, reference, dmqmc_in)
