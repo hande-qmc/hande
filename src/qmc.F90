@@ -704,7 +704,6 @@ contains
             if (present(fciqmc_in)) then
                 select case(fciqmc_in%trial_function)
                 case (single_basis)
-                    write (6,*) 'standard update'
                     update_proj_energy_ptr => update_proj_energy_heisenberg_basic
                 case (neel_singlet)
                     update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet

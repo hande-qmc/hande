@@ -483,7 +483,6 @@ contains
 
         ! Don't allow creation of anti-particles in simple_fciqmc.
         if (nkill > abs(pop)) then
-            write (6,*) pop, abs(pop)*qs%tau*(Hii-H00-qs%shift(1))
             call stop_all('do_simple_fciqmc','Trying to create anti-particles.')
         end if
 

@@ -884,7 +884,6 @@ contains
                 case('neel_singlet')
                     fciqmc_in%trial_function = neel_singlet
                 case default
-                    write (6,*) trim(str)
                     call stop_all('read_fciqmc_in', 'Unknown trial wavefunction')
                 end select
             end if
@@ -1355,13 +1354,11 @@ contains
 
             call aot_get_val(restart_in%write_freq, err, lua_state, restart_table, 'write_frequency')
 
-            write (6,*) 'restart', restart_in%write_restart, restart_in%read_restart
             associate(r_in=>restart_in)
                 call get_flag_and_id(lua_state, restart_table, r_in%read_restart, r_in%read_id, 'read')
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart, r_in%write_id, 'write')
                 call get_flag_and_id(lua_state, restart_table, r_in%write_restart_shift, r_in%write_shift_id, 'write_shift')
             end associate
-            write (6,*) 'restart', restart_in%write_restart, restart_in%read_restart
 
             call warn_unused_args(lua_state, keys, restart_table)
 
