@@ -1055,6 +1055,7 @@ contains
         !     all_spin_sectors = true/false,
         !     beta_loops = Nb,
         !     sampling_weights = { ... },
+        !     vary_weights = N,
         !     find_weights = true/false,
         !     symmetrize = true/false,
         ! }
@@ -1115,9 +1116,9 @@ contains
         integer, allocatable :: err_arr(:)
         logical :: op
 
-        character(30), parameter :: dmqmc_keys(8) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
+        character(30), parameter :: dmqmc_keys(9) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',     &
-                                                                      'find_weights', 'symmetrize']
+                                                                      'find_weights', 'symmetrize', 'vary_weights']
         character(30), parameter :: ip_keys(5)    = [character(30) :: 'initial_beta', 'free_electron_partition',                &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts',  &
                                                                       'max_metropolis_moves']
@@ -1145,6 +1146,8 @@ contains
                 ! Certainly can't have more excitation levels than basis functions, so that's a handy upper-limit.
                 call aot_get_val(dmqmc_in%sampling_probs, err_arr, nbasis, lua_state, table, 'sampling_weights')
             end if
+            dmqmc_in%vary_weights = aot_exists(lua_state, table, 'vary_weights')
+            call aot_get_val(dmqmc_in%finish_varying_weights, err, lua_state, table, 'vary_weights')
             call warn_unused_args(lua_state, dmqmc_keys, table)
             call aot_table_close(lua_state, table)
         end if
