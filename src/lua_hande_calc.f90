@@ -1041,6 +1041,7 @@ contains
         !     beta_loops = Nb,
         !     sampling_weights = { ... },
         !     find_weights = true/false,
+        !     symmetrize = true/false,
         ! }
         ! ipdmqmc = { -- sets propagate_to_beta to true
         !     initial_beta = b,
@@ -1099,9 +1100,9 @@ contains
         integer, allocatable :: err_arr(:)
         logical :: op
 
-        character(30), parameter :: dmqmc_keys(7) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
+        character(30), parameter :: dmqmc_keys(8) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',     &
-                                                                      'find_weights']
+                                                                      'find_weights', 'symmetrize']
         character(30), parameter :: ip_keys(5)    = [character(30) :: 'initial_beta', 'free_electron_partition',                &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts',  &
                                                                       'max_metropolis_moves']
@@ -1123,6 +1124,7 @@ contains
             call aot_get_val(dmqmc_in%all_spin_sectors, err, lua_state, table, 'all_spin_sectors')
             call aot_get_val(dmqmc_in%beta_loops, err, lua_state, table, 'beta_loops')
             call aot_get_val(dmqmc_in%find_weights, err, lua_state, table, 'find_weights')
+            call aot_get_val(dmqmc_in%half_density_matrix, err, lua_state, table, 'symmetrize')
             if (aot_exists(lua_state, table, 'sampling_weights')) then
                 dmqmc_in%weighted_sampling = .true.
                 ! Certainly can't have more excitation levels than basis functions, so that's a handy upper-limit.
@@ -1150,6 +1152,8 @@ contains
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_full_r2
             call aot_get_val(op, err, lua_state, table, 'energy', default=.false.)
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy
+            call aot_get_val(op, err, lua_state, table, 'energy2', default=.false.)
+            if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_energy_squared
             call aot_get_val(op, err, lua_state, table, 'staggered_magnetisation', default=.false.)
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_staggered_magnetisation
             if (aot_exists(lua_state, table, 'correlation')) then
@@ -1169,7 +1173,7 @@ contains
             if (err /= 0) call stop_all('read_dmqmc_in', 'spawned_state_size not specified in rdm table.')
             if (aot_exists(lua_state, table, 'rdms')) then
                 dmqmc_in%rdm%doing_rdm = .true.
-                call aot_table_open(lua_state, table, subtable, 'rdm')
+                call aot_table_open(lua_state, table, subtable, 'rdms')
                 dmqmc_in%rdm%nrdms = aot_table_length(lua_state, subtable)
                 allocate(rdm_info(dmqmc_in%rdm%nrdms), stat=err)
                 call check_allocate('rdm_info', dmqmc_in%rdm%nrdms, err)
