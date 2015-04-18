@@ -1188,9 +1188,16 @@ contains
 
         if (aot_exists(lua_state, opts, 'rdm')) then
             call aot_table_open(lua_state, opts, table, 'rdm')
+
+            ! instantaneous is optional but if present, spawned_state_size must
+            ! be.
+            call aot_get_val(dmqmc_in%rdm%calc_inst_rdm, err, lua_state, table, 'instantaneous')
+
             ! If doing rdms, must specify them and the spawned state size.
             call aot_get_val(dmqmc_in%rdm%spawned_length, err, lua_state, table, 'spawned_state_size')
-            if (err /= 0) call stop_all('read_dmqmc_in', 'spawned_state_size not specified in rdm table.')
+            if (dmqmc_in%rdm%calc_inst_rdm .and. err /= 0) then
+                call stop_all('read_dmqmc_in', 'spawned_state_size not specified in rdm table.')
+            end if
             if (aot_exists(lua_state, table, 'rdms')) then
                 dmqmc_in%rdm%doing_rdm = .true.
                 call aot_table_open(lua_state, table, subtable, 'rdms')
@@ -1208,7 +1215,6 @@ contains
             ! Optional arguments.
             call aot_get_val(dmqmc_in%rdm%calc_ground_rdm, err, lua_state, table, 'ground_state')
             call aot_get_val(dmqmc_in%start_av_rdm, err, lua_state, table, 'ground_state_start')
-            call aot_get_val(dmqmc_in%rdm%calc_inst_rdm, err, lua_state, table, 'instantaneous')
             call aot_get_val(dmqmc_in%rdm%output_rdm, err, lua_state, table, 'write')
             call aot_get_val(dmqmc_in%rdm%doing_concurrence, err, lua_state, table, 'concurrence')
             call aot_get_val(dmqmc_in%rdm%doing_vn_entropy, err, lua_state, table, 'von_neumann')
