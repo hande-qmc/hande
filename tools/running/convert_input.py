@@ -192,10 +192,10 @@ def get_calc(inp):
                 'sparse_hamiltonian': 'sparse',
             }
     read_to_dict(inp, keys, remap, opts['lanczos'])
-    # Toggled the default for sparse Hamiltonians...
-    if 'sparse' not in opts['lanczos'].keys():
-        opts['lanczos']['sparse'] = ['false']
     lanczos = 'lanczos' in inp.keys()
+    # Toggled the default for sparse Hamiltonians...
+    if lanczos and 'sparse' not in opts['lanczos'].keys():
+        opts['lanczos']['sparse'] = ['false']
 
     opts['hilbert'] = collections.OrderedDict()
     keys = 'estimate_hilbert_space truncation_level seed reference'.split()
@@ -244,11 +244,12 @@ def get_calc(inp):
     read_to_dict(inp, keys, remap, opts['ccmc'])
 
     opts['dmqmc'] = collections.OrderedDict()
-    keys = 'replica_tricks fermi_temperature use_all_sym_sectors use_all_spin_sectors beta_loops dmqmc_weighted_sampling find_weights half_density_matrix'.split()
+    keys = 'replica_tricks fermi_temperature use_all_sym_sectors use_all_spin_sectors beta_loops dmqmc_weighted_sampling find_weights half_density_matrix dmqmc_vary_weights'.split()
     remap = {
                 'use_all_spin_sectors':'all_spin_sectors',
                 'use_all_sym_sectors': 'all_sym_sectors',
                 'dmqmc_weighted_sampling':'sampling_weights',
+                'dmqmc_vary_weights':'vary_weights',
                 'half_density_matrix':'symmetrize',
             }
     read_to_dict(inp, keys, remap, opts['dmqmc'])
