@@ -8,7 +8,7 @@ ccd = gcc
 cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DPARALLEL
 ld = ftn
 ldflags = -dynamic -hpl=${DEST}/hwp
-libs = /lib64/libuuid.so.1.3.0
+libs = /lib64/libuuid.so.1.3.0 -llua
 f90_module_flag = -J
 
 [opt]

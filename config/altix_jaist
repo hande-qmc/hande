@@ -8,7 +8,7 @@ cxx = mpic++
 ld = mpif90
 cppflags = -DHAVE_SSE2 -DPARALLEL -DDISABLE_LANCZOS -DDISABLE_HDF5
 ldflags = -L ${MKL_HOME}/lib/64
-libs =  -mkl:cluster -lpthread -lm -cxxlib -lz /usr/lib64/libuuid.so
+libs =  -mkl:cluster -lpthread -lm -cxxlib -lz /usr/lib64/libuuid.so -llua
 f90_module_flag = -module
 
 [opt]

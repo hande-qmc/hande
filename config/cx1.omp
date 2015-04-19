@@ -10,7 +10,7 @@ cxx = mpic++
 ld = mpif90
 cppflags = -DHAVE_SSE2 -DPARALLEL
 ldflags = -L $(HOME)/local/lib/TRLan.cx1 -L ${HDF5_HOME}/lib -L ${MKL_HOME}/lib/64
-libs = -ltrlan_mpi -mkl:cluster -lpthread -lm -cxxlib -lhdf5_fortran -lhdf5 -lz /usr/lib64/libuuid.so.1
+libs = -ltrlan_mpi -mkl:cluster -lpthread -lm -cxxlib -lhdf5_fortran -lhdf5 -lz /usr/lib64/libuuid.so.1 -llua
 f90_module_flag = -module
 
 [opt]

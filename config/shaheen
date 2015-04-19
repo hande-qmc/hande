@@ -8,7 +8,7 @@ ccd = gcc
 cxxd = g++
 cpp = cpp -P -C
 cppflags = -DPARALLEL -DDISABLE_LANCZOS
-libs = -L/opt/ibmcmp/vacpp/11.1/lib -libmc++ -lstdc++ $${KSL_SCALAPACK_LIB} -lxlsmp -lhdf5_fortran -luuid
+libs = -L/opt/ibmcmp/vacpp/11.1/lib -libmc++ -lstdc++ $${KSL_SCALAPACK_LIB} -lxlsmp -lhdf5_fortran -luuid -llua
 f90_module_flag = -qmoddir=
 f90_module_flag_pad = false
 

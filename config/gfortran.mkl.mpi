@@ -7,7 +7,7 @@ cc = mpicc
 cxx = mpiCC
 ld = mpif90
 cppflags = -DHAVE_SSE2 -DPARALLEL
-libs = -ltrlan_mpi -lmkl_scalapack_lp64 -Wl,--start-group -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -Wl,--end-group -lpthread -lstdc++ -lhdf5_fortran -luuid
+libs = -ltrlan_mpi -lmkl_scalapack_lp64 -Wl,--start-group -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -Wl,--end-group -lpthread -lstdc++ -lhdf5_fortran -luuid -llua
 f90_module_flag = -J
 
 [opt]
