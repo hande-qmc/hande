@@ -1,18 +1,19 @@
-ueg
-3d
-rs 1
+sys = ueg {
+    nel = 7,
+    ms = 7,
+    dim = 3,
+    cutoff = 20,
+    rs = 1,
+    chem_pot = -0.0650329886175,
+}
 
-nel 7
-ecutoff 20
-ms 7
-
-estimate_canonical_kinetic_energy
-
-chem_pot -0.0650329886175
-
-fermi_temperature
-
-seed 7
-init_beta 1
-num_kinetic_cycles 100
-init_pop 1000
+kinetic_energy {
+    sys = sys,
+    kinetic = {
+        beta = 1,
+        nattempts = 1000,
+        ncycles = 100,
+        rng_seed = 7,
+        fermi_temperature = true,
+    },
+}

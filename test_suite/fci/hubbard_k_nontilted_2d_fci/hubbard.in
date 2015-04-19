@@ -1,10 +1,15 @@
-hubbard_k
-lattice
-2 0
-0 2
-electrons 4
-block_size 1
-fci
-(eigenvalues)
-hamil 
-det 
+sys = hubbard_k {
+    electrons = 4,
+    lattice = { {2, 0}, {0, 2} },
+    ms = 0,
+    sym = 2,
+}
+
+fci {
+    sys = sys,
+    fci = {
+        write_hamiltonian = true,
+        blacs_block_size = 1,
+    },
+}
+--eigenvalues

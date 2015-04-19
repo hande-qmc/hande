@@ -1,7 +1,10 @@
-hubbard_k
+sys = hubbard_k {
+    electrons = 4,
+    lattice = { {4} },
+    ms = 0,
+    sym = 4,
+}
 
-lattice
-4
-electrons 4
-fci
-end
+fci {
+    sys = sys,
+}

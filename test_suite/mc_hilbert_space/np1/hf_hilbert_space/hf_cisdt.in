@@ -1,11 +1,16 @@
-( Exact size of CISDT space is 36021. )
-read INTDUMP
-nel 10
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
 
-ms 0
-sym 0
-
-truncation_level 3
-estimate_hilbert_space 1000000
-
-seed 160806604
+hilbert_space {
+    sys = sys,
+    hilbert = {
+        ncycles = 1000000,
+        ex_level = 3,
+        rng_seed = 160806604,
+    },
+}
+-- Exact size of CISDT space is 36021. 

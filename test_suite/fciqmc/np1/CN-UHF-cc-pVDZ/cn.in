@@ -1,20 +1,27 @@
-read INTDUMP
-nel 13
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 13,
+    ms = 1,
+    CAS = {9, 12},
+}
 
-ms 1
-
-estimate_hilbert_space 10000000
-
-fciqmc
-
-walker_length 500 mb
-spawned_walker_length 100 mb
-
-nreports 200
-mc_cycles 10
-tau 0.005
-varyshift_target 77000
-
-cas 9 12
-seed 7
-init_pop 10
+hilbert_space {
+    sys = sys,
+    hilbert = {
+        ncycles = 10000000,
+        rng_seed = 7,
+    },
+}
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.005,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 200,
+        target_population = 77000,
+        state_size = -500,
+        spawned_state_size = -100,
+    },
+}

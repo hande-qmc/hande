@@ -38,8 +38,9 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
-        use calc, only: doing_calc, use_mpi_barriers
+        use calc, only: doing_calc
         use death, only: stochastic_death
+        use importance_sampling, only: importance_sampling_weight
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
         use qmc, only: init_qmc
@@ -78,7 +79,7 @@ contains
         integer :: nattempts_current_det, nspawn_events
         type(excit_t) :: connection
         real(p) :: hmatel
-        real(p) :: real_population
+        real(p) :: real_population, weighted_population
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
@@ -137,9 +138,10 @@ contains
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
-            call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
+            call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len, &
+                                       fciqmc_in%guiding_function)
         else
-            call initial_fciqmc_status(sys, qmc_in, qs)
+            call initial_fciqmc_status(sys, qmc_in, qs, guiding_function=fciqmc_in%guiding_function)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -157,7 +159,7 @@ contains
                 if (iter == semi_stoch_iter .and. semi_stoch_in%space_type /= empty_determ_space) then
                     determ%doing_semi_stoch = .true.
                     call init_semi_stoch_t(determ, semi_stoch_in, sys, qs%psip_list, qs%ref, annihilation_flags, &
-                                           qs%spawn_store%spawn, use_mpi_barriers)
+                                           qs%spawn_store%spawn, qmc_in%use_mpi_barriers)
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
@@ -176,6 +178,7 @@ contains
 
                     ! Extract the real sign from the encoded sign.
                     real_population = real(qs%psip_list%pops(1,idet),p)/real_factor
+                    weighted_population = importance_sampling_weight(fciqmc_in%guiding_function, cdet, real_population)
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array.
@@ -185,7 +188,7 @@ contains
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, cdet, real_population, qs%estimators%D0_population, &
+                    call update_proj_energy_ptr(sys, qs%ref%f0, cdet, weighted_population, qs%estimators%D0_population, &
                                                 qs%estimators%proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
@@ -231,8 +234,7 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
-                                                    load_bal_in%nslots)
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, load_bal_in%nslots)
                         call direct_annihilation_received_list(sys, rng, qmc_in, qs%ref, annihilation_flags, &
                                                                pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
@@ -295,9 +297,9 @@ contains
         call write_bloom_report(bloom_stats)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
             if (determ%doing_semi_stoch .and. determ%separate_annihilation) then
-                call load_balancing_report(pl%nparticles, pl%nstates, spawn%mpi_time, determ%mpi_time)
+                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, determ%mpi_time)
             else
-                call load_balancing_report(pl%nparticles, pl%nstates, spawn%mpi_time)
+                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time)
             end if
         end associate
 
@@ -359,7 +361,7 @@ contains
         integer :: idet, iparticle, nattempts_current_det
         integer(int_p) :: nspawned
         integer(int_p) :: int_pop(spawn_recv%ntypes)
-        real(p) :: real_pop
+        real(p) :: real_pop, weighted_pop
         real(p) :: list_pop
         integer(i0), target :: ftmp(sys%basis%tensor_label_len)
 

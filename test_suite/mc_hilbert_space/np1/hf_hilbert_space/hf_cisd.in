@@ -1,11 +1,16 @@
-( Size of CISD space is 1925 )
-read INTDUMP
-nel 10
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
 
-ms 0
-sym 0
-
-truncation_level 2
-estimate_hilbert_space 1000000
-
-seed 160806603
+hilbert_space {
+    sys = sys,
+    hilbert = {
+        ncycles = 1000000,
+        ex_level = 2,
+        rng_seed = 160806603,
+    },
+}
+-- Size of CISD space is 1925 

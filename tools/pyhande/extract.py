@@ -89,7 +89,7 @@ calc_data : list of `:class:`pandas.Series`
     # ... input (echoed in output)
     md_input = dict(
         calc_type = '^ *(simple_fciqmc|fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc|\
-                         |estimate_canonical_kinetic_energy) *$',
+                         |estimate_canonical_kinetic_energy|kinetic_energy)',
         sym = r'\bsym\b +\d+',
         ms = r'\bms\b +-*\d+',
         nel = r'\bnel\b|\belectrons\b',
@@ -148,7 +148,7 @@ calc_data : list of `:class:`pandas.Series`
     have_git_hash_next = False
     have_input = 0
     calc_data = []
-    calc_titles = ['diagonalisation results', 'Hilbert space']
+    calc_titles = ['diagonalisation results', 'RDM eigenvalues', 'Hilbert space']
     column_names = []
     for line in f:
         hit = False
@@ -215,6 +215,10 @@ calc_data : list of `:class:`pandas.Series`
             column_names = re.split('   *', line[3:].strip())
             break
     f.close()
+
+    # Remapping to match old and new input files
+    if metadata['calc_type'] == 'estimate_canonical_kinetic_energy':
+        metadata['calc_type'] = 'kinetic_energy'
 
     if column_names:
         # Hunt for the end of the table.
@@ -326,8 +330,8 @@ val:
     fields in the line) is in md_int or md_float.
 '''
     val = line.split()[-1]
-    if val[-1] == '.':
-        # Remove trailing full-stops.
+    if val[-1] in ('.', ','):
+        # Remove trailing commas and full-stops.
         val = val[:-1]
     if key in md_int:
         if "*" not in val:
@@ -426,11 +430,13 @@ nread : int
     Number of lines read.
 '''
     nread = 0
-    if 'Exact' in line or 'Lanczos' in line:
-        if 'Exact' in line:
+    if any(key in line for key in ('Exact', 'Lanczos', 'LAPACK', 'LANCZOS', 'RDM')):
+        if 'Exact' in line or 'LAPACK' in line:
             title = 'FCI (LAPACK)'
-        elif 'Lanczos' in line:
+        elif 'Lanczos' in line or 'LANCZOS' in line:
             title = 'FCI (Lanczos)'
+        elif 'RDM' in line:
+            title = 'FCI RDM'
         for line in fh:
             nread += 1
             if 'State' in line:

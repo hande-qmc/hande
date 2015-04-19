@@ -1,15 +1,20 @@
-hubbard_k
-lattice
-2 0
-0 2
-electrons 2
-simple_fciqmc
-init_pop 1
-varyshift_target 10000
-mc_cycles 50
-nreports 220
-tau 0.05
-ms 0
-sym 1
-seed 5234
-(Note that this is not a converged calculation, merely a quick test...)
+sys = hubbard_k {
+    electrons = 2,
+    lattice = { {2, 0}, {0, 2} },
+    ms = 0,
+    sym = 1,
+}
+
+simple_fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.05,
+        rng_seed = 5234,
+        init_pop = 1,
+        mc_cycles = 50,
+        nreports = 220,
+        target_population = 10000,
+    },
+    sparse = false,
+}
+--Note that this is not a converged calculation, merely a quick test...

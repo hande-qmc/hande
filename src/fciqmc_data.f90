@@ -186,7 +186,7 @@ contains
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind
         use dmqmc_data, only: correlation_fn_ind, staggered_mag_ind, full_r2_ind
-        use qmc_data, only: qmc_in_t, walker_global, qmc_state_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs

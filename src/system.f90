@@ -232,7 +232,7 @@ type sys_ueg_t
     ! Fermi-Energy (Infinite system).
     real(p) :: ef = 1.0_p
     ! Chemical potential.
-    real(p) :: chem_pot = 1.0_p
+    real(p) :: chem_pot = huge(1.0_p)
 
     ! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
     ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and
@@ -309,6 +309,9 @@ type sys_t
     ! the number of 0's in the basis functions
     integer :: nvirt
 
+    ! Ms spin quantum number of states.
+    integer :: Ms = huge(1)
+
     ! Spin polarisation is set in set_spin_polarisation in the system module.
     ! Only used in Fermionic systems; see note for nel and nvirt for how the spin
     ! polarisation is handled in the Heisenberg system.
@@ -318,6 +321,9 @@ type sys_t
     integer :: nalpha, nbeta
     ! # number of virtual alpha, beta spin-orbitals
     integer :: nvirt_alpha, nvirt_beta
+
+    ! The specific symmetry sector to be used.
+    integer :: symmetry = huge(1)
 
     ! Number of symmetries.  These are specified for orbitals.
     integer :: nsym = 1
@@ -374,8 +380,6 @@ contains
         ! In/Out:
         !    sys: system being studied.
 
-        use calc, only: ms_in
-
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
 
@@ -428,31 +432,34 @@ contains
 
                     forall (ivec=1:sl%ndim) sl%rlattice(:,ivec) = sl%lattice(:,ivec)/sl%box_length(ivec)**2
 
-                    ! If performing a calculation in all symmetry sectors, set ms_in to be its maximum value
+                    ! If performing a calculation in all symmetry sectors, set Ms to be its maximum value
                     ! so that the necessary arrays will be allocated to their maximum size.
 
                 end select
 
-                if (.not.allocated(sk%ktwist)) then
+                if (allocated(sk%ktwist)) then
+                    if (size(sk%ktwist) /= sl%ndim) &
+                        call stop_all('init_system', 'Twist vector dimensions not consistent with lattice dimenstions.')
+                else
                     allocate(sk%ktwist(sl%ndim), stat=ierr)
                     call check_allocate('sys%lattice%ktwist',sl%ndim,ierr)
                     sk%ktwist = 0.0_p
                 end if
 
-                ! For the Heisenberg model, we have ms_in and nsites defined, but nel not.
+                ! For the Heisenberg model, we have Ms and nsites defined, but nel not.
                 ! Here nel means the number of up spins, nvirt means the number of down spins.
-                ! For other models, both ms_in and nel have already been set, and nel refers
+                ! For other models, both Ms and nel have already been set, and nel refers
                 ! to the number of electrons in the system.
                 select case(sys%system)
                 case(heisenberg)
-                    sys%nel = (sl%nsites+ms_in)/2
-                    sys%nvirt = (sl%nsites-ms_in)/2
+                    sys%nel = (sl%nsites+sys%Ms)/2
+                    sys%nvirt = (sl%nsites-sys%Ms)/2
                 case(hub_k, hub_real)
                     sys%nvirt = 2*sl%nsites - sys%nel
                 case(chung_landau)
                     sys%nvirt = sl%nsites - sys%nel
                     ! Spinless fermions.  Set all fermions to be spin-up.
-                    ms_in = sys%nel
+                    sys%Ms = sys%nel
                 case(ueg)
                     ! set nvirt in basis once the basis set has been generated.
                 end select
@@ -580,7 +587,7 @@ contains
 
     end function in_FBZ
 
-    subroutine set_spin_polarisation(nbasis, Ms, sys)
+    subroutine set_spin_polarisation(nbasis, sys)
 
         ! Set the spin polarisation information stored in components of sys.
         !    nalpha, nbeta: number of alpha, beta electrons.
@@ -588,15 +595,13 @@ contains
 
         ! In:
         !    nbasis: number of single-particle basis functions.
-        !    Ms: spin of determinants that are being considered.  Ignored for the
-        !       Chung--Landau model.
         ! In/Out:
         !    sys: initialised system object describing system. On output
         !       components related to spin-polarisation are set.
 
         use errors, only: stop_all
 
-        integer, intent(in) :: nbasis, Ms
+        integer, intent(in) :: nbasis
         type(sys_t), intent(inout) :: sys
 
         character(len=*), parameter :: proc_name = 'set_spin_polarisation'
@@ -610,12 +615,12 @@ contains
             ! Spin polarization is different (see comments in system) as the
             ! Heisenberg model is a collection of spins rather than electrons.
             ! See comments in init_system and at module-level.
-            if (abs(Ms) > sys%lattice%nsites) then
-                write (err, err_fmt) Ms
+            if (abs(sys%Ms) > sys%lattice%nsites) then
+                write (err, err_fmt) sys%Ms
                 call stop_all(proc_name, err)
             end if
-            sys%nel = (sys%lattice%nsites + Ms)/2
-            sys%nvirt = (sys%lattice%nsites - Ms)/2
+            sys%nel = (sys%lattice%nsites + sys%Ms)/2
+            sys%nvirt = (sys%lattice%nsites - sys%Ms)/2
             ! The Heisenberg model doesn't use these values, but they need to be
             ! initialized to something sensible as we allocate memory using them in 
             ! alloc_det_info_t.
@@ -635,13 +640,13 @@ contains
         case default
 
             ! Find the number of determinants with the required spin.
-            if (abs(mod(Ms,2)) /= mod(sys%nel,2) .or. abs(Ms) > sys%nel) then
-                write (err, err_fmt) Ms
+            if (abs(mod(sys%Ms,2)) /= mod(sys%nel,2) .or. abs(sys%Ms) > sys%nel) then
+                write (err, err_fmt) sys%Ms
                 call stop_all(proc_name, err)
             end if
 
-            sys%nbeta = (sys%nel - Ms)/2
-            sys%nalpha = (sys%nel + Ms)/2
+            sys%nbeta = (sys%nel - sys%Ms)/2
+            sys%nalpha = (sys%nel + sys%Ms)/2
 
             sys%nvirt_alpha = nbasis/2 - sys%nalpha
             sys%nvirt_beta = nbasis/2 - sys%nbeta

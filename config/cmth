@@ -4,7 +4,7 @@ cc = icc
 cxx = icpc
 cppflags = -DHAVE_SSE2
 ld = ifort
-libs = -ltrlan -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -Wl,--end-group -lpthread -cxxlib -lhdf5_fortran -luuid
+libs = -ltrlan -Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -Wl,--end-group -lpthread -cxxlib -lhdf5_fortran -luuid -llua
 f90_module_flag = -module
 
 [opt]

@@ -1,11 +1,16 @@
-ueg
-3d
-nel 14
-rs 1
-ecutoff 3
+sys = ueg {
+    nel = 14,
+    ms = 0,
+    sym = 1,
+    dim = 3,
+    cutoff = 3,
+    rs = 1,
+}
 
-sym 1
-ms 0
-
-estimate_hilbert_space 10000000
-seed 7
+hilbert_space {
+    sys = sys,
+    hilbert = {
+        ncycles = 10000000,
+        rng_seed = 7,
+    },
+}

@@ -72,7 +72,7 @@ contains
 
     pure subroutine update_proj_energy_heisenberg_neel_singlet(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
-        ! Add the contribution of the current basis fucntion to the
+        ! Add the contribution of the current basis function to the
         ! projected energy.
         ! This uses the Neel singlet state as a trial function.
         ! This function is an integral over the Neel states in all directions
@@ -88,7 +88,7 @@ contains
         !    f0: reference basis function (unused, for interface compatibility only).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
-        !    pop: population on current determinant.
+        !    pop: population on current determinant, unweighted by the trial function.
         ! In/Out:
         !    D0_pop_sum: running total of N_0, the population on the reference
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
@@ -101,14 +101,21 @@ contains
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
         !       spin product and the trial wavefunction.
 
-        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
-        ! proj_energy_sum are zero before the first call.
+        ! NOTE:
+
+        ! 1. It is the programmer's responsibility to ensure D0_pop_sum and
+        !    proj_energy_sum are zero before the first call.
+
+        ! 2. With importance sampling, the psip amplitudes, n_i, represent the quantities
+        !    f_i = c_i^T * c_i
+        !    where c_i the amplitude of |D_i> in the true ground state and c_i^T
+        !    is the amplitude of |D_i> in the trial ground state.   pop represents
+        !    c_i rather than f_i.
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use fciqmc_data, only: neel_singlet_amp
         use system, only: sys_t
-        use calc, only: guiding_function, neel_singlet_guiding
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
@@ -119,26 +126,13 @@ contains
         real(p), intent(out) :: hmatel
 
         integer :: n, lattice_1_up, lattice_2_up
-        real(p) :: importance_sampling_factor
 
         excitation = excit_t(0, (/ 0,0 /), (/ 0,0 /), .false.)
-
-        importance_sampling_factor = 1.0_p
 
         ! WARNING: assuming trial function parameters are the last two elements
         ! in cdet%data.
         n = nint(cdet%data(size(cdet%data)-1))
         lattice_1_up = nint(cdet%data(size(cdet%data)))
-
-        ! If importance sampling is applied then the psip amplitudes, n_i,
-        ! will represent the quantities
-        ! f_i = c_i^T * c_i
-        ! where c_i the amplitude of |D_i> in the true ground state and
-        ! c_i^T is the amplitude of |D_i> in the trial ground state. Hence, we
-        ! must remove this extra factor if we wish to calculate the projected eneergy
-        ! in the same way. This is done with the factor, importance_sampling_factor.
-        if (guiding_function==neel_singlet_guiding) importance_sampling_factor = &
-                                                               1.0_p/neel_singlet_amp(n)
 
         ! Deduce the number of 0-1 bonds where the 1's are on the second sublattice:
         ! The total number of 0-1 bonds, n(0-1), can be found from the diagonal
@@ -181,7 +175,6 @@ contains
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
         hmatel = hmatel - (sys%heisenberg%J * lattice_2_up * neel_singlet_amp(n+1))/2
 
-        hmatel = hmatel * importance_sampling_factor
         proj_energy_sum = proj_energy_sum + hmatel * pop
 
         ! Now we just need to find the contribution to the denominator. The total
@@ -189,7 +182,7 @@ contains
         ! \sum_{i} (a_i * n_i)
         ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
 
-        D0_pop_sum = D0_pop_sum + pop*neel_singlet_amp(n)*importance_sampling_factor
+        D0_pop_sum = D0_pop_sum + pop*neel_singlet_amp(n)
 
     end subroutine update_proj_energy_heisenberg_neel_singlet
 

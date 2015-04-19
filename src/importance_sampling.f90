@@ -41,6 +41,38 @@ implicit none
 
 contains
 
+    pure function importance_sampling_weight(guiding_function, cdet, pop) result(weight)
+
+        ! Calculate c_i from f_i.
+
+        ! In:
+        !    guiding_function: guiding function in use.  See enum in qmc_data for possible options.
+        !    cdet: det_info_t object representing the i-th state (tensor product, determinant, etc.).
+        !    pop: current population on i, giving a stochastic representation of f_i.
+        ! Returns:
+        !    stochastic representation of c_i.
+
+        use determinants, only: det_info_t
+        use qmc_data, only: single_basis, neel_singlet_guiding
+
+        use fciqmc_data, only: neel_singlet_amp
+
+        real(p) :: weight
+        integer, intent(in) :: guiding_function
+        type(det_info_t), intent(in) :: cdet
+        real(p), intent(in) :: pop
+        integer :: n
+
+        select case(guiding_function)
+        case(single_basis)
+            weight = pop
+        case(neel_singlet_guiding)
+            n = nint(cdet%data(size(cdet%data)-1))
+            weight = pop/neel_singlet_amp(n)
+        end select
+
+    end function importance_sampling_weight
+
     subroutine neel_trial_state(sys, cdet, connection, trial_func, hmatel)
 
         ! Apply the transformation to the Hamiltonian matrix element due to

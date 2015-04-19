@@ -1,26 +1,26 @@
-hubbard_k
+sys = hubbard_k {
+    electrons = 2,
+    lattice = { {2, 0}, {0, 2} },
+    ms = 0,
+    sym = 1,
+}
 
-ifciqmc
-( By setting the initiator population to 0, i.e. the population at which we )
-( consider a determinant to be an initiator, we should recapture the fciqmc )
-( result. )
-initiator_population 0
-
-lattice
-2 0
-0 2
-electrons 2
-
-initial_shift 0.01
-spawned_walker_length 500
-walker_length 10
-nreports 250
-mc_cycles 25
-
-tau 0.05
-varyshift_target 200
-
-ms 0
-sym 1
-seed 7
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.05,
+        initiator = true,
+        initial_shift = 0.01,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 25,
+        nreports = 250,
+        target_population = 200,
+        initiator_threshold = 0,
+        state_size = 10,
+        spawned_state_size = 500,
+    },
+}
+-- By setting the initiator population to 0, i.e. the population at which we 
+-- consider a determinant to be an initiator, we should recapture the fciqmc 
+-- result. 

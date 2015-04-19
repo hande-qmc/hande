@@ -1,7 +1,16 @@
-hubbard_real
-lattice
-2 0
-0 2
-electrons 4
-fci
-lanczos_direct
+sys = hubbard_real {
+    electrons = 4,
+    lattice = { {2, 0}, {0, 2} },
+    ms = 2,
+}
+
+fci {
+    sys = sys,
+}
+fci {
+    sys = sys,
+    lanczos = {
+        sparse = false,
+        direct = true,
+    },
+}

@@ -306,7 +306,8 @@ contains
 
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
-        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qs%spawn_store%spawn%mpi_time)
+        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
+                                   qs%spawn_store%spawn%mpi_time)
 
         if (soft_exit) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport

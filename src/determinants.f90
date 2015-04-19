@@ -44,34 +44,27 @@ contains
 
 !--- Initialisation and finalisation of module-level variables ---
 
-    subroutine init_determinants(sys)
+    subroutine init_determinants(sys, ex_level)
 
         ! Initialise determinant information: number of determinants, how
         ! they are stored as bit strings, lookup arrays for converting from
         ! integer list of orbitals to bit strings and vice versa.
 
-        ! In/Out:
-        !    sys: system being studied.  On input system-level properties (as in
-        !         init_system,  e.g. sys%nel, sys%lattice, etc) and basis-level
-        !         properties (as in init_basis_t) have been set.
+        ! In:
+        !    sys: system being studied.
+        !    ex_level: truncation level being considered.
 
         use checking, only: check_allocate
-        use utils, only: binom_r
-        use utils, only: get_free_unit, int_fmt
-        use calc, only: doing_calc, exact_diag, lanczos_diag, doing_calc, &
-                        dmqmc_calc, ras, ras1, ras3, ras1_min, truncation_level
-        use system, only: sys_t, heisenberg
+        use system, only: sys_t
+
+        use calc, only: ras, ras1, ras3, ras1_min
 
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: ex_level
 
         integer :: i, j, k, bit_pos, bit_element, ierr, site_index
         character(4) :: fmt1
         integer(int_64) :: tot_ndets
-
-        tot_ndets = nint(binom_r(sys%basis%nbasis, sys%nel), int_64)
-        fmt1 = int_fmt(tot_ndets, padding=1)
-        if (parent .and. doing_calc(exact_diag+lanczos_diag)) &
-                write (6,'(1X,a32,'//fmt1//')') 'Total size of determinant space:', tot_ndets
 
         if (all(ras > 0)) then
             allocate(ras1(sys%basis%string_len), stat=ierr)
@@ -80,7 +73,7 @@ contains
             call check_allocate('ras3', sys%basis%string_len, ierr)
             ras1 = 0
             ras3 = 0
-            ras1_min = sys%nel - truncation_level
+            ras1_min = sys%nel - ex_level
             do i = 1, 2*ras(1) ! RAS is in *spatial* orbitals.
                 bit_pos = sys%basis%bit_lookup(1,i)
                 bit_element = sys%basis%bit_lookup(2,i)

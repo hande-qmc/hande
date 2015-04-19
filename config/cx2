@@ -10,7 +10,7 @@ cxx = icc
 ld = ifort
 cppflags = -DHAVE_SSE2 -DPARALLEL
 ldflags = -L $(HOME)/local/lib -L $(NETCDF_HOME)/lib -L ${MKL_HOME}/lib/64
-libs = $(MPI_LIBS) -ltrlan_mpi -lmkl_intel_lp64 -lmkl_cdft_core -lmkl_scalapack_lp64 -lmkl_blacs_lp64 -lmkl_sequential -lmkl_core -lm -cxxlib -lhdf5_fortran -lhdf5 -lz -luuid -lifcore
+libs = $(MPI_LIBS) -ltrlan_mpi -lmkl_intel_lp64 -lmkl_cdft_core -lmkl_scalapack_lp64 -lmkl_blacs_lp64 -lmkl_sequential -lmkl_core -lm -cxxlib -lhdf5_fortran -lhdf5 -lz -luuid -lifcore -llua
 f90_module_flag = -module
 
 [opt]

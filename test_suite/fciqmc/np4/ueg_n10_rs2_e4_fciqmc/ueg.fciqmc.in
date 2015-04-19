@@ -1,22 +1,26 @@
-( Correlation energy (from HANDE FCI) is -0.176123766865 )
-ueg
-3d
-electrons 6
-rs 2.0
-ecutoff 2
-sym 15
-ms 0
+sys = ueg {
+    electrons = 6,
+    ms = 0,
+    sym = 15,
+    dim = 3,
+    cutoff = 2,
+    rs = 2.0,
+}
 
-fciqmc
-seed 122
-reference_det 1  2  3 10 11 14
-varyshift_target 90000
-
-walker_length 50000
-spawned_walker_length 5000
-
-tau 0.005
-
-nreports 1000
-mc_cycles 10
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.005,
+        rng_seed = 122,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 1000,
+        target_population = 90000,
+        state_size = 50000,
+        spawned_state_size = 5000,
+    },
+    reference = {
+        det = {1, 2, 3, 10, 11, 14},
+    },
+}
+-- Correlation energy (from HANDE FCI) is -0.176123766865 

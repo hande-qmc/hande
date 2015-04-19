@@ -1,10 +1,13 @@
-( Reproduce the FCI energy given by Chung and Landau for their model Hamiltonian in PRB 85 115115 (2012) )
-( For 6 spinless fermions on a finite lattice of 13 sites, they give -6.81312 in Table I. )
-chung-landau
-lattice
-13
-nel 6
-finite_cluster
-fci
-u 1
-t 1
+sys = chung_landau {
+    nel = 6,
+    lattice = { {13} },
+    U = 1,
+    t = 1,
+    finite = true,
+}
+
+fci {
+    sys = sys,
+}
+-- Reproduce the FCI energy given by Chung and Landau for their model Hamiltonian in PRB 85 115115 (2012) 
+-- For 6 spinless fermions on a finite lattice of 13 sites, they give -6.81312 in Table I. 

@@ -1,21 +1,23 @@
-read INTDUMP
-nel 10
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
 
-sym 0
-ms 0
-
-truncation_level 2
-
-ccmc
-seed 5691
-
-walker_length 100 mb
-spawned_walker_length 50 mb
-
-tau 0.01
-
-nreports 450
-mc_cycles 10
-
-varyshift_target 20000
-init_pop 10
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.01,
+        rng_seed = 5691,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 450,
+        target_population = 20000,
+        state_size = -100,
+        spawned_state_size = -50,
+    },
+    reference = {
+        ex_level = 2,
+    },
+}

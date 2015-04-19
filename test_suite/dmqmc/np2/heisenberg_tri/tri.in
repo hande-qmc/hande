@@ -1,30 +1,29 @@
-heisenberg
+sys = heisenberg {
+    lattice = { {3, 0}, {0, 3} },
+    ms = 1,
+    J = -0.1,
+    triangular = true,
+}
 
-dmqmc
-
-lattice
-3 0
-0 3
-ms 1
-
-triangular_lattice
-
-J -0.1
-
-init_pop 1000
-
-dmqmc_energy
-dmqmc_energy_squared
-
-spawned_walker_length 100 MB
-walker_length 100 MB
-nreports 4000
-mc_cycles 1
-beta_loops 2
-
-seed 10
-
-tau 0.1
-initial_shift -0.33
-varyshift_target 100000
-shift_damping 0.02
+dmqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.1,
+        initial_shift = -0.33,
+        rng_seed = 10,
+        init_pop = 1000,
+        mc_cycles = 1,
+        nreports = 4000,
+        target_population = 100000,
+        shift_damping = 0.02,
+        state_size = -100,
+        spawned_state_size = -100,
+    },
+    dmqmc = {
+        beta_loops = 2,
+    },
+    operators = {
+        energy = true,
+        energy2 = true,
+    },
+}

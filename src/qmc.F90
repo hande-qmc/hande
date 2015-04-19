@@ -10,7 +10,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc_legacy(sys, qmc_in, dmqmc_in)
+    subroutine init_qmc_legacy(sys, qmc_in, fciqmc_in, dmqmc_in)
 
         ! Do some legacy initialisation (ie things which should not be
         ! global/modified in input structures/etc).
@@ -18,6 +18,7 @@ contains
         ! In:
         !    sys: the system being studied.
         ! In (optional):
+        !    fciqmc_in: FCIQMC input options.
         !    dmqmc_in: DMQMC input options.
         ! In/Out:
         !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
@@ -26,13 +27,13 @@ contains
         use checking, only: check_allocate
         use utils, only: factorial_combination_1
 
-        use calc, only: trial_function, neel_singlet
         use dmqmc_data, only: dmqmc_in_t
-        use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, qmc_state_t, neel_singlet
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
+        type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_in_t), intent(inout) :: qmc_in
 
         integer :: i, ierr
@@ -63,18 +64,20 @@ contains
             if (dmqmc_in%propagate_to_beta) qmc_in%nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
         end if
 
-        ! Calculate all the possible different amplitudes for the Neel singlet state
-        ! and store them in an array
-        if (trial_function == neel_singlet) then
-            allocate(neel_singlet_amp(-1:(sys%lattice%nsites/2)+1), stat=ierr)
-            call check_allocate('neel_singlet_amp',(sys%lattice%nsites/2)+1,ierr)
+        if (present(fciqmc_in)) then
+            ! Calculate all the possible different amplitudes for the Neel singlet state
+            ! and store them in an array
+            if (fciqmc_in%trial_function == neel_singlet) then
+                allocate(neel_singlet_amp(-1:(sys%lattice%nsites/2)+1), stat=ierr)
+                call check_allocate('neel_singlet_amp',(sys%lattice%nsites/2)+1,ierr)
 
-            neel_singlet_amp(-1) = 0
-            neel_singlet_amp((sys%lattice%nsites/2)+1) = 0
-            do i=0,(sys%lattice%nsites/2)
-                neel_singlet_amp(i) = factorial_combination_1( (sys%lattice%nsites/2)-i , i )
-                neel_singlet_amp(i) = -(2*mod(i,2)-1) * neel_singlet_amp(i)
-            end do
+                neel_singlet_amp(-1) = 0
+                neel_singlet_amp((sys%lattice%nsites/2)+1) = 0
+                do i=0,(sys%lattice%nsites/2)
+                    neel_singlet_amp(i) = factorial_combination_1( (sys%lattice%nsites/2)-i , i )
+                    neel_singlet_amp(i) = -(2*mod(i,2)-1) * neel_singlet_amp(i)
+                end do
+            end if
         end if
 
     end subroutine init_qmc_legacy
@@ -126,8 +129,8 @@ contains
         use utils, only: factorial_combination_1
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, &
-                            annihilation_flags_t, qmc_state_t, reference_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
+                            reference_t, neel_singlet, no_guiding, single_basis
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
@@ -172,7 +175,7 @@ contains
             ! integer. If the Neel singlet state is used as the reference state for
             ! the projected estimator, then a further 2 reals are used per
             ! determinant.
-            if (trial_function == neel_singlet) then
+            if (fciqmc_in_loc%trial_function == neel_singlet) then
                 pl%info_size = 2
             else
                 pl%info_size = 0
@@ -187,6 +190,11 @@ contains
             else
                 annihilation_flags%propagate_to_beta = .false.
                 annihilation_flags%replica_tricks = .false.
+            end if
+            if (present(fciqmc_in)) then
+                annihilation_flags%trial_function = fciqmc_in%trial_function
+            else
+                annihilation_flags%trial_function = single_basis
             end if
 
             ! Thus the number of bits occupied by each determinant in the main
@@ -259,7 +267,7 @@ contains
                                             'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
 
-            call init_qmc_legacy(sys, qmc_in, dmqmc_in)
+            call init_qmc_legacy(sys, qmc_in, fciqmc_in, dmqmc_in)
 
             ! If not using real amplitudes then we always want spawn_cutoff to be
             ! equal to 1.0, so overwrite the default before creating spawn_t objects.
@@ -267,7 +275,7 @@ contains
             if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
 
             call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, max_nspawned_states, &
-                               spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, use_mpi_barriers, spawn)
+                               spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, qmc_in%use_mpi_barriers, spawn)
             if (fciqmc_in_loc%non_blocking_comm) then
                 call alloc_spawn_t(sys%basis%tensor_label_len, pl%nspaces, qmc_in%initiator_approx, max_nspawned_states, &
                                    spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, .false., spawn_recv)
@@ -289,7 +297,7 @@ contains
                 call read_restart_hdf5(ri, fciqmc_in_loc%non_blocking_comm, qmc_state)
                 ! Need to re-calculate the reference determinant data
                 call decode_det(sys%basis, reference%f0, reference%occ_list0)
-                if (trial_function == neel_singlet) then
+                if (fciqmc_in_loc%trial_function == neel_singlet) then
                     ! Set the Neel state data for the reference state, if it is being used.
                     reference%H00 = 0.0_p
                 else
@@ -304,8 +312,8 @@ contains
                 ! single-particle eigenvalues which satisfy the spin polarisation.
                 ! Note: this is for testing only!  The symmetry input is currently
                 ! ignored.
-                if (sym_in < sys%sym_max) then
-                    call set_reference_det(sys, reference%occ_list0, .false., sym_in)
+                if (sys%symmetry < sys%sym_max) then
+                    call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
                 else
                     call set_reference_det(sys, reference%occ_list0, .false.)
                 end if
@@ -347,7 +355,7 @@ contains
                     ! By definition, when using a single determinant as a reference state:
                     pl%dat(1,pl%nstates) = 0.0_p
                     ! Or if not using a single determinant:
-                    if (trial_function == neel_singlet) then
+                    if (fciqmc_in_loc%trial_function == neel_singlet) then
                         ! Set the Neel state data for the reference state, if it is being used.
                         pl%dat(1,pl%nstates) = reference%H00
                         reference%H00 = 0.0_p
@@ -416,7 +424,7 @@ contains
                         pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
                         select case(sys%system)
                         case(heisenberg)
-                            if (trial_function /= single_basis) then
+                            if (fciqmc_in_loc%trial_function /= single_basis) then
                                 pl%dat(1,pl%nstates) = 0
                             else
                                 pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
@@ -427,7 +435,7 @@ contains
                         pl%states(:,pl%nstates) = f0_inv
                         ! If we are using the Neel state as a reference in the
                         ! Heisenberg model, then set the required data.
-                        if (trial_function == neel_singlet) then
+                        if (fciqmc_in_loc%trial_function == neel_singlet) then
                             pl%dat(pl%nspaces+1,pl%nstates) = 0
                             pl%dat(pl%nspaces+2,pl%nstates) = 0
                         end if
@@ -582,25 +590,24 @@ contains
 
     end subroutine init_qmc
 
-    subroutine init_proc_pointers(sys, qmc_in, dmqmc_in, reference)
+    subroutine init_proc_pointers(sys, qmc_in, reference, dmqmc_in, fciqmc_in)
 
         ! Set function pointers for QMC calculations.
 
         ! In:
         !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
-        !    dmqmc_in: input options relating to DMQMC.
         !    reference: reference_t object defining the reference state/determinant.
+        !    dmqmc_in (optional): input options relating to DMQMC, only required if doing DMQMC.
+        !    fciqmc_in (optional): input options relating to FCIQMC, only required if doing FCIQMC.
 
         ! System and calculation data
         use calc, only: doing_calc, doing_dmqmc_calc, dmqmc_calc, hfs_fciqmc_calc, &
-                        ras, &
-                        trial_function, guiding_function, single_basis, neel_singlet, neel_singlet_guiding, &
-                        dmqmc_correlation, dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
+                        ras, dmqmc_correlation, dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use hfs_data
         use system
         use parallel, only: parent
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, reference_t, single_basis, neel_singlet, neel_singlet_guiding
         use dmqmc_data, only: dmqmc_in_t
 
         ! Procedures to be pointed to.
@@ -635,8 +642,9 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(reference_t), intent(in) :: reference
+        type(dmqmc_in_t), intent(in), optional :: dmqmc_in
+        type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         logical :: truncate_space
 
@@ -692,12 +700,15 @@ contains
             ! Only need occupied orbitals list, as for the real Hubbard case.
             decoder_ptr => decode_det_occ
             ! Set which trial wavefunction to use for the energy estimator.
-            select case(trial_function)
-            case (single_basis)
-                update_proj_energy_ptr => update_proj_energy_heisenberg_basic
-            case (neel_singlet)
-                update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
-            end select
+            update_proj_energy_ptr => update_proj_energy_heisenberg_basic
+            if (present(fciqmc_in)) then
+                select case(fciqmc_in%trial_function)
+                case (single_basis)
+                    update_proj_energy_ptr => update_proj_energy_heisenberg_basic
+                case (neel_singlet)
+                    update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
+                end select
+            end if
 
             ! Set whether the applied staggered magnetisation is non-zero.
             if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon) then
@@ -712,11 +723,13 @@ contains
             else
                     gen_excit_ptr%full => gen_excit_heisenberg
             end if
-            select case(guiding_function)
-            case (neel_singlet_guiding)
-                spawner_ptr => spawn_importance_sampling
-                gen_excit_ptr%trial_fn => neel_trial_state
-            end select
+            if (present(fciqmc_in)) then
+                select case(fciqmc_in%guiding_function)
+                case (neel_singlet_guiding)
+                    spawner_ptr => spawn_importance_sampling
+                    gen_excit_ptr%trial_fn => neel_trial_state
+                end select
+            end if
 
         case(read_in)
 
@@ -778,6 +791,8 @@ contains
 
         ! 2: density-matrix
         if (doing_calc(dmqmc_calc)) then
+
+            if (.not.present(dmqmc_in)) call stop_all('init_proc_pointers', 'DMQMC options not present.')
 
             ! Spawned particle creation. 
             if (dmqmc_in%half_density_matrix) then

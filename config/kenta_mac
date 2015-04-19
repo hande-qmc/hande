@@ -8,7 +8,7 @@ cxx = g++
 cppflags = -DDISABLE_LANCZOS
 ld = gfortran
 ldflags = -L ${HOME}/lib -L /usr/local/lib
-libs = -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -lz -luuid
+libs = -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -lz -luuid -llua
 f90_module_flag = -J
 
 [opt]

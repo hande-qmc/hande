@@ -4,7 +4,7 @@ cc = icc
 cxx = icpc
 cppflags = -DHAVE_SSE2
 ld = ifort
-libs = -ltrlan -llapack -lblas -cxxlib -lhdf5_fortran -luuid
+libs = -ltrlan -llapack -lblas -cxxlib -lhdf5_fortran -luuid -llua
 f90_module_flag = -module
 
 [opt]

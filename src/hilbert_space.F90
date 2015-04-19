@@ -11,7 +11,7 @@ public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space, ge
 
 contains
 
-    subroutine estimate_hilbert_space(sys, reference, seed)
+    subroutine estimate_hilbert_space(sys, ex_level, ncycles, occ_list0, rng_seed)
 
         ! Based on Appendix A in George Booth's thesis.
 
@@ -29,12 +29,22 @@ contains
 
         ! In/Out:
         !    sys: system being studied.  Unaltered on output.
-        !    reference: reference determinant.
         ! In:
-        !    seed: seed for the dSFMT random number generator.
+        !    ex_level: maximum excitation level relative to the reference
+        !       determinant to include in the Hilbert space.  If negative or
+        !       greater than the number of electrons, the entire Hilbert space
+        !       is considered.
+        !    ncycles: number of cycles i.e. number of random determinants to
+        !       generate.
+        !    occ_list0: reference determinant.  If not allocated, then a best
+        !       guess is generated based upon the spin and symmetry quantum
+        !       numbers.
+        !    rng_seed (optional): seed to initialise the random number generator.
+        !       Default: seed based upon the hash of the time and calculation UUID.
+
+        use calc, only: GLOBAL_META, gen_seed
 
         use basis, only: write_basis_fn
-        use calc, only: sym_in, ms_in, truncate_space, truncation_level
         use const, only: dp
         use checking, only: check_allocate, check_deallocate
         use determinants, only: encode_det, det_info_t, alloc_det_info_t,  &
@@ -45,13 +55,13 @@ contains
         use system
         use parallel
         use utils, only: binom_r, rng_init_info
-        use qmc_data, only: reference_t
 
         type(sys_t), intent(inout) :: sys
-        type(reference_t), intent(inout) :: reference
-        integer, intent(in) :: seed
+        integer, intent(in) :: ex_level, ncycles
+        integer, intent(inout), allocatable :: occ_list0(:)
+        integer, intent(in), optional :: rng_seed
 
-        integer :: icycle, i, ierr, a
+        integer :: truncation_level, seed, icycle, i, ierr, a
         integer :: ref_sym, det_sym
         integer(i0) :: f(sys%basis%string_len), f0(sys%basis%string_len)
         integer :: occ_list(sys%nel)
@@ -64,14 +74,28 @@ contains
         type(dSFMT_t) :: rng
         type(sys_t) :: sys_bak
         type(det_info_t) :: det0
+        logical :: truncate_space
 
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
+
+        truncate_space = ex_level >= 0 .and. ex_level <= sys%nel
+        if (truncate_space) then
+            truncation_level = ex_level
+        else
+            truncation_level = sys%nel
+        end if
+
+        if (present(rng_seed)) then
+            seed = rng_seed
+        else
+            seed = gen_seed(GLOBAL_META%uuid)
+        end if
 
         if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
         call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, ms_in, sys)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         select case(sys%system)
 
@@ -108,15 +132,15 @@ contains
 
                 ! Perform a Monte Carlo sampling of the space.
 
-                if (sym_in < sys%sym_max) then
-                    call set_reference_det(sys, reference%occ_list0, .false., sym_in)
+                if (sys%symmetry < sys%sym_max) then
+                    call set_reference_det(sys, occ_list0, .false., sys%symmetry)
                 else
-                    call set_reference_det(sys, reference%occ_list0, .false.)
+                    call set_reference_det(sys, occ_list0, .false.)
                 end if
-                call encode_det(sys%basis, reference%occ_list0, f0)
+                call encode_det(sys%basis, occ_list0, f0)
 
                 ! Symmetry of the reference determinant.
-                ref_sym = symmetry_orb_list(sys, reference%occ_list0)
+                ref_sym = symmetry_orb_list(sys, occ_list0)
 
                 if (truncate_space) then
                     ! Generate a determinant with a given excitation level up to
@@ -165,7 +189,7 @@ contains
                 end if
 
                 naccept = 0.0_dp
-                do icycle = 1, nhilbert_cycles
+                do icycle = 1, ncycles
                     ! Generate a random determinant.
                     if (truncate_space) then
                         ! More efficient sampling (especially if Hilbert space is large
@@ -183,7 +207,7 @@ contains
 
                 ! space_size is the max number of excitations from the reference.  Account
                 ! for the fraction of determinants with the correct symmetry.
-                space_size = (space_size * naccept) / nhilbert_cycles
+                space_size = (space_size * naccept) / ncycles
                 if (truncate_space) then
                     ! We never allowed for the generation of the reference determinant
                     ! but, by definition, it is in the truncated Hilbert space so
@@ -217,7 +241,7 @@ contains
 
         end select
 
-        if (truncate_space) then
+        if (allocated(ptrunc_level)) then
             deallocate(ptrunc_level, stat=ierr)
             call check_deallocate('ptrunc_level', ierr)
         end if
