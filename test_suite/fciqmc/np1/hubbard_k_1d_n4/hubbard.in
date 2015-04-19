@@ -2,7 +2,6 @@ sys = hubbard_k {
     electrons = 4,
     lattice = { {4} },
     ms = 0,
-    finite = true,
 }
 
 fciqmc {
