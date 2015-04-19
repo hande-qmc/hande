@@ -103,9 +103,10 @@ contains
             end if
 
 #ifdef PARALLEL
-#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             call mpi_bcast(buf_len, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
+#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             if (.not.parent) allocate(character(len=buf_len) :: buffer)
+#else
 #endif
             call mpi_bcast(buffer, buf_len, MPI_CHARACTER, 0, mpi_comm_world, ierr)
 #endif
