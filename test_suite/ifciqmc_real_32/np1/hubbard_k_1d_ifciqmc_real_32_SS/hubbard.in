@@ -1,26 +1,28 @@
-hubbard_k
+sys = hubbard_k {
+    electrons = 4,
+    lattice = { {4} },
+    ms = 0,
+    sym = 4,
+}
 
-lattice
-4
-electrons 4
-
-ifciqmc
-
-real_amplitudes
-spawn_cutoff 0.01
-
-semi_stoch_high_pop 9
-semi_stoch_iteration 1000
-
-spawned_walker_length 500
-walker_length 10
-nreports 250
-mc_cycles 10
-
-tau 0.02
-varyshift_target 100
-
-ms 0
-sym 4
-seed 7
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.02,
+        initiator = true,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 250,
+        target_population = 100,
+        real_amplitudes = true,
+        spawn_cutoff = 0.01,
+        state_size = 10,
+        spawned_state_size = 500,
+    },
+    semi_stoch = {
+        size = 9,
+        start_iteration = 1000,
+        space = "high",
+    },
+}

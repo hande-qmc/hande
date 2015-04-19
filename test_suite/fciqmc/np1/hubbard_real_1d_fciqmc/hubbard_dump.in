@@ -1,26 +1,29 @@
-hubbard_real
+sys = hubbard_real {
+    electrons = 3,
+    lattice = { {3} },
+    ms = 1,
+    sym = 1,
+    U = 50,
+    t = 1,
+}
 
-fciqmc
-u 50
-t 1
-
-lattice
-3
-electrons 3
-reference_det 2 3 5
-
-spawned_walker_length 500
-walker_length 10
-nreports 100
-mc_cycles 25
-
-tau 0.01
-varyshift_target 550
-shift_damping 0.06
-
-dump_restart 1
-
-ms 1
-sym 1
-seed 7
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.01,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 25,
+        nreports = 100,
+        target_population = 550,
+        shift_damping = 0.06,
+        state_size = 10,
+        spawned_state_size = 500,
+    },
+    restart = {
+        write = 1,
+    },
+    reference = {
+        det = {2, 3, 5},
+    },
+}

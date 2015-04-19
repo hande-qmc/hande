@@ -1,24 +1,24 @@
-heisenberg
+sys = heisenberg {
+    lattice = { {4, 0}, {0, 4} },
+    ms = 2,
+    J = -4,
+    triangular = true,
+}
 
-lattice
-4 0
-0 4
-ms 2
-triangular_lattice
-
-J -4
-
-fciqmc
-
-reference_det 1  3  5  7  9 10 11 12 14
-
-spawned_walker_length 5000
-walker_length 20000
-nreports 750
-mc_cycles 20
-
-tau 0.0005
-varyshift_target 15000
-vary_shift_from -18
-seed 7
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.0005,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 20,
+        nreports = 750,
+        target_population = 15000,
+        vary_shift_from = -18,
+        state_size = 20000,
+        spawned_state_size = 5000,
+    },
+    reference = {
+        det = {1, 3, 5, 7, 9, 10, 11, 12, 14},
+    },
+}

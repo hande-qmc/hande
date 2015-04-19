@@ -1,29 +1,30 @@
-read FCIDUMP
-nel 10
-lz
-sym 0
-ms 0
+sys = read_in {
+    int_file = "FCIDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+    Lz = true,
+}
 
-truncation_level 5
-
-ccmc
-
-walker_length 1000 mb
-spawned_walker_length 50 mb
-
-tau 0.02
-(no_renorm)
-
-shift_damping 0.1
-nreports 150
-mc_cycles 10
-
-seed 7
-
-varyshift_target   5000
-
-init_pop  50
-
-cluster_multispawn_threshold 0.3
-
-ccmc_full_nc
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.02,
+        rng_seed = 7,
+        init_pop = 50,
+        mc_cycles = 10,
+        nreports = 150,
+        target_population = 5000,
+        shift_damping = 0.1,
+        state_size = -1000,
+        spawned_state_size = -50,
+    },
+    ccmc = {
+        cluster_multispawn_threshold = 0.3,
+        full_non_composite = true,
+    },
+    reference = {
+        ex_level = 5,
+    },
+}
+--no_renorm

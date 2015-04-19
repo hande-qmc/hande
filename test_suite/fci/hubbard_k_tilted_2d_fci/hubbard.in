@@ -1,11 +1,14 @@
-hubbard_k
+sys = hubbard_k {
+    electrons = 4,
+    lattice = { {2, 2}, {2, -2} },
+    ms = 0,
+    sym = 1,
+    twist = {0.1, 0.1},
+}
 
-lattice
-2  2
-2 -2
-electrons 4
-ms 0
-sym 1
-fci
-block_size 2
-twist 0.1 0.1
+fci {
+    sys = sys,
+    fci = {
+        blacs_block_size = 2,
+    },
+}

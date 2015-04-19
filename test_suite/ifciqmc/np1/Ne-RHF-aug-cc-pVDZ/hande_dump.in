@@ -1,43 +1,32 @@
-read INTDUMP
-nel 10
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
 
-ms 0
-sym 0
-
-estimate_hilbert_space 10000000
-
-ifciqmc
-
-walker_length 5 mb
-spawned_walker_length 1 mb
-
-nreports 320
-mc_cycles 20
-tau 0.005
-varyshift_target 80000
-
-dump_restart 0
-
-(    SCF calculation produced by Q-Chem using:  )
-
-#    $molecule
-#    0 1
-#    10  0  0  0
-#    $end
-#
-#    $rem
-#    basis aug-cc-pvdz
-#    exchange hf
-#    correlation idump
-#    scf_convergence 11
-#    thresh 13
-#    jobtype sp
-#    iprint 20000011
-#    geom_opt_coords 0
-#    print_orbitals 999
-#    unrestricted false
-#    use_abelian_subgroup true
-#    scf_restrict_sym 3
-#    $end
-seed 7
-init_pop 10
+hilbert_space {
+    sys = sys,
+    hilbert = {
+        ncycles = 10000000,
+        rng_seed = 7,
+    },
+}
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.005,
+        initiator = true,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 20,
+        nreports = 320,
+        target_population = 80000,
+        state_size = -5,
+        spawned_state_size = -1,
+    },
+    restart = {
+        write = 0,
+    },
+}
+--    SCF calculation produced by Q-Chem using:  

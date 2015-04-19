@@ -1,10 +1,10 @@
-heisenberg
+sys = heisenberg {
+    lattice = { {8} },
+    ms = 0,
+    J = -4,
+    finite = true,
+}
 
-lattice
-8
-finite_cluster
-ms 0
-
-J -4
-
-fci
+fci {
+    sys = sys,
+}

@@ -1,22 +1,24 @@
-( Correlation energy (from ALPS) is -0.7005182433389994 )
-hubbard_k
-lattice
-14
-nel 10
-U 2
-ms 0
+sys = hubbard_k {
+    nel = 10,
+    lattice = { {14} },
+    ms = 0,
+    U = 2,
+}
 
-ifciqmc
-seed 8
-varyshift_target 90000
-real_amplitudes
-spawn_cutoff 0.01
-
-tau 0.002
-
-walker_length 100000
-spawned_walker_length 100000
-
-nreports 600
-mc_cycles 10
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.002,
+        initiator = true,
+        rng_seed = 8,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 600,
+        target_population = 90000,
+        real_amplitudes = true,
+        spawn_cutoff = 0.01,
+        state_size = 100000,
+        spawned_state_size = 100000,
+    },
+}
+-- Correlation energy (from ALPS) is -0.7005182433389994 

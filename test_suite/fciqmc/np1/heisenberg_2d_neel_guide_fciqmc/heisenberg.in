@@ -1,23 +1,23 @@
-heisenberg
+sys = heisenberg {
+    lattice = { {4, 0}, {0, 4} },
+    ms = 0,
+    J = -4,
+}
 
-lattice
-4 0
-0 4
-ms 0
-
-J -4
-
-fciqmc
-
-spawned_walker_length 5000
-walker_length 20000
-nreports 750
-mc_cycles 20
-
-tau 0.0005
-varyshift_target 10000
-vary_shift_from -44.0
-
-neel_singlet_guiding
-seed 7
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.0005,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 20,
+        nreports = 750,
+        target_population = 10000,
+        vary_shift_from = -44.0,
+        state_size = 20000,
+        spawned_state_size = 5000,
+    },
+    fciqmc = {
+        guiding_function = "neel_singlet",
+    },
+}

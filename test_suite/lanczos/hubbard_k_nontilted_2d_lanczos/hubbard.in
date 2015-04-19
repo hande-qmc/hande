@@ -1,12 +1,18 @@
-hubbard_k
+sys = hubbard_k {
+    electrons = 4,
+    lattice = { {4, 0}, {0, 4} },
+    ms = 0,
+    sym = 4,
+}
 
-lattice
-4 0
-0 4
-electrons 4
-ms 0
-sym 4
-lanczos
-lanczos_basis 20
-lanczos_solns 8
-block_size 8
+fci {
+    sys = sys,
+    fci = {
+        blacs_block_size = 8,
+    },
+    lanczos = {
+        nbasis = 20,
+        neigv = 8,
+        sparse = false,
+    },
+}

@@ -1,21 +1,25 @@
-read INTDUMP.H2O.CC-PVDZ
-nel 10
+sys = read_in {
+    int_file = "INTDUMP.H2O.CC-PVDZ",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
 
-ifciqmc
-
-nreports 200
-mc_cycles 10
-tau 0.002
-
-walker_length 20 mb
-spawned_walker_length 2 mb
-varyshift_target 100000
-
-seed 7
-
-non_blocking_comm
-
-real_amplitudes
-ms 0
-sym 0
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.002,
+        initiator = true,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 200,
+        target_population = 100000,
+        real_amplitudes = true,
+        state_size = -20,
+        spawned_state_size = -2,
+    },
+    fciqmc = {
+        non_blocking_comm = true,
+    },
+}

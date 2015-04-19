@@ -1,24 +1,25 @@
-( Estimated ground state energy: -14.71472(2). )
-( Running for longer agrees with renorm generator and hubbard_k implementation. )
-hubbard_real
-lattice
-14
-nel 14
-ms 0
-sym 0
-u 1
+sys = hubbard_real {
+    nel = 14,
+    lattice = { {14} },
+    ms = 0,
+    sym = 0,
+    U = 1,
+}
 
-fciqmc
-tau 0.003
-no_renorm
-seed -1728682257
-
-walker_length 500 mb
-spawned_walker_length 100 mb
-
-mc_cycles 10
-nreports 100
-
-varyshift_target 30000
-vary_shift_from -14.7
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.003,
+        rng_seed = -1728682257,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 100,
+        target_population = 30000,
+        vary_shift_from = -14.7,
+        no_renorm = true,
+        state_size = -500,
+        spawned_state_size = -100,
+    },
+}
+-- Estimated ground state energy: -14.71472(2). 
+-- Running for longer agrees with renorm generator and hubbard_k implementation. 

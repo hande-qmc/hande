@@ -1,14 +1,19 @@
-( Exercise the truncated generator, despite using setting the truncation level to the full space. )
-( Exact answer: 714. )
-ueg
-rs 1
-ecutoff 1
-3d
+sys = ueg {
+    nel = 7,
+    ms = 7,
+    sym = 1,
+    dim = 3,
+    cutoff = 1,
+    rs = 1,
+}
 
-nel 7
-ms 7
-sym 1
-
-truncation_level 7
-estimate_hilbert_space 10000000
-seed 12
+hilbert_space {
+    sys = sys,
+    hilbert = {
+        ncycles = 10000000,
+        ex_level = 7,
+        rng_seed = 12,
+    },
+}
+-- Exercise the truncated generator, despite using setting the truncation level to the full space. 
+-- Exact answer: 714. 

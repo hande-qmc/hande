@@ -1,11 +1,13 @@
-heisenberg
+sys = heisenberg {
+    lattice = { {4, 0}, {0, 4} },
+    ms = 2,
+    J = -4,
+    triangular = true,
+}
 
-lattice
-4 0
-0 4
-ms 2
-triangular_lattice
-
-J -4
-
-lanczos
+fci {
+    sys = sys,
+    lanczos = {
+        sparse = false,
+    },
+}

@@ -1,28 +1,34 @@
-hubbard_k
+sys = hubbard_k {
+    electrons = 8,
+    lattice = { {8} },
+    ms = 0,
+    sym = 4,
+}
 
-lattice
-8
-electrons 8
-
-ifciqmc
-
-semi_stoch_high_pop 2000
-semi_stoch_shift_start 200
-
-spawned_walker_length 60000
-walker_length 60000
-nreports 300
-mc_cycles 10
-
-tau 0.02
-varyshift_target 10000
-
-load_balancing
-load_balancing_pop 55000
-load_balancing_slots 20
-write_load_info
-
-ms 0
-sym 4
-seed 7
-init_pop 10
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.02,
+        initiator = true,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 300,
+        target_population = 10000,
+        state_size = 60000,
+        spawned_state_size = 60000,
+    },
+    fciqmc = {
+        load_balancing = true,
+    },
+    semi_stoch = {
+        size = 2000,
+        shift_start_iteration = 200,
+        space = "high",
+    },
+    load_bal = {
+        nslots = 20,
+        min_pop = 55000,
+        write = true,
+    },
+}

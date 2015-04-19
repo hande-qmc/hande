@@ -1,31 +1,15 @@
-read INTDUMP
-nel 13
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 13,
+    ms = 1,
+    sym = 0,
+}
 
-ms 1
-sym 0
-
-lanczos
-lanczos_solns 40
-
-(    SCF calculation produced by Q-Chem using:  )
-
-#    $molecule
-#    0 2
-#    6  0  0  0
-#    7  0  0  1.1941
-#    $end
-#
-#    $rem
-#    basis sto-3g
-#    exchange hf
-#    correlation idump
-#    scf_convergence 14
-#    thresh 16
-#    jobtype sp
-#    iprint 20000011
-#    geom_opt_coords 0
-#    print_orbitals 999
-#    unrestricted false
-#    use_abelian_subgroup true
-#    scf_restrict_sym 3
-#    $end
+fci {
+    sys = sys,
+    lanczos = {
+        neigv = 40,
+        sparse = false,
+    },
+}
+--    SCF calculation produced by Q-Chem using:  

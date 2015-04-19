@@ -1,8 +1,13 @@
-hubbard_real
-lattice
-2 0
-0 4
-electrons 6
-ms 0
-lanczos
-lanczos_solns 6
+sys = hubbard_real {
+    electrons = 6,
+    lattice = { {2, 0}, {0, 4} },
+    ms = 0,
+}
+
+fci {
+    sys = sys,
+    lanczos = {
+        neigv = 6,
+        sparse = false,
+    },
+}

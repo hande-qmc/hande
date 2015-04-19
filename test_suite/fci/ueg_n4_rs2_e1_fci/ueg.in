@@ -1,9 +1,16 @@
-ueg
-3d
-nel 4
-rs 2
-ecutoff 1
-fci
-sym 1
-ms 0
-hamil hamil.hfq
+sys = ueg {
+    nel = 4,
+    ms = 0,
+    sym = 1,
+    dim = 3,
+    cutoff = 1,
+    rs = 2,
+}
+
+fci {
+    sys = sys,
+    fci = {
+        write_hamiltonian = true,
+        hamiltonian_file = "hamil.hfq",
+    },
+}

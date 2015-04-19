@@ -1,9 +1,9 @@
-heisenberg
+sys = heisenberg {
+    lattice = { {10} },
+    ms = 0,
+    J = -4,
+}
 
-lattice
-10
-ms 0
-
-J -4
-
-fci
+fci {
+    sys = sys,
+}
