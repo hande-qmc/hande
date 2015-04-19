@@ -57,7 +57,7 @@ contains
 
         use fciqmc_data, only: neel_singlet_amp
 
-        real :: weight
+        real(p) :: weight
         integer, intent(in) :: guiding_function
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
