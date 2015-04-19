@@ -65,7 +65,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
-        real(dp), allocatable, intent(in) :: trial_func(:)
+        real(p), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
 
         integer :: up_spins_to, up_spins_from
@@ -125,7 +125,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
-        real(dp), allocatable, intent(in) :: trial_func(:)
+        real(p), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
         integer(i0) :: f_new(sys%basis%string_len)
         integer :: excit_level_old, excit_level_new

@@ -6,8 +6,6 @@ use spawn_data, only: spawn_t
 
 implicit none
 
-! [todo] - update kinds following Ruth's single precision work.  Check kind when removing each variable from fciqmc_data.
-
 ! The following indicies are used to access components of DMQMC numerators.
 enum, bind(c)
     enumerator :: energy_ind = 1

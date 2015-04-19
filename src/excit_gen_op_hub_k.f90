@@ -62,7 +62,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: connection
-        real(dp), allocatable, intent(in) :: trial_func(:)
+        real(p), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
 
         hmatel = hmatel / (sys%hubbard%u * sys%lattice%nsites)
