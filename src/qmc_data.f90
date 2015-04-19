@@ -503,7 +503,7 @@ type(particle_t), target :: walker_global
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
-real(dp), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
+real(p), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
 
 ! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
 ! encoded as integers by multiplying them by 2**(real_bit_shift).
