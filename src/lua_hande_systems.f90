@@ -532,7 +532,7 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(15), parameter :: keys(8) = [character(10) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
+        character(24), parameter :: keys(8) = [character(24) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
                                                                 'staggered_magnetic_field', 'triangular', 'finite']
 
         lua_state = flu_copyptr(L)
