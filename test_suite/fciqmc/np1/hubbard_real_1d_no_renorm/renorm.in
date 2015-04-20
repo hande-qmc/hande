@@ -2,6 +2,7 @@ sys = hubbard_real {
     nel = 14,
     lattice = { {14} },
     ms = 0,
+    sym = 0,
     U = 1,
 }
 
