@@ -9,6 +9,8 @@ max_nprocs = 2
 max_nprocs = 1
 [lanczos/*direct/]
 max_nprocs = 1
+[fci/*fci_rdm/]
+max_nprocs = 1
 
 # Toy FCIQMC algorithm
 [simple_fciqmc/*/]
