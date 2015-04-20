@@ -12,7 +12,7 @@ User's guide
    tests
    running
    analysis
-   input/index
+   input/input
    interact
    tips
    removed
