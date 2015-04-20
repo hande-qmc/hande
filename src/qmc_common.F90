@@ -364,7 +364,6 @@ contains
         ! Print out a load-balancing report when run in parallel showing how
         ! determinants and walkers/particles are distributed over the processors.
 
-#ifdef PARALLEL
         use parallel
         use utils, only: int_fmt
 
@@ -374,6 +373,7 @@ contains
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 
+#ifdef PARALLEL
         real(dp) :: load_data(size(nparticles), nprocs)
         integer :: load_data_int(nprocs)
         integer :: i, ierr
@@ -436,13 +436,6 @@ contains
                 end if
             end if
         end if
-#else
-        use parallel, only: parallel_timing_t
-
-        real(p), intent(in) :: nparticles(:)
-        integer, intent(in) :: nstates_active
-        type(parallel_timing_t), intent(in) :: spawn_mpi_time
-        type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 #endif
 
     end subroutine load_balancing_report
