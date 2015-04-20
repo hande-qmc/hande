@@ -1222,6 +1222,8 @@ contains
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_rdm_r2
             call warn_unused_args(lua_state, rdm_keys, table)
             call aot_table_close(lua_state, table)
+        else
+            dmqmc_in%rdm%nrdms = 0
         end if
 
     end subroutine read_dmqmc_in

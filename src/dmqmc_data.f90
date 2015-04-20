@@ -56,7 +56,7 @@ type dmqmc_rdm_in_t
     ! The total number of rdms beings calculated (currently only applicable to
     ! instantaneous RDM calculations, not to ground-state RDM calculations,
     ! which only ever calculate one RDM).
-    integer :: nrdms
+    integer :: nrdms = 0
 
     ! The length of the spawning array for RDMs. Each RDM calculated has the
     ! same length array. Note, this is only used for instantaneous RDMs.
