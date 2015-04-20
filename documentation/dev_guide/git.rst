@@ -4,8 +4,17 @@ Git
 git repository
 --------------
 
-The git repository is currently located at
-hande@tycpc15.cmth.ph.ic.ac.uk:hande.git and can be cloned using:
+HANDE can be downloaded by cloning the repository from github:
+
+.. code-block:: bash
+
+    $ git clone https://github.com/hande-qmc/hande
+
+We periodically tag releases
+
+A private git repository, where much of the day-to-day development work takes
+place, is currently located at hande@tycpc15.cmth.ph.ic.ac.uk:hande.git and can
+be cloned using:
 
 .. code-block:: bash
 
@@ -15,6 +24,14 @@ If you would like access, please speak to one of the developers.  The rest of
 this guide assumes you used the default remote name during the clone (i.e.
 ``origin``).  If this is not the case, we assume you are capable of
 appropriately adjusting the commands given in the rest of the guide.
+
+.. note::
+
+    Bug fixes and similar work are applied to both public and private repositories.  New
+    features are often developed in the private repository (which hooks into our buildbot
+    server for regression testing), whilst we iron them out.  Once we are happy that new
+    features are ready for production use, they will also be migrated to the public
+    repository.
 
 Precepts
 --------
