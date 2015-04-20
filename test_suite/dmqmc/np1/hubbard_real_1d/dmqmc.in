@@ -2,6 +2,7 @@ sys = hubbard_real {
     electrons = 8,
     lattice = { {8} },
     ms = 0,
+    sym = 1,
 }
 
 dmqmc {
