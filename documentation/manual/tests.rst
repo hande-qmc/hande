@@ -1,32 +1,9 @@
 Test suite
 ==========
 
+HANDE has an extensive test suite covering all core functionality.
 The tests are run using the ``testcode`` package (https://github.com/jsspencer/testcode).
-The data extraction scripts for HANDE require the ``pandas`` python library (http://pandas.pydata.org/),
-which could for example be installed by
-
-.. code-block:: bash
-    
-    pip install pandas
-
-or alternatively where pip is not available, one can install it locally:
-
-.. code-block:: bash
-
-    wget https://github.com/pydata/pandas/archive/v0.15.2.tar.gz
-    tar -xzvf v0.15.2.tar.gz
-    cd pandas-0.15.2
-    python setup.py build
-    python setup.py install
-    
-If you do not have root access, you can install the library locally with:
-
-.. code-block:: bash
-
-    python setup.py install --user
-    echo 'export PYTHONPATH=$HOME/.local/lib/python2.7/site-packages:$PYTHONPATH' >>.bashrc
-
-
+Note that the data extraction scripts for HANDE require the ``pandas`` python library.
 
 testcode can be run from the test_suite subdirectory:
 
@@ -73,6 +50,7 @@ speed, etc.  Please see the testcode documentation for more details.
 
 What if the tests fail?
 -----------------------
+
 A common cause for tests failing is that the configuration causes a different Markov
 Chain to be run, or part of the code has been disabled in your build.
 testcode should determine that some tests are inappropriate and skip them.
@@ -84,24 +62,28 @@ The tolerances used for the tests can also be adjusted as specified below:
 
 Skipping Tests
 --------------
+
 If there is a unique line printed out in the output for jobs which are to be skipped, 
 this can be used to tell testcode this, by modifying the skip_args line in the 
 test_suite/userconfig file.  See the testcode documentation for more details
 
 Adjusting Test Tolerances
 -------------------------
+
 The tolerance for an individual job can be modified as specified in the testcode documentation.
 As an example, to modify the tolerance because of the following failure:
-.. code-block::
+
+::
+
     dmqmc/np1/heisenberg_1d - replica.in: **FAILED**.
     \sum\rho_{ij}M2{ji}
         ERROR: absolute error 1.00e-06 greater than 1.00e-10. (Test: 17.378583.  Benchmark: 17.378584.)
 
 The follow section can be inserted into test_suite/jobconfig.  Note the backslash-quoting of the 
 backslashes, as the tolerance value is interpreted as a python tuple containing a python string.
-.. code-block::
+
+::
+
     #Job specific tolerances:                                                                 
     [dmqmc/np1/heisenberg_1d/]                                                                
     tolerance = (1e-5,1e-5,'\\sum\\rho_{ij}M2{ji}')          
-
-

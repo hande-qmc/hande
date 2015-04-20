@@ -1,40 +1,16 @@
 Compilation
 ===========
 
-HANDE requires the lapack (http://www.netlib.org/lapack/), blas
-(http://www.netlib.org/blas) and lua (http://www.lua.org, version 5.2) libaries,. These can are often be installed using
-the operating systems package manager (on say a personal Linux workstation) or
-are available from the modules environment on a High Performance Computer 
-(for example the Intel Maths Kernel library (https://software.intel.com/en-us/intel-mkl)
-contains optimised blas and lapack Libraries).
-
-The TRLan (http://crd-legacy.lbl.gov/~kewu/trlan.html) library is required for
-Lanczos functionality. The dependency upon TRLan can be removed at compile-time by 
-setting a flag (see `Compile-time settings`_) if Lanczos diagonalisation is not 
-required. In addition HANDE requires the HDF5 library compiled with fortran 2003
-support (see, for example, http://www.cmth.ph.ic.ac.uk/computing/software/hdf5.html#admin-notes)
-for restart functionality and finally the libuuid library (from, for example the uuid-dev
-Ubuntu package) so that each calculation prints a universally unique identifier.  
-The dependencies on these packages can also be removed (see `Compile-time settings`_)
-although this is not recommended.
-
-Compilation with the parallel flag additionally adds scalapack (http://www.netlib.org/scalapack/) 
-to the dependencies. Again this is often available from the operating system package manger and 
-is included as a part of the Intel Maths Kernel library.
-
-The code imports the AOTUS library which functions with lua 5.2 but not lua 5.3.
-
-After meeting these requirements, produce a makefile by running the mkconfig.py
-(residing in the tools subdirectory) script in the root directory:
+After ensuring HANDE's dependencies are installed, produce a makefile by running the
+``mkconfig.py`` (residing in the tools subdirectory) script in the root directory:
 
 .. code-block:: bash
 
-    tools/mkconfig.py config
+    tools/mkconfig.py config/conf
 
-where config is one of the platforms available.  The config name is simply the
-name of the relevant file residing in the config/ directory.  Various configurations
-are provided and it is simple to adapt one to the local environment (e.g. changing
-compiler or library paths).
+where ``conf`` is one of the platforms available and is simply the name of the relevant
+file residing in the ``config/`` directory.  Various configurations are provided and it is
+simple to adapt one to the local environment (e.g. changing compiler or library paths).
 
 Run
 
@@ -42,8 +18,9 @@ Run
 
     tools/mkconfig.py --help
 
-to see the options available, including inspecting available platforms.
-A platform is defined using a simple ini file, consisting of three sections:
+to see the options available, including inspecting available configurations.
+
+A configuration is defined using a simple ini file, consisting of three sections:
 main, opt and dbg.  For instance::
 
     [main]
@@ -59,7 +36,7 @@ main, opt and dbg.  For instance::
 
 Any option not specified in the 'opt' and 'dbg' sections is inherited from the
 'main' section.  The optimised settings in 'opt' are used by default; the debug
-options can be selected by passing the -g option to mkconfig.py.
+options can be selected by passing the -g option to ``mkconfig.py``.
 
 Available options are:
 
@@ -67,10 +44,10 @@ fc
     Set the fortran compiler.
 fflags
     Set flags to be passed to the fortran compiler during compilation.
-cxx
-    Set the C++ compiler.
-cxxflags
-    Set flags to be passed to the C++ compiler during compilation.
+cc
+    Set the C compiler.
+cflags
+    Set flags to be passed to the C compiler during compilation.
 cppdefs
     Set definitions to be used in the C pre-processing step.
 cppflags
@@ -91,13 +68,14 @@ To compile the code run
 
     make
     
-hande.x uses the sfmakedepend script (http://www.arsc.edu/~kate/Perl/,
-supplied in tools/) by Kate Hedstrom to generate the dependencies.  These are
-generated automatically when make is run if the dependency files don't exist.
+HANDE's build system uses the ``sfmakedepend`` script (http://www.arsc.edu/~kate/Perl/,
+supplied in ``tools/``) by Kate Hedstrom to generate the list of dependencies for each
+Fortran source file.  These are generated automatically when make is run if the dependency
+files do not exist.
 
-The executable, hande.x, is placed in the bin subdirectory.  Note that this is
+The executable, ``hande.x``, is placed in the ``bin`` subdirectory.  Note that this is
 actually a symbolic link: a unique executable is produced for each platform and
-optimisation level and hande.x merely points to the most recently compiled executable
+optimisation level and ``hande.x`` merely points to the most recently compiled executable
 for convenience.  This makes testing against multiple platforms particularly easy.
 
 There are various goals in the makefile.  Run
@@ -127,6 +105,16 @@ Similarly, the options which just need to be defined to be used are set by::
 
 These should be added to the cppflags or cppdefs lines in the configuration
 files or in the Makefile, as desired.
+
+
+.. warning::
+
+    Certain options, for technical reasons, change the Markov chain of QMC calculations.
+    Results should be in statistical agreement but the precise data produced by the
+    calculation (even using the same random number seed) may well be changed.
+
+    This currently applies to the following options: DET_SIZE, POP_SIZE and
+    SINGLE_PRECISION.
 
 DET_SIZE
     Default: 32.

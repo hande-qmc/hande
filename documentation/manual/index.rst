@@ -6,8 +6,8 @@ User's guide
    :glob:
 
    intro
-   prereq
    source
+   prereq
    compile
    tests
    running

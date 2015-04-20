@@ -5,7 +5,6 @@ Contents
    :maxdepth: 2
    :glob:
 
-   quickstart
    manual/index
    dev_guide/index
 
