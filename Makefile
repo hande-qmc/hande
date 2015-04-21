@@ -366,7 +366,7 @@ new:
 
 # Generate dependency file.
 $(F_DEPEND): $(F_FILES)
-	tools/sfmakedepend --file - --silent --objdir \$$\(DEST\) --moddir \$$\(DEST\) --depend=mod $^ > $@
+	tools/build/sfmakedepend --file - --silent --objdir \$$\(DEST\) --moddir \$$\(DEST\) --depend=mod $^ > $@
 
 # tag files
 # ctags >> etags supplied by emacs
