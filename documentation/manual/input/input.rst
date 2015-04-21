@@ -34,21 +34,18 @@ Calculations
 ^^^^^^^^^^^^
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   hilbert
-   fci
-   fciqmc
-   ccmc
-   dmqmc
-
-Examples
-^^^^^^^^
+   calcs/fci
+   calcs/hilbert
+   calcs/fciqmc
+   calcs/ccmc
+   calcs/dmqmc
 
 Appendix
 ^^^^^^^^
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    lua_intro

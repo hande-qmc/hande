@@ -1,11 +1,6 @@
 Input options
 -------------
 
-System type
-^^^^^^^^^^^
-**ueg**
-    Perform calculation on the uniform electron gas.
-
 Algorithm options
 ^^^^^^^^^^^^^^^^^
 
@@ -70,38 +65,6 @@ types below. They are turned off by default.
     large variations in the time to perform each iteration, depending on
     whether this option is used or not.
 
-Calculation type
-^^^^^^^^^^^^^^^^
-
-The following options select which kind of calculation(s) are performed on the
-chosen system.  If no calculation type is given, then only the calculation
-initialisation (mainly the enumeration of the basis) is performed.
-
-Note that multiple calculations can be specified within a single input, but are performed in a set order.  Specifying **fciqmc** and **ifciqmc** is unlikely to work though!
-
-**exact**
-    Perform a full diagonalisation of the Hamiltonian matrix.
-**fci**
-    Synonym for **exact**.
-**simple_fciqmc**
-    Perform an FCIQMC calculation using an extremely simple (but wasteful, in
-    terms of CPU and memory resources) algorithm.  This should be used for testing only.
-**fciqmc**
-    Perform an FCIQMC calculation [BoothThomAlavi09]_.
-**dmqmc**
-    Perform a Density Matrix Quantum Monte Carlo (DMQMC) calculation.
-**ifciqmc**
-    Perform an initiator-FCIQMC calculation [ClelandBoothAlavi10]_.
-**ct_fciqmc**
-    Perform a continuous-time FCIQMC calculation.
-**lanczos**
-    Perform a Lanczos diagonalisation of the Hamiltonian matrix.
-**lanczos_direct**
-    Perform a Lanczos diagonalisation of the Hamiltonian matrix but calculate
-    the required Hamiltonian matrix elements on the fly rather than
-    pre-computing the entire Hamiltonian matrix (as is done with **lanczos**).
-    This is slower but requires much less memory.  This is currently only
-    implemented in serial.
 **estimate_hilbert_space** *ncycles*
     Integer.
 
@@ -125,54 +88,6 @@ Note that multiple calculations can be specified within a single input, but are 
     Monte Carlo algorithm. Also estimate <H>_0, which is a form of Hartree-Fock energy.
     Estimates for mean and variance are printed out every init_pop cycles.
 
-Calculation options: symmetry options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-FCI calculations consider the full Hamiltonian matrix.  This is automatically
-constructed in a block diagonal form via the use of symmetry, allowing for the
-Hamiltonian matrix to be considered a block at a time.  This results in
-a substantial reduction in CPU and memory demands.  The default behaviour is to
-diagonalise all blocks of the Hamiltonian matrix but this can be controlled by
-the following options.
-
-In contrast, an FCIQMC calculation can only consider a single block of the
-Hamiltonian matrix.  The spin polarisation must be specified and the symmetry
-of the determinant is currently hard-coded.
-
-**ms** *ms*
-    Integer.
-
-    Diagonalise only blocks containing determinants with the specified value of Ms,
-    in units of electron spin (i.e. 1/2).
-    
-    For the Heisenberg model, ms is applied in a similar manner. Here, each site is
-    either spin up or spin down, so ms = #spins_up - #spins_down, the total spin
-    in the block considered.
-**symmetry** *isym*
-    Integer.
-    
-    This does not apply to the Heisenberg model.
-
-    For the momentum space formulation:  Diagonalise only blocks
-    containing determinants of the same symmetry as the specified symmetry
-    block *isym*.  *isym* refers to a wavevector label (as given in the
-    output).  To see the symmetry labels for a specific crystal cell, run the
-    calculation without any calculation type specified.  The :math:`\Gamma`
-    wavevector is always given by *isym*:math:`=1` if *t* is positive and by
-    the number of sites in the cell if *t* is negative.
-
-    For point group symmetries in molecular systems: This specifies the symmetry of the
-    wavefunction, and is zero-based, with 0 being the totally symmetric irrep.  The other
-    symmetries correspond to those from the FCIDUMP (after subtracting 1 from the index).
-
-    If the FCIDUMP contains Lz symmetry, this is also used, but cannot currently
-    be specified, so the Lz=0 sector is chosen by default.
-**sym** *isym*
-    Synonym for **symmetry**.
-**lz**
-    Specify if Lz symmetry is to be used.  Currently can only look at the Lz=0 block.
-    For more information see the **Lz Symmetry** section.
-
 Calculation options: diagonalisation options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -194,34 +109,6 @@ calculation is performed.  The eigenvectors are only calculated if required (i.e
     analysed.  This is slow, and uses a very simple algorithm.  It is only
     designed for debugging purposes.  The properties evaluated depend upon the system
     and are liable to change without warning.
-
-Calculation options: Lanczos options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-These options are only valid when a Lanczos diagonalisation calculation is
-performed.
-
-**lanczos_basis** *nbasis*
-    Integer.
-
-    Default: 40.
-
-    Set the number of Lanczos vectors to be used.  This determines the main
-    memory requirements of the Lanczos routine.  The size of the basis can have
-    an impact on the performance of the Lanczos diagonalisation and which
-    excited eigensolutions are found.  See the TRLan documentation,
-    http://crd.lbl.gov/~kewu/ps/trlan\_.html, for more details.
-**lanczos_solutions** *nsolns*
-    Integer.
-
-    Default: 5.  
-
-    Set the number of eigenvalues (and eigenvectors, if required) to be found
-    via Lanczos diagonlisation.  The Hamiltonian matrix is constructed in block
-    diagonal form using spin and crystal momentum conservation rules.  nsolns
-    is the number of solutions found per block.
-**lanczos_solns** *nsolns*
-    Synonym for **lanczos_solutions**.
 
 Calculation options: FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -935,16 +822,6 @@ Calculation options: parallel options
 These options control the behaviour when run in parallel.  They do not affect
 the result but can have a significant impact on performance.
 
-**block_size** *block_size*
-    Integer.
-
-    Default: 64.
-
-    Set the block size used to distribute the Hamiltonian matrix across the
-    processors.  The Hamiltonian matrix is divided into :math:`n \times n`
-    sub-matrices, where :math:`n` is the block size, which are the distributed
-    over the processors in a cyclic fashion.  Applicable only to FCI
-    calculations.
 **doing_load_balancing**
     Attempt to dynamically modify the hashing of determinants to processors
     so as to get a more even distribution of walkers across processors.
