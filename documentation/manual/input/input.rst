@@ -26,9 +26,9 @@ variable as an argument.
 .. toctree::
    :maxdepth: 2
 
-   lattice
-   uegs
-   generic
+   systems/lattice
+   systems/uegs
+   systems/generic
 
 Calculations
 ^^^^^^^^^^^^
@@ -51,4 +51,4 @@ Appendix
 .. toctree::
    :maxdepth: 2
 
-   intro
+   lua_intro
