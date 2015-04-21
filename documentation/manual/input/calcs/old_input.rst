@@ -1,5 +1,14 @@
-Input options
--------------
+.. _old_input:
+
+Old input options
+=================
+
+.. warning::
+
+    The following options were used in an old (statement-based) input parser and are
+    included here only whilst new documentation is being written.  Some names have changed
+    (see comments in src/lua_hande_calc.f90 and examples in test_suite).  Behaviour is,
+    however, identical.
 
 Algorithm options
 ^^^^^^^^^^^^^^^^^
@@ -88,28 +97,6 @@ types below. They are turned off by default.
     Monte Carlo algorithm. Also estimate <H>_0, which is a form of Hartree-Fock energy.
     Estimates for mean and variance are printed out every init_pop cycles.
 
-Calculation options: diagonalisation options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-These options are only valid when a diagonalisation (either full or Lanczos)
-calculation is performed.  The eigenvectors are only calculated if required (i.e.
-**print_fci_wfn** or **analyse_fci_wfn** is positive), as doing so is much slower.
-
-**print_fci_wfn** *nwfn* *wfn_file*
-    Optional integer, default: -1.  Optional string, default: FCI_WFN.
-
-    Print out the first *nwfn* FCI wavefunctions from each spin and symmetry block.
-    If nwfn is negative (default) then all wavefunctions are printed out.  The
-    wavefunctions are printed to *wfn_file* (defaults to FCI_WFN).
-**analyse_fci_wfn** *nwfn*
-    Optional integer, default: -1.
-
-    Calculate properties of the first *nwfn* FCI wavefunctions from each spin and
-    symmetry block.  If nwfn is negative (default) then all wavefunctions are
-    analysed.  This is slow, and uses a very simple algorithm.  It is only
-    designed for debugging purposes.  The properties evaluated depend upon the system
-    and are liable to change without warning.
-
 Calculation options: FCIQMC options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -133,7 +120,7 @@ The following options are valid for FCIQMC calculations.
     will effectively loop indefinitely (strictly speaking: *nreports* is set to
     the largest possible number that can be held in the standard integer type).
     In such cases calculations should be cleanly exited using the
-    :ref:`HANDE.COMM` functionality.
+    HANDE.COMM functionality.
 
     The total number of Monte Carlo cycles performed in an FCIQMC calculation
     is *nreports* x *mc_cycles*.
@@ -889,30 +876,3 @@ Calculation options: estimate canonical kinetic energy
 
     Perform nkinetic_cycles * init_pop Mote Carlo iterations for estimating the
     canonical kinetic energy.
-
-Output options
-^^^^^^^^^^^^^^
-
-These options increase the verbosity but can be useful for debugging.  Note that
-the file sizes scale factorially with system size.  These should not currently
-be used in parallel.
-
-**determinants** [*filename*]
-    Optional character string.
-
-    Default: off.  Default filename: DETS.
-
-    Write out the enumerated list of determinants to the given *filename* or
-    to the default filename if no filename is give.
-**det** [*filename*]
-    Synonym for **determinants**.
-**hamiltonian** [*filename*]
-    Optional character string.
-
-    Default: off.  Default filename: HAMIL.
-
-    Write out the diagonal and the non-zero off-diagonal elements of the
-    Hamiltonian matrix to the given *filename*, or to the default filename if
-    not filename is given.
-**hamil** [*filename*]
-    Synonym for **hamiltonian**.

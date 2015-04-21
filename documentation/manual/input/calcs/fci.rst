@@ -21,6 +21,10 @@ Options
 -------
 
 sys
+    type: system object.
+
+    Required.
+
     The system on which to perform the calculation.  Must be created via a system
     function.
 fci
@@ -50,12 +54,53 @@ fci options
 The ``fci`` table can take the following options:
 
 write_hamiltonian
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Write out the diagonal and the non-zero off-diagonal elements of the Hamiltonian
+    matrix.
 hamiltonian_file
+    type: string.
+
+    Optional. Default: 'HAMIL'.
+
+    Filename to which the Hamiltonian matrix is written.
 write_determinants
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Write out the enumerated list of determinants in the FCI Hilbert space.
 determinant_file
+    type: string.
+
+    Optional. Default: 'DETS'.
+
+    Filename to which the list of determinants is written.
 write_nwfns
+    type: integer.
+
+    Optional.  Default: 0.
+
+    Number of wavefunctions to write out (in the basis of Slater determinants).
+    A negative value 1 indicates all wavefunctions are to be written out.
 wfn_file
+    type: string.
+
+    Optional. Default: 'FCI_WFN'.
+
+    Filename to which the wavefunctions are written.
 nanalyse
+    type: integer.
+
+    Optional.  Default: 0.
+
+    Calculate properties of the first *nwfn* FCI wavefunctions from each spin and
+    symmetry block.  If nwfn is negative (default) then all wavefunctions are
+    analysed.  This is slow, and uses a very simple algorithm.  It is only
+    designed for debugging purposes.  The properties evaluated depend upon the system
+    and are liable to change without warning.
 blacs_block_size
     type: integer.
 
@@ -78,6 +123,12 @@ rdm
         The ``rdm`` option is only currently available for Heisenberg systems and cannot
         be used with the Lanczos algorithm.
 
+.. note::
+
+    The ``write_wfn``, ``nanalyse`` and ``rdm`` options require the eigenvectors to be
+    calculated in addition to the eigenvalues, which requires additional computational
+    time.
+
 lanczos options
 ---------------
 
@@ -96,7 +147,7 @@ nbasis
 
     Number of Lanczos vectors used.   The size of the basis can have an impact on the
     performance of the Lanczos diagonalisation and which excited eigensolutions are found.
-    See the `TRLan documentation, <http://crd.lbl.gov/~kewu/ps/trlan_.html>`_, for more
+    See the `TRLan documentation <http://crd.lbl.gov/~kewu/ps/trlan_.html>`_, for more
     details.
 direct
     type: boolean.
