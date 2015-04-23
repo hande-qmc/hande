@@ -666,4 +666,81 @@ contains
 
     end function lua_ueg
 
+    function lua_ringium(L) result(nreturn) bind(c)
+
+        ! Create/modify a ringium system
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    ringium{
+        !            sys = sys_old, -- new sys_t object is created if not passed
+        !            electrons = N,
+        !            radius = R
+        !            maxlz = lzcutoff
+        !    }
+        !    Returns: sys_t object
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_state, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use aot_top_module, only: aot_top_get_val
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
+
+        use lua_hande_utils, only: warn_unused_args
+        use system, only: sys_t, ringium, init_system
+        use basis, only: init_model_basis_fns
+        use momentum_symmetry, only: init_momentum_symmetry
+        use ringium_system, only: init_symmetry_ringium
+
+        integer(c_int) :: nreturn
+        type(c_ptr), value :: L
+        type(flu_state) :: lua_state
+
+        type(sys_t), pointer :: sys
+        type(c_ptr) :: sys_ptr
+        integer :: opts
+        logical :: new_basis, new
+        integer :: err
+
+        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'ms', 'sym']
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys, new)
+
+        ! Get a handle to the table...
+        opts = aot_table_top(lua_state)
+
+        sys%system = ringium
+        sys%lattice%ndim = 1
+
+        ! Parse table for options...
+        call set_common_sys_options(lua_state, sys, opts)
+
+        new_basis = aot_exists(lua_state, opts, 'maxlz') .or. &
+                    aot_exists(lua_state, opts, 'radius') .or. &
+                    aot_exists(lua_state, opts, 'nel') .or. &
+                    aot_exists(lua_state, opts, 'electrons') .or. new
+
+        call aot_get_val(sys%ringium%radius, err, lua_state, opts, 'radius')
+        call aot_get_val(sys%ringium%maxlz, err, lua_state, opts, 'maxlz')
+
+        if (new_basis) then
+            ! [todo] - deallocate existing basis info and start afresh.
+
+            call init_system(sys)
+            call init_model_basis_fns(sys)
+            call init_generic_system_basis(sys)
+            call init_symmetry_ringium(sys)
+        end if
+
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
+
+        sys_ptr = c_loc(sys)
+        call flu_pushlightuserdata(lua_state, sys_ptr)
+        nreturn = 1
+
+    end function lua_ringium
+
 end module lua_hande_system
