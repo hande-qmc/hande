@@ -313,7 +313,7 @@ contains
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
-        real(p) :: D0_population_cycle, proj_energy_cycle
+        real(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old
 
         if (parent) then
             write (6,'(1X,"CCMC")')
@@ -395,6 +395,9 @@ contains
         dump_restart_shift = restart_in%write_restart_shift
         call init_restart_info_t(ri, write_id=restart_in%write_id)
         call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
+
+        ! Use a value from the restart file if restarting?
+        proj_energy_old = 0.0_p ! Projected energy on last cycle to correct linked spawning
 
         do ireport = 1, qmc_in%nreport
 
@@ -647,7 +650,7 @@ contains
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, real_factor, ccmc_in%linked, sys, &
-                                                               qs, cdet(it), cluster(it))
+                                                               qs, cdet(it), cluster(it), proj_energy_old)
                                 end if
                             end if
                         end if
@@ -665,7 +668,7 @@ contains
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
                         call stochastic_ccmc_death_nc(rng(it), real_factor, ccmc_in%linked, qs, iattempt==D0_pos, &
-                                              qs%psip_list%dat(1,iattempt), qs%psip_list%pops(1, iattempt), &
+                                              qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
                                               nparticles_change(1), ndeath)
                     end do
                     !$omp end do
@@ -695,6 +698,8 @@ contains
             call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats)
+
+            proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
 
             call cpu_time(t2)
             if (parent) then
@@ -1443,7 +1448,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, real_factor, linked_ccmc, sys, qs, cdet, cluster)
+    subroutine stochastic_ccmc_death(rng, spawn, real_factor, linked_ccmc, sys, qs, cdet, cluster, proj_energy)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1490,6 +1495,7 @@ contains
         logical, intent(in) :: linked_ccmc
         type(det_info_t), intent(in) :: cdet
         type(cluster_t), intent(in) :: cluster
+        real(p), intent(in) :: proj_energy
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
 
@@ -1511,7 +1517,8 @@ contains
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
-                KiiAi = cdet%data(1)*cluster%amplitude
+                ! We correct for the absence of the shift using the projected energy.
+                KiiAi = (cdet%data(1) + proj_energy - qs%shift(1))*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
                 ! The cluster operators are a1 and a2 (with a1 D0 = D1, a2 D0 = D2,
@@ -1577,7 +1584,7 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    subroutine stochastic_ccmc_death_nc(rng, real_factor, linked_ccmc, qs, D0, Hii, population, tot_population, ndeath)
+    subroutine stochastic_ccmc_death_nc(rng, real_factor, linked_ccmc, qs, D0, Hii, proj_energy, population, tot_population, ndeath)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1620,7 +1627,7 @@ contains
         logical, intent(in) :: linked_ccmc
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: D0
-        real(p), intent(in) :: Hii
+        real(p), intent(in) :: Hii, proj_energy
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(inout) :: population, ndeath
         real(p), intent(inout) :: tot_population
@@ -1638,7 +1645,8 @@ contains
         else
             if (linked_ccmc) then
                 ! In linked coupled cluster the shift only applies on the reference
-                KiiAi = Hii*population
+                ! We correct for this with the projected energy
+                KiiAi = Hii*population + proj_energy - qs%shift(1)
             else
                 KiiAi = (Hii - qs%shift(1))*population
             end if
