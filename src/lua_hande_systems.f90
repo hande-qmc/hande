@@ -35,7 +35,7 @@ contains
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
         use flu_binding, only: flu_State, flu_gettop
-        use aot_table_module, only: aot_exists, aot_get_val
+        use aot_table_module, only: aot_exists, aot_get_val, aot_table_top
         use system, only: sys_t
 
         type(flu_State), intent(inout) :: lua_state
@@ -43,12 +43,20 @@ contains
         logical, optional, intent(out) :: new
 
         type(c_ptr) :: sys_ptr
-        integer :: err
+        integer :: err, table
+        logical :: have_sys_entry
+
+        table = aot_table_top(lua_state)
+        if (table /= 0) then
+            have_sys_entry = .false.
+            have_sys_entry = aot_exists(lua_state, thandle=table, key='sys')
+        else
+            have_sys_entry = .false.
+        end if
 
         ! Check if an existing system object was passed in. If so then use
-        ! this object instead of creating a new one. thandle=1 because the
-        ! table should be the only object on the stack.
-        if (aot_exists(lua_state, thandle=1, key='sys')) then
+        ! this object instead of creating a new one.
+        if (have_sys_entry) then
             call aot_get_val(sys_ptr, err, lua_state, thandle=1, key='sys')
             if (err /= 0) call stop_all('get_sys_t', 'Problem receiving sys_t object.')
             call c_f_pointer(sys_ptr, sys)
