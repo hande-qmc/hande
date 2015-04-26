@@ -629,7 +629,6 @@ contains
         use hamiltonian_molecular, only: slater_condon0_mol
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg
         use heisenberg_estimators
-        use ifciqmc, only: set_parent_flag, set_parent_flag_dummy
         use importance_sampling
         use operators
         use spawning
@@ -770,7 +769,6 @@ contains
 
         ! 2: initiator-approximation
         if (qmc_in%initiator_approx) then
-            set_parent_flag_ptr => set_parent_flag
             if (all(ras > 0)) then
                 create_spawned_particle_ptr => create_spawned_particle_initiator_ras
             else if (truncate_space) then
@@ -779,7 +777,6 @@ contains
                 create_spawned_particle_ptr => create_spawned_particle_initiator
             end if
         else
-            set_parent_flag_ptr => set_parent_flag_dummy
             if (all(ras > 0)) then
                 create_spawned_particle_ptr => create_spawned_particle_ras
             else if (truncate_space) then

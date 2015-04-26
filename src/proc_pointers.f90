@@ -111,14 +111,6 @@ abstract interface
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
     end function i_sc0
-    subroutine i_set_parent_flag(pop, init_pop, f, determ_flag, flag)
-        import :: i0, p
-        implicit none
-        real(p), intent(in) :: pop, init_pop
-        integer(i0), intent(in) :: f(:)
-        integer, intent(in) :: determ_flag
-        integer, intent(out) :: flag
-    end subroutine i_set_parent_flag
     subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
@@ -180,8 +172,6 @@ procedure(i_sc0), pointer :: op0_ptr => null()
 procedure(i_sc0), pointer :: trial_dm_ptr => null()
 
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
-
-procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
