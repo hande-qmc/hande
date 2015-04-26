@@ -205,10 +205,12 @@ contains
 
     end subroutine init_parallel_t
 
-    subroutine init_proc_map_t(nslots, pm)
+    subroutine init_proc_map_t(nslots, pm, np)
 
         ! In:
         !    nslots: number of slots (per processor) we divide proc_map_t into.
+        !    np (optional): number of proecssors to use for the processor map.
+        !       Default: nprocs (number of processors calculation is being run on).
         ! In/Out:
         !    pm: proc_map_t object containing a mapping of slot to processor index.
 
@@ -219,13 +221,20 @@ contains
 
         integer, intent(in) :: nslots
         type(proc_map_t), intent(out) :: pm
+        integer, intent(in), optional :: np
 
-        integer :: i, ierr
+        integer :: i, ierr, pm_np
+
+        if (present(np)) then
+            pm_np = np
+        else
+            pm_np = nprocs
+        end if
 
         pm%nslots = nslots
-        allocate(pm%map(0:nslots*nprocs-1), stat=ierr)
+        allocate(pm%map(0:nslots*pm_np-1), stat=ierr)
         call check_allocate('pm%map', size(pm%map), ierr)
-        forall (i=0:nslots*nprocs-1) pm%map(i) = modulo(i,nprocs)
+        forall (i=0:nslots*pm_np-1) pm%map(i) = modulo(i,pm_np)
 
     end subroutine init_proc_map_t
 

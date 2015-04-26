@@ -128,7 +128,7 @@ module restart_hdf5
 
         subroutine init_restart_info_t(ri, write_id, read_id)
 
-            ! In:
+            ! In (optional):
             !    write_id: id used to write restart file out to.  Default: lowest non-existing file.
             !    read_id: id used to read restart file from.  Default: highest existing file.
             ! Out:
@@ -638,7 +638,7 @@ module restart_hdf5
 
             ! Hard code 1 load-balancing slot per processor for simplicity.  If the user wishes to use multiple
             ! slots, we should allow this to change when reading in the redistributed restart files.
-            call init_proc_map_t(1, pm_dummy)
+            call init_proc_map_t(1, pm_dummy, nprocs_target)
 
             if (.not.parent) call stop_all('redistribute_restart_hdf5', &
                             'Restart redistribution must currently be performed in serial.  Please improve.')
