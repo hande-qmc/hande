@@ -493,7 +493,7 @@ module restart_hdf5
                 if (nprocs /= nprocs_restart) &
                     call stop_all('read_restart_hdf5', &
                                   'Restarting on a different number of processors not supported.  &
-                                  &Use the redistribute_restart option.')
+                                  &Use the redistribute function.')
 
                 if (i0_length /= i0_length_restart) &
                     call stop_all('read_restart_hdf5', &

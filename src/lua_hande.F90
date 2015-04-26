@@ -144,6 +144,7 @@ contains
 
         use lua_hande_system
         use lua_hande_calc
+        use lua_hande_fns
 
         type(flu_State), intent(inout) :: lua_state
 
@@ -169,6 +170,9 @@ contains
         call flu_register(lua_state, 'fciqmc', lua_fciqmc)
         call flu_register(lua_state, 'ccmc', lua_ccmc)
         call flu_register(lua_state, 'dmqmc', lua_dmqmc)
+
+        ! Helper functions
+        call flu_register(lua_state, 'redistribute', lua_redistribute_restart)
 
     end subroutine register_lua_hande_api
 
