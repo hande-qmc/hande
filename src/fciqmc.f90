@@ -48,7 +48,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use utils, only: rng_init_info
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
-        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, set_determ_info
+        use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
         use system, only: sys_t
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
@@ -123,11 +123,8 @@ contains
         ! Some initial semi-stochastic parameters.
         ! Turn semi-stochastic on immediately unless asked otherwise.
         semi_stoch_iter = max(semi_stoch_in%start_iter, qs%mc_cycles_done+1)
-        ! Allocate array of flags to specify if a state is deterministic or not.
-        allocate(determ%flags(size(qs%psip_list%states, dim=2)), stat=ierr)
-        call check_allocate('determ%flags', size(determ%flags), ierr)
-        ! To begin with there are no deterministic states.
-        determ%flags = 1
+
+        call init_semi_stoch_t_flags(determ, size(qs%psip_list%states, dim=2))
 
         ! from restart
         nparticles_old = qs%psip_list%tot_nparticles

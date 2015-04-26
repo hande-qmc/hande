@@ -99,6 +99,30 @@ implicit none
 
 contains
 
+    subroutine init_semi_stoch_t_flags(determ, max_nstates)
+
+        ! In/Out:
+        !    determ: semi_stoch_t object.  On output the flags component is
+        !       allocated and initialised such that no state is deterministic.
+        ! In:
+        !    max_nstates: the maximum number of states that can be stored in the
+        !       corresponding particle_t object.
+
+        use checking, only: check_allocate
+
+        type(semi_stoch_t), intent(inout) :: determ
+        integer, intent(in) :: max_nstates
+
+        integer :: ierr
+
+        ! Allocate array of flags to specify if a state is deterministic or not.
+        allocate(determ%flags(max_nstates), stat=ierr)
+        call check_allocate('determ%flags', size(determ%flags), ierr)
+        ! To begin with there are no deterministic states.
+        determ%flags = 1
+
+    end subroutine init_semi_stoch_t_flags
+
     subroutine init_semi_stoch_t(determ, ss_in, sys, psip_list, reference, annihilation_flags, &
                                  spawn, mpi_barriers)
 
