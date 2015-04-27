@@ -10,7 +10,7 @@ import pyhande
 import pyblock
 import numpy as np
 
-
+# [review] - JSS: should this be in pyhande so it can be used interactively (bar the usage and printing)?
 def main(filename):
     ''' Analyse the output from a canonical kinetic energy calculation.
 
@@ -27,6 +27,12 @@ filename : list of strings
     (metadata, data) = pyhande.extract.extract_data_sets(filename)
 
     data.drop(labels='iterations', axis=1, inplace=True)
+    # [review] - JSS: r'\sum ...' is probably easier than escaping the \ youself.
+    # [review] - JSS: given the rename appears to be entirely for programming convenience, one could be cleaner without renaming by doing
+    #
+    # num = r'\sum\rho_HF_{ii}H_{ii}'
+    #
+    # [review] - JSS; for example.
     data.rename(columns={'\\sum\\rho_HF_{ii}H_{ii}': 'num',
                 '\\sum\\rho_HF_{ii}': 'denom'}, inplace=True)
 
@@ -47,6 +53,7 @@ filename : list of strings
     e_thf.reset_index(inplace=True)
 
     results = pd.DataFrame()
+    # [review] - JSS: should we have a function in pyhande.extract to get a value set in the input file?  This seems like it will be a common motif...
     results['Beta'] = [b.split()[2].split(',')[0] for b in
                        metadata[0]['input'] if 'beta' in b]
     # E_0 and E_HF0 contain no denominator so the error is
