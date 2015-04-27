@@ -285,7 +285,6 @@ Module restart_hdf5
 
             ! --- metadata group ---
             call h5gcreate_f(file_id, gmetadata, group_id, ierr)
-            call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
                 call hdf5_write(group_id, dhande, GLOBAL_META%git_sha1)
 
@@ -308,11 +307,9 @@ Module restart_hdf5
 
             ! --- qmc group ---
             call h5gcreate_f(file_id, gqmc, group_id, ierr)
-            call h5gopen_f(file_id, gqmc, group_id, ierr)
 
                 ! --- qmc/psips group ---
                 call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
-                call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
                 ! Don't write out the entire array for storing particles but
                 ! rather only the slots in use...
@@ -342,7 +339,6 @@ Module restart_hdf5
 
                 ! --- qmc/state group ---
                 call h5gcreate_f(group_id, gstate, subgroup_id, ierr)
-                call h5gopen_f(group_id, gstate, subgroup_id, ierr)
 
                     call hdf5_write(subgroup_id, dncycles, ncycles)
 
@@ -352,7 +348,6 @@ Module restart_hdf5
 
                 ! --- qmc/qs%ref group ---
                 call h5gcreate_f(group_id, gref, subgroup_id, ierr)
-                call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                     call hdf5_write(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
 
@@ -367,7 +362,6 @@ Module restart_hdf5
 
             ! --- rng group ---
             call h5gcreate_f(file_id, grng, group_id, ierr)
-            call h5gopen_f(file_id, grng, group_id, ierr)
             call h5gclose_f(group_id, ierr)
 
             ! And terminate HDF5.
