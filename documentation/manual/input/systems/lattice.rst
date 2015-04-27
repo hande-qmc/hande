@@ -54,7 +54,8 @@ ms
 
     Required.
 
-    Set the spin polarisation of the system in units of electron spin.
+    Set the spin polarisation of the system in units of electron spin (i.e. a single
+    electron can take values 1 or -1).
 sym
     type: integer.
 

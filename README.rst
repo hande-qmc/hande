@@ -19,7 +19,7 @@ HANDE development team
 | Fionn Malone, Imperial College London.
 | Matthew Foulkes, Imperial College London.
 | Will Vigor, Imperial College London.
-| Ruth Franklin, University of College.
+| Ruth Franklin, University of Cambridge.
 
 LICENSE
 -------

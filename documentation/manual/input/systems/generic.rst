@@ -13,7 +13,7 @@ Returns:
 A generic system, including atoms and molecules, can be specified by providing a file
 containing information about the single-particle basis set and the one- and two-body
 integrals between these basis functions.  This file is in FCIDUMP format
-[KnowlesHandy1989]_, which can be produced by several quantum chemistry packages including
+[KnowlesHandy89]_, which can be produced by several quantum chemistry packages including
 MOLPRO, Q-Chem (via additions from Alex Thom) and PSI4 (via a plugin from James Spencer).
 
 Options:
@@ -36,7 +36,8 @@ ms
 
     Required.
 
-    Set the spin polarisation of the system in units of electron spin.
+    Set the spin polarisation of the system in units of electron spin (i.e. a single
+    electron can take values 1 or -1).
 sym
     type: integer.
 
@@ -72,7 +73,7 @@ CAS
     Optional.  No default.
 
     If specified, then the basis set is restricted to a given complete active space,
-    whereby ``CAS = {M,N}`` corresponds to allowing only N electrons to be distributed
+    whereby ``CAS = {M,N}`` corresponds to allowing only :math:`N` electrons to be distributed
     among :math:`2M` spin orbitals.  Any additional electrons are 'frozen' (i.e. forced to
     be in the lowest spin orbitals) and any additional high-energy spin orbitals are
     removed from the basis set.

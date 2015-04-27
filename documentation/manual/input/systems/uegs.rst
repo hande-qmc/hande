@@ -22,7 +22,8 @@ Returns:
 
     H = -\frac{1}{2} \sum_i \nabla_i^2 + \sum_{i<j} \frac{1}{r_{ij}}
 
-using a single-particle basis of plane waves, :math:`\psi_k = e^{i k.r}`.
+(including an appropriate uniform background potential to counteract the charge),
+using a single-particle basis of plane waves, :math:`\psi_{\bf k} = e^{i {\bf k}.{\bf r}}`.
 
 Options:
 
@@ -44,7 +45,8 @@ ms
 
     Required.
 
-    Set the spin polarisation of the system in units of electron spin.
+    Set the spin polarisation of the system in units of electron spin (i.e. a single      
+    electron can take values 1 or -1).
 sym
     type: integer.
 
@@ -67,7 +69,7 @@ cutoff
     Set the maximum kinetic energy of the orbitals included in the basis set.
 
     Note that this is in scaled units of :math:`(2\pi/L)^2`, where :math:`L` is the
-    dimension of simulation cell defined by *nel* and *rs* and is compared to
+    dimension of simulation cell defined by *electrons* and *rs* and is compared to
     the kinetic energy of each plane-wave without the twist angle included.  In
     this way the cutoff can be kept constant whilst the twist is varied and the
     basis set used will remain consistent.
@@ -104,7 +106,7 @@ Ringium
 Returns:
     a system object.
 
-Ringium [LoosGill2013]_, is a 1D system of electrons confined to a ring of radius :math:`R`:
+Ringium [LoosGill13]_, is a 1D system of electrons confined to a ring of radius :math:`R`:
 
 .. math::
 
