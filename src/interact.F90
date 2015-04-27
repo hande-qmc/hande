@@ -106,7 +106,7 @@ contains
             end do
 
 #ifdef PARALLEL
-            buf_len = len_trim(buffer)
+            if (iproc == proc) buf_len = len_trim(buffer)
             call mpi_bcast(buf_len, 1, MPI_INTEGER, proc, mpi_comm_world, ierr)
 #if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             if (iproc /= proc) allocate(character(len=buf_len) :: buffer)
