@@ -25,7 +25,7 @@ contains
         !    qs (optional): QMC calculation state. The shift and/or timestep may be updated.
 
         use aotus_module, only: open_config_chunk
-        use aot_table_module, only: aot_get_val
+        use aot_table_module, only: aot_get_val, aot_exists
         use aot_vector_module, only: aot_get_val
         use flu_binding, only: flu_State
 
@@ -134,7 +134,9 @@ contains
                 call aot_get_val(soft_exit, ierr, lua_state, key='softexit')
                 if (present(qs)) then
                     call aot_get_val(qs%tau, ierr, lua_state, key='tau')
-                    call aot_get_val(qs%shift, ierr_arr, size(qs%shift), lua_state, key='shift')
+                    ! Only get shift if it is given, to avoid unwanted reallocation.
+                    if (aot_exists(lua_state, key='shift')) &
+                        call aot_get_val(qs%shift, ierr_arr, size(qs%shift), lua_state, key='shift')
                 end if
                 if (present(qmc_in)) then
                     call aot_get_val(qmc_in%target_particles, ierr, lua_state, key='target_population')
