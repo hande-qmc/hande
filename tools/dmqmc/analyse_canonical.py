@@ -40,8 +40,8 @@ def main(filename):
     e_thf.reset_index(inplace=True)
 
     results = pd.DataFrame()
-    results['Beta'] = [b.split()[1] for b in
-                       metadata[0]['input'] if 'init_beta' in b]
+    results['Beta'] = [b.split()[2].split(',')[0] for b in
+                       metadata[0]['input'] if 'beta' in b]
     # E_0 and E_HF0 contain no denominator so the error is
     # just the standard error.
     results['E_0'] = [means['E_0']]
