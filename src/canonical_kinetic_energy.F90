@@ -105,8 +105,7 @@ contains
 
         do ireport = 1, ncycles
             local_estimators = 0.0_p
-            ! [review] - JSS: no longer running total.
-            iaccept = 0 ! running total number of samples.
+            iaccept = 0 ! running number of samples this report cycle.
             do while (iaccept < nsamples)
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
                                                                        1, occ_list(:sys%nalpha), gen)
