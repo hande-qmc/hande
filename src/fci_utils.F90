@@ -80,7 +80,7 @@ contains
         integer, allocatable :: sym_space_size(:)
         integer :: iunit, ref_ms, ref_sym
         logical :: spin_flip
-        integer :: f0(sys%basis%string_len)
+        integer(i0) :: f0(sys%basis%string_len)
 
         write (6,'(1X,"FCI")')
         write (6,'(1X,"---",/)')
