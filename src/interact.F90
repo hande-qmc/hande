@@ -25,7 +25,7 @@ contains
         !    qs (optional): QMC calculation state. The shift and/or timestep may be updated.
 
         use aotus_module, only: open_config_chunk
-        use aot_table_module, only: aot_get_val
+        use aot_table_module, only: aot_get_val, aot_exists
         use aot_vector_module, only: aot_get_val
         use flu_binding, only: flu_State
 
@@ -106,9 +106,10 @@ contains
             end do
 
 #ifdef PARALLEL
+            if (iproc == proc) buf_len = len_trim(buffer)
             call mpi_bcast(buf_len, 1, MPI_INTEGER, proc, mpi_comm_world, ierr)
 #if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
-            if (.not.parent) allocate(character(len=buf_len) :: buffer)
+            if (iproc /= proc) allocate(character(len=buf_len) :: buffer)
 #endif
             call mpi_bcast(buffer, buf_len, MPI_CHARACTER, proc, mpi_comm_world, ierr)
 #endif
@@ -134,7 +135,9 @@ contains
                 call aot_get_val(soft_exit, ierr, lua_state, key='softexit')
                 if (present(qs)) then
                     call aot_get_val(qs%tau, ierr, lua_state, key='tau')
-                    call aot_get_val(qs%shift, ierr_arr, size(qs%shift), lua_state, key='shift')
+                    ! Only get shift if it is given, to avoid unwanted reallocation.
+                    if (aot_exists(lua_state, key='shift')) &
+                        call aot_get_val(qs%shift, ierr_arr, size(qs%shift), lua_state, key='shift')
                 end if
                 if (present(qmc_in)) then
                     call aot_get_val(qmc_in%target_particles, ierr, lua_state, key='target_population')
