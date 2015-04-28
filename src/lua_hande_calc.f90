@@ -545,6 +545,7 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use aot_vector_module, only: aot_get_val
 
+        use lua_hande_utils, only: warn_unused_args
         use basis_types, only: basis_t
         use checking, only: check_allocate
         use fci_utils, only: fci_in_t
@@ -557,6 +558,11 @@ contains
 
         integer :: fci_table, err, fci_nrdms
         integer, allocatable :: err_arr(:)
+
+        character(18), parameter :: fci_keys(9) = [character(18) :: 'write_hamiltonian', 'hamiltonian_file', &
+                                                                    'write_determinants', 'determinant_file', 'write_wfns', &
+                                                                    'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
+        character(6), parameter :: lanczos_keys(4) = [character(6) :: 'neigv', 'nbasis', 'direct', 'sparse']
 
         if (aot_exists(lua_state, opts, 'fci')) then
             call aot_table_open(lua_state, opts, fci_table, 'fci')
@@ -581,6 +587,8 @@ contains
                 fci_in%rdm_info(fci_nrdms)%A_nsites = size(fci_in%rdm_info(fci_nrdms)%subsystem_A)
             end if
 
+            call warn_unused_args(lua_state, fci_keys, fci_table)
+
             call aot_table_close(lua_state, fci_table)
 
         end if
@@ -592,6 +600,7 @@ contains
             call aot_get_val(fci_in%lanczos_string_len, err, lua_state, fci_table, 'nbasis')
             call aot_get_val(fci_in%direct_lanczos, err, lua_state, fci_table, 'direct')
             call aot_get_val(use_sparse_hamil, err, lua_state, fci_table, 'sparse', default=.true.)
+            call warn_unused_args(lua_state, lanczos_keys, fci_table)
             call aot_table_close(lua_state, fci_table)
         end if
 
@@ -758,6 +767,13 @@ contains
         character(len=10) :: str
         logical :: skip, no_renorm
 
+        character(19), parameter :: keys(19) = [character(19) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+                                                                 'spawned_state_size', 'rng_seed', 'target_population', &
+                                                                 'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
+                                                                 'pattempt_single', 'pattempt_double', 'initial_shift', &
+                                                                 'shift_damping', 'initiator', 'initiator_threshold', &
+                                                                 'use_mpi_barriers']
+
         if (present(short)) then
             skip = short
         else
@@ -839,8 +855,7 @@ contains
             end if
         end if
 
-        ! [todo] - check unused args.
-        !call warn_unused_args(lua_state, ['tau'], qmc_table)
+        call warn_unused_args(lua_state, keys, qmc_table)
 
         call aot_table_close(lua_state, qmc_table)
 
