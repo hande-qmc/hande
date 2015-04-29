@@ -373,4 +373,44 @@ contains
 
     end function double_counting_correction_mol
 
+    pure function get_two_e_int_mol(sys, i, j, a, b) result(intgrl)
+
+        ! In:
+        !   sys: system being studied
+        !   i,j,a,b: spin orbital indices
+        ! Returns:
+        !   The antisymmetrised integral < ij || ab >
+
+        use system, only: sys_t
+        use molecular_integrals, only: get_two_body_int_mol
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j, a, b
+        real(p) :: intgrl
+
+        intgrl = get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns, sys%read_in%pg_sym) &
+                - get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns, sys%read_in%pg_sym)
+
+    end function get_two_e_int_mol
+
+    pure function get_one_e_int_mol(sys, i, j) result(intgrl)
+
+        ! In:
+        !    sys: system being studied.
+        !    i: index of a real-space basis function.
+        !    j: index of a real-space basis function.
+        ! Returns:
+        !    h_ij
+
+        use system, only: sys_t
+        use molecular_integrals, only: get_one_body_int_mol
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j
+        real(p) :: intgrl
+
+        intgrl = get_one_body_int_mol(sys%read_in%one_e_h_integrals, i, j, sys%basis%basis_fns, sys%read_in%pg_sym)
+
+    end function get_one_e_int_mol
+
 end module hamiltonian_molecular

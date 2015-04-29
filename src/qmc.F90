@@ -190,7 +190,8 @@ contains
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
-        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol
+        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol, &
+            get_one_e_int_mol, get_two_e_int_mol
         use hamiltonian_molecular_complex, only: slater_condon0_mol_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
@@ -331,6 +332,9 @@ contains
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select
+
+            get_one_e_int_ptr => get_one_e_int_mol
+            get_two_e_int_ptr => get_two_e_int_mol
 
         case(ueg)
 
