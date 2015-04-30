@@ -1528,7 +1528,7 @@ contains
 
     end subroutine create_spawned_particle_truncated_density_matrix
 
-    subroutine create_spawned_particle_rdm(rdm, nspawn_in, particle_type, rdm_spawn)
+    subroutine create_spawned_particle_rdm(rdm, nspawn_in, particle_type, rdm_spawn, error)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1541,6 +1541,7 @@ contains
         ! In/Out:
         !    rdm_spawn: rdm_spawn_t object to which the spanwed particle
         !        will be added.
+        !    error: true if an error has occured before input or by output.
 
         use bit_utils, only: operator(.bitstrgt.)
         use dmqmc_data, only: rdm_t, rdm_spawn_t
@@ -1554,10 +1555,10 @@ contains
         integer(int_p), intent(in) :: nspawn_in
         integer, intent(in) :: particle_type
         type(rdm_spawn_t), intent(inout) :: rdm_spawn
+        logical, intent(inout) :: error
+
         integer(int_p) :: nspawn
-
         integer(i0) :: f_new_tot(2*rdm%string_len)
-
         integer :: iproc_spawn, slot
         ! WARNING!  The below algorithm is *not* suitable for conversion to
         ! thread-safety as each thread could be spawning onto the same RDM
@@ -1610,20 +1611,25 @@ contains
                     call stop_all('create_spawned_particle_rdm','Error in assigning hash &
                                   &table entry.')
                 end if
+
                 ! Fix hash table to point to the head of the spawn data for this thread/processor.
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-                if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-                    call stop_all('create_spawned_particle_rdm','There is no space left in the RDM array.')
+                if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
+                    if (.not. error) write (6,'(1X,"# Error: No space left in RDM spawning array.")')
+                    error = .true.
+                end if
 
-                ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)
-                associate(indx => ht%table(pos%ientry,pos%islot))
-                    ! Set info in spawning array.
-                    ! Zero it as not all fields are set.
-                    spawn%sdata(:,indx) = 0_int_s
-                    spawn%sdata(:bsl,indx) = int(f_new_tot, int_s)
-                    spawn%sdata(bsl+particle_type,indx) = int(nspawn, int_s)
-                end associate
+                if (.not. error) then
+                    ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)
+                    associate(indx => ht%table(pos%ientry,pos%islot))
+                        ! Set info in spawning array.
+                        ! Zero it as not all fields are set.
+                        spawn%sdata(:,indx) = 0_int_s
+                        spawn%sdata(:bsl,indx) = int(f_new_tot, int_s)
+                        spawn%sdata(bsl+particle_type,indx) = int(nspawn, int_s)
+                    end associate
+                end if
             end if
 
         end associate

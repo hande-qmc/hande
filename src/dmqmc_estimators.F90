@@ -339,7 +339,7 @@ contains
     end subroutine update_shift_dmqmc
 
     subroutine update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet, H00, psip_list, &
-                                       dmqmc_estimates, weighted_sampling)
+                                       dmqmc_estimates, weighted_sampling, error)
 
         ! This function calls the processes to update the estimators which have
         ! been requested by the user to be calculated. First, calculate the
@@ -361,6 +361,8 @@ contains
         !        matrix element.
         !    dmqmc_estimates: type containing dmqmc estimates.
         !    weighted_sampling: type containing weighted sampling parameters.
+        !    error: true if an error has occured and we need to quit at the
+        !        end of the report loop.
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2
@@ -382,6 +384,7 @@ contains
         type(particle_t), intent(in) :: psip_list
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
+        logical, intent(inout) :: error
 
         type(excit_t) :: excitation
         real(p) :: unweighted_walker_pop(psip_list%nspaces)
@@ -440,7 +443,7 @@ contains
             ! Reduced density matrices.
             if (dmqmc_in%rdm%doing_rdm) call update_reduced_density_matrix_heisenberg&
                 (sys%basis, est, dmqmc_in%rdm, cdet, excitation, psip_list%pops(:,idet), &
-                 iteration, dmqmc_in%start_av_rdm, weighted_sampling%probs)
+                 iteration, dmqmc_in%start_av_rdm, weighted_sampling%probs, error)
 
             weighted_sampling%probs_old = weighted_sampling%probs
 
@@ -839,7 +842,7 @@ contains
     end subroutine update_full_renyi_2
 
     subroutine update_reduced_density_matrix_heisenberg(basis, dmqmc_estimates, rdm_in, cdet, excitation, walker_pop, &
-                                                        iteration, start_av_rdm, accumulated_probs)
+                                                        iteration, start_av_rdm, accumulated_probs, error)
 
         ! Add the contribution from the current walker to the reduced density
         ! matrices being sampled. This is performed by 'tracing out' the
@@ -871,6 +874,8 @@ contains
         !        excitation level are reduced.
         ! In/Out:
         !    dmqmc_estimates: type containing dmqmc estimates.
+        !    error: true if an error has occured and we need to quit at the
+        !        end of the report loop.
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -889,6 +894,7 @@ contains
         type(excit_t), intent(in) :: excitation
         integer, intent(in) :: start_av_rdm
         real(p), intent(in) :: accumulated_probs(0:)
+        logical, intent(inout) :: error
 
         real(p) :: unweighted_walker_pop(size(walker_pop))
         integer :: irdm, isym, ireplica, nrdms, nsym_vecs
@@ -948,7 +954,7 @@ contains
                 do ireplica = 1, size(walker_pop)
                     if (abs(walker_pop(ireplica)) > 0) then
                         call create_spawned_particle_rdm(rdm_info(irdm), walker_pop(ireplica), ireplica, &
-                                                         dmqmc_estimates%inst_rdm%spawn(irdm))
+                                                         dmqmc_estimates%inst_rdm%spawn(irdm), error)
                     end if
                 end do
             end if

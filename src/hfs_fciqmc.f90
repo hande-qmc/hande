@@ -83,7 +83,7 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri
 
-        logical :: soft_exit, comms_found, mem_error
+        logical :: soft_exit, comms_found, error
 
         real :: t1, t2
 
@@ -95,7 +95,7 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
 
-        mem_error = .false.
+        error = .false.
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)
@@ -273,7 +273,7 @@ contains
                 end do
 
                 call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, qs%spawn_store%spawn, &
-                                         nspawn_events, error=mem_error)
+                                         nspawn_events, error=error)
 
             end do
 
@@ -282,8 +282,8 @@ contains
             comms_found = check_comms_file()
             ! Update the energy estimators (shift & projected energy).
             call update_energy_estimators(qmc_in, qs, nspawn_events, nparticles_old, load_bal_in=load_bal_in, &
-                                          comms_found=comms_found, error=mem_error)
-            if (mem_error) exit
+                                          comms_found=comms_found, error=error)
+            if (error) exit
 
             call cpu_time(t2)
 
@@ -307,7 +307,7 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
 
-        if (soft_exit .or. mem_error) then
+        if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
