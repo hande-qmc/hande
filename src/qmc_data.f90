@@ -7,6 +7,22 @@ use parallel, only: parallel_timing_t
 
 implicit none
 
+! --- Enums for various modes (must be declared before use) ---
+
+! Semi-stochastic projection/annihilation mode
+! See comments in semi_stoch.F90 for more details.
+enum, bind(c)
+    ! Gather the entire set of amplitudes in the deterministic space onto each
+    ! processor and perform the projection Hv distributed over rows of H.
+    ! Newly spawned particles belong automatically to the processor that created
+    ! them.
+    enumerator :: semi_stoch_separate_annihilation
+    ! Perform the projection Hv distributed over elements of v (ie determinants
+    ! assigned to each processor) and distribute the spawned particles via the
+    ! normal (stochastic projection) annihilation framework.
+    enumerator :: semi_stoch_combined_annihilation
+end enum
+
 ! --- QMC input ---
 
 type qmc_in_t
@@ -134,9 +150,9 @@ type semi_stoch_in_t
     integer :: target_size = 0
     ! If true then the deterministic states will be written to a file.
     logical :: write_determ_space = .false.
-    ! If true then deterministic spawnings will not be added to the spawning list
-    ! but rather treated separately via an extra MPI call.
-    logical :: separate_annihil = .true.
+    ! Algorithm used for projection/annihilation in the deterministic subspace.
+    ! Only the values given by semi_stoch_*_annihilation (see enum above) are permitted.
+    integer :: projection_mode = semi_stoch_separate_annihilation
 end type semi_stoch_in_t
 
 type ccmc_in_t
@@ -281,7 +297,6 @@ enum, bind(c)
     enumerator :: reuse_determ_space
 end enum
 
-
 ! Array to hold the indices of deterministic states in the dets array, accessed
 ! by calculating a hash value. This type is used by the semi_stoch_t type and
 ! is intended only to be used by this object.
@@ -307,12 +322,9 @@ end type determ_hash_t
 type semi_stoch_t
     ! True if a semi-stochastic calculation is being performed with this object.
     logical :: doing_semi_stoch = .false.
-    ! If true, then the deterministic 'spawning' will be performed in a routine
-    ! with an extra MPI call. This routine handles all of the annihilation of
-    ! deterministic spawnings with a simple summing of vectors.
-    ! If false, then the deterministic spawnings are added to the spawned list
-    ! and treated with the standard annihilation routine.
-    logical :: separate_annihilation = .false.
+    ! Algorithm used for projection/annihilation in the deterministic subspace.
+    ! Only the values given by semi_stoch_*_annihilation (see enum above) are permitted.
+    integer :: projection_mode = semi_stoch_combined_annihilation
     ! Integer to specify which type of deterministic space is being used.
     ! See the various determ_space parameters defined above.
     integer :: space_type = empty_determ_space

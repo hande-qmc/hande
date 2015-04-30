@@ -39,7 +39,7 @@ contains
         use spawn_data, only: spawn_t, annihilate_wrapper_spawn_t, calc_events_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, particle_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, particle_t, annihilation_flags_t, semi_stoch_separate_annihilation
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
@@ -63,7 +63,7 @@ contains
         ! process is slightly different, so call the correct routines depending
         ! on the situation.
         if (doing_semi_stoch) then
-            if (determ%separate_annihilation) then
+            if (determ%projection_mode == semi_stoch_separate_annihilation) then
                 call deterministic_annihilation(sys, rng, psip_list, determ)
                 call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx)
             else

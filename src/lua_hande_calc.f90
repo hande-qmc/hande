@@ -939,7 +939,8 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use errors, only: stop_all
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space, &
+                            semi_stoch_combined_annihilation, semi_stoch_separate_annihilation
         use lua_hande_utils, only: warn_unused_args
 
         type(flu_State), intent(inout) :: lua_state
@@ -949,7 +950,7 @@ contains
 
         integer :: semi_stoch_table, ref_det, err
         character(len=10) :: str
-        logical :: ref_det_flag
+        logical :: ref_det_flag, separate_annihilation
         character(21), parameter :: keys(6) = [character(21) :: 'space', 'size', 'start_iteration', 'write_determ_space', &
                                                                 'separate_annihilation', 'shift_start_iteration']
 
@@ -978,7 +979,12 @@ contains
             ! Optional arguments (defaults set in derived type).
             call aot_get_val(semi_stoch_in%start_iter, err, lua_state, semi_stoch_table, 'start_iteration')
             call aot_get_val(semi_stoch_in%write_determ_space, err, lua_state, semi_stoch_table, 'write_determ_space')
-            call aot_get_val(semi_stoch_in%separate_annihil, err, lua_state, semi_stoch_table, 'separate_annihilation')
+            call aot_get_val(separate_annihilation, err, lua_state, semi_stoch_table, 'separate_annihilation', default=.true.)
+            if (separate_annihilation) then
+                semi_stoch_in%projection_mode = semi_stoch_separate_annihilation
+            else
+                semi_stoch_in%projection_mode = semi_stoch_combined_annihilation
+            end if
 
             ! Optional arguments requiring special care.
             if (aot_exists(lua_state, semi_stoch_table, 'shift_start_iteration')) then

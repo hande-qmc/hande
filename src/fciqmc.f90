@@ -53,8 +53,8 @@ contains
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t
-        use qmc_data, only: empty_determ_space, qmc_state_t, annihilation_flags_t, reference_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
+                            qmc_state_t, annihilation_flags_t, reference_t, semi_stoch_separate_annihilation
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -293,7 +293,7 @@ contains
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
-            if (determ%doing_semi_stoch .and. determ%separate_annihilation) then
+            if (determ%doing_semi_stoch .and. determ%projection_mode == semi_stoch_separate_annihilation) then
                 call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, determ%mpi_time)
             else
                 call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time)

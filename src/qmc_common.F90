@@ -557,7 +557,7 @@ contains
             ! Create a temporary semi_stoch_in_t object to pass into the
             ! init_semi_stoch routine to update the determ object.
             ss_in_new%space_type = reuse_determ_space
-            ss_in_new%separate_annihil = determ%separate_annihilation
+            ss_in_new%projection_mode = determ%projection_mode
 
             ! Deallocate the semi_stoch_t instance, except for the list of all
             ! deterministic states, which we want to reuse.

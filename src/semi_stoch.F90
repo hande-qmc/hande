@@ -75,22 +75,26 @@ module semi_stoch
 ! deterministic states are copied across to a vector (semi_stoch_t%vector).
 ! This vector is what is multiplied in the deterministic projection itself.
 !
-! There are two possible methods for adding deterministic spawnings back into
-! the main psip array. If determ%separate_annihilation is true, then each
-! processor will receive the full list of deterministic amplitudes from all
-! processors via an extra MPI call per iteration. Using this complete list, the
-! deterministic spawning amplitudes for each processor can be calculated by
-! a single matrix multiplication without any further communication. These
-! deterministic spawnings are then added back into the main psip array in
-! the annihilation routines in deterministic_annihilation, which treats these
-! spawnings separately.
+! There are various possible methods for performing the deterministic projection
+! and adding the spawnings back into the main psip array, as given by
+! semi_stoch_t%projection_mode, which must be a value from the
+! semi_stoch_*_annihilation enum.
+
+! * semi_stoch_separate_annihilation:
+!     each processor will receive the full list of deterministic amplitudes from
+!     all processors via an extra MPI call per iteration. Using this complete list,
+!     the deterministic spawning amplitudes for each processor can be calculated
+!     by a single matrix multiplication without any further communication.  These
+!     deterministic spawnings are then added back into the main psip array in the
+!     annihilation routines in deterministic_annihilation, which treats these
+!     spawnings separately.
 !
-! If determ%separate_annihilation is false then the deterministic spawning
-! amplitudes from a given processor will be calculated by performing the exact
-! projection, and the resulting 'spawnings' will then be added to the spawned
-! list, just like non-deterministic spawnings. This prevents the need for an
-! extra MPI call each iteration, but the spawned list which is communicated
-! becomes larger.
+! * semi_stoch_combined_annihilation:
+!     the deterministic spawning amplitudes from a given processor will be calculated 
+!     by performing the exact projection, and the resulting 'spawnings' will then
+!     be added to the spawned list, just like non-deterministic spawnings.  This
+!     prevents the need for an extra MPI call each iteration, but the spawned list
+!     which is communicated becomes larger.
 
 use const
 use qmc_data, only: semi_stoch_t, determ_hash_t
@@ -143,8 +147,8 @@ contains
         !        load balancing before semi-stochastic communication.
 
         use checking, only: check_allocate, check_deallocate
-        use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, &
-                            reuse_determ_space, particle_t, annihilation_flags_t, semi_stoch_in_t
+        use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, &
+                            semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
@@ -173,7 +177,7 @@ contains
         print_info = parent .and. ss_in%space_type /= empty_determ_space
 
         ! Copy across this input option to the derived type instance.
-        determ%separate_annihilation = ss_in%separate_annihil
+        determ%projection_mode = ss_in%projection_mode
 
         ! Zero the semi-stochastic MPI times, just in case this determ object
         ! is being reused.
@@ -259,7 +263,7 @@ contains
         determ%vector = 0.0_p
 
         ! Vector to hold deterministic amplitudes from all processes.
-        if (determ%separate_annihilation) then
+        if (determ%projection_mode == semi_stoch_separate_annihilation) then
             allocate(determ%full_vector(determ%tot_size), stat=ierr)
             call check_allocate('determ%full_vector', determ%tot_size, ierr)
             determ%full_vector = 0.0_p
@@ -679,6 +683,8 @@ contains
         ! Out:
         !    determ_parent: true if the determinant is in the deterministic space.
 
+        use qmc_data, only: semi_stoch_separate_annihilation
+
         integer, intent(in) ::idet
         real(p), intent(in) :: real_pop
         integer, intent(inout) :: ndeterm_found
@@ -688,7 +694,7 @@ contains
         if (determ%flags(idet) == 0) then
             ndeterm_found = ndeterm_found + 1
             determ%vector(ndeterm_found) = real_pop
-            if (determ%separate_annihilation) determ%indices(ndeterm_found) = idet
+            if (determ%projection_mode == semi_stoch_separate_annihilation) determ%indices(ndeterm_found) = idet
             determ_parent = .true.
         else
             determ_parent = .false.
@@ -711,6 +717,7 @@ contains
 
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, qmc_state_t
+        use qmc_data, only: semi_stoch_separate_annihilation, semi_stoch_combined_annihilation
         use spawn_data, only: spawn_t
 
         type(dSFMT_t), intent(inout) :: rng
@@ -719,11 +726,12 @@ contains
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
 
-        if (determ%separate_annihilation) then
+        select case(determ%projection_mode)
+        case(semi_stoch_separate_annihilation)
             call determ_proj_separate_annihil(determ, qs)
-        else
+        case(semi_stoch_combined_annihilation)
             call determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
-        end if
+        end select
 
     end subroutine determ_projection
 
