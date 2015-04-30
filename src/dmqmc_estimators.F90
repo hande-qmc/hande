@@ -8,6 +8,7 @@ implicit none
 ! comments below).
 enum, bind(c)
     enumerator :: rspawn_ind = 1
+    enumerator :: error_ind
     enumerator :: nocc_states_ind
     enumerator :: nspawned_ind
     enumerator :: nparticles_ind
@@ -22,8 +23,8 @@ end enum
 
 contains
 
-    subroutine dmqmc_estimate_comms(dmqmc_in, nspawn_events, max_num_excits, ncycles, psip_list, qs, accumulated_probs_old, &
-                                    dmqmc_estimates)
+    subroutine dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, max_num_excits, ncycles, psip_list, qs, &
+                                    accumulated_probs_old, dmqmc_estimates)
 
         ! Sum together the contributions to the various DMQMC estimators (and
         ! some other non-physical quantities such as the rate of spawning and
@@ -39,6 +40,8 @@ contains
         !    ncycles: the number of monte carlo cycles.
         !    accumulated_probs_old: the value of accumulated_probs on the last report cycle.
         ! In/Out:
+        !    error: true if an error has occured on this processor. On output, true if an
+        !        error has occured on any processor.
         !    psip_list: particle information.  On output total (ie not
         !        per-processor) quantities are updated.
         !    qs: QMC state containing quantities not specific to DMQMC.
@@ -50,6 +53,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, num_dmqmc_operators
 
         type(dmqmc_in_t), intent(in) :: dmqmc_in
+        logical, intent(inout) :: error
         integer, intent(in) :: nspawn_events, max_num_excits, ncycles
         real(p), intent(in) :: accumulated_probs_old(0:)
         type(particle_t), intent(inout) :: psip_list
@@ -69,6 +73,7 @@ contains
 
         ! How big is each variable to be communicated?
         nelems(rspawn_ind) = 1
+        nelems(error_ind) = 1
         nelems(nocc_states_ind) = 1
         nelems(nspawned_ind) = 1
         nelems(nparticles_ind) = psip_list%nspaces
@@ -96,7 +101,7 @@ contains
 
         ! Move the variables to be communicated to rep_loop_loc.
         call local_dmqmc_estimators(dmqmc_in, dmqmc_estimates, rep_loop_loc, min_ind, max_ind, psip_list%nparticles, &
-                                    psip_list%nstates, nspawn_events, qs%spawn_store%rspawn)
+                                    psip_list%nstates, nspawn_events, qs%spawn_store%rspawn, error)
 
 #ifdef PARALLEL
         call mpi_allreduce(rep_loop_loc, rep_loop_sum, size(rep_loop_loc), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -107,7 +112,7 @@ contains
 
         ! Move the communicated quantites to the corresponding variables.
         call communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, psip_list%tot_nparticles, qs, &
-                                           dmqmc_estimates)
+                                           dmqmc_estimates, error)
 
         ! Clean up.
         deallocate(rep_loop_loc, stat=ierr)
@@ -118,7 +123,7 @@ contains
     end subroutine dmqmc_estimate_comms
 
     subroutine local_dmqmc_estimators(dmqmc_in, dmqmc_estimates, rep_loop_loc, min_ind, max_ind, nparticles, &
-                                      nstates_active, nspawn_events, rspawn)
+                                      nstates_active, nspawn_events, rspawn, error)
 
         ! Enter processor dependent report loop quantites into array for
         ! efficient sending to other processors.
@@ -134,6 +139,7 @@ contains
         !    nstates_active: number of occupied states in the particle lists.
         !    nspawn_events: The total number of spawning events to this process.
         !    rspawn: rate of spawning on this processor.
+        !    error: whether an error has occured on this processor.
         ! Out:
         !    rep_loop_loc: array containing local quantities to be communicated.
 
@@ -147,12 +153,15 @@ contains
         real(p), intent(in) :: nparticles(:)
         integer, intent(in) :: nspawn_events
         real(p), intent(in) :: rspawn
+        logical, intent(in) :: error
         real(dp), intent(out) :: rep_loop_loc(:)
+
         integer :: nrdms(1)
 
         rep_loop_loc = 0.0_dp
 
         rep_loop_loc(rspawn_ind) = rspawn
+        if (error) rep_loop_loc(error_ind) = 1.0_p
         rep_loop_loc(nocc_states_ind) = nstates_active
         rep_loop_loc(nspawned_ind) = nspawn_events
         rep_loop_loc(min_ind(nparticles_ind):max_ind(nparticles_ind)) = nparticles
@@ -176,7 +185,7 @@ contains
     end subroutine local_dmqmc_estimators
 
     subroutine communicated_dmqmc_estimators(dmqmc_in, rep_loop_sum, min_ind, max_ind, ncycles, tot_nparticles, qs, &
-                                             dmqmc_estimates)
+                                             dmqmc_estimates, error)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -197,6 +206,7 @@ contains
         ! Out:
         !    tot_nparticles: total number of particles of each type across all
         !       processors.
+        !    error: whether an error occured on any processor.
 
         use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
@@ -209,8 +219,10 @@ contains
         real(p), intent(out) :: tot_nparticles(:)
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
+        logical, intent(out) :: error
 
         qs%spawn_store%rspawn = rep_loop_sum(rspawn_ind)
+        error = abs(rep_loop_sum(error_ind)) > depsilon
         qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
         qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))

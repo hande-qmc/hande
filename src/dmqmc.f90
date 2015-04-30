@@ -67,7 +67,7 @@ contains
         integer(int_p) :: nspawned, ndeath
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
-        logical :: soft_exit, write_restart_shift, update_tau
+        logical :: soft_exit, write_restart_shift, update_tau, mem_error
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
@@ -92,6 +92,8 @@ contains
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
+
+        mem_error = .false.
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -254,7 +256,7 @@ contains
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
                     call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
-                                             qs%spawn_store%spawn, nspawn_events)
+                                             qs%spawn_store%spawn, nspawn_events, error=mem_error)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
 
@@ -268,8 +270,9 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs, &
-                                          weighted_sampling%probs_old, dmqmc_estimates)
+                call dmqmc_estimate_comms(dmqmc_in, mem_error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
+                                          qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
+                if (mem_error) exit outer_loop
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
 
@@ -309,7 +312,7 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
 
-        if (soft_exit) then
+        if (soft_exit .or. mem_error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport

@@ -307,7 +307,7 @@ contains
 
         real :: t1, t2
 
-        logical :: update_tau
+        logical :: update_tau, mem_error
 
         integer :: nspawnings_left, nspawnings_total
 
@@ -322,6 +322,8 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
+
+        mem_error = .false.
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)
@@ -683,7 +685,8 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
                     if (nprocs > 1) call redistribute_particles(pl%states, real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
 
-                    call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events)
+                    call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, pl, spawn, &
+                                             nspawn_events, error=mem_error)
                 end associate
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn, qs%spawn_store%rspawn)
@@ -692,9 +695,10 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
-                                 nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
-                                 load_bal_in, bloom_stats=bloom_stats)
+            call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
+                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
+                                 load_bal_in, bloom_stats=bloom_stats, error=mem_error)
+            if (mem_error) exit
 
             call cpu_time(t2)
             if (parent) then
@@ -720,7 +724,7 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
                                    qs%spawn_store%spawn%mpi_time)
 
-        if (soft_exit) then
+        if (soft_exit .or. mem_error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
