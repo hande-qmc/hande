@@ -10,6 +10,6 @@ skip_args = -i 'disabled at compile-time\|Not compiled with HDF5 support\|Restar
 
 [user]
 diff = vimdiff
-benchmark = e7c061c ee987d8 65673c9 974ed4f cc00373 b93ec9a
+benchmark = c3a2cdb e7c061c ee987d8 65673c9 974ed4f cc00373 b93ec9a
 tolerance = (1.e-10, 1.e-10, None, False)
 

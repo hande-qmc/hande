@@ -8,17 +8,14 @@ implicit none
 
 enum, bind(c)
     ! Ensure energy estimates are always first.
-    ! Index for kinetic energy.
+    ! Kinetic energy estimate.
     enumerator :: ke_idx = 1
-    ! Index for Hartree-Fock energy.
+    ! Hartree-Fock energy in non-interacting ensemble.
     enumerator :: hf_idx
-    ! Index for Variance in kinetic energy.
-    enumerator :: ke_var_idx
-    ! Index for Variance in Hartree-Fock energy.
-    enumerator :: hf_var_idx
-    ! Index for squared means needed for variance estimation in parallel.
-    enumerator :: ke_sq_idx
-    enumerator :: hf_sq_idx
+    ! Finite-T Hartree-Fock (sort of)
+    enumerator :: hft_idx
+    ! Finite-T reweighted estimate for partition function.
+    enumerator :: hf_part_idx
     ! Index for checking for interaction with the calculation
     enumerator :: comms_found_idx
     ! last_idx-1 gives number of estimates.
@@ -67,8 +64,7 @@ contains
         real(dp) :: r
         integer :: occ_list(sys%nel), seed
         logical :: gen
-        real(p) :: energy(2), beta_loc
-        real(p) :: delta(2), mean(2), std(2)
+        real(p) :: energy(hf_part_idx), beta_loc, pot_en
         integer :: ierr, ireport, iorb
         integer(int_64) :: iaccept
         real(p) :: local_estimators(last_idx-1), estimators(last_idx-1)
@@ -94,22 +90,23 @@ contains
         end if
 
         if (parent) then
-            write (6,'(1X,a72)') 'E_0: Current estimate for thermal kinetic energy i.e. 1/Z Tr(\rho_0 H_0).'
-            write (6,'(1X,a79)') 'E_HF: Current estimate for thermal "Hartree-Fock" energy i.e. 1/Z Tr(\rho_0 H).'
+            write (6,'(1X,a67)') 'E_0: Estimate for thermal kinetic energy i.e. 1/Z_0 Tr(\rho_0 H_0).'
+            write (6,'(1X,a65)') 'E_HF0: Estimate for Hartree-Fock-0 energy i.e. 1/Z_0 Tr(\rho_0 H).'
+            write (6,'(1X,a91)') '\sum\rho_HF_{ii}H_{ii}: Estimate for numerator of "Hartree-Fock" energy i.e. Tr(\rho_HF H).'
+            write (6,'(1X,a77)') '\sum\rho_HF_{ii}: Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.'
             write (6,'()')
         end if
 
-        if (parent) write (6,'(1X,a12,6X,a3,19X,a7,15X,a4,18X,a10)') '# iterations', 'E_0', 'E_Error', 'E_HF', 'E_HF-Error'
+        if (parent) write (6,'(1X,a12,19X,a3,17X,a5,4x,a22,6X,a16)') &
+                    '# iterations', 'E_0', 'E_HF0', '\sum\rho_HF_{ii}H_{ii}', '\sum\rho_HF_{ii}'
 
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
                                                           (1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
 
-        iaccept = 0 ! running total number of samples.
-        delta = 0.0_p
-        mean = 0.0_p
-        local_estimators = 0.0_p
         do ireport = 1, ncycles
-            do while (iaccept < ireport*nsamples)
+            local_estimators = 0.0_p
+            iaccept = 0 ! running number of samples this report cycle.
+            do while (iaccept < nsamples)
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
                                                                        1, occ_list(:sys%nalpha), gen)
                 if (.not. gen) cycle
@@ -119,18 +116,19 @@ contains
                 iaccept = iaccept + 1
                 ! Calculate Kinetic and Hartree-Fock energies.
                 energy(ke_idx) = sum_sp_eigenvalues(sys, occ_list)
-                energy(hf_idx) = energy(ke_idx) + potential_energy_ueg(sys, occ_list)
-                ! Estimate mean and variance using Knuth's online algorithm.
-                ! See: http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#On-line_algorithm
-                delta = energy - local_estimators(ke_idx:hf_idx)
-                ! Update means.
-                local_estimators(ke_idx:hf_idx) = local_estimators(ke_idx:hf_idx) + delta/iaccept
-                ! Mean squared.
-                local_estimators(ke_sq_idx:hf_sq_idx) = local_estimators(ke_idx:hf_idx)**2.0_p
-                ! Update variances (actually the variance is
-                ! estimators(ke_var_idx:) / (iaccept-1), see link for details)
-                local_estimators(ke_var_idx:hf_var_idx) =  local_estimators(ke_var_idx:hf_var_idx) + &
-                                                        delta*(energy-local_estimators(ke_idx:hf_idx))
+                pot_en = potential_energy_ueg(sys, occ_list)
+                energy(hf_idx) = energy(ke_idx) + pot_en
+                ! We generate determinants with probability p(i1,..,iN) =
+                ! 1/Z_0 \prod_{i} p(i1)X...Xp(iN), where Z_0 is the
+                ! non-interacting canonical partition function, and p(i1) =
+                ! e^{-\beta \varepsilon_i1). We can instead
+                ! calculate Z_HF = \sum_{i} e^{-\beta E_HF(i)} by reweighting,
+                ! i.e.,
+                ! p(i1,..,iN)_HF = 1/Z' e^{-beta(E_HF(i)-E_0(i))}p(i1,...,iN),
+                ! where Z' = \sum_{i} e^{-\beta(E_HF(i)-E_0(i))}.
+                energy(hf_part_idx) = exp(-beta_loc*pot_en)
+                energy(hft_idx) = energy(hf_part_idx)*energy(hf_idx)
+                local_estimators(ke_idx:hf_part_idx) = local_estimators(ke_idx:hf_part_idx) + energy
             end do
 
             if (check_comms_file()) local_estimators(comms_found_idx) = 1.0_p
@@ -141,19 +139,10 @@ contains
 #else
             estimators = local_estimators
 #endif
-            ! Average means over processors.
-            mean = estimators(ke_idx:hf_idx) / nprocs
-            ! Find variance in average over processors (denoted var(\sum_i^nprocs)).
-            ! Assuming the samples are uncorrelated and the number of samples
-            ! contributing to each estimate is the same, then:
-            ! var(\sum_i^nprocs) = 1/nprocs (\sum_i^nprocs var(i) + \sum_i^nprocs mean^2(i))
-            !                      - mean(\sum_i^nprocs).
-            ! This follows from the fact that (var + mean) = 1/m \sum_i^m x_i^2
-            ! and mean = 1/m \sum_i^m x_i.
-            ! The standard deviation of the mean is then sqrt(var/(nprocs*iaccept)).
-            std = sqrt(((estimators(ke_var_idx:hf_var_idx)/(real(iaccept-1,p)) + &
-                  estimators(ke_sq_idx:hf_sq_idx))/nprocs - mean**2.0_p)/(nprocs*real(iaccept, p)))
-            if (parent) write(6,'(3X,i10,5X,4(es17.10,5X))') ireport, mean(ke_idx), std(ke_idx), mean(hf_idx), std(hf_idx)
+            ! Average over processors.
+            estimators(ke_idx:hf_part_idx) = estimators(ke_idx:hf_part_idx) / (nprocs*nsamples)
+            if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,2(es17.10,5X))') ireport, estimators(ke_idx), &
+                                                             estimators(hf_idx), estimators(hft_idx), estimators(hf_part_idx)
             comms_found = abs(estimators(comms_found_idx)) > depsilon
             call calc_interact(comms_found, soft_exit)
             if (soft_exit) exit

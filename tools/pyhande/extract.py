@@ -471,3 +471,24 @@ nread : int
                 data.name = 'Hilbert space'
                 break
     return (data, nread)
+
+
+def extract_input(metadata, variable):
+    '''Extract input information about specific variable.
+
+Parameters
+----------
+metadata : :class:`pandas.DataFrame`
+    metadata (i.e. calculation information, parameters and settings) extracted
+    from output files.
+variable : string
+    input variable whose value is desired.
+
+Returns
+-------
+value : string
+    value associated with variable in input file.
+'''
+
+    value = [x.split()[2].split(',')[0] for x in metadata[0]['input'] if variable in x]
+    return (value)
