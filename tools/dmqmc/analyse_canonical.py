@@ -22,7 +22,7 @@ filename : list of strings
 
     (metadata, data) = pyhande.extract.extract_data_sets(filename)
 
-    results = pyhande.canonical.analyse_canonical_estimates(metadata, data)
+    results = pyhande.canonical.estimates(metadata, data)
 
     try:
         float_fmt = '{0:-#.8e}'.format

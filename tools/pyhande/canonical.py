@@ -5,7 +5,7 @@ import pyblock
 import pyhande
 import numpy as np
 
-def analyse_canonical_estimates(metadata, data):
+def estimates(metadata, data):
     '''Perform error analysis for canonical thermodynamic estimates.
 
 Parameters
