@@ -6,13 +6,12 @@ implicit none
 
 ! Routines for ringium
 
-interface gsl_sf_psi
-    pure function gsl_sf_psi(arg) bind(c)
-        use, intrinsic :: iso_c_binding
-        use const
-        real(dp), value, intent(in) :: arg
-        real(dp) :: gsl_sf_psi
-    end function gsl_sf_psi
+interface
+    pure function psi(arg) bind(c)
+        use, intrinsic :: iso_c_binding, only: c_double
+        real(c_double), value, intent(in) :: arg
+        real(c_double) :: psi
+    end function psi
 end interface
 
 contains
@@ -59,7 +58,7 @@ contains
             ! value of basis_fns%l is 2*lz
             x1 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(j)%l(1) + 1.0) * 0.5
             x2 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(i)%l(1) + 1.0) * 0.5
-            intgrl = (gsl_sf_psi(x1) - gsl_sf_psi(x2)) / (pi * sys%ringium%radius)
+            intgrl = (psi(x1) - psi(x2)) / (pi * sys%ringium%radius)
         end if
 
     end function get_two_e_int_ringium
