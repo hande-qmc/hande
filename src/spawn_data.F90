@@ -270,7 +270,7 @@ contains
 
     end subroutine dealloc_spawn_t
 
-    subroutine memcheck_spawn_t(spawn, warn_level)
+    subroutine memcheck_spawn_t(spawn, warn_level, dont_warn)
 
         ! In:
         !    spawn: spawn_t object containing spawned particles.
@@ -278,6 +278,8 @@ contains
         !       object which, if filled beyond, triggers a warning.  Note that each
         !       processor block/section is considered separately, so this should be called
         !       before any of the compression/annihilation procedures.
+        !    dont_warn (optional): if present and true then don't actually print any
+        !        warning. This can prevent spamming the user with messages.
 
         use parallel, only: nthreads, nprocs, iproc
         use utils, only: int_fmt
@@ -285,9 +287,15 @@ contains
 
         type(spawn_t), intent(in) :: spawn
         real, intent(in), optional :: warn_level
+        logical, intent(in), optional :: dont_warn
 
         real :: fill(nprocs), level
+        logical :: dont_warn_local
         integer :: it
+
+        if (present(dont_warn)) then
+            if (dont_warn) return
+        end if
 
         if (present(warn_level)) then
             level = warn_level

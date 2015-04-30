@@ -1188,7 +1188,7 @@ contains
     end subroutine create_spawned_particle_initiator_ras
 
     subroutine create_spawned_particle_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
-                                                      particle_type, spawn)
+                                                      particle_type, spawn, error)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1211,6 +1211,7 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true if we run out of memory in the spawned list.
 
         use basis_types, only: basis_t
         use errors, only: stop_all
@@ -1227,6 +1228,7 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
+        logical, intent(inout) :: error
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1252,16 +1254,17 @@ contains
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-            call stop_all('create_spawned_particle_density_matrix',&
-                           'There is no space left in the spawning array.')
-
-        call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
+            if (.not. error) write (6,'(1X,"# Error: No space left in spawning array.")')
+            error = .true.
+        else
+            call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+        end if
 
     end subroutine create_spawned_particle_density_matrix
 
     subroutine create_spawned_particle_half_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
-                                                           particle_type, spawn)
+                                                           particle_type, spawn, error)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! If walker tries to spawn in the lower triangle of density matrix
@@ -1286,6 +1289,7 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true if we run out of memory in the spawned list.
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
@@ -1303,6 +1307,7 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
+        logical, intent(inout) :: error
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1333,16 +1338,17 @@ contains
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-            call stop_all('create_spawned_particle_half_density_matrix',&
-                           'There is no space left in the spawning array.')
-
-        call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
+            if (.not. error) write (6,'(1X,"# Error: No space left in spawning array.")')
+            error = .true.
+        else
+            call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+        end if
 
     end subroutine create_spawned_particle_half_density_matrix
 
     subroutine create_spawned_particle_truncated_half_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
-                                                                     particle_type, spawn)
+                                                                     particle_type, spawn, error)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1374,6 +1380,7 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true if we run out of memory in the spawned list.
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
@@ -1391,6 +1398,7 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
+        logical, intent(inout) :: error
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1424,18 +1432,19 @@ contains
                                                  spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
                                                  spawn%proc_map%nslots)
 
-            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-                call stop_all('create_spawned_particle_truncated_half_density_matrix',&
-                               'There is no space left in the spawning array.')
-
-            call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
+                if (.not. error) write (6,'(1X,"# Error: No space left in spawning array.")')
+                error = .true.
+            else
+                call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+            end if
 
         end if
 
     end subroutine create_spawned_particle_truncated_half_density_matrix
 
     subroutine create_spawned_particle_truncated_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
-                                                                particle_type, spawn)
+                                                                particle_type, spawn, error)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1462,6 +1471,7 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true if we run out of memory in the spawned list.
 
         use basis_types, only: basis_t
         use errors, only: stop_all
@@ -1478,7 +1488,7 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
-
+        logical, intent(inout) :: error
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1507,11 +1517,12 @@ contains
                                                  spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
                                                  spawn%proc_map%nslots)
 
-            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-                call stop_all('create_spawned_particle_truncated_density_matrix', &
-                               'There is no space left in the spawning array.')
-
-            call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
+                if (.not. error) write (6,'(1X,"# Error: No space left in spawning array.")')
+                error = .true.
+            else
+                call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
+            end if
 
         end if
 

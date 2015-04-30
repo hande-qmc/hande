@@ -126,7 +126,8 @@ abstract interface
         integer(i0), intent(in), optional, target :: f(:)
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle
-    subroutine i_create_spawned_particle_dm(basis, reference, f1, f2, connection, nspawned, spawning_end, particle_indx, spawn)
+    subroutine i_create_spawned_particle_dm(basis, reference, f1, f2, connection, nspawned, spawning_end, &
+                                            particle_indx, spawn, error)
         use spawn_data, only: spawn_t
         use basis_types, only: basis_t
         use qmc_data, only: reference_t
@@ -140,6 +141,7 @@ abstract interface
         integer(int_p), intent(in) :: nspawned
         integer, intent(in) :: spawning_end, particle_indx
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
     end subroutine i_create_spawned_particle_dm
     subroutine i_trial_fn(sys, cdet, connection, weights, hmatel)
         use system, only: sys_t
