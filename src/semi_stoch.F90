@@ -751,12 +751,10 @@ contains
 
         use csr, only: csrpgemv_single_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: real_factor
         use omp_lib
         use parallel, only: nprocs, iproc, nthreads
         use qmc_data, only: qmc_in_t, qmc_state_t
         use spawn_data, only: spawn_t
-        use spawning, only: add_spawned_particle, add_flagged_spawned_particle
 
         type(dSFMT_t), intent(inout) :: rng
         type(qmc_in_t), intent(in) :: qmc_in
@@ -781,7 +779,7 @@ contains
                     ! contribution from the shift.
                     out_vec = -out_vec + qs%shift(1)*determ%vector(i)
                     out_vec = out_vec*qs%tau
-                    call create_spawned_particle_determ(out_vec, row, proc, qmc_in%initiator_approx)
+                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, rng, spawn)
                 end do
             else
                 do i = 1, determ%sizes(proc)
@@ -789,58 +787,10 @@ contains
                     row = row + 1
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     out_vec = -out_vec*qs%tau
-                    call create_spawned_particle_determ(out_vec, row, proc, qmc_in%initiator_approx)
+                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, rng, spawn)
                 end do
             end if
         end do
-
-        contains
-
-            subroutine create_spawned_particle_determ(target_nspawn, idet, proc, initiator_approx)
-
-                ! Add a deterministic spawning to the spawning array. Before
-                ! this can be done, the target population must be encoded as an
-                ! integer using the reals encoding scheme.
-
-                ! In:
-                !    target_nspawn: The number of spawns we want to add to the
-                !        spawning array, before the integer encoding has
-                !        been performed.
-                !    idet: The index of the determinant to be added in the
-                !        determ%dets array.
-                !    proc: The processor to which the determinant to be added
-                !        belongs.
-                !    initiator_approx: is the initiator approximation
-                !        in use?
-
-                real(p), intent(in) :: target_nspawn
-                integer, intent(in) :: idet, proc
-                logical, intent(in) :: initiator_approx
-
-                integer(int_p) :: nspawn
-                real(p) :: sgn, target_nspawn_scaled
-#ifndef _OPENMP
-                integer, parameter :: thread_id = 0
-#else
-                integer :: thread_id
-                thread_id = omp_get_thread_num()
-#endif
-
-                ! Multiply target_nspawn by real_factor to allow it to be
-                ! encoded as an integer.
-                target_nspawn_scaled = target_nspawn*real_factor
-                sgn = sign(1.0_p, target_nspawn)
-                ! Stochastically round up or down, to encode as an integer.
-                nspawn = int(abs(target_nspawn_scaled), int_p)
-                if (abs(target_nspawn_scaled) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
-                nspawn = nspawn*nint(sgn, int_p)
-                if (initiator_approx) then
-                    call add_flagged_spawned_particle(determ%dets(:,idet), nspawn, 1, 0, proc, spawn)
-                else
-                    call add_spawned_particle(determ%dets(:,idet), nspawn, 1, proc, spawn)
-                end if
-
-            end subroutine create_spawned_particle_determ
 
     end subroutine determ_proj_combined_annihil
 
@@ -917,6 +867,61 @@ contains
         call csrpgemv(.true., .false., -1.0_p*qs%tau, determ%hamil, determ%full_vector, determ%vector)
 
     end subroutine determ_proj_separate_annihil
+
+    subroutine create_spawned_particle_determ(f, target_nspawn, proc, initiator_approx, rng, spawn)
+
+        ! Add a deterministic spawning to the spawning array. Before
+        ! this can be done, the target population must be encoded as an
+        ! integer using the reals encoding scheme.
+
+        ! In:
+        !    f: determinant onto which particles are spawned from the
+        !        deterministic projection in the deterministic subspace.
+        !    target_nspawn: the number of spawns we want to add to the
+        !        spawning array, before the integer encoding has
+        !        been performed.
+        !    proc: the processor to which the determinant to be added belongs.
+        !    initiator_approx: is the initiator approximation in use?
+        ! In/Out:
+        !    rng: random number generator.
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use fciqmc_data, only: real_factor
+        use spawn_data, only: spawn_t
+        use spawning, only: add_spawned_particle, add_flagged_spawned_particle
+
+        integer(i0), intent(in) :: f(:)
+        real(p), intent(in) :: target_nspawn
+        integer, intent(in) :: proc
+        logical, intent(in) :: initiator_approx
+        type(dSFMT_t), intent(inout) :: rng
+        type(spawn_t), intent(inout) :: spawn
+
+        integer(int_p) :: nspawn
+        real(p) :: sgn, target_nspawn_scaled
+#ifndef _OPENMP
+        integer, parameter :: thread_id = 0
+#else
+        integer :: thread_id
+        thread_id = omp_get_thread_num()
+#endif
+
+        ! Multiply target_nspawn by real_factor to allow it to be
+        ! encoded as an integer.
+        target_nspawn_scaled = target_nspawn*real_factor
+        sgn = sign(1.0_p, target_nspawn)
+        ! Stochastically round up or down, to encode as an integer.
+        nspawn = int(abs(target_nspawn_scaled), int_p)
+        if (abs(target_nspawn_scaled) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+        nspawn = nspawn*nint(sgn, int_p)
+        if (initiator_approx) then
+            call add_flagged_spawned_particle(f, nspawn, 1, 0, proc, spawn)
+        else
+            call add_spawned_particle(f, nspawn, 1, proc, spawn)
+        end if
+
+    end subroutine create_spawned_particle_determ
 
     subroutine add_det_to_determ_space(determ_size_this_proc, dets_this_proc, spawn, f, check_proc)
 
