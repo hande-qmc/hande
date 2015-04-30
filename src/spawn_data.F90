@@ -270,6 +270,39 @@ contains
 
     end subroutine dealloc_spawn_t
 
+    subroutine memcheck_spawn_t(spawn, warn_level)
+
+        ! In:
+        !    spawn: spawn_t object containing spawned particles.
+        !    warn_level (optional, default: 0.95): the fraction of slots in the spawn_t
+        !       object which, if filled beyond, triggers a warning.  Note that each
+        !       processor block/section is considered separately, so this should be called
+        !       before any of the compression/annihilation procedures.
+
+        use parallel, only: nthreads, nprocs, iproc
+        use utils, only: int_fmt
+        use errors, only: stop_all
+
+        type(spawn_t), intent(in) :: spawn
+        real, intent(in), optional :: warn_level
+
+        real :: fill(nprocs), level
+        integer :: it
+
+        if (present(warn_level)) then
+            level = warn_level
+        else
+            level = 0.95
+        end if
+
+        it = nthreads - 1
+        fill = real(maxval(spawn%head(:,:),dim=1) - spawn%head_start(it,:)) / spawn%block_size
+        if (any(fill - level > 0.0)) then
+            write (6,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+        end if
+
+    end subroutine memcheck_spawn_t
+
 !--- Helper procedures ---
 
     subroutine annihilate_wrapper_spawn_t_single(spawn, tinitiator, determ_size)

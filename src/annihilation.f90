@@ -36,7 +36,7 @@ contains
         !       the processor.
 
         use parallel, only: nthreads, nprocs, iproc
-        use spawn_data, only: spawn_t, annihilate_wrapper_spawn_t, calc_events_spawn_t
+        use spawn_data, only: spawn_t, annihilate_wrapper_spawn_t, calc_events_spawn_t, memcheck_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, particle_t, annihilation_flags_t, semi_stoch_separate_annihilation
@@ -56,8 +56,9 @@ contains
 
         doing_semi_stoch = .false.
         if (present(determ)) doing_semi_stoch = determ%doing_semi_stoch
-
         if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(spawn)
+
+        call memcheck_spawn_t(spawn)
 
         ! If performing a semi-stochastic calculation then the annihilation
         ! process is slightly different, so call the correct routines depending
@@ -174,7 +175,7 @@ contains
 
         use parallel, only: nthreads, nprocs, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
-                              non_blocking_send
+                              non_blocking_send, memcheck_spawn_t
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -199,6 +200,8 @@ contains
         ! processors. Need to do it now as spawn%head changes meaning upon annihilation.
         call calculate_displacements(spawn, send_counts, non_block_spawn)
         if (present(nspawn_events)) nspawn_events = non_block_spawn(1)
+
+        call memcheck_spawn_t(spawn)
 
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
