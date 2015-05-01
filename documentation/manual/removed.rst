@@ -13,7 +13,7 @@ a developer.
 folded-spectrum FCIQMC
     The folded-spectrum approach allows, in principle, access to excited states
     in FCIQMC via using the Hamiltonian :math:`(H-\epsilon)^2`, where
-    :math:`epsilon` is an energy offset.  It emerged in practice to be very
+    :math:`\epsilon` is an energy offset.  It emerged in practice to be very
     painful/impossible to converge to excited states for systems beyond the
     reach of conventional FCI.
 defining an initiator determinant via a complete active space

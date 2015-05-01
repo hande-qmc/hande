@@ -48,7 +48,7 @@ Functions are called using:
     x = fname(arg1, arg2, ...)
 
 where `fname` is the name of the function, which returns a single value (which is
-stored in `x` in the above example.  Keywords can be passed in by using a table.  If the
+stored in `x` in the above example).  Keywords can be passed in by using a table.  If the
 function takes a single table, then the parentheses need not be included, such that the
 following calls are identical:
 

@@ -63,7 +63,7 @@ dipole_int_file
 
     Optional.  No default.
 
-    Specify a FCIDUMP-like file containing the dipole integrals, i.e. `:math:\langle i | x | \rangle`, in a given direction.
+    Specify a FCIDUMP-like file containing the dipole integrals, i.e. :math:`\langle i | x | i \rangle`, in a given direction.
     
     Not currently used. 
 CAS
@@ -86,7 +86,7 @@ Lz is measured in units of hbar.  Normal FCIDUMP files do not contain orbitals w
 eigenfunctions of the Lz operator, so they must be transformed using post-processing.  The
 TransLz  script from the `NECI <https://github.com/ghb24/NECI_STABLE>`_ project can be
 used for this purpose. The FCIDUMP file header format has been modified to include
-additional parameters: SYML, and SYMLZ which have a list of values , one for each orbital.
+additional parameters: SYML, and SYMLZ which have a list of values, one for each orbital.
 SYML gives the magnitude of L for the orbital if known (or -20 if not) but is not used.
 SYMLZ give the eigenvalue of Lz (the m_l value).  Orbitals with defined values of Lz are
 likely to be complex-valued, but luckily the integrals involving them are not, so although
