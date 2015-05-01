@@ -36,7 +36,7 @@ lua 5.2
         (but not 5.2 due to API changes).
 
 MPI (parallel compilation only)
-    MPI 2 is required.  We have used a variety of implementations (included OpenMPI and
+    MPI 2 is required.  We have used a variety of implementations (including OpenMPI and
     various vendor implementations).
 scalapack (parallel compilation only)
     Available from http://www.netlib.org/scalapack/ and vendor implementations.  Often
@@ -62,7 +62,7 @@ Optional dependencies
 ---------------------
 
 The following are optional depedencies which add useful (in some cases almost critical)
-functionality.  However, they are less likely to be compiled on HPC systems so for easy of
+functionality.  However, they are less likely to be compiled on HPC systems so for ease of
 testing the functionality which depends upon them can be disabled at compile-time.
 
 HDF5
@@ -75,12 +75,11 @@ HDF5
 
         HANDE requires the Fortran 2003 interface to HDF5, which is not compiled by
         default (see below), as this offers substantial advantages when working with
-        dynamically sized arrays containing varialbes of arbitrary variables
-        kinds/precision.
+        dynamically sized arrays containing variables of arbitrary kinds/precision.
 
 libuuid
     Provenance of a calculation, and the output file(s) produced by it, is an important
-    topic currently the subject of much debate in computational science.  HANDE generates
+    topic, currently the subject of much debate in computational science.  HANDE generates
     a universally unique identifier (UUID), which is included in all files it produces.
 
     Highly recommended but can be disabled without impacting on performance (but perhaps
@@ -133,7 +132,7 @@ example:
 
 will compile HDF5 and install it to subdirectories in $HOME/local.  By default this will
 use the GCC compiler suite; other compilers can be used by setting the CC, CXX and F77
-environment varialbles.  Note the use of ``--enable-fortran2003``; the Fortran 2003
+environment variables.  Note the use of ``--enable-fortran2003``; the Fortran 2003
 interface is required by HANDE.
 
 pandas

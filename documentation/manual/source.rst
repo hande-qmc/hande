@@ -20,7 +20,7 @@ documentation/
 src/
     Directory containing the main source files.
 lib/
-    Directory containing "library" source files.  These a procedures which are
+    Directory containing "library" source files.  These are procedures which are
     not specific to the HANDE code but are generally useful.  Some are written
     by the authors, some are freely available (as noted in the source files).
 tools/
