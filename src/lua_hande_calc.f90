@@ -66,6 +66,8 @@ contains
             call do_fci_lapack(sys, fci_in, ref)
         end if
 
+        nresult = 0
+
     end function lua_fci
 
     function lua_hilbert_space(L) result(nresult) bind(c)
