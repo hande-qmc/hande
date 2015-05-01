@@ -290,6 +290,8 @@ module restart_hdf5
             type(c_ptr) :: ptr
             ! Shape of data (sub-)array to be written out.
             integer(HSIZE_T) :: dshape2(2)
+            !Used for array sizes
+            integer :: ishape(2)
             ! Temporary variables so for copying data to which we can also call c_ptr on.
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
@@ -333,8 +335,11 @@ module restart_hdf5
 
                 ! Don't write out the entire array for storing particles but
                 ! rather only the slots in use...
-                call hdf5_write(subgroup_id, ddets, kinds, shape(qs%psip_list%states(:,:qs%psip_list%nstates)), &
+                ishape=shape(qs%psip_list%states(:,:qs%psip_list%nstates))
+                call hdf5_write(subgroup_id, ddets, kinds, ishape, &
                                  qs%psip_list%states(:,:qs%psip_list%nstates))
+!                call hdf5_write(subgroup_id, ddets, kinds, shape(qs%psip_list%states(:,:qs%psip_list%nstates)), &
+!                                 qs%psip_list%states(:,:qs%psip_list%nstates))
 
                 call hdf5_write(subgroup_id, dpops, kinds, shape(qs%psip_list%pops(:,:qs%psip_list%nstates)), &
                                  qs%psip_list%pops(:,:qs%psip_list%nstates))
