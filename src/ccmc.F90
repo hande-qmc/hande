@@ -396,10 +396,10 @@ contains
         call init_restart_info_t(ri, write_id=restart_in%write_id)
         call init_restart_info_t(ri_shift, write_id=restart_in%write_shift_id)
 
-        ! Use a value from the restart file if restarting?
-        proj_energy_old = 0.0_p ! Projected energy on last cycle to correct linked spawning
-
         do ireport = 1, qmc_in%nreport
+
+            ! Projected energy from last cycle to correct linked death
+            proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
 
             call init_report_loop(qs, bloom_stats)
 
@@ -698,8 +698,6 @@ contains
             call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats)
-
-            proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
 
             call cpu_time(t2)
             if (parent) then
