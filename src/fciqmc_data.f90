@@ -57,13 +57,15 @@ contains
 
     !--- Output procedures ---
 
-    subroutine write_fciqmc_report_header(ntypes, dmqmc_in, max_excit, comp)
+    subroutine write_fciqmc_report_header(ntypes, dmqmc_in, max_excit, comp, rdm_energy)
 
         ! In:
         !    ntypes: number of particle types being sampled.
         ! In (optional):
         !    dmqmc_in: input options relating to DMQMC.
         !    max_excit: The maximum number of excitations for the system.
+        !    comp: true if using complex values.
+        !    rdm_energy: true if energy is being calculated from the RDM
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
@@ -76,8 +78,9 @@ contains
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
         integer, optional, intent(in) :: max_excit
         logical, optional, intent(in) :: comp
-        logical :: comp_set
+        logical, intent(in), optional :: rdm_energy
 
+        logical :: comp_set
         integer :: i, j
         character(16) :: excit_header
 
@@ -213,6 +216,9 @@ contains
                     "# H psips        ","# HF psips       "
             else
                 write (6,'(4X,a9,8X)', advance='no') "# H psips"
+                if (present(rdm_energy)) then
+                    if (rdm_energy) write (6,'(2x,a17)', advance='no') "RDM Energy       "
+                end if
             end if
         end if
         write (6,'(3X,"# states  # spawn_events  R_spawn    time")')
@@ -220,7 +226,7 @@ contains
     end subroutine write_fciqmc_report_header
 
     subroutine write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, &
-                                   dmqmc_in, dmqmc_estimates, comp)
+                                   dmqmc_in, dmqmc_estimates, comp, rdm_energy)
 
         ! Write the report line at the end of a report loop.
 
@@ -237,6 +243,7 @@ contains
         !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
         !    comp: if true, doing calculation with real and imaginary walkers
         !       so need to print extra parameters.
+        !    rdm_energy: true if energy is being calculated from the RDM
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
@@ -256,6 +263,7 @@ contains
         logical, intent(in), optional :: comp
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
         type(dmqmc_estimates_t), optional, intent(in) :: dmqmc_estimates
+        logical, intent(in), optional :: rdm_energy
 
         logical :: comp_set
         integer :: mc_cycles, i, j, ntypes
@@ -384,6 +392,9 @@ contains
                                              qs%mc_cycles_done+mc_cycles, qs%shift(1),   &
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &
                                              ntot_particles
+            if (present(rdm_energy)) then
+                if (rdm_energy) write (6,'(2x,es17.10)', advance='no') qs%estimators%rdm_energy
+            end if
         end if
         write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f7.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, &
                                              qs%spawn_store%rspawn, elapsed_time/qmc_in%ncycles

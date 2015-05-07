@@ -226,6 +226,8 @@ type ccmc_in_t
     logical :: linked = .false.
     ! If true, vary shift to control reference, not total, population
     logical :: vary_shift_reference = .false.
+    ! Calculate the (unrelaxed) density matrices?
+    logical :: density_matrices = .false.
 end type ccmc_in_t
 
 type restart_in_t
@@ -494,6 +496,9 @@ type estimators_t
     ! extra care must be taken.
     complex(p) :: proj_energy_comp
     complex(p) :: D0_population_comp
+
+    ! Energy calculated from the RDM
+    real(p) :: rdm_energy = 0.0_p
 
     ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
     ! Signed population of Hellmann--Feynman particles

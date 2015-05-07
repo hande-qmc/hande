@@ -1171,6 +1171,7 @@ contains
         !     full_non_composite = true/false,
         !     linked = true/false,
         !     vary_shift_reference = true/false,
+        !     density_matrices = true/false,
         ! }
 
         ! In/Out:
@@ -1191,8 +1192,9 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err
-        character(28), parameter :: keys(5) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
-                                                                'full_non_composite', 'linked', 'vary_shift_reference']
+        character(28), parameter :: keys(6) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+                                                                'full_non_composite', 'linked', 'vary_shift_reference', &
+                                                                'density_matrices']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
@@ -1204,6 +1206,7 @@ contains
             call aot_get_val(ccmc_in%full_nc, err, lua_state, ccmc_table, 'full_non_composite')
             call aot_get_val(ccmc_in%linked, err, lua_state, ccmc_table, 'linked')
             call aot_get_val(ccmc_in%vary_shift_reference, err, lua_state, ccmc_table, 'vary_shift_reference')
+            call aot_get_val(ccmc_in%density_matrices, err, lua_state, ccmc_table, 'density_matrices')
 
             call warn_unused_args(lua_state, keys, ccmc_table)
 

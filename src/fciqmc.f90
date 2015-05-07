@@ -175,7 +175,8 @@ contains
         nparticles_old = qs%psip_list%tot_nparticles
 
         ! Main fciqmc loop.
-        if (parent) call write_fciqmc_report_header(qs%psip_list%nspaces, comp = sys%read_in%comp)
+        if (parent) call write_fciqmc_report_header(qs%psip_list%nspaces, comp=sys%read_in%comp)
+
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
