@@ -391,9 +391,9 @@ contains
             write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,es17.10)', advance='no') &
                                              qs%mc_cycles_done+mc_cycles, qs%shift(1),   &
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &
-                                             ntot_particles
+                                             ntot_particles(1)
             if (present(rdm_energy)) then
-                if (rdm_energy) write (6,'(2x,es17.10)', advance='no') qs%estimators%rdm_energy
+                if (rdm_energy) write (6,'(2x,es17.10)', advance='no') qs%estimators%rdm_energy/qs%estimators%rdm_trace
             end if
         end if
         write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f7.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, &

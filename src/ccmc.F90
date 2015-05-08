@@ -800,7 +800,8 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            if (ccmc_in%density_matrices .and. qs%vary_shift(1)) qs%estimators%rdm_energy = calc_rdm_energy(sys, qs%ref, rdm)
+            if (ccmc_in%density_matrices .and. qs%vary_shift(1)) call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, &
+                                                                                      qs%estimators%rdm_trace)
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
@@ -851,7 +852,8 @@ contains
 
         if (ccmc_in%density_matrices) then
             call write_final_rdm(rdm, sys%nel, sys%basis%nbasis, 'RDM')
-            write (6,'(1x,"# Final energy from RDM",2x,es17.10)') calc_rdm_energy(sys, qs%ref, rdm)
+            call calc_rdm_energy(sys, qs%ref, rdm, qs%estimators%rdm_energy, qs%estimators%rdm_trace)
+            if (parent) write (6,'(1x,"# Final energy from RDM",2x,es17.10)') qs%estimators%rdm_energy/qs%estimators%rdm_trace
             deallocate(rdm, stat=ierr)
             call check_deallocate('rdm',ierr)
         end if

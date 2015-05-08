@@ -237,6 +237,8 @@ contains
 
         use parallel
 
+        use parallel
+
         real(p), intent(inout) :: rdm(:,:)
         integer, intent(in) :: nel, nbasis
         character(*), intent(in) :: filename
