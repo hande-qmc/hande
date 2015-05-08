@@ -697,9 +697,10 @@ contains
                         if (ccmc_in%density_matrices .and. cluster(it)%excitation_level <= 2 .and. qs%vary_shift(1)) then
                             ! Add contribution to density matrix
                             ! d_pqrs = <HF|a_p^+a_q^+a_sa_r|CC>
-                            ! Not thread-safe
+                            !$omp critical
                             call update_rdm(sys, cdet(it)%f, qs%ref%f0, cluster(it)%amplitude*cluster(it)%cluster_to_det_sign, &
                                             1.0_p, cluster(it)%pselect, rdm)
+                            !$omp end critical
                         end if
 
                         ! Spawning
