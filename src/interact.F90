@@ -39,6 +39,7 @@ contains
         type(qmc_in_t), optional, intent(inout) :: qmc_in
         type(qmc_state_t), optional, intent(inout) :: qs
 
+        real(p), allocatable :: tmpshift(:)
         logical :: comms_exists, comms_read, eof
         integer :: proc, i, j, ierr, lua_err, iunit
         integer, allocatable :: ierr_arr(:)
@@ -136,8 +137,15 @@ contains
                 if (present(qs)) then
                     call aot_get_val(qs%tau, ierr, lua_state, key='tau')
                     ! Only get shift if it is given, to avoid unwanted reallocation.
-                    if (aot_exists(lua_state, key='shift')) &
-                        call aot_get_val(qs%shift, ierr_arr, size(qs%shift), lua_state, key='shift')
+                    if (aot_exists(lua_state, key='shift')) then
+                        call aot_get_val(tmpshift, ierr_arr, size(qs%shift), lua_state, key='shift')
+                        if (parent) then
+                            if (size(tmpshift) /= size(qs%shift)) then
+                                write (6,'(1X,"Using ", i2, " shift values from HANDE.COMM.")') size(tmpshift)
+                            end if
+                        end if 
+                        qs%shift(:size(tmpshift))=tmpshift(:)
+                    end if
                 end if
                 if (present(qmc_in)) then
                     call aot_get_val(qmc_in%target_particles, ierr, lua_state, key='target_population')

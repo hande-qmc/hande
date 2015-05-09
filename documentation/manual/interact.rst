@@ -34,8 +34,11 @@ restricted range of options.  Settings which can be changed are:
     shift.  Meaningless if the calculation has already started varying the shift.  If
     negative then the shift is immediately allowed to vary.
 **shift**
-    Real.
+    Array of Reals.
 
     Adjust the current value of the shift.  If the calculation has already entered
     variable shift mode then the shift will still be updated every report cycle, otherwise
     this is equivalent to changing the **initial_shift** value.
+    You should use the syntax
+    e.g. shift = { -1 } to set the value of the shift to -1.  If additional spaces are being used
+    their shifts may be set by having more values in the array.
