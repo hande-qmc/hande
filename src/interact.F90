@@ -121,10 +121,10 @@ contains
                 do
                     j = index(buffer(i:), new_line(buffer))
                     if (j == 0) exit
-                    write (6,'(a1,a)', advance='no') '#', trim(buffer(i:j))
-                    i = j+1
+                    write (6,'(1X, "#", 1X, a)', advance='no') trim(buffer(i:j+i-1))
+                    i = i+j
                 end do
-                write (6,'(1X, "#", a)') trim(buffer(i:))
+                write (6,'(1X, "#", 1X, a)') trim(buffer(i:))
             end if
 
             ! Now each processor has the HANDE.COMM script, attempt to execute it...
