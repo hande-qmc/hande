@@ -68,6 +68,7 @@ contains
 
         use errors, only: stop_all
         use utils, only: get_free_unit, int_fmt
+        use parallel, only: parent
 
         use system, only: sys_t, set_spin_polarisation
 
@@ -82,15 +83,17 @@ contains
         logical :: spin_flip
         integer(i0) :: f0(sys%basis%string_len)
 
-        write (6,'(1X,"FCI")')
-        write (6,'(1X,"---",/)')
+        if (parent) then
+            write (6,'(1X,"FCI")')
+            write (6,'(1X,"---",/)')
 
-        if (fci_in%print_fci_wfn /= 0) then
-            ! Overwrite any existing file...
-            ! Open a fresh file here so we can just append to it later.
-            iunit = get_free_unit()
-            open(iunit, file=fci_in%print_fci_wfn_file, status='unknown')
-            close(iunit, status='delete')
+            if (fci_in%print_fci_wfn /= 0) then
+                ! Overwrite any existing file...
+                ! Open a fresh file here so we can just append to it later.
+                iunit = get_free_unit()
+                open(iunit, file=fci_in%print_fci_wfn_file, status='unknown')
+                close(iunit, status='delete')
+            end if
         end if
 
         spin_flip = .false.
@@ -119,15 +122,17 @@ contains
             call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets)
             call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sys%symmetry)
         end if
-        if (fci_in%write_determinants) call print_dets_list(sys, ndets, dets, fci_in%determinant_file)
+        if (fci_in%write_determinants .and. parent) call print_dets_list(sys, ndets, dets, fci_in%determinant_file)
 
         ! Info (symmetry, spin, ex_level).
-        write (6,'(1X,"Symmetry of selected Hilbert subspace:",'//int_fmt(sys%symmetry,1)//',".")') sys%symmetry
-        write (6,'(1X,"Spin of selected Hilbert subspace:",'//int_fmt(sys%Ms,1)//',".")') sys%Ms
-        if (ref%ex_level /= sys%nel) then
-            call encode_det(sys%basis, ref%occ_list0, f0)
-            write (6,'(1X,"Reference determinant, |D0> =",1X)',advance='no')
-            call write_det(sys%basis, sys%nel, f0, new_line=.true.)
+        if (parent) then
+            write (6,'(1X,"Symmetry of selected Hilbert subspace:",'//int_fmt(sys%symmetry,1)//',".")') sys%symmetry
+            write (6,'(1X,"Spin of selected Hilbert subspace:",'//int_fmt(sys%Ms,1)//',".")') sys%Ms
+            if (ref%ex_level /= sys%nel) then
+                call encode_det(sys%basis, ref%occ_list0, f0)
+                write (6,'(1X,"Reference determinant, |D0> =",1X)',advance='no')
+                call write_det(sys%basis, sys%nel, f0, new_line=.true.)
+            end if
         end if
 
     end subroutine init_fci
