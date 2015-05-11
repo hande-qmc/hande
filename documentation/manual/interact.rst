@@ -10,10 +10,10 @@ deleted after it is read in to prevent it from being detected on subsequent repo
 and to enable multiple interactions with a running calculation.
 
 HANDE.COMM is a lua script, in a similar fashion to the input file, but has a much more
-restricted range of options.  Settings which can be changed are:
+restricted range of options.  Options which can be set or modified are:
 
-**softexit**
-    Boolean.
+softexit
+    type: boolean.
 
     End the calculation immediately but still perform any post-processing (e.g. dumping
     out a restart file).  This is useful for cleanly terminating a converged calculation
@@ -23,22 +23,35 @@ restricted range of options.  Settings which can be changed are:
     The send_softexit.py script  scripts in the tools subdirectory are useful for running
     HANDE on a queueing system as they write **softexit** to HANDE.COMM a certain amount
     of time before the walltime is reached.
-**tau**
-    Real.
+tau
+    type: float.
 
     Change the timestep to be used.
-**varyshift_target**
-    Integer.
+varyshift_target
+    type: integer.
 
     Change the number of particles to be reached before the calculation starts varying the
     shift.  Meaningless if the calculation has already started varying the shift.  If
     negative then the shift is immediately allowed to vary.
-**shift**
-    Array of Reals.
+shift
+    type: float or 1D vector of floats.
 
     Adjust the current value of the shift.  If the calculation has already entered
     variable shift mode then the shift will still be updated every report cycle, otherwise
     this is equivalent to changing the **initial_shift** value.
-    You should use the syntax
-    e.g. shift = { -1 } to set the value of the shift to -1.  If additional spaces are being used
-    their shifts may be set by having more values in the array.
+
+    Passing a single value such as:
+
+    .. code-block:: lua
+
+        shift = -1
+
+    sets the shift in **all** spaces to the specified value.  Different spaces can be
+    modified separately by passing in a vector.  For example:
+
+    .. code-block:: lua
+
+        shift = { -1, -2 }
+
+    sets the shift in the first space to -1, in the second space to -2 and leaves it
+    unmodified in all other spaces.
