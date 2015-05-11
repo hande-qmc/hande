@@ -275,6 +275,8 @@ type reference_t
     ! Value of <D0|O|D0>, where O is the operator we are sampling.
     ! (Applicable/set only if Hellmann--Feynman sampling is in operation.)
     real(p) :: O00
+    ! Exchange energy of the reference determinant.
+    real(p) :: hfx0
 end type reference_t
 
 ! --- semi-stochastic ---

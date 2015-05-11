@@ -95,7 +95,7 @@ contains
         hmatel = sum_sp_eigenvalues(sys, occ_list)
 
         ! Two electron operator: Coulomb term.
-        hmatel = hmatel + potential_energy_ueg(sys, occ_list)
+        hmatel = hmatel + exchange_energy_ueg(sys, occ_list)
 
     end function slater_condon0_ueg
 
@@ -127,9 +127,9 @@ contains
 
     end function kinetic_energy_ueg
 
-    pure function potential_energy_ueg(sys, occ_list) result(hmatel)
+    pure function exchange_energy_ueg(sys, occ_list) result(hmatel)
 
-        ! Cacluate Coloumbic contribution from orbital list.
+        ! Cacluate the exchange energy from an orbital list.
 
         ! In:
         !    sys: system being studied.
@@ -156,7 +156,7 @@ contains
             end do
         end do
 
-    end function potential_energy_ueg
+    end function exchange_energy_ueg
 
     pure function sum_sp_eigenvalues(sys, occ_list) result(ke)
 

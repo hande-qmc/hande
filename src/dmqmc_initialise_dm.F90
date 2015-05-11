@@ -112,7 +112,7 @@ contains
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, rng)
+                        call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, reference%hfx0, rng)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                                         dmqmc_in%all_sym_sectors, spawn)
@@ -527,7 +527,7 @@ contains
 
     end subroutine dmqmc_spin_cons_metropolis_move
 
-    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, spawn, rng)
+    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, spawn, hfx0, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -536,6 +536,7 @@ contains
         !    sys: system being studied.
         !    dmqmc_in: input options for dmqmc.
         !    npsips: number of psips to create on the diagonal.
+        !    hfx0: exchange energy of reference determinant.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
@@ -547,12 +548,13 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
         use canonical_kinetic_energy, only: generate_allowed_orbital_list
-        use dmqmc_data, only: dmqmc_in_t
         use dmqmc_procedures, only: create_diagonal_density_matrix_particle
+        use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
+        real(p), intent(in) :: hfx0
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
@@ -561,9 +563,12 @@ contains
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%string_len)
         integer :: ireplica, iorb, ipsip
+        real(p) :: weight_factor
         logical :: gen
 
         ireplica = 1
+
+        weight_factor = 1.0_p
 
         ! Calculate orbital occupancies.
         ! * Warning *: We assume that we are dealing with a system without
@@ -592,12 +597,51 @@ contains
             if (.not. gen) cycle
             ! Create the determinant.
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
+                if (.not. dmqmc_in%free_electron_trial) weight_factor = &
+                                                        & calculate_reweighting_factor(sys, occ_list, dmqmc_in%init_beta, hfx0)
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                                            sys%basis%tensor_label_len, real_factor, ireplica, spawn)
+                                            sys%basis%tensor_label_len, int(weight_factor*real_factor,int_p), ireplica, spawn)
                 ipsip = ipsip + 1
             end if
         end do
+
+        contains
+
+            function calculate_reweighting_factor(sys, occ_list, beta, hfx0) result(weight)
+
+                ! Reweight initial density matrix population so that the desired
+                ! diagonal density matrix is sampled.
+
+                ! In:
+                !    sys: system being studied.
+                !    occ_list: array containing list of occupied orbitals of
+                !        generated determinant.
+                !    beta: inverse temperature being considered.
+                !    hfx0: exchange energy of reference determinant.
+
+                use system, only: sys_t
+                use hamiltonian_ueg, only: exchange_energy_ueg
+                use qmc_data, only: real_factor
+
+                type(sys_t), intent(in) :: sys
+                integer, intent(in) :: occ_list(:)
+                real(p), intent(in) :: beta
+                real(p), intent(in) :: hfx0
+
+                real(p) :: hfx, weight
+
+                ! Any diagonal density matrix can be sampled from the
+                ! free-electron expression by reweighting, i.e.
+                ! p({i})_new = p({i})_old * e^{-beta(E_new({i})}/e^{-beta(E_old({i})}.
+                ! For the case of sampling the "Hartree-Fock" density matrix
+                ! this amounts to weighting the populations with the exchange energy of the
+                ! given determinant. We add an (arbitrary) constant shift of the
+                ! exchange energy of the reference which ensures that p({i_0})_new = 1.
+                hfx = exchange_energy_ueg(sys, occ_list)
+                weight = exp(-beta*(hfx-hfx0))
+
+            end function calculate_reweighting_factor
 
     end subroutine init_grand_canonical_ensemble
 
