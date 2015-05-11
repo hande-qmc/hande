@@ -1644,7 +1644,7 @@ contains
             if (linked_ccmc) then
                 ! In linked coupled cluster the shift only applies on the reference
                 ! We correct for this with the projected energy
-                KiiAi = Hii*population + proj_energy - qs%shift(1)
+                KiiAi = (Hii + proj_energy - qs%shift(1))*population
             else
                 KiiAi = (Hii - qs%shift(1))*population
             end if
