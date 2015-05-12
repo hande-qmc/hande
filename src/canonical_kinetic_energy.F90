@@ -50,7 +50,8 @@ contains
         use utils, only: rng_init_info
 
         use calc, only: GLOBAL_META, gen_seed
-        use hamiltonian_ueg, only: sum_sp_eigenvalues, exchange_energy_ueg
+        use hamiltonian_ueg, only: exchange_energy_ueg
+        use determinants, only: sum_sp_eigenvalues
         use interact, only: calc_interact, check_comms_file
 
         type(sys_t), intent(inout) :: sys
