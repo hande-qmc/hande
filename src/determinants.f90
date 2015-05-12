@@ -152,15 +152,15 @@ contains
         ! Components for occupied basis functions...
         allocate(det_info%occ_list(sys%nel), stat=ierr)
         call check_allocate('det_info%occ_list',sys%nel,ierr)
-        allocate(det_info%occ_list_alpha(sys%nalpha), stat=ierr)
+        allocate(det_info%occ_list_alpha(sys%nel), stat=ierr)
         call check_allocate('det_info%occ_list_alpha',sys%nalpha,ierr)
-        allocate(det_info%occ_list_beta(sys%nbeta), stat=ierr)
+        allocate(det_info%occ_list_beta(sys%nel), stat=ierr)
 
         ! Components for unoccupied basis functions...
         call check_allocate('det_info%occ_list_beta',sys%nbeta,ierr)
-        allocate(det_info%unocc_list_alpha(sys%nvirt_alpha), stat=ierr)
+        allocate(det_info%unocc_list_alpha(sys%nvirt), stat=ierr)
         call check_allocate('det_info%unocc_list_alpha',sys%nvirt_alpha,ierr)
-        allocate(det_info%unocc_list_beta(sys%nvirt_beta), stat=ierr)
+        allocate(det_info%unocc_list_beta(sys%nvirt), stat=ierr)
         call check_allocate('det_info%unocc_list_beta',sys%nvirt_beta,ierr)
 
         ! Components for symmetry summary of unoccupied basis functions...
