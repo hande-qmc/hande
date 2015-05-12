@@ -473,11 +473,6 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, dmqmc_in, dmqmc_estimates%rdm_info)
 
-        ! I'm sure we can handle this more gracefully than hack it in here...!
-        if (dmqmc_in%all_spin_sectors) then
-            if (sys%system /= read_in .and. sys%system /= ueg) sys%Ms = sys%lattice%nsites
-            if (sys%system == heisenberg) sys%max_number_excitations = sys%lattice%nsites/2
-        end if
         sys%basis%tensor_label_len = 2*sys%basis%string_len
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             ! Create info no longer set in init_real_space.
@@ -487,7 +482,14 @@ contains
         end if
 
         ! [todo] - do spin polarisation in system setup.
-        call set_spin_polarisation(sys%basis%nbasis, sys)
+        ! I'm sure we can handle this more gracefully than hack it in here...!
+        if (dmqmc_in%all_spin_sectors) then
+            if (sys%system /= read_in .and. sys%system /= ueg) sys%Ms = sys%lattice%nsites
+            call set_spin_polarisation(sys%basis%nbasis, sys)
+            if (sys%system == heisenberg) sys%max_number_excitations = sys%lattice%nsites/2
+        else
+            call set_spin_polarisation(sys%basis%nbasis, sys)
+        end if
 
         ! Now system initialisation is complete (boo), act on the other options.
         call read_restart_in(lua_state, opts, restart_in)
