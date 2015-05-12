@@ -117,11 +117,6 @@ contains
             if (doing_calc(ct_fciqmc_calc) .or. doing_calc(hfs_fciqmc_calc)) then
                 call stop_all(this, 'The real_amplitudes option is not implemented with the method you have requested.')
             end if
-            if (bit_size(0_int_p) == 32 .and. parent) then
-                call warning(this,'You are using 32-bit walker populations with real amplitudes. The maximum &
-                             &population size on a given determinant is 2^20=1048576. Errors will occur if this is &
-                             &exceeded. Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
-            end if
         end if
 
         ! Semi-stochastic checks.

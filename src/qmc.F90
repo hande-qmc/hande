@@ -25,6 +25,8 @@ contains
         !       if dmqmc_in%propagate_to_beta is true.
         
         use checking, only: check_allocate
+        use errors, only: warning
+        use parallel, only: parent
         use utils, only: factorial_combination_1
 
         use dmqmc_data, only: dmqmc_in_t
@@ -49,6 +51,13 @@ contains
                 ! Allow a maximum population of 2^20, and a minimum fractional
                 ! part of 2^-11.
                 real_bit_shift = 11
+                if (parent) then
+                    call warning('init_qmc_legacy', &
+                        'You are using 32-bit walker populations with real amplitudes.'//new_line('')// &
+                        ' The maximum population size on a given determinant is 2^20=1048576.&
+                        & Errors will occur if this is exceeded.'//new_line('')//&
+                        ' Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
+                end if
             end if
         else
             ! Allow no fractional part for walker populations.
