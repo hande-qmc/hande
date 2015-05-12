@@ -723,9 +723,9 @@ contains
         !        psips on the diagonal.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use system, only: sys_t, update_sys_spin_info
+        use system, only: sys_t
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
-                                encode_det, spin_orb_list, decode_det
+                                encode_det, decode_det, update_sys_spin_info
         use excitations, only: excit_t, create_excited_det
         use fciqmc_data, only: real_factor
         use parallel, only: nprocs, nthreads, parent
@@ -783,10 +783,7 @@ contains
                         ! Update spin polarisation properties - these will
                         ! most likely have changed from the previous
                         ! determinant.
-                        if (dmqmc_in%all_spin_sectors) then
-                            ms = spin_orb_list(sys%basis%basis_fns, cdet%occ_list)
-                            call update_sys_spin_info(ms, sys_copy)
-                        end if
+                        if (dmqmc_in%all_spin_sectors) call update_sys_spin_info(cdet, sys_copy)
                         call dmqmc_metropolis_move_ptr(sys_copy, cdet, rng)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, cdet%occ_list, f_new)

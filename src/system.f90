@@ -703,27 +703,6 @@ contains
 
     end subroutine copy_sys_spin_info
 
-    subroutine update_sys_spin_info(ms, sys)
-
-        ! Determine the spin polarisation from ms value and set
-        ! spin polarisation accordingly.
-
-        ! In:
-        !    ms: total spin of determinant considered.
-        ! In/Out:
-        !    sys: sys_t object. On output spin polarisation (nalpha, nvirt ..)
-        !       will be correctly set.
-
-        integer, intent(in) :: ms
-        type(sys_t), intent(inout) :: sys
-
-        sys%nalpha = (ms + sys%nel) / 2
-        sys%nbeta = sys%nel - sys%nalpha
-        sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
-        sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
-
-    end subroutine update_sys_spin_info
-
     subroutine set_fermi_energy(sys)
 
         ! Set the Fermi energy and wavevector.

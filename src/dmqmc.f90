@@ -35,7 +35,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use death, only: stochastic_death
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, spin_orb_list, decode_det
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det, update_sys_spin_info
         use dmqmc_estimators
         use dmqmc_procedures
         use excitations, only: excit_t
@@ -171,12 +171,7 @@ contains
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
-                        if (dmqmc_in%all_spin_sectors) then
-                            !sys%nel = sum(count_set_bits(cdet1%f))
-                            !sys%nvirt = sys%lattice%nsites - sys%nel
-                            ms = spin_orb_list(sys%basis%basis_fns, cdet1%occ_list)
-                            call update_sys_spin_info(ms, sys_copy)
-                        end if
+                        if (dmqmc_in%all_spin_sectors) call update_sys_spin_info(cdet1, sys_copy)
 
                         ! Extract the real signs from the encoded signs.
                         real_population = real(qs%psip_list%pops(:,idet),p)/real_factor

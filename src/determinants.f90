@@ -541,4 +541,38 @@ contains
 
     end subroutine write_det
 
+    subroutine update_sys_spin_info(cdet, sys)
+
+        ! Determine the spin polarisation from a given determinant and set
+        ! system spin polarisation accordingly.
+
+        ! In:
+        !    cdet: det_info_t object with occ_list set, from which the total ms
+        !       derives.
+        ! In/Out:
+        !    sys: sys_t object. On output spin polarisation (nalpha, nvirt ..)
+        !       will be correctly set.
+
+        use bit_utils, only: count_set_bits
+        use system, only: sys_t, heisenberg
+
+        type(det_info_t), intent(in) :: cdet
+        type(sys_t), intent(inout) :: sys
+
+        integer :: ms
+
+        select case (sys%system)
+        case (heisenberg)
+            sys%nel = sum(count_set_bits(cdet%f))
+            sys%nvirt = sys%lattice%nsites - sys%nel
+        case default
+            ms = spin_orb_list(sys%basis%basis_fns, cdet%occ_list)
+            sys%nalpha = (ms + sys%nel) / 2
+            sys%nbeta = sys%nel - sys%nalpha
+            sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
+            sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
+        end select
+
+    end subroutine update_sys_spin_info
+
 end module determinants
