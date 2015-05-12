@@ -2246,7 +2246,7 @@ contains
                     ! It's possible to get the same excitation from different partitionings
                     ! of the cluster so they all need to be accounted for in pgen
                     call create_excited_det(sys%basis, rdet%f, connection, new_det)
-                    pgen = pgen + calc_pgen(sys, qmc_in, rdet%f, new_det, connection, rdet)
+                    pgen = pgen + calc_pgen(sys, qmc_in, rdet%f, connection, rdet)
 
                     ! Sign of the term in the commutator depends on the number of Ts in left_cluster
                     ! also need to account for possible sign change on going from excitor to determinant
@@ -2384,7 +2384,7 @@ contains
 
     end subroutine partition_cluster
 
-    pure function calc_pgen(sys, qmc_in, f1, f2, connection, parent_det) result(pgen)
+    function calc_pgen(sys, qmc_in, f, connection, parent_det) result(pgen)
 
         ! Calculate the probability of an excitation being selected.
         ! Wrapper round system specific functions.
@@ -2392,8 +2392,7 @@ contains
         ! In:
         !    sys: the system being studied
         !    qmc_in: input options relating to QMC methods.
-        !    f1: bit string representation of parent excitor
-        !    f2: bit string representation of child excitor
+        !    f: bit string representation of parent excitor
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
         !    parent_det: information on the parent excitor
@@ -2401,54 +2400,62 @@ contains
         !    The probability of generating the excitation specified by
         !    connection, assuming the excitation is valid
 
+        use bit_utils, only: count_set_bits
+        use errors, only: stop_all
         use system
         use excitations, only: excit_t
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm, calc_pgen_double_mol_no_renorm, &
                                  calc_pgen_single_mol, calc_pgen_double_mol
+        use excit_gen_ueg, only: calc_pgen_ueg_no_renorm
         use point_group_symmetry, only: gamma_sym, cross_product_pg_basis, pg_sym_conj
         use determinants, only: det_info_t
         use qmc_data, only: qmc_in_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
+        integer(i0), intent(in) :: f(sys%basis%string_len)
         type(excit_t), intent(in) :: connection
         type(det_info_t), intent(in) :: parent_det
         real(p) :: pgen
 
-        integer :: spin, a, b, ij_sym
+        integer :: spin, ij_sym, max_na, ij_k(3)
+        integer(i0) :: poss_a(sys%basis%string_len)
 
-        select case(sys%system)
-        case(read_in)
-            if (qmc_in%no_renorm) then
-                if (connection%nexcit == 1) then
-                    pgen = qmc_in%pattempt_single * calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+        associate(a=>connection%to_orb(1), b=>connection%to_orb(2), i=>connection%from_orb(1), j=>connection%from_orb(2))
+            select case(sys%system)
+            case(read_in)
+                if (qmc_in%no_renorm) then
+                    if (connection%nexcit == 1) then
+                        pgen = qmc_in%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
+                    else
+                        spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
+                        pgen = qmc_in%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
+                    end if
                 else
-                    spin = sys%basis%basis_fns(connection%to_orb(1))%ms + sys%basis%basis_fns(connection%to_orb(2))%ms
-                    pgen = qmc_in%pattempt_double * calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), &
-                                                                                    connection%to_orb(2), spin)
+                    if (connection%nexcit == 1) then
+                        pgen = qmc_in%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, &
+                                                                             parent_det%symunocc, a)
+                    else
+                        spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
+                        ij_sym = pg_sym_conj(cross_product_pg_basis(a, b, sys%basis%basis_fns))
+                        pgen = qmc_in%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
+                    end if
                 end if
-            else
-                if (connection%nexcit == 1) then
-                    pgen = qmc_in%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, &
-                                                                         parent_det%symunocc, connection%to_orb(1))
+            case(ueg)
+                spin = sys%basis%basis_fns(i)%ms + sys%basis%basis_fns(j)%ms
+                ij_k = 0
+                ij_k(1:sys%lattice%ndim) = sys%basis%basis_fns(i)%l + sys%basis%basis_fns(j)%l
+                if (spin == -2) then
+                    poss_a = iand(not(f), ishft(sys%ueg%ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)),1))
                 else
-                    a = connection%to_orb(1)
-                    b = connection%to_orb(2)
-                    spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
-                    ij_sym = pg_sym_conj(cross_product_pg_basis(a, b, sys%basis%basis_fns))
-                    pgen = qmc_in%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
+                    poss_a = iand(not(f), sys%ueg%ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)))
                 end if
-            end if
-            ! [todo] - model hamiltonians
-!        case(hub_k)
-!            calc_pgen_hub_k_(_no_renorm?)
-!        case(hub_real, chung_landau, heisenberg)
-!            calc_pgen_real(_no_renorm?)
-!        case(ueg)
-!            calc_pgen_ueg_no_renorm
-
-        end select
+                max_na = sum(count_set_bits(poss_a))
+                pgen = calc_pgen_ueg_no_renorm(sys, max_na, spin)
+            case default
+                call stop_all('calc_pgen', 'Linked CCMC is not implemented for this system.')
+            end select
+        end associate
 
     end function calc_pgen
 
