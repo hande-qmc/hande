@@ -150,6 +150,14 @@ abstract interface
         real(p), allocatable, intent(in) :: weights(:)
         real(p), intent(inout) :: hmatel
     end subroutine i_trial_fn
+    subroutine i_dmqmc_metropolis_move(sys, cdet, rng)
+        use system, only: sys_t
+        use dSFMT_interface, only: dSFMT_t
+        import :: det_info_t
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+    end subroutine i_dmqmc_metropolis_move
 
     ! generic procedures...
     subroutine i_sub()
@@ -170,6 +178,8 @@ procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlat
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
 procedure(i_sc0), pointer :: trial_dm_ptr => null()
+
+procedure(i_dmqmc_metropolis_move), pointer :: dmqmc_metropolis_move_ptr => null()
 
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 

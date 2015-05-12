@@ -476,10 +476,11 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         real(p) :: nparticles_temp(psip_list%nspaces)
-        integer :: nel, ireplica, ierr
+        integer :: nel, ireplica, ierr, ialpha, ibeta
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
         real(dp) :: r, prob
+        type(sys_t) :: sys_copy
 
         npsips_this_proc = target_nparticles_tot/nprocs
         ! If the initial number of psips does not split evenly between all
@@ -488,6 +489,7 @@ contains
               npsips_this_proc = npsips_this_proc + 1_int_64
 
         nparticles_temp = 0.0_p
+        total_size = 0
 
         do ireplica = 1, psip_list%nspaces
             select case(sys%system)
@@ -524,8 +526,8 @@ contains
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, rng)
                     else
-                        call init_uniform_ensemble(sys, npsips_this_proc, reference%f0, ireplica, &
-                                                   dmqmc_in%all_sym_sectors, rng, spawn)
+                        call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
+                                                                        dmqmc_in%all_sym_sectors, spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
@@ -721,14 +723,14 @@ contains
         !        psips on the diagonal.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use system, only: sys_t
+        use system, only: sys_t, update_sys_spin_info
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
-                                encode_det
+                                encode_det, spin_orb_list, decode_det
         use excitations, only: excit_t, create_excited_det
         use fciqmc_data, only: real_factor
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
-        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
+        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr, dmqmc_metropolis_move_ptr
         use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
@@ -743,7 +745,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer :: occ_list(sys%nel), naccept
-        integer :: idet, iattempt, nsuccess
+        integer :: idet, iattempt, nsuccess, ms
         integer :: thread_id = 0, proc
         integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
         real(p), target :: tmp_data(1)
@@ -751,7 +753,9 @@ contains
         real(dp) :: r
         type(det_info_t) :: cdet
         type(excit_t) :: connection
-        real(dp) :: move_prob(0:sys%nalpha, sys%max_number_excitations)
+        type(sys_t) :: sys_copy
+
+        sys_copy = sys
 
         naccept = 0 ! Number of metropolis moves which are accepted.
         nsuccess = 0 ! Number of successful proposal steps i.e. excluding null excitations.
@@ -765,21 +769,27 @@ contains
         ! among the available levels. In the latter case we need to set the
         ! probabilities of a particular move (e.g. move two alpha spins),
         ! so do this here.
-        if (dmqmc_in%all_sym_sectors) call set_level_probabilities(sys, move_prob, dmqmc_in%max_metropolis_move)
 
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, dmqmc_in%metropolis_attempts
             do proc = 0, nprocs-1
                 do idet = spawn%head_start(nthreads-1,proc)+1, spawn%head(thread_id,proc)
                     cdet%f = spawn%sdata(:sys%basis%string_len,idet)
-                    E_old = trial_dm_ptr(sys, cdet%f)
+                    E_old = trial_dm_ptr(sys_copy, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
                     if (dmqmc_in%all_sym_sectors) then
-                        call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
-                        call gen_random_det_truncate_space(rng, sys, dmqmc_in%max_metropolis_move, cdet, move_prob, occ_list)
+                        call decode_det_spinocc_spinunocc(sys_copy, cdet%f, cdet)
+                        ! Update spin polarisation properties - these will
+                        ! most likely have changed from the previous
+                        ! determinant.
+                        if (dmqmc_in%all_spin_sectors) then
+                            ms = spin_orb_list(sys%basis%basis_fns, cdet%occ_list)
+                            call update_sys_spin_info(ms, sys_copy)
+                        end if
+                        call dmqmc_metropolis_move_ptr(sys_copy, cdet, rng)
                         nsuccess = nsuccess + 1
-                        call encode_det(sys%basis, occ_list, f_new)
+                        call encode_det(sys%basis, cdet%occ_list, f_new)
                     else
                         call decoder_ptr(sys, cdet%f, cdet)
                         call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
@@ -790,10 +800,11 @@ contains
                         call create_excited_det(sys%basis, cdet%f, connection, f_new)
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
-                    E_new = trial_dm_ptr(sys, f_new)
+                    E_new = trial_dm_ptr(sys_copy, f_new)
                     prob = exp(-1.0_p*dmqmc_in%init_beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
+                        call decode_det(sys%basis, f_new, occ_list)
                         ! Accept the new determinant by modifying the entry
                         ! in spawned walker list.
                         naccept = naccept + 1
@@ -811,6 +822,153 @@ contains
         call dealloc_det_info_t(cdet)
 
     end subroutine initialise_dm_metropolis
+
+    subroutine dmqmc_spin_flip_metropolis_move(sys, cdet, rng)
+
+        ! Perform Metropolis move where we uniformly select an electron to
+        ! excite into an unoccupied orbital while allowing for the total spin of
+        ! the determinant to change.
+
+        ! In:
+        !    sys: system being studied.
+        ! In/Out:
+        !    cdet: det_info_t object for the reference determinant.  Must contain
+        !        appropriately set occ_list, occ_list_alpha, occ_list_beta,
+        !        unocc_list_alpha and unocc_list_beta components. On output
+        !        occ_list will be modified.
+        !    rng: random number generator.
+
+        use system, only: sys_t
+        use determinants, only: det_info_t
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+
+        real(dp) :: species, pflip
+        integer :: iorb, iexcit, new_orb, unocc_list(sys%nvirt)
+
+        ! Pick orbital at random.
+        iorb = int(get_rand_close_open(rng)*sys%nel) + 1
+        ! Create unoccupied list.
+        unocc_list = (/ cdet%unocc_list_alpha(:sys%nvirt_alpha), cdet%unocc_list_beta(:sys%nvirt_beta) /)
+        ! Select unoccupied orbital at random.
+        iexcit = int(get_rand_close_open(rng)*sys%nvirt) + 1
+        ! Switch the orbitals.
+        new_orb = unocc_list(iexcit)
+        cdet%occ_list(iorb) = new_orb
+
+    end subroutine dmqmc_spin_flip_metropolis_move
+
+    subroutine dmqmc_spin_cons_metropolis_move(sys, cdet, rng)
+
+        ! Perform Metropolis move where we uniformly select an electron to
+        ! excite into an unoccupied orbital while conserving spin.
+
+        ! In:
+        !    sys: system being studied.
+        ! In/Out:
+        !    cdet: det_info_t object for the reference determinant.  Must contain
+        !        appropriately set occ_list, occ_list_alpha, occ_list_beta,
+        !        unocc_list_alpha and unocc_list_beta components. On output
+        !        occ_list will be modified.
+        !    rng: random number generator.
+
+        use system, only: sys_t
+        use determinants, only: det_info_t
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(inout) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+
+        real(dp) :: species, pflip
+        integer :: orb, iorb, iexcit, new_orb, unocc_list(sys%nvirt)
+
+        iorb = int(get_rand_close_open(rng)*sys%nel) + 1
+        orb = cdet%occ_list(iorb)
+
+        ! Conserving ms so only excite inside the correct spin channel as we only
+        ! consider single excitations.
+        if (mod(orb, 2) == 0) then
+            ! Chose a beta spin.
+            iexcit = int(get_rand_close_open(rng)*sys%nvirt_beta) + 1
+            cdet%occ_list(iorb) = cdet%unocc_list_beta(iexcit)
+        else
+            ! Chose an alpha spin.
+            iexcit = int(get_rand_close_open(rng)*sys%nvirt_alpha) + 1
+            cdet%occ_list(iorb) = cdet%unocc_list_alpha(iexcit)
+        end if
+
+    end subroutine dmqmc_spin_cons_metropolis_move
+
+    subroutine spin_flip_metropolis_move(rng, sys, occ_list, move_prob)
+
+        use system, only: sys_t
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(dSFMT_t), intent(inout) :: rng
+        type(sys_t), intent(inout) :: sys
+        integer, intent(inout) :: occ_list(sys%nel)
+        real(dp), intent(in) :: move_prob(2)
+
+        integer :: occ_alpha(sys%nalpha), occ_beta(sys%nbeta)
+        integer :: iorb, ialpha, ibeta, iflip, forb
+        real(dp) :: plevel
+
+        ! Sort occ list into alpha and beta orbitals.
+        ialpha = 0
+        ibeta = 0
+        do iorb = 1, sys%nel
+            if (mod(occ_list(iorb),2) == 0) then
+                ibeta = ibeta + 1
+                occ_beta(ibeta) = occ_list(iorb)
+            else
+                ialpha = ialpha + 1
+                occ_alpha(ialpha) = occ_list(iorb)
+            end if
+        end do
+
+        plevel = get_rand_close_open(rng)
+        do ialpha = 0, 1
+            if (plevel < move_prob(ialpha)) exit
+        end do
+
+        ! Assuming occ_list is ordered by spin.
+        if (ialpha == 0 .and. sys%nalpha > 0) then
+            if (sys%nvirt_beta == 0) return
+            ! Uniformly choose alpha spin to flip.
+            iflip = int(get_rand_close_open(rng)*sys%nalpha) + 1
+            ! Find the alpha spin orbital.
+            forb = occ_alpha(iflip) + 1
+            ! Flip the alpha spin.
+            occ_alpha(iflip) = forb
+        else if (ialpha == 1 .and. sys%nbeta > 0) then
+            if (sys%nvirt_alpha == 0) return
+            ! Uniformly choose beta spin to flip.
+            iflip = int(get_rand_close_open(rng)*sys%nbeta) + 1
+            ! Find the alpha spin orbital.
+            forb = occ_beta(iflip) - 1
+            ! Flip the beta spin.
+            occ_beta(iflip) = forb
+        else
+            return ! Don't change ms.
+        end if
+        if (any(occ_list == forb)) then
+            ! Null flip where there this spin orbital is already occupied.
+            return
+        else
+            ! Combine the lists.
+            occ_list = (/ occ_alpha, occ_beta /)
+            ! Update number of spins and virtual orbitals for this determinant.
+            sys%nalpha = sys%nalpha - ialpha
+            sys%nbeta = sys%nbeta + ialpha
+            sys%nvirt_alpha = sys%nvirt_alpha + ialpha
+            sys%nvirt_beta = sys%nvirt_beta - ialpha
+        end if
+
+    end subroutine spin_flip_metropolis_move
 
     subroutine init_uniform_ensemble(sys, npsips, f0, ireplica, all_sym_sectors, rng, spawn)
 
@@ -851,6 +1009,7 @@ contains
         type(det_info_t) :: det0
         integer(int_64) :: psips_per_level
         real(dp) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
+        logical :: gen
 
         ! [todo] - Include all psips.
         psips_per_level = int(npsips/sys%max_number_excitations)
@@ -865,13 +1024,13 @@ contains
         end do
 
         ! Uniformly distribute the psips on all other levels.
-        call set_level_probabilities(sys, ptrunc_level, sys%max_number_excitations)
+        call set_level_probabilities(sys, ptrunc_level, sys%max_number_excitations, .false.)
 
         do idet = 1, npsips-psips_per_level
             ! Repeatedly attempt to create determinants on every other
             ! excitation level.
             do
-                call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list)
+                call gen_random_det_truncate_space(rng, sys, sys%max_number_excitations, det0, ptrunc_level(0:,:), occ_list, gen)
                 if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                     call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
@@ -958,7 +1117,7 @@ contains
 
     end subroutine init_grand_canonical_ensemble
 
-    subroutine set_level_probabilities(sys, ptrunc_level, max_excit)
+    subroutine set_level_probabilities(sys, ptrunc_level, max_excit, metrop)
 
         ! Set the probabilities for creating a determinant on a given
         ! excitation level so that get_random_det_truncate_space can be used.
@@ -976,9 +1135,10 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: max_excit
-        real(dp), intent(inout) :: ptrunc_level(0:sys%nalpha, sys%max_number_excitations)
+        real(dp), intent(inout) :: ptrunc_level(0:sys%nel, sys%max_number_excitations)
+        logical, intent(in) :: metrop
 
-        integer :: ialpha, ilevel
+        integer :: ialpha, ilevel, counter
         real(dp) :: offset
 
         ! Set up the probabilities for creating a determinant on a given
@@ -989,22 +1149,42 @@ contains
         ! realisation of an excitation equal probability and allow each
         ! excitation to occur with equal probability.
         ptrunc_level = 0.0_dp
+        counter = 0
         do ilevel = 1, max_excit
             do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
                 ! Number of ways of exciting ialpha electrons such that
                 ! ialpha + nbeta = ilevel.
-                ptrunc_level(ialpha, ilevel) = binom_r(ilevel,ialpha)
+                ! Need to deal with crappy basis sets where the number of
+                ! virtual orbitals is less that the number of electrons.
+                if (metrop) then
+                    ptrunc_level(ialpha, ilevel) = binom_r(ilevel, ialpha)
+                    counter = counter + 1
+                else if (sys%nvirt_alpha >= ialpha .and. ilevel-ialpha <= sys%nvirt_beta) then
+                    ptrunc_level(ialpha, ilevel) = binom_r(ilevel,ialpha)
+                    counter = counter + 1
+                end if
+            end do
+        end do
+        counter = min(counter, max_excit)
+        do ilevel = 1, max_excit
+            do ialpha = max(0, ilevel-sys%nbeta), min(ilevel, sys%nalpha)
+                !print *, "This: inside ", ilevel, ialpha, ptrunc_level(ialpha, ilevel)
             end do
         end do
 
         ! Normalisation for the distribution at this excitation level.
-        forall(ilevel=1:max_excit) ptrunc_level(:,ilevel) = ptrunc_level(:,ilevel) / (max_excit*sum(ptrunc_level(:,ilevel)))
+        forall(ilevel=1:max_excit) ptrunc_level(:,ilevel) = ptrunc_level(:,ilevel) / (counter*sum(ptrunc_level(:,ilevel)))
 
         offset = 0.0_dp
         do ilevel = 1, max_excit
             do ialpha = max(0,ilevel-sys%nbeta), min(ilevel,sys%nalpha)
                 ptrunc_level(ialpha, ilevel) = offset + ptrunc_level(ialpha, ilevel)
                 offset = ptrunc_level(ialpha, ilevel)
+            end do
+        end do
+        do ilevel = 1, max_excit
+            do ialpha = max(0, ilevel-sys%nbeta), min(ilevel, sys%nalpha)
+                !print *, "This: after", ilevel, ialpha, ptrunc_level(ialpha, ilevel)
             end do
         end do
 

@@ -848,6 +848,13 @@ contains
                     update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
                 end if
             end if
+            if (dmqmc_in%propagate_to_beta) then
+                if (dmqmc_in%all_spin_sectors) then
+                    dmqmc_metropolis_move_ptr => dmqmc_spin_flip_metropolis_move
+                else
+                    dmqmc_metropolis_move_ptr => dmqmc_spin_cons_metropolis_move
+                end if
+            end if
             select case(sys%system)
             case(heisenberg)
                 if (doing_dmqmc_calc(dmqmc_energy_squared)) &
