@@ -1536,7 +1536,7 @@ contains
             case(1)
                 KiiAi = (cdet%data(1) - qs%shift(1))*cluster%amplitude
             case default
-                KiiAi = (sc0_ptr(sys, cdet%f) - qs%ref%H00 - qs%shift(1))*cluster%amplitude
+                KiiAi = (sc0_ptr(sys, cdet%f) - qs%ref%H00 - proj_energy)*cluster%amplitude
             end select
         end if
 
