@@ -608,7 +608,7 @@ contains
 
         contains
 
-            function calculate_reweighting_factor(sys, occ_list, beta, hfx0) result(weight)
+            function calculate_reweighting_factor(sys, occ_list, beta, hfx0, rng) result(weight)
 
                 ! Reweight initial density matrix population so that the desired
                 ! diagonal density matrix is sampled.
@@ -619,17 +619,20 @@ contains
                 !        generated determinant.
                 !    beta: inverse temperature being considered.
                 !    hfx0: exchange energy of reference determinant.
+                ! In/Out:
+                !    rng: random number generator.
 
                 use system, only: sys_t
                 use hamiltonian_ueg, only: exchange_energy_ueg
-                use qmc_data, only: real_factor
+                use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
                 type(sys_t), intent(in) :: sys
                 integer, intent(in) :: occ_list(:)
                 real(p), intent(in) :: beta
                 real(p), intent(in) :: hfx0
+                type(dSFMT_t), intent(inout) :: rng
 
-                real(p) :: hfx, weight
+                real(p) :: hfx, weight, r
 
                 ! Any diagonal density matrix can be sampled from the
                 ! free-electron expression by reweighting, i.e.
@@ -640,6 +643,13 @@ contains
                 ! exchange energy of the reference which ensures that p({i_0})_new = 1.
                 hfx = exchange_energy_ueg(sys, occ_list)
                 weight = exp(-beta*(hfx-hfx0))
+                r = get_rand_close_open(rng)
+                ! Integerise weight.
+                if (weight > r) then
+                    weight = 1.0_p
+                else
+                    weight = 0.0_p
+                end if
 
             end function calculate_reweighting_factor
 
