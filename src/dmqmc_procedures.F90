@@ -476,7 +476,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         real(p) :: nparticles_temp(psip_list%nspaces)
-        integer :: nel, ireplica, ierr, ialpha, ibeta
+        integer :: nel, ireplica, ierr, ialpha, ms
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
         real(dp) :: r, prob
@@ -534,8 +534,41 @@ contains
                     if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, &
                                                                                npsips_this_proc, ireplica, spawn)
                 else
-                    call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
-                                                        dmqmc_in%all_sym_sectors, spawn)
+                    if (dmqmc_in%all_spin_sectors) then
+                        ! Need to set spin variables appropriately.
+                        sys_copy = sys
+                        ! The size (number of configurations) of all spin symmetry
+                        ! sectors combined.
+                        do ialpha = 0, sys%nel
+                            total_size = total_size + &
+                                    binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
+                        end do
+
+                        do ialpha = 0, sys%nel
+                            ! The size of this symmetry sector alone.
+                            sector_size = binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
+                            prob = real(npsips_this_proc,dp)*sector_size/total_size
+                            npsips = floor(prob, int_64)
+                            ! If there are a non-integer number of psips to be
+                            ! spawned in this sector then add an extra psip with the
+                            ! required probability.
+                            prob = prob - npsips
+                            r = get_rand_close_open(rng)
+                            if (r < prob) npsips = npsips + 1_int_64
+
+                            nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, p)
+                            ms = 2*ialpha - sys%nel
+                            sys_copy%nalpha = (ms + sys_copy%nel) / 2
+                            sys_copy%nbeta = sys%nel - sys_copy%nalpha
+                            sys_copy%nvirt_alpha = sys_copy%basis%nbasis/2 - sys_copy%nalpha
+                            sys_copy%nvirt_beta = sys_copy%basis%nbasis/2 - sys_copy%nbeta
+                            call random_distribution_electronic(rng, sys_copy, npsips, ireplica, &
+                                                                dmqmc_in%all_sym_sectors, spawn)
+                        end do
+                    else
+                        call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
+                                                            dmqmc_in%all_sym_sectors, spawn)
+                    end if
                 end if
             case(hub_real)
                 call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, dmqmc_in%all_sym_sectors, spawn)
