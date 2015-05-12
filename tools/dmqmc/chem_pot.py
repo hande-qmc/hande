@@ -6,9 +6,10 @@ import scipy.optimize
 import math
 import numpy as np
 import argparse
+import pandas as pd
 
 
-class System:
+class UEGSystem:
     '''
     UEG system class. Slight overkill but this code is copied from a bigger
     script.
@@ -17,7 +18,7 @@ class System:
 
     Parameters
     ----------
-    args : list of command line arguments
+    args : :class:`ArgumentParser'
         where -
     rs : float
         seitz radius.
@@ -48,13 +49,13 @@ class System:
     def __init__(self, args):
 
         # Seitz radius.
-        self.rs = float(args[0])
+        self.rs = args.rs
         # Number of electrons.
-        self.ne = int(args[1])
+        self.ne = args.ne
         # Kinetic energy cut-off.
-        self.ecut = float(args[2])
+        self.ecut = args.ecutoff
         # Spin polarisation.
-        self.pol = int(args[3])
+        self.pol = args.pol
         # Box Length.
         self.L = self.rs*(4*self.ne*sc.pi/3.)**(1/3.)
         # k-space grid spacing.
@@ -64,7 +65,7 @@ class System:
         # Single particle eigenvalues and corresponding kvectors
         self.spval = self.sp_energies(self.kfac, self.ecut)
         # Compress single particle eigenvalues by degeneracy.
-        self.deg_e = self.compress_spval(self.spval)
+        self.deg_e = compress_spval(self.spval)
         # epsilon value for comparison of floats.
         self.root_de = 1e-14
 
@@ -107,44 +108,86 @@ class System:
 
         return spval
 
-    def compress_spval(self, spval):
-        '''
-        Compress the single particle eigenvalues so that we only consider
-        unique values which vastly speeds up the k-space summations required.
-        [todo] - Look at more clever optimisations (stars).
 
-        Params
-        ------
-        spval : list
-            list containing single particle eigenvalues.
+class MolSystem:
+    '''
+    Molecular system class.
 
-        Returns
-        -------
-        spval : list of lists.
-            list containing single particle eigenvalues.
-        '''
+    Parameters
+    ----------
+    args : :class:`ArgumentParser'
+        where -
+    ne : int
+        number of electrons.
+    pol : int
+        spin polarisation = 2 for fully polarised case.
+    beta : float
+        inverse temperature.
+    filename : string
+        filename containing single-particle eigenvalues.
+'''
 
-        # Work out the degeneracy of each eigenvalue.
-        j = 1
-        i = 0
-        it = 0
-        deg_e = []
-        deg_k = []
+    def __init__(self, args):
 
-        while it < len(spval)-1:
-            eval1 = spval[i]
-            eval2 = spval[i+j]
-            if eval2 == eval1:
-                j += 1
-            else:
-                deg_e.append([j, eval1])
-                i += j
-                j = 1
-            it += 1
+        # Number of electrons.
+        self.ne = args.ne
+        # Spin polarisation.
+        self.pol = args.pol
+        # Single particle eigenvalues.
+        self.spval = self.sp_energies(args.filename[0])
+        # Compress single particle eigenvalues by degeneracy.
+        self.deg_e = compress_spval(self.spval)
+        # epsilon value for comparison of floats.
+        self.root_de = 1e-14
 
-        deg_e.append([j, eval1])
+    def sp_energies(self, filename):
 
-        return deg_e
+        data = pd.DataFrame()
+        data = pd.read_csv(filename, delim_whitespace=True, skiprows=7, header=None)
+        data.rename(columns={0:'a', 1:'b', 2:'c', 3:'d', 4:'e'}, inplace=True)
+        speig = np.array(data.loc[(data.b > 0) & (data.c == 0) & (data.d == 0) & (data.e == 0),'a'])
+
+        return sorted(speig)
+
+
+def compress_spval(spval):
+    '''
+    Compress the single particle eigenvalues so that we only consider
+    unique values which vastly speeds up the k-space summations required.
+    [todo] - Look at more clever optimisations (stars).
+
+    Params
+    ------
+    spval : list
+        list containing single particle eigenvalues.
+
+    Returns
+    -------
+    spval : list of lists.
+        list containing single particle eigenvalues.
+    '''
+
+    # Work out the degeneracy of each eigenvalue.
+    j = 1
+    i = 0
+    it = 0
+    deg_e = []
+    deg_k = []
+
+    while it < len(spval)-1:
+        eval1 = spval[i]
+        eval2 = spval[i+j]
+        if eval2 == eval1:
+            j += 1
+        else:
+            deg_e.append([j, eval1])
+            i += j
+            j = 1
+        it += 1
+
+    deg_e.append([j, eval1])
+
+    return deg_e
 
 
 def nav_sum(mu, ne, spval, beta, pol):
@@ -201,7 +244,7 @@ diff : float
     return nav_sum(mu, ne, spval, beta, pol) - ne
 
 
-def chem_pot_sum(system, beta):
+def chem_pot_sum(system, beta, guess):
     '''Find the correct value of the chemical potential which results in a
     system of ne particles at temperature beta.
 
@@ -211,6 +254,8 @@ system : class
     system parameters.
 beta : float
     inverse temperature being considered.
+guess : float
+    initial guess for chemical potential.
 
 Returns
 -------
@@ -218,7 +263,7 @@ chemical potential : float
     the chemical potential.
 '''
 
-    return (sc.optimize.fsolve(nav_diff, system.ef, args=(system.ne,
+    return (sc.optimize.fsolve(nav_diff, guess, args=(system.ne,
                                system.deg_e, beta, system.pol))[0])
 
 
@@ -237,17 +282,26 @@ args : :class:`ArgumentParser`
 '''
 
     parser = argparse.ArgumentParser(usage=__doc__)
-    parser.add_argument('rs', type=float, help='Wigner-Seitz radius.')
+    parser.add_argument('calc', help='calculation type, either ueg or read_in')
+    args = parser.parse_known_args()[0]
+    print args
+    if args.calc == 'ueg':
+        parser.add_argument('rs', type=int, help='Wigner-Seitz radius.')
+        parser.add_argument('ecutoff', type=float, help='Plane wave cutoff '
+                            'in units of 0.5*(2\pi/L)**2.')
+        parser.add_argument('-t', '--use--fermi', action='store_true',
+                            dest='fermi_temperature', default=False,
+                            help='Interpret input beta as Beta = T_F/T')
+    elif args.calc == 'read_in':
+        parser.add_argument('-f', '--filename', nargs='+', help='integral_file')
+    else:
+        print ("Calculation type unkown. Allowed values = ueg or read_in")
+
     parser.add_argument('ne', type=int, help='Number of electrons.')
-    parser.add_argument('ecutoff', type=float, help='Plane wave cutoff '
-                        'in units of 0.5*(2\pi/L)**2.')
     parser.add_argument('pol', type=int, help='Polarisation, = 1 for '
                         'unpolarised system and 2 for polarised system.')
     parser.add_argument('beta', type=float, help='Inverse temperature.')
-    parser.add_argument('-t', '--use--fermi', action='store_true',
-                        dest='fermi_temperature', default=False,
-                        help='Interpret input beta as Beta = T_F/T')
-    args = parser.parse_args(args)
+    args = parser.parse_args()
 
     return args
 
@@ -270,11 +324,14 @@ None.
         print("beta must be greater than zero.")
         sys.exit(1)
     else:
-        sys_pars = [args.rs, args.ne, args.ecutoff, args.pol]
-        system = System(sys_pars)
-        if args.fermi_temperature:
-            args.beta = args.beta / system.ef
-        chem_pot = chem_pot_sum(system, args.beta)
+        if (args.calc == 'ueg'):
+            system = UEGSystem(args)
+            if args.fermi_temperature:
+                args.beta = args.beta / system.ef
+            chem_pot = chem_pot_sum(system, args.beta, system.ef)
+        else:
+            system = MolSystem(args)
+            chem_pot = chem_pot_sum(system, args.beta, system.spval[system.ne-1])
 
     print(chem_pot)
 
