@@ -178,6 +178,7 @@ procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlat
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
 procedure(i_sc0), pointer :: trial_dm_ptr => null()
+! [review] - JSS: is this really on a performance-critical path to be worth the hassle of making it a procedure pointer?
 procedure(i_ex0), pointer :: ex0_ptr => null()
 
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()

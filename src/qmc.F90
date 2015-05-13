@@ -351,6 +351,7 @@ contains
                 reference%H00 = sc0_ptr(sys, reference%f0)
                 ! Exchange energy of reference determinant.
                 ! [todo] - Implement for all models.
+                ! [review] - JSS: ex0_ptr only defined for UEG.  This will segfault otherwise...
                 reference%hfx0 = ex0_ptr(sys, reference%occ_list0)
                 if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 

@@ -172,6 +172,7 @@ type dmqmc_in_t
     logical :: propagate_to_beta = .false.
     ! Use the free electron Hamiltonian as the trial density matrix.
     ! Default: Use the "Hartree-Fock" trial density matrix.
+    ! [review] - JSS: would it help (for future work/clarity/etc) to have an enum for the trial DM options?
     logical :: free_electron_trial = .false.
     ! Use the grand canonical partition function to inititally distribute the psips.
     logical :: grand_canonical_initialisation = .false.
