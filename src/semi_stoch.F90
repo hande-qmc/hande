@@ -751,8 +751,7 @@ contains
 
         use csr, only: csrpgemv_single_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use omp_lib
-        use parallel, only: nprocs, iproc, nthreads
+        use parallel, only: nprocs, iproc
         use qmc_data, only: qmc_in_t, qmc_state_t
         use spawn_data, only: spawn_t
 
@@ -900,12 +899,6 @@ contains
 
         integer(int_p) :: nspawn
         real(p) :: sgn, target_nspawn_scaled
-#ifndef _OPENMP
-        integer, parameter :: thread_id = 0
-#else
-        integer :: thread_id
-        thread_id = omp_get_thread_num()
-#endif
 
         ! Multiply target_nspawn by real_factor to allow it to be
         ! encoded as an integer.
