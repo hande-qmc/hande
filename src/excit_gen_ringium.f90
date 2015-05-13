@@ -1,5 +1,7 @@
 module excit_gen_ringium
 
+! [review] - JSS: for the reader unfamiliar with ringium, a few top-level comments outlining the excitations allowed would help.
+
 use const
 
 implicit none
@@ -57,6 +59,7 @@ contains
             call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. find the connecting matrix element.
+            ! [review] - JSS: this is slower than necessary, as it does symmetry checks despite you carefully constructing a symmetry-allowed excitation.
             hmatel = slater_condon2_ringium(sys, connection%from_orb(1), connection%from_orb(2), &
                         connection%to_orb(1), connection%to_orb(2), connection%perm)
         else
@@ -67,6 +70,8 @@ contains
     end subroutine gen_excit_ringium_no_renorm
 
     subroutine choose_ij_ringium(rng, sys, occ_list, i, j, ij_lz)
+
+        ! [review] - JSS: interface documentation
       
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
@@ -78,6 +83,11 @@ contains
 
         real(dp) :: r
         integer :: ind
+
+        ! [review] - JSS: I was puzzled by this initially as it seems (at first glance) that you could have
+        ! [review] - JSS: reused choose_ij_k except you don't conserve spin (very odd!).  I dimly recall that
+        ! [review] - JSS: ringium is independent of spin polarisation.  Is this true?  If so, somewhere we should
+        ! [review] - JSS: enforce ringium systems are completely spin polarised or handle other spin polarisations.
 
         r = get_rand_close_open(rng)
         ind = int(r*sys%nel*(sys%nel-1)/2) + 1
@@ -92,6 +102,8 @@ contains
     end subroutine choose_ij_ringium
 
     subroutine choose_ab_ringium(rng, sys, f, ij_lz, a, b, allowed)
+
+        ! [review] - JSS: interface documentation
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
@@ -118,6 +130,7 @@ contains
             allowed = .false.
         else
             ! The basis function lz = k is 2k+1 for k>=0 or 2k-1 for k<0
+            ! [review] - JSS: which assumes all electrons are spin-up?
             b = 2*abs(lz_b)
             if (lz_b >= 0) then
                 b = b + 1
@@ -138,6 +151,8 @@ contains
     end subroutine choose_ab_ringium
 
     pure function calc_pgen_ringium(sys) result(pgen)
+
+        ! [review] - JSS: interface documentation
 
         use system, only: sys_t
 

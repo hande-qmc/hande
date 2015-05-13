@@ -16,6 +16,7 @@ contains
         !    sys: system being studied.
         !    l (optional): quantum numbers of the basis function.  Used only in
         !        model Hamiltonians.
+        !        [review] - JSS: ringium appears not to fall into these categories?
         !        Momentum space formulation:
         !            wavevector in units of the reciprocal lattice vectors of
         !            the crystal cell.
@@ -57,6 +58,7 @@ contains
 
         if (present(l)) then
             b%l = l
+            ! [review] - JSS: is it cleaner just to check if sys%momentum_space is true (possibly rename?)
             if (sys%system == hub_k .or. sys%system == ueg .or. sys%system == ringium) then
                 b%sp_eigv = calc_kinetic(sys, l)
             else
@@ -115,6 +117,7 @@ contains
         ! Describe information.
         if (sys%system /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
 
+        ! [review] - JSS: I suspect you want something like this to get a nice table in the output.
         select case(sys%system)
         case(hub_real,heisenberg, chung_landau)
             write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
@@ -312,6 +315,8 @@ contains
 
         ! This is identical again to the real space formulation, except the FBZ
         ! is essentially infinite (as there is no underlying crystal lattice).
+
+        ! [review] - JSS: ringium?
 
         ! For the Heisenberg model, each site has a single spin which must be either
         ! up or down, so only need 1 bit for each site => nbasis = nsites

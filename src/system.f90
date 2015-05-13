@@ -656,6 +656,8 @@ contains
             sys%nbeta = 0
             sys%nvirt_beta = 0
 
+        ! [review] - JSS: throw error if ms/=nel for ringium.
+
         case default
 
             ! Find the number of determinants with the required spin.

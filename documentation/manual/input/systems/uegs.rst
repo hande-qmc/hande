@@ -91,3 +91,10 @@ chem_pot
     Optional.  Used only in interaction-picture DMQMC calculations.
 
     Set the chemical potential of the system.
+
+Ringium
+-------
+
+.. [review] - JSS: please document ringium input options
+
+.. [review] - JSS: also add reference to ringium (first paper by Gill and Loos?) to bibliography
