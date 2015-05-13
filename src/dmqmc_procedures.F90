@@ -521,11 +521,13 @@ contains
                 end if
             case(ueg, hub_k, read_in)
                 if (dmqmc_in%propagate_to_beta) then
+                    ! [review] - JSS: incompatible with all_spin_sectors?
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, rng)
                     else
+                        ! [review] - JSS: why the change to random_distribution_electronic from init_uniform_ensemble?
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                                         dmqmc_in%all_sym_sectors, spawn)
                     end if
@@ -536,6 +538,7 @@ contains
                 else
                     if (dmqmc_in%all_spin_sectors) then
                         ! Need to set spin variables appropriately.
+                        ! [review] - JSS: see notes in dmqmc about copy_sys_spin_info.
                         sys_copy = sys
                         ! The size (number of configurations) of all spin symmetry
                         ! sectors combined.
@@ -545,6 +548,7 @@ contains
                         end do
 
                         do ialpha = 0, sys%nel
+                            ! [review] - JSS: s/symmetry/spin/?
                             ! The size of this symmetry sector alone.
                             sector_size = binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
                             prob = real(npsips_this_proc,dp)*sector_size/total_size
@@ -788,6 +792,7 @@ contains
         type(excit_t) :: connection
         type(sys_t) :: sys_copy
 
+        ! [review] - JSS: eek!
         sys_copy = sys
 
         naccept = 0 ! Number of metropolis moves which are accepted.
@@ -802,6 +807,7 @@ contains
         ! among the available levels. In the latter case we need to set the
         ! probabilities of a particular move (e.g. move two alpha spins),
         ! so do this here.
+        ! [review] - JSS: probabilities no longer set?
 
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, dmqmc_in%metropolis_attempts
@@ -825,6 +831,7 @@ contains
                         call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
+                        ! [review] - JSS: danger in comparing a float!
                         if (hmatel == 0) cycle
                         nsuccess = nsuccess + 1
                         call create_excited_det(sys%basis, cdet%f, connection, f_new)
@@ -882,6 +889,9 @@ contains
         ! Pick orbital at random.
         iorb = int(get_rand_close_open(rng)*sys%nel) + 1
         ! Create unoccupied list.
+        ! [review] - JSS: potentially slow if basis set is large.
+        ! [review] - JSS: pick iexcit from unocc_list_alpha if iexcit <= sys%nvirt_alpha and
+        ! [review] - JSS: pick iexcit-sys%nvirt_alpha from unocc_list_beta otherwise?
         unocc_list = (/ cdet%unocc_list_alpha(:sys%nvirt_alpha), cdet%unocc_list_beta(:sys%nvirt_beta) /)
         ! Select unoccupied orbital at random.
         iexcit = int(get_rand_close_open(rng)*sys%nvirt) + 1

@@ -1074,6 +1074,7 @@ contains
         !     free_electron_partition = true/false,
         !     grand_canonical_initialisation = true/false,
         !     metropolis_attempts = nattempts,
+        ! [review] - JSS: no longer used.
         !     max_metropolis_moves = nexcit,
         ! }
         ! operators = {

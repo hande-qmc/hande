@@ -126,6 +126,8 @@ contains
 
         ! If averaging over spin spin polarisation will change in general. Copy
         ! system to prevent modification to original system type.
+        ! [review] - JSS: this looks quite expensive (deep copy!) in terms of memory.  Use copy_sys_spin_info instead, as that's all you need to save.
+        ! [review] - JSS: then repeat the call (with reversed arguments) to return an unmodifed sys having used sys instead of sys_copy throughout.
         sys_copy = sys
 
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
