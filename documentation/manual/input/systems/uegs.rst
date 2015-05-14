@@ -95,6 +95,51 @@ chem_pot
 Ringium
 -------
 
-.. [review] - JSS: please document ringium input options
+.. code-block:: lua
 
-.. [review] - JSS: also add reference to ringium (first paper by Gill and Loos?) to bibliography
+    ringium {
+        -- options,
+    }
+
+Returns:
+    a system object.
+
+Ringium [LoosGill2013]_, is a 1D system of electrons confined to a ring of radius :math:`R`:
+
+.. math::
+
+    H = -\frac{1}{2R^2} \sum_i \frac{\partial^2}{\partial\theta_i^2} + \sum_{i<j} \frac{1}{r_{ij}}
+
+where :math:`r_{ij} = R\sqrt{2-2\cos(\theta_i-\theta_j)}`, using a single-particle
+basis of functions :math:`\psi_n = e^{i n \theta}`.
+
+Options:
+
+sys
+    type: system object produced by a previous call.
+
+    Optional.
+
+    If provided, a previously created system object is updated with the new settings
+    supplied, otherwise a new system object is created.
+electrons
+    type: integer
+
+    Required.
+
+    Number of electrons in the system.
+radius
+    type: float
+
+    Required.
+
+    The radius of the ring.
+maxlz
+    type: integer
+
+    Required.
+
+    The maximum angular momentum of the orbitals used in the basis set.
+
+    Note that this is in units of :math:`\frac{\hbar}{2}` and must have opposite
+    parity to the number of electrons.

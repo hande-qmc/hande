@@ -656,7 +656,15 @@ contains
             sys%nbeta = 0
             sys%nvirt_beta = 0
 
-        ! [review] - JSS: throw error if ms/=nel for ringium.
+        case (ringium)
+
+            if (sys%ms /= sys%nel) call stop_all(proc_name, "Ringium must be completely spin polarised.")
+
+            sys%nalpha = sys%nel
+            sys%nbeta = 0
+
+            sys%nvirt_alpha = nbasis/2 - sys%nel
+            sys%nvirt_beta = 0
 
         case default
 

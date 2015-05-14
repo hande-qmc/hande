@@ -47,8 +47,7 @@ contains
             !   l_z^2/2R^2
             ! but value in k is 2*l_z as l_z can be a half-integer so have
             !   k^2/8R^2
-            ! [review] - JSS: 0.125 is represented exactly as it's a power of 2 (so having a default single precision is ok...)
-            kinetic = k(1)**2*0.125/sys%ringium%radius**2
+            kinetic = k(1)**2*0.125_p/sys%ringium%radius**2
         end select
 
     end function calc_kinetic

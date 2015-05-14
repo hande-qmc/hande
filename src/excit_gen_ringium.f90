@@ -1,6 +1,9 @@
 module excit_gen_ringium
 
-! [review] - JSS: for the reader unfamiliar with ringium, a few top-level comments outlining the excitations allowed would help.
+! Module for excitation generator for ringium.
+
+! As the basis functions used are angular momentum eigenfunctions, the allowed excitations must
+! conserve angular momentum, so only double excitations are allowed.
 
 use const
 
@@ -33,6 +36,7 @@ contains
         use hamiltonian_ringium, only: slater_condon2_ringium
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t
+        use excit_gen_ueg, only: choose_ij_k
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
@@ -42,14 +46,15 @@ contains
         type(excit_t), intent(out) :: connection
 
         logical :: allowed
-        integer :: ij_lz
+        integer :: ij_lz(1)
+        integer :: ij_spin
 
         connection%nexcit = 2
         ! 1. Select a random pair of spin orbitals to excite from.
-        call choose_ij_ringium(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_lz)
+        call choose_ij_k(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_lz, ij_spin)
 
         ! 2. Select a random pair of spin orbitals to excite to.
-        call choose_ab_ringium(rng, sys, cdet%f, ij_lz, connection%to_orb(1), connection%to_orb(2), allowed)
+        call choose_ab_ringium(rng, sys, cdet%f, ij_lz(1), connection%to_orb(1), connection%to_orb(2), allowed)
 
         if (allowed) then
             ! 3. Calculate the generation probability of the excitation.
@@ -69,38 +74,6 @@ contains
 
     end subroutine gen_excit_ringium_no_renorm
 
-    subroutine choose_ij_ringium(rng, sys, occ_list, i, j, ij_lz)
-
-        ! [review] - JSS: interface documentation
-      
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use system, only: sys_t
-
-        type(dSFMT_t), intent(inout) :: rng
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: occ_list(:)
-        integer, intent(out) :: i, j, ij_lz
-
-        real(dp) :: r
-        integer :: ind
-
-        ! [review] - JSS: I was puzzled by this initially as it seems (at first glance) that you could have
-        ! [review] - JSS: reused choose_ij_k except you don't conserve spin (very odd!).  I dimly recall that
-        ! [review] - JSS: ringium is independent of spin polarisation.  Is this true?  If so, somewhere we should
-        ! [review] - JSS: enforce ringium systems are completely spin polarised or handle other spin polarisations.
-
-        r = get_rand_close_open(rng)
-        ind = int(r*sys%nel*(sys%nel-1)/2) + 1
-        ! Indices in list of occupied spin-orbitals
-        j = int(1.50_p + sqrt(2*ind-1.750_p))
-        i = ind - ((j-1)*(j-2))/2
-        ! Corresponding spin orbitals
-        i = occ_list(i)
-        j = occ_list(j)
-        ij_lz = sys%basis%basis_fns(i)%l(1) + sys%basis%basis_fns(j)%l(1)
-
-    end subroutine choose_ij_ringium
-
     subroutine choose_ab_ringium(rng, sys, f, ij_lz, a, b, allowed)
 
         ! [review] - JSS: interface documentation
@@ -118,11 +91,15 @@ contains
         integer :: lz_b, ind
 
         ! Select a random unoccupied orbital as a
+        ! This does not take account of the fact that the required b orbital to conserve angular
+        ! momentum might not be in the basis set - in that case we just reject the excitation.
         do
             a = 2 * int(get_rand_close_open(rng)*sys%basis%nbasis/2) + 1
             ! If a is unoccupied, then found orbital to excite to
             if (.not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
         end do
+
+        ! Once three orbitals of the excitation have been chosen, this determines the fourth.
 
         lz_b = ij_lz - sys%basis%basis_fns(a)%l(1)
 
@@ -152,7 +129,13 @@ contains
 
     pure function calc_pgen_ringium(sys) result(pgen)
 
-        ! [review] - JSS: interface documentation
+        ! Calculate the probability of an excitation.  Due to the (naive)
+        ! algorithm used, all allowed excitations have the same probability.
+
+        ! In:
+        !   sys: system being studied
+        ! Returns:
+        !   probability of generating this excitation.
 
         use system, only: sys_t
 

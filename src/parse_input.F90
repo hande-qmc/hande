@@ -115,8 +115,7 @@ contains
             end if
             if (sys%system == ringium .and. mod(sys%nel + sys%ringium%maxlz, 2) == 0) call stop_all(this, 'Max lz must have &
                                         &opposite parity to the number of electrons in ringium')
-            ! [review] - JSS: danger in equality comparison with floats.  Use abs(radius)<depsilon instead.
-            if (sys%system == ringium .and. sys%ringium%radius == 0.0) call stop_all(this, 'Ringium must have a finite radius')
+            if (sys%system == ringium .and. sys%ringium%radius < depsilon) call stop_all(this, 'Ringium must have a finite radius')
             if (sys%system == ringium .and. sys%nel /= sys%ms) then
                 if (parent) call warning(this, 'Ringium must have spin and number of electrons equal')
                 sys%ms = sys%nel

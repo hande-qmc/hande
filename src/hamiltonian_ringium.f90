@@ -1,9 +1,8 @@
 module hamiltonian_ringium
 
-! Module for evaluating Hamiltonian matrix elements for ringium 
-! [review] - JSS: aha!  It would have been helpful to have seen this before wading through the excitation generator...
-! [review] - JSS: I suggest a two-pronged approach: set_spin_polarisation and lua_ringium.
-! We assume ms = 1 for all ringium orbitals - what's the best way to do this?
+! Module for evaluating Hamiltonian matrix elements for ringium (J Chem Phys 138 164124 (2013)).
+
+! Note that ms = 1 for all occupied ringium orbitals.
 
 use const
 

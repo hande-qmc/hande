@@ -16,13 +16,14 @@ contains
         !    sys: system being studied.
         !    l (optional): quantum numbers of the basis function.  Used only in
         !        model Hamiltonians.
-        !        [review] - JSS: ringium appears not to fall into these categories?
         !        Momentum space formulation:
         !            wavevector in units of the reciprocal lattice vectors of
         !            the crystal cell.
         !        Real space formulation:
         !            position of basis function within the crystal cell in units
         !            of the primitive lattice vectors.
+        !        Ringium:
+        !            angular momentum of the basis function in units of 1/2.
         !    sym (optional): symmetry label of the basis function.  Used only in
         !        systems with point group symmetry (i.e. read in from an FCIDUMP
         !        file).
@@ -58,8 +59,7 @@ contains
 
         if (present(l)) then
             b%l = l
-            ! [review] - JSS: is it cleaner just to check if sys%momentum_space is true (possibly rename?)
-            if (sys%system == hub_k .or. sys%system == ueg .or. sys%system == ringium) then
+            if (sys%momentum_space) then
                 b%sp_eigv = calc_kinetic(sys, l)
             else
                 b%sp_eigv = 0.0_p
@@ -117,7 +117,6 @@ contains
         ! Describe information.
         if (sys%system /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
 
-        ! [review] - JSS: I suspect you want something like this to get a nice table in the output.
         select case(sys%system)
         case(hub_real,heisenberg, chung_landau)
             write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
@@ -136,6 +135,9 @@ contains
             write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
         case(read_in)
             write (6,'(/,1X,a5,2X,a7,X,a8,X,a9,X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
+        case(ringium)
+            write (6,'(1X,a25,/)') 'Lz given in units of 1/2.'
+            write (6,'(1X,a5,4x,a2,4x)', advance='no') 'index', 'lz'
         end select
 
         if (sys%system /= read_in) then
@@ -316,7 +318,10 @@ contains
         ! This is identical again to the real space formulation, except the FBZ
         ! is essentially infinite (as there is no underlying crystal lattice).
 
-        ! [review] - JSS: ringium?
+        ! Ringium:
+
+        ! The basis set is simply the set of angular momentum eigenfunctions with
+        ! |lz| <= maxlz.
 
         ! For the Heisenberg model, each site has a single spin which must be either
         ! up or down, so only need 1 bit for each site => nbasis = nsites
@@ -356,40 +361,40 @@ contains
         call check_allocate('tmp_basis_fns',nspatial,ierr)
 
         if (sys%system /= ringium) then
-        ! Find all alpha spin orbitals.
-        ibasis = 0
-        do k = -nmax(3), nmax(3)
-            do j = -nmax(2), nmax(2)
-                do i = -nmax(1), nmax(1)
-                    ! kp is the Wavevector in terms of the reciprocal lattice vectors of
-                    ! the crystal cell.
-                    kp = (/ i, j, k /)
-                    if (in_FBZ(sys%system, sys%lattice, kp(1:sys%lattice%ndim))) then
-                        if (ibasis == nspatial) then
-                            call stop_all('init_basis_fns','Too many basis functions found.')
-                        else
-                            ! Have found an allowed wavevector/site.
-                            ! Add 2 spin orbitals to the set of the basis functions.
-                            ibasis = ibasis + 1
-                            call init_basis_fn(sys, tmp_basis_fns(ibasis), l=kp(1:sys%lattice%ndim), ms=1)
-                            if (sys%system==ueg .and. real(dot_product(kp,kp),p)/2 > sys%ueg%ecutoff) then
-                                ! Have found a wavevector with too large KE.
-                                ! Discard.
-                                ! Note that we don't use the calculated kinetic
-                                ! energy as it's in a.u. (sys%ueg%ecutoff is in
-                                ! scaled units) and includes any twist.
-                                ! Avoid the chance of having allocated
-                                ! additional %l elements (eg if rejecting the
-                                ! final basis function tested).
-                                deallocate(tmp_basis_fns(ibasis)%l, stat=ierr)
-                                call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
-                                ibasis = ibasis - 1
+            ! Find all alpha spin orbitals.
+            ibasis = 0
+            do k = -nmax(3), nmax(3)
+                do j = -nmax(2), nmax(2)
+                    do i = -nmax(1), nmax(1)
+                        ! kp is the Wavevector in terms of the reciprocal lattice vectors of
+                        ! the crystal cell.
+                        kp = (/ i, j, k /)
+                        if (in_FBZ(sys%system, sys%lattice, kp(1:sys%lattice%ndim))) then
+                            if (ibasis == nspatial) then
+                                call stop_all('init_basis_fns','Too many basis functions found.')
+                            else
+                                ! Have found an allowed wavevector/site.
+                                ! Add 2 spin orbitals to the set of the basis functions.
+                                ibasis = ibasis + 1
+                                call init_basis_fn(sys, tmp_basis_fns(ibasis), l=kp(1:sys%lattice%ndim), ms=1)
+                                if (sys%system==ueg .and. real(dot_product(kp,kp),p)/2 > sys%ueg%ecutoff) then
+                                    ! Have found a wavevector with too large KE.
+                                    ! Discard.
+                                    ! Note that we don't use the calculated kinetic
+                                    ! energy as it's in a.u. (sys%ueg%ecutoff is in
+                                    ! scaled units) and includes any twist.
+                                    ! Avoid the chance of having allocated
+                                    ! additional %l elements (eg if rejecting the
+                                    ! final basis function tested).
+                                    deallocate(tmp_basis_fns(ibasis)%l, stat=ierr)
+                                    call check_deallocate('tmp_basis_fns(basis_fns_ranking(i',ierr)
+                                    ibasis = ibasis - 1
+                                end if
                             end if
                         end if
-                    end if
+                    end do
                 end do
             end do
-        end do
         else
             ibasis = 0
             do k = -sys%ringium%maxlz, sys%ringium%maxlz, 2

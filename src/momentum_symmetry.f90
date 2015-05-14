@@ -140,7 +140,7 @@ contains
             do i = 1, sys%nsym
                 if (all(sys%basis%basis_fns(i*2)%l == 0)) gamma_sym = i
             end do
-            if (gamma_sym == 0) call stop_all('init_symmetry', 'Gamma-point symmetry not found.')
+            if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
             call init_ueg_indexing(sys)
 

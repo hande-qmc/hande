@@ -703,8 +703,7 @@ contains
         logical :: new_basis, new
         integer :: err
 
-        ! [review] - JSS: don't include ms as a known key.
-        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'ms', 'sym']
+        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'sym']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -717,7 +716,8 @@ contains
 
         ! Parse table for options...
         call set_common_sys_options(lua_state, sys, opts)
-        ! [review] - JSS: overwrite ms with nel.
+        ! Enforce spin polarisation
+        sys%ms = sys%nel
 
         new_basis = aot_exists(lua_state, opts, 'maxlz') .or. &
                     aot_exists(lua_state, opts, 'radius') .or. &
