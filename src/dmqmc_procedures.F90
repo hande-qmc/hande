@@ -521,16 +521,11 @@ contains
                 end if
             case(ueg, hub_k, read_in)
                 if (dmqmc_in%propagate_to_beta) then
-                    ! [review] - JSS: incompatible with all_spin_sectors?
-                    ! [reply] - FDM: Currently yes, checking of input options needs to be done.
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, rng)
                     else
-                        ! [review] - JSS: why the change to random_distribution_electronic from init_uniform_ensemble?
-                        ! [reply] - FDM: I felt it was a bit hacky and will eventually be removed due to grand canonical work.
-                        ! [reply] - FDM: This routine is simpler and metropolis is a short term fix.
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                                         dmqmc_in%all_sym_sectors, spawn)
                     end if
@@ -551,7 +546,6 @@ contains
                         end do
 
                         do ialpha = 0, sys%nel
-                            ! [review] - JSS: s/symmetry/spin/?
                             ! The size of this spin symmetry sector alone.
                             sector_size = binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
                             prob = real(npsips_this_proc,dp)*sector_size/total_size

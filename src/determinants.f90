@@ -20,7 +20,6 @@ type det_info_t
     integer(i0), pointer :: f2(:)  => NULL()  ! (string_len); for DMQMC
     ! List of occupied spin-orbitals.
     integer, pointer :: occ_list(:)  => NULL()  ! (nel)
-    ! [review] - JSS: add note about dimensions of arrays (and warning not to assume they're the minimum size!)
     ! List of occupied alpha/beta spin-orbitals
     integer, pointer :: occ_list_alpha(:), occ_list_beta(:) !(nel) WARNING: don't assume otherwise.
     ! List of unoccupied alpha/beta spin-orbitals
@@ -151,8 +150,6 @@ contains
         end if
 
         ! Components for occupied basis functions...
-        ! [review] - JSS: I worry that the size of these arrays may be used in place of sys%nel/sys%nvirt_alpha/etc.  Please check this isn't the case!
-        ! [reply] - FDM: I checked and only a few places they're explicitly looped over and there you use sys%nvirt_alpha.
         allocate(det_info%occ_list(sys%nel), stat=ierr)
         call check_allocate('det_info%occ_list',sys%nel,ierr)
         allocate(det_info%occ_list_alpha(sys%nel), stat=ierr)
