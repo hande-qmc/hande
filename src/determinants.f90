@@ -553,23 +553,18 @@ contains
         !    sys: sys_t object. On output spin polarisation (nalpha, nvirt ..)
         !       will be correctly set.
 
-        use bit_utils, only: count_set_bits
+        use bit_utils, only: count_set_bits, count_even_set_bits
         use system, only: sys_t, heisenberg
 
         type(det_info_t), intent(in) :: cdet
         type(sys_t), intent(inout) :: sys
-
-        integer :: ms
 
         select case (sys%system)
         case (heisenberg)
             sys%nel = sum(count_set_bits(cdet%f))
             sys%nvirt = sys%lattice%nsites - sys%nel
         case default
-            ! [review] - JSS: mask alpha orbitals (use a magic constant) and popcount to work out nalpha?
-            ! [review] - JSS: probably faster than spin_orb_list (though check!)
-            ms = spin_orb_list(sys%basis%basis_fns, cdet%occ_list)
-            sys%nalpha = (ms + sys%nel) / 2
+            sys%nalpha = sum(count_even_set_bits(cdet%f))
             sys%nbeta = sys%nel - sys%nalpha
             sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
             sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
