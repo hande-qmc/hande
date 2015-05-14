@@ -851,6 +851,7 @@ contains
             if (dmqmc_in%propagate_to_beta) then
                 ! [review] - JSS: given the metropolis is (hopefully) fast and not performance critical to a large extent, I would be in
                 ! [review] - JSS: favour of using an if...else..endif in the metropolis code rather than using procedure pointers.
+                ! [reply] - FDM: ok. what's wrong with procedure pointers?
                 if (dmqmc_in%all_spin_sectors) then
                     dmqmc_metropolis_move_ptr => dmqmc_spin_flip_metropolis_move
                 else

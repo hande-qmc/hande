@@ -522,12 +522,15 @@ contains
             case(ueg, hub_k, read_in)
                 if (dmqmc_in%propagate_to_beta) then
                     ! [review] - JSS: incompatible with all_spin_sectors?
+                    ! [reply] - FDM: Currently yes, checking of input options needs to be done.
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, rng)
                     else
                         ! [review] - JSS: why the change to random_distribution_electronic from init_uniform_ensemble?
+                        ! [reply] - FDM: I felt it was a bit hacky and will eventually be removed due to grand canonical work.
+                        ! [reply] - FDM: This routine is simpler and metropolis is a short term fix.
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                                         dmqmc_in%all_sym_sectors, spawn)
                     end if
@@ -549,7 +552,7 @@ contains
 
                         do ialpha = 0, sys%nel
                             ! [review] - JSS: s/symmetry/spin/?
-                            ! The size of this symmetry sector alone.
+                            ! The size of this spin symmetry sector alone.
                             sector_size = binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
                             prob = real(npsips_this_proc,dp)*sector_size/total_size
                             npsips = floor(prob, int_64)
@@ -808,6 +811,7 @@ contains
         ! probabilities of a particular move (e.g. move two alpha spins),
         ! so do this here.
         ! [review] - JSS: probabilities no longer set?
+        ! [reply] - FDM: Yep.
 
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, dmqmc_in%metropolis_attempts
@@ -832,6 +836,7 @@ contains
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
                         ! [review] - JSS: danger in comparing a float!
+                        ! [reply] - FDM: whoops.
                         if (hmatel == 0) cycle
                         nsuccess = nsuccess + 1
                         call create_excited_det(sys%basis, cdet%f, connection, f_new)
@@ -892,6 +897,7 @@ contains
         ! [review] - JSS: potentially slow if basis set is large.
         ! [review] - JSS: pick iexcit from unocc_list_alpha if iexcit <= sys%nvirt_alpha and
         ! [review] - JSS: pick iexcit-sys%nvirt_alpha from unocc_list_beta otherwise?
+        ! [reply] - FDM: good point.
         unocc_list = (/ cdet%unocc_list_alpha(:sys%nvirt_alpha), cdet%unocc_list_beta(:sys%nvirt_beta) /)
         ! Select unoccupied orbital at random.
         iexcit = int(get_rand_close_open(rng)*sys%nvirt) + 1
