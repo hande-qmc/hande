@@ -822,9 +822,7 @@ contains
                         call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
-                        ! [review] - JSS: danger in comparing a float!
-                        ! [reply] - FDM: whoops.
-                        if (hmatel == 0) cycle
+                        if (abs(hmatel) < depsilon) cycle
                         nsuccess = nsuccess + 1
                         call create_excited_det(sys%basis, cdet%f, connection, f_new)
                     end if
