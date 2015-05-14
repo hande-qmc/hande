@@ -875,20 +875,18 @@ contains
         type(dSFMT_t), intent(inout) :: rng
 
         real(dp) :: species, pflip
-        integer :: iorb, iexcit, new_orb, unocc_list(sys%nvirt)
+        integer :: iorb, iexcit, new_orb
 
         ! Pick orbital at random.
         iorb = int(get_rand_close_open(rng)*sys%nel) + 1
-        ! Create unoccupied list.
-        ! [review] - JSS: potentially slow if basis set is large.
-        ! [review] - JSS: pick iexcit from unocc_list_alpha if iexcit <= sys%nvirt_alpha and
-        ! [review] - JSS: pick iexcit-sys%nvirt_alpha from unocc_list_beta otherwise?
-        ! [reply] - FDM: good point.
-        unocc_list = (/ cdet%unocc_list_alpha(:sys%nvirt_alpha), cdet%unocc_list_beta(:sys%nvirt_beta) /)
         ! Select unoccupied orbital at random.
         iexcit = int(get_rand_close_open(rng)*sys%nvirt) + 1
+        if (iexcit <= sys%nvirt_alpha) then
+            new_orb = cdet%unocc_list_alpha(iexcit)
+        else
+            new_orb = cdet%unocc_list_beta(iexcit-sys%nvirt_alpha)
+        end if
         ! Switch the orbitals.
-        new_orb = unocc_list(iexcit)
         cdet%occ_list(iorb) = new_orb
 
     end subroutine dmqmc_spin_flip_metropolis_move
