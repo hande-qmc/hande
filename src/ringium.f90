@@ -63,12 +63,45 @@ contains
             intgrl = 0.0_p
         else
             ! value of basis_fns%l is 2*lz
-            ! [review] - JSS: is it worth having a fast integral function which disposes of symmetry checks?
             x1 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(j)%l(1) + 1.0_p) * 0.5_p
             x2 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(i)%l(1) + 1.0_p) * 0.5_p
             intgrl = (digamma(x1) - digamma(x2)) / (pi * sys%ringium%radius)
         end if
 
     end function get_two_e_int_ringium
+
+    pure function get_two_e_int_ringium_nonzero(sys, i, j, a, b) result(intgrl)
+
+        ! In:
+        !    sys: system being studied.
+        !    i: index of basis function.
+        !    j: index of basis function.
+        !    a: index of basis function.
+        !    b: index of basis function.
+
+        ! Returns:
+        !   The anti-symmetrized integral <ij||ab>
+
+        ! NOTE:
+        !   This assumes <ij||ab> is known to be non-zero by symmetry, otherwise an
+        !   incorrect value will be returned.  If it might be zero, get_two_e_int_ringium
+        !   must be used instead.
+
+        use system, only: sys_t
+
+        real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j, a, b
+        real(p) :: x1, x2
+
+        ! According to J Chem Phys 138, 164124 (2103)
+        ! <ij||ab> = delta_(i+j,a+b) 1/(pi*R) (digamma(a-j+0.5)-digamma(a-i+0.5))
+
+        ! value of basis_fns%l is 2*lz
+        x1 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(j)%l(1) + 1.0) * 0.5
+        x2 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(i)%l(1) + 1.0) * 0.5
+        intgrl = (digamma(x1) - digamma(x2)) / (pi * sys%ringium%radius)
+
+    end function get_two_e_int_ringium_nonzero
 
 end module ringium_system

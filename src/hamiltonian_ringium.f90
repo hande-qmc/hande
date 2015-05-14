@@ -126,4 +126,38 @@ contains
 
     end function slater_condon2_ringium
 
+    pure function slater_condon2_ringium_excit(sys, i, j, a, b, perm) result(hmatel)
+
+        ! In:
+        !    sys: system to be studied.
+        !    i,j:  index of the spin-orbital from which an electron is excited in
+        !          the reference determinant.
+        !    a,b:  index of the spin-orbital into which an electron is excited in
+        !          the excited determinant.
+        !    perm: true if D and D_i^a are connected by an odd number of
+        !          permutations.
+        ! Returns:
+        !    < D | H | D_ij^ab >, the Hamiltonian matrix element between a
+        !    determinant and a double excitation of it in the UEG.
+
+        ! WARNING: This function assumes that the D_{ij}^{ab} is a symmetry allowed
+        ! excitation from D (and so the matrix element is *not* zero by
+        ! symmetry).  This is less safe that slater_condon2_ringium but much faster
+        ! as it allows symmetry checking to be skipped in the integral
+        ! calculation.
+
+        use ringium_system, only: get_two_e_int_ringium_nonzero
+        use system, only: sys_t
+
+        real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j, a, b
+        logical, intent(in) :: perm
+
+        hmatel = get_two_e_int_ringium_nonzero(sys, i, j, a, b)
+
+        if (perm) hmatel = -hmatel
+
+    end function slater_condon2_ringium_excit
+
     end module hamiltonian_ringium

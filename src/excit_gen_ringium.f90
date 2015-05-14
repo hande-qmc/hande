@@ -33,7 +33,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation2
         use system, only: sys_t
-        use hamiltonian_ringium, only: slater_condon2_ringium
+        use hamiltonian_ringium, only: slater_condon2_ringium_excit
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t
         use excit_gen_ueg, only: choose_ij_k
@@ -64,8 +64,7 @@ contains
             call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. find the connecting matrix element.
-            ! [review] - JSS: this is slower than necessary, as it does symmetry checks despite you carefully constructing a symmetry-allowed excitation.
-            hmatel = slater_condon2_ringium(sys, connection%from_orb(1), connection%from_orb(2), &
+            hmatel = slater_condon2_ringium_excit(sys, connection%from_orb(1), connection%from_orb(2), &
                         connection%to_orb(1), connection%to_orb(2), connection%perm)
         else
             pgen = 1.0_p
@@ -76,7 +75,18 @@ contains
 
     subroutine choose_ab_ringium(rng, sys, f, ij_lz, a, b, allowed)
 
-        ! [review] - JSS: interface documentation
+        ! Choose a random pair of orbitals (a,b) into which electrons are excited.
+        ! (a,b) are chosen such that the excitation (i,j)->(a,b) conserves angular momentum.
+
+        ! In:
+        !   sys: system being studied.
+        !   f: bit string representation of Slater determinant.
+        !   ij_lz: sum of the angular momenta of the i and j orbitals.
+        ! In/Out:
+        !   rng: random number generator.
+        ! Out:
+        !   a, b: Indices of the virtual orbitals selected for the excitation.
+        !   allowed: if true, then the excitation is allowed.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
@@ -106,8 +116,8 @@ contains
         if (abs(lz_b) > sys%ringium%maxlz) then
             allowed = .false.
         else
-            ! The basis function lz = k is 2k+1 for k>=0 or 2k-1 for k<0
-            ! [review] - JSS: which assumes all electrons are spin-up?
+            ! As all electrons are spin up, the basis function index for given lz > 0
+            ! is 2lz+1 or 2lz-1 for -lz
             b = 2*abs(lz_b)
             if (lz_b >= 0) then
                 b = b + 1
