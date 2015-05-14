@@ -1074,8 +1074,6 @@ contains
         !     free_electron_partition = true/false,
         !     grand_canonical_initialisation = true/false,
         !     metropolis_attempts = nattempts,
-        ! [review] - JSS: no longer used.
-        !     max_metropolis_moves = nexcit,
         ! }
         ! operators = {
         !     renyi2 = true/false,
@@ -1130,9 +1128,8 @@ contains
         character(30), parameter :: dmqmc_keys(9) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',     &
                                                                       'find_weights', 'symmetrize', 'vary_weights']
-        character(30), parameter :: ip_keys(5)    = [character(30) :: 'initial_beta', 'free_electron_partition',                &
-                                                                      'grand_canonical_initialisation', 'metropolis_attempts',  &
-                                                                      'max_metropolis_moves']
+        character(30), parameter :: ip_keys(4)    = [character(30) :: 'initial_beta', 'free_electron_partition',                &
+                                                                      'grand_canonical_initialisation', 'metropolis_attempts']
         character(30), parameter :: op_keys(7)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation', &
                                                                       'correlation', 'excit_dist', 'excit_dist_start']
         character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',             &
@@ -1170,7 +1167,6 @@ contains
             call aot_get_val(dmqmc_in%free_electron_trial, err, lua_state, table, 'free_electron_partition')
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
-            call aot_get_val(dmqmc_in%max_metropolis_move, err, lua_state, table, 'max_metropolis_moves')
             call warn_unused_args(lua_state, ip_keys, table)
             call aot_table_close(lua_state, table)
         end if

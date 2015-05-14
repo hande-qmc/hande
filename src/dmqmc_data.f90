@@ -182,13 +182,6 @@ type dmqmc_in_t
     ! Number of metropolis attempts (per psip) we use when generating
     ! the trial density matrix.
     integer :: metropolis_attempts = 0
-    ! [review] - JSS: no longer used.
-    ! For the metropolis move we generate an excitation of the current determinant
-    ! up to the max_metropolis_move'th excitation level (excluding zero-fold
-    ! excitations). Only applicable if all_mom_sym = .true., otherwise the
-    ! excitation generators are used which conserve momentum symmetry.
-    ! Default: Single and double excitations (if applicable).
-    integer :: max_metropolis_move = 2
 
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
