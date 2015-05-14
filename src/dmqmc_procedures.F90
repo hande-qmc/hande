@@ -766,7 +766,7 @@ contains
         use fciqmc_data, only: real_factor
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
-        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr, dmqmc_metropolis_move_ptr
+        use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
         use qmc_data, only: qmc_in_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
@@ -810,11 +810,15 @@ contains
                     cdet%data => tmp_data
                     if (dmqmc_in%all_sym_sectors) then
                         call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
-                        ! Update spin polarisation properties - these will
-                        ! most likely have changed from the previous
-                        ! determinant.
-                        if (dmqmc_in%all_spin_sectors) call update_sys_spin_info(cdet, sys)
-                        call dmqmc_metropolis_move_ptr(sys, cdet, rng)
+                        if (dmqmc_in%all_spin_sectors) then
+                            ! Update spin polarisation properties - these will
+                            ! most likely have changed from the previous
+                            ! determinant.
+                            call update_sys_spin_info(cdet, sys)
+                            call dmqmc_spin_flip_metropolis_move(sys, cdet, rng)
+                        else
+                            call dmqmc_spin_cons_metropolis_move(sys, cdet, rng)
+                        end if
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, cdet%occ_list, f_new)
                     else

@@ -848,16 +848,6 @@ contains
                     update_dmqmc_energy_and_trace_ptr => dmqmc_energy_and_trace
                 end if
             end if
-            if (dmqmc_in%propagate_to_beta) then
-                ! [review] - JSS: given the metropolis is (hopefully) fast and not performance critical to a large extent, I would be in
-                ! [review] - JSS: favour of using an if...else..endif in the metropolis code rather than using procedure pointers.
-                ! [reply] - FDM: ok. what's wrong with procedure pointers?
-                if (dmqmc_in%all_spin_sectors) then
-                    dmqmc_metropolis_move_ptr => dmqmc_spin_flip_metropolis_move
-                else
-                    dmqmc_metropolis_move_ptr => dmqmc_spin_cons_metropolis_move
-                end if
-            end if
             select case(sys%system)
             case(heisenberg)
                 if (doing_dmqmc_calc(dmqmc_energy_squared)) &
