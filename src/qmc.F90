@@ -129,7 +129,7 @@ contains
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det, copy_reference_t
         use particle_t_utils
-        use proc_pointers, only: sc0_ptr, op0_ptr, ex0_ptr
+        use proc_pointers, only: sc0_ptr, op0_ptr, energy_diff_ptr
         use spawn_data, only: alloc_spawn_t
         use spawning, only: assign_particle_processor
         use system
@@ -354,7 +354,7 @@ contains
                 ! [reply] - FDM: You're right, I actually ran into this when extending it to molecular systems.
                 select case (sys%system)
                 case (ueg)
-                    reference%hfx0 = ex0_ptr(sys, reference%occ_list0)
+                    reference%energy_shift = energy_diff_ptr(sys, reference%occ_list0)
                 case default
                     ! [todo] - Implement for all models.
                 end select
@@ -776,7 +776,7 @@ contains
 
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
-            ex0_ptr => exchange_energy_ueg
+            energy_diff_ptr => exchange_energy_ueg
 
             if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm

@@ -527,7 +527,7 @@ contains
 
     end subroutine dmqmc_spin_cons_metropolis_move
 
-    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, spawn, hfx0, rng)
+    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, spawn, energy_shift, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -536,7 +536,7 @@ contains
         !    sys: system being studied.
         !    dmqmc_in: input options for dmqmc.
         !    npsips: number of psips to create on the diagonal.
-        !    hfx0: exchange energy of reference determinant.
+        !    energy_shift: <D_0|H_new|D_0> - <D_0|H_old|D_0>.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
@@ -554,7 +554,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
-        real(p), intent(in) :: hfx0
+        real(p), intent(in) :: energy_shift
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
@@ -598,7 +598,7 @@ contains
             ! Create the determinant.
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                 if (.not. dmqmc_in%free_electron_trial) weight_factor = &
-                                                        & calculate_reweighting_factor(sys, occ_list, dmqmc_in%init_beta, hfx0)
+                                                        & calculate_reweighting_factor(sys, occ_list, dmqmc_in%init_beta, energy_shift, rng)
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
                                             sys%basis%tensor_label_len, int(weight_factor*real_factor,int_p), ireplica, spawn)
@@ -608,7 +608,7 @@ contains
 
         contains
 
-            function calculate_reweighting_factor(sys, occ_list, beta, hfx0, rng) result(weight)
+            function calculate_reweighting_factor(sys, occ_list, beta, energy_shift, rng) result(weight)
 
                 ! Reweight initial density matrix population so that the desired
                 ! diagonal density matrix is sampled.
@@ -618,31 +618,32 @@ contains
                 !    occ_list: array containing list of occupied orbitals of
                 !        generated determinant.
                 !    beta: inverse temperature being considered.
-                !    hfx0: exchange energy of reference determinant.
+                !    energy_shift: <D_0|H_new|D_0> - <D_0|H_old|D_0>.
                 ! In/Out:
                 !    rng: random number generator.
 
                 use system, only: sys_t
-                use hamiltonian_ueg, only: exchange_energy_ueg
+                use proc_pointers, only: energy_diff_ptr
                 use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
                 type(sys_t), intent(in) :: sys
                 integer, intent(in) :: occ_list(:)
                 real(p), intent(in) :: beta
-                real(p), intent(in) :: hfx0
+                real(p), intent(in) :: energy_shift
                 type(dSFMT_t), intent(inout) :: rng
 
-                real(p) :: hfx, weight, r
+                real(p) :: energy_diff, weight, r
 
                 ! Any diagonal density matrix can be sampled from the
-                ! free-electron expression by reweighting, i.e.
-                ! p({i})_new = p({i})_old * e^{-beta(E_new({i})}/e^{-beta(E_old({i})}.
+                ! non-interacting expression by reweighting, i.e.
+                ! p(|D_i>)_new = p(|D_i>)_old * e^{-beta*E_new(|D_i>)}/e^{-beta*E_old(|D_i>)}.
                 ! For the case of sampling the "Hartree-Fock" density matrix
-                ! this amounts to weighting the populations with the exchange energy of the
-                ! given determinant. We add an (arbitrary) constant shift of the
-                ! exchange energy of the reference which ensures that p({i_0})_new = 1.
-                hfx = exchange_energy_ueg(sys, occ_list)
-                weight = exp(-beta*(hfx-hfx0))
+                ! this amounts to weighting the populations with the (exponential of the) difference
+                ! <D_i|H|D_i>-<D_i|H^0|D_i>, where H^0 is the non-interacting Hamiltonian we use
+                ! when doing grand canonical sampling.
+                ! We add an (arbitrary) constant energy shift defined above which ensures that p(D_i)_new = 1.
+                energy_diff = energy_diff_ptr(sys, occ_list)
+                weight = exp(-beta*(energy_diff-energy_shift))
                 r = get_rand_close_open(rng)
                 ! Integerise weight.
                 if (weight > r) then

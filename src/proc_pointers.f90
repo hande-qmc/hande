@@ -111,14 +111,14 @@ abstract interface
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
     end function i_sc0
-    pure function i_ex0(sys, occ_list) result(hmatel)
+    pure function i_ediff(sys, occ_list) result(hmatel)
         use system, only: sys_t
         import :: p
         implicit none
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
-    end function i_ex0
+    end function i_ediff
     subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
@@ -183,7 +183,7 @@ procedure(i_sc0), pointer :: trial_dm_ptr => null()
 ! [reply] - FDM: This would then be in a loop when initialising the density matrix which would surely be a bad thing right?
 ! [reply] - FDM: The name might be poorly chosen, since, for instance, this would be the double counting correction for molecular systems.
 ! [reply] - FDM: Looking further on I realise that I didn't use this in the weight calculation routine for whatever reason.
-procedure(i_ex0), pointer :: ex0_ptr => null()
+procedure(i_ediff), pointer :: energy_diff_ptr => null()
 
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 
