@@ -350,10 +350,14 @@ contains
                 ! Energy of reference determinant.
                 reference%H00 = sc0_ptr(sys, reference%f0)
                 ! Exchange energy of reference determinant.
-                ! [todo] - Implement for all models.
                 ! [review] - JSS: ex0_ptr only defined for UEG.  This will segfault otherwise...
                 ! [reply] - FDM: You're right, I actually ran into this when extending it to molecular systems.
-                reference%hfx0 = ex0_ptr(sys, reference%occ_list0)
+                select case (sys%system)
+                case (ueg)
+                    reference%hfx0 = ex0_ptr(sys, reference%occ_list0)
+                case default
+                    ! [todo] - Implement for all models.
+                end select
                 if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 
                 ! In general FCIQMC, we start with psips only on the
