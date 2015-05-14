@@ -8,9 +8,10 @@ contains
     subroutine init_dmqmc(sys, qmc_in, dmqmc_in, nreplicas, qs, dmqmc_estimates, weighted_sampling)
 
         ! In:
-        !    sys: system being studied.
         !    nreplicas: number of replicas being used.
         ! In/Out:
+        !    sys: system being studied. This should be left in an unmodified
+        !       state on output.
         !    qmc_in: Input options relating to QMC methods.
         !    dmqmc_in: Input options relating to DMQMC.
         !    qs: estimators not specific to DMQMC.
@@ -439,13 +440,14 @@ contains
         ! the space being considered.
 
         ! In/Out:
+        !    sys: system being studied. Should be left in an unmodified state on
+        !       output
         !    rng: random number generator.
         !    psip_list: particle_t object conaining sample of initial density
         !       matrix on output.
         !    spawn: spawn_t object.  Reset on input and output.  Used to
         !       communicate the generated particles.
         ! In:
-        !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
         !    reference: current reference determinant.
@@ -458,7 +460,7 @@ contains
         use errors
         use fciqmc_data, only: real_factor
         use parallel
-        use system, only: sys_t, heisenberg, ueg, hub_k, hub_real, read_in
+        use system, only: sys_t, heisenberg, ueg, hub_k, hub_real, read_in, copy_sys_spin_info
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
         use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
@@ -466,7 +468,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t
 
         type(dSFMT_t), intent(inout) :: rng
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(reference_t), intent(in) :: reference
@@ -536,8 +538,7 @@ contains
                 else
                     if (dmqmc_in%all_spin_sectors) then
                         ! Need to set spin variables appropriately.
-                        ! [review] - JSS: see notes in dmqmc about copy_sys_spin_info.
-                        sys_copy = sys
+                        call copy_sys_spin_info(sys, sys_copy)
                         ! The size (number of configurations) of all spin symmetry
                         ! sectors combined.
                         do ialpha = 0, sys%nel
@@ -559,13 +560,14 @@ contains
 
                             nparticles_temp(ireplica) = nparticles_temp(ireplica) + real(npsips, p)
                             ms = 2*ialpha - sys%nel
-                            sys_copy%nalpha = (ms + sys_copy%nel) / 2
-                            sys_copy%nbeta = sys%nel - sys_copy%nalpha
-                            sys_copy%nvirt_alpha = sys_copy%basis%nbasis/2 - sys_copy%nalpha
-                            sys_copy%nvirt_beta = sys_copy%basis%nbasis/2 - sys_copy%nbeta
-                            call random_distribution_electronic(rng, sys_copy, npsips, ireplica, &
+                            sys%nalpha = (ms + sys%nel) / 2
+                            sys%nbeta = sys%nel - sys%nalpha
+                            sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
+                            sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
+                            call random_distribution_electronic(rng, sys, npsips, ireplica, &
                                                                 dmqmc_in%all_sym_sectors, spawn)
                         end do
+                        call copy_sys_spin_info(sys_copy, sys)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                             dmqmc_in%all_sym_sectors, spawn)
@@ -746,18 +748,18 @@ contains
         !     matrix is indeed being sampled correctly.
 
         ! In:
-        !    sys: system being studied.
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
         !    npsips: number of psips to distribute in this sector.
         !    ireplica: replica index.
         ! In/Out:
+        !    sys: system being studied. Should be left unmodified on output.
         !    rng: random number generator.
         !    spawn: spawn_t object containing the initial distribution of
         !        psips on the diagonal.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use system, only: sys_t
+        use system, only: sys_t, copy_sys_spin_info
         use determinants, only: alloc_det_info_t, det_info_t, dealloc_det_info_t, decode_det_spinocc_spinunocc, &
                                 encode_det, decode_det, update_sys_spin_info
         use excitations, only: excit_t, create_excited_det
@@ -770,7 +772,7 @@ contains
         use spawn_data, only: spawn_t
         use dmqmc_data, only: dmqmc_in_t
 
-        type(sys_t), intent(in) :: sys
+        type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
@@ -789,39 +791,30 @@ contains
         type(excit_t) :: connection
         type(sys_t) :: sys_copy
 
-        ! [review] - JSS: eek!
-        sys_copy = sys
-
         naccept = 0 ! Number of metropolis moves which are accepted.
         nsuccess = 0 ! Number of successful proposal steps i.e. excluding null excitations.
         idet = 0
 
         call alloc_det_info_t(sys, cdet)
-
-        ! The metropolis move is to excite [1:max_metropolis_move] electrons. This is achieved
-        ! either by using the excitation generators when working in a
-        ! symmetry contrained system or by uniformly exciting the electrons
-        ! among the available levels. In the latter case we need to set the
-        ! probabilities of a particular move (e.g. move two alpha spins),
-        ! so do this here.
-        ! [review] - JSS: probabilities no longer set?
-        ! [reply] - FDM: Yep.
+        ! When averaging over spin the number of virtual orbitals changes so
+        ! need to modify them.
+        call copy_sys_spin_info(sys, sys_copy)
 
         ! Visit every psip metropolis_attempts times.
         do iattempt = 1, dmqmc_in%metropolis_attempts
             do proc = 0, nprocs-1
                 do idet = spawn%head_start(nthreads-1,proc)+1, spawn%head(thread_id,proc)
                     cdet%f = spawn%sdata(:sys%basis%string_len,idet)
-                    E_old = trial_dm_ptr(sys_copy, cdet%f)
+                    E_old = trial_dm_ptr(sys, cdet%f)
                     tmp_data(1) = E_old
                     cdet%data => tmp_data
                     if (dmqmc_in%all_sym_sectors) then
-                        call decode_det_spinocc_spinunocc(sys_copy, cdet%f, cdet)
+                        call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
                         ! Update spin polarisation properties - these will
                         ! most likely have changed from the previous
                         ! determinant.
-                        if (dmqmc_in%all_spin_sectors) call update_sys_spin_info(cdet, sys_copy)
-                        call dmqmc_metropolis_move_ptr(sys_copy, cdet, rng)
+                        if (dmqmc_in%all_spin_sectors) call update_sys_spin_info(cdet, sys)
+                        call dmqmc_metropolis_move_ptr(sys, cdet, rng)
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, cdet%occ_list, f_new)
                     else
@@ -836,7 +829,7 @@ contains
                         call create_excited_det(sys%basis, cdet%f, connection, f_new)
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
-                    E_new = trial_dm_ptr(sys_copy, f_new)
+                    E_new = trial_dm_ptr(sys, f_new)
                     prob = exp(-1.0_p*dmqmc_in%init_beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
@@ -856,6 +849,7 @@ contains
                                                    &(dmqmc_in%metropolis_attempts*npsips)
 
         call dealloc_det_info_t(cdet)
+        call copy_sys_spin_info(sys_copy, sys)
 
     end subroutine initialise_dm_metropolis
 
