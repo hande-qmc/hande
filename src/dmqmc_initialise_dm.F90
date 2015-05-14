@@ -112,7 +112,7 @@ contains
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, reference%hfx0, rng)
+                        call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, reference%energy_shift, rng)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                                         dmqmc_in%all_sym_sectors, spawn)
@@ -563,12 +563,12 @@ contains
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%string_len)
         integer :: ireplica, iorb, ipsip
-        real(p) :: weight_factor
+        integer(int_p) :: weight_factor
         logical :: gen
 
         ireplica = 1
 
-        weight_factor = 1.0_p
+        weight_factor = 1.0
 
         ! Calculate orbital occupancies.
         ! * Warning *: We assume that we are dealing with a system without
@@ -601,14 +601,14 @@ contains
                                                         & calculate_reweighting_factor(sys, occ_list, dmqmc_in%init_beta, energy_shift, rng)
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                            sys%basis%tensor_label_len, int(weight_factor*real_factor,int_p), ireplica, spawn)
+                                            sys%basis%tensor_label_len, weight_factor*real_factor, ireplica, spawn)
                 ipsip = ipsip + 1
             end if
         end do
 
         contains
 
-            function calculate_reweighting_factor(sys, occ_list, beta, energy_shift, rng) result(weight)
+            function calculate_reweighting_factor(sys, occ_list, beta, energy_shift, rng) result(int_weight)
 
                 ! Reweight initial density matrix population so that the desired
                 ! diagonal density matrix is sampled.
@@ -621,6 +621,9 @@ contains
                 !    energy_shift: <D_0|H_new|D_0> - <D_0|H_old|D_0>.
                 ! In/Out:
                 !    rng: random number generator.
+                ! Returns:
+                !    int_weight: integer representation of reweighting
+                !        factor.
 
                 use system, only: sys_t
                 use proc_pointers, only: energy_diff_ptr
@@ -633,7 +636,9 @@ contains
                 type(dSFMT_t), intent(inout) :: rng
 
                 real(p) :: energy_diff, weight, r
+                integer(int_p) :: int_weight
 
+                int_weight = 0
                 ! Any diagonal density matrix can be sampled from the
                 ! non-interacting expression by reweighting, i.e.
                 ! p(|D_i>)_new = p(|D_i>)_old * e^{-beta*E_new(|D_i>)}/e^{-beta*E_old(|D_i>)}.
@@ -644,12 +649,13 @@ contains
                 ! We add an (arbitrary) constant energy shift defined above which ensures that p(D_i)_new = 1.
                 energy_diff = energy_diff_ptr(sys, occ_list)
                 weight = exp(-beta*(energy_diff-energy_shift))
+                ! Integer part.
+                int_weight = int(weight, int_p)
+                ! Fractional part.
+                weight = weight - int_weight
                 r = get_rand_close_open(rng)
-                ! Integerise weight.
                 if (weight > r) then
-                    weight = 1.0_p
-                else
-                    weight = 0.0_p
+                    int_weight = int_weight + 1
                 end if
 
             end function calculate_reweighting_factor
