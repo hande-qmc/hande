@@ -350,8 +350,6 @@ contains
                 ! Energy of reference determinant.
                 reference%H00 = sc0_ptr(sys, reference%f0)
                 ! Exchange energy of reference determinant.
-                ! [review] - JSS: ex0_ptr only defined for UEG.  This will segfault otherwise...
-                ! [reply] - FDM: You're right, I actually ran into this when extending it to molecular systems.
                 select case (sys%system)
                 case (ueg)
                     reference%energy_shift = energy_diff_ptr(sys, reference%occ_list0)

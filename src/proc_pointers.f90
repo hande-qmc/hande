@@ -178,11 +178,6 @@ procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlat
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
 procedure(i_sc0), pointer :: trial_dm_ptr => null()
-! [review] - JSS: is this really on a performance-critical path to be worth the hassle of making it a procedure pointer?
-! [reply] - FDM: The alternative would be to have branch statements for each model hamiltonian when calculating the weights.
-! [reply] - FDM: This would then be in a loop when initialising the density matrix which would surely be a bad thing right?
-! [reply] - FDM: The name might be poorly chosen, since, for instance, this would be the double counting correction for molecular systems.
-! [reply] - FDM: Looking further on I realise that I didn't use this in the weight calculation routine for whatever reason.
 procedure(i_ediff), pointer :: energy_diff_ptr => null()
 
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
