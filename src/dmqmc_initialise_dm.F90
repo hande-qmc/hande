@@ -646,7 +646,7 @@ contains
                 ! this amounts to weighting the populations with the (exponential of the) difference
                 ! <D_i|H|D_i>-<D_i|H^0|D_i>, where H^0 is the non-interacting Hamiltonian we use
                 ! when doing grand canonical sampling.
-                ! We add an (arbitrary) constant energy shift defined above which ensures that p(D_i)_new = 1.
+                ! We add an (arbitrary) constant energy shift defined above which ensures that p(|D_0>)_new = 1.
                 energy_diff = energy_diff_ptr(sys, occ_list)
                 weight = exp(-beta*(energy_diff-energy_shift))
                 ! Integer part.
