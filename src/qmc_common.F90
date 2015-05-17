@@ -440,7 +440,7 @@ contains
 
     end subroutine load_balancing_report
 
-    subroutine redistribute_particles(states, real_factor, pops, nstates, nparticles, spawn)
+    subroutine redistribute_particles(states, real_factor, pops, nstates, nparticles, spawn, error)
 
         ! [todo] JSS: - update comments to be more general than just for CCMC.
 
@@ -467,6 +467,8 @@ contains
         !    spawn: spawn_t object.  On output particles which need to be sent
         !        to another processor have been added to the correct position in
         !        the spawned store.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
         use calc, only: dmqmc_calc, doing_calc
         use const, only: i0, dp
@@ -480,6 +482,7 @@ contains
         integer, intent(inout) :: nstates
         real(p), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 
         real(p) :: nsent(size(nparticles))
 
@@ -506,7 +509,7 @@ contains
                 ! population no matter what.  This relies upon the
                 ! (undocumented) 'feature' that a flag of 0 indicates the parent
                 ! was an initiator...
-                call add_spawned_particles(states(:,iexcitor), pops(:,iexcitor), pproc, spawn)
+                call add_spawned_particles(states(:,iexcitor), pops(:,iexcitor), pproc, spawn, error)
                 ! Update population on the sending processor.
                 nsent = nsent + abs(real(pops(:,iexcitor),p))
                 ! Zero population here.  Will be pruned on this determinant
@@ -764,7 +767,7 @@ contains
     end subroutine init_mc_cycle
 
     subroutine load_balancing_wrapper(sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, nb_comm, &
-                                      rng, psip_list, spawn, par_info, determ)
+                                      rng, psip_list, spawn, par_info, error, determ)
 
         ! In:
         !    sys: system being studied
@@ -785,6 +788,8 @@ contains
         !    par_info: type containing parallel information of the state of the
         !       system (load balancing and non-blocking).  Holds the 'master' copy
         !       of the updated proc_map on exit.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
         ! In/Out (optional):
         !    determ: The deterministic space being used, as required for
         !        semi-stochastic calculations.
@@ -811,13 +816,13 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         type(parallel_t), intent(inout) :: par_info
+        logical, intent(inout) :: error
         type(semi_stoch_t), optional, intent(inout) :: determ
-
 
         if (par_info%load%needed) then
             call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
             call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%states, real_factor, determ, &
-                                                  psip_list, spawn, annihilation_flags)
+                                                  psip_list, spawn, annihilation_flags, error)
             ! If using non-blocking communications we still need this flag to
             ! be set.
             if (.not. nb_comm) par_info%load%needed = .false.
@@ -1031,7 +1036,7 @@ contains
     end subroutine rescale_tau
 
     subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, reference, states, real_factor, &
-                                                determ, psip_list, spawn, annihilation_flags)
+                                                determ, psip_list, spawn, annihilation_flags, error)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -1061,6 +1066,8 @@ contains
         !       consistency.
         !    spawn: spawn_t object.  Used to assign and send particles to their new
         !       processor.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
@@ -1078,8 +1085,10 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         type(annihilation_flags_t), intent(in) :: annihilation_flags
+        logical, intent(inout) :: error
 
-        call redistribute_particles(psip_list%states, real_factor, psip_list%pops, psip_list%nstates, psip_list%nparticles, spawn)
+        call redistribute_particles(psip_list%states, real_factor, psip_list%pops, psip_list%nstates, psip_list%nparticles, &
+                                     spawn, error)
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.

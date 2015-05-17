@@ -710,7 +710,7 @@ contains
 
     end subroutine assign_particle_processor_dmqmc
 
-    subroutine add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
+    subroutine add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn, error)
 
         ! Add a new particle to a store of spawned particles.
 
@@ -722,15 +722,19 @@ contains
         !    iproc_spawn: processor to which f_new belongs (see assign_particle_processor).
         ! In/Out:
         !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nthreads
+        use parallel, only: nthreads, iproc
         use spawn_data, only: spawn_t
         use omp_lib
+        use utils, only: int_fmt
 
         integer(i0), intent(in) :: f_new(:)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type, iproc_spawn
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
 #else
@@ -738,19 +742,26 @@ contains
         thread_id = omp_get_thread_num()
 #endif
 
-        ! Move to the next position in the spawning array.
-        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+        if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
+            if (.not. error) then
+                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+            end if
+            error = .true.
+        else
+            ! Move to the next position in the spawning array.
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-        ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            ! Zero it as not all fields are set.
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
 
-        ! Set info in spawning array.
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+            ! Set info in spawning array.
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+        end if
 
     end subroutine add_spawned_particle
 
-    subroutine add_flagged_spawned_particle(f_new, nspawn, particle_type, flag, iproc_spawn, spawn)
+    subroutine add_flagged_spawned_particle(f_new, nspawn, particle_type, flag, iproc_spawn, spawn, error)
 
         ! Add a new particle to a store of spawned particles with the flag field
         ! set.
@@ -764,15 +775,19 @@ contains
         !    iproc_spawn: processor to which f_new belongs (see assign_particle_processor).
         ! In/Out:
         !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nthreads
+        use parallel, only: nthreads, iproc
         use spawn_data, only: spawn_t
         use omp_lib
+        use utils, only: int_fmt
 
         integer(i0), intent(in) :: f_new(:)
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type, flag, iproc_spawn
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
 #else
@@ -780,39 +795,50 @@ contains
         thread_id = omp_get_thread_num()
 #endif
 
-        ! Move to the next position in the spawning array.
-        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+        if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
+            if (.not. error) then
+                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+            end if
+            error = .true.
+        else
+            ! Move to the next position in the spawning array.
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-        ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            ! Zero it as not all fields are set.
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
 
-        ! Set info in spawning array.
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
-        spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(flag, int_s)
+            ! Set info in spawning array.
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(flag, int_s)
+        end if
 
     end subroutine add_flagged_spawned_particle
 
-    subroutine add_spawned_particles(f_new, nspawn, iproc_spawn, spawn)
+    subroutine add_spawned_particles(f_new, nspawn, iproc_spawn, spawn, error)
 
         ! Add a set of particles to a store of spawned particles.
 
         ! In:
-        !    f_new:  determinant on which to spawn.
+        !    f_new: determinant on which to spawn.
         !    nspawn: the (signed) number of particles of each particle type to
         !       create on the spawned determinant.
         !    iproc_spawn: processor to which f_new belongs (see assign_particle_processor).
         ! In/Out:
         !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nthreads
+        use parallel, only: nthreads, iproc
         use spawn_data, only: spawn_t
         use omp_lib
+        use utils, only: int_fmt
 
         integer(i0), intent(in) :: f_new(:)
         integer(int_p), intent(in) :: nspawn(:) ! (spawn%ntypes)
         integer, intent(in) :: iproc_spawn
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 #ifndef _OPENMP
         integer, parameter :: thread_id = 0
 #else
@@ -820,19 +846,26 @@ contains
         thread_id = omp_get_thread_num()
 #endif
 
-        ! Move to the next position in the spawning array.
-        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+        if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
+            if (.not. error) then
+                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+            end if
+            error = .true.
+        else
+            ! Move to the next position in the spawning array.
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-        ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            ! Zero it as not all fields are set.
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
 
-        ! Set info in spawning array.
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
-        spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+            ! Set info in spawning array.
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+        end if
 
     end subroutine add_spawned_particles
 
-    subroutine create_spawned_particle(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle(basis, reference, cdet, connection, nspawn, particle_type, spawn, error, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -851,8 +884,10 @@ contains
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -868,6 +903,7 @@ contains
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
@@ -883,11 +919,11 @@ contains
         call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
                                        iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-        call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
+        call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn, error)
 
     end subroutine create_spawned_particle
 
-    subroutine create_spawned_particle_initiator(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator(basis, reference, cdet, connection, nspawn, particle_type, spawn, error, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -906,8 +942,10 @@ contains
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -923,6 +961,7 @@ contains
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
@@ -938,11 +977,11 @@ contains
         call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
                                        iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-        call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
+        call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn, error)
 
     end subroutine create_spawned_particle_initiator
 
-    subroutine create_spawned_particle_truncated(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_truncated(basis, reference, cdet, connection, nspawn, particle_type, spawn, error, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -961,8 +1000,10 @@ contains
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -978,6 +1019,7 @@ contains
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
@@ -996,14 +1038,14 @@ contains
             call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
                                            iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-            call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
+            call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn, error)
 
         end if
 
     end subroutine create_spawned_particle_truncated
 
     subroutine create_spawned_particle_initiator_truncated(basis, reference, cdet, connection, nspawn, particle_type, &
-                                                           spawn, fexcit)
+                                                           spawn, error, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1022,8 +1064,10 @@ contains
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -1039,6 +1083,7 @@ contains
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
@@ -1057,13 +1102,13 @@ contains
             call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
                                            iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-            call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
+            call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn, error)
 
         end if
 
     end subroutine create_spawned_particle_initiator_truncated
 
-    subroutine create_spawned_particle_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, error, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1082,8 +1127,10 @@ contains
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
@@ -1101,6 +1148,7 @@ contains
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
@@ -1119,13 +1167,14 @@ contains
             call assign_particle_processor(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
                                            iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-            call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
+            call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn, error)
 
         end if
 
     end subroutine create_spawned_particle_ras
 
-    subroutine create_spawned_particle_initiator_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_ras(basis, reference, cdet, connection, nspawn, particle_type, &
+                                                      spawn, error, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1144,8 +1193,10 @@ contains
         !    fexcit (optional): bit string representation of the determinant spawned onto.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
@@ -1163,6 +1214,7 @@ contains
         integer, intent(in) :: particle_type
         integer(i0), intent(in), target, optional :: fexcit(:)
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 
         integer(i0), target :: f_local(basis%string_len)
         integer(i0), pointer :: f_new(:)
@@ -1181,7 +1233,7 @@ contains
             call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                                  nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-            call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
+            call add_flagged_spawned_particle(f_new, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn, error)
 
         end if
 
@@ -1211,7 +1263,8 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
-        !    error: true if we run out of memory in the spawned list.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
@@ -1253,12 +1306,7 @@ contains
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
-            if (.not. error) write (6,'(1X,"# Error: No space left in spawning array.")')
-            error = .true.
-        else
-            call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
-        end if
+        call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn, error)
 
     end subroutine create_spawned_particle_density_matrix
 
@@ -1288,7 +1336,8 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
-        !    error: true if we run out of memory in the spawned list.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
@@ -1336,12 +1385,7 @@ contains
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
-            if (.not. error) write (6,'(1X,"# Error: No space left in spawning array.")')
-            error = .true.
-        else
-            call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
-        end if
+        call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn, error)
 
     end subroutine create_spawned_particle_half_density_matrix
 
@@ -1378,7 +1422,8 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
-        !    error: true if we run out of memory in the spawned list.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
@@ -1429,12 +1474,7 @@ contains
                                                  spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
                                                  spawn%proc_map%nslots)
 
-            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
-                if (.not. error) write (6,'(1X,"# Error: No space left in spawning array.")')
-                error = .true.
-            else
-                call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
-            end if
+            call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn, error)
 
         end if
 
@@ -1468,7 +1508,8 @@ contains
         !    particle_type: the index of particle type to be created.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
-        !    error: true if we run out of memory in the spawned list.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
@@ -1513,12 +1554,7 @@ contains
                                                  spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
                                                  spawn%proc_map%nslots)
 
-            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
-                if (.not. error) write (6,'(1X,"# Error: No space left in spawning array.")')
-                error = .true.
-            else
-                call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
-            end if
+            call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn, error)
 
         end if
 
@@ -1537,7 +1573,8 @@ contains
         ! In/Out:
         !    rdm_spawn: rdm_spawn_t object to which the spanwed particle
         !        will be added.
-        !    error: true if an error has occured before input or by output.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
         use bit_utils, only: operator(.bitstrgt.)
         use dmqmc_data, only: rdm_t, rdm_spawn_t
@@ -1612,7 +1649,8 @@ contains
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
                 if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
-                    if (.not. error) write (6,'(1X,"# Error: No space left in RDM spawning array.")')
+                    if (.not. error) write (6,'(1X,"# Error: No space left in RDM spawning array on processor",'&
+                                                &//int_fmt(iproc,1)//',".")') iproc
                     error = .true.
                 end if
 

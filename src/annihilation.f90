@@ -33,7 +33,7 @@ contains
         !    determ (optional): Derived type containing information on the
         !       semi-stochastic part of the simulation.
         !    error: true on input (output) if an error has occured before input
-        !        (after output).
+        !        (by output).
         ! Out:
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
@@ -121,7 +121,7 @@ contains
         !        from other processors.
         ! In/OutOut (optional):
         !    error: true on input (output) if an error has occured before input
-        !        (after output).
+        !        (by output).
 
         use parallel, only: nthreads, nprocs, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, spawn_t
@@ -183,7 +183,7 @@ contains
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
         !    error: true on input (output) if an error has occured before input
-        !        (after output).
+        !        (by output).
 
         use parallel, only: nthreads, nprocs, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
@@ -255,7 +255,7 @@ contains
         !     lower_bound: starting point we annihiliate from in spawn_t object.
         ! In/Out (optional):
         !    error: true on input (output) if an error has occured before input
-        !        (after output).
+        !        (by output).
 
         use system, only: sys_t
         use spawn_data, only: spawn_t

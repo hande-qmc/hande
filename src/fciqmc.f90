@@ -165,7 +165,7 @@ contains
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
                 call load_balancing_wrapper(sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
                                             fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
-                                            qs%par_info, determ)
+                                            qs%par_info, error, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                 ideterm = 0
 
@@ -211,13 +211,13 @@ contains
                                 ! deterministic space, cancel it.
                                 if (.not. determ_child) then
                                     call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
-                                                                     1, qs%spawn_store%spawn, f_child)
+                                                                     1, qs%spawn_store%spawn, error, f_child)
                                 else
                                     nspawned = 0_int_p
                                 end if
                             else
                                 call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                                 qs%spawn_store%spawn)
+                                                                 qs%spawn_store%spawn, error)
                             end if
                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -234,12 +234,14 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, load_bal_in%nslots)
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
+                                                    load_bal_in%nslots, error)
                         call direct_annihilation_received_list(sys, rng, qmc_in, qs%ref, annihilation_flags, &
                                                                pl, spawn_recv, error=error)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
-                            call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn)
+                            call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, &
+                                                        spawn, error)
                             qs%par_info%load%needed = .false.
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &
@@ -248,7 +250,7 @@ contains
                         call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic projection step.
-                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
+                        if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ, error)
 
                         call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events, &
                                                  determ, error=error)
@@ -322,7 +324,7 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, nload_slots)
+    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, nload_slots, error)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
@@ -338,6 +340,8 @@ contains
         !        / deallocated in do_fciqmc).
         !   rng: random number generator.
         !   ndeath: running total of number of particles which have died or been cloned.
+        !   error: true on input (output) if an error has occured before input
+        !       (by output).
 
         use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
@@ -357,6 +361,7 @@ contains
         type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(inout) :: ndeath
         integer, intent(in) :: nload_slots
+        logical, intent(inout) :: error
 
         real(p), target :: tmp_data(1)
         type(excit_t) :: connection
@@ -403,7 +408,7 @@ contains
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then
-                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send)
+                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send, error)
                 end if
 
             end do

@@ -630,10 +630,10 @@ contains
                            if (nspawned /= 0_int_p) then
                                if (cluster(it)%excitation_level == huge(0)) then
                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, &
-                                                                    1, qs%spawn_store%spawn, fexcit)
+                                                                    1, qs%spawn_store%spawn, error, fexcit)
                                else
                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned, 1, &
-                                                                    qs%spawn_store%spawn)
+                                                                    qs%spawn_store%spawn, error)
                                end if
                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
                            end if
@@ -649,7 +649,7 @@ contains
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
                                     call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, real_factor, ccmc_in%linked, sys, &
-                                                               qs, cdet(it), cluster(it))
+                                                               qs, cdet(it), cluster(it), error)
                                 end if
                             end if
                         end if
@@ -683,7 +683,8 @@ contains
                 ! the current hash shift, so it's just those in the main list
                 ! that we need to deal with.
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
-                    if (nprocs > 1) call redistribute_particles(pl%states, real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
+                    if (nprocs > 1) call redistribute_particles(pl%states, real_factor, pl%pops, pl%nstates, pl%nparticles, &
+                                                                spawn, error)
 
                     call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, pl, spawn, &
                                              nspawn_events, error=error)
@@ -1447,7 +1448,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, real_factor, linked_ccmc, sys, qs, cdet, cluster)
+    subroutine stochastic_ccmc_death(rng, spawn, real_factor, linked_ccmc, sys, qs, cdet, cluster, error)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1477,6 +1478,8 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
+        !    error: true on input (output) if an error has occured before input
+        !        (by output).
 
         use const, only: dp
         use ccmc_data, only: cluster_t
@@ -1496,6 +1499,7 @@ contains
         type(cluster_t), intent(in) :: cluster
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
+        logical, intent(inout) :: error
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill
@@ -1576,7 +1580,7 @@ contains
             ! care of the rest.
             ! Pass through a null excitation so that we create a spawned particle on
             ! the current excitor.
-            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn)
+            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn, error)
         end if
 
     end subroutine stochastic_ccmc_death
