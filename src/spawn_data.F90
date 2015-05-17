@@ -290,7 +290,6 @@ contains
         logical, intent(in), optional :: dont_warn
 
         real :: fill(nprocs), level
-        logical :: dont_warn_local
         integer :: it
 
         if (present(dont_warn)) then

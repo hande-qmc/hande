@@ -1214,7 +1214,6 @@ contains
         !    error: true if we run out of memory in the spawned list.
 
         use basis_types, only: basis_t
-        use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
@@ -1293,7 +1292,6 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
@@ -1384,7 +1382,6 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
@@ -1474,7 +1471,6 @@ contains
         !    error: true if we run out of memory in the spawned list.
 
         use basis_types, only: basis_t
-        use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
