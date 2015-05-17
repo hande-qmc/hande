@@ -1648,7 +1648,7 @@ contains
                 ! Fix hash table to point to the head of the spawn data for this thread/processor.
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-                if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) then
+                if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
                     if (.not. error) write (6,'(1X,"# Error: No space left in RDM spawning array on processor",'&
                                                 &//int_fmt(iproc,1)//',".")') iproc
                     error = .true.
