@@ -36,6 +36,7 @@ contains
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det, update_sys_spin_info
         use dmqmc_estimators
         use dmqmc_procedures
+        use dmqmc_initialisation, only: create_initial_density_matrix
         use excitations, only: excit_t
         use qmc, only: init_qmc
         use qmc_common
