@@ -42,26 +42,4 @@ contains
 
     end subroutine set_parent_flag
 
-    subroutine set_parent_flag_dummy(parent_population, initiator_pop, f, determ_flag, parent_flag)
-
-        ! A deliberately empty routine.
-
-        ! Use the same interface as set_parent_flag, but don't actually do
-        ! anything.  This call *should* then get optimised away during standard
-        ! FCIQMC calculations.
-
-        real(p), intent(in) :: parent_population, initiator_pop
-        integer(i0), intent(in) :: f(:)
-        integer, intent(in) :: determ_flag
-        integer, intent(out) :: parent_flag
-        
-        ! Simple statements (optimised away?) which remove any unused/unset
-        ! variable warnings for compilation with -Werror.
-        parent_flag = f(1)
-        parent_flag = parent_population
-        parent_flag = determ_flag
-        parent_flag = 0
-
-    end subroutine set_parent_flag_dummy
-
 end module ifciqmc

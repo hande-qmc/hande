@@ -51,6 +51,7 @@ contains
         use excitations, only: excit_t, get_excitation
         use fciqmc_data, only: real_factor, neel_singlet_amp
         use hfs_data
+        use ifciqmc, only: set_parent_flag
         use interact, only: calc_interact, check_comms_file
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -174,8 +175,8 @@ contains
                     ! annihilation routine in the appropriate create_spawned_particle_*
                     ! routine, so we must set cdet%initiator_flag
                     ! appropriately...
-                    call set_parent_flag_ptr(real_population(1), qmc_in%initiator_pop, cdet%f, 1, h_initiator_flag)
-                    call set_parent_flag_ptr(real_population(2), qmc_in%initiator_pop, cdet%f, 1, hf_initiator_flag)
+                    call set_parent_flag(real_population(1), qmc_in%initiator_pop, cdet%f, 1, h_initiator_flag)
+                    call set_parent_flag(real_population(2), qmc_in%initiator_pop, cdet%f, 1, hf_initiator_flag)
                     cdet%initiator_flag = h_initiator_flag
 
                     do iparticle = 1, abs(qs%psip_list%pops(1,idet))
