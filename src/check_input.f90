@@ -54,6 +54,46 @@ contains
             if (sys%system == ueg .and. sys%lattice%ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
         end if
 
+        if (sys%momentum_space .or. sys%system == read_in) then
+            if (sys%real_lattice%finite_cluster) call stop_all(this,'FINITE_CLUSTER keyword only valid for&
+                                      & calculations in real-space: ignoring keyword')
+        end if
+
     end subroutine check_sys
+
+    subroutine check_fciqmc_opts(sys, fciqmc_in)
+
+        ! Check the FCIQMC specific options.
+
+        ! In:
+        !   sys: system being studied
+        !   fciqmc_in: FCIQMC input options
+
+        use qmc_data, only: fciqmc_in_t, single_basis, no_guiding, neel_singlet_guiding, neel_singlet
+        use system, only: sys_t, heisenberg
+        use errors, only: stop_all
+
+        type(sys_t), intent(in) :: sys
+        type(fciqmc_in_t), intent(in) :: fciqmc_in
+
+        character(*), parameter :: this = 'check_fciqmc_opts'
+
+        if (sys%system /= heisenberg) then
+            if (fciqmc_in%trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the&
+                                                     & reference state for this system. Other trial functions are not available.')
+            if (fciqmc_in%guiding_function /= no_guiding) call stop_all(this, 'Importance sampling is only avaliable for the&
+                                                                              & Heisenberg model currently.')
+         else
+            if (fciqmc_in%guiding_function == neel_singlet_guiding .and. fciqmc_in%trial_function /= neel_singlet) &
+                call stop_all(this, 'This guiding function is only available when using the Neel singlet state&
+                                    & as an energy estimator.')
+        end if
+
+        if (fciqmc_in%init_spin_inv_D0 .and. sys%Ms /= 0) then
+            call stop_all(this, 'Flipping the reference state will give&
+                                            & a state which has a different value of Ms and so cannot be used here.')
+        end if
+
+    end subroutine check_fciqmc_opts
 
 end module check_input

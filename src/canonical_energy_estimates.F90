@@ -53,6 +53,7 @@ contains
         use hamiltonian_ueg, only: exchange_energy_ueg
         use determinants, only: sum_sp_eigenvalues
         use interact, only: calc_interact, check_comms_file
+        use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
         real(p), intent(in) :: beta
@@ -74,6 +75,9 @@ contains
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
         integer :: ngen
+
+        if (sys%system /= ueg) call stop_all('estimate_kinetic_energy', &
+                'estimate_canonical_kinetic_energy only implemented for the UEG.')
 
         if (present(rng_seed)) then
             seed = rng_seed
