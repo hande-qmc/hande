@@ -468,9 +468,10 @@ contains
         !        to another processor have been added to the correct position in
         !        the spawned store.
 
+        use calc, only: dmqmc_calc, doing_calc
         use const, only: i0, dp
         use spawn_data, only: spawn_t
-        use spawning, only: assign_particle_processor, add_spawned_particles
+        use spawning, only: assign_particle_processor_dmqmc, assign_particle_processor, add_spawned_particles
         use parallel, only: iproc, nprocs
 
         integer(i0), intent(in) :: states(:,:)
@@ -482,18 +483,21 @@ contains
 
         real(p) :: nsent(size(nparticles))
 
-        integer :: iexcitor, pproc, string_len, slot
+        integer :: iexcitor, pproc, slot
 
         nsent = 0.0_dp
-        string_len = size(states, dim=1)
 
         !$omp parallel do default(none) &
-        !$omp shared(nstates, states, pops, spawn, iproc, nprocs, string_len) &
+        !$omp shared(nstates, states, pops, spawn, iproc, nprocs) &
         !$omp private(pproc, slot) reduction(+:nsent)
         do iexcitor = 1, nstates
-            !  - set hash_shift and move_freq
-            call assign_particle_processor(states(:,iexcitor), string_len, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
-                                           nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            if (doing_calc(dmqmc_calc)) then
+                call assign_particle_processor_dmqmc(states(:,iexcitor), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                               spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            else
+                call assign_particle_processor(states(:,iexcitor), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                               spawn%move_freq, nprocs, pproc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+            end if
             if (pproc /= iproc) then
                 ! Need to move.
                 ! Add to spawned array so it will be sent to the correct

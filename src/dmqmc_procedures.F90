@@ -303,9 +303,12 @@ contains
                     end if
 
                     ! Note the initiator approximation is not implemented for density matrix calculations.
-                    call alloc_spawn_t(rdm_info(i)%string_len*2, nreplicas, .false., spawn_length_loc, &
-                                         qmc_in%spawn_cutoff, real_bit_shift, pm_dummy, &
-                                         27, qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
+
+                    ! Also we use spawn_t only as a lookup/storage/compression device for the RDMs so
+                    ! need not worry about hashing identical amounts of data irrespective of DET_SIZE.
+                    call alloc_spawn_t(rdm_info(i)%string_len*2, rdm_info(i)%string_len*2*i0_length, nreplicas, .false., &
+                                       spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, pm_dummy, 27, &
+                                       qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and
                     ! each hash value can have 7 clashes. This was found to give
@@ -871,7 +874,7 @@ contains
                 if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                     call encode_det(sys%basis, occ_list, f)
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                                                sys%basis%tensor_label_len, real_factor, ireplica, spawn)
+                             sys%basis%tensor_label_len, real_factor, ireplica, spawn)
                     exit
                 end if
             end do
@@ -1030,18 +1033,19 @@ contains
         use parallel
         use errors, only: stop_all
         use spawn_data, only: spawn_t
-        use spawning, only: add_spawned_particle
+        use spawning, only: assign_particle_processor_dmqmc, add_spawned_particle
 
         integer, intent(in) :: string_len, tensor_label_len
         integer(i0), intent(in) :: f(string_len)
         integer(int_p), intent(in) :: nspawn
-        integer ::particle_type
-        integer(i0) :: f_new(tensor_label_len)
+        integer, intent(in) ::particle_type
         type(spawn_t), intent(inout) :: spawn
+        integer(i0) :: f_new(tensor_label_len)
+        integer :: nslots2
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
-        integer :: iproc_spawn
+        integer :: iproc_spawn, slot
 #endif
 
         ! Create the bitstring of the determinant.
@@ -1051,8 +1055,8 @@ contains
 
 #ifdef PARALLEL
         ! Need to determine which processor the spawned psip should be sent to.
-        iproc_spawn = modulo(murmurhash_bit_string(f_new, &
-                                tensor_label_len, spawn%hash_seed), nprocs)
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                       nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 
         ! spawn%head_start(nthreads-1,i) stores the last entry before the

@@ -400,7 +400,9 @@ module hash_table
             integer :: i
 
             hit = .false.
-            pos%islot = modulo(murmurhash_bit_string(label, size(label), ht%seed),ht%nslots) + 1
+            ! Not using the hash table to determine the position/order of particles so don't need to worry about the hash function
+            ! returning different values when hashing 32-bit and 64-bit arrays.
+            pos%islot = modulo(murmurhash_bit_string(label, i0_length*size(label), ht%seed),ht%nslots) + 1
 
             ! Need to search over elements in the table with this hash%nslots
             ! value (i.e. search over hash collisions).

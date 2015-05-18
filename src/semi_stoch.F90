@@ -443,8 +443,9 @@ contains
             nclash = 0
                         
             ! Count the number of deterministic states with each hash value.
+            ! Note hash table doesn't affect Markov chain so just hash the whole shebang.
             do i = 1, determ%tot_size
-                hash = modulo(murmurhash_bit_string(determ%dets(:,i), tensor_label_len, ht%seed), ht%nhash) + 1
+                hash = modulo(murmurhash_bit_string(determ%dets(:,i), i0_length*tensor_label_len, ht%seed), ht%nhash) + 1
                 nclash(hash) = nclash(hash) + 1
             end do
 
@@ -458,7 +459,7 @@ contains
             ! Now loop over all states again and this time fill in the hash table.
             nclash = 0
             do i = 1, determ%tot_size
-                hash = modulo(murmurhash_bit_string(determ%dets(:,i), tensor_label_len, ht%seed), ht%nhash) + 1
+                hash = modulo(murmurhash_bit_string(determ%dets(:,i), i0_length*tensor_label_len, ht%seed), ht%nhash) + 1
                 iz = ht%hash_ptr(hash) + nclash(hash)
                 ht%ind(iz) = i
                 nclash(hash) = nclash(hash) + 1
@@ -658,7 +659,8 @@ contains
 
         is_determ = .false.
 
-        hash = modulo(murmurhash_bit_string(f, size(f), ht%seed), ht%nhash) + 1
+        ! hash table doesn't affect Markov chain so hash whole bit string irrespective of i0_length.
+        hash = modulo(murmurhash_bit_string(f, i0_length*size(f), ht%seed), ht%nhash) + 1
         ! Search the region of the hash table corresponding to this hash value.
         do iz = ht%hash_ptr(hash), ht%hash_ptr(hash+1)-1
             if (all(f == dets(:,ht%ind(iz)))) then
@@ -929,7 +931,6 @@ contains
         !    check_proc: If true then first check if f belongs to this
         !        processor. If not then don't add it.
 
-        use hashing, only: murmurhash_bit_string
         use parallel, only: iproc, nprocs
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor
@@ -945,8 +946,8 @@ contains
         ! If check_proc is true then make sure that the determinant does belong
         ! to this processor. If it doesn't, don't add it and return.
         if (check_proc) then
-            call assign_particle_processor(f, size(f), spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, proc, slot, &
-                                           spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor(f, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, nprocs, &
+                                           proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
         else
             proc = iproc
         end if
@@ -1230,12 +1231,13 @@ contains
 
 #ifndef DISABLE_HDF5
         use hdf5
-        use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init
+        use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init, dtype_equal
 #else
         use errors, only: stop_all
 #endif
         use checking, only: check_allocate, check_deallocate
-        use hashing, only: murmurhash_bit_string
+        use errors, only: stop_all
+
         use parallel
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor
@@ -1255,10 +1257,12 @@ contains
         integer :: i, proc, slot, ndeterm, ndeterm_this_proc, ierr
         integer :: displs(0:nprocs-1)
         integer(HSIZE_T) :: dims(2), maxdims(2)
+        integer(hid_t) :: kind_i0
 #endif
 #ifdef DISABLE_HDF5
         call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
 #else
+
         ! Read the deterministic states in on just the parent processor.
         if (parent) then
             call get_unique_filename("SEMI.STOCH", ".H5", .false., 0, filename)
@@ -1268,6 +1272,12 @@ contains
             call h5open_f(ierr)
             call hdf5_kinds_init(kinds)
             call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
+
+            ! [todo] - replace with kinds%i0 once the redistribute_restart series is merged.
+            kind_i0 = kinds%i32
+            if (i0 == int_64) kind_i0 = kinds%i64
+            if (.not.dtype_equal(file_id, 'dets', kind_i0)) &
+                call stop_all('read_determ_from_file', 'Restarting with a different DET_SIZE is not supported.  Please implement.')
 
             ! Find how many determinants are in the file.
             call h5dopen_f(file_id, 'dets', dset_id, ierr)

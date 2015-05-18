@@ -536,15 +536,12 @@ contains
         integer(int_p), intent(in) :: real_factor
         real(p), intent(out) :: slot_pop(0:)
 
-        integer :: i, det_pos, iproc_slot, tensor_label_len
-
-        tensor_label_len = size(psip_list%states, dim=1)
+        integer :: i, det_pos, iproc_slot
 
         slot_pop = 0.0_p
         do i = 1, psip_list%nstates
-            call assign_particle_processor(psip_list%states(:,i), tensor_label_len, spawn%hash_seed,       &
-                                           spawn%hash_shift, spawn%move_freq, nprocs, iproc_slot, det_pos, &
-                                           spawn%proc_map%map, spawn%proc_map%nslots)
+            call assign_particle_processor(psip_list%states(:,i), spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                           spawn%move_freq, nprocs, iproc_slot, det_pos, spawn%proc_map%map, spawn%proc_map%nslots)
             slot_pop(det_pos) = slot_pop(det_pos) + abs(real(psip_list%pops(1,i),p))
         end do
 

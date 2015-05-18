@@ -1,0 +1,111 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on May 11 2015 at 16:21:35
+ Compiled using cmth.mpi.ds32.(optimised)
+ VCS BASE repository version:
+     c231dd7f80cb3aadfb70c7a04e6e90488b57b98b
+ Hostname:
+     pauling
+ Working directory: 
+     /home/jspencer/projects/hande.det_size/test_suite/lanczos/heisenberg_2d_tri_lanczos
+ Started running on 11/05/2015 at 17:02:55
+ Calculation UUID: 8d1388a8-2387-4818-9136-34fdbd34cf62.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = heisenberg {
+    lattice = { {4, 0}, {0, 4} },
+    ms = 2,
+    J = -4,
+    triangular = true,
+}
+
+fci {
+    sys = sys,
+    lanczos = {
+        sparse = false,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Site positions given in terms of the primitive lattice vectors.
+
+ index   site
+     1   ( -1, -1)
+     2   (  0, -1)
+     3   (  1, -1)
+     4   (  2, -1)
+     5   ( -1,  0)
+     6   (  0,  0)
+     7   (  1,  0)
+     8   (  2,  0)
+     9   ( -1,  1)
+    10   (  0,  1)
+    11   (  1,  1)
+    12   (  2,  1)
+    13   ( -1,  2)
+    14   (  0,  2)
+    15   (  1,  2)
+    16   (  2,  2)
+
+ Number of alpha spins: 9
+ Number of basis functions: 16
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1            11440
+
+ Symmetry of selected Hilbert subspace: 1.
+ Spin of selected Hilbert subspace: 2.
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2015/05/11 17:03:17.238 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          5 (computed),          5 (wanted)
+Times the operator is applied:        147 (MAX:             5000 ).
+Problem size:                       11440 (PE:   0),       11440 (Global)
+Convergence tolerance:           1.49E-08 (rel),       7.153E-07 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations       148
+Number of (re)start loops:              5
+Number of eigenpairs locked:            0
+OP(MATVEC):             1.3310E+01 sec, -1.2858E+07 FLOP/S (-1.7114E+08 FLOP)
+Re-Orthogonalization:   7.7200E-02 sec,  2.2719E+09 FLOP/S ( 1.7539E+08 FLOP)
+Restarting:             1.5400E-02 sec,  3.4469E+09 FLOP/S ( 5.3082E+07 FLOP)
+TRLAN on this PE:       1.3424E+01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ Lanczos diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1   -30.690921406679
+      2   -30.355948966893
+      3   -30.350802035334
+      4   -30.070724321002
+      5   -29.841428810565
+
+ ================================================================
+ Finished running on 11/05/2015 at 17:03:17
+ Wall time (seconds):                          22.24
+ CPU time (per processor, seconds):            22.20
+ ================================================================
+

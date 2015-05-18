@@ -5,8 +5,6 @@ module parallel
 ! serial and parallel cases and avoids the rest of the code being littered
 ! with preprocessing statements.
 
-#include "../../src/cdefs.h"
-
 #ifdef PARALLEL
 use mpi
 #endif
@@ -80,10 +78,11 @@ end type parallel_timing_t
 
 ! MPI data type for 32-bit or 64-bit integer used in determinant bit arrays.
 #ifdef PARALLEL
-#if DET_SIZE == 32
-integer, parameter :: mpi_det_integer = MPI_INTEGER
-#elif DET_SIZE == 64
+#if DET_SIZE == 64
 integer, parameter :: mpi_det_integer = MPI_INTEGER8
+#else
+! Use 32-bits by default.  (Note that const.F90 throws a compile-time error if DET_SIZE is not 32 or 64 bits...)
+integer, parameter :: mpi_det_integer = MPI_INTEGER
 #endif
 
 ! MPI data type for 32-bit or 64-bit integers used to store walker populations.

@@ -7,8 +7,6 @@ end module popcnt_intrinsic
 
 module bit_utils
 
-#include "cdefs.h"
-
 ! Module for bit utilities.
 
 ! Mainly mainipulate variables of type integer(i0) on a bit-wise basis
@@ -270,9 +268,9 @@ contains
         ! In:
         !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if all(b1 == b2) or the first element of b1 which is not equal
-        !    to the corresponding element of b2 is greater than the
-        !    corresponding element in b2.
+        !    True if all(b1 == b2) or the most significant element of b1 which
+        !    is not equal to the corresponding element of b2 is bitwise greater
+        !    than the corresponding element in b2.
 
         logical :: ge
         integer(int_32), intent(in) :: b1(:), b2(:)
@@ -280,11 +278,11 @@ contains
         integer :: i
 
         ge = .true.
-        do i = 1, ubound(b1,dim=1)
-            if (b1(i) > b2(i)) then
+        do i = ubound(b1,dim=1), 1, -1
+            if (bgt(b1(i),b2(i))) then
                 ge = .true.
                 exit
-            else if (b1(i) < b2(i)) then
+            else if (blt(b1(i),b2(i))) then
                 ge = .false.
                 exit
             end if
@@ -297,9 +295,9 @@ contains
         ! In:
         !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if all(b1 == b2) or the first element of b1 which is not equal
-        !    to the corresponding element of b2 is greater than the
-        !    corresponding element in b2.
+        !    True if all(b1 == b2) or the most significant element of b1 which
+        !    is not equal to the corresponding element of b2 is bitwise greater
+        !    than the corresponding element in b2.
 
         logical :: ge
         integer(int_64), intent(in) :: b1(:), b2(:)
@@ -307,11 +305,11 @@ contains
         integer :: i
 
         ge = .true.
-        do i = 1, ubound(b1,dim=1)
-            if (b1(i) > b2(i)) then
+        do i = ubound(b1,dim=1), 1, -1
+            if (bgt(b1(i),b2(i))) then
                 ge = .true.
                 exit
-            else if (b1(i) < b2(i)) then
+            else if (blt(b1(i),b2(i))) then
                 ge = .false.
                 exit
             end if
@@ -324,9 +322,9 @@ contains
         ! In:
         !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if the first element of b1 which is not equal to the
-        !    corresponding element of b2 is greater than the corresponding
-        !    element in b2.
+        !    True if the most significant element of b1 which is not equal to
+        !    the corresponding element of b2 is bitwise greater than the
+        !    corresponding element in b2.
 
         logical :: gt
         integer(int_32), intent(in) :: b1(:), b2(:)
@@ -334,11 +332,11 @@ contains
         integer :: i
 
         gt = .false.
-        do i = 1, ubound(b1,dim=1)
-            if (b1(i) > b2(i)) then
+        do i = ubound(b1,dim=1), 1, -1
+            if (bgt(b1(i),b2(i))) then
                 gt = .true.
                 exit
-            else if (b1(i) < b2(i)) then
+            else if (blt(b1(i),b2(i))) then
                 gt = .false.
                 exit
             end if
@@ -351,9 +349,9 @@ contains
         ! In:
         !    b1(:), b2(:) bit string.
         ! Returns:
-        !    True if the first element of b1 which is not equal to the
-        !    corresponding element of b2 is greater than the corresponding
-        !    element in b2.
+        !    True if the most significant element of b1 which is not equal to
+        !    the corresponding element of b2 is bitwise greater than the
+        !    corresponding element in b2.
 
         logical :: gt
         integer(int_64), intent(in) :: b1(:), b2(:)
@@ -361,11 +359,11 @@ contains
         integer :: i
 
         gt = .false.
-        do i = 1, ubound(b1,dim=1)
-            if (b1(i) > b2(i)) then
+        do i = ubound(b1,dim=1), 1, -1
+            if (bgt(b1(i),b2(i))) then
                 gt = .true.
                 exit
-            else if (b1(i) < b2(i)) then
+            else if (blt(b1(i),b2(i))) then
                 gt = .false.
                 exit
             end if
@@ -380,10 +378,10 @@ contains
         !    b1(:), b2(:): bit string.
         ! Returns:
         !    0 if b1 and b2 are identical;
-        !    1 if the first non-identical element in b1 is smaller than the
-        !    corresponding element in b2;
-        !    -1 if the first non-identical element in b1 is greater than the
-        !    corresponding element in b2;
+        !    1 if the most significant non-identical element in b1 is bitwise
+        !      less than the corresponding element in b2;
+        !    -1 if the most significant non-identical element in b1 is bitwise
+        !      greater than the corresponding element in b2;
 
         integer :: cmp
         integer(int_32), intent(in) :: b1(:), b2(:)
@@ -391,11 +389,11 @@ contains
         integer :: i
 
         cmp = 0
-        do i = 1, ubound(b1, dim=1)
-            if (b1(i) < b2(i)) then
+        do i = ubound(b1, dim=1), 1, -1
+            if (blt(b1(i),b2(i))) then
                 cmp = 1
                 exit
-            else if (b1(i) > b2(i)) then
+            else if (bgt(b1(i),b2(i))) then
                 cmp = -1
                 exit
             end if
@@ -409,10 +407,10 @@ contains
         !    b1(:), b2(:): bit string.
         ! Returns:
         !    0 if b1 and b2 are identical;
-        !    1 if the first non-identical element in b1 is smaller than the
-        !    corresponding element in b2;
-        !    -1 if the first non-identical element in b1 is greater than the
-        !    corresponding element in b2;
+        !    1 if the most significant non-identical element in b1 is bitwise
+        !      less than the corresponding element in b2;
+        !    -1 if the most significant non-identical element in b1 is bitwise
+        !      greater than the corresponding element in b2;
 
         integer :: cmp
         integer(int_64), intent(in) :: b1(:), b2(:)
@@ -420,11 +418,11 @@ contains
         integer :: i
 
         cmp = 0
-        do i = 1, ubound(b1, dim=1)
-            if (b1(i) < b2(i)) then
+        do i = ubound(b1, dim=1), 1, -1
+            if (blt(b1(i),b2(i))) then
                 cmp = 1
                 exit
-            else if (b1(i) > b2(i)) then
+            else if (bgt(b1(i),b2(i))) then
                 cmp = -1
                 exit
             end if

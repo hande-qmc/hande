@@ -32,7 +32,7 @@ contains
 
         ! In:
         !    f: bit string.
-        !    N: length of bit string.
+        !    N: length of bits in bit string.  NOTE: we hash in multiples of 32 bits.
         ! Returns:
         !    Hash of f using the MurmurHash2 algorithm.
 
@@ -46,9 +46,10 @@ contains
         type(c_ptr) :: key
         integer(c_int) :: nbytes
 
+        ! Pass MurmurHash2 a multiple of 32-bits.
+        ! Note that DET_SIZE must currently be 32 or 64 bits, so this is safe!
         ! The size parameter used in Murmurhash is in bytes...
-        ! i0_length = 32 or 64...
-        nbytes = N*i0_length/8
+        nbytes = ceiling(real(N)/32)*4
 
         ! Unfortunately it seems c_loc is not required to be pure by the
         ! F2003 standards! :-(
