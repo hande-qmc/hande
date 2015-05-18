@@ -291,21 +291,24 @@ contains
 
         real :: fill(nprocs), level
         integer :: it
+        logical :: warn
 
-        if (present(dont_warn)) then
-            if (dont_warn) return
-        end if
+        ! Do we actually want to print any warning?
+        warn = .true.
+        if (present(dont_warn)) warn = .not. dont_warn
 
-        if (present(warn_level)) then
-            level = warn_level
-        else
-            level = 0.95
-        end if
+        if (warn) then
+            if (present(warn_level)) then
+                level = warn_level
+            else
+                level = 0.95
+            end if
 
-        it = nthreads - 1
-        fill = real(maxval(spawn%head(:,:),dim=1) - spawn%head_start(it,:)) / spawn%block_size
-        if (any(fill - level > 0.0)) then
-            write (6,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+            it = nthreads - 1
+            fill = real(maxval(spawn%head(:,:),dim=1) - spawn%head_start(it,:)) / spawn%block_size
+            if (any(fill - level > 0.0)) then
+                write (6,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+            end if
         end if
 
     end subroutine memcheck_spawn_t
