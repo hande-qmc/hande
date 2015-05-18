@@ -565,7 +565,7 @@ contains
             ! determinants appropriately.
             call redistribute_particles(psip_list%states, real_factor, psip_list%pops, psip_list%nstates, &
                                         psip_list%nparticles, spawn)
-            if (spawn%error) call stop_all('create_initial_density_matrix', 'Ran out of space in the spawned list while&
+            if (spawn%error) call stop_all('create_initial_density_matrix', 'Ran out of space in the spawning array while&
                                       & generating the initial density matrix.')
             call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         end if

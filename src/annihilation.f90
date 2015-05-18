@@ -752,8 +752,12 @@ contains
         if (.not. psip_list%error) then
             fill_fraction = real(psip_list%nstates+(spawn%head(thread_id,0)-spawn_start+1))/size(psip_list%states,2)
             if (fill_fraction > 1.00) then
-                write (err,'("No space left in main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
-                write (6,'(1X,"# Error:",1X,a)') trim(err)
+                write (6,'(1X,"# Error: No space left in main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                              & so results from this final loop may be slightly incorrect.")')
+                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
+
                 psip_list%error = .true.
             else if (fill_fraction > 0.95) then
                 write (6,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc

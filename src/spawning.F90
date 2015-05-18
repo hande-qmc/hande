@@ -742,6 +742,10 @@ contains
         if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
             if (.not. spawn%error) then
                 write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                              & so results from this final loop may be slightly incorrect.")')
+                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
             end if
             spawn%error = .true.
         else
@@ -792,6 +796,10 @@ contains
         if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
             if (.not. spawn%error) then
                 write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                              & so results from this final loop may be slightly incorrect.")')
+                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
             end if
             spawn%error = .true.
         else
@@ -840,6 +848,10 @@ contains
         if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
             if (.not. spawn%error) then
                 write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                              & so results from this final loop may be slightly incorrect.")')
+                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
             end if
             spawn%error = .true.
         else
@@ -1607,8 +1619,12 @@ contains
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
                 if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
-                    if (.not. spawn%error) write (6,'(1X,"# Error: No space left in RDM spawning array on processor",'&
+                    if (.not. spawn%error) then
+                        write (6,'(1X,"# Error: No space left in RDM spawning array on processor",'&
                                                 &//int_fmt(iproc,1)//',".")') iproc
+                        write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                        write (6,'(1X,"# Error: Note that RDM results from this final report loop will be incorrect.")')
+                    end if
                     spawn%error = .true.
                 end if
 
