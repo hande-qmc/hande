@@ -518,6 +518,7 @@ contains
         !    unsuccessful.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use stoch_utils, only: stochastic_round_spawned_particle
 
         integer(int_p) :: nspawn
 
@@ -538,29 +539,7 @@ contains
         ! particle_t%pops).
         pspawn = pspawn*real_factor
 
-        if (pspawn < spawn_cutoff) then
-
-            ! If the spawning amplitude is below the minimum spawning event
-            ! allowed, stochastically round it either down to zero or up
-            ! to the cutoff.
-            if (pspawn > get_rand_close_open(rng)*spawn_cutoff) then
-                nspawn = spawn_cutoff
-            else
-                nspawn = 0_int_p
-            end if
-
-        else
-
-            ! Need to take into account the possibilty of a spawning attempt
-            ! producing multiple offspring...
-            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
-            ! then spawn a particle with probability pspawn-floor(pspawn).
-            nspawn = int(pspawn, int_p)
-            pspawn = pspawn - nspawn
-
-            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
-
-        end if
+        nspawn = stochastic_round_spawned_particle(spawn_cutoff, pspawn, rng)
 
         if (nspawn > 0) then
             ! If H_ij is positive, then the spawned walker is of opposite
