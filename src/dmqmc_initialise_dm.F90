@@ -112,7 +112,8 @@ contains
                     ! Initially distribute psips along the diagonal according to
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
-                        call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, reference%energy_shift, rng)
+                        call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, &
+                                                           reference%energy_shift, rng)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                                         dmqmc_in%all_sym_sectors, spawn)
@@ -181,7 +182,7 @@ contains
 
         call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
 
-        if (dmqmc_in%propagate_to_beta) then
+        if (dmqmc_in%metropolis_attempts > 0) then
             ! Reset the position of the first spawned particle in the spawning array
             spawn%head = spawn%head_start
             ! During the metropolis steps determinants originally in the correct
@@ -563,12 +564,12 @@ contains
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%string_len)
         integer :: ireplica, iorb, ipsip
-        integer(int_p) :: weight_factor
+        integer(int_p) :: nspawn
         logical :: gen
 
         ireplica = 1
-
-        weight_factor = 1.0
+        ! Default behaviour is we don't reweight populations.
+        nspawn = real_factor
 
         ! Calculate orbital occupancies.
         ! * Warning *: We assume that we are dealing with a system without
@@ -597,18 +598,19 @@ contains
             if (.not. gen) cycle
             ! Create the determinant.
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
-                if (dmqmc_in%inital_matrix /= free_electron_dm .and. dmqmc_in%metropolis_attempts == 0) weight_factor = &
-                                                        & calculate_reweighting_factor(sys, occ_list, dmqmc_in%init_beta, energy_shift, rng)
+                if (dmqmc_in%initial_matrix /= free_electron_dm .and. dmqmc_in%metropolis_attempts == 0) nspawn = &
+                                & reweight_spawned_particle(sys, occ_list, dmqmc_in%init_beta, &
+                                                            energy_shift, spawn%cutoff, real_factor, rng)
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                            sys%basis%tensor_label_len, weight_factor*real_factor, ireplica, spawn)
+                                            sys%basis%tensor_label_len, nspawn, ireplica, spawn)
                 ipsip = ipsip + 1
             end if
         end do
 
         contains
 
-            function calculate_reweighting_factor(sys, occ_list, beta, energy_shift, rng) result(int_weight)
+            function reweight_spawned_particle(sys, occ_list, beta, energy_shift, spawn_cutoff, real_factor, rng) result(nspawn)
 
                 ! Reweight initial density matrix population so that the desired
                 ! diagonal density matrix is sampled.
@@ -619,26 +621,33 @@ contains
                 !        generated determinant.
                 !    beta: inverse temperature being considered.
                 !    energy_shift: <D_0|H_new|D_0> - <D_0|H_old|D_0>.
+                !    spawn_cutoff: The size of the minimum spawning event allowed, in
+                !        the encoded representation. Events smaller than this will be
+                !        stochastically rounded up to this value or down to zero.
+                !    real_factor: The factor by which populations are multiplied to
+                !        enable non-integer populations.
                 ! In/Out:
                 !    rng: random number generator.
                 ! Returns:
-                !    int_weight: integer representation of reweighting
-                !        factor.
+                !    nspawn: reweighted number of particles to create on given
+                !       diagonal density matrix element.
 
                 use system, only: sys_t
                 use proc_pointers, only: energy_diff_ptr
                 use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+                use stoch_utils, only:  stochastic_round_spawned_particle
 
                 type(sys_t), intent(in) :: sys
                 integer, intent(in) :: occ_list(:)
                 real(p), intent(in) :: beta
                 real(p), intent(in) :: energy_shift
+                integer(int_p), intent(in) :: spawn_cutoff
+                integer(int_p), intent(in) :: real_factor
                 type(dSFMT_t), intent(inout) :: rng
 
+                integer(int_p) :: nspawn
                 real(p) :: energy_diff, weight, r
-                integer(int_p) :: int_weight
 
-                int_weight = 0
                 ! Any diagonal density matrix can be sampled from the
                 ! non-interacting expression by reweighting, i.e.
                 ! p(|D_i>)_new = p(|D_i>)_old * e^{-beta*E_new(|D_i>)}/e^{-beta*E_old(|D_i>)}.
@@ -648,17 +657,11 @@ contains
                 ! when doing grand canonical sampling.
                 ! We add an (arbitrary) constant energy shift defined above which ensures that p(|D_0>)_new = 1.
                 energy_diff = energy_diff_ptr(sys, occ_list)
-                weight = exp(-beta*(energy_diff-energy_shift))
-                ! Integer part.
-                int_weight = int(weight, int_p)
-                ! Fractional part.
-                weight = weight - int_weight
-                r = get_rand_close_open(rng)
-                if (weight > r) then
-                    int_weight = int_weight + 1
-                end if
+                weight = exp(-beta*(energy_diff-energy_shift)) * real_factor
+                ! Integerise.
+                nspawn = stochastic_round_spawned_particle(spawn_cutoff, weight, rng)
 
-            end function calculate_reweighting_factor
+            end function reweight_spawned_particle
 
     end subroutine init_grand_canonical_ensemble
 
