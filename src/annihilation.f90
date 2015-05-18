@@ -9,7 +9,7 @@ implicit none
 contains
 
     subroutine direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, &
-                                   nspawn_events, determ, error)
+                                   nspawn_events, determ)
 
         ! Annihilation algorithm.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -32,8 +32,6 @@ contains
         !    spawn: spawn_t object containing the set of spawned particles.
         !    determ (optional): Derived type containing information on the
         !       semi-stochastic part of the simulation.
-        !    error: true on input (output) if an error has occured before input
-        !        (by output).
         ! Out:
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
@@ -53,7 +51,6 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
-        logical, intent(inout), optional :: error
 
         integer, parameter :: thread_id = 0
         logical :: doing_semi_stoch
@@ -62,7 +59,7 @@ contains
         if (present(determ)) doing_semi_stoch = determ%doing_semi_stoch
         if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(spawn)
 
-        call memcheck_spawn_t(spawn, dont_warn=error)
+        call memcheck_spawn_t(spawn, dont_warn=spawn%error)
 
         ! If performing a semi-stochastic calculation then the annihilation
         ! process is slightly different, so call the correct routines depending
@@ -76,16 +73,15 @@ contains
             end if
 
             call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, &
-                                              spawn, determ_flags=determ%flags, error=error)
+                                              spawn, determ_flags=determ%flags)
         else
             call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx)
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, &
-                                              spawn, error=error)
+            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
         end if
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv, error)
+    subroutine direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -119,9 +115,6 @@ contains
         !       particles on exit.
         !    spawn_recv: spawn_t object containing spawned particles received
         !        from other processors.
-        ! In/OutOut (optional):
-        !    error: true on input (output) if an error has occured before input
-        !        (by output).
 
         use parallel, only: nthreads, nprocs, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, spawn_t
@@ -136,7 +129,6 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn_recv
-        logical, intent(inout), optional :: error
 
         integer, parameter :: thread_id = 0
 
@@ -147,12 +139,12 @@ contains
         ! First annihilate within spawn_recv.
         call annihilate_wrapper_non_blocking_spawn(spawn_recv, qmc_in%initiator_approx)
         ! Annihilate with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv, error=error)
+        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv)
 
     end subroutine direct_annihilation_received_list
 
     subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, send_counts, &
-                                                req_data_s, non_block_spawn, nspawn_events, error)
+                                                req_data_s, non_block_spawn, nspawn_events)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -182,8 +174,6 @@ contains
         ! Out (optional):
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
-        !    error: true on input (output) if an error has occured before input
-        !        (by output).
 
         use parallel, only: nthreads, nprocs, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
@@ -205,7 +195,6 @@ contains
         integer, intent(inout) :: req_data_s(0:)
         integer, intent(out) :: non_block_spawn(:)
         integer, optional, intent(out) :: nspawn_events
-        logical, optional, intent(inout) :: error
 
         integer, parameter :: thread_id = 0
 
@@ -214,7 +203,7 @@ contains
         call calculate_displacements(spawn, send_counts, non_block_spawn)
         if (present(nspawn_events)) nspawn_events = non_block_spawn(1)
 
-        call memcheck_spawn_t(spawn, dont_warn=error)
+        call memcheck_spawn_t(spawn, dont_warn=spawn%error)
 
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
@@ -222,7 +211,7 @@ contains
         call annihilate_wrapper_non_blocking_spawn(spawn, qmc_in%initiator_approx, iproc)
         ! Annihilate portion of spawned list with main list.
         call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, &
-                                          spawn%head_start(thread_id, iproc)+nthreads, error=error)
+                                          spawn%head_start(thread_id, iproc)+nthreads)
         ! Communicate walkers spawned onto other processors during this
         ! evolution step to their new processors.
         call non_blocking_send(spawn, send_counts, req_data_s)
@@ -230,7 +219,7 @@ contains
     end subroutine direct_annihilation_spawned_list
 
     subroutine annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, &
-                                            lower_bound, determ_flags, error)
+                                            lower_bound, determ_flags)
 
         ! This is a wrapper around various utility functions which perform the
         ! different parts of the annihilation process during non-blocking
@@ -253,9 +242,6 @@ contains
         !        the corresponding particle_t%states are deterministic or not.
         ! In (optional):
         !     lower_bound: starting point we annihiliate from in spawn_t object.
-        ! In/Out (optional):
-        !    error: true on input (output) if an error has occured before input
-        !        (by output).
 
         use system, only: sys_t
         use spawn_data, only: spawn_t
@@ -271,7 +257,6 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
-        logical, intent(inout), optional :: error
 
         integer, parameter :: thread_id = 0
         integer :: spawn_start
@@ -300,7 +285,7 @@ contains
             if (qmc_in%real_amplitudes) call round_low_population_spawns(rng, spawn, lower_bound)
 
             ! Insert new walkers into main walker list.
-            call insert_new_walkers(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound, error)
+            call insert_new_walkers(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound)
 
         else
 
@@ -692,7 +677,7 @@ contains
 
     end subroutine round_low_population_spawns
 
-    subroutine insert_new_walkers(sys, psip_list, ref, annihilation_flags, spawn, determ_flags, lower_bound, error)
+    subroutine insert_new_walkers(sys, psip_list, ref, annihilation_flags, spawn, determ_flags, lower_bound)
 
         ! Insert new walkers into the main walker list from the spawned list.
         ! This is done after all particles have been annihilated, so the spawned
@@ -710,9 +695,6 @@ contains
         !    determ_flags: A list of flags specifying whether determinants in
         !        psip_list%states are deterministic or not.
         !    lower_bound: starting point we annihiliate from in spawn_t object.
-        ! In/Out (optional):
-        !    error: returns true if an error is encountered.  If not not present,
-        !       the calculation aborts upon encountering an error.
 
         use errors, only: stop_all
         use parallel, only: iproc
@@ -729,13 +711,12 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout), optional :: determ_flags(:)
         integer, intent(in), optional :: lower_bound
-        logical, intent(inout), optional :: error
 
         integer :: i, istart, iend, j, k, pos, spawn_start, disp
         integer(int_p) :: spawned_population(psip_list%nspaces)
         real(p) :: real_population(psip_list%nspaces)
 
-        logical :: hit, error_local
+        logical :: hit
         integer, parameter :: thread_id = 0
         real :: fill_fraction
         character(60) :: err
@@ -758,8 +739,6 @@ contains
         ! know that the next new walker has to go below it, allowing us to
         ! search through an ever-decreasing number of elements.
 
-        error_local = .false.
-
         if (present(lower_bound)) then
             spawn_start = lower_bound
             disp = lower_bound - 1
@@ -768,21 +747,20 @@ contains
             disp = 0
         end if
 
-        fill_fraction = real(psip_list%nstates+(spawn%head(thread_id,0)-spawn_start+1))/size(psip_list%states,2)
-        if (fill_fraction > 1.00) then
-            write (err,'("No space left in main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
-            if (present(error)) then
+        ! Don't bother to perform these checks and print more error messages
+        ! if we've run out of memory already.
+        if (.not. psip_list%error) then
+            fill_fraction = real(psip_list%nstates+(spawn%head(thread_id,0)-spawn_start+1))/size(psip_list%states,2)
+            if (fill_fraction > 1.00) then
+                write (err,'("No space left in main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
                 write (6,'(1X,"# Error:",1X,a)') trim(err)
-                error = .true.
-                error_local = .true.
-            else
-                call stop_all('insert_new_walkers', err)
+                psip_list%error = .true.
+            else if (fill_fraction > 0.95) then
+                write (6,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
             end if
-        else if (fill_fraction > 0.95) then
-            write (6,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
         end if
 
-        if (.not. error_local) then
+        if (.not. psip_list%error) then
             istart = 1
             iend = psip_list%nstates
             do i = spawn%head(thread_id,0), spawn_start, -1

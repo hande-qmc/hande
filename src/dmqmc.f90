@@ -67,7 +67,8 @@ contains
         integer(int_p) :: nspawned, ndeath
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
-        logical :: soft_exit, write_restart_shift, update_tau, error
+        logical :: soft_exit, write_restart_shift, update_tau
+        logical :: error, rdm_error
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
@@ -92,8 +93,6 @@ contains
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
-
-        error = .false.
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -125,6 +124,8 @@ contains
         ! Should we dump a restart file just before the shift is turned on?
         write_restart_shift = restart_in%write_restart_shift
         call init_restart_info_t(ri, write_id=restart_in%write_id)
+
+        rdm_error = .false.
 
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
@@ -185,7 +186,7 @@ contains
                         ! temperature value per ncycles.
                         if (icycle == 1) then
                             call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, qs%ref%H00, &
-                                                         qs%psip_list, dmqmc_estimates, weighted_sampling, error)
+                                                         qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error)
                         end if
 
                         do ireplica = 1, qs%psip_list%nspaces
@@ -209,7 +210,7 @@ contains
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet1%f, cdet2%f, connection, &
                                                                             nspawned, spawning_end, ireplica, &
-                                                                            qs%spawn_store%spawn, error)
+                                                                            qs%spawn_store%spawn)
 
                                         if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -224,7 +225,7 @@ contains
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2%f, cdet1%f, connection, &
                                                                                 nspawned, spawning_end, ireplica, &
-                                                                                qs%spawn_store%spawn, error)
+                                                                                qs%spawn_store%spawn)
 
                                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                                 call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -257,7 +258,7 @@ contains
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
                     call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
-                                             qs%spawn_store%spawn, nspawn_events, error=error)
+                                             qs%spawn_store%spawn, nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
 
@@ -271,6 +272,7 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
+                error = qs%spawn_store%spawn%error .or. qs%psip_list%error .or. rdm_error
                 call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
                                           qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
                 if (error) exit outer_loop

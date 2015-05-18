@@ -135,6 +135,9 @@ type spawn_t
     ! sdata_recvd and vice versa.  This allows for the spawning and annihilation
     ! procedures to be identical with and without MPI parallelisation.
     integer(int_s), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
+    ! This variable will become equal to true if we ever run out of memory in
+    ! sdata, in which case the program will exit at the next opportunity.
+    logical :: error = .false.
 end type spawn_t
 
 interface annihilate_wrapper_spawn_t

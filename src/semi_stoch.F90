@@ -704,7 +704,7 @@ contains
 
     end subroutine set_determ_info
 
-    subroutine determ_projection(rng, qmc_in, qs, spawn, determ, error)
+    subroutine determ_projection(rng, qmc_in, qs, spawn, determ)
 
         ! A wrapper function for calling the correct routine for deterministic
         ! projection.
@@ -716,8 +716,6 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    qs: state of the QMC calculation. Timestep and shift are used.
-        !    error: true on input (output) if an error has occured before input
-        !        (by output).
 
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -729,18 +727,17 @@ contains
         type(qmc_state_t), intent(in) :: qs
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(inout) :: determ
-        logical, intent(inout) :: error
 
         select case(determ%projection_mode)
         case(semi_stoch_separate_annihilation)
             call determ_proj_separate_annihil(determ, qs)
         case(semi_stoch_combined_annihilation)
-            call determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ, error)
+            call determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
         end select
 
     end subroutine determ_projection
 
-    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ, error)
+    subroutine determ_proj_combined_annihil(rng, qmc_in, qs, spawn, determ)
 
         ! Apply the deterministic part of the FCIQMC projector to the
         ! amplitudes in the deterministic space. The corresponding spawned
@@ -753,8 +750,6 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    qs: state of the QMC calculation. Timestep and shift are used.
         !    determ: deterministic space being used.
-        !    error: true on input (output) if an error has occured before input
-        !        (by output).
 
         use csr, only: csrpgemv_single_row
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -767,7 +762,6 @@ contains
         type(qmc_state_t), intent(in) :: qs
         type(spawn_t), intent(inout) :: spawn
         type(semi_stoch_t), intent(in) :: determ
-        logical, intent(inout) :: error
 
         integer :: i, proc, row
         real(p) :: out_vec
@@ -787,7 +781,7 @@ contains
                     out_vec = -out_vec + qs%shift(1)*determ%vector(i)
                     out_vec = out_vec*qs%tau
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, &
-                                                        rng, spawn, error)
+                                                        rng, spawn)
                 end do
             else
                 do i = 1, determ%sizes(proc)
@@ -796,7 +790,7 @@ contains
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     out_vec = -out_vec*qs%tau
                     call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, &
-                                                        rng, spawn, error)
+                                                        rng, spawn)
                 end do
             end if
         end do
@@ -877,7 +871,7 @@ contains
 
     end subroutine determ_proj_separate_annihil
 
-    subroutine create_spawned_particle_determ(f, target_nspawn, proc, initiator_approx, rng, spawn, error)
+    subroutine create_spawned_particle_determ(f, target_nspawn, proc, initiator_approx, rng, spawn)
 
         ! Add a deterministic spawning to the spawning array. Before
         ! this can be done, the target population must be encoded as an
@@ -894,8 +888,6 @@ contains
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which deterministic spawning will occur.
-        !    error: true on input (output) if an error has occured before input
-        !        (by output).
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use fciqmc_data, only: real_factor
@@ -908,7 +900,6 @@ contains
         logical, intent(in) :: initiator_approx
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
-        logical, intent(inout) :: error
 
         integer(int_p) :: nspawn
         real(p) :: sgn, target_nspawn_scaled
@@ -922,9 +913,9 @@ contains
         if (abs(target_nspawn_scaled) - nspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
         nspawn = nspawn*nint(sgn, int_p)
         if (initiator_approx) then
-            call add_flagged_spawned_particle(f, nspawn, 1, 0, proc, spawn, error)
+            call add_flagged_spawned_particle(f, nspawn, 1, 0, proc, spawn)
         else
-            call add_spawned_particle(f, nspawn, 1, proc, spawn, error)
+            call add_spawned_particle(f, nspawn, 1, proc, spawn)
         end if
 
     end subroutine create_spawned_particle_determ

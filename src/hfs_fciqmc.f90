@@ -95,8 +95,6 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
 
-        error = .false.
-
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
@@ -190,7 +188,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
-                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn, error)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn)
                             end associate
                         end if
 
@@ -203,7 +201,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
-                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, spawn, error)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, spawn)
                             end associate
                         end if
                     end do
@@ -220,7 +218,7 @@ contains
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
-                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, spawn, error)
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 2, spawn)
                              end associate
                          end if
 
@@ -262,7 +260,7 @@ contains
                                                qs%psip_list%pops(1,idet), nspawned)
                     if (nspawned /= 0) then
                         associate(spawn=>qs%spawn_store%spawn)
-                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, spawn, error)
+                            call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nspawned, 2, spawn)
                         end associate
                     end if
 
@@ -273,7 +271,7 @@ contains
                 end do
 
                 call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, qs%spawn_store%spawn, &
-                                         nspawn_events, error=error)
+                                         nspawn_events)
 
             end do
 
@@ -281,6 +279,7 @@ contains
             ! energy_estimators communication
             comms_found = check_comms_file()
             ! Update the energy estimators (shift & projected energy).
+            error = qs%spawn_store%spawn%error .or. qs%psip_list%error
             call update_energy_estimators(qmc_in, qs, nspawn_events, nparticles_old, load_bal_in=load_bal_in, &
                                           comms_found=comms_found, error=error)
             if (error) exit

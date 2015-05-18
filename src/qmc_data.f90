@@ -441,6 +441,10 @@ type particle_t
     !   component gives the number of 0-1 bonds where the 1 is on the first
     !   sublattice.
     real(p), allocatable :: dat(:,:) ! (sampling_size+info_size,walker_length)
+    ! This variable will become equal to true if we ever run out of memory in
+    ! particle lists, in which case the program will exit at the next
+    ! opportunity.
+    logical :: error = .false.
 end type particle_t
 
 type spawned_particle_t
