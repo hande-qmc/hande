@@ -549,7 +549,7 @@ contains
         use determinants, only: encode_det
         use canonical_kinetic_energy, only: generate_allowed_orbital_list
         use dmqmc_procedures, only: create_diagonal_density_matrix_particle
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, free_electron_dm
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -597,7 +597,7 @@ contains
             if (.not. gen) cycle
             ! Create the determinant.
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
-                if (.not. dmqmc_in%free_electron_trial) weight_factor = &
+                if (dmqmc_in%inital_matrix /= free_electron_dm .and. dmqmc_in%metropolis_attempts == 0) weight_factor = &
                                                         & calculate_reweighting_factor(sys, occ_list, dmqmc_in%init_beta, energy_shift, rng)
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &

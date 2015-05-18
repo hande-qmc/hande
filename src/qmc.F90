@@ -633,7 +633,7 @@ contains
         use system
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, reference_t, single_basis, neel_singlet, neel_singlet_guiding
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, free_electron_dm
 
         ! Procedures to be pointed to.
         use death, only: stochastic_death
@@ -866,7 +866,7 @@ contains
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
                 if (dmqmc_in%propagate_to_beta) then
-                    if (dmqmc_in%free_electron_trial) then
+                    if (dmqmc_in%initial_matrix == free_electron_dm) then
                         trial_dm_ptr => kinetic_energy_ueg
                     else
                         trial_dm_ptr => slater_condon0_ueg
@@ -874,7 +874,7 @@ contains
                 end if
             case(hub_k)
                 if (dmqmc_in%propagate_to_beta) then
-                    if (dmqmc_in%free_electron_trial) then
+                    if (dmqmc_in%initial_matrix == free_electron_dm) then
                         trial_dm_ptr => kinetic0_hub_k
                     else
                         trial_dm_ptr => slater_condon0_hub_k

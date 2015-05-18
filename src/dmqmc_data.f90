@@ -17,6 +17,15 @@ enum, bind(c)
    ! NOTE: if you add a new estimator then you must insert it before terminator.
 end enum
 
+! The following are the possible options for the initial density matrices for
+! IP-DMQMC.
+enum, bind(c)
+    ! "Hartree-Fock" density matrix, i.e. \rho = \sum e^{-\beta H_ii} |D_i><D_i|.
+    enumerator :: hartree_fock_dm
+    ! Free-electron density matrix, i.e. \rho = \sum_i e^{-\beta \sum_j \varepsilon_j \hat{n}_j} |D_i><D_i|.
+    enumerator :: free_electron_dm
+end enum
+
 ! This variable holds the total number of operators which are implemented
 ! for DMQMC.
 integer, parameter :: num_dmqmc_operators = terminator - 1
@@ -170,9 +179,9 @@ type dmqmc_in_t
 
     ! Propagate a trial density matrix to a specific temeperature.
     logical :: propagate_to_beta = .false.
-    ! Use the free electron Hamiltonian as the trial density matrix.
-    ! Default: Use the "Hartree-Fock" trial density matrix.
-    logical :: free_electron_trial = .false.
+    ! Initial density matrix to use in IP-DMQMC see enum at beginning of module
+    ! for description of available values.
+    integer :: initial_matrix
     ! Use the grand canonical partition function to inititally distribute the psips.
     logical :: grand_canonical_initialisation = .false.
     ! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
