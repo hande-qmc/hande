@@ -256,6 +256,7 @@ contains
         use system, only: sys_t, hub_k, init_system
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
+        use check_input, only: check_sys
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -294,6 +295,8 @@ contains
 
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
+
+        call check_sys(sys)
 
         call flu_pushlightuserdata(lua_state, c_loc(sys))
         nreturn = 1
@@ -377,6 +380,7 @@ contains
         use system, only: sys_t, hub_real, chung_landau, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
+        use check_input, only: check_sys
 
         integer(c_int) :: nreturn
         type(c_ptr) :: L
@@ -421,6 +425,8 @@ contains
         end if
         call aot_table_close(lua_state, opts)
 
+        call check_sys(sys)
+
         call flu_pushlightuserdata(lua_state, c_loc(sys))
         nreturn = 1
 
@@ -455,6 +461,7 @@ contains
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
         use system, only: sys_t, read_in, init_system
+        use check_input, only: check_sys
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -499,6 +506,8 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
+        call check_sys(sys)
+
         sys_ptr = c_loc(sys)
         call flu_pushlightuserdata(lua_state, sys_ptr)
         nreturn = 1
@@ -533,6 +542,7 @@ contains
         use system, only: sys_t, heisenberg, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
+        use check_input, only: check_sys
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -575,6 +585,8 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
+        call check_sys(sys)
+
         call flu_pushlightuserdata(lua_state, c_loc(sys))
         nreturn = 1
 
@@ -610,6 +622,7 @@ contains
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
         use ueg_system, only: init_ueg_proc_pointers
+        use check_input, only: check_sys
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -660,6 +673,8 @@ contains
 
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
+
+        call check_sys(sys)
 
         sys_ptr = c_loc(sys)
         call flu_pushlightuserdata(lua_state, sys_ptr)
