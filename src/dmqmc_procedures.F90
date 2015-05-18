@@ -541,12 +541,12 @@ contains
                         call copy_sys_spin_info(sys, sys_copy)
                         ! The size (number of configurations) of all spin symmetry
                         ! sectors combined.
-                        do ialpha = 0, sys%nel
+                        do ialpha = max(0,sys%nel-sys%basis%nbasis/2), min(sys%nel, sys%basis%nbasis/2)
                             total_size = total_size + &
                                     binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
                         end do
 
-                        do ialpha = 0, sys%nel
+                        do ialpha = max(0,sys%nel-sys%basis%nbasis/2), min(sys%nel, sys%basis%nbasis/2)
                             ! The size of this spin symmetry sector alone.
                             sector_size = binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
                             prob = real(npsips_this_proc,dp)*sector_size/total_size
