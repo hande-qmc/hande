@@ -307,6 +307,7 @@ contains
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t
+        use check_input, only: check_qmc_opts
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -357,6 +358,9 @@ contains
             write (6,'(1X,"CCMC")')
             write (6,'(1X,"----",/)')
         end if
+
+        ! check input options
+        call check_qmc_opts(qmc_in, .false.)
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)

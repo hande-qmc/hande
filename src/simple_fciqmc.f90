@@ -212,6 +212,7 @@ contains
         use system, only: sys_t
         use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
+        use check_input, only: check_qmc_opts
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -234,6 +235,9 @@ contains
         type(restart_info_t) :: ri, ri_shift
         real(p), allocatable :: hamil(:,:)
         type(csrp_t) :: hamil_csr
+
+        ! Check input options
+        call check_qmc_opts(qmc_in, .true.)
 
         call init_simple_fciqmc(sys, qmc_in, reference, qs, sparse_hamil, restart_in%read_restart, ndets, dets, ref_det, &
                                 psip_list, spawn, hamil, hamil_csr)

@@ -96,4 +96,30 @@ contains
 
     end subroutine check_fciqmc_opts
 
+    subroutine check_qmc_opts(qmc_in, simple_fciqmc)
+
+        ! Check options common to QMC methods.
+
+        ! In:
+        !   qmc_in: QMC input options
+        !   simple_fciqmc: true if using the simple FCIQMC algorithm.
+
+        use qmc_data, only: qmc_in_t
+        use errors, only: stop_all
+
+        type(qmc_in_t), intent(in) :: qmc_in
+        logical, intent(in) :: simple_fciqmc
+
+        character(*), parameter :: this = 'check_qmc_opts'
+
+        if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
+        if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
+
+        if (.not. simple_fciqmc) then
+            if (qmc_in%walker_length == 0) call stop_all(this,'Walker length zero.')
+            if (qmc_in%spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
+        end if
+
+    end subroutine check_qmc_opts
+
 end module check_input
