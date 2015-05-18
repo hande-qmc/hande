@@ -2,6 +2,7 @@
 
 [DEFAULT]
 include_f = -I ${HDF5_HOME}/include -openmp
+include_c = -I ${LUA_HOME}/include
 
 [main]
 fc = mpif90
@@ -15,8 +16,10 @@ f90_module_flag = -module
 
 [opt]
 fflags = %(include_f)s -O3
+cflags = -O3 %(include_c)s
 cxxflags = -O3
 
 [dbg]
 fflags = %(include_f)s -g -traceback -CB
+cflags = -g %(include_c)s
 cxxflags = -g -traceback 
