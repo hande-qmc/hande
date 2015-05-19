@@ -421,7 +421,7 @@ module hdf5_helper
 
         end subroutine write_array_1d_int_64
 
-        subroutine write_array_2d_int_32(id, dset, kinds, arr_shape, arr, append)
+        subroutine write_array_2d_int_32(id, dset, kinds, arr_shape, arr, lim, append)
 
             ! Write out 2D 32-bit integer array to an HDF5 file.
 
@@ -432,12 +432,19 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    lim (optional): Write out only arr(:,:lim).  Default: full array (as given
+            !        in arr_shape) is written out.
             !    append (optional): if true, append to an existing dataset or create an
             !        extensible dataset if it doesn't already exist.
+
+            ! NOTE: it is safer to use lim rather than to pass in an array slice (e.g. arr(:,:lim))
+            ! which can trigger an expensive array temporary with some compilers.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
             use const, only: int_32
+
+            integer, parameter :: rank = 2
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -446,16 +453,20 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_32), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            integer, intent(in), optional :: lim
             logical, intent(in), optional :: append
 
+            integer(HSIZE_T) :: arr_dims(size(arr_shape))
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr, append)
+            arr_dims = int(arr_shape, HSIZE_T)
+            if (present(lim)) arr_dims(rank) = lim
+            call write_ptr(id, dset, kinds%i32, size(arr_shape), arr_dims, ptr, append)
 
         end subroutine write_array_2d_int_32
 
-        subroutine write_array_2d_int_64(id, dset, kinds, arr_shape, arr, append)
+        subroutine write_array_2d_int_64(id, dset, kinds, arr_shape, arr, lim, append)
 
             ! Write out 2D 64-bit integer array to an HDF5 file.
 
@@ -466,12 +477,19 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    lim (optional): Write out only arr(:,:lim).  Default: full array (as given
+            !        in arr_shape) is written out.
             !    append (optional): if true, append to an existing dataset or create an
             !        extensible dataset if it doesn't already exist.
+
+            ! NOTE: it is safer to use lim rather than to pass in an array slice (e.g. arr(:,:lim))
+            ! which can trigger an expensive array temporary with some compilers.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
             use const, only: int_64
+
+            integer, parameter :: rank = 2
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -480,12 +498,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_64), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            integer, intent(in), optional :: lim
             logical, intent(in), optional :: append
 
+            integer(HSIZE_T) :: arr_dims(size(arr_shape))
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr, append)
+            arr_dims = int(arr_shape, HSIZE_T)
+            if (present(lim)) arr_dims(rank) = lim
+            call write_ptr(id, dset, kinds%i64, size(arr_shape), arr_dims, ptr, append)
 
         end subroutine write_array_2d_int_64
 
@@ -523,7 +545,7 @@ module hdf5_helper
 
         end subroutine write_array_1d_real_dp
 
-        subroutine write_array_2d_real_dp(id, dset, kinds, arr_shape, arr, append)
+        subroutine write_array_2d_real_dp(id, dset, kinds, arr_shape, arr, lim, append)
 
             ! Write out 2D real(dp) array to an HDF5 file.
 
@@ -534,12 +556,19 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    lim (optional): Write out only arr(:,:lim).  Default: full array (as given
+            !        in arr_shape) is written out.
             !    append (optional): if true, append to an existing dataset or create an
             !        extensible dataset if it doesn't already exist.
+
+            ! NOTE: it is safer to use lim rather than to pass in an array slice (e.g. arr(:,:lim))
+            ! which can trigger an expensive array temporary with some compilers.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
             use const, only: dp
+
+            integer, parameter :: rank = 2
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -548,12 +577,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(dp), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            integer, intent(in), optional :: lim
             logical, intent(in), optional :: append
 
+            integer(HSIZE_T) :: arr_dims(size(arr_shape))
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr, append)
+            arr_dims = int(arr_shape, HSIZE_T)
+            if (present(lim)) arr_dims(rank) = lim
+            call write_ptr(id, dset, kinds%dp, size(arr_shape), arr_dims, ptr, append)
 
         end subroutine write_array_2d_real_dp
 
@@ -591,7 +624,7 @@ module hdf5_helper
 
         end subroutine write_array_1d_real_sp
 
-        subroutine write_array_2d_real_sp(id, dset, kinds, arr_shape, arr, append)
+        subroutine write_array_2d_real_sp(id, dset, kinds, arr_shape, arr, lim, append)
 
             ! Write out 2D real(sp) array to an HDF5 file.
 
@@ -602,12 +635,19 @@ module hdf5_helper
             !        kinds used in HANDE and HDF5 types.
             !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
             !    arr: array to be written.
+            !    lim (optional): Write out only arr(:,:lim).  Default: full array (as given
+            !        in arr_shape) is written out.
             !    append (optional): if true, append to an existing dataset or create an
             !        extensible dataset if it doesn't already exist.
+
+            ! NOTE: it is safer to use lim rather than to pass in an array slice (e.g. arr(:,:lim))
+            ! which can trigger an expensive array temporary with some compilers.
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
             use const, only: sp
+
+            integer, parameter :: rank = 2
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -616,12 +656,16 @@ module hdf5_helper
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(sp), intent(in), target :: arr(arr_shape(1), arr_shape(2))
+            integer, intent(in), optional :: lim
             logical, intent(in), optional :: append
 
+            integer(HSIZE_T) :: arr_dims(size(arr_shape))
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr, append)
+            arr_dims = int(arr_shape, HSIZE_T)
+            if (present(lim)) arr_dims(rank) = lim
+            call write_ptr(id, dset, kinds%sp, size(arr_shape), arr_dims, ptr, append)
 
         end subroutine write_array_2d_real_sp
 
