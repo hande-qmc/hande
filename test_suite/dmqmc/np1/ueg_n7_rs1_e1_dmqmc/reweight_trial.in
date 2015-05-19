@@ -27,7 +27,7 @@ dmqmc {
     },
     ipdmqmc = {
         initial_beta = 1.0,
-        initial_matrix = 'free_electron',
+        initial_matrix = 'hartree_fock',
         grand_canonical_initialisation = true,
     },
     operators = {

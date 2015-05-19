@@ -1,11 +1,11 @@
 sys = ueg {
-    nel = 7,
-    ms = 7,
+    nel = 4,
+    ms = 0,
     sym = 1,
     dim = 3,
-    cutoff = 1,
-    rs = 1,
-    chem_pot = 1.65142241072,
+    cutoff = 4,
+    rs = 2,
+    chem_pot = -1.3533088737,
 }
 
 dmqmc {
@@ -19,15 +19,14 @@ dmqmc {
         target_population = 1e10,
         state_size = -200,
         spawned_state_size = -100,
+        real_amplitudes = true,
     },
     dmqmc = {
-        fermi_temperature = true,
-        all_sym_sectors = true,
         beta_loops = 10,
     },
     ipdmqmc = {
         initial_beta = 1.0,
-        initial_matrix = 'free_electron',
+        initial_matrix = 'hartree_fock',
         grand_canonical_initialisation = true,
     },
     operators = {
