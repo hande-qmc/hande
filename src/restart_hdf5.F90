@@ -672,6 +672,12 @@ module restart_hdf5
             ! all restart files contain the same metadata.)
             call h5fopen_f(orig_names(0), H5F_ACC_RDONLY_F, orig_id, ierr)
 
+            call h5lexists_f(orig_id, hdf5_path(gqmc, gpsips, dspawn), exists, ierr)
+            if (exists) then
+                call stop_all('redistribute_restart_hdf5', 'Redistribution from non-blocking calculations &
+                                                           &not currently implemented.  Please fix.')
+            end if
+
             ! Get info relating to assigning states to processors.
             hash_seed = 7 ! hard-coded default at time of writing (so will work with past and future restart files)
             move_freq = 0 ! true unless doing CCMC.
