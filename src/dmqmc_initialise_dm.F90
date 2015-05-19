@@ -1,4 +1,14 @@
-module dmqmc_initialisation
+module dmqmc_initialise_dm
+
+! This module contains routines to create the starting density matrix, from
+! which a DMQMC simulation is performed.
+
+! Currently these routines either sample the infinite-temperature density
+! matrix (the identity matrix), or some trial estimate of the density matrix
+! at the desired beta value (for the interaction picture DMQMC approach).
+
+! Note that routines for other parts of DMQMC initialisation are kept in
+! the dmqmc_procedures module.
 
 use const
 
@@ -590,4 +600,4 @@ contains
 
     end subroutine init_grand_canonical_ensemble
 
-end module dmqmc_initialisation
+end module dmqmc_initialise_dm
