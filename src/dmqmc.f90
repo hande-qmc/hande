@@ -125,8 +125,9 @@ contains
         write_restart_shift = restart_in%write_restart_shift
         call init_restart_info_t(ri, write_id=restart_in%write_id)
 
-        ! If averaging over spin spin polarisation will change in general. Copy
-        ! system to prevent modification to original system type.
+        ! If averaging over spin then spin polarisation will change in general.
+        ! Copy sys to sys_copy so that sys can be set back to its input value
+        ! at the end of this routine.
         call copy_sys_spin_info(sys, sys_copy)
 
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops

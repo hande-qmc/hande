@@ -178,7 +178,7 @@ contains
     elemental function count_even_set_bits_int_64(b) result(neven)
 
         ! In:
-        !    b: A 32-bit integer.
+        !    b: A 64-bit integer.
         ! Returns:
         !    The number of even set bits in b.
 

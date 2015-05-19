@@ -458,10 +458,10 @@ contains
         type(dSFMT_t), intent(inout) :: rng
 
         real(dp) :: species, pflip
-        integer :: iorb, iexcit, new_orb
+        integer :: ielec, iexcit, new_orb
 
-        ! Pick orbital at random.
-        iorb = int(get_rand_close_open(rng)*sys%nel) + 1
+        ! Pick electron at random.
+        ielec = int(get_rand_close_open(rng)*sys%nel) + 1
         ! Select unoccupied orbital at random.
         iexcit = int(get_rand_close_open(rng)*sys%nvirt) + 1
         if (iexcit <= sys%nvirt_alpha) then
@@ -470,7 +470,7 @@ contains
             new_orb = cdet%unocc_list_beta(iexcit-sys%nvirt_alpha)
         end if
         ! Switch the orbitals.
-        cdet%occ_list(iorb) = new_orb
+        cdet%occ_list(ielec) = new_orb
 
     end subroutine dmqmc_spin_flip_metropolis_move
 
@@ -497,21 +497,21 @@ contains
         type(dSFMT_t), intent(inout) :: rng
 
         real(dp) :: species, pflip
-        integer :: orb, iorb, iexcit, new_orb, unocc_list(sys%nvirt)
+        integer :: orb, ielec, iexcit, new_orb, unocc_list(sys%nvirt)
 
-        iorb = int(get_rand_close_open(rng)*sys%nel) + 1
-        orb = cdet%occ_list(iorb)
+        ielec = int(get_rand_close_open(rng)*sys%nel) + 1
+        orb = cdet%occ_list(ielec)
 
         ! Conserving ms so only excite inside the correct spin channel as we only
         ! consider single excitations.
         if (mod(orb, 2) == 0) then
             ! Chose a beta spin.
             iexcit = int(get_rand_close_open(rng)*sys%nvirt_beta) + 1
-            cdet%occ_list(iorb) = cdet%unocc_list_beta(iexcit)
+            cdet%occ_list(ielec) = cdet%unocc_list_beta(iexcit)
         else
             ! Chose an alpha spin.
             iexcit = int(get_rand_close_open(rng)*sys%nvirt_alpha) + 1
-            cdet%occ_list(iorb) = cdet%unocc_list_alpha(iexcit)
+            cdet%occ_list(ielec) = cdet%unocc_list_alpha(iexcit)
         end if
 
     end subroutine dmqmc_spin_cons_metropolis_move
