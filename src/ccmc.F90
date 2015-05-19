@@ -2407,6 +2407,7 @@ contains
         use excit_gen_mol, only: calc_pgen_single_mol_no_renorm, calc_pgen_double_mol_no_renorm, &
                                  calc_pgen_single_mol, calc_pgen_double_mol
         use excit_gen_ueg, only: calc_pgen_ueg_no_renorm
+        use excit_gen_ringium, only: calc_pgen_ringium
         use point_group_symmetry, only: gamma_sym, cross_product_pg_basis, pg_sym_conj
         use determinants, only: det_info_t
         use qmc_data, only: qmc_in_t
@@ -2452,11 +2453,12 @@ contains
                 end if
                 max_na = sum(count_set_bits(poss_a))
                 pgen = calc_pgen_ueg_no_renorm(sys, max_na, spin)
+            case(ringium)
+                pgen = calc_pgen_ringium(sys)
             case default
                 call stop_all('calc_pgen', 'Linked CCMC is not implemented for this system.')
             end select
         end associate
-
     end function calc_pgen
 
 end module ccmc

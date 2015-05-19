@@ -159,6 +159,7 @@ contains
         call flu_register(lua_state, 'read_in', lua_read_in)
         call flu_register(lua_state, 'heisenberg', lua_heisenberg)
         call flu_register(lua_state, 'ueg', lua_ueg)
+        call flu_register(lua_state, 'ringium', lua_ringium)
 
         ! Calculations
         call flu_register(lua_state, 'fci', lua_fci)

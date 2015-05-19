@@ -30,6 +30,7 @@ contains
         use hamiltonian_hub_real, only: get_hmatel_hub_real
         use hamiltonian_molecular, only: get_hmatel_mol
         use hamiltonian_ueg, only: get_hmatel_ueg
+        use hamiltonian_ringium, only: get_hmatel_ringium
         use system
 
         real(p) :: hmatel
@@ -49,6 +50,8 @@ contains
             hmatel = get_hmatel_mol(sys, f1, f2)
         case (ueg)
             hmatel = get_hmatel_ueg(sys, f1, f2)
+        case(ringium)
+            hmatel = get_hmatel_ringium(sys, f1, f2)
         end select
 
     end function get_hmatel

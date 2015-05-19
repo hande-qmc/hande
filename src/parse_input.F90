@@ -70,7 +70,7 @@ contains
 
         else
 
-            if (sys%system /= ueg) then
+            if (sys%system /= ueg .and. sys%system /= ringium) then
                 if (.not.(allocated(sys%lattice%lattice))) call stop_all(this, 'Lattice vectors not provided')
                 do ivec = 1, sys%lattice%ndim
                     do jvec = ivec+1, sys%lattice%ndim
@@ -109,6 +109,17 @@ contains
 
             if (sys%lattice%ndim > 3) call stop_all(this, 'Limited to 1,  2 or 3 dimensions')
             if (sys%system == ueg .and. sys%lattice%ndim == 1) call stop_all(this, 'UEG only functional in 2D and 3D')
+            if (sys%system == ringium .and. sys%lattice%ndim /= 1) then
+                if (parent) call warning(this, 'Ringium must be 1D')
+                sys%lattice%ndim = 1
+            end if
+            if (sys%system == ringium .and. mod(sys%nel + sys%ringium%maxlz, 2) == 0) call stop_all(this, 'Max lz must have &
+                                        &opposite parity to the number of electrons in ringium')
+            if (sys%system == ringium .and. sys%ringium%radius < depsilon) call stop_all(this, 'Ringium must have a finite radius')
+            if (sys%system == ringium .and. sys%nel /= sys%ms) then
+                if (parent) call warning(this, 'Ringium must have spin and number of electrons equal')
+                sys%ms = sys%nel
+            end if
 
         end if
 

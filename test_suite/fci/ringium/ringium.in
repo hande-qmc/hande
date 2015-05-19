@@ -1,0 +1,8 @@
+sys = ringium{
+    nel = 4,
+    ms = 4,
+    maxlz = 7,
+    radius = 3,
+}
+
+fci{sys=sys}

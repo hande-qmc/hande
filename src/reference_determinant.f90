@@ -87,7 +87,7 @@ contains
             ! Attempt to find a dumb 'best guess' for choice of a reference
             ! determinant.
             select case(sys%system)
-            case(hub_k,read_in,ueg)
+            case(hub_k,read_in,ueg,ringium)
                 ! Orbitals are ordered by their single-particle eigenvalues.
                 ! Occupy the Fermi sphere/HF det.
                 forall (i=1:sys%nalpha) occ_list(i) = 2*i-1

@@ -772,6 +772,65 @@ contains
 
     end subroutine update_proj_energy_ueg
 
+    pure subroutine update_proj_energy_ringium(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+
+        ! Add the contribution of the current determinant to the projected
+        ! energy.
+        ! The correlation energy given by the projected energy is:
+        !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
+        ! where N_i is the population on the i-th determinant, D_i,
+        ! and 0 refers to the reference determinant.
+        ! During a MC cycle we store N_0 and \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        ! This procedure is for ringium.
+        ! In:
+        !    sys: system being studied.
+        !    f0: reference determinant.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.  Only the bit string field needs to be set.
+        !    pop: population on current determinant.
+        ! In/Out:
+        !    D0_pop_sum: running total of N_0, the population on the reference
+        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
+        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !        Updated only if <D_i|H|D_0> is non-zero.
+        ! Out:
+        !    excitation: excitation connecting the determinant to the reference determinant.
+        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !       determinant and the reference determinant.
+
+        ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
+        ! proj_energy_sum are zero before the first call.
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t, get_excitation
+        use hamiltonian_ringium, only: slater_condon2_ringium
+        use system, only: sys_t
+        use bit_utils, only: count_set_bits
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f0(:)
+        type(det_info_t), intent(in) :: cdet
+        real(p), intent(in) :: pop
+        real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
+        type(excit_t), intent(inout) :: excitation
+        real(p), intent(out) :: hmatel
+
+        excitation = get_excitation(sys%nel, sys%basis, cdet%f, f0)
+        hmatel = 0.0_p
+
+        if (excitation%nexcit == 0) then
+            ! Have reference determinant.
+            D0_pop_sum = D0_pop_sum + pop
+        else if (excitation%nexcit == 2) then
+            ! Have a determinant connected to the reference determinant: add to
+            ! projected energy.
+            hmatel = slater_condon2_ringium(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                                       & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
+            proj_energy_sum = proj_energy_sum + hmatel*pop
+        end if
+
+    end subroutine update_proj_energy_ringium
+
 
     subroutine update_proj_hfs_hamiltonian(sys, f, fpop, f_hfpop, fdata, excitation, hmatel, &
                                            D0_hf_pop,proj_hf_O_hpsip, proj_hf_H_hfpsip)

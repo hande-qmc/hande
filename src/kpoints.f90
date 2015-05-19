@@ -17,7 +17,7 @@ contains
         !    The kinetic energy associated with a given wavevector.
 
         use const, only: p, pi
-        use system, only: sys_t, hub_k, ueg
+        use system, only: sys_t, hub_k, ueg, ringium
 
         real(p) :: kinetic
 
@@ -41,6 +41,13 @@ contains
             !    k^2/2
             ! in atomic units (the most sensible choice!)
             kinetic = 2*pi**2*dot_product(kc,kc)
+        case(ringium)
+            ! Not really a wavevector, but the kinetic energy of the function with
+            ! angular momentum lz is
+            !   l_z^2/2R^2
+            ! but value in k is 2*l_z as l_z can be a half-integer so have
+            !   k^2/8R^2
+            kinetic = k(1)**2*0.125_p/sys%ringium%radius**2
         end select
 
     end function calc_kinetic
