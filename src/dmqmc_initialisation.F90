@@ -117,6 +117,7 @@ contains
                         call copy_sys_spin_info(sys, sys_copy)
                         ! The size (number of configurations) of all spin symmetry
                         ! sectors combined.
+                        total_size = 0
                         do ialpha = max(0,sys%nel-sys%basis%nbasis/2), min(sys%nel, sys%basis%nbasis/2)
                             total_size = total_size + &
                                     binom_r(sys%basis%nbasis/2, ialpha)*binom_r(sys%basis%nbasis/2, sys%nel-ialpha)
