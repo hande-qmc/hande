@@ -360,6 +360,7 @@ contains
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
         use dmqmc_data, only: dmqmc_in_t
+        use symmetry, only: symmetry_orb_list
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -411,13 +412,26 @@ contains
                         nsuccess = nsuccess + 1
                         call encode_det(sys%basis, cdet%occ_list, f_new)
                     else
-                        call decoder_ptr(sys, cdet%f, cdet)
-                        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
-                        ! Check that we didn't generate a null excitation.
-                        ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
-                        if (abs(hmatel) < depsilon) cycle
-                        nsuccess = nsuccess + 1
-                        call create_excited_det(sys%basis, cdet%f, connection, f_new)
+                        if (dmqmc_in%all_spin_sectors) then
+                            ! Update spin polarisation properties - these will
+                            ! most likely have changed from the previous
+                            ! determinant.
+                            call decode_det_spinocc_spinunocc(sys, cdet%f, cdet)
+                            call update_sys_spin_info(cdet, sys)
+                            call dmqmc_spin_flip_metropolis_move(sys, cdet, rng)
+                            if (symmetry_orb_list(sys, cdet%occ_list) == sys%symmetry) then
+                                nsuccess = nsuccess + 1
+                                call encode_det(sys%basis, cdet%occ_list, f_new)
+                            end if
+                        else
+                            call decoder_ptr(sys, cdet%f, cdet)
+                            call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+                            ! Check that we didn't generate a null excitation.
+                            ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
+                            if (abs(hmatel) < depsilon) cycle
+                            nsuccess = nsuccess + 1
+                            call create_excited_det(sys%basis, cdet%f, connection, f_new)
+                        end if
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
                     E_new = trial_dm_ptr(sys, f_new)
