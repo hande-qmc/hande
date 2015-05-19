@@ -717,7 +717,7 @@ module restart_hdf5
                     ! ...and create the /qmc/psips group and fill in the constant (new) processor map and total population.
                     call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
                     call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map), pm_dummy%map)
-                    call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, dtot_pop, ierr)
+                    call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, hdf5_path(gpsips, dtot_pop), ierr)
                     call hdf5_write(group_id, hdf5_path(gpsips, dresort), .true.)
                 call h5gclose_f(group_id, ierr)
 
