@@ -23,7 +23,7 @@ contains
         ! In/Out:
         !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
         !       if dmqmc_in%propagate_to_beta is true.
-        
+
         use checking, only: check_allocate
         use errors, only: warning
         use parallel, only: parent
@@ -129,7 +129,7 @@ contains
         use qmc_common, only: find_single_double_prob
         use reference_determinant, only: set_reference_det, copy_reference_t
         use particle_t_utils
-        use proc_pointers, only: sc0_ptr, op0_ptr
+        use proc_pointers, only: sc0_ptr, op0_ptr, energy_diff_ptr
         use spawn_data, only: alloc_spawn_t
         use spawning, only: assign_particle_processor
         use system
@@ -349,6 +349,13 @@ contains
 
                 ! Energy of reference determinant.
                 reference%H00 = sc0_ptr(sys, reference%f0)
+                ! Exchange energy of reference determinant.
+                select case (sys%system)
+                case (ueg)
+                    reference%energy_shift = energy_diff_ptr(sys, reference%occ_list0)
+                case default
+                    ! [todo] - Implement for all models.
+                end select
                 if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 
                 ! In general FCIQMC, we start with psips only on the
@@ -626,7 +633,7 @@ contains
         use system
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, reference_t, single_basis, neel_singlet, neel_singlet_guiding
-        use dmqmc_data, only: dmqmc_in_t
+        use dmqmc_data, only: dmqmc_in_t, free_electron_dm
 
         ! Procedures to be pointed to.
         use death, only: stochastic_death
@@ -646,8 +653,8 @@ contains
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol
-        use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg
         use hamiltonian_ringium, only: slater_condon0_ringium
+        use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg
         use heisenberg_estimators
         use importance_sampling
         use operators
@@ -767,6 +774,7 @@ contains
 
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
+            energy_diff_ptr => exchange_energy_ueg
 
             if (qmc_in%no_renorm) then
                 gen_excit_ptr%full => gen_excit_ueg_no_renorm
@@ -858,7 +866,7 @@ contains
                                          update_dmqmc_stag_mag_ptr => dmqmc_stag_mag_heisenberg
             case(ueg)
                 if (dmqmc_in%propagate_to_beta) then
-                    if (dmqmc_in%free_electron_trial) then
+                    if (dmqmc_in%initial_matrix == free_electron_dm) then
                         trial_dm_ptr => kinetic_energy_ueg
                     else
                         trial_dm_ptr => slater_condon0_ueg
@@ -866,7 +874,7 @@ contains
                 end if
             case(hub_k)
                 if (dmqmc_in%propagate_to_beta) then
-                    if (dmqmc_in%free_electron_trial) then
+                    if (dmqmc_in%initial_matrix == free_electron_dm) then
                         trial_dm_ptr => kinetic0_hub_k
                     else
                         trial_dm_ptr => slater_condon0_hub_k

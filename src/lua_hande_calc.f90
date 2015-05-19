@@ -1071,7 +1071,7 @@ contains
         ! }
         ! ipdmqmc = { -- sets propagate_to_beta to true
         !     initial_beta = b,
-        !     free_electron_partition = true/false,
+        !     initial_matrix = 'free_electron'/'hartree_fock',
         !     grand_canonical_initialisation = true/false,
         !     metropolis_attempts = nattempts,
         ! }
@@ -1112,7 +1112,7 @@ contains
         use aot_vector_module, only: aot_get_val
 
         use calc
-        use dmqmc_data, only: dmqmc_in_t, rdm_t
+        use dmqmc_data, only: dmqmc_in_t, rdm_t, hartree_fock_dm, free_electron_dm
         use checking, only: check_allocate
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
@@ -1126,11 +1126,12 @@ contains
         integer :: table, subtable, err, i
         integer, allocatable :: err_arr(:)
         logical :: op
+        character(len=13) :: str
 
         character(30), parameter :: dmqmc_keys(9) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',     &
                                                                       'find_weights', 'symmetrize', 'vary_weights']
-        character(30), parameter :: ip_keys(4)    = [character(30) :: 'initial_beta', 'free_electron_partition',                &
+        character(30), parameter :: ip_keys(4)    = [character(30) :: 'initial_beta', 'initial_matrix',                         &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts']
         character(30), parameter :: op_keys(7)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation', &
                                                                       'correlation', 'excit_dist', 'excit_dist_start']
@@ -1166,7 +1167,17 @@ contains
             dmqmc_in%propagate_to_beta = .true.
             call aot_table_open(lua_state, opts, table, 'ipdmqmc')
             call aot_get_val(dmqmc_in%init_beta, err, lua_state, table, 'initial_beta')
-            call aot_get_val(dmqmc_in%free_electron_trial, err, lua_state, table, 'free_electron_partition')
+            if (aot_exists(lua_state, table, 'initial_matrix')) then
+                call aot_get_val(str, err, lua_state, table, 'initial_matrix')
+                select case(trim(str))
+                case('free_electron')
+                    dmqmc_in%initial_matrix = free_electron_dm
+                case('hartree_fock')
+                    dmqmc_in%initial_matrix = hartree_fock_dm
+                case default
+                    call stop_all('read_dmqmc_in', 'Unknown  inital density matrix')
+                end select
+            end if
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
             call warn_unused_args(lua_state, ip_keys, table)

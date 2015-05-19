@@ -1,8 +1,10 @@
-sys = hubbard_k {
-    electrons = 12,
-    lattice = { {12} },
+sys = ueg {
+    nel = 4,
     ms = 0,
     sym = 1,
+    dim = 3,
+    cutoff = 4,
+    rs = 2,
 }
 
 dmqmc {
@@ -10,20 +12,16 @@ dmqmc {
     qmc = {
         tau = 0.001,
         rng_seed = 7,
-        init_pop = 1000,
+        init_pop = 10000,
         mc_cycles = 10,
         nreports = 100,
-        target_population = 1e10,
+        target_population = 0,
         state_size = -200,
         spawned_state_size = -100,
+        real_amplitudes = true,
     },
     dmqmc = {
         beta_loops = 5,
-    },
-    ipdmqmc = {
-        initial_beta = 0.5,
-        initial_matrix = 'hartree_fock',
-        metropolis_attempts = 1000,
     },
     operators = {
         energy = true,

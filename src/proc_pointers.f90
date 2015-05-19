@@ -111,6 +111,14 @@ abstract interface
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
     end function i_sc0
+    pure function i_ediff(sys, occ_list) result(hmatel)
+        use system, only: sys_t
+        import :: p
+        implicit none
+        real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(:)
+    end function i_ediff
     subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
@@ -170,6 +178,7 @@ procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlat
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
 procedure(i_sc0), pointer :: trial_dm_ptr => null()
+procedure(i_ediff), pointer :: energy_diff_ptr => null()
 
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 

@@ -50,7 +50,7 @@ contains
         use utils, only: rng_init_info
 
         use calc, only: GLOBAL_META, gen_seed
-        use hamiltonian_ueg, only: sum_sp_eigenvalues, potential_energy_ueg
+        use hamiltonian_ueg, only: sum_sp_eigenvalues, exchange_energy_ueg
         use interact, only: calc_interact, check_comms_file
 
         type(sys_t), intent(inout) :: sys
@@ -64,7 +64,7 @@ contains
         real(dp) :: r
         integer :: occ_list(sys%nel), seed
         logical :: gen
-        real(p) :: energy(hf_part_idx), beta_loc, pot_en
+        real(p) :: energy(hf_part_idx), beta_loc, hfx
         integer :: ierr, ireport, iorb
         integer(int_64) :: iaccept
         real(p) :: local_estimators(last_idx-1), estimators(last_idx-1)
@@ -114,10 +114,10 @@ contains
                                                                       0, occ_list(sys%nalpha+1:), gen)
                 if (.not. gen) cycle
                 iaccept = iaccept + 1
-                ! Calculate Kinetic and Hartree-Fock energies.
+                ! Calculate Kinetic and Hartree-Fock exchange energies.
                 energy(ke_idx) = sum_sp_eigenvalues(sys, occ_list)
-                pot_en = potential_energy_ueg(sys, occ_list)
-                energy(hf_idx) = energy(ke_idx) + pot_en
+                hfx = exchange_energy_ueg(sys, occ_list)
+                energy(hf_idx) = energy(ke_idx) + hfx
                 ! We generate determinants with probability p(i1,..,iN) =
                 ! 1/Z_0 \prod_{i} p(i1)X...Xp(iN), where Z_0 is the
                 ! non-interacting canonical partition function, and p(i1) =
@@ -126,7 +126,7 @@ contains
                 ! i.e.,
                 ! p(i1,..,iN)_HF = 1/Z' e^{-beta(E_HF(i)-E_0(i))}p(i1,...,iN),
                 ! where Z' = \sum_{i} e^{-\beta(E_HF(i)-E_0(i))}.
-                energy(hf_part_idx) = exp(-beta_loc*pot_en)
+                energy(hf_part_idx) = exp(-beta_loc*hfx)
                 energy(hft_idx) = energy(hf_part_idx)*energy(hf_idx)
                 local_estimators(ke_idx:hf_part_idx) = local_estimators(ke_idx:hf_part_idx) + energy
             end do

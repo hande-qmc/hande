@@ -275,6 +275,10 @@ type reference_t
     ! Value of <D0|O|D0>, where O is the operator we are sampling.
     ! (Applicable/set only if Hellmann--Feynman sampling is in operation.)
     real(p) :: O00
+    ! Energy shift of the reference determinant i.e.
+    ! <D0|H_new|D0>-<D0|H_old|D0>, where H_old and H_new are two different
+    ! Hamiltonians. Used in ip-dmqmc when reweighing the initial density matrix.
+    real(p) :: energy_shift
 end type reference_t
 
 ! --- semi-stochastic ---

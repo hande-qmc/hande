@@ -84,4 +84,54 @@ contains
 
     end subroutine stochastic_round_int_64
 
+    function stochastic_round_spawned_particle(spawn_cutoff, pspawn, rng) result(nspawn)
+
+        ! Stochastically round spawned particle whose population is encoded in
+        ! pspawn so that the desired population is achieved on average.
+
+        ! In:
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        ! In/Out:
+        !    pspawn: Encoded spawning probability.
+        !    rng: random number generator.
+        ! Returns:
+        !    nspawn: number of successful spawning events from given pspawn.
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        use const, only: p, int_p
+
+        integer(int_p), intent(in) :: spawn_cutoff
+        real(p), intent(inout) :: pspawn
+        type(dSFMT_t), intent(inout) :: rng
+
+        integer(int_p) :: nspawn
+
+        if (pspawn < spawn_cutoff) then
+
+            ! If the spawning amplitude is below the minimum spawning event
+            ! allowed, stochastically round it either down to zero or up
+            ! to the cutoff.
+            if (pspawn > get_rand_close_open(rng)*spawn_cutoff) then
+                nspawn = spawn_cutoff
+            else
+                nspawn = 0_int_p
+            end if
+
+        else
+
+            ! Need to take into account the possibilty of a spawning attempt
+            ! producing multiple offspring...
+            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
+            ! then spawn a particle with probability pspawn-floor(pspawn).
+            nspawn = int(pspawn, int_p)
+            pspawn = pspawn - nspawn
+
+            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+
+        end if
+
+    end function stochastic_round_spawned_particle
+
 end module stoch_utils
