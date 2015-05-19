@@ -15,15 +15,13 @@ contains
         ! times, to accumulate statistics for each value for beta.
 
         ! In:
+        !    sys: system being studied.
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
         ! In/Out:
-        !    sys: system being studied.  NOTE: if modified inside a procedure,
-        !         it should be returned in its original (ie unmodified state)
-        !         at the end of the procedure.
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_estimates: type containing all DMQMC estimates.
@@ -35,9 +33,10 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
         use death, only: stochastic_death
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det, update_sys_spin_info
         use dmqmc_estimators
         use dmqmc_procedures
+        use dmqmc_initialise_dm, only: create_initial_density_matrix
         use excitations, only: excit_t
         use qmc, only: init_qmc
         use qmc_common
@@ -75,6 +74,8 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(dmqmc_weighted_sampling_t) :: weighted_sampling
         type(restart_info_t) :: ri
+        integer :: ms, occ_list(sys%nel)
+        type(sys_t) :: sys_copy
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -124,6 +125,11 @@ contains
         write_restart_shift = restart_in%write_restart_shift
         call init_restart_info_t(ri, write_id=restart_in%write_id)
 
+        ! If averaging over spin then spin polarisation will change in general.
+        ! Copy sys to sys_copy so that sys can be set back to its input value
+        ! at the end of this routine.
+        call copy_sys_spin_info(sys, sys_copy)
+
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
             call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, qs%psip_list%nstates, &
@@ -159,18 +165,15 @@ contains
                         cdet2%f => qs%psip_list%states((sys%basis%string_len+1):(2*sys%basis%string_len),idet)
                         cdet2%f2 => qs%psip_list%states(:sys%basis%string_len,idet)
 
-                        ! If using multiple symmetry sectors then find the
-                        ! symmetry labels of this particular det.
-                        if (dmqmc_in%all_spin_sectors) then
-                            sys%nel = sum(count_set_bits(cdet1%f))
-                            sys%nvirt = sys%lattice%nsites - sys%nel
-                        end if
-
                         ! Decode and store the the relevant information for
                         ! both bitstrings. Both of these bitstrings are required
                         ! to refer to the correct element in the density matrix.
                         call decoder_ptr(sys, cdet1%f, cdet1)
                         call decoder_ptr(sys, cdet2%f, cdet2)
+
+                        ! If using multiple symmetry sectors then find the
+                        ! symmetry labels of this particular det.
+                        if (dmqmc_in%all_spin_sectors) call update_sys_spin_info(cdet1, sys)
 
                         ! Extract the real signs from the encoded signs.
                         real_population = real(qs%psip_list%pops(:,idet),p)/real_factor
@@ -200,8 +203,8 @@ contains
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet1, &
-                                                     qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
+                                    call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, &
+                                                     cdet1, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
                                                      weighted_sampling%probs, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
@@ -219,8 +222,8 @@ contains
                                                          cdet2, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
                                                          weighted_sampling%probs, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
-                                            call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2%f, cdet1%f, connection, &
-                                                                                nspawned, spawning_end, ireplica, &
+                                            call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2%f, cdet1%f, &
+                                                                                connection, nspawned, spawning_end, ireplica, &
                                                                                 qs%spawn_store%spawn)
 
                                             if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
@@ -242,14 +245,6 @@ contains
                         end do
                     end do
 
-                    ! Now we have finished looping over all determinants, set
-                    ! the symmetry labels back to their default value, if
-                    ! necessary.
-                    if (dmqmc_in%all_spin_sectors) then
-                        sys%nel = nel_temp
-                        sys%nvirt = sys%lattice%nsites - sys%nel
-                    end if
-
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
@@ -268,8 +263,8 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, qs%psip_list, qs, &
-                                          weighted_sampling%probs_old, dmqmc_estimates)
+                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
+                                          qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
 
@@ -320,6 +315,7 @@ contains
             if (parent) write (6,'()')
         end if
 
+        call copy_sys_spin_info(sys_copy, sys)
         call dealloc_det_info_t(cdet1, .false.)
         call dealloc_det_info_t(cdet2, .false.)
 

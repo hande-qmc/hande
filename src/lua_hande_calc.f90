@@ -471,13 +471,8 @@ contains
 
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
-        call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, dmqmc_in, dmqmc_estimates%rdm_info)
+        call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, sys%system, dmqmc_in, dmqmc_estimates%rdm_info)
 
-        ! I'm sure we can handle this more gracefully than hack it in here...!
-        if (dmqmc_in%all_spin_sectors) then
-            if (sys%system /= read_in .and. sys%system /= ueg) sys%Ms = sys%lattice%nsites
-            if (sys%system == heisenberg) sys%max_number_excitations = sys%lattice%nsites/2
-        end if
         sys%basis%tensor_label_len = 2*sys%basis%string_len
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             ! Create info no longer set in init_real_space.
@@ -487,7 +482,14 @@ contains
         end if
 
         ! [todo] - do spin polarisation in system setup.
-        call set_spin_polarisation(sys%basis%nbasis, sys)
+        ! I'm sure we can handle this more gracefully than hack it in here...!
+        if (dmqmc_in%all_spin_sectors) then
+            if (sys%system /= read_in .and. sys%system /= ueg) sys%Ms = sys%lattice%nsites
+            call set_spin_polarisation(sys%basis%nbasis, sys)
+            if (sys%system == heisenberg) sys%max_number_excitations = sys%lattice%nsites/2
+        else
+            call set_spin_polarisation(sys%basis%nbasis, sys)
+        end if
 
         ! Now system initialisation is complete (boo), act on the other options.
         call read_restart_in(lua_state, opts, restart_in)
@@ -1052,7 +1054,7 @@ contains
 
     end subroutine read_ccmc_in
 
-    subroutine read_dmqmc_in(lua_state, nbasis, opts, dmqmc_in, rdm_info)
+    subroutine read_dmqmc_in(lua_state, nbasis, opts, system_name, dmqmc_in, rdm_info)
 
         ! Read in DMQMC-related input options from various tables to a dmqmc_in_t object.
 
@@ -1072,7 +1074,6 @@ contains
         !     free_electron_partition = true/false,
         !     grand_canonical_initialisation = true/false,
         !     metropolis_attempts = nattempts,
-        !     max_metropolis_moves = nexcit,
         ! }
         ! operators = {
         !     renyi2 = true/false,
@@ -1100,6 +1101,7 @@ contains
         ! In:
         !    opts: handle for the table containing the above tables.
         !    nbasis: number of single-particle basis functions in the basis set of the system.
+        !    system_name: system being studied.
         ! Out:
         !    dmqmc_in: dmqmc_in_t object containing DMQMC input options.
         !    rdm_info: array of rdm_t objects containing the subsystem for each
@@ -1114,9 +1116,10 @@ contains
         use checking, only: check_allocate
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
+        use system, only: heisenberg
 
         type(flu_State), intent(inout) :: lua_state
-        integer, intent(in) :: nbasis, opts
+        integer, intent(in) :: nbasis, opts, system_name
         type(dmqmc_in_t), intent(out) :: dmqmc_in
         type(rdm_t), intent(out), allocatable :: rdm_info(:)
 
@@ -1127,9 +1130,8 @@ contains
         character(30), parameter :: dmqmc_keys(9) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',     &
                                                                       'find_weights', 'symmetrize', 'vary_weights']
-        character(30), parameter :: ip_keys(5)    = [character(30) :: 'initial_beta', 'free_electron_partition',                &
-                                                                      'grand_canonical_initialisation', 'metropolis_attempts',  &
-                                                                      'max_metropolis_moves']
+        character(30), parameter :: ip_keys(4)    = [character(30) :: 'initial_beta', 'free_electron_partition',                &
+                                                                      'grand_canonical_initialisation', 'metropolis_attempts']
         character(30), parameter :: op_keys(7)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation', &
                                                                       'correlation', 'excit_dist', 'excit_dist_start']
         character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',             &
@@ -1167,7 +1169,6 @@ contains
             call aot_get_val(dmqmc_in%free_electron_trial, err, lua_state, table, 'free_electron_partition')
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
-            call aot_get_val(dmqmc_in%max_metropolis_move, err, lua_state, table, 'max_metropolis_moves')
             call warn_unused_args(lua_state, ip_keys, table)
             call aot_table_close(lua_state, table)
         end if
@@ -1231,6 +1232,9 @@ contains
         else
             dmqmc_in%rdm%nrdms = 0
         end if
+        ! Can't average over spin sectors alone in normal dmqmc calculation.
+        if (dmqmc_in%all_spin_sectors .and. .not. dmqmc_in%all_sym_sectors .and. .not. dmqmc_in%propagate_to_beta .and. system_name /= heisenberg) &
+                                            & call stop_all('read_dmqmc_in', 'specified symmetry averaging not imlemented')
 
     end subroutine read_dmqmc_in
 

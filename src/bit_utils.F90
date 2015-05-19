@@ -42,6 +42,11 @@ interface count_set_bits
 end interface
 #endif
 
+interface count_even_set_bits
+    module procedure count_even_set_bits_int_32
+    module procedure count_even_set_bits_int_64
+end interface
+
 contains
 
 !--- Counting set bits ---
@@ -69,7 +74,7 @@ contains
     elemental function count_set_bits_int_32(b) result(nbits)
 
         ! In:
-        !    A 32-bit integer.
+        !    b: A 32-bit integer.
         ! Returns:
         !    The number of set bits in b.
 
@@ -130,7 +135,7 @@ contains
     elemental function count_set_bits_int_64(b) result(nbits)
 
         ! In:
-        !    A 64-bit integer.
+        !    b: A 64-bit integer.
         ! Returns:
         !    The number of set bits in b.
 
@@ -154,6 +159,36 @@ contains
         nbits = ishft(tmp*m4, -56)
 
     end function count_set_bits_int_64
+
+    elemental function count_even_set_bits_int_32(b) result(neven)
+
+        ! In:
+        !    b: A 32-bit integer.
+        ! Returns:
+        !    The number of even set bits in b.
+
+        integer :: neven
+        integer(int_32), intent(in) :: b
+        integer(int_32), parameter :: m = Z'55555555'
+
+        neven = count_set_bits(iand(b,m))
+
+    end function count_even_set_bits_int_32
+
+    elemental function count_even_set_bits_int_64(b) result(neven)
+
+        ! In:
+        !    b: A 64-bit integer.
+        ! Returns:
+        !    The number of even set bits in b.
+
+        integer :: neven
+        integer(int_64), intent(in) :: b
+        integer(int_64), parameter :: m = Z'5555555555555555'
+
+        neven = count_set_bits(iand(b,m))
+
+    end function count_even_set_bits_int_64
 
 !--- I/O helpers ---
 

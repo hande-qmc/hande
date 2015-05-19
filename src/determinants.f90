@@ -21,7 +21,7 @@ type det_info_t
     ! List of occupied spin-orbitals.
     integer, pointer :: occ_list(:)  => NULL()  ! (nel)
     ! List of occupied alpha/beta spin-orbitals
-    integer, pointer :: occ_list_alpha(:), occ_list_beta(:)
+    integer, pointer :: occ_list_alpha(:), occ_list_beta(:) !(nel) WARNING: don't assume otherwise.
     ! List of unoccupied alpha/beta spin-orbitals
     integer, pointer :: unocc_list_alpha(:), unocc_list_beta(:)
     ! Number of unoccupied orbitals with each spin and symmetry.
@@ -152,15 +152,15 @@ contains
         ! Components for occupied basis functions...
         allocate(det_info%occ_list(sys%nel), stat=ierr)
         call check_allocate('det_info%occ_list',sys%nel,ierr)
-        allocate(det_info%occ_list_alpha(sys%nalpha), stat=ierr)
+        allocate(det_info%occ_list_alpha(sys%nel), stat=ierr)
         call check_allocate('det_info%occ_list_alpha',sys%nalpha,ierr)
-        allocate(det_info%occ_list_beta(sys%nbeta), stat=ierr)
+        allocate(det_info%occ_list_beta(sys%nel), stat=ierr)
 
         ! Components for unoccupied basis functions...
         call check_allocate('det_info%occ_list_beta',sys%nbeta,ierr)
-        allocate(det_info%unocc_list_alpha(sys%nvirt_alpha), stat=ierr)
+        allocate(det_info%unocc_list_alpha(sys%nvirt), stat=ierr)
         call check_allocate('det_info%unocc_list_alpha',sys%nvirt_alpha,ierr)
-        allocate(det_info%unocc_list_beta(sys%nvirt_beta), stat=ierr)
+        allocate(det_info%unocc_list_beta(sys%nvirt), stat=ierr)
         call check_allocate('det_info%unocc_list_beta',sys%nvirt_beta,ierr)
 
         ! Components for symmetry summary of unoccupied basis functions...
@@ -540,5 +540,36 @@ contains
         end if
 
     end subroutine write_det
+
+    subroutine update_sys_spin_info(cdet, sys)
+
+        ! Determine the spin polarisation from a given determinant and set
+        ! system spin polarisation accordingly.
+
+        ! In:
+        !    cdet: det_info_t object with occ_list set, from which the total ms
+        !       derives.
+        ! In/Out:
+        !    sys: sys_t object. On output spin polarisation (nalpha, nvirt ..)
+        !       will be correctly set.
+
+        use bit_utils, only: count_set_bits, count_even_set_bits
+        use system, only: sys_t, heisenberg
+
+        type(det_info_t), intent(in) :: cdet
+        type(sys_t), intent(inout) :: sys
+
+        select case (sys%system)
+        case (heisenberg)
+            sys%nel = sum(count_set_bits(cdet%f))
+            sys%nvirt = sys%lattice%nsites - sys%nel
+        case default
+            sys%nalpha = sum(count_even_set_bits(cdet%f))
+            sys%nbeta = sys%nel - sys%nalpha
+            sys%nvirt_alpha = sys%basis%nbasis/2 - sys%nalpha
+            sys%nvirt_beta = sys%basis%nbasis/2 - sys%nbeta
+        end select
+
+    end subroutine update_sys_spin_info
 
 end module determinants

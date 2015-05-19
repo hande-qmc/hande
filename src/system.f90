@@ -507,15 +507,6 @@ contains
 
             end if
 
-            select case(sys%system)
-            case(heisenberg)
-                sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
-            case(chung_landau)
-                sys%max_number_excitations = min(sys%nel, (sl%nsites-sys%nel))
-            case default
-                sys%max_number_excitations = sys%nel
-            end select
-
         end associate
 
     end subroutine init_system
@@ -641,12 +632,13 @@ contains
             sys%nel = (sys%lattice%nsites + sys%Ms)/2
             sys%nvirt = (sys%lattice%nsites - sys%Ms)/2
             ! The Heisenberg model doesn't use these values, but they need to be
-            ! initialized to something sensible as we allocate memory using them in 
+            ! initialized to something sensible as we allocate memory using them in
             ! alloc_det_info_t.
             sys%nalpha = 0
             sys%nbeta = 0
             sys%nvirt_alpha = 0
             sys%nvirt_beta = 0
+            sys%max_number_excitations = min(sys%nel, (sys%lattice%nsites-sys%nel))
 
         case(chung_landau)
 
@@ -655,6 +647,7 @@ contains
             sys%nvirt_alpha = sys%lattice%nsites - sys%nalpha
             sys%nbeta = 0
             sys%nvirt_beta = 0
+            sys%max_number_excitations = min(sys%nel, (sys%lattice%nsites-sys%nel))
 
         case (ringium)
 
@@ -679,6 +672,7 @@ contains
 
             sys%nvirt_alpha = nbasis/2 - sys%nalpha
             sys%nvirt_beta = nbasis/2 - sys%nbeta
+            sys%max_number_excitations = min(sys%nel, sys%nvirt)
 
         end select
 
