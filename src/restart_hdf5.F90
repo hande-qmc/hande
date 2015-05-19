@@ -598,7 +598,7 @@ module restart_hdf5
             use checking
             use errors, only: warning, stop_all
             use const, only: i0, int_p, p
-            use parallel, only: parent
+            use parallel
 
             use calc, only: ccmc_calc, init_proc_map_t
             use qmc_data, only: ccmc_in_t, particle_t
@@ -629,6 +629,7 @@ module restart_hdf5
 
             integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
             integer :: max_nstates, tensor_label_len
+            integer :: iproc_target_start, iproc_target_end
             integer, allocatable :: istate_proc(:)
             type(particle_t) :: psip_read, psip_new(0:nmax_files-1)
             logical :: exists
@@ -636,12 +637,24 @@ module restart_hdf5
             type(proc_map_t) :: pm_dummy
             type(restart_info_t) :: ri_write
 
+            ! Each processor reads from every restart file but only writes to
+            ! a (unique) subset, [iproc_target_start,iproc_target_end].
+            ! Thus parallelisation reduces time spent writing out and a little
+            ! time on processing the list read in, but each processor still
+            ! analyses the each restart file in full (but goes over it fewer
+            ! times, perhaps).  Thus, one should not expect this naive algorithm
+            ! to scale well...
+            iproc_target_end = - 1
+            do i = 0, iproc
+                iproc_target_start = iproc_target_end + 1
+                iproc_target_end = iproc_target_start + nprocs_target/nprocs - 1
+                if (i < mod(nprocs_target,nprocs)) iproc_target_end = iproc_target_end + 1
+            end do
+
             ! Hard code 1 load-balancing slot per processor for simplicity.  If the user wishes to use multiple
             ! slots, we should allow this to change when reading in the redistributed restart files.
             call init_proc_map_t(1, pm_dummy, nprocs_target)
 
-            if (.not.parent) call stop_all('redistribute_restart_hdf5', &
-                            'Restart redistribution must currently be performed in serial.  Please improve.')
             if (ri%write_id < 0 .and. ri%write_id == ri%read_id) &
                 call stop_all('redistribute_restart_hdf5', 'Cannot write redistributed restart information to the file(s) from &
                                                            &which the information is read.')
@@ -657,12 +670,13 @@ module restart_hdf5
             ! Create filenames and HDF5 IDs for all old and new files.
             allocate(orig_names(0:nprocs_read-1))
             do i = 0, nprocs_read-1
-                call init_restart_hdf5(ri, .false., orig_names(i), ip=i, verbose=i==0)
+                call init_restart_hdf5(ri, .false., orig_names(i), ip=i, verbose=i==0.and.parent)
             end do
-            allocate(new_names(0:nprocs_target-1))
+            allocate(new_names(iproc_target_start:iproc_target_end))
             ri_write = ri
-            do i = 0, nprocs_target-1
-                call init_restart_hdf5(ri_write, .true., new_names(i), ip=i, verbose=i==0, fname_id=write_id)
+            do i = iproc_target_start, iproc_target_end
+                call init_restart_hdf5(ri_write, .true., new_names(i), ip=i, &
+                                       verbose=i==iproc_target_start.and.parent, fname_id=write_id)
                 ri_write%write_id = -write_id-1
                 call h5fcreate_f(new_names(i), H5F_ACC_TRUNC_F, new_id, ierr)
                 call h5fclose_f(new_id, ierr)
@@ -709,7 +723,7 @@ module restart_hdf5
 
             ! Write out metadata to each new file.
             ! Can just copy it from the first old restart file as it is the same on all files...
-            do i = 0, nprocs_target-1
+            do i = iproc_target_start, iproc_target_end
                 call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
                 ! /metadata and /rng
                 call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
@@ -773,7 +787,7 @@ module restart_hdf5
                     psip_new%info_size = psip_read%info_size
 
                     call alloc_particle_t(max_nstates, tensor_label_len, psip_read)
-                    do iproc_min = 0, min(nmax_files, nprocs_target)-1
+                    do iproc_min = 0, min(nmax_files-1, iproc_target_end-iproc_target_start)
                         call alloc_particle_t(max_nstates, tensor_label_len, psip_new(iproc_min))
                     end do
 
@@ -792,9 +806,9 @@ module restart_hdf5
                     ! Distribute.
                     ! [todo] - non-blocking information.
                     ndets = dims(2)
-                    do iproc_min = 0, nprocs_target-1, nmax_files
+                    do iproc_min = iproc_target_start, iproc_target_end, nmax_files
                         nmoved = 0
-                        iproc_max = min(iproc_min+nmax_files,nprocs_target)-1
+                        iproc_max = min(iproc_min+nmax_files-1,iproc_target_end)
                         ! istate_proc(i) is the running total number of states found in the current original restart file that
                         ! belong on processor i in the target set of processors.
                         allocate(istate_proc(iproc_min:iproc_max))
@@ -803,7 +817,10 @@ module restart_hdf5
                             ! Get processor index (slot_pos is not relevant here as not redoing any load balancing).
                             call assign_particle_processor(psip_read%states(:,idet), tensor_label_len, hash_seed, hash_shift, &
                                                            move_freq, nprocs_target, ip, slot_pos, pm_dummy%map, pm_dummy%nslots)
-                            if (ip > iproc_max) then
+                            if (ip < iproc_target_start .or. ip > iproc_target_end) then
+                                ! Being handled by another processor.  Safely ignore.
+                                nmoved = nmoved + 1
+                            else if (ip > iproc_max) then
                                 ! Leave in cache
                                 psip_read%states(:,idet-nmoved) = psip_read%states(:,idet)
                                 psip_read%pops(:,idet-nmoved) = psip_read%pops(:,idet)
@@ -836,7 +853,7 @@ module restart_hdf5
                     end do
 
                     call dealloc_particle_t(psip_read)
-                    do iproc_min = 0, min(nmax_files, nprocs_target)-1
+                    do iproc_min = 0, min(nmax_files-1, iproc_target_end-iproc_target_start)
                         call dealloc_particle_t(psip_new(iproc_min))
                     end do
 
@@ -850,6 +867,13 @@ module restart_hdf5
             end do
 
             if (parent) write (6,'()')
+
+#ifdef PARALLEL
+            ! Just in case we go on to use the restart files produced in the same HANDE
+            ! run, make sure processing has finished, otherwise a processor may attempt to
+            ! read in a file which another processor is writing out to.
+            call mpi_barrier(mpi_comm_world, ierr)
+#endif
 
             contains
 

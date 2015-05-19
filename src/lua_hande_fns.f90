@@ -27,7 +27,6 @@ contains
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists
 
         use errors, only: stop_all
-        use parallel, only: parent
         use restart_hdf5, only: restart_info_t, init_restart_info_t, redistribute_restart_hdf5
 
         integer(c_int) :: nresult
@@ -62,7 +61,7 @@ contains
             call init_restart_info_t(ri)
         end if
 
-        if (parent) call redistribute_restart_hdf5(ri, nprocs_target)
+        call redistribute_restart_hdf5(ri, nprocs_target)
 
         nresult = 0
 
