@@ -371,6 +371,8 @@ module hdf5_helper
             use hdf5, only: hid_t, HSIZE_T
             use const, only: int_32
 
+            integer, parameter :: rank = 1
+
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
@@ -383,7 +385,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr, append)
+            call write_ptr(id, dset, kinds%i32, rank, int(arr_shape,HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_int_32
 
@@ -405,6 +407,8 @@ module hdf5_helper
             use hdf5, only: hid_t, HSIZE_T
             use const, only: int_64
 
+            integer, parameter :: rank = 1
+
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
@@ -417,7 +421,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr, append)
+            call write_ptr(id, dset, kinds%i64, rank, int(arr_shape,HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_int_64
 
@@ -462,7 +466,7 @@ module hdf5_helper
             ptr = c_loc(arr)
             arr_dims = int(arr_shape, HSIZE_T)
             if (present(lim)) arr_dims(rank) = lim
-            call write_ptr(id, dset, kinds%i32, size(arr_shape), arr_dims, ptr, append)
+            call write_ptr(id, dset, kinds%i32, rank, arr_dims, ptr, append)
 
         end subroutine write_array_2d_int_32
 
@@ -507,7 +511,7 @@ module hdf5_helper
             ptr = c_loc(arr)
             arr_dims = int(arr_shape, HSIZE_T)
             if (present(lim)) arr_dims(rank) = lim
-            call write_ptr(id, dset, kinds%i64, size(arr_shape), arr_dims, ptr, append)
+            call write_ptr(id, dset, kinds%i64, rank, arr_dims, ptr, append)
 
         end subroutine write_array_2d_int_64
 
@@ -529,6 +533,8 @@ module hdf5_helper
             use hdf5, only: hid_t, HSIZE_T
             use const, only: dp
 
+            integer, parameter :: rank = 1
+
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
@@ -541,7 +547,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr, append)
+            call write_ptr(id, dset, kinds%dp, rank, int(arr_shape, HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_real_dp
 
@@ -586,7 +592,7 @@ module hdf5_helper
             ptr = c_loc(arr)
             arr_dims = int(arr_shape, HSIZE_T)
             if (present(lim)) arr_dims(rank) = lim
-            call write_ptr(id, dset, kinds%dp, size(arr_shape), arr_dims, ptr, append)
+            call write_ptr(id, dset, kinds%dp, rank, arr_dims, ptr, append)
 
         end subroutine write_array_2d_real_dp
 
@@ -608,6 +614,8 @@ module hdf5_helper
             use hdf5, only: hid_t, HSIZE_T
             use const, only: sp
 
+            integer, parameter :: rank = 1
+
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
@@ -620,7 +628,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr, append)
+            call write_ptr(id, dset, kinds%sp, rank, int(arr_shape, HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_real_sp
 
@@ -665,7 +673,7 @@ module hdf5_helper
             ptr = c_loc(arr)
             arr_dims = int(arr_shape, HSIZE_T)
             if (present(lim)) arr_dims(rank) = lim
-            call write_ptr(id, dset, kinds%sp, size(arr_shape), arr_dims, ptr, append)
+            call write_ptr(id, dset, kinds%sp, rank, arr_dims, ptr, append)
 
         end subroutine write_array_2d_real_sp
 
