@@ -360,10 +360,10 @@ contains
         real(dp) :: plevel
         integer :: unocc_alpha(sys%nvirt_alpha), unocc_beta(sys%nvirt_beta)
 
-        occ_list(:sys%nalpha) = det0%occ_list_alpha
-        occ_list(sys%nalpha+1:) = det0%occ_list_beta
-        unocc_alpha = det0%unocc_list_alpha
-        unocc_beta = det0%unocc_list_beta
+        occ_list(:sys%nalpha) = det0%occ_list_alpha(:sys%nalpha)
+        occ_list(sys%nalpha+1:) = det0%occ_list_beta(:sys%nbeta)
+        unocc_alpha = det0%unocc_list_alpha(:sys%nvirt_alpha)
+        unocc_beta = det0%unocc_list_beta(:sys%nvirt_beta)
 
         ! Select a given sector of the space (i.e. excitation level and number
         ! of alpha excitations) according to the size of the sector.
