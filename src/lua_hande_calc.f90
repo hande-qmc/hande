@@ -1233,8 +1233,10 @@ contains
             dmqmc_in%rdm%nrdms = 0
         end if
         ! Can't average over spin sectors alone in normal dmqmc calculation.
-        if (dmqmc_in%all_spin_sectors .and. .not. dmqmc_in%all_sym_sectors .and. .not. dmqmc_in%propagate_to_beta .and. system_name /= heisenberg) &
-                                            & call stop_all('read_dmqmc_in', 'specified symmetry averaging not imlemented')
+        if (dmqmc_in%all_spin_sectors .and. .not. dmqmc_in%all_sym_sectors .and. .not. dmqmc_in%propagate_to_beta &
+            .and. system_name /= heisenberg) then
+            call stop_all('read_dmqmc_in', 'specified symmetry averaging not imlemented')
+        end if
 
     end subroutine read_dmqmc_in
 
