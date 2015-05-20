@@ -448,7 +448,7 @@ contains
         else
             if (init) then
                 ! Return reference as the first string.
-                string = occ_spin
+                string = occ_spin(:nel_spin)
                 excit_level = 0
                 ! Prepare combination for first single excitation.
                 ! CARE: this uses an undocumented feature of next_comb, where if
@@ -477,7 +477,7 @@ contains
                 end if
                 ! Form string by exciting electrons from selected core orbitals
                 ! into selected virtual orbitals.
-                string = occ_spin
+                string = occ_spin(:nel_spin)
                 forall (i=1:excit_level) string(comb(i)+1) = unocc_spin(comb(i+excit_level)+1)
             end if
         end if
