@@ -54,7 +54,9 @@ contains
         ! In:
         !   sys: system of interest.
         !   fci_in: fci input options.
-        !   ref: reference determinant.
+        ! In/Out:
+        !   ref: reference determinant.  If a truncated calculation is being performed and
+        !        a reference determinant is not supplied, a simple best guess will be created.
         ! Out:
         !   ndets, dets: number of and bit-string representation of determinants in the
         !        selected Hilbert subspace.
@@ -64,6 +66,7 @@ contains
         use determinants, only: spin_orb_list, encode_det, write_det
         use determinant_enumeration, only: enumerate_determinants, print_dets_list
         use qmc_data, only: reference_t
+        use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
 
         use errors, only: stop_all
@@ -74,7 +77,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(in) :: fci_in
-        type(reference_t), intent(in) :: ref
+        type(reference_t), intent(inout) :: ref
         integer, intent(out) :: ndets
         integer(i0), allocatable, intent(out) :: dets(:,:)
 
@@ -112,6 +115,11 @@ contains
         end if
 
         call set_spin_polarisation(sys%basis%nbasis, sys)
+
+        if (.not.allocated(ref%occ_list0) .and. ref%ex_level /= sys%nel) then
+            ! Provide a best guess at the reference determinant given symmetry and spin options.
+            call set_reference_det(sys, ref%occ_list0, .true., sys%symmetry)
+        end if
 
         ! Construct space
         if (allocated(ref%occ_list0)) then
