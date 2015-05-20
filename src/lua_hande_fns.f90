@@ -16,7 +16,7 @@ contains
 
         ! Lua:
         !    redistribute {
-        !       nprocs = N, -- required
+        !       nprocs = N,
         !       read = id,
         !       write = id,
         !    }
@@ -27,6 +27,7 @@ contains
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists
 
         use errors, only: stop_all
+        use parallel, only: nprocs
         use restart_hdf5, only: restart_info_t, init_restart_info_t, redistribute_restart_hdf5
 
         integer(c_int) :: nresult
@@ -41,8 +42,7 @@ contains
         lua_state = flu_copyptr(l)
         opts = aot_table_top(lua_state)
 
-        call aot_get_val(nprocs_target, err, lua_state, opts, 'nprocs')
-        if (err /= 0) call stop_all('lua_redistribute_restart', 'nprocs: target number of processors not supplied.')
+        call aot_get_val(nprocs_target, err, lua_state, opts, 'nprocs', default=nprocs)
 
         read_exists = aot_exists(lua_state, opts, 'read')
         write_exists = aot_exists(lua_state, opts, 'write')
