@@ -1,0 +1,13 @@
+ -- Exact CISDTQ energy: -0.191989 (correlation) and -128.680764 (total).
+fci {
+    sys = read_in {
+        int_file = "INTDUMP",
+        nel = 10,
+        ms = 0,
+        sym = 0,
+    },
+    reference = {
+        ex_level = 4,
+    },
+    lanczos = {},
+}
