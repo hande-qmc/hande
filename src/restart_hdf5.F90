@@ -675,11 +675,17 @@ module restart_hdf5
                 call init_restart_hdf5(ri, .false., orig_names(i), ip=i, verbose=i==0.and.parent)
             end do
             allocate(new_names(iproc_target_start:iproc_target_end))
+            ! Base new filestem on the one assigned to processor 0 (guaranteed to exist for all sets of restart files.)
             ri_write = ri
-            do i = iproc_target_start, iproc_target_end
-                call init_restart_hdf5(ri_write, .true., new_names(i), ip=i, &
-                                       verbose=i==iproc_target_start.and.parent, fname_id=write_id)
+            if (parent) then
+                call init_restart_hdf5(ri_write, .true., new_names(iproc_target_start), ip=0, verbose=parent, fname_id=write_id)
                 ri_write%write_id = -write_id-1
+            end if
+#ifdef PARALLEL
+            call MPI_Bcast(ri_write%write_id, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
+#endif
+            do i = iproc_target_start, iproc_target_end
+                call init_restart_hdf5(ri_write, .true., new_names(i), ip=i, verbose=.false.)
                 call h5fcreate_f(new_names(i), H5F_ACC_TRUNC_F, new_id, ierr)
                 call h5fclose_f(new_id, ierr)
             end do
