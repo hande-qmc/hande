@@ -370,6 +370,8 @@ contains
 
         ! Each event in a given thread is nthreads elements away from the
         ! previous event.
+        ! We assume that all particles in spawn_t come from spawning events,
+        ! and not from moving particles between processors.
         nevents = sum(spawn%head - spawn%head_start) / nthreads
 
     end function calc_events_spawn_t

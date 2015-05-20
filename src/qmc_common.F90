@@ -468,6 +468,10 @@ contains
         !        to another processor have been added to the correct position in
         !        the spawned store.
 
+        ! Note: this adds particles to the spawn_t object which are not actually
+        ! spawning events, so care must be taken with calculating the spawning
+        ! rate if this procedure is used.
+
         use calc, only: dmqmc_calc, doing_calc
         use const, only: i0, dp
         use spawn_data, only: spawn_t
