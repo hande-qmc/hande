@@ -266,6 +266,7 @@ contains
         use proc_pointers
         use spawning, only: assign_particle_processor
         use system, only: sys_t
+        use spawn_data, only: calc_events_spawn_t
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t
@@ -546,7 +547,7 @@ contains
                 seen_D0 = .false.
                 D0_population_cycle = 0.0_p
                 proj_energy_cycle = 0.0_p
-                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle)
+                !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn)
                 do iattempt = 1, nclusters
 
                     ! For OpenMP scalability, have this test inside a single loop rather
@@ -676,6 +677,10 @@ contains
                 qs%estimators%D0_population = qs%estimators%D0_population + D0_population_cycle
                 qs%estimators%proj_energy = qs%estimators%proj_energy + proj_energy_cycle
 
+                ! Calculate the number of spawning events before the particles are redistributed,
+                ! otherwise sending particles to other processors is counted as a spawning event.
+                nspawn_events = calc_events_spawn_t(qs%spawn_store%spawn)
+
                 ! Redistribute excips to new processors.
                 ! The spawned excips were sent to the correct processors with
                 ! the current hash shift, so it's just those in the main list
@@ -683,7 +688,7 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
                     if (nprocs > 1) call redistribute_particles(pl%states, real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
 
-                    call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events)
+                    call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, pl, spawn)
                 end associate
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn, qs%spawn_store%rspawn)
