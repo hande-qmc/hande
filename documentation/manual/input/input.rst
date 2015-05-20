@@ -42,6 +42,14 @@ Calculations
    calcs/ccmc
    calcs/dmqmc
 
+Utilities
+^^^^^^^^^
+
+.. toctree::
+   :maxdepth: 1
+
+   utils/utils
+
 Appendix
 ^^^^^^^^
 
