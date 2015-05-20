@@ -605,6 +605,8 @@ module restart_hdf5
             use spawn_data, only: proc_map_t
             use particle_t_utils, only: alloc_particle_t, dealloc_particle_t
             use spawning, only: assign_particle_processor
+#else
+            use errors, only: stop_all
 #endif
 
             type(restart_info_t), intent(in) :: ri
