@@ -25,7 +25,7 @@ contains
         !    qs (optional): QMC calculation state. The shift and/or timestep may be updated.
 
         use aotus_module, only: open_config_chunk
-        use aot_table_module, only: aot_get_val, aot_exists
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use aot_vector_module, only: aot_get_val
         use flu_binding, only: flu_State
 
@@ -39,8 +39,9 @@ contains
         type(qmc_in_t), optional, intent(inout) :: qmc_in
         type(qmc_state_t), optional, intent(inout) :: qs
 
+        real(p), allocatable :: tmpshift(:)
         logical :: comms_exists, comms_read, eof
-        integer :: proc, i, j, ierr, lua_err, iunit
+        integer :: proc, i, j, ierr, lua_err, iunit, shnd
         integer, allocatable :: ierr_arr(:)
 #ifdef PARALLEL
         integer :: buf_len
@@ -136,8 +137,21 @@ contains
                 if (present(qs)) then
                     call aot_get_val(qs%tau, ierr, lua_state, key='tau')
                     ! Only get shift if it is given, to avoid unwanted reallocation.
-                    if (aot_exists(lua_state, key='shift')) &
-                        call aot_get_val(qs%shift, ierr_arr, size(qs%shift), lua_state, key='shift')
+                    if (aot_exists(lua_state, key='shift')) then
+                        call aot_table_open(lua_state, thandle=shnd, key='shift')
+                        if (shnd == 0) then
+                            ! Given a single value...
+                            allocate(tmpshift(1))
+                            call aot_get_val(tmpshift(1), ierr, lua_state, key='shift')
+                            qs%shift = tmpshift(1)
+                            deallocate(tmpshift)
+                        else
+                            call aot_table_close(lua_state, shnd)
+                            call aot_get_val(tmpshift, ierr_arr, size(qs%shift), lua_state, key='shift')
+                            if (parent) write (6,'(1X,"# Using ", i2, " shift values from HANDE.COMM.")') size(tmpshift)
+                            qs%shift(:size(tmpshift)) = tmpshift(:)
+                        end if
+                    end if
                 end if
                 if (present(qmc_in)) then
                     call aot_get_val(qmc_in%target_particles, ierr, lua_state, key='target_population')
