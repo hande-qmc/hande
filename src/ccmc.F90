@@ -164,6 +164,30 @@ module ccmc
 ! In order for the correct dynamics to be performed, we must carefully
 ! accumulate all negative signs and take them into account when
 ! determining the sign of the child excips.
+!   
+! Shift
+! -----
+!
+! The shift is a free parameter introduced to provide control of the total population.
+! The value of the shift should not affect the convergence of the wavefunction, only
+! the overall growth.  Once the distribution of excips is (on average) correctly
+! representing the wavefunction, this should remain true, regardless of the shift.
+! But consider applying equation (3) above to the exact wavefunction.  The change in
+! population from one iteration to the next is given by:
+!
+!   \Delta t_I = - dt < D_I | H - S | \Psi_{CC}(t) >
+!              = - dt (E_{CC} - S) < D_I | \Psi_{CC}(t) >
+!
+! This is not, in general, proportional to t_I, unless S = E_{CC}, so the amplitudes
+! are not uniformly scaled and the new wavefunction is incorrect.  This can be
+! remedied by instead using:
+!
+!   \Delta t_I = - dt < D_I | H - E | \Psi_{CC}(t) > - dt (E - S) t_I.
+!
+! As the exact energy E_{CC} is not known during the calculation, we use the projected
+! energy estimator.  This new expression can be thought of as separating the two roles
+! of the dynamics: the first term optimises the amplitudes to solve the coupled cluster
+! equations, and the second provides control of the total poopulation.
 !
 ! Linked CCMC
 ! ===========
