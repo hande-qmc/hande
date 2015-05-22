@@ -175,47 +175,55 @@ module ccmc
 ! But consider applying equation (3) above to the exact wavefunction.  The change in
 ! population from one iteration to the next is given by:
 !
-!   \Delta t_I = - dt < D_I | H - S | \Psi_{CC}(t) >
+!   \Delta t_I = - dt < D_I | H - S | \Psi_{CC}(t) >                        (12)
 !              = - dt (E_{CC} - S) < D_I | \Psi_{CC}(t) >
 !
 ! This is not, in general, proportional to t_I, unless S = E_{CC}, so the amplitudes
 ! are not uniformly scaled and the new wavefunction is incorrect.  This can be
 ! remedied by instead using:
 !
-!   \Delta t_I = - dt < D_I | H - E | \Psi_{CC}(t) > - dt (E - S) t_I.
+!   \Delta t_I = - dt < D_I | H - E | \Psi_{CC}(t) > - dt (E - S) t_I.      (13)
 !
 ! As the exact energy E_{CC} is not known during the calculation, we use the projected
-! energy estimator.  This new expression can be thought of as separating the two roles
-! of the dynamics: the first term optimises the amplitudes to solve the coupled cluster
-! equations, and the second provides control of the total poopulation.
+! energy estimator.  Once the shift has converged to E_{CC} (within stochastic 
+! fluctuations), the equations (3) and (13) are equivalent and either may be used.
 !
-! [review] - JSS: I agree with this but perhaps it would help to point out the different
-! [review] - JSS: roles (and hence impact this change has on) composite and non-composite clusters?
-! [review] - JSS: Perhaps also say that (3) is correct once the shift has converged to E_CC?
+! This new expression can be thought of as separating the two roles of the dynamics: 
+! the first term optimises the amplitudes to solve the coupled cluster equations, 
+! and the second provides control of the total population.
+!
+! Two sorts of clusters may be distinguished: composite clusters, that contain a product
+! of two or more excitors, and non-composite that have only one or no excitors.  There is
+! no difference in the dynamics of non-composite clusters between the use of equations (3)
+! and (13), but on non-composite clusters the projected energy rather than the shift is
+! used for the diagonal death step.  Death on the composite clusters does not necessarily
+! remove particles, as all the population resides on non-composite clusters, but
+! potentially increases the population on a (possibly previously unoccupied) excitor, so
+! is not effective for population control. From this perspective it makes sense to not
+! have the shift involved in such steps.
 !
 ! Linked CCMC
 ! ===========
 !
-! Instead of sampling the amplitude equations (3), the equivalent equations::
+! Instead of sampling the amplitude equations (13), the equivalent equations::
 !
-! [review] - JSS: is this still correct in light of the above section?
-!   t_I(t+dt) = t_I(t) - dt (< D_I | e^{-T(t)} H e^{T(t)} | D_0 > - < D_I | S | D_0 >)  (12)
+!   t_I(t+dt) = t_I(t) - dt (< D_I | e^{-T(t)} (H - E) e^{T(t)} | D_0 > - (E - S) t_I(t))  (14)
 !
 ! may be used. Using the identity::
 !
-!   e^T H e^{-T} = H + [H,T]_c + 1/2 [[H,T],T]_c + 1/3! [[[H,T],T],T]_c + 1/4! [[[[H,T],T],T],T]_c,  (13)
+!   e^T H e^{-T} = H + [H,T]_c + 1/2 [[H,T],T]_c + 1/3! [[[H,T],T],T]_c + 1/4! [[[[H,T],T],T],T]_c,  (15)
 !
 ! where the subscript c indicates that only terms in the commutators coming from
 ! linked diagrams need to be included, gives a very similar form to the original
 ! equations. These equations, however, only include terms of at most fourth order
-! in T regardless of the truncation level. The equations (12) can be sampled in
-! very much the same way as (3), but require some modifications due to the
+! in T regardless of the truncation level. The equations (14) can be sampled in
+! very much the same way as (13), but require some modifications due to the
 ! presence of the commutators instead of a simple product of operators:
 !
 ! #. Clusters that include two excitors that excite from (to) the same orbital
 !    give a contribution to the equations, in contrast to the original form
 !    where they do not as the product of the excitors is 0. This corresponds to
-!    one excitor coming from the e^T and the other from the e^{-T} in (12). See
+!    one excitor coming from the e^T and the other from the e^{-T} in (14). See
 !    comments in select_cluster and linked_spawner_ccmc for details.
 ! #. Excitations not linked to the cluster being spawned from can be rejected.
 !    See linked_excitation.
@@ -233,7 +241,7 @@ module ccmc
 ! unlinked CC
 !   A cluster is the product of the excitors and arises from sampling (8).
 ! linked CC
-!   A cluster is the set of excitors and arises from sampling (13).  As the selected set
+!   A cluster is the set of excitors and arises from sampling (15).  As the selected set
 !   of excitors arise from the sampling of a sum of commutators, we must evaluate the
 !   commutator by considering all possible partitions, where a partition is a defined by
 !   a subset of excitors before the Hamiltonian and the remaining subset after the
@@ -427,8 +435,7 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
-            ! [review] - JSS: actually averaged over last report loop and corrects more than linked death
-            ! Projected energy from last cycle to correct linked death
+            ! Projected energy from last report loop to correct death
             proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
 
             call init_report_loop(qs, bloom_stats)
@@ -1478,7 +1485,6 @@ contains
 
     subroutine stochastic_ccmc_death(rng, spawn, real_factor, linked_ccmc, sys, qs, cdet, cluster, proj_energy)
 
-
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
         !    \tau |<D_s|H|D_s> A_s|
@@ -1495,8 +1501,6 @@ contains
         ! which changes the death probabilities, and also means the shift only
         ! applies on the reference determinant.
 
-        ! [review] - JSS: update arg info.
-
         ! In:
         !    sys: system being studied.
         !    qs: qmc_state_t containing information about the reference and estimators.
@@ -1506,6 +1510,8 @@ contains
         !    cdet: info on the current excitor (cdet) that we will spawn
         !        from.
         !    cluster: information about the cluster which forms the excitor.
+        !    proj_energy: projected energy.  This should be the average value from the last
+        !        report loop, not the running total in qs%estimators.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
@@ -1539,8 +1545,6 @@ contains
         ! parent excitor to the qs%ref and that formed from applying the
         ! child excitor.
         if (linked_ccmc) then
-            ! For linked coupled cluster we only apply the shift to the
-            ! reference determinant
             select case (cluster%nexcitors)
             case(0)
                 ! Death on the reference is unchanged
@@ -1548,9 +1552,6 @@ contains
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
-                ! [review] - JSS: I'm not sure this comment is entirely helpful.  Correct what/why?
-                ! [review] - JSS: (Perhaps not needed in light of the module-level comments?
-                ! We correct for the absence of the shift using the projected energy.
                 KiiAi = (cdet%data(1) + proj_energy - qs%shift(1))*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
@@ -1639,8 +1640,6 @@ contains
         ! in the spawned list, so only works for non-composite excips (single excitors or
         ! particles on the reference).
 
-        ! [review] - JSS: update arg info.
-
         ! In:
         !    real_factor: the encoding factor by which the stored populations are multiplied
         !       to enable non-integer populations.
@@ -1649,6 +1648,8 @@ contains
         !    D0: true if the current excip is the null (reference) excitor
         !    Hii: the diagonal matrix element of the determinant formed by applying the excip to the
         !       reference
+        !    proj_energy: projected energy.  This should be the average value from the last
+        !        report loop, not the running total in qs%estimators.
         ! In/Out:
         !    rng: random number generator.
         !    ndeath: running (encoded) total of number of particles killed/cloned.
@@ -1679,10 +1680,6 @@ contains
             KiiAi = (-qs%shift(1))*population
         else
             if (linked_ccmc) then
-                ! In linked coupled cluster the shift only applies on the reference
-                ! [review] - JSS: I'm not sure this comment is entirely helpful.  Correct what/why?
-                ! [review] - JSS: (Perhaps not needed in light of the module-level comments?
-                ! We correct for this with the projected energy
                 KiiAi = (Hii + proj_energy - qs%shift(1))*population
             else
                 KiiAi = (Hii - qs%shift(1))*population
