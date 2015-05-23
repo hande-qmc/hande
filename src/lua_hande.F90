@@ -107,8 +107,7 @@ contains
             call mpi_bcast(buffer, buf_len, MPI_CHARACTER, 0, mpi_comm_world, ierr)
 #endif
 
-            ! Attempt to run script.  If it fails (ie lua_err is non-zero) then try
-            ! parsing it as traditional input file for now.
+            ! Attempt to run lua script.
             lua_state = fluL_newstate()
             call register_lua_hande_api(lua_state)
             call open_config_file(lua_state, inp_file, lua_err, err_string)
