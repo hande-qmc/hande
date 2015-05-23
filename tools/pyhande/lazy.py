@@ -66,9 +66,10 @@ size from the blocking analysis:
         indx = data['iterations'] > start
     else:
         indx = select_function(data)
-    to_block = ['Shift', '\sum H_0j N_j', 'N_0']
+    to_block = []
     if extract_psips:
         to_block.append('# H psips')
+    to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
 
     # Compute and define new weighted columns to reblock.
     if reweight_history > 0:
@@ -77,8 +78,7 @@ size from the blocking analysis:
             arith_mean=arith_mean)
         data['W * \sum H_0j N_j'] = data['\sum H_0j N_j'] * data['Weight']
         data['W * N_0'] = data['N_0'] * data['Weight']
-        to_block.append('W * \sum H_0j N_j')
-        to_block.append('W * N_0')
+        to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
 
     mc_data = data.ix[indx, to_block]
 
@@ -90,22 +90,17 @@ size from the blocking analysis:
     
     proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
     reblock = pd.concat([reblock, proje], axis=1)
+    to_block.append('Proj. Energy')
 
     if reweight_history > 0:
         proje = pyhande.analysis.projected_energy(reblock, covariance, 
-                    data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0'
-                    ,col_name='Weighted Proj. E.')
+                    data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
+                    col_name='Weighted Proj. E.')
         reblock = pd.concat([reblock, proje], axis=1)
+        to_block.append('Weighted Proj. E.')
 
     # Summary (including pretty printing of estimates).
-    (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock)
-    if extract_psips:
-        (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock,
-                keys=('# H psips',), summary_tuple=(opt_block, no_opt_block))
-    if reweight_history > 0:
-        (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock,
-                keys=('W * \sum H_0j N_j', 'W * N_0', 'Weighted Proj. E.'),
-                summary_tuple=(opt_block, no_opt_block))
+    (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
 
     estimates = []
     for (name, row) in opt_block.iterrows():

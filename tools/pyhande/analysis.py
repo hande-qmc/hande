@@ -59,8 +59,8 @@ See also
             [(col_name, col) for col in proje.columns])
     return proje
 
-def qmc_summary(data, keys=('Shift', '\sum H_0j N_j', 'N_0',
-                            'Proj. Energy'), summary_tuple=None):
+def qmc_summary(data, keys=('\sum H_0j N_j', 'N_0', 'Shift', 'Proj. Energy'),
+                            summary_tuple=None):
     '''Summarise a reblocked data set by the optimal block.
 
 Parameters
