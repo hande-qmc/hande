@@ -32,6 +32,7 @@ contains
         !       thrown if the 'sys' key is not present.
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_f_pointer
+        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
         use flu_binding, only: flu_State, flu_gettop
@@ -58,13 +59,13 @@ contains
         ! this object instead of creating a new one.
         if (have_sys_entry) then
             call aot_get_val(sys_ptr, err, lua_state, thandle=1, key='sys')
-            if (err /= 0) call stop_all('get_sys_t', 'Problem receiving sys_t object.')
+            if (err /= 0 .and. parent) call stop_all('get_sys_t', 'Problem receiving sys_t object.')
             call c_f_pointer(sys_ptr, sys)
             if (present(new)) new = .false.
         else
             if (present(new)) then
                 new = .true.
-            else
+            else if (parent) then
                 call stop_all('get_sys_t', 'No system object supplied.')
             end if
             allocate(sys)
@@ -85,6 +86,7 @@ contains
 
         use aot_table_module, only: aot_get_val
         use aot_vector_module, only: aot_get_val
+        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
         use flu_binding, only: flu_State
@@ -106,7 +108,7 @@ contains
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
         if (size(cas) == 0) deallocate(cas)
         if (allocated(cas)) then
-            if (size(cas) /= 2) call stop_all('set_common_sys_options', &
+            if (size(cas) /= 2 .and. parent) call stop_all('set_common_sys_options', &
                             'The CAS option should provide exactly 2 parameters (in an array).')
             sys%CAS = cas
         end if
@@ -126,7 +128,6 @@ contains
         use aot_vector_module, only: aot_get_val
 
         use const, only: p
-        use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
 
@@ -161,6 +162,7 @@ contains
         use aot_vector_module, only: aot_get_val
 
         use const, only: p
+        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
@@ -174,7 +176,7 @@ contains
         integer :: lattice, i
 
         call aot_table_open(lua_state, opts, lattice, 'lattice')
-        if (lattice == 0) call stop_all('get_lattice', 'No lattice specified.')
+        if (lattice == 0 .and. parent) call stop_all('get_lattice', 'No lattice specified.')
 
         call aot_get_val(tmp, err_arr, 3, lua_state, lattice, pos=1)
         if (size(tmp) > 0 .and. size(tmp) <= 3) then
@@ -182,7 +184,7 @@ contains
             allocate(sys%lattice%lattice(sys%lattice%ndim, sys%lattice%ndim))
             sys%lattice%lattice(:,1) = tmp
         else
-            call stop_all('get_lattice', 'Unsupported lattice dimension.')
+            if (parent) call stop_all('get_lattice', 'Unsupported lattice dimension.')
         end if
         deallocate(tmp)
 

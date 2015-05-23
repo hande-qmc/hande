@@ -87,6 +87,7 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_exists, aot_table_close
 
+        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
@@ -119,7 +120,7 @@ contains
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
         if (size(ref_det) == 0) deallocate(ref_det)
         if (allocated(ref_det)) then
-            if (size(ref_det) /= sys%nel) call stop_all('lua_hilbert_space', &
+            if (size(ref_det) /= sys%nel .and. parent) call stop_all('lua_hilbert_space', &
                             'Reference determinant does not match the number of electrons in system.')
         end if
 
@@ -155,6 +156,7 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close
 
+        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
@@ -178,8 +180,8 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
-        if (sys%ueg%chem_pot == huge(1.0_p)) call stop_all('lua_kinetic_energy', &
-                                                           'chem_pot: chemical potential not supplied.')
+        if (sys%ueg%chem_pot == huge(1.0_p) .and. parent) call stop_all('lua_kinetic_energy', &
+                                                                        'chem_pot: chemical potential not supplied.')
 
         opts = aot_table_top(lua_state)
         call read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
@@ -545,7 +547,6 @@ contains
 
         use basis_types, only: basis_t
         use checking, only: check_allocate
-        use errors, only: stop_all
         use fci_utils, only: fci_in_t
 
         type(flu_State), intent(inout) :: lua_state
@@ -619,6 +620,7 @@ contains
         use aot_vector_module, only: aot_get_val
 
         use const, only: p
+        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
 
@@ -632,11 +634,12 @@ contains
         integer, allocatable :: err_arr(:)
         character(10), parameter :: keys(5) = [character(10) :: 'sys', 'ncycles', 'ex_level', 'reference', 'rng_seed']
 
-        if (.not. aot_exists(lua_state, opts, 'hilbert')) call stop_all('read_hilbert_args','"hilbert" table not present.')
+        if (.not. aot_exists(lua_state, opts, 'hilbert') .and. parent) &
+            call stop_all('read_hilbert_args','"hilbert" table not present.')
         call aot_table_open(lua_state, opts, hilbert_table, 'hilbert')
 
         call aot_get_val(ncycles, err, lua_state, hilbert_table, 'ncycles')
-        if (err /= 0) call stop_all('read_hilbert_args', 'Number of cycles not supplied.')
+        if (err /= 0 .and. parent) call stop_all('read_hilbert_args', 'Number of cycles not supplied.')
         call aot_get_val(ex_level, err, lua_state, hilbert_table, 'ex_level', default=-1)
         call aot_get_val(ref_det, err_arr, nel, lua_state, hilbert_table, key='reference')
         have_seed = aot_exists(lua_state, hilbert_table, 'rng_seed')
@@ -667,6 +670,7 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
         use const, only: p
+        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
 
@@ -680,16 +684,17 @@ contains
         character(17), parameter :: keys(5) = [character(17) :: 'nattempts', 'ncycles', 'beta', &
                                                                 'fermi_temperature', 'rng_seed']
 
-        if (.not. aot_exists(lua_state, opts, 'kinetic')) call stop_all('read_kinetic_args','"kinetic" table not present.')
+        if (.not. aot_exists(lua_state, opts, 'kinetic') .and. parent) &
+            call stop_all('read_kinetic_args','"kinetic" table not present.')
         call aot_table_open(lua_state, opts, kinetic_table, 'kinetic')
 
         call aot_get_val(nattempts, err, lua_state, kinetic_table, 'nattempts')
-        if (err /= 0) call stop_all('read_kinetic_args', 'nattempts: Number of attempts/cycle not supplied.')
+        if (err /= 0 .and. parent) call stop_all('read_kinetic_args', 'nattempts: Number of attempts/cycle not supplied.')
         call aot_get_val(ncycles, err, lua_state, kinetic_table, 'ncycles')
-        if (err /= 0) call stop_all('read_kinetic_args', 'ncycles: Number of cycles not supplied.')
+        if (err /= 0 .and. parent) call stop_all('read_kinetic_args', 'ncycles: Number of cycles not supplied.')
 
         call aot_get_val(beta, err, lua_state, kinetic_table, 'beta')
-        if (err /= 0) call stop_all('read_kinetic_args', 'beta: target temperature not supplied.')
+        if (err /= 0 .and. parent) call stop_all('read_kinetic_args', 'beta: target temperature not supplied.')
         call aot_get_val(fermi_temperature, err, lua_state, kinetic_table, 'fermi_temperature', default=.false.)
 
         have_seed = aot_exists(lua_state, kinetic_table, 'rng_seed')
@@ -741,6 +746,7 @@ contains
         use calc, only: GLOBAL_META, gen_seed
         use qmc_data, only: qmc_in_t
         use lua_hande_utils, only: warn_unused_args
+        use parallel, only: parent
         use errors, only: stop_all
 
         type(flu_State), intent(inout) :: lua_state
@@ -758,24 +764,24 @@ contains
             skip = .false.
         end if
 
-        if (.not. aot_exists(lua_state, opts, 'qmc')) call stop_all('read_qmc_in','"qmc" table not present.')
+        if (.not. aot_exists(lua_state, opts, 'qmc') .and. parent) call stop_all('read_qmc_in','"qmc" table not present.')
 
         call aot_table_open(lua_state, opts, qmc_table, 'qmc')
 
         ! Required arguments
         call aot_get_val(qmc_in%tau, err, lua_state, qmc_table, 'tau')
-        if (err /= 0) call stop_all('read_qmc_in', 'tau not set.')
+        if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'tau not set.')
         call aot_get_val(qmc_in%D0_population, err, lua_state, qmc_table, 'init_pop')
-        if (err /= 0) call stop_all('read_qmc_in', 'init_pop not set.')
+        if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'init_pop not set.')
         call aot_get_val(qmc_in%ncycles, err, lua_state, qmc_table, 'mc_cycles')
-        if (err /= 0) call stop_all('read_qmc_in', 'mc_cycles not set.')
+        if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'mc_cycles not set.')
         call aot_get_val(qmc_in%nreport, err, lua_state, qmc_table, 'nreports')
-        if (err /= 0) call stop_all('read_qmc_in', 'nreports not set.')
+        if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'nreports not set.')
         if (.not. skip) then
             call aot_get_val(qmc_in%walker_length, err, lua_state, qmc_table, 'state_size')
-            if (err /= 0) call stop_all('read_qmc_in', 'state_size not set.')
+            if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'state_size not set.')
             call aot_get_val(qmc_in%spawned_walker_length, err, lua_state, qmc_table, 'spawned_state_size')
-            if (err /= 0) call stop_all('read_qmc_in', 'spawned_state_size not set.')
+            if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'spawned_state_size not set.')
         end if
 
         ! Optional arguments (defaults set in derived type).
@@ -848,6 +854,7 @@ contains
 
         use qmc_data, only: fciqmc_in_t, neel_singlet, neel_singlet_guiding
         use lua_hande_utils, only: warn_unused_args
+        use parallel, only: parent
         use errors, only: stop_all
 
         type(flu_State), intent(inout) :: lua_state
@@ -892,7 +899,7 @@ contains
                     fciqmc_in%guiding_function = neel_singlet_guiding
                     fciqmc_in%trial_function = neel_singlet
                 case default
-                    call stop_all('read_fciqmc_in', 'Unknown guiding function')
+                    if (parent) call stop_all('read_fciqmc_in', 'Unknown guiding function')
                 end select
             end if
             if (aot_exists(lua_state, fciqmc_table, 'trial_function')) then
@@ -903,7 +910,7 @@ contains
                 case('neel_singlet')
                     fciqmc_in%trial_function = neel_singlet
                 case default
-                    call stop_all('read_fciqmc_in', 'Unknown trial wavefunction')
+                    if (parent) call stop_all('read_fciqmc_in', 'Unknown trial wavefunction')
                 end select
             end if
 
@@ -939,6 +946,7 @@ contains
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use parallel, only: parent
         use errors, only: stop_all
 
         use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space, &
@@ -972,10 +980,10 @@ contains
                 case('high')
                     semi_stoch_in%space_type = high_pop_determ_space
                     call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
-                    if (err /= 0) call stop_all('read_semi_stoch_in', 'Target space size not given.')
+                    if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
                 end select
             else
-                call stop_all('read_semi_stoch_in', 'Deterministic space not specified.')
+                if (parent) call stop_all('read_semi_stoch_in', 'Deterministic space not specified.')
             end if
 
             ! Optional arguments (defaults set in derived type).
@@ -1114,6 +1122,7 @@ contains
         use calc
         use dmqmc_data, only: dmqmc_in_t, rdm_t, hartree_fock_dm, free_electron_dm
         use checking, only: check_allocate
+        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
         use system, only: heisenberg
@@ -1175,7 +1184,7 @@ contains
                 case('hartree_fock')
                     dmqmc_in%initial_matrix = hartree_fock_dm
                 case default
-                    call stop_all('read_dmqmc_in', 'Unknown  inital density matrix')
+                    if (parent) call stop_all('read_dmqmc_in', 'Unknown  inital density matrix')
                 end select
             end if
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
@@ -1214,7 +1223,7 @@ contains
             ! If doing rdms, must specify them and the spawned state size.
             call aot_get_val(dmqmc_in%rdm%spawned_length, err, lua_state, table, 'spawned_state_size')
             if (dmqmc_in%rdm%calc_inst_rdm .and. err /= 0) then
-                call stop_all('read_dmqmc_in', 'spawned_state_size not specified in rdm table.')
+                if (parent) call stop_all('read_dmqmc_in', 'spawned_state_size not specified in rdm table.')
             end if
             if (aot_exists(lua_state, table, 'rdms')) then
                 dmqmc_in%rdm%doing_rdm = .true.
@@ -1227,7 +1236,7 @@ contains
                     rdm_info(i)%A_nsites = size(rdm_info(i)%subsystem_A)
                 end do
             else
-                call stop_all('read_dmqmc_in', 'rdms not specified in rdm table.')
+                if (parent) call stop_all('read_dmqmc_in', 'rdms not specified in rdm table.')
             end if
 
             ! Optional arguments.
@@ -1244,7 +1253,7 @@ contains
             dmqmc_in%rdm%nrdms = 0
         end if
         ! Can't average over spin sectors alone in normal dmqmc calculation.
-        if (dmqmc_in%all_spin_sectors .and. .not. dmqmc_in%all_sym_sectors .and. system_name /= heisenberg) &
+        if (dmqmc_in%all_spin_sectors .and. .not. dmqmc_in%all_sym_sectors .and. system_name /= heisenberg .and. parent) &
                                             & call stop_all('read_dmqmc_in', 'specified symmetry averaging not imlemented')
 
     end subroutine read_dmqmc_in
