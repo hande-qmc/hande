@@ -84,17 +84,13 @@ contains
         logical :: t_exists
 
         if (command_argument_count() > 0) then
-            ! Input file specified on the command line.
-            call get_command_argument(1, inp_file)
-            inquire(file=inp_file, exist=t_exists)
-            if (.not.t_exists) then
-                call stop_all('read_input','File does not exist:'//trim(inp_file))
-            end if
 
-            lua_state = fluL_newstate()
-            call register_lua_hande_api(lua_state)
-
+            ! Read input file on parent and broadcast to all other processors.
             if (parent) then
+                call get_command_argument(1, inp_file)
+                inquire(file=inp_file, exist=t_exists)
+                if (.not.t_exists) call stop_all('run_hande_lua','File does not exist:'//trim(inp_file))
+
                 write (6,'(a14,/,1X,13("-"),/)') 'Input options'
                 call read_file_to_buffer(buffer, inp_file)
                 write (6,'(A)') trim(buffer)
@@ -113,10 +109,12 @@ contains
 
             ! Attempt to run script.  If it fails (ie lua_err is non-zero) then try
             ! parsing it as traditional input file for now.
+            lua_state = fluL_newstate()
+            call register_lua_hande_api(lua_state)
             call open_config_file(lua_state, inp_file, lua_err, err_string)
             if (lua_err == 0) then
                 call flu_close(lua_state)
-            else
+            else if (parent) then
                 write (6,*) 'aotus/lua error code:', lua_err
                 call stop_all('run_lua_hande', trim(err_string))
             end if
@@ -125,7 +123,7 @@ contains
             call mpi_barrier(mpi_comm_world, ierr)
 #endif
 
-        else
+        else if (parent) then
             call stop_all('run_lua_hande', 'No input file supplied.')
         end if
 
