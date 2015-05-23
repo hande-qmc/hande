@@ -82,7 +82,7 @@ size from the blocking analysis:
 
     mc_data = data.ix[indx, to_block]
 
-    if mc_data['Shift'][1] == mc_data['Shift'][2]:
+    if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
         warnings.warn('The blocking analysis starts from before the shift '
                      'begins to vary.')
 
