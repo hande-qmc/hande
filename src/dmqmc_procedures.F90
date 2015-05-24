@@ -480,12 +480,10 @@ contains
                                        nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 
-        ! spawn%head_start(nthreads-1,i) stores the last entry before the
-        ! start of the block of spawned particles to be sent to processor i.
-        if (spawn%head(0,iproc_spawn)+1 - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-            call stop_all('create_diagonal_density_matrix_particle', 'There is no space left in the spawning array.')
-
         call add_spawned_particle(f_new, nspawn, particle_type, iproc_spawn, spawn)
+
+        if (spawn%error) call stop_all('create_diagonal_density_matrix_particle', 'Ran out of space in the spawned list while&
+                                  & generating the initial density matrix.')
 
     end subroutine create_diagonal_density_matrix_particle
 

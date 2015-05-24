@@ -702,9 +702,10 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
-        use parallel, only: nthreads
+        use parallel, only: nthreads, iproc
         use spawn_data, only: spawn_t
         use omp_lib
+        use utils, only: int_fmt
 
         integer(i0), intent(in) :: f_new(:)
         integer(int_p), intent(in) :: nspawn
@@ -717,15 +718,26 @@ contains
         thread_id = omp_get_thread_num()
 #endif
 
-        ! Move to the next position in the spawning array.
-        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+        if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
+            if (.not. spawn%error) then
+                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                              & so results from this final loop may be slightly incorrect.")')
+                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
+            end if
+            spawn%error = .true.
+        else
+            ! Move to the next position in the spawning array.
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-        ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            ! Zero it as not all fields are set.
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
 
-        ! Set info in spawning array.
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+            ! Set info in spawning array.
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+        end if
 
     end subroutine add_spawned_particle
 
@@ -744,9 +756,10 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
-        use parallel, only: nthreads
+        use parallel, only: nthreads, iproc
         use spawn_data, only: spawn_t
         use omp_lib
+        use utils, only: int_fmt
 
         integer(i0), intent(in) :: f_new(:)
         integer(int_p), intent(in) :: nspawn
@@ -759,16 +772,27 @@ contains
         thread_id = omp_get_thread_num()
 #endif
 
-        ! Move to the next position in the spawning array.
-        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+        if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
+            if (.not. spawn%error) then
+                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                              & so results from this final loop may be slightly incorrect.")')
+                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
+            end if
+            spawn%error = .true.
+        else
+            ! Move to the next position in the spawning array.
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-        ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            ! Zero it as not all fields are set.
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
 
-        ! Set info in spawning array.
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
-        spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
-        spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(flag, int_s)
+            ! Set info in spawning array.
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+particle_type,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+            spawn%sdata(spawn%flag_indx,spawn%head(thread_id,iproc_spawn)) = int(flag, int_s)
+        end if
 
     end subroutine add_flagged_spawned_particle
 
@@ -777,16 +801,17 @@ contains
         ! Add a set of particles to a store of spawned particles.
 
         ! In:
-        !    f_new:  determinant on which to spawn.
+        !    f_new: determinant on which to spawn.
         !    nspawn: the (signed) number of particles of each particle type to
         !       create on the spawned determinant.
         !    iproc_spawn: processor to which f_new belongs (see assign_particle_processor).
         ! In/Out:
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
-        use parallel, only: nthreads
+        use parallel, only: nthreads, iproc
         use spawn_data, only: spawn_t
         use omp_lib
+        use utils, only: int_fmt
 
         integer(i0), intent(in) :: f_new(:)
         integer(int_p), intent(in) :: nspawn(:) ! (spawn%ntypes)
@@ -799,15 +824,26 @@ contains
         thread_id = omp_get_thread_num()
 #endif
 
-        ! Move to the next position in the spawning array.
-        spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
+        if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
+            if (.not. spawn%error) then
+                write (6,'(1X,"# Error: No space left in spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                              & so results from this final loop may be slightly incorrect.")')
+                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
+            end if
+            spawn%error = .true.
+        else
+            ! Move to the next position in the spawning array.
+            spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-        ! Zero it as not all fields are set.
-        spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
+            ! Zero it as not all fields are set.
+            spawn%sdata(:,spawn%head(thread_id,iproc_spawn)) = 0_int_s
 
-        ! Set info in spawning array.
-        spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
-        spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+            ! Set info in spawning array.
+            spawn%sdata(:spawn%bit_str_len,spawn%head(thread_id,iproc_spawn)) = int(f_new, int_s)
+            spawn%sdata(spawn%bit_str_len+1:spawn%bit_str_len+spawn%ntypes,spawn%head(thread_id,iproc_spawn)) = int(nspawn, int_s)
+        end if
 
     end subroutine add_spawned_particles
 
@@ -831,7 +867,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -886,7 +922,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -941,7 +977,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -1002,7 +1038,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -1062,7 +1098,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
@@ -1104,7 +1140,8 @@ contains
 
     end subroutine create_spawned_particle_ras
 
-    subroutine create_spawned_particle_initiator_ras(basis, reference, cdet, connection, nspawn, particle_type, spawn, fexcit)
+    subroutine create_spawned_particle_initiator_ras(basis, reference, cdet, connection, nspawn, particle_type, &
+                                                      spawn, fexcit)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1124,7 +1161,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs
+        use parallel, only: nprocs, nthreads
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
@@ -1192,7 +1229,6 @@ contains
         !    spawn: spawn_t object to which the spawned particle will be added.
 
         use basis_types, only: basis_t
-        use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
@@ -1231,10 +1267,6 @@ contains
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-            call stop_all('create_spawned_particle_density_matrix',&
-                           'There is no space left in the spawning array.')
-
         call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
 
     end subroutine create_spawned_particle_density_matrix
@@ -1268,7 +1300,6 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
@@ -1312,10 +1343,6 @@ contains
         call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
                                              nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 
-        if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-            call stop_all('create_spawned_particle_half_density_matrix',&
-                           'There is no space left in the spawning array.')
-
         call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
 
     end subroutine create_spawned_particle_half_density_matrix
@@ -1356,7 +1383,6 @@ contains
 
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
-        use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
@@ -1403,10 +1429,6 @@ contains
                                                  spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
                                                  spawn%proc_map%nslots)
 
-            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-                call stop_all('create_spawned_particle_truncated_half_density_matrix',&
-                               'There is no space left in the spawning array.')
-
             call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
 
         end if
@@ -1443,7 +1465,6 @@ contains
         !    spawn: spawn_t object to which the spawned particle will be added.
 
         use basis_types, only: basis_t
-        use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
@@ -1457,7 +1478,6 @@ contains
         integer, intent(in) :: particle_type
         type(spawn_t), intent(inout) :: spawn
         type(excit_t), intent(in) :: connection
-
 
         integer(i0) :: f_new(basis%string_len)
         integer(i0) :: f_new_tot(basis%tensor_label_len)
@@ -1485,10 +1505,6 @@ contains
             call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
                                                  spawn%move_freq, nprocs, iproc_spawn, slot, spawn%proc_map%map, &
                                                  spawn%proc_map%nslots)
-
-            if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-                call stop_all('create_spawned_particle_truncated_density_matrix', &
-                               'There is no space left in the spawning array.')
 
             call add_spawned_particle(f_new_tot, nspawn, particle_type, iproc_spawn, spawn)
 
@@ -1522,10 +1538,9 @@ contains
         integer(int_p), intent(in) :: nspawn_in
         integer, intent(in) :: particle_type
         type(rdm_spawn_t), intent(inout) :: rdm_spawn
+
         integer(int_p) :: nspawn
-
         integer(i0) :: f_new_tot(2*rdm%string_len)
-
         integer :: iproc_spawn, slot
         ! WARNING!  The below algorithm is *not* suitable for conversion to
         ! thread-safety as each thread could be spawning onto the same RDM
@@ -1578,20 +1593,30 @@ contains
                     call stop_all('create_spawned_particle_rdm','Error in assigning hash &
                                   &table entry.')
                 end if
+
                 ! Fix hash table to point to the head of the spawn data for this thread/processor.
                 spawn%head(thread_id,iproc_spawn) = spawn%head(thread_id,iproc_spawn) + nthreads
 
-                if (spawn%head(thread_id,iproc_spawn) - spawn%head_start(nthreads-1,iproc_spawn) >= spawn%block_size) &
-                    call stop_all('create_spawned_particle_rdm','There is no space left in the RDM array.')
+                if (spawn%head(thread_id,iproc_spawn) + nthreads - spawn%head_start(nthreads-1,iproc_spawn) > spawn%block_size) then
+                    if (.not. spawn%error) then
+                        write (6,'(1X,"# Error: No space left in RDM spawning array on processor",'&
+                                                &//int_fmt(iproc,1)//',".")') iproc
+                        write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                        write (6,'(1X,"# Error: Note that RDM results from this final report loop will be incorrect.")')
+                    end if
+                    spawn%error = .true.
+                end if
 
-                ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)
-                associate(indx => ht%table(pos%ientry,pos%islot))
-                    ! Set info in spawning array.
-                    ! Zero it as not all fields are set.
-                    spawn%sdata(:,indx) = 0_int_s
-                    spawn%sdata(:bsl,indx) = int(f_new_tot, int_s)
-                    spawn%sdata(bsl+particle_type,indx) = int(nspawn, int_s)
-                end associate
+                if (.not. spawn%error) then
+                    ht%table(pos%ientry,pos%islot) = spawn%head(thread_id,iproc_spawn)
+                    associate(indx => ht%table(pos%ientry,pos%islot))
+                        ! Set info in spawning array.
+                        ! Zero it as not all fields are set.
+                        spawn%sdata(:,indx) = 0_int_s
+                        spawn%sdata(:bsl,indx) = int(f_new_tot, int_s)
+                        spawn%sdata(bsl+particle_type,indx) = int(nspawn, int_s)
+                    end associate
+                end if
             end if
 
         end associate

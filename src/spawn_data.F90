@@ -135,6 +135,9 @@ type spawn_t
     ! sdata_recvd and vice versa.  This allows for the spawning and annihilation
     ! procedures to be identical with and without MPI parallelisation.
     integer(int_s), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
+    ! This variable will become equal to true if we ever run out of memory in
+    ! sdata, in which case the program will exit at the next opportunity.
+    logical :: error = .false.
 end type spawn_t
 
 interface annihilate_wrapper_spawn_t
@@ -269,6 +272,49 @@ contains
         nullify(spawn%sdata_recvd)
 
     end subroutine dealloc_spawn_t
+
+    subroutine memcheck_spawn_t(spawn, warn_level, dont_warn)
+
+        ! In:
+        !    spawn: spawn_t object containing spawned particles.
+        !    warn_level (optional, default: 0.95): the fraction of slots in the spawn_t
+        !       object which, if filled beyond, triggers a warning.  Note that each
+        !       processor block/section is considered separately, so this should be called
+        !       before any of the compression/annihilation procedures.
+        !    dont_warn (optional): if present and true then don't actually print any
+        !        warning. This can prevent spamming the user with messages.
+
+        use parallel, only: nthreads, nprocs, iproc
+        use utils, only: int_fmt
+        use errors, only: stop_all
+
+        type(spawn_t), intent(in) :: spawn
+        real, intent(in), optional :: warn_level
+        logical, intent(in), optional :: dont_warn
+
+        real :: fill(nprocs), level
+        integer :: it
+        logical :: warn
+
+        ! Do we actually want to print any warning?
+        warn = .true.
+        if (present(dont_warn)) warn = .not. dont_warn
+
+        if (warn) then
+            if (present(warn_level)) then
+                level = warn_level
+            else
+                level = 0.95
+            end if
+
+            it = nthreads - 1
+            fill = real(maxval(spawn%head(:,:),dim=1) - spawn%head_start(it,:)) / spawn%block_size
+            if (any(fill - level > 0.0)) then
+                write (6,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+            end if
+        end if
+
+    end subroutine memcheck_spawn_t
 
 !--- Helper procedures ---
 

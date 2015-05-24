@@ -817,7 +817,6 @@ contains
         type(parallel_t), intent(inout) :: par_info
         type(semi_stoch_t), optional, intent(inout) :: determ
 
-
         if (par_info%load%needed) then
             call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
             call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%states, real_factor, determ, &
@@ -831,10 +830,9 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,             &
-                                nspawn_events, semi_stoch_shift_it, semi_stoch_start_it,           &
-                                soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, &
-                                nb_comm)
+    subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,              &
+                                nspawn_events, semi_stoch_shift_it, semi_stoch_start_it, soft_exit, &
+                                load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, error)
 
         ! In:
         !    sys: system being studied.
@@ -865,6 +863,7 @@ contains
         !    load_bal_in: input options for load balancing.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
+        !    error: true if an error has occured and we need to quit.
 
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
                                      update_energy_estimators_recv, update_energy_estimators_send, &
@@ -890,6 +889,7 @@ contains
 
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb, nb_comm
+        logical, optional, intent(inout) :: error
 
         real :: curr_time
         logical :: update, vary_shift_before, nb_comm_local, comms_found
@@ -914,17 +914,17 @@ contains
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
             call update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles, load_bal_in, doing_lb, &
-                                          comms_found, update_tau, bloom_stats)
+                                          comms_found, error, update_tau, bloom_stats)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
-            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, update_tau, bloom_stats, &
-                                          qs%par_info%report_comm%nb_spawn(2))
+            call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, error, update_tau, &
+                                          bloom_stats, qs%par_info%report_comm%nb_spawn(2))
             ! Receive previous iterations report loop quantities.
             call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
-                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, update_tau, &
-                                               bloom_stats)
+                                               qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, error, &
+                                               update_tau, bloom_stats)
             ! Send current report loop quantities.
             qs%par_info%report_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(qs%par_info%report_comm)

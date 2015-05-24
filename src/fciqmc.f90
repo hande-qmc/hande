@@ -86,7 +86,7 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
 
-        logical :: soft_exit, write_restart_shift
+        logical :: soft_exit, write_restart_shift, error
         logical :: determ_parent, determ_child
 
         real :: t1, t2
@@ -232,7 +232,8 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, load_bal_in%nslots)
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
+                                                    load_bal_in%nslots)
                         call direct_annihilation_received_list(sys, rng, qmc_in, qs%ref, annihilation_flags, &
                                                                pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
@@ -258,10 +259,13 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
+            error = qs%spawn_store%spawn%error .or. qs%psip_list%error
+
             call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
-                                 nb_comm=fciqmc_in%non_blocking_comm)
+                                 nb_comm=fciqmc_in%non_blocking_comm, error=error)
+            if (error) exit
 
             if (update_tau) call rescale_tau(qs%tau)
 
@@ -301,7 +305,7 @@ contains
             end if
         end associate
 
-        if (soft_exit) then
+        if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport

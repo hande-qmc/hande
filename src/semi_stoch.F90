@@ -780,7 +780,8 @@ contains
                     ! contribution from the shift.
                     out_vec = -out_vec + qs%shift(1)*determ%vector(i)
                     out_vec = out_vec*qs%tau
-                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, rng, spawn)
+                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, &
+                                                        rng, spawn)
                 end do
             else
                 do i = 1, determ%sizes(proc)
@@ -788,7 +789,8 @@ contains
                     row = row + 1
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     out_vec = -out_vec*qs%tau
-                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, rng, spawn)
+                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, &
+                                                        rng, spawn)
                 end do
             end if
         end do

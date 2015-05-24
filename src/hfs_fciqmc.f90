@@ -83,7 +83,7 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri
 
-        logical :: soft_exit, comms_found
+        logical :: soft_exit, comms_found, error
 
         real :: t1, t2
 
@@ -279,8 +279,10 @@ contains
             ! energy_estimators communication
             comms_found = check_comms_file()
             ! Update the energy estimators (shift & projected energy).
-            call update_energy_estimators(qmc_in, qs, nspawn_events, nparticles_old, load_bal_in, &
-                                          comms_found=comms_found)
+            error = qs%spawn_store%spawn%error .or. qs%psip_list%error
+            call update_energy_estimators(qmc_in, qs, nspawn_events, nparticles_old, load_bal_in=load_bal_in, &
+                                          comms_found=comms_found, error=error)
+            if (error) exit
 
             call cpu_time(t2)
 
@@ -304,7 +306,7 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
 
-        if (soft_exit) then
+        if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport

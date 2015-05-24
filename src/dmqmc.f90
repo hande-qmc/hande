@@ -67,6 +67,7 @@ contains
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
         logical :: soft_exit, write_restart_shift, update_tau
+        logical :: error, rdm_error
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
@@ -130,6 +131,8 @@ contains
         ! at the end of this routine.
         call copy_sys_spin_info(sys, sys_copy)
 
+        rdm_error = .false.
+
         outer_loop: do beta_cycle = 1, dmqmc_in%beta_loops
 
             call init_dmqmc_beta_loop(rng, qmc_in, dmqmc_in, dmqmc_estimates, qs, beta_cycle, qs%psip_list%nstates, &
@@ -185,8 +188,8 @@ contains
                         ! temperature/imaginary time so only get data from one
                         ! temperature value per ncycles.
                         if (icycle == 1) then
-                            call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, &
-                                                         qs%ref%H00, qs%psip_list, dmqmc_estimates, weighted_sampling)
+                            call update_dmqmc_estimators(sys, dmqmc_in, idet, iteration, cdet1, qs%ref%H00, &
+                                                         qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error)
                         end if
 
                         do ireplica = 1, qs%psip_list%nspaces
@@ -209,7 +212,8 @@ contains
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet1%f, cdet2%f, connection, &
-                                                                            nspawned, spawning_end, ireplica, qs%spawn_store%spawn)
+                                                                            nspawned, spawning_end, ireplica, &
+                                                                            qs%spawn_store%spawn)
 
                                         if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                             call accumulate_bloom_stats(bloom_stats, nspawned)
@@ -263,8 +267,10 @@ contains
                 end do
 
                 ! Sum all quantities being considered across all MPI processes.
-                call dmqmc_estimate_comms(dmqmc_in, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
+                error = qs%spawn_store%spawn%error .or. qs%psip_list%error .or. rdm_error
+                call dmqmc_estimate_comms(dmqmc_in, error, nspawn_events, sys%max_number_excitations, qmc_in%ncycles, &
                                           qs%psip_list, qs, weighted_sampling%probs_old, dmqmc_estimates)
+                if (error) exit outer_loop
 
                 call update_shift_dmqmc(qmc_in, qs, qs%psip_list%tot_nparticles, tot_nparticles_old)
 
@@ -304,7 +310,7 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
 
-        if (soft_exit) then
+        if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport

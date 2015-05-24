@@ -23,6 +23,7 @@ enum, bind(c)
     enumerator :: nocc_states_ind
     enumerator :: nspawned_ind
     enumerator :: comms_found_ind
+    enumerator :: error_ind
     enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
 end enum
 
@@ -50,7 +51,7 @@ contains
     ! All other elements are set to zero.
 
     subroutine update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles_old, load_bal_in, doing_lb, &
-                                        comms_found, update_tau, bloom_stats)
+                                        comms_found, error, update_tau, bloom_stats)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -69,7 +70,9 @@ contains
         !        Returns the current total number of particles for use in the
         !        next report loop.
         !    comms_found: On input, true if HANDE.COMM file present on this processor. On output
-        !    true if present on any processor.
+        !        true if present on any processor.
+        !    error (optional): true if an error has occured on this processor. On output, true if an
+        !        error has occured on any processor.
         !    update_tau (optional): On input, true if the processor wants to automatically rescale
         !       tau.  On output the logical or of this across all processors (i.e. true if
         !       any one processor wants to rescale tau).
@@ -87,6 +90,7 @@ contains
         real(p), intent(inout) :: ntot_particles_old(qs%psip_list%nspaces)
         logical, optional, intent(in) :: doing_lb
         logical, intent(inout) :: comms_found
+        logical, intent(inout), optional :: error
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -95,7 +99,7 @@ contains
         real(dp) :: rep_loop_sum(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
         integer :: ierr
 
-        call local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, update_tau, bloom_stats)
+        call local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, error, update_tau, bloom_stats)
         ! Don't bother to optimise for running in serial.  This is a fast
         ! routine and is run only once per report loop anyway!
 
@@ -106,8 +110,8 @@ contains
         ierr = 0 ! Prevent warning about unused variable in serial so -Werror can be used.
 #endif
 
-        call communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, &
-                                            doing_lb, qs%psip_list%nparticles_proc, comms_found, update_tau, bloom_stats)
+        call communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, doing_lb, &
+                                            qs%psip_list%nparticles_proc, comms_found, error, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators
 
@@ -135,7 +139,7 @@ contains
     end subroutine update_energy_estimators_send
 
     subroutine update_energy_estimators_recv(qmc_in, qs, ntypes, rep_request_s, ntot_particles_old, nparticles_proc, &
-                                             load_bal_in, doing_lb, comms_found, update_tau, bloom_stats)
+                                             load_bal_in, doing_lb, comms_found, error, update_tau, bloom_stats)
 
         ! Receive report loop quantities from all other processors and reduce.
 
@@ -160,6 +164,7 @@ contains
         !       their respective components.
         ! Out (optional):
         !    comms_found: whether HANDE.COMM exists
+        !    error: whether an error occured on any processor.
         !    update_tau: if true, tau should be automatically rescaled.
 
         use bloom_handler, only: bloom_stats_t
@@ -174,7 +179,7 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         real(p), intent(out) :: nparticles_proc(:,:)
         logical, optional, intent(in) :: doing_lb
-        logical, intent(out), optional :: comms_found
+        logical, intent(out), optional :: comms_found, error
         logical, intent(out), optional :: update_tau
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
 
@@ -206,11 +211,11 @@ contains
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
         call communicated_energy_estimators(qmc_in, qs, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
-                                            nparticles_proc, comms_found, update_tau, bloom_stats)
+                                            nparticles_proc, comms_found, error, update_tau, bloom_stats)
 
     end subroutine update_energy_estimators_recv
 
-    subroutine local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, update_tau, &
+    subroutine local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, error, update_tau, &
                                        bloom_stats, spawn_elsewhere)
 
         ! Enter processor dependent report loop quantites into array for
@@ -221,6 +226,7 @@ contains
         ! In (optional):
         !    nspawn_events: The total number of spawning events to this process.
         !    comms_found: whether HANDE.COMM exists on this processor
+        !    error: whether an error has occured on this processor.
         !    update_tau: if true, then the current processor wants to automatically rescale tau.
         !    bloom_stats: Bloom stats.  The report loop quantities must be set.
         !    spawn_elsewhere: number of walkers spawned from current processor
@@ -240,7 +246,7 @@ contains
         integer, intent(in), optional :: nspawn_events
         logical, intent(in), optional :: update_tau
         integer, intent(in) , optional :: spawn_elsewhere
-        logical, intent(in), optional :: comms_found
+        logical, intent(in), optional :: comms_found, error
 
         integer :: offset
 
@@ -273,11 +279,14 @@ contains
         if (present(comms_found)) then
             if (comms_found) rep_loop_loc(comms_found_ind) = 1.0_p
         end if
+        if (present(error)) then
+            if (error) rep_loop_loc(error_ind) = 1.0_p
+        end if
 
     end subroutine local_energy_estimators
 
     subroutine communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, &
-                                              doing_lb, nparticles_proc, comms_found, update_tau, bloom_stats)
+                                              doing_lb, nparticles_proc, comms_found, error, update_tau, bloom_stats)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -302,6 +311,7 @@ contains
         ! Out (optional):
         !    update_tau: if true, tau should be automatically rescaled.
         !    comms_found: whether a HANDE.COMM file exists
+        !    error: whether an error occured on any processor.
 
         use load_balancing, only: check_imbalance
         use bloom_handler, only: bloom_stats_t
@@ -317,7 +327,7 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
-        logical, intent(out), optional :: comms_found
+        logical, intent(out), optional :: comms_found, error
         logical, intent(out), optional :: update_tau
 
         real(p) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop, pop_av
@@ -346,6 +356,9 @@ contains
         qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
+        end if
+        if (present(error)) then
+            error = abs(rep_loop_sum(error_ind)) > depsilon
         end if
 
         do i = 1, ntypes

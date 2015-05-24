@@ -308,7 +308,7 @@ contains
 
         real :: t1, t2
 
-        logical :: update_tau
+        logical :: update_tau, error
 
         integer :: nspawnings_left, nspawnings_total
 
@@ -697,9 +697,12 @@ contains
 
             update_tau = bloom_stats%nblooms_curr > 0
 
-            call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
-                                 nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
-                                 load_bal_in, bloom_stats=bloom_stats)
+            error = qs%spawn_store%spawn%error .or. qs%psip_list%error
+
+            call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
+                                 semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
+                                 load_bal_in, bloom_stats=bloom_stats, error=error)
+            if (error) exit
 
             call cpu_time(t2)
             if (parent) then
@@ -725,7 +728,7 @@ contains
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
                                    qs%spawn_store%spawn%mpi_time)
 
-        if (soft_exit) then
+        if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
