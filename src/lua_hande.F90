@@ -65,7 +65,7 @@ contains
 
         ! Generic entry point from which a lua script is run.
 
-        use aotus_module, only: open_config_file
+        use aotus_module, only: open_config_chunk
         use flu_binding, only: flu_State, fluL_newstate, flu_close
 
         use errors, only: stop_all, warning
@@ -110,7 +110,7 @@ contains
             ! Attempt to run lua script.
             lua_state = fluL_newstate()
             call register_lua_hande_api(lua_state)
-            call open_config_file(lua_state, inp_file, lua_err, err_string)
+            call open_config_chunk(lua_state, buffer, lua_err, err_string)
             if (lua_err == 0) then
                 call flu_close(lua_state)
             else if (parent) then
