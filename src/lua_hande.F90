@@ -113,7 +113,7 @@ contains
             call open_config_chunk(lua_state, buffer, lua_err, err_string)
             if (lua_err == 0) then
                 call flu_close(lua_state)
-            else if (parent) then
+            else
                 write (6,*) 'aotus/lua error code:', lua_err
                 call stop_all('run_lua_hande', trim(err_string))
             end if
