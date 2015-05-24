@@ -3,7 +3,7 @@ Monte Carlo estimate of size of the Hilbert space
 
 Whilst calculating the size of an entire Hilbert space is straightforward via
 combinatorics, calculating the size of a specific part of the Hilbert space meeting
-a specific set of quantum numbers (e.g. spin and symmetry) is more challenging.  Instead,
+a given set of quantum numbers (e.g. spin and symmetry) is more challenging.  Instead,
 the size of this subspace can be estimated via a simple Monte Carlo approach[BoothPhD]_.
 
 .. code-block:: lua
@@ -25,6 +25,19 @@ sys
 
     The system on which to perform the calculation.  Must be created via a system
     function.
+hilbert
+    type: lua table.
+
+    Required.
+
+    Further options to control the Monte Carlo estimation of the Hilbert space.  See
+    below.
+
+hilbert options
+---------------
+
+The ``hilbert`` table can take the following options:
+
 ncycles
     type: integer.
 

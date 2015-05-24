@@ -1,6 +1,8 @@
 Full Configuration Interaction
 ==============================
 
+Calculate the ground state of a system via diagonalisation of the Hamiltonian matrix.
+
 .. code-block:: lua
 
     fci {
