@@ -319,7 +319,7 @@ contains
 
     end subroutine append_ext
 
-   subroutine get_unique_filename(stem, suffix, tnext, istart, filename)
+   subroutine get_unique_filename(stem, suffix, tnext, istart, filename, id)
 
         ! Find a filename which is either the "newest" or the next to be used.
         ! The filename is assumed to be stem.xsuffix, where x is an integer.
@@ -335,11 +335,13 @@ contains
         !        where x = |istart+1|.  This overrides everything else.
         ! Out:
         !    filename.
+        !    id (optional): value of x used in the filename.
 
         character(*), intent(in) :: stem, suffix
         logical, intent(in) :: tnext
         integer, intent(in) :: istart
         character(*), intent(out) :: filename
+        integer, optional, intent(out) :: id
 
         integer :: i
         logical :: exists
@@ -350,6 +352,7 @@ contains
             exists = .true.
             do while (exists)
                 call append_ext(stem, i, filename)
+                if (present(id)) id = i
                 filename = trim(filename)//suffix
                 inquire(file=filename,exist=exists)
                 i = i + 1
@@ -360,12 +363,14 @@ contains
                 ! this will return stem.istart if stem.istart doesn't exist.
                 i = max(istart,i - 2)
                 call append_ext(stem, i, filename)
+                if (present(id)) id = i
                 filename = trim(filename)//suffix
             end if
 
         else
             ! Have been asked for a specific file.
             call append_ext(stem, abs(istart+1), filename)
+            if (present(id)) id = abs(istart+1)
             filename = trim(filename)//suffix
         end if
 

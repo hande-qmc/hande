@@ -1,4 +1,4 @@
-Module restart_hdf5
+module restart_hdf5
 
     ! Restart functionality based on the HDF5 library.  Note: this is only
     ! for QMC (ie FCIQMC, DMQMC or CCMC) calculations).
@@ -44,9 +44,12 @@ Module restart_hdf5
     !            total population      # total population for each particle type.
     !            received_list         # list of walkers sent from last iteration of non-blocking calculation.
     !            processor map         # processor map used for load balancing
+    !            resort                # if present and true, the psip information must be re-sorted before use.
     !      state/
     !            shift                 # shift (energy offset/population control)
     !            ncycles               # number of Monte Carlo cycles performed
+    !            hash seed             # hash seed passed to hash function to assign a state to a processor
+    !            move frequency        # (log2 of the) frequency at which the processor location is modified in CCMC
     !      reference/
     !                reference determinant # reference determinant
     !                reference population  # population on reference
@@ -68,7 +71,7 @@ Module restart_hdf5
     implicit none
 
     private
-    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_t, init_restart_info_t
+    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_t, init_restart_info_t, redistribute_restart_hdf5
 
     type restart_info_t
         ! If write_id is negative, then set Y=-ID-1 in parse_input, where Y is in the restart
@@ -108,12 +111,15 @@ Module restart_hdf5
                                ddets = 'determinants',              &
                                dpops = 'populations',               &
                                ddata = 'data',                      &
-                               dshift = 'shift',                    &
-                               dncycles = 'ncycles',                &
                                dtot_pop = 'total population',       &
                                dproc_map = 'processor map',         &
                                dspawn = 'received_list',            &
                                dnspawn = 'nspawn',                  &
+                               dresort = 'psip_resort',             &
+                               dshift = 'shift',                    &
+                               dncycles = 'ncycles',                &
+                               dhash_seed = 'hash_seed',            &
+                               dmove_freq = 'move_freq',            &
                                dref = 'reference determinant',      &
                                dref_pop = 'reference population @ t-1', &
                                dhsref = 'Hilbert space reference determinant'
@@ -122,7 +128,7 @@ Module restart_hdf5
 
         subroutine init_restart_info_t(ri, write_id, read_id)
 
-            ! In:
+            ! In (optional):
             !    write_id: id used to write restart file out to.  Default: lowest non-existing file.
             !    read_id: id used to read restart file from.  Default: highest existing file.
             ! Out:
@@ -151,7 +157,7 @@ Module restart_hdf5
         end subroutine init_restart_info_t
 
 #ifndef DISABLE_HDF5
-        subroutine init_restart_hdf5(ri, write_mode, filename, kinds)
+        subroutine init_restart_hdf5(ri, write_mode, filename, kinds, ip, verbose, fname_id)
 
             ! Initialise restart functionality:
 
@@ -167,10 +173,16 @@ Module restart_hdf5
             !    ri: restart information. ri%restart_stem and ri%write_id/ri%read_id (as
             !        appropriate) are used.
             !    write_mode: true for writing out a restart file, false for reading one in.
+            !    ip (optional): processor index for the restart filename.  Default: iproc,
+            !        the processor index assigned by MPI.
+            !    verbose (optional): write output.  Default: true if on parent processor,
+            !        false otherwise.
             ! Out:
             !    filename: name of the restart file.
-            !    kinds: derived type containing HDF5 types which correspond to the
+            !    kinds (optional): derived type containing HDF5 types which correspond to the
             !        non-standard integer and real kinds used in HANDE.
+            !    fname_id (optional): integer used to label the restart file, i.e. Y in
+            !        restart_stem.Y.pX.H5.
 
             use hdf5_helper, only: hdf5_kinds_t, hdf5_kinds_init
 
@@ -180,11 +192,19 @@ Module restart_hdf5
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: write_mode
             character(*), intent(out) :: filename
-            type(hdf5_kinds_t), intent(out) :: kinds
+            type(hdf5_kinds_t), intent(out), optional :: kinds
+            integer, intent(in), optional :: ip
+            logical, intent(in), optional :: verbose
+            integer, intent(out), optional :: fname_id
 
-            character(10) :: proc_suf
-            integer :: id, ierr
-            logical :: exists
+            character(14) :: proc_suf
+            integer :: id, ierr, ip_loc
+            logical :: exists, verbose_loc
+
+            verbose_loc = parent
+            if (present(verbose)) verbose_loc = verbose
+            ip_loc = iproc
+            if (present(ip)) ip_loc = ip
 
             if (write_mode) then
                 id = ri%write_id
@@ -193,19 +213,19 @@ Module restart_hdf5
             end if
 
             ! Figure out filename: restart_stem.Y.pX.H5, where Y is related to id and X is the processor rank.
-            write (proc_suf,'(".p",'//int_fmt(iproc,0)//',".H5")') iproc
-            call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
+            write (proc_suf,'(".p",'//int_fmt(ip_loc,0)//',".H5")') ip_loc
+            call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename, fname_id)
 
             ! New HDF5 files have a '.H5' suffix. However, older HANDE restart
             ! files do not have this. Therefore, if the above file does not
             ! exist, try without '.H5'.
             inquire(file=filename, exist=exists)
             if ((.not. write_mode) .and. (.not. exists)) then
-                write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') iproc
+                write (proc_suf,'(".p",'//int_fmt(iproc,0)//')') ip_loc
                 call get_unique_filename(trim(ri%restart_stem), trim(proc_suf), write_mode, min(id,0), filename)
             end if
 
-            if (parent) then
+            if (verbose_loc) then
                 if (write_mode) then
                     write (6,'(1X,"#",1X,"Writing restart file to",1X,a)', advance='no') trim(filename)
                 else
@@ -218,7 +238,7 @@ Module restart_hdf5
                 end if
             end if
 
-            call hdf5_kinds_init(kinds)
+            if (present(kinds)) call hdf5_kinds_init(kinds)
 
         end subroutine init_restart_hdf5
 #endif
@@ -344,6 +364,10 @@ Module restart_hdf5
 
                     call hdf5_write(subgroup_id, dshift, kinds, shape(qs%shift), qs%shift)
 
+                    call hdf5_write(subgroup_id, dhash_seed, qs%spawn_store%spawn%hash_seed)
+
+                    call hdf5_write(subgroup_id, dmove_freq, qs%spawn_store%spawn%move_freq)
+
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/qs%ref group ---
@@ -387,7 +411,7 @@ Module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
 #endif
             use errors, only: stop_all
             use const
@@ -396,6 +420,7 @@ Module restart_hdf5
             use parallel, only: nprocs
             use spawn_data, only: spawn_t
             use qmc_data, only: qmc_state_t
+            use sort, only: qsort
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
@@ -413,7 +438,7 @@ Module restart_hdf5
             type(c_ptr) :: ptr
             integer :: ierr
             real(p), target :: tmp(1)
-            logical :: exists
+            logical :: exists, resort
 
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states))), maxdims(size(shape(qs%psip_list%states)))
 
@@ -467,7 +492,8 @@ Module restart_hdf5
                 ! in chunks).
                 if (nprocs /= nprocs_restart) &
                     call stop_all('read_restart_hdf5', &
-                                  'Restarting on a different number of processors not supported.  Please implement.')
+                                  'Restarting on a different number of processors not supported.  &
+                                  &Use the redistribute function.')
 
                 if (i0_length /= i0_length_restart) &
                     call stop_all('read_restart_hdf5', &
@@ -482,10 +508,7 @@ Module restart_hdf5
 
                 ! Figure out how many determinants we wrote out...
                 ! qs%psip_list%states has rank 2, so need not look that up!
-                call h5dopen_f(subgroup_id, ddets, dset_id, ierr)
-                call h5dget_space_f(dset_id, dspace_id, ierr)
-                call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
-                call h5dclose_f(dset_id, ierr)
+                call dset_shape(subgroup_id, ddets, dims)
                 ! Number of determinants is the last index...
                 qs%psip_list%nstates = dims(size(dims))
 
@@ -510,6 +533,14 @@ Module restart_hdf5
                 call h5lexists_f(subgroup_id, dproc_map, exists, ierr)
                 if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map%map), &
                                            qs%par_info%load%proc_map%map)
+
+                call h5lexists_f(subgroup_id, dresort, exists, ierr)
+                if (exists) then
+                    call hdf5_read(subgroup_id, dresort, resort)
+                    associate(pl=>qs%psip_list)
+                        if (resort) call qsort(pl%nstates, pl%states, pl%pops, pl%dat)
+                    end associate
+                end if
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -548,5 +579,359 @@ Module restart_hdf5
 #endif
 
         end subroutine read_restart_hdf5
+
+        subroutine redistribute_restart_hdf5(ri, nprocs_target)
+
+            ! Create a new set of restart files for a different number of processors than they
+            ! were created from.
+
+            ! In/Out:
+            !    ri: restart information.  ri%restart_stem, ri%read_id and ri%write_id are used.
+            !        On output, ri%read_id is updated (if set) to point to the new id.
+            ! In:
+            !    number of processors the restart files are to be split over (ie the number of
+            !        processors the user wishes to restart the calculation on).
+
+#ifndef DISABLE_HDF5
+            use hdf5
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_write, dset_shape, dtype_equal, hdf5_path
+            use checking
+            use errors, only: warning, stop_all
+            use const, only: i0, int_p, p
+            use parallel
+
+            use calc, only: ccmc_calc, init_proc_map_t
+            use qmc_data, only: ccmc_in_t, particle_t
+            use spawn_data, only: proc_map_t
+            use particle_t_utils, only: alloc_particle_t, dealloc_particle_t
+            use spawning, only: assign_particle_processor
+#else
+            use errors, only: stop_all
+#endif
+
+            type(restart_info_t), intent(in) :: ri
+            integer, intent(in) :: nprocs_target
+
+#ifndef DISABLE_HDF5
+
+            ! Number of new restart files to work on at a time.
+            integer, parameter :: nmax_files = 10
+            ! Max determinants we'll assign to a processor in RAM before writing out to disk.
+            ! (Note: memory usage is O(nmax_files*nchunk).
+            integer, parameter :: nchunk = 100000
+
+            integer(hid_t) :: orig_id, orig_group_id, orig_subgroup_id
+            integer(hid_t) :: group_id, subgroup_id, dset_id
+            integer(hid_t) :: new_id
+            character(255) :: tmp_name
+            character(255), allocatable :: orig_names(:), new_names(:)
+            type(hdf5_kinds_t) :: kinds
+            integer :: nprocs_read, ierr, i, iproc_min, icurr, iproc_max, idet, ndets, ip, nmoved, calc_type_restart
+            integer(hsize_t) :: dims(2)
+
+            integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
+            integer :: max_nstates, tensor_label_len
+            integer :: iproc_target_start, iproc_target_end
+            integer, allocatable :: istate_proc(:)
+            type(particle_t) :: psip_read, psip_new(0:nmax_files-1)
+            logical :: exists
+            type(ccmc_in_t) :: ccmc_in_defaults
+            type(proc_map_t) :: pm_dummy
+            type(restart_info_t) :: ri_write
+
+            ! Each processor reads from every restart file but only writes to
+            ! a (unique) subset, [iproc_target_start,iproc_target_end].
+            ! Thus parallelisation reduces time spent writing out and a little
+            ! time on processing the list read in, but each processor still
+            ! analyses the each restart file in full (but goes over it fewer
+            ! times, perhaps).  Thus, one should not expect this naive algorithm
+            ! to scale well...
+            iproc_target_end = - 1
+            do i = 0, iproc
+                iproc_target_start = iproc_target_end + 1
+                iproc_target_end = iproc_target_start + nprocs_target/nprocs - 1
+                if (i < mod(nprocs_target,nprocs)) iproc_target_end = iproc_target_end + 1
+            end do
+
+            ! Hard code 1 load-balancing slot per processor for simplicity.  If the user wishes to use multiple
+            ! slots, we should allow this to change when reading in the redistributed restart files.
+            call init_proc_map_t(1, pm_dummy, nprocs_target)
+
+            if (ri%write_id < 0 .and. ri%write_id == ri%read_id) &
+                call stop_all('redistribute_restart_hdf5', 'Cannot write redistributed restart information to the file(s) from &
+                                                           &which the information is read.')
+
+            ! Find the number of processors used to produce the original set of files.
+            call h5open_f(ierr)
+            call init_restart_hdf5(ri, .false., tmp_name, kinds, 0, .false.)
+            call h5fopen_f(tmp_name, H5F_ACC_RDONLY_F, orig_id, ierr)
+            if (ierr/=0) call stop_all('redistribute_restart_hdf5', "Unable to open restart file.")
+            call hdf5_read(orig_id, hdf5_path(gmetadata,dnprocs), nprocs_read)
+            call h5fclose_f(orig_id, ierr)
+
+            ! Create filenames and HDF5 IDs for all old and new files.
+            allocate(orig_names(0:nprocs_read-1))
+            do i = 0, nprocs_read-1
+                call init_restart_hdf5(ri, .false., orig_names(i), ip=i, verbose=i==0.and.parent)
+            end do
+            allocate(new_names(iproc_target_start:iproc_target_end))
+            ! Base new filestem on the one assigned to processor 0 (guaranteed to exist for all sets of restart files.)
+            ri_write = ri
+            if (parent) then
+                call init_restart_hdf5(ri_write, .true., new_names(iproc_target_start), ip=0, verbose=parent, fname_id=write_id)
+                ri_write%write_id = -write_id-1
+            end if
+#ifdef PARALLEL
+            call MPI_Bcast(ri_write%write_id, 1, MPI_INTEGER, 0, mpi_comm_world, ierr)
+#endif
+            do i = iproc_target_start, iproc_target_end
+                call init_restart_hdf5(ri_write, .true., new_names(i), ip=i, verbose=.false.)
+                call h5fcreate_f(new_names(i), H5F_ACC_TRUNC_F, new_id, ierr)
+                call h5fclose_f(new_id, ierr)
+            end do
+
+            ! Open the original file from proc=0 to get required metadata.  (The choice is arbitrary as
+            ! all restart files contain the same metadata.)
+            call h5fopen_f(orig_names(0), H5F_ACC_RDONLY_F, orig_id, ierr)
+
+            call h5lexists_f(orig_id, hdf5_path(gqmc, gpsips, dspawn), exists, ierr)
+            if (exists) then
+                call stop_all('redistribute_restart_hdf5', 'Redistribution from non-blocking calculations &
+                                                           &not currently implemented.  Please fix.')
+            end if
+
+            ! Get info relating to assigning states to processors.
+            hash_seed = 7 ! hard-coded default at time of writing (so will work with past and future restart files)
+            move_freq = 0 ! true unless doing CCMC.
+            call hdf5_read(orig_id, hdf5_path(gmetadata, dcalc), calc_type_restart)
+
+            ! CARE: as an implementation detail, the CCMC code uses the number of
+            ! Monte Carlo cycles (stored in dncycles) as the hash shift.
+            call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dncycles), hash_shift)
+
+            call h5lexists_f(orig_id, hdf5_path(gqmc, gstate, dhash_seed), exists, ierr)
+            if (exists) then
+                call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dhash_seed), hash_seed)
+            else if (iand(calc_type_restart, ccmc_calc) /= 0 .and. parent) then
+                call warning('redistribute_restart_hdf5', &
+                             'hash_seed not found in the restart file.  Using a default hard-coded value.')
+            end if
+
+            call h5lexists_f(orig_id, hdf5_path(gqmc, gstate, dmove_freq), exists, ierr)
+            if (exists) then
+                call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dmove_freq), move_freq)
+            else if (iand(calc_type_restart, ccmc_calc) /= 0) then
+                ! Only relevant in CCMC.  Require user to set it in input file manually.
+                move_freq = ccmc_in_defaults%move_freq
+                if (parent) call warning('redistribute_restart_hdf5', &
+                                         'move_freq not found in the restart file.  Using a default hard-coded value.')
+            end if
+
+            call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
+
+            ! Write out metadata to each new file.
+            ! Can just copy it from the first old restart file as it is the same on all files...
+            do i = iproc_target_start, iproc_target_end
+                call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
+                ! /metadata and /rng
+                call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
+                call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
+                ! ...and non-psip-specific groups in the /qmc group.
+                call h5gcreate_f(new_id, gqmc, group_id, ierr)
+                call h5gopen_f(new_id, gqmc, group_id, ierr)
+                    ! /qmc/state and /qmc/reference
+                    call h5ocopy_f(orig_group_id, gstate, group_id, gstate, ierr)
+                    call h5ocopy_f(orig_group_id, gref, group_id, gref, ierr)
+                    ! ...and create the /qmc/psips group and fill in the constant (new) processor map and total population.
+                    call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
+                    call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map), pm_dummy%map)
+                    call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, hdf5_path(gpsips, dtot_pop), ierr)
+                    call hdf5_write(group_id, hdf5_path(gpsips, dresort), .true.)
+                call h5gclose_f(group_id, ierr)
+
+                ! Update info.  NOTE: we don't modify the date/time/UUID, just processor count...
+                call h5dopen_f(new_id, hdf5_path(gmetadata, dnprocs), dset_id, ierr)
+                call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, nprocs_target, [0_HSIZE_T,0_HSIZE_T], ierr)
+                call h5dclose_f(dset_id, ierr)
+
+                call h5fclose_f(new_id, ierr)
+            end do
+
+            call h5fclose_f(orig_id, ierr)
+
+            ! Read the old restart file for each processor in turn and place the psip
+            ! information into the new restart file for the appropriate processor.
+            ! NOTE: we do not do any load balancing here (and ignore any that was done).
+            do i = 0, nprocs_read-1
+
+                ! For each old restart file, we read the entire particle info into RAM.  We then consider a small (nmax_files)
+                ! number of processors in nprocs_target at a time and find the particles assigned to that subset of processors.  To
+                ! avoid needing needing nmax_files times the amount of memory for holding the particle info, we store up to nchunk
+                ! psips on each target processor and periodically write out to disk when we have found that many particles.
+
+                call h5fopen_f(orig_names(i), H5F_ACC_RDONLY_F, orig_id, ierr)
+                call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
+                call h5gopen_f(orig_group_id, gpsips, orig_subgroup_id, ierr)
+
+                    ! Check no-one's added to the psips group without (at least) modifying the
+                    ! following to handle it.
+                    call h5gget_info_f(orig_subgroup_id, storage_type, nlinks, max_corder, ierr)
+                    if (nlinks < 4 .or. nlinks > 7) then
+                        ! Current datasets in psips group: dtot_pop, dresort, dproc_map, (all handled above), ddets, dpops, ddata (all handled below)
+                        ! and dspawn (not currently handled (see above).
+                        call stop_all('redistribute_restart_hdf5', &
+                                      'psips group in restart file contains an unexpected number of datasets.  Please investigate!')
+                    end if
+
+                    call dset_shape(orig_subgroup_id, ddets, dims)
+                    tensor_label_len = dims(1)
+                    max_nstates = dims(2)
+                    call dset_shape(orig_subgroup_id, dpops, dims)
+                    psip_read%nspaces = dims(1)
+                    call dset_shape(orig_subgroup_id, ddata, dims)
+                    psip_read%info_size = dims(1) - psip_read%nspaces
+
+                    psip_new%nspaces = psip_read%nspaces
+                    psip_new%info_size = psip_read%info_size
+
+                    call alloc_particle_t(max_nstates, tensor_label_len, psip_read)
+                    do iproc_min = 0, min(nmax_files-1, iproc_target_end-iproc_target_start)
+                        call alloc_particle_t(max_nstates, tensor_label_len, psip_new(iproc_min))
+                    end do
+
+                    ! Read.
+                    if (.not. dtype_equal(orig_subgroup_id, ddets, kinds%i0)) &
+                        call stop_all('redistribute_restart_hdf5', &
+                                      'Restarting with a different DET_SIZE is not supported.  Please implement.')
+                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p)) &
+                        call stop_all('redistribute_restart_hdf5', &
+                                      'Restarting with a different POP_SIZE is not supported.  Please implement.')
+
+                    call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states), psip_read%states)
+                    call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops), psip_read%pops)
+                    call hdf5_read(orig_subgroup_id, ddata, kinds, shape(psip_read%dat), psip_read%dat)
+
+                    ! Distribute.
+                    ! [todo] - non-blocking information.
+                    ndets = dims(2)
+                    do iproc_min = iproc_target_start, iproc_target_end, nmax_files
+                        nmoved = 0
+                        iproc_max = min(iproc_min+nmax_files-1,iproc_target_end)
+                        ! istate_proc(i) is the running total number of states found in the current original restart file that
+                        ! belong on processor i in the target set of processors.
+                        allocate(istate_proc(iproc_min:iproc_max))
+                        istate_proc = 0
+                        do idet = 1, ndets
+                            ! Get processor index (slot_pos is not relevant here as not redoing any load balancing).
+                            call assign_particle_processor(psip_read%states(:,idet), tensor_label_len, hash_seed, hash_shift, &
+                                                           move_freq, nprocs_target, ip, slot_pos, pm_dummy%map, pm_dummy%nslots)
+                            if (ip < iproc_target_start .or. ip > iproc_target_end) then
+                                ! Being handled by another processor.  Safely ignore.
+                                nmoved = nmoved + 1
+                            else if (ip > iproc_max) then
+                                ! Leave in cache
+                                psip_read%states(:,idet-nmoved) = psip_read%states(:,idet)
+                                psip_read%pops(:,idet-nmoved) = psip_read%pops(:,idet)
+                                psip_read%dat(:,idet-nmoved) = psip_read%dat(:,idet)
+                            else
+                                nmoved = nmoved + 1
+                                istate_proc(ip) = istate_proc(ip) + 1
+                                ! Index for ip relative to iproc_min due to bounds used in psip_new.
+                                associate(pl_new=>psip_new(ip-iproc_min))
+                                    pl_new%states(:,istate_proc(ip)) = psip_read%states(:,idet)
+                                    pl_new%pops(:,istate_proc(ip)) = psip_read%pops(:,idet)
+                                    pl_new%dat(:,istate_proc(ip)) = psip_read%dat(:,idet)
+                                    if (istate_proc(ip) == nchunk) then
+                                        ! Dump out what we've found so far for target processor ip.
+                                        call write_psip_info(new_names(ip), kinds, pl_new%states, pl_new%pops, pl_new%dat)
+                                        istate_proc(ip) = 0
+                                    end if
+                                end associate
+                            end if
+                        end do
+                        ! Dump out the particles for the current set of processors (iproc_min..iproc_max) that are still in the cache.
+                        do ip = iproc_min, iproc_max
+                            associate(pl_new=>psip_new(ip-iproc_min), istate=>istate_proc(ip))
+                                call write_psip_info(new_names(ip), kinds, pl_new%states(:,:istate), pl_new%pops(:,:istate), &
+                                                     pl_new%dat(:,:istate))
+                            end associate
+                        end do
+                        ndets = ndets - nmoved
+                        deallocate(istate_proc)
+                    end do
+
+                    call dealloc_particle_t(psip_read)
+                    do iproc_min = 0, min(nmax_files-1, iproc_target_end-iproc_target_start)
+                        call dealloc_particle_t(psip_new(iproc_min))
+                    end do
+
+                call h5gclose_f(orig_subgroup_id, ierr)
+                call h5gclose_f(orig_group_id, ierr)
+                call h5fclose_f(orig_id, ierr)
+
+                if (ndets /= 0) call stop_all('redistribute_restart_hdf5', &
+                                              'Failed to redistribute all determinants.  Something went seriously wrong!')
+
+            end do
+
+            if (parent) write (6,'()')
+
+#ifdef PARALLEL
+            ! Just in case we go on to use the restart files produced in the same HANDE
+            ! run, make sure processing has finished, otherwise a processor may attempt to
+            ! read in a file which another processor is writing out to.
+            call mpi_barrier(mpi_comm_world, ierr)
+#endif
+
+            contains
+
+                subroutine write_psip_info(fname, kinds, psip_dets, psip_pop, psip_data)
+
+                    ! Write out particle information (state label, population, associated data) to a restart file.
+
+                    ! In:
+                    !    fname: HDF5 filename to write to.  Must exist *and* have the qmc/psips group structure already created.
+                    !    kinds: hdf5_kinds_t object to convert between Fortran/HANDE kinds and HDF5 types.
+                    !    psip_dets: representation of determinants (or similar) labelling the set of occupied states.
+                    !    psip_pop: population (in potentially several spaces) on each determinant/state.
+                    !    psip_data: system/calculation-specific data associated with each state.
+
+                    ! Note that the second dimension of the psip_* arrays is assumed to be identical and every element of the
+                    ! arrays passed in is written out.
+
+                    use const, only: i0, int_p, p
+
+                    use hdf5
+                    use hdf5_helper, only: hdf5_write, dset_shape, hdf5_kinds_t
+
+                    character(*), intent(in) :: fname
+                    type(hdf5_kinds_t), intent(in) :: kinds
+                    integer(i0), intent(in) :: psip_dets(:,:)
+                    integer(int_p), intent(in) :: psip_pop(:,:)
+                    real(p), intent(in) :: psip_data(:,:)
+
+                    integer(hid_t) :: file_id, group_id, subgroup_id
+                    integer :: ierr
+                    integer(hsize_t) :: dims(2)
+
+                    call h5fopen_f(fname, H5F_ACC_RDWR_F, file_id, ierr)
+                    call h5gopen_f(file_id, gqmc, group_id, ierr)
+                    call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
+
+                    call hdf5_write(subgroup_id, ddets, kinds, shape(psip_dets), psip_dets, .true.)
+                    call hdf5_write(subgroup_id, dpops, kinds, shape(psip_pop), psip_pop, .true.)
+                    call hdf5_write(subgroup_id, ddata, kinds, shape(psip_data), psip_data, .true.)
+
+                    call h5gclose_f(subgroup_id, ierr)
+                    call h5gclose_f(group_id, ierr)
+                    call h5fclose_f(file_id, ierr)
+
+            end subroutine write_psip_info
+
+#else
+            call stop_all('redistribute_restart_hdf5', '# Not compiled with HDF5 support.  Cannot manipulate restart files.')
+#endif
+
+        end subroutine redistribute_restart_hdf5
 
 end module restart_hdf5
