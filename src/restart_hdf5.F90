@@ -290,6 +290,8 @@ module restart_hdf5
             type(c_ptr) :: ptr
             ! Shape of data (sub-)array to be written out.
             integer(HSIZE_T) :: dshape2(2)
+            !Used for array sizes
+            integer :: ishape(2)
             ! Temporary variables so for copying data to which we can also call c_ptr on.
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
@@ -333,14 +335,19 @@ module restart_hdf5
 
                 ! Don't write out the entire array for storing particles but
                 ! rather only the slots in use...
-                call hdf5_write(subgroup_id, ddets, kinds, shape(qs%psip_list%states(:,:qs%psip_list%nstates)), &
-                                 qs%psip_list%states(:,:qs%psip_list%nstates))
 
-                call hdf5_write(subgroup_id, dpops, kinds, shape(qs%psip_list%pops(:,:qs%psip_list%nstates)), &
-                                 qs%psip_list%pops(:,:qs%psip_list%nstates))
+                ! It would be convenient to use array slices here, but unfortunately they might (depending on
+                ! compiler) cause the entire psip array to be copied to a temporary.  Instead we pass the
+                ! unsliced arrays and indicate the limit of the final dimension of the array to be printed out.
+                ishape = shape(qs%psip_list%states)
+                call hdf5_write(subgroup_id, ddets, kinds, ishape, qs%psip_list%states, qs%psip_list%nstates)
 
-                call hdf5_write(subgroup_id, ddata, kinds, shape(qs%psip_list%dat(:,:qs%psip_list%nstates)), &
-                                 qs%psip_list%dat(:,:qs%psip_list%nstates))
+                ishape=shape(qs%psip_list%pops)
+                call hdf5_write(subgroup_id, dpops, kinds, ishape, qs%psip_list%pops, qs%psip_list%nstates)
+
+                ishape=shape(qs%psip_list%dat)
+                call hdf5_write(subgroup_id, ddata, kinds, ishape, qs%psip_list%dat, qs%psip_list%nstates)
+
                 if (nb_comm) then
                     associate(sdata=>qs%spawn_store%spawn_recv%sdata, head=>qs%spawn_store%spawn_recv%head)
                         call hdf5_write(subgroup_id, dspawn, kinds, shape(sdata(:,:head(0,0))), sdata(:,:head(0,0)))
@@ -918,9 +925,9 @@ module restart_hdf5
                     call h5gopen_f(file_id, gqmc, group_id, ierr)
                     call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
-                    call hdf5_write(subgroup_id, ddets, kinds, shape(psip_dets), psip_dets, .true.)
-                    call hdf5_write(subgroup_id, dpops, kinds, shape(psip_pop), psip_pop, .true.)
-                    call hdf5_write(subgroup_id, ddata, kinds, shape(psip_data), psip_data, .true.)
+                    call hdf5_write(subgroup_id, ddets, kinds, shape(psip_dets), psip_dets, append=.true.)
+                    call hdf5_write(subgroup_id, dpops, kinds, shape(psip_pop), psip_pop, append=.true.)
+                    call hdf5_write(subgroup_id, ddata, kinds, shape(psip_data), psip_data, append=.true.)
 
                     call h5gclose_f(subgroup_id, ierr)
                     call h5gclose_f(group_id, ierr)

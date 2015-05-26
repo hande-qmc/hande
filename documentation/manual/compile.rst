@@ -87,7 +87,7 @@ There are various goals in the makefile.  Run
 to see the available goals.
 
 Compile-time settings
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 The behaviour of the program can be changed in various ways by some choices at
 compile-time by using C pre-processing.  These choices largely influence the
@@ -228,3 +228,18 @@ USE_POPCNT
 
     indicates HANDE is using the popcnt instruction.  If the above command does not give
     any output, then USE_POPCNT has most likely not been defined.
+
+Compilation issues
+------------------
+
+We attempt to work round any compiler and library issues we encounter but sometimes this
+is not possible.  Issues and, where known, workarounds we have found are:
+
+* HDF5 1.8.14 (and possibly 1.8.13) has a bug revealed by Intel compilers v15 onwards.
+  This results in unusual error messages and/or segementation faults when writing out
+  restart files.  Possibly workarounds:
+
+  * use HDF5 1.8.15 (best).
+  * recompile HDF5 with ``-assume nostd_value``.
+  * recompile HDF5 with an earlier version of the Intel compilers.
+  * recompile HANDE with HDF5 support disabled.
