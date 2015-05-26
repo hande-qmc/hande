@@ -10,7 +10,7 @@ ccmc {
     sys = sys,
     qmc = {
         tau = 0.02,
-        rng_seed = 8,
+        rng_seed = 13732,
         init_pop = 50,
         mc_cycles = 10,
         nreports = 150,
