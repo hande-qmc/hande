@@ -43,7 +43,7 @@ using the ``pyhande`` library --- ``reblock_hande.py`` simply provides a conveni
 interface for the most common analysis tasks.
 
 Canonical Kinetic Energy MC
---------------------------
+---------------------------
 
 .. todo
 

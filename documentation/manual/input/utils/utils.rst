@@ -2,16 +2,13 @@ Utilities
 =========
 
 Redistribution of restart files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------
 
 .. code-block:: lua
 
     redistribute {
         -- options
     }
-
-Returns:
-    nil
 
 For speed in reading in restart files and for simplicity, HANDE produces restart files
 specific to the number of MPI ranks used in the calculation and hence by default
@@ -34,20 +31,20 @@ where ``X`` is the restart index and ``Y`` is the MPI rank.
 
 Options:
 
-nprocs
+``nprocs``
     type: integer.
 
     Optional.  Default: number of processors the calculation is running on.
 
     Set the number of processors that the new set of restart files are to be used on.
-read
+read``
     type: integer.
 
     Optional.  Default: highest non-negative integer for which a set of restart files
     exists.
 
     Set the index, ``X`` of the set of restart files to be read in.
-write
+write``
     type: integer.
 
     Optional.  Default: highest non-negative integer for which a set of restart files does
@@ -61,7 +58,7 @@ write
    are assumed to be in the working directory.
 
 MPI information
-^^^^^^^^^^^^^^^
+---------------
 
 .. code-block:: lua
 

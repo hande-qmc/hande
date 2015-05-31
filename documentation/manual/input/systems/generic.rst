@@ -16,29 +16,30 @@ integrals between these basis functions.  This file is in FCIDUMP format
 [KnowlesHandy89]_, which can be produced by several quantum chemistry packages including
 MOLPRO, Q-Chem (via additions from Alex Thom) and PSI4 (via a plugin from James Spencer).
 
-Options:
+Options
+^^^^^^^
 
-sys
+``sys``
     type: system object produced by a previous call.
 
     Optional.
 
     If provided, a previously created system object is updated with the new settings
     supplied, otherwise a new system object is created.
-electrons
+``electrons``
     type: integer.
 
     Required.
 
     Number of electrons in the unit cell.
-ms
+``ms``
     type: integer.
 
     Required.
 
     Set the spin polarisation of the system in units of electron spin (i.e. a single
     electron can take values 1 or -1).
-sym
+``sym``
     type: integer.
 
     Required.
@@ -46,20 +47,20 @@ sym
     Set the symmetry of the system.  This is the index of a specific irreducible
     representation from the FCIDUMP file; see the output produced by creating a system for
     possible values.
-Lz
+``Lz``
     type: boolean.
 
     Optional.  Default: false.
 
     If true, enable Lz symmetry.  See below for details.
-int_file
+``int_file``
     type: string.
 
     Optional.  Default: 'FCIDUMP'.
 
     Specify the FCIDUMP file containing the integrals and information relating to the
     single-particle basis.
-dipole_int_file
+``dipole_int_file``
     type: string.
 
     Optional.  No default.
@@ -67,7 +68,7 @@ dipole_int_file
     Specify a FCIDUMP-like file containing the dipole integrals, i.e. :math:`\langle i | x | i \rangle`, in a given direction.
     
     Not currently used. 
-CAS
+``CAS``
     type: 2D-vector of integers.
 
     Optional.  No default.

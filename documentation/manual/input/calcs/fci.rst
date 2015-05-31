@@ -22,20 +22,20 @@ Calculate the ground state of a system via diagonalisation of the Hamiltonian ma
 Options
 -------
 
-sys
+``sys``
     type: system object.
 
     Required.
 
     The system on which to perform the calculation.  Must be created via a system
     function.
-fci
+``fci``
     type: lua table.
 
     Optional.  No default.
 
     Further FCI options.  See below.
-lanczos
+``lanczos``
     type: lua table.
 
     Optional.  No default.
@@ -43,7 +43,7 @@ lanczos
     Table containing Lanczos-specific options; see below.  If present, the diagonalisation
     is performed via an iterative Lanczos algorithm.  Otherwise diagonalisation is
     performed using LAPACK or ScaLAPACK.
-reference
+``reference``
     type: lua table.
 
     Optional.  No default.
@@ -55,45 +55,45 @@ fci options
 
 The ``fci`` table can take the following options:
 
-write_hamiltonian
+``write_hamiltonian``
     type: boolean.
 
     Optional.  Default: false.
 
     Write out the diagonal and the non-zero off-diagonal elements of the Hamiltonian
     matrix.
-hamiltonian_file
+``hamiltonian_file``
     type: string.
 
     Optional. Default: 'HAMIL'.
 
     Filename to which the Hamiltonian matrix is written.
-write_determinants
+``write_determinants``
     type: boolean.
 
     Optional.  Default: false.
 
     Write out the enumerated list of determinants in the FCI Hilbert space.
-determinant_file
+``determinant_file``
     type: string.
 
     Optional. Default: 'DETS'.
 
     Filename to which the list of determinants is written.
-write_nwfns
+``write_nwfns``
     type: integer.
 
     Optional.  Default: 0.
 
     Number of wavefunctions to write out (in the basis of Slater determinants).
     A negative value 1 indicates all wavefunctions are to be written out.
-wfn_file
+``wfn_file``
     type: string.
 
     Optional. Default: 'FCI_WFN'.
 
     Filename to which the wavefunctions are written.
-nanalyse
+``nanalyse``
     type: integer.
 
     Optional.  Default: 0.
@@ -103,16 +103,16 @@ nanalyse
     analysed.  This is slow, and uses a very simple algorithm.  It is only
     designed for debugging purposes.  The properties evaluated depend upon the system
     and are liable to change without warning.
-blacs_block_size
+``blacs_block_size``
     type: integer.
 
     Optional.  Default: 64.
 
-    Set the block size used by BLACS to distribute the Hamiltonian matrix across the
+    The block size used by BLACS to distribute the Hamiltonian matrix across the
     processors with MPI parallelism.  The Hamiltonian matrix is divided into :math:`n
     \times n` sub-matrices, where :math:`n` is the block size, which are the distributed
     over the processors in a cyclic fashion.
-rdm 
+``rdm``
     type: table of integers.
 
     Optional.  No default.
@@ -136,13 +136,13 @@ lanczos options
 
 The ``lanczos`` table can take the following options:
 
-neigv
+``neigv``
     type: integer.
 
     Optional.  Default: 5.
 
     Number of lowest eigenstates to be found.
-nbasis
+``nbasis``
     type: integer.
 
     Optional.  Default: 40.
@@ -151,7 +151,7 @@ nbasis
     performance of the Lanczos diagonalisation and which excited eigensolutions are found.
     See the `TRLan documentation <http://crd.lbl.gov/~kewu/ps/trlan_.html>`_, for more
     details.
-direct
+``direct``
     type: boolean.
 
     Optional.  Default: false.
@@ -159,7 +159,7 @@ direct
     If true, generate the Hamiltonian matrix on the fly (very slow).  Otherwise generate
     the Hamiltonian once and store it for use at each Lanczos iteration.  Not implemented
     with MPI parallelism.
-sparse
+``sparse``
     type: boolean.
 
     Optional.  Default: true.

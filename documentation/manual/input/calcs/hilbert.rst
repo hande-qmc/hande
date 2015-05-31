@@ -18,14 +18,14 @@ Options
 
 All options should be in the hilbert table bar the sys option.
 
-sys
+``sys``
     type: system object.
 
     Required.
 
     The system on which to perform the calculation.  Must be created via a system
     function.
-hilbert
+``hilbert``
     type: lua table.
 
     Required.
@@ -38,27 +38,27 @@ hilbert options
 
 The ``hilbert`` table can take the following options:
 
-ncycles
+``ncycles``
     type: integer.
 
     Required.
 
     Number of cycles  to perform (i.e. number of random determinants to generate).
-rng_seed
+``rng_seed``
     type: integer.
 
     Optional.  Default: generate a seed based upon the time and UUID (if available).
 
     Seed for initialising the random number generator.
-reference
+``reference``
     type: vector of integers.
 
     Optional.  Default: attempt to make a good guess based upon the spin and symmetry
     quantum numbers of the system.
 
-    Specify the reference determinant by the list of occupied spin-orbitals.  The
-    reference is used to generate truncated Hilbert spaces only.
-ex_level
+    The reference determinant as a list of occupied spin-orbitals.  The reference
+    determinant is used to in the generation of truncated Hilbert spaces only.
+``ex_level``
     type: integer.
 
     Optional.  Default: set to the number of electrons in the system (i.e. generate the
