@@ -73,6 +73,7 @@ contains
         type(sys_t) :: sys_bak
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
+        integer :: ngen
 
         if (present(rng_seed)) then
             seed = rng_seed
@@ -109,11 +110,11 @@ contains
             iaccept = 0 ! running number of samples this report cycle.
             do while (iaccept < nsamples)
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
-                                                                       1, occ_list(:sys%nalpha), gen)
-                if (.not. gen) cycle
+                                                                       1, occ_list(:sys%nalpha), ngen)
+                if (ngen /= sys%nalpha) cycle
                 if (sys%nbeta > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nbeta, &
-                                                                      0, occ_list(sys%nalpha+1:), gen)
-                if (.not. gen) cycle
+                                                                      0, occ_list(sys%nalpha+1:), ngen)
+                if (ngen /= sys%nel) cycle
                 iaccept = iaccept + 1
                 ! Calculate Kinetic and Hartree-Fock exchange energies.
                 energy(ke_idx) = sum_sp_eigenvalues(sys, occ_list)
@@ -153,7 +154,7 @@ contains
 
     end subroutine estimate_kinetic_energy
 
-    subroutine generate_allowed_orbital_list(sys, rng, porb, nselect, spin_factor, occ_list, gen)
+    subroutine generate_allowed_orbital_list(sys, rng, porb, nselect, spin_factor, occ_list, ngen)
 
         ! Generate a list of orbitals according to their single
         ! particle GC orbital occupancy probabilities.
@@ -180,32 +181,26 @@ contains
         integer, intent(in) :: spin_factor
         type(dSFMT_t), intent(inout) :: rng
         integer, intent(out) :: occ_list(:)
-        logical, intent(out) :: gen
+        integer, intent(inout) :: ngen
 
         integer :: iorb, iselect
         real(dp) :: r
 
         iselect = 0
-        occ_list = 0
 
         do iorb = 1, sys%basis%nbasis/2
             ! Select a random orbital.
             r = get_rand_close_open(rng)
             if (porb(iorb) > r) then
                 iselect = iselect + 1
+                ngen = ngen + 1
                 if (iselect > nselect) then
                     ! Selected too many.
-                    gen = .false.
                     exit
                 end if
-                occ_list(iselect) = 2*iorb - spin_factor
+                occ_list(ngen) = 2*iorb - spin_factor
             end if
         end do
-        if (iselect == nselect) then
-            gen = .true.
-        else
-            gen = .false.
-        end if
 
     end subroutine generate_allowed_orbital_list
 

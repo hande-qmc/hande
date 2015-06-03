@@ -568,10 +568,19 @@ contains
         integer :: ireplica, iorb, ipsip
         integer(int_p) :: nspawn
         logical :: gen
+        integer :: nalpha_allowed, nbeta_allowed, ngen
 
         ireplica = 1
         ! Default behaviour is we don't reweight populations.
         nspawn = real_factor
+
+        if (dmqmc_in%all_spin_sectors) then
+            nalpha_allowed = sys%nel
+            nbeta_allowed = sys%nel
+        else
+            nalpha_allowed = sys%nalpha
+            nbeta_allowed = sys%nbeta
+        end if
 
         ! Calculate orbital occupancies.
         ! * Warning *: We assume that we are dealing with a system without
@@ -594,10 +603,17 @@ contains
             occ_list = 0
             ! Select the alpha and beta spin orbitals and discard any
             ! determinant without the correct number of particles.
-            if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, 1, occ_list(:sys%nalpha), gen)
-            if (.not. gen) cycle
-            if (sys%nbeta > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nbeta, 0, occ_list(sys%nalpha+1:), gen)
-            if (.not. gen) cycle
+            ngen = 0
+            if (nalpha_allowed > 0) call generate_allowed_orbital_list(sys, rng, p_single, &
+                                                        nalpha_allowed, 1, occ_list, ngen)
+            if (.not. dmqmc_in%all_spin_sectors .and. ngen /= sys%nalpha) then
+                cycle
+            else if (ngen > nalpha_allowed) then
+                cycle
+            end if
+            if (nbeta_allowed > 0) call generate_allowed_orbital_list(sys, rng, p_single, &
+                                                        sys%nel-ngen, 0, occ_list, ngen)
+            if (ngen /= sys%nel) cycle
             ! Create the determinant.
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                 if (dmqmc_in%initial_matrix /= free_electron_dm .and. dmqmc_in%metropolis_attempts == 0) nspawn = &
