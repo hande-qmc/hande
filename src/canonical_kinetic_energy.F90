@@ -101,7 +101,7 @@ contains
                     '# iterations', 'E_0', 'E_HF0', '\sum\rho_HF_{ii}H_{ii}', '\sum\rho_HF_{ii}'
 
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
+                                                          (1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-sys%chem_pot)))
 
         do ireport = 1, ncycles
             local_estimators = 0.0_p

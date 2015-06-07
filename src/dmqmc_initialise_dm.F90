@@ -579,7 +579,7 @@ contains
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                          (1+exp(dmqmc_in%init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%ueg%chem_pot)))
+                                          (1+exp(dmqmc_in%init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%chem_pot)))
 
         ! In the grand canoical ensemble the probability of occupying a
         ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the
