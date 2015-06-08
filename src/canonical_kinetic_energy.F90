@@ -115,6 +115,15 @@ contains
                 !                 intends to return the number of electrons it created
                 !                 but instead seems to return the running total from an
                 !                 arbitrary starting point.
+                ! [reply] - FDM: I switched to a running total as we need to let
+                !                it generate between 0 and N electrons, then
+                !                N-ngen beta electrons so that ngen = nel by the
+                !                end. ngen should be zerod here if that's the
+                !                question - this is an error, which I'll fix. If
+                !                working with a specific spin polarisation then
+                !                you only let it genetate precisely nalpha
+                !                electrons. I haven't allowed spin averaging
+                !                here yet.
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
                                                                        1, occ_list(:sys%nalpha), ngen)
                 if (ngen /= sys%nalpha) cycle
@@ -174,10 +183,9 @@ contains
         !        alpha/beta spin orbitals. Set to 1 for alpha spins, 0 for beta spins.
         ! In/Out:
         !    rng: random number generator.
+        !    ngen: running total number of electrons calculated.
         ! Out:
         !    occ_list: array containing occupied orbitals.
-        ! [review] - JSS: update interface comment.
-        !    gen: true if generation attempt was successful (i.e. nselect orbitals were actually selected).
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t
@@ -194,6 +202,7 @@ contains
         real(dp) :: r
 
         ! [review] - JSS: unclear why we need iselect and ngen.
+        ! [reply] - FDM: I'm no longer sure I do either.
         iselect = 0
 
         do iorb = 1, sys%basis%nbasis/2
