@@ -109,6 +109,12 @@ contains
             local_estimators = 0.0_p
             iaccept = 0 ! running number of samples this report cycle.
             do while (iaccept < nsamples)
+                ! [review] - JSS: It's not clear how this works.  ngen in
+                !                 intent(inout) in generate_allowed_orbital_list but is
+                !                 never initialised.  I *think* generate_allowed_orbital_list
+                !                 intends to return the number of electrons it created
+                !                 but instead seems to return the running total from an
+                !                 arbitrary starting point.
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
                                                                        1, occ_list(:sys%nalpha), ngen)
                 if (ngen /= sys%nalpha) cycle
@@ -170,6 +176,7 @@ contains
         !    rng: random number generator.
         ! Out:
         !    occ_list: array containing occupied orbitals.
+        ! [review] - JSS: update interface comment.
         !    gen: true if generation attempt was successful (i.e. nselect orbitals were actually selected).
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -186,6 +193,7 @@ contains
         integer :: iorb, iselect
         real(dp) :: r
 
+        ! [review] - JSS: unclear why we need iselect and ngen.
         iselect = 0
 
         do iorb = 1, sys%basis%nbasis/2

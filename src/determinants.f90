@@ -574,11 +574,11 @@ contains
 
     pure function sum_sp_eigenvalues(sys, occ_list) result(spe_sum)
 
-        ! Calculate the sum of the single particle energies.
-
         ! In:
         !    sys: system being studied.
         !    occ_list: list of occupied orbitals.
+        ! Returns:
+        !    Sum of the single particle energies.
 
         use system, only: sys_t
 
