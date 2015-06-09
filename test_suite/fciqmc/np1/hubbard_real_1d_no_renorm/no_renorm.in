@@ -16,7 +16,7 @@ fciqmc {
         nreports = 100,
         target_population = 30000,
         vary_shift_from = -14.7,
-        no_renorm = true,
+        excit_gen = "no_renorm",
         state_size = -500,
         spawned_state_size = -100,
     },
