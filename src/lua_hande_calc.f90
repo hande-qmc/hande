@@ -744,10 +744,10 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
         use calc, only: GLOBAL_META, gen_seed
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm
         use lua_hande_utils, only: warn_unused_args
         use parallel, only: parent
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
@@ -756,7 +756,7 @@ contains
 
         integer :: qmc_table, err
         character(len=10) :: str
-        logical :: skip
+        logical :: skip, no_renorm
 
         if (present(short)) then
             skip = short
@@ -787,7 +787,6 @@ contains
         ! Optional arguments (defaults set in derived type).
         call aot_get_val(qmc_in%real_amplitudes, err, lua_state, qmc_table, 'real_amplitudes')
         call aot_get_val(qmc_in%spawn_cutoff, err, lua_state, qmc_table, 'spawn_cutoff')
-        call aot_get_val(qmc_in%no_renorm, err, lua_state, qmc_table, 'no_renorm')
         call aot_get_val(qmc_in%pattempt_single, err, lua_state, qmc_table, 'pattempt_single')
         call aot_get_val(qmc_in%pattempt_double, err, lua_state, qmc_table, 'pattempt_double')
         call aot_get_val(qmc_in%tau_search, err, lua_state, qmc_table, 'tau_search')
@@ -797,6 +796,28 @@ contains
         call aot_get_val(qmc_in%initiator_approx, err, lua_state, qmc_table, 'initiator')
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
+
+        if (aot_exists(lua_state, qmc_table, 'no_renorm')) then
+            call aot_get_val(no_renorm, err, lua_state, qmc_table, 'no_renorm')
+            call warning('read_qmc_in', 'no_renorm is deprecated.  Please use excit_gen instead.')
+            if (no_renorm) then
+                qmc_in%excit_gen = excit_gen_no_renorm
+            else
+                qmc_in%excit_gen = excit_gen_renorm
+            end if
+        end if
+
+        if (aot_exists(lua_state, qmc_table, 'excit_gen')) then
+            call aot_get_val(str, err, lua_state, qmc_table, 'excit_gen')
+            select case(str)
+            case('renorm')
+                qmc_in%excit_gen = excit_gen_renorm
+            case('no_renorm')
+                qmc_in%excit_gen = excit_gen_no_renorm
+            case default
+                call stop_all('read_qmc_in', 'Invalid excit_gen setting: '//trim(str))
+            end select
+        end if
 
         ! If user sets initial shift and vary_shift_from, assume they know what
         ! they're doing.  Otherwise, vary the shift from the initial shift
