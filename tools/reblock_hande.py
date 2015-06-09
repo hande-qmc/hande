@@ -1,11 +1,6 @@
 #!/usr/bin/env python
-'''reblock_hande.py [options] -- file_1 file_2 ... file_N
-
-Run a reblocking analysis on HANDE QMC output files.  CCMC and FCIQMC
-calculations only are supported.  Each file is treated separately by default.
-
-Note: the -- preceding the list of files is only required if the --merge option
-is in use and the list of files contains separate calculations.'''
+'''Run a reblocking analysis on HANDE QMC output files.  CCMC and FCIQMC
+calculations only are supported.'''
 
 import pandas as pd
 from os import path
@@ -14,8 +9,7 @@ sys.path.append(path.join(path.abspath(path.dirname(sys.argv[0])), 'pyblock'))
 import pyblock
 import pyhande
 
-# Still supporting 2.6.  *sigh*
-import optparse
+import argparse
 
 def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
@@ -163,45 +157,48 @@ reblock_plot : string
     filename for the reblock convergence plot output.
 '''
 
-    parser = optparse.OptionParser(usage = __doc__)
-    parser.add_option('-m', '--merge', default=False, action='store_true',
-                      help='Combine data from each file before analysing. '
-                      'Separate calculations can be denoted by placing \'--\' '
-                      'between groups of files.  Default: treat each file as an'
-                      ' independent calculation.')
-    parser.add_option('-p', '--plot', default=None, dest='plotfile',
-                      help='Filename to which the reblocking convergence plot '
-                      'is saved.  Use \'-\' to show plot interactively.  '
-                      'Default: off.')
-    parser.add_option('-q', '--quiet', dest='verbose', action='store_const',
-                      const=0, default=1,
-                      help='Output only the final summary table.  '
-                      'Overrides --verbose.')
-    parser.add_option('-s', '--start', type='int', dest='start_iteration',
-                      default=0, help='Iteration number from which to gather '
-                           'statistics.  Default: %default.')
-    parser.add_option('-v', '--verbose', dest='verbose', action='count',
-                      default=1, help='Increase verbosity of the output.  Can '
-                      'be specified multiple times.')
+    parser = argparse.ArgumentParser(description = __doc__)
+    parser.add_argument('-m', '--merge', default=False, action='store_true',
+                        help='Combine data from each file before analysing. '
+                        'Separate calculations can be denoted by placing \'--\''
+                        ' between groups of files.  Default: treat each file as'
+                        ' an independent calculation.')
+    parser.add_argument('-p', '--plot', default=None, dest='plotfile',
+                        help='Filename to which the reblocking convergence plot '
+                        'is saved.  Use \'-\' to show plot interactively.  '
+                        'Default: off.')
+    parser.add_argument('-q', '--quiet', dest='verbose', action='store_const',
+                        const=0, default=1,
+                        help='Output only the final summary table.  '
+                        'Overrides --verbose.')
+    parser.add_argument('-s', '--start', type=int, dest='start_iteration',
+                        default=0, help='Iteration number from which to gather '
+                        'statistics.  Default: %(default)s.')
+    parser.add_argument('-v', '--verbose', dest='verbose', action='count',
+                        default=1, help='Increase verbosity of the output.  Can '
+                        'be specified multiple times.')
+    parser.add_argument('filenames', nargs=argparse.REMAINDER,
+                        help='Space-separated list of files to analyse.')
 
-    (options, filenames) = parser.parse_args(args)
+    options = parser.parse_args(args)
 
-    if not filenames:
+    if not options.filenames:
         parser.print_help()
         sys.exit(1)
 
     if options.merge:
         merged = [[]]
-        for fname in filenames:
+        for fname in options.filenames:
             if fname == '--':
-                merged.append([])
+                if merged[-1]:
+                    merged.append([])
             else:
                 merged[-1].append(fname)
-        filenames = merged
+        options.filenames = merged
     else:
-        filenames = [[fname] for fname in filenames]
+        options.filenames = [[fname] for fname in options.filenames]
 
-    return (filenames, options.start_iteration, options.plotfile,
+    return (options.filenames, options.start_iteration, options.plotfile,
             options.verbose)
 
 def main(args):
