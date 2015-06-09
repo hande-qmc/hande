@@ -143,7 +143,13 @@ class MolSystem:
     def sp_energies(self, filename):
 
         data = pd.DataFrame()
-        data = pd.read_csv(filename, delim_whitespace=True, skiprows=7, header=None)
+        with open(filename) as f:
+            nskip = 0
+            for line in f:
+                nskip += 1
+                if '&END' in line:
+                    break
+        data = pd.read_csv(filename, delim_whitespace=True, skiprows=nskip, header=None)
         data.rename(columns={0:'a', 1:'b', 2:'c', 3:'d', 4:'e'}, inplace=True)
         speig = np.array(data.loc[(data.b > 0) & (data.c == 0) & (data.d == 0) & (data.e == 0),'a'])
 
