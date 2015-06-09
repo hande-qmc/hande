@@ -134,7 +134,7 @@ class MolSystem:
         # Spin polarisation.
         self.pol = args.pol
         # Single particle eigenvalues.
-        self.spval = self.sp_energies(args.filename[0])
+        self.spval = self.sp_energies(args.filename)
         # Compress single particle eigenvalues by degeneracy.
         self.deg_e = compress_spval(self.spval)
         # epsilon value for comparison of floats.
@@ -282,26 +282,26 @@ args : :class:`ArgumentParser`
 '''
 
     parser = argparse.ArgumentParser(usage=__doc__)
-    parser.add_argument('calc', help='calculation type, either ueg or read_in')
-    args = parser.parse_known_args()[0]
-    print args
-    if args.calc == 'ueg':
-        parser.add_argument('rs', type=int, help='Wigner-Seitz radius.')
-        parser.add_argument('ecutoff', type=float, help='Plane wave cutoff '
+
+
+    subparsers = parser.add_subparsers(help='sub-command-help', dest='calc')
+
+    parser_ueg = subparsers.add_parser('ueg', help='Chemical potential for 3d UEG.')
+    parser_ueg.add_argument('rs', type=int, help='Wigner-Seitz radius.')
+    parser_ueg.add_argument('ecutoff', type=float, help='Plane wave cutoff '
                             'in units of 0.5*(2\pi/L)**2.')
-        parser.add_argument('-t', '--use--fermi', action='store_true',
-                            dest='fermi_temperature', default=False,
-                            help='Interpret input beta as Beta = T_F/T')
-    elif args.calc == 'read_in':
-        parser.add_argument('-f', '--filename', nargs='+', help='integral_file')
-    else:
-        print ("Calculation type unkown. Allowed values = ueg or read_in")
+    parser_ueg.add_argument('-t', '--use--fermi', action='store_true',
+                        dest='fermi_temperature', default=False,
+                        help='Interpret input beta as Beta = T_F/T')
+
+    parser_mol = subparsers.add_parser('mol', help='Chemical potential for molecular system.')
+    parser_mol.add_argument('filename', help='HANDE integral file.')
 
     parser.add_argument('ne', type=int, help='Number of electrons.')
     parser.add_argument('pol', type=int, help='Polarisation, = 1 for '
                         'unpolarised system and 2 for polarised system.')
     parser.add_argument('beta', type=float, help='Inverse temperature.')
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     return args
 
