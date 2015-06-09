@@ -632,7 +632,8 @@ contains
         use hfs_data
         use system
         use parallel, only: parent
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, reference_t, single_basis, neel_singlet, neel_singlet_guiding
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, reference_t, single_basis, neel_singlet, neel_singlet_guiding, &
+                            excit_gen_renorm, excit_gen_no_renorm
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
 
         ! Procedures to be pointed to.
@@ -689,15 +690,18 @@ contains
             update_proj_energy_ptr => update_proj_energy_hub_k
             sc0_ptr => slater_condon0_hub_k
             spawner_ptr => spawn_lattice_split_gen
-            if (qmc_in%no_renorm) then
+            select case(qmc_in%excit_gen)
+            case(excit_gen_no_renorm)
                 gen_excit_ptr%full => gen_excit_hub_k_no_renorm
                 gen_excit_ptr%init => gen_excit_init_hub_k_no_renorm
                 gen_excit_ptr%finalise => gen_excit_finalise_hub_k_no_renorm
-            else
+            case(excit_gen_renorm)
                 gen_excit_ptr%full => gen_excit_hub_k
                 gen_excit_ptr%init => gen_excit_init_hub_k
                 gen_excit_ptr%finalise => gen_excit_finalise_hub_k
-            end if
+            case default
+                call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
+            end select
 
         case(hub_real, chung_landau)
 
@@ -715,11 +719,14 @@ contains
                 sc0_ptr => slater_condon0_chung_landau
             end if
 
-            if (qmc_in%no_renorm) then
+            select case(qmc_in%excit_gen)
+            case(excit_gen_no_renorm)
                 gen_excit_ptr%full => gen_excit_hub_real_no_renorm
-            else
+            case(excit_gen_renorm)
                 gen_excit_ptr%full => gen_excit_hub_real
-            end if
+            case default
+                call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
+            end select
 
         case(heisenberg)
 
@@ -744,11 +751,14 @@ contains
             end if
 
             ! Set which guiding wavefunction to use, if requested.
-            if (qmc_in%no_renorm) then
+            select case(qmc_in%excit_gen)
+            case(excit_gen_no_renorm)
                 gen_excit_ptr%full => gen_excit_heisenberg_no_renorm
-            else
-                    gen_excit_ptr%full => gen_excit_heisenberg
-            end if
+            case(excit_gen_renorm)
+                gen_excit_ptr%full => gen_excit_heisenberg
+            case default
+                call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
+            end select
             if (present(fciqmc_in)) then
                 select case(fciqmc_in%guiding_function)
                 case (neel_singlet_guiding)
@@ -762,13 +772,16 @@ contains
             update_proj_energy_ptr => update_proj_energy_mol
             sc0_ptr => slater_condon0_mol
 
-            if (qmc_in%no_renorm) then
+            select case(qmc_in%excit_gen)
+            case(excit_gen_no_renorm)
                 gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
-            else
+            case(excit_gen_renorm)
                 gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
-            end if
+            case default
+                call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
+            end select
 
         case(ueg)
 
@@ -776,17 +789,18 @@ contains
             sc0_ptr => slater_condon0_ueg
             energy_diff_ptr => exchange_energy_ueg
 
-            if (qmc_in%no_renorm) then
-                gen_excit_ptr%full => gen_excit_ueg_no_renorm
-                decoder_ptr => decode_det_occ
-            else
+            gen_excit_ptr%full => gen_excit_ueg_no_renorm
+            decoder_ptr => decode_det_occ
+            select case(qmc_in%excit_gen)
+            case(excit_gen_no_renorm)
+            case(excit_gen_renorm)
                 if (parent) then
                     write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
-                    write (6,'(1X,"WARNING: If this upsets you, please send patches (or bribe James with beer).",/)')
+                    write (6,'(1X,"WARNING: If this upsets you, please send patches.",/)')
                 end if
-                gen_excit_ptr%full => gen_excit_ueg_no_renorm
-                decoder_ptr => decode_det_occ
-            end if
+            case default
+                call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
+            end select
 
         case(ringium)
 
@@ -795,6 +809,16 @@ contains
 
             gen_excit_ptr%full => gen_excit_ringium_no_renorm
             decoder_ptr => decode_det_occ
+            select case(qmc_in%excit_gen)
+            case(excit_gen_no_renorm)
+            case(excit_gen_renorm)
+                if (parent) then
+                    write (6,'(1X,"WARNING: renormalised excitation generators not implemented.")')
+                    write (6,'(1X,"WARNING: If this upsets you, please send patches.",/)')
+                end if
+            case default
+                call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
+            end select
 
         case default
             call stop_all('init_proc_pointers','QMC not implemented for this system yet.')
@@ -923,11 +947,15 @@ contains
                     op0_ptr => one_body0_mol
                     update_proj_hfs_ptr => update_proj_hfs_one_body_mol
                     spawner_hfs_ptr => spawner_ptr
-                    if (qmc_in%no_renorm) then
+
+                    select case(qmc_in%excit_gen)
+                    case(excit_gen_no_renorm)
                         gen_excit_hfs_ptr%full => gen_excit_one_body_mol_no_renorm
-                    else
+                    case(excit_gen_renorm)
                         gen_excit_hfs_ptr%full => gen_excit_one_body_mol
-                    end if
+                    case default
+                        call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
+                    end select
                 else
                     call stop_all('init_proc_pointers','System not yet supported in HFS with operator given.')
                 end if

@@ -2460,7 +2460,7 @@ contains
         use excit_gen_ringium, only: calc_pgen_ringium
         use point_group_symmetry, only: gamma_sym, cross_product_pg_basis, pg_sym_conj
         use determinants, only: det_info_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_in_t, excit_gen_no_renorm
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -2475,7 +2475,7 @@ contains
         associate(a=>connection%to_orb(1), b=>connection%to_orb(2), i=>connection%from_orb(1), j=>connection%from_orb(2))
             select case(sys%system)
             case(read_in)
-                if (qmc_in%no_renorm) then
+                if (qmc_in%excit_gen == excit_gen_no_renorm) then
                     if (connection%nexcit == 1) then
                         pgen = qmc_in%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
                     else

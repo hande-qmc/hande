@@ -23,6 +23,19 @@ enum, bind(c)
     enumerator :: semi_stoch_combined_annihilation
 end enum
 
+enum, bind(c)
+    ! Explicitly renormalise excitation generators such that selecting the single
+    ! excitation i->a such that i is only chosen if there exists an unoccipied a of the
+    ! correct symmetry and the double excitation i,j->a,b such that given the choice of
+    ! (i,j) a is only chosen if there exists an unoccupied b of the correct symmetry.
+    enumerator :: excit_gen_renorm
+    ! Don't require i (single) and i,j,a (double) to have allowed excitations.  This gives
+    ! slightly less efficient excitation generation (negligible in large systems) but
+    ! avoids an expensive renormalisation step to calculate the excitation generation
+    ! probabilities.
+    enumerator :: excit_gen_no_renorm
+end enum
+
 ! --- QMC input ---
 
 type qmc_in_t
@@ -39,9 +52,8 @@ type qmc_in_t
     ! spawnings events will be integers.
     real(p) :: spawn_cutoff = 0.01_p
 
-    ! Don't bother renormalising generation probabilities; instead allow forbidden
-    ! excitations to be generated and then rejected.
-    logical :: no_renorm = .false.
+    ! Selection of excitation generator to use.  One of the excit_gen_* enum.
+    integer :: excit_gen = excit_gen_renorm
 
     ! probability of attempting single or double excitations...
     ! set to be nonsense value so can easily detect if it's given as an input option
