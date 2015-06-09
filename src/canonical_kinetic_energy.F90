@@ -109,26 +109,11 @@ contains
             local_estimators = 0.0_p
             iaccept = 0 ! running number of samples this report cycle.
             do while (iaccept < nsamples)
-                ! [review] - JSS: It's not clear how this works.  ngen in
-                !                 intent(inout) in generate_allowed_orbital_list but is
-                !                 never initialised.  I *think* generate_allowed_orbital_list
-                !                 intends to return the number of electrons it created
-                !                 but instead seems to return the running total from an
-                !                 arbitrary starting point.
-                ! [reply] - FDM: I switched to a running total as we need to let
-                !                it generate between 0 and N electrons, then
-                !                N-ngen beta electrons so that ngen = nel by the
-                !                end. ngen should be zerod here if that's the
-                !                question - this is an error, which I'll fix. If
-                !                working with a specific spin polarisation then
-                !                you only let it genetate precisely nalpha
-                !                electrons. I haven't allowed spin averaging
-                !                here yet.
                 if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
-                                                                       1, occ_list(:sys%nalpha), ngen)
+                                                                       1, occ_list, ngen)
                 if (ngen /= sys%nalpha) cycle
                 if (sys%nbeta > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nbeta, &
-                                                                      0, occ_list(sys%nalpha+1:), ngen)
+                                                                      0, occ_list, ngen)
                 if (ngen /= sys%nel) cycle
                 iaccept = iaccept + 1
                 ! Calculate Kinetic and Hartree-Fock exchange energies.
@@ -201,8 +186,6 @@ contains
         integer :: iorb, iselect
         real(dp) :: r
 
-        ! [review] - JSS: unclear why we need iselect and ngen.
-        ! [reply] - FDM: I'm no longer sure I do either.
         iselect = 0
 
         do iorb = 1, sys%basis%nbasis/2
