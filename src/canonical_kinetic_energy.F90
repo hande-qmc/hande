@@ -169,7 +169,8 @@ contains
         !        alpha/beta spin orbitals. Set to 1 for alpha spins, 0 for beta spins.
         ! In/Out:
         !    rng: random number generator.
-        !    ngen: running total number of electrons calculated.
+        !    ngen: running total number of electrons calculated. Should be zerod
+        !       upon first call to generate_allowed_orbital_list.
         ! Out:
         !    occ_list: array containing occupied orbitals.
 
