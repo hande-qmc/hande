@@ -55,7 +55,10 @@ class UEGSystem:
         # Kinetic energy cut-off.
         self.ecut = args.ecutoff
         # Spin polarisation.
-        self.pol = args.pol
+        if (args.pol == False):
+            self.pol = 1
+        else:
+            self.pol = 2
         # Box Length.
         self.L = self.rs*(4*self.ne*sc.pi/3.)**(1/3.)
         # k-space grid spacing.
@@ -132,7 +135,10 @@ class MolSystem:
         # Number of electrons.
         self.ne = args.ne
         # Spin polarisation.
-        self.pol = args.pol
+        if (args.pol == False):
+            self.pol = 1
+        else:
+            self.pol = 2
         # Single particle eigenvalues.
         self.spval = self.sp_energies(args.filename)
         # Compress single particle eigenvalues by degeneracy.
@@ -289,8 +295,8 @@ args : :class:`ArgumentParser`
 
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument('ne', type=int, help='Number of electrons.')
-    parent_parser.add_argument('pol', type=int, help='Spin polarisation. Set to'
-                        ' 1 for unpolarised system and 2 for polarised system.')
+    parent_parser.add_argument('-p', '--polarised', action='store_true', dest='pol',
+                               help='Fully polarised system?', default=False)
     parent_parser.add_argument('beta', type=float, help='Inverse temperature.')
 
     parser = argparse.ArgumentParser(usage=__doc__)
