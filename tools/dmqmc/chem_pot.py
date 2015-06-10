@@ -287,26 +287,28 @@ args : :class:`ArgumentParser`
     Arguments read in from command line.
 '''
 
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument('ne', type=int, help='Number of electrons.')
+    parent_parser.add_argument('pol', type=int, help='Spin polarisation. Set to'
+                        ' 1 for unpolarised system and 2 for polarised system.')
+    parent_parser.add_argument('beta', type=float, help='Inverse temperature.')
+
     parser = argparse.ArgumentParser(usage=__doc__)
-
-
     subparsers = parser.add_subparsers(help='sub-command-help', dest='calc')
 
-    parser_ueg = subparsers.add_parser('ueg', help='Chemical potential for 3d UEG.')
+    parser_ueg = subparsers.add_parser('ueg', parents=[parent_parser],
+                        help='Chemical potential for 3d UEG.')
     parser_ueg.add_argument('rs', type=int, help='Wigner-Seitz radius.')
     parser_ueg.add_argument('ecutoff', type=float, help='Plane wave cutoff '
-                            'in units of 0.5*(2\pi/L)**2.')
+                        'in units of 0.5*(2\pi/L)**2.')
     parser_ueg.add_argument('-t', '--use--fermi', action='store_true',
                         dest='fermi_temperature', default=False,
                         help='Interpret input beta as Beta = T_F/T')
 
-    parser_mol = subparsers.add_parser('mol', help='Chemical potential for molecular system.')
+    parser_mol = subparsers.add_parser('mol', parents=[parent_parser],
+                        help='Chemical potential for molecular system.')
     parser_mol.add_argument('filename', help='HANDE integral file.')
 
-    parser.add_argument('ne', type=int, help='Number of electrons.')
-    parser.add_argument('pol', type=int, help='Polarisation, = 1 for '
-                        'unpolarised system and 2 for polarised system.')
-    parser.add_argument('beta', type=float, help='Inverse temperature.')
     args = parser.parse_args(args)
 
     return args
