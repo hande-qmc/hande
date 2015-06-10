@@ -92,6 +92,28 @@ contains
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(sys%basis, f, occ_list)
 
+        hmatel = slater_condon0_mol_orb_list(sys, occ_list)
+
+    end function slater_condon0_mol
+
+    pure function slater_condon0_mol_orb_list(sys, occ_list) result(hmatel)
+
+        ! In:
+        !    sys: system to be studied.
+        !    occ_list: List of occpied orbitals in Slater determinant |D>.
+        ! Returns:
+        !    <D|H|D>, the diagonal Hamiltonian matrix element involving D for
+        !    systems defined by integrals read in from an FCIDUMP file.
+
+        use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
+        use system, only: sys_t
+
+        real(p) :: hmatel
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(:)
+
+        integer :: iel, jel, i, j
+
         associate(one_e_ints=>sys%read_in%one_e_h_integrals, coulomb_ints=>sys%read_in%coulomb_integrals)
             hmatel = sys%read_in%Ecore
             do iel = 1, sys%nel
@@ -106,7 +128,7 @@ contains
             end do
         end associate
 
-    end function slater_condon0_mol
+    end function slater_condon0_mol_orb_list
 
     pure function slater_condon1_mol(sys, occ_list, i, a, perm) result(hmatel)
 
@@ -239,7 +261,6 @@ contains
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-         
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
         hmatel = get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns) &
@@ -295,5 +316,32 @@ contains
         if (perm) hmatel = -hmatel
 
     end function slater_condon2_mol_excit
+
+    pure function double_counting_correction_mol(sys, occ_list) result(double_count)
+
+        ! Work out the double counting correction between the Hartree-Fock
+        ! energy and the sum of the Hartree-Fock orbitals.
+
+        ! In:
+        !    sys: system being studied.
+        !    occ_list: list of occupied orbitals in determinant.
+        ! Returns:
+        !    double_count: double counting correction,
+        !    i.e. <D|H|D> - \sum_{i_occ} epsilon_i.
+
+        use system, only: sys_t
+        use determinants, only: sum_sp_eigenvalues
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(:)
+
+        real(p) :: sc0, sum_hf, double_count
+
+        sc0 = slater_condon0_mol_orb_list(sys, occ_list)
+        sum_hf = sum_sp_eigenvalues(sys, occ_list) + sys%read_in%Ecore
+
+        double_count = sc0-sum_hf
+
+    end function double_counting_correction_mol
 
 end module hamiltonian_molecular

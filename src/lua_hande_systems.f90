@@ -103,6 +103,7 @@ contains
         call aot_get_val(sys%nel, err, lua_state, opts, 'nel')
         call aot_get_val(sys%Ms, err, lua_state, opts, 'ms')
         call aot_get_val(sys%symmetry, err, lua_state, opts, 'sym')
+        call aot_get_val(sys%chem_pot, err, lua_state, opts, 'chem_pot')
 
         call aot_get_val(cas, err_arr, 2, lua_state, opts, key='CAS')
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
@@ -465,8 +466,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms', 'CAS']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS', 'chem_pot']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -596,7 +597,6 @@ contains
         !        ms = Ms,
         !        sym = sym_index,
         !        twist = {...},    -- D-dimensional vector
-        !        chem_pot = cp
         !    }
         !    Returns: sys_t object.
 
@@ -644,7 +644,6 @@ contains
 
         call aot_get_val(sys%ueg%ecutoff, err, lua_state, opts, 'cutoff')
         call aot_get_val(sys%ueg%r_s, err, lua_state, opts, 'rs')
-        call aot_get_val(sys%ueg%chem_pot, err, lua_state, opts, 'chem_pot')
         call aot_get_val(sys%lattice%ndim, err, lua_state, opts, 'dim')
 
         call get_ktwist(lua_state, sys, opts)

@@ -351,7 +351,7 @@ contains
                 reference%H00 = sc0_ptr(sys, reference%f0)
                 ! Exchange energy of reference determinant.
                 select case (sys%system)
-                case (ueg)
+                case (ueg, read_in)
                     reference%energy_shift = energy_diff_ptr(sys, reference%occ_list0)
                 case default
                     ! [todo] - Implement for all models.
@@ -653,7 +653,7 @@ contains
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
-        use hamiltonian_molecular, only: slater_condon0_mol
+        use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg
         use heisenberg_estimators
@@ -771,6 +771,7 @@ contains
 
             update_proj_energy_ptr => update_proj_energy_mol
             sc0_ptr => slater_condon0_mol
+            energy_diff_ptr => double_counting_correction_mol
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)

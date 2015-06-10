@@ -76,7 +76,7 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
-        use determinants, only: decode_det
+        use determinants, only: decode_det, sum_sp_eigenvalues
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -109,7 +109,7 @@ contains
         ! Returns:
         !    < D_i | T | D_i >, the kinetic energy for the ueg.
 
-        use determinants, only: decode_det
+        use determinants, only: decode_det, sum_sp_eigenvalues
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -157,30 +157,6 @@ contains
         end do
 
     end function exchange_energy_ueg
-
-    pure function sum_sp_eigenvalues(sys, occ_list) result(ke)
-
-        ! Calculate the kinetic energy from the single particle energies.
-
-        ! In:
-        !    sys: system being studied.
-        !    occ_list: list of occupied orbitals.
-
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: occ_list(sys%nel)
-
-        integer :: iorb
-        real(p) :: ke
-
-        ke = 0.0_p
-
-        do iorb = 1, sys%nel
-            ke = ke + sys%basis%basis_fns(occ_list(iorb))%sp_eigv
-        end do
-
-    end function sum_sp_eigenvalues
 
     pure function slater_condon2_ueg(sys, i, j, a, b, perm) result(hmatel)
 

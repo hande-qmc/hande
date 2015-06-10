@@ -572,4 +572,28 @@ contains
 
     end subroutine update_sys_spin_info
 
+    pure function sum_sp_eigenvalues(sys, occ_list) result(spe_sum)
+
+        ! In:
+        !    sys: system being studied.
+        !    occ_list: list of occupied orbitals.
+        ! Returns:
+        !    Sum of the single particle energies.
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(sys%nel)
+
+        integer :: iorb
+        real(p) :: spe_sum
+
+        spe_sum = 0.0_p
+
+        do iorb = 1, sys%nel
+            spe_sum = spe_sum + sys%basis%basis_fns(occ_list(iorb))%sp_eigv
+        end do
+
+    end function sum_sp_eigenvalues
+
 end module determinants

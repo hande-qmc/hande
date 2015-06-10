@@ -232,8 +232,6 @@ type sys_ueg_t
     real(p) :: kf = 1.0_p
     ! Fermi-Energy (Infinite system).
     real(p) :: ef = 1.0_p
-    ! Chemical potential.
-    real(p) :: chem_pot = huge(1.0_p)
 
     ! When creating an arbitrary excitation, k_i,k_j->k_a,k_b, we must conserve
     ! crystal momentum, k_i+k_j-k_a-k_b=0.  Hence once we've chosen k_i, k_j and
@@ -366,6 +364,8 @@ type sys_t
     ! Heisenberg model: number of antiparallel pairs of spins which can be
     ! flipped.  Used only in DMQMC.
     integer :: max_number_excitations
+    ! Chemical potential.
+    real(p) :: chem_pot = huge(1.0_p)
 
     ! Basis set information
     ! ^^^^^^^^^^^^^^^^^^^^^
