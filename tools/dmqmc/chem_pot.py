@@ -153,7 +153,7 @@ class MolSystem:
             nskip = 0
             for line in f:
                 nskip += 1
-                if '&END' in line or '//' in line:
+                if '&END' in line or '/' in line:
                     break
         data = pd.read_csv(filename, delim_whitespace=True, skiprows=nskip, header=None)
         data.rename(columns={0:'a', 1:'b', 2:'c', 3:'d', 4:'e'}, inplace=True)
