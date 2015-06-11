@@ -42,6 +42,16 @@ scalapack (parallel compilation only)
     Available from http://www.netlib.org/scalapack/ and vendor implementations.  Often
     already installed on HPC systems, included in Intel Maths Kernel Library and can be
     installed from most package managers.
+python 2.7+ or python 3.2+
+    Almost all tools packaged with HANDE are written in python.
+
+    .. note::
+
+        python 2.6 or earlier python 3 versions **may** be sufficient but will probably
+        require additional work.  In particular, the argparse module (included from 2.7
+        and 3.2 onwards) is required and installing (especially recent versions of )
+        pandas  may be problematic.  Using a recent version of python is highly
+        recommended.
 pandas
     The HANDE data analysis tools build heavily upon the python scientific
     stack.  In particular, pandas (available from http://pandas.pydata.org) is required
