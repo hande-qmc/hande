@@ -153,7 +153,7 @@ class MolSystem:
             nskip = 0
             for line in f:
                 nskip += 1
-                if '&END' in line or '//' in line:
+                if '&END' in line or '/' in line:
                     break
         data = pd.read_csv(filename, delim_whitespace=True, skiprows=nskip, header=None)
         data.rename(columns={0:'a', 1:'b', 2:'c', 3:'d', 4:'e'}, inplace=True)
@@ -296,7 +296,8 @@ args : :class:`ArgumentParser`
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument('ne', type=int, help='Number of electrons.')
     parent_parser.add_argument('-p', '--polarised', action='store_true', dest='pol',
-                               help='Fully polarised system?', default=False)
+            help='Set system to be spin polarised.  Default: %(default)s.',
+            default=False)
     parent_parser.add_argument('beta', type=float, help='Inverse temperature.')
 
     parser = argparse.ArgumentParser(usage=__doc__)
@@ -308,8 +309,8 @@ args : :class:`ArgumentParser`
     parser_ueg.add_argument('ecutoff', type=float, help='Plane wave cutoff '
                         'in units of 0.5*(2\pi/L)**2.')
     parser_ueg.add_argument('-t', '--use--fermi', action='store_true',
-                        dest='fermi_temperature', default=False,
-                        help='Interpret input beta as Beta = T_F/T')
+            dest='fermi_temperature', default=False,
+            help='Interpret input beta as Beta = T_F/T.  Default: %(default)s.')
 
     parser_mol = subparsers.add_parser('mol', parents=[parent_parser],
                         help='Chemical potential for molecular system.')
