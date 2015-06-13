@@ -1,6 +1,9 @@
 Analysis
 ========
 
+FCIQMC and CCMC
+---------------
+
 QMC calculations print out data from a block of iterations (a 'report loop'), the length
 of which is controlled by the **mc_cycles** input option.  Care should be taken analysing
 this data and, in particular, producing accurate estimates of the errors in the means of
@@ -38,3 +41,13 @@ Note that reblock_hande.py can accept multiple output files for the case when
 a calculation is restarted.  More complicated analysis can be performed in python by
 using the ``pyhande`` library --- ``reblock_hande.py`` simply provides a convenient
 interface for the most common analysis tasks.
+
+Canonical Kinetic Energy MC
+--------------------------
+
+.. todo
+
+DMQMC
+-----
+
+.. todo
