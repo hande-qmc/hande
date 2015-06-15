@@ -21,5 +21,6 @@ fciqmc {
     semi_stoch = {
         separate_annihilation = false,
         space = "read",
+        read = 0,
     },
 }

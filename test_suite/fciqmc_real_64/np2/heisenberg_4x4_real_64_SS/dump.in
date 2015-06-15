@@ -20,7 +20,7 @@ fciqmc {
     },
     semi_stoch = {
         size = 50,
-        write_determ_space = true,
+        write = 0,
         separate_annihilation = false,
         start_iteration = 1500,
         space = "high",
