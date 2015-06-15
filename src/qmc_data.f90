@@ -165,6 +165,14 @@ type semi_stoch_in_t
     ! Algorithm used for projection/annihilation in the deterministic subspace.
     ! Only the values given by semi_stoch_*_annihilation (see enum above) are permitted.
     integer :: projection_mode = semi_stoch_separate_annihilation
+    ! If creating the deterministic space by reading a SEMI.STOCH.x.H5 file,
+    ! then this integer gives the id (x) of the file to read.
+    ! If unset (==huge(0)) then the lowest used id will be searched for.
+    integer :: read_id = huge(0)
+    ! If writing the deterministic space to a SEMI.STOCH.x.H5 file, then this
+    ! integer gives the id (x) of the file to be written to.
+    ! If unset (==huge(0)) then the lowest unused id will be searched for.
+    integer :: write_id = huge(0)
 end type semi_stoch_in_t
 
 type ccmc_in_t

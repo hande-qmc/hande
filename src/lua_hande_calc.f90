@@ -1011,6 +1011,8 @@ contains
             call aot_get_val(semi_stoch_in%start_iter, err, lua_state, semi_stoch_table, 'start_iteration')
             call aot_get_val(semi_stoch_in%write_determ_space, err, lua_state, semi_stoch_table, 'write_determ_space')
             call aot_get_val(separate_annihilation, err, lua_state, semi_stoch_table, 'separate_annihilation', default=.true.)
+            call aot_get_val(semi_stoch_in%read_id, err, lua_state, semi_stoch_table, 'read')
+            call aot_get_val(semi_stoch_in%write_id, err, lua_state, semi_stoch_table, 'write')
             if (separate_annihilation) then
                 semi_stoch_in%projection_mode = semi_stoch_separate_annihilation
             else
