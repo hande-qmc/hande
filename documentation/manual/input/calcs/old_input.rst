@@ -60,6 +60,10 @@ types below. They are turned off by default.
     Perform a semi-stochastic calculation. The deterministic space is created
     by reading in determinants from an HDF5 file produced using the
     **write_determ_space** option.
+    
+    The filename will be of the form SEMI.STOCH.x.H5, where x is the file id.
+    By default, x will be the smallest available id of all existing files.
+    However, a particular id can be chosen using the **read** option.
 **semi_stoch_iteration** *iter*
     Turn the semi-stochastic algorithm on at iteration number *iter*.
 **semi_stoch_shift_start** *iter*
@@ -390,6 +394,10 @@ The following options are valid for FCIQMC calculations.
     Write the determinants in any used semi-stochastic deterministic space to a
     file. This is done for each deterministic space used, to a separate file
     each time.
+
+    The filename will have the form SEMI.STOCH.x.H5, where x is the file id.
+    By default, HANDE will search for the lowest unused id (>= 0). However, an
+    id can be specified using the **write** option.
 **ascii_format_out**
     The default format for restart files is binary, as for the most part the files
     are meant purely for reading by Hubbard, and having the file in human-readable
