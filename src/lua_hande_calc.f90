@@ -1424,7 +1424,7 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_exists, aot_table_open, aot_table_close, aot_get_val
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, get_flag_and_id
         use qmc_data, only: restart_in_t
 
         type(flu_State), intent(inout) :: lua_state
@@ -1451,29 +1451,6 @@ contains
             call aot_table_close(lua_state, restart_table)
 
         end if
-
-        contains
-
-            subroutine get_flag_and_id(lua_state, restart_table, flag, id, key)
-
-                type(flu_State), intent(inout) :: lua_state
-                integer, intent(in) :: restart_table
-                logical, intent(inout) :: flag
-                integer, intent(inout) :: id
-                character(*), intent(in) :: key
-
-                integer :: err
-
-                if (aot_exists(lua_state, restart_table, key)) then
-                    call aot_get_val(flag, err, lua_state, restart_table, key)
-                    if (err /= 0) then
-                        ! Passed an id instead.
-                        flag = .true.
-                        call aot_get_val(id, err, lua_state, restart_table, key)
-                    end if
-                end if
-
-            end subroutine get_flag_and_id
 
     end subroutine read_restart_in
 
