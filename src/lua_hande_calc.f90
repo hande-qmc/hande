@@ -969,11 +969,11 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use parallel, only: parent
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
 
         use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space, &
                             semi_stoch_combined_annihilation, semi_stoch_separate_annihilation
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, get_flag_and_id
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
@@ -1010,10 +1010,9 @@ contains
 
             ! Optional arguments (defaults set in derived type).
             call aot_get_val(semi_stoch_in%start_iter, err, lua_state, semi_stoch_table, 'start_iteration')
-            call aot_get_val(semi_stoch_in%write_determ_space, err, lua_state, semi_stoch_table, 'write_determ_space')
             call aot_get_val(separate_annihilation, err, lua_state, semi_stoch_table, 'separate_annihilation', default=.true.)
             call aot_get_val(semi_stoch_in%read_id, err, lua_state, semi_stoch_table, 'read')
-            call aot_get_val(semi_stoch_in%write_id, err, lua_state, semi_stoch_table, 'write')
+            call get_flag_and_id(lua_state, semi_stoch_table, semi_stoch_in%write_determ_space, semi_stoch_in%write_id, 'write')
             if (separate_annihilation) then
                 semi_stoch_in%projection_mode = semi_stoch_separate_annihilation
             else
@@ -1021,6 +1020,10 @@ contains
             end if
 
             ! Optional arguments requiring special care.
+            if (aot_exists(lua_state, semi_stoch_table, 'write_determ_space')) then
+                call aot_get_val(semi_stoch_in%write_determ_space, err, lua_state, semi_stoch_table, 'write_determ_space')
+                call warning('read_semi_stoch_in', 'write_determ_space is deprecated.  Please use write instead.')
+            end if
             if (aot_exists(lua_state, semi_stoch_table, 'shift_start_iteration')) then
                 semi_stoch_in%start_iter = huge(0) ! fixed up once the shift comes on...
                 call aot_get_val(semi_stoch_in%shift_iter, err, lua_state, semi_stoch_table, 'shift_start_iteration')
