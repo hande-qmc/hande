@@ -1265,6 +1265,7 @@ contains
         integer :: displs(0:nprocs-1)
         integer(HSIZE_T) :: dims(2), maxdims(2)
         integer(hid_t) :: kind_i0
+        logical :: exists
 #endif
 #ifdef DISABLE_HDF5
         call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
@@ -1286,6 +1287,9 @@ contains
 
             call get_unique_filename("SEMI.STOCH", ".H5", .false., min(id,0), filename)
             if (print_info) write(6,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
+
+            inquire(file=trim(filename), exist=exists)
+            if (.not. exists) call stop_all('read_determ_from_file', "Cannot find deterministic space file.")
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
