@@ -953,7 +953,8 @@ contains
         !     start_iteration = mc_cycles,
         !     shift_start_iteration = mc_cycle, -- overrides start_iteration
         !     separate_annihilation = true/false,
-        !     write_determ_space = true/false,
+        !     write = true/false/id,
+        !     read = id,
         ! }
 
         ! In/Out:
@@ -982,8 +983,8 @@ contains
         integer :: semi_stoch_table, ref_det, err
         character(len=10) :: str
         logical :: ref_det_flag, separate_annihilation
-        character(21), parameter :: keys(6) = [character(21) :: 'space', 'size', 'start_iteration', 'write_determ_space', &
-                                                                'separate_annihilation', 'shift_start_iteration']
+        character(21), parameter :: keys(8) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
+                                                                'shift_start_iteration', 'write_determ_space', 'write', 'read']
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
