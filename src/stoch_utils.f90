@@ -93,8 +93,8 @@ contains
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
-        ! In/Out:
         !    pspawn: Encoded spawning probability.
+        ! In/Out:
         !    rng: random number generator.
         ! Returns:
         !    nspawn: number of successful spawning events from given pspawn.
@@ -103,10 +103,11 @@ contains
         use const, only: p, int_p
 
         integer(int_p), intent(in) :: spawn_cutoff
-        real(p), intent(inout) :: pspawn
+        real(p), intent(in) :: pspawn
         type(dSFMT_t), intent(inout) :: rng
 
         integer(int_p) :: nspawn
+        real(p) :: padd
 
         if (pspawn < spawn_cutoff) then
 
@@ -126,9 +127,9 @@ contains
             ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
             ! then spawn a particle with probability pspawn-floor(pspawn).
             nspawn = int(pspawn, int_p)
-            pspawn = pspawn - nspawn
+            padd = pspawn - nspawn
 
-            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
+            if (padd > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
 
         end if
 

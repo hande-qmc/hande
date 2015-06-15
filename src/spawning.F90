@@ -215,6 +215,7 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
+        use stoch_utils, only: stochastic_round_spawned_particle
         use qmc_data, only: qmc_in_t
         use dSFMT_interface, only: dSFMT_t
 
@@ -238,7 +239,7 @@ contains
         call gen_excit_ptr%init(rng, sys, qmc_in, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs_hmatel/pgen)
+        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*tau*abs_hmatel/pgen, rng)
 
         if (nspawn /= 0_int_p) then
 
@@ -301,6 +302,7 @@ contains
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
         use qmc_data, only: qmc_in_t
+        use stoch_utils, only: stochastic_round_spawned_particle
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
@@ -326,7 +328,7 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = nspawn_from_prob(rng, spawn_cutoff, real_factor, tau*abs(tilde_hmatel)/pgen)
+        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*tau*abs(tilde_hmatel)/pgen, rng)
 
         if (nspawn /= 0_int_p) then
 
@@ -403,68 +405,6 @@ contains
     end subroutine spawn_null
 
 !--- Attempt spawning based upon random excitation ---
-
-    function nspawn_from_prob(rng, spawn_cutoff, real_factor, probability) result(nspawn)
-
-        ! Generate the number spawned from a probability. If probability is greater than
-        ! zero, then number spawned = int(probability) + stochastic{0,1}
-        ! where the latter half of the RHS is a stochastic spawning from the remainder
-        !
-        ! In:
-        !    spawn_cutoff: The size of the minimum spawning event allowed, in
-        !        the encoded representation. Events smaller than this will be
-        !        stochastically rounded up to this value or down to zero.
-        !    real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
-        !    probability: the spawning probability
-        ! In/Out:
-        !    rng: random number generator.
-        !
-        ! Returns:
-        !    number_spawned: the number spawned from this probability
-
-        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-
-        implicit none
-        real(p), intent(in) :: probability
-        type(dSFMT_t), intent(inout) :: rng
-        integer(int_p), intent(in) :: spawn_cutoff
-        integer(int_p), intent(in) :: real_factor
-        integer(int_s) :: nspawn
-        real(p) :: pspawn
-
-        ! 'Encode' the spawning probability by multiplying by 2^(real_bit_shift).
-        ! We then stochastically round this probability either up or down to
-        ! the nearest integers. This allows a resolution of 2^(-real_spawning)
-        ! when we later divide this factor back out. (See comments for
-        ! particle_t%pops).
-        pspawn = probability*real_factor
-
-        if (abs(pspawn) < spawn_cutoff) then
-
-            ! If the spawning amplitude is below the minimum spawning event
-            ! allowed, stochastically round it either down to zero or up
-            ! to the cutoff.
-            if (pspawn > get_rand_close_open(rng)*spawn_cutoff) then
-                nspawn = spawn_cutoff
-            else
-                nspawn = 0_int_p
-            end if
-
-        else
-
-            ! Need to take into account the possibilty of a spawning attempt
-            ! producing multiple offspring...
-            ! If pspawn is > 1, then we spawn floor(pspawn) as a minimum and
-            ! then spawn a particle with probability pspawn-floor(pspawn).
-            nspawn = int(pspawn, int_p)
-            pspawn = pspawn - nspawn
-
-            if (pspawn > get_rand_close_open(rng)) nspawn = nspawn + 1_int_p
-
-        end if
-
-    end function nspawn_from_prob
 
     subroutine set_child_sign(hmatel, parent_sign, nspawn)
 
