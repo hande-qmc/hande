@@ -59,7 +59,7 @@ types below. They are turned off by default.
 **semi_stoch_read**
     Perform a semi-stochastic calculation. The deterministic space is created
     by reading in determinants from an HDF5 file produced using the
-    **write_determ_space** option.
+    **write** option.
     
     The filename will be of the form SEMI.STOCH.x.H5, where x is the file id.
     By default, x will be the smallest available id of all existing files.
@@ -388,16 +388,13 @@ The following options are valid for FCIQMC calculations.
          Furthermore, writing to (for instance) a network disk will degrade performance
          substantially.
 
-**write_determ_space**
+**write** *id*
     Default: off.
 
     Write the determinants in any used semi-stochastic deterministic space to a
-    file. This is done for each deterministic space used, to a separate file
-    each time.
+    file.
 
-    The filename will have the form SEMI.STOCH.x.H5, where x is the file id.
-    By default, HANDE will search for the lowest unused id (>= 0). However, an
-    id can be specified using the **write** option.
+    The filename will have the form SEMI.STOCH.x.H5, where x is the file *id*.
 **ascii_format_out**
     The default format for restart files is binary, as for the most part the files
     are meant purely for reading by Hubbard, and having the file in human-readable

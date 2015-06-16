@@ -66,7 +66,7 @@ contains
 
         ! Parse a combined boolean flag and integer field from lua, where a key
         ! is set to an boolean (which implies using the default integer value)
-        ! or an integer (which implies the flag should be set to true)..
+        ! or an integer (which implies the flag should be set to true).
 
         ! In:
         !    thandle: handle of the table containing the key.
