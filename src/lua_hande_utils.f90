@@ -62,4 +62,43 @@ contains
 
     end subroutine warn_unused_args
 
+    subroutine get_flag_and_id(lua_state, thandle, flag, id, key)
+
+        ! Parse a combined boolean flag and integer field from lua, where a key
+        ! is set to an boolean (which implies using the default integer value)
+        ! or an integer (which implies the flag should be set to true).
+
+        ! In:
+        !    thandle: handle of the table containing the key.
+        !    key: key in the lua state to examine.
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        !    id: unaltered if the value is boolean or the key doesn't exist and
+        !       set to the value of the key if the value is an integer.
+        !    flag: set to the value if the value is boolean, unaltered if the
+        !       key does not exist in the table and set to true if the value is
+        !       an integer.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_exists, aot_get_val
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: thandle
+        logical, intent(out) :: flag
+        integer, intent(inout) :: id
+        character(*), intent(in) :: key
+
+        integer :: err
+
+        if (aot_exists(lua_state, thandle, key)) then
+            call aot_get_val(flag, err, lua_state, thandle, key)
+            if (err /= 0) then
+                ! Passed an id instead.
+                flag = .true.
+                call aot_get_val(id, err, lua_state, thandle, key)
+            end if
+        end if
+
+    end subroutine get_flag_and_id
+
 end module lua_hande_utils

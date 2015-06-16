@@ -226,7 +226,7 @@ contains
         if (ss_in%space_type == high_pop_determ_space) then
             call create_high_pop_space(dets_this_proc, psip_list, spawn, ss_in%target_size, determ%sizes(iproc))
         else if (ss_in%space_type == read_determ_space) then
-            call read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
+            call read_determ_from_file(dets_this_proc, determ, spawn, sys, ss_in%read_id, print_info)
         else if (ss_in%space_type == reuse_determ_space) then
             call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc))
         end if
@@ -312,7 +312,7 @@ contains
         deallocate(dets_this_proc, stat=ierr)
         call check_deallocate('dets_this_proc', ierr)
 
-        if (write_determ .and. parent) call write_determ_to_file(determ, print_info)
+        if (write_determ .and. parent) call write_determ_to_file(determ, ss_in%write_id, print_info)
 
         ! Wait for all processes to finish initialisation before we tell
         ! the user that we are done.
@@ -1213,7 +1213,7 @@ contains
 
     end subroutine find_indices_of_most_populated_dets
 
-    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, print_info)
+    subroutine read_determ_from_file(dets_this_proc, determ, spawn, sys, read_id, print_info)
 
         ! Use states read in from a HDF5 file to form the deterministic space.
 
@@ -1229,6 +1229,10 @@ contains
         ! In:
         !    spawn: spawn_t object to which deterministic spawning will occur.
         !    sys: system being studied.
+        !    read_id: the id of the file to read from, i.e., the file will be
+        !        called SEMI.STOCH.x.H5, where x is read_id. The exception is
+        !        if read_id is unset (==huge(0)) in which case the lowest used
+        !        id will be searched for.
         !    print_info: Should we print information to the screen?
 
 #ifndef DISABLE_HDF5
@@ -1250,16 +1254,18 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(spawn_t), intent(in) :: spawn
         type(sys_t), intent(in) :: sys
+        integer, intent(in) :: read_id
         logical, intent(in) :: print_info
 
 #ifndef DISABLE_HDF5
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
         character(255) :: filename
-        integer :: i, proc, slot, ndeterm, ndeterm_this_proc, ierr
+        integer :: i, id, proc, slot, ndeterm, ndeterm_this_proc, ierr
         integer :: displs(0:nprocs-1)
         integer(HSIZE_T) :: dims(2), maxdims(2)
         integer(hid_t) :: kind_i0
+        logical :: exists
 #endif
 #ifdef DISABLE_HDF5
         call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
@@ -1267,8 +1273,23 @@ contains
 
         ! Read the deterministic states in on just the parent processor.
         if (parent) then
-            call get_unique_filename("SEMI.STOCH", ".H5", .false., 0, filename)
+            ! This bit of code converts to the encoding used by
+            ! get_unique_filename. If the user hasn't supplied a read_id
+            ! (==huge(0)) then id is 0, and get_unique_filename will search for
+            ! the lowest unused id. If the user has supplied a read_id, x, then
+            ! the encoding id = -x-1 is used to make it negative, and
+            ! get_unique_filename recognises this and inverts it to get read_id.
+            if (read_id == huge(0)) then
+                id = 0
+            else
+                id = -read_id-1
+            end if
+
+            call get_unique_filename("SEMI.STOCH", ".H5", .false., min(id,0), filename)
             if (print_info) write(6,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
+
+            inquire(file=trim(filename), exist=exists)
+            if (.not. exists) call stop_all('read_determ_from_file', "Cannot find deterministic space file.")
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -1346,12 +1367,16 @@ contains
 
     end subroutine read_determ_from_file
 
-    subroutine write_determ_to_file(determ, print_info)
+    subroutine write_determ_to_file(determ, write_id, print_info)
 
         ! Write determinants stored in determ to a file.
 
         ! In:
         !    determ: Deterministic space being used.
+        !    write_id: the id of the file to write to, i.e., the file will be
+        !        called SEMI.STOCH.x.H5, where x is write_id. The exception is
+        !        if write_id is unset (==huge(0)) in which case the lowest
+        !        unused id will be searched for.
         !    print_info: Should we print information to the screen?
 
 #ifndef DISABLE_HDF5
@@ -1361,14 +1386,27 @@ contains
         use utils, only: get_unique_filename
 
         type(semi_stoch_t), intent(in) :: determ
+        integer, intent(in) :: write_id
         logical, intent(in) :: print_info
 
+        integer :: id, ierr
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id
         character(255) :: filename
-        integer :: ierr
 
-        call get_unique_filename("SEMI.STOCH", ".H5", .true., 0, filename)
+        ! This bit of code converts to the encoding used by
+        ! get_unique_filename. If the user hasn't supplied a write_id
+        ! (==huge(0)) then id is 0, and get_unique_filename will search for
+        ! the lowest unused id. If the user has supplied a write_id, x, then
+        ! the encoding id = -x-1 is used to make it negative, and
+        ! get_unique_filename recognises this and inverts it to get write_id.
+        if (write_id == huge(0)) then
+            id = 0
+        else
+            id = -write_id-1
+        end if
+
+        call get_unique_filename("SEMI.STOCH", ".H5", .true., min(id,0), filename)
         if (print_info) write(6,'(1X,"# Writing deterministic space states to",1X,a,".")') trim(filename)
 
         ! Open HDF5 and create HDF5 kinds.
