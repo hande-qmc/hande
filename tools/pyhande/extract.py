@@ -89,7 +89,7 @@ calc_data : list of `:class:`pandas.Series`
     # ... input (echoed in output)
     md_input = dict(
         calc_type = '^ *(simple_fciqmc|fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc|\
-                         |estimate_canonical_kinetic_energy|kinetic_energy)',
+                         |canonical_energy)',
         sym = r'\bsym\b +\d+',
         ms = r'\bms\b +-*\d+',
         nel = r'\bnel\b|\belectrons\b',

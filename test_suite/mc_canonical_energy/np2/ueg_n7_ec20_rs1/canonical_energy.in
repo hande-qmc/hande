@@ -7,9 +7,9 @@ sys = ueg {
     chem_pot = -0.0650329886175,
 }
 
-kinetic_energy {
+canonical_energy {
     sys = sys,
-    kinetic = {
+    canonical_energy = {
         beta = 1,
         nattempts = 10000,
         ncycles = 100,

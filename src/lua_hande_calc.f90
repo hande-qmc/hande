@@ -136,18 +136,18 @@ contains
 
     end function lua_hilbert_space
 
-    function lua_kinetic_energy(L) result(nresult) bind(c)
+    function lua_canonical_energy(L) result(nresult) bind(c)
 
-        ! Run a Monte Carlo calculation to estimate the kinetic energy of a
+        ! Run a Monte Carlo calculation to estimate various mean-field energies of a
         ! system in the canonical ensemble.
 
         ! In/Out:
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    kinetic_energy {
+        !    canonical_energy {
         !       sys = system,      -- required
-        !       kinetic = { ... }, -- required
+        !       canonical_energy = { ... }, -- required
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
@@ -162,8 +162,8 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
 
-        use calc, only: calc_type, mc_canonical_kinetic_energy
-        use canonical_kinetic_energy, only: estimate_kinetic_energy
+        use calc, only: calc_type, mc_canonical_energy_estimates
+        use canonical_energy_estimates, only: estimate_canonical_energy
 
         integer(c_int) :: nresult
         type(c_ptr), value :: l
@@ -175,30 +175,30 @@ contains
         integer :: opts, err, rng_seed, ncycles, nattempts
         logical :: fermi_temperature, have_seed
         real(p) :: beta
-        character(12), parameter :: keys(2) = [character(12) :: 'sys', 'kinetic']
+        character(12), parameter :: keys(2) = [character(12) :: 'sys', 'canonical_energy']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
-        if (sys%chem_pot == huge(1.0_p) .and. parent) call stop_all('lua_kinetic_energy', &
+        if (sys%chem_pot == huge(1.0_p) .and. parent) call stop_all('lua_canonical_energy', &
                                                                         'chem_pot: chemical potential not supplied.')
 
         opts = aot_table_top(lua_state)
-        call read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
+        call read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        calc_type = mc_canonical_kinetic_energy
+        calc_type = mc_canonical_energy_estimates
         if (have_seed) then
-            call estimate_kinetic_energy(sys, fermi_temperature, beta, nattempts, ncycles, rng_seed)
+            call estimate_canonical_energy(sys, fermi_temperature, beta, nattempts, ncycles, rng_seed)
         else
-            call estimate_kinetic_energy(sys, fermi_temperature, beta, nattempts, ncycles)
+            call estimate_canonical_energy(sys, fermi_temperature, beta, nattempts, ncycles)
         end if
 
-        ! [todo] - return estimate of kinetic energy and error to lua.
+        ! [todo] - return estimate of various canonical mean-field energies and error to lua.
         nresult = 0
 
-    end function lua_kinetic_energy
+    end function lua_canonical_energy
 
     function lua_simple_fciqmc(L) result(nresult) bind(c)
 
@@ -650,12 +650,12 @@ contains
 
     end subroutine read_hilbert_args
 
-    subroutine read_kinetic_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
+    subroutine read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed)
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
-        !    opts: handle to the table which is input to the Lua kinetic_energy
+        !    opts: handle to the table which is input to the Lua canonical_energy_estimate
         !        routine.
         ! Out:
         !    fermi_temperature: if true, rescale beta as the inverse reduced
@@ -680,30 +680,30 @@ contains
         integer, intent(out) :: nattempts, ncycles, rng_seed
         real(p), intent(out) :: beta
 
-        integer :: kinetic_table, err
+        integer :: canonical_energy_table, err
         character(17), parameter :: keys(5) = [character(17) :: 'nattempts', 'ncycles', 'beta', &
                                                                 'fermi_temperature', 'rng_seed']
 
-        if (.not. aot_exists(lua_state, opts, 'kinetic') .and. parent) &
-            call stop_all('read_kinetic_args','"kinetic" table not present.')
-        call aot_table_open(lua_state, opts, kinetic_table, 'kinetic')
+        if (.not. aot_exists(lua_state, opts, 'canonical_energy') .and. parent) &
+            call stop_all('read_canonical_energy_args','"canonical_energy" table not present.')
+        call aot_table_open(lua_state, opts, canonical_energy_table, 'canonical_energy')
 
-        call aot_get_val(nattempts, err, lua_state, kinetic_table, 'nattempts')
-        if (err /= 0 .and. parent) call stop_all('read_kinetic_args', 'nattempts: Number of attempts/cycle not supplied.')
-        call aot_get_val(ncycles, err, lua_state, kinetic_table, 'ncycles')
-        if (err /= 0 .and. parent) call stop_all('read_kinetic_args', 'ncycles: Number of cycles not supplied.')
+        call aot_get_val(nattempts, err, lua_state, canonical_energy_table, 'nattempts')
+        if (err /= 0 .and. parent) call stop_all('read_canonical_energy_args', 'nattempts: Number of attempts/cycle not supplied.')
+        call aot_get_val(ncycles, err, lua_state, canonical_energy_table, 'ncycles')
+        if (err /= 0 .and. parent) call stop_all('read_canonical_energy_args', 'ncycles: Number of cycles not supplied.')
 
-        call aot_get_val(beta, err, lua_state, kinetic_table, 'beta')
-        if (err /= 0 .and. parent) call stop_all('read_kinetic_args', 'beta: target temperature not supplied.')
-        call aot_get_val(fermi_temperature, err, lua_state, kinetic_table, 'fermi_temperature', default=.false.)
+        call aot_get_val(beta, err, lua_state, canonical_energy_table, 'beta')
+        if (err /= 0 .and. parent) call stop_all('read_canonical_energy_args', 'beta: target temperature not supplied.')
+        call aot_get_val(fermi_temperature, err, lua_state, canonical_energy_table, 'fermi_temperature', default=.false.)
 
-        have_seed = aot_exists(lua_state, kinetic_table, 'rng_seed')
-        call aot_get_val(rng_seed, err, lua_state, kinetic_table, 'rng_seed')
+        have_seed = aot_exists(lua_state, canonical_energy_table, 'rng_seed')
+        call aot_get_val(rng_seed, err, lua_state, canonical_energy_table, 'rng_seed')
 
-        call warn_unused_args(lua_state, keys, kinetic_table)
-        call aot_table_close(lua_state, kinetic_table)
+        call warn_unused_args(lua_state, keys, canonical_energy_table)
+        call aot_table_close(lua_state, canonical_energy_table)
 
-    end subroutine read_kinetic_args
+    end subroutine read_canonical_energy_args
 
     subroutine read_qmc_in(lua_state, opts, qmc_in, short)
 

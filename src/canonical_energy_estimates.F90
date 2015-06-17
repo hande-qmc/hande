@@ -1,6 +1,6 @@
-module canonical_kinetic_energy
+module canonical_energy_estimates
 
-! Estimate the canonical free-electron total energy.
+! Estimate the various energy estimates in the canonical ensemble.
 
 use const
 
@@ -25,7 +25,7 @@ end enum
 
 contains
 
-    subroutine estimate_kinetic_energy(sys, fermi_temperature, beta, nsamples, ncycles, rng_seed)
+    subroutine estimate_canonical_energy(sys, fermi_temperature, beta, nsamples, ncycles, rng_seed)
 
         ! From the Fermi factors calculated in the grand canonical ensemble we can
         ! estimate the total energy in the canonical ensemble by generating determinants
@@ -153,7 +153,7 @@ contains
 
         if (parent) write(6, '()')
 
-    end subroutine estimate_kinetic_energy
+    end subroutine estimate_canonical_energy
 
     subroutine generate_allowed_orbital_list(sys, rng, porb, nselect, spin_factor, occ_list, ngen)
 
@@ -206,4 +206,4 @@ contains
 
     end subroutine generate_allowed_orbital_list
 
-end module canonical_kinetic_energy
+end module canonical_energy_estimates
