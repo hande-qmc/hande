@@ -1429,6 +1429,7 @@ contains
         use errors, only: warning
 
         type(semi_stoch_t), intent(in) :: determ
+        integer, intent(in) :: write_id
         logical, intent(in) :: print_info
 
         call warning('write_determ_to_file', '# Not compiled with HDF5 support.  Cannot write out semi-stochastic file.')
