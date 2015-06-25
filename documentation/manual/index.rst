@@ -16,3 +16,4 @@ User's guide
    analysis
    tips
    removed
+   tutorials/tutorials
