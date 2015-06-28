@@ -20,7 +20,9 @@ Density Matrix Quantum Monte Carlo
 
 Unlike :ref:`ccmc` and :ref:`fciqmc`, where quantites are averaged inside each report
 loop, any quantities in DMQMC are evaluated at the **first** iteration of the report loop
-only due to the explcit temperature dependence in the algorithm.
+only. This is because different iterations represent different temperatures in DMQMC,
+and so averaging over a report loop would average over different temperatures, which is
+not the desired behaviour.
 
 .. note::
 
@@ -99,9 +101,9 @@ dmqmc options
 
     Optional.  Default: false.
 
-    Perform replica simulations (i.e. evolve two density matrices concurrently) if true.
-    This allows calculation of unbiased estimators that are quadratic in the density
-    matrix.
+    Perform replica simulations (i.e. evolve two independent DMQMC simulations
+    concurrently) if true. This allows calculation of unbiased estimators that are
+    quadratic in the density matrix.
 ``fermi_temperature``
     type: boolean.
 
@@ -143,25 +145,54 @@ dmqmc options
 
 ``sampling_weights``
     type: vector of floats.
-    .. todo - How many floats need to be specified?
 
     Optional.  Default: none.
 
-    .. todo - how to generate these?  (Describe in DMQMC tutorial?)
+    Specify factors used to alter the spawning probabilities in the DMQMC importance
+    sampling procedure. See PRB, 89, 245124 (2014) for an explanation, in particular
+    section IV and appendix B.
 
-    .. todo - description
+    The length of the vector of floats should be equal to the maximum number of
+    excitations from any determinant in the space. For a chemical system with :math:`N`
+    electrons and more than :math:`2N` spin orbitals, this would be equal to
+    :math:`N`. For a Heisenberg model with :math:`N` spins in the :math:`M_s=0` spin
+    sector, this should be equal to :math:`N/2` (each pair of opposite spins flipped is
+    one excitation).
 ``vary_weights``
     type: integer.
 
     Optional.  Default: 0
 
-    .. todo - description
+    The number of iterations over which to introduce the weights in the importance
+    sampling scheme (see PRB, 89, 245124 (2014)). If not set then the full weights
+    will be used from the first iteration. Otherwise, the weights will be increased
+    by a factor of :math:`(W_{\gamma})^{\beta/\beta_{target}}` each iteration, where
+    :math:`W_{\gamma}` is the final weight of excitation level :math:`\gamma` and
+    :math:`\beta_{target}` is the beta value to vary the weights until (equal to
+    the value specified by this option, multipled by the time step size).
 ``find_weights``
     type: boolean.
 
     Optional.  Default: false.
 
-    .. todo - description
+    Run a simulation to attempt to find appropriate weights for use in the DMQMC
+    importance sampling procedure. This algorithm will attempt to find weights such
+    that the population of psips is evenly distributed among the various excitation
+    levels when the ground state is reached (at large beta values). The algorithm
+    should be run for several beta loops until the weights settle down to a roughly
+    constant value.
+
+    The weights are output at the end of each beta loop.
+
+    This option should be used with the **exict_dist** option in the operators
+    table. The excitation distribution accumulated through the **excit_dist** option
+    is used for this option.
+
+    .. warning::
+    
+        This feature is found to be unsuccessful for some larger lattices (for example,
+        6x6x6, for the Heisenberg model). The weights output should be checked. Increasing
+        the number of psips used may improve the weights calculated.
 ``symmetrize``
     type: boolean.
 
@@ -191,12 +222,12 @@ ipdmqmc options
     Initialisation of the density matrix at :math:`\beta=0`.  'free_electron' samples the
     free electron density matrix, i.e. :math:`\rho = \sum_i e^{-\beta \sum_j \varepsilon_j
     \hat{n}_j} |D_i><D_i|`, where :math:`\varepsilon_j` is the single-particle eigenvalue
-    and :math:`hat{n}_j` the corresponding number operator.  'hartree_fock' samples
-    a 'Hartree--Fock' density matrix defined by :math:`\rho = \sum e^{-\beta H_ii} |D_i><D_i|`,
-    where `:math:`H_ii = <D_i|H|D_i>` and is more efficient than 'free_electron'.
+    and :math:`\hat{n}_j` the corresponding number operator.  'hartree_fock' samples
+    a 'Hartree--Fock' density matrix defined by :math:`\rho = \sum e^{-\beta H_{ii}} |D_i><D_i|`,
+    where :math:`H_ii = <D_i|H|D_i>` and is more efficient than 'free_electron'.
 
     .. todo - recommendations?  What is 'efficient' measured by?
-``grand_canonical_initialsation``
+``grand_canonical_initialisation``
     type: boolean.
 
     Optional.  Default: false.
@@ -234,20 +265,21 @@ operators options
     Optional.  Default: false.
 
     Calculate the thermal expectation value of the Hamiltonian operator squared.
+    Only available for the Heisenberg model.
 ``staggered_magnetisation``
     type: boolean.
 
     Optional.  Default: false.
 
     Calculate the thermal expectation value of the staggered magnetisation operator.
-    Only available for bipartite Heisenberg lattices.
+    Only available for the Heisenberg model and with bipartite lattices.
 ``excit_dist``
     type: boolean.
 
     Optional.  Default: false.
 
     Calculate the fraction of psips at each excitation level, where the excitation level
-    is the number of excitation separating the two states labelling a given density matrix
+    is the number of excitations separating the two states labelling a given density matrix
     element.  Accumulated from ``excit_dist_start`` iterations onwards.
 ``excit_dist_start``
     type: integer.
@@ -265,12 +297,16 @@ operators options
 
     .. math::
 
-    	\hat{C}_{ij} = S_{xi}S_{xj} + S_{yi}S_{yj} + S_{zi}S_{zj}.
+    	\hat{C}_{ij} = \hat{S}_{xi}\hat{S}_{xj} + \hat{S}_{yi}\hat{S}_{yj} + \hat{S}_{zi}\hat{S}_{zj}.
+
+    Only available for the Heisenberg model.
 
 .. _rdm_table:
 
 rdm options
 -----------
+
+Note that the use of RDMs is currently only available with the Heisenberg model.
 
 ``rdms``
     type: table of 1D vectors.
@@ -280,31 +316,30 @@ rdm options
     Each vector corresponds to the subsystem of a reduced density matrix as a list of the
     basis function indices in the subsystem.  For example:
 
-    .. code-block: lua
+    .. code-block:: lua
 
         rdms = { { 1, 2 } }
 
     specifies one RDM containing basis functions with indices 1 and 2, and
 
-    .. code-block: lua
+    .. code-block:: lua
 
         rdms = { { 1, 2 }, { 3, 4} }
 
     specifies two RDMs, with the first containing basis functions with indices 1 and 2,
     and the second basis functions 3 and 4.
 
-    Either ``instantaneous`` or ``ground_state`` must be enable to set the desired mode of
-    evaluating the RDM.
-
-    .. todo - Why do we have ``instantaneous`` and ``ground_state`` when they appear to be
-              mutually incompatible?  [Nick?]
-
+    Either ``instantaneous`` or ``ground_state`` must be enabled to set the desired mode of
+    evaluating the RDM (but both options cannot be used together).
 ``instantaneous``
     type: boolean.
 
     Optional.  Default: false.
 
     Calculate the RDMs at each temperature based upon the instantaneous psip distribution.
+
+    Cannot be used with the ground_state option (either ground_state or instantaneous RDMs
+    can be calculated, but not both concurrently).
 ``ground_state``
     type: boolean.
 
@@ -314,12 +349,15 @@ rdm options
     is reached.  This has two limitations: only one RDM can be accumulated in
     a calculation and the subsystem should be at most half the size of the system (which
     is always sufficient for ground-state calculations).
+
+    Cannot be used with the instantaneous option (either ground_state or instantaneous RDMs
+    can be calculated, but not both concurrently).
 ``spawned_state_size``
     type: integer.
 
     Required if ``instantaneous`` is true.  Ignored otherwise.
 
-    Maximum number of states (ie reduced density matrix elements) to store in the
+    Maximum number of states (i.e. reduced density matrix elements) to store in the
     "spawned" list, which limits the number of unique RDM elements that each processor can
     set.  Should be a sizable fraction of ``state_size`` (see :ref:`qmc_table`) and
     depends on the size of the subsystem compared to the full space.
@@ -338,7 +376,7 @@ rdm options
     Optional.  Default: 0.
 
     Monte Carlo cycle from which the RDM is to be accumulated in each beta loop.  Relevant
-    only if ``ground_state`` is set to true and, as such, should be set to a iteration
+    only if ``ground_state`` is set to true and, as such, should be set to an iteration
     (which is a measure of temperature) such that the system has reached the ground state.
 ``concurrence``
     type: boolean.
@@ -346,8 +384,8 @@ rdm options
     Optional.  Default: false.
 
     Calculate the unnormalised concurrence and the trace of the reduced density matrix at
-    the end of each beta loop.  The concurrence can be calculated from this using the
-    ``average_entropy.py`` script.
+    the end of each beta loop.  The normalised concurrence can be calculated from this using
+    the ``average_entropy.py`` script.
 
     Valid for ``ground_state`` only; temperature-dependent concurrence is not currently
     implemented.
@@ -356,10 +394,11 @@ rdm options
 
     Optional.  Default: false.
 
-    Calculate the Renyi-2 entropy of each subsystem, :math:`S^n_2 = \sum_{ij} (\rho^n_{ij})^2`,
-    where :math:`\rho^n` is the reduced density matrix of the :math:`n`-th subsystem.  The
-    temperature-dependent estimate of the Renyi-2 entropy can then be obtained using the 
-    ``finite_temp_analysis.py`` script.
+    Calculate the Renyi-2 entropy of each subsystem. More accurately, the quantity output
+    to the data table is :math:`S^n_2 = \sum_{ij} (\rho^n_{ij})^2`, (which differs from the
+    Renyi-2 entropy by a minus sign and a logarithm) where :math:`\rho^n` is the reduced
+    density matrix of the :math:`n`-th subsystem. The temperature-dependent estimate of
+    the Renyi-2 entropy can then be obtained using the ``finite_temp_analysis.py`` script.
 
     Valid for ``instantaneous`` only; ground-state Renyi-2 averaged over a single beta
     loop is not currently implemented.  Requires ``replica_tricks`` to be enabled in order
@@ -370,8 +409,8 @@ rdm options
     Optional.  Default: false.
 
     Calculate the unnormalised von Neumann entropy and the trace of the reduced density
-    matrix at the end of each beta loop.  The von Neumann entropy can be calculated from
-    this using the ``average_entropy.py`` script.
+    matrix at the end of each beta loop.  The normalised von Neumann entropy can be
+    calculated from this using the ``average_entropy.py`` script.
 
     Valid for ``ground_state`` only; temperature-dependent von Neumann entropy is not
     currently implemented.
@@ -380,7 +419,7 @@ rdm options
 
     Optional.  Default: false.
 
-    Print out the ground-state RDM to file at the end of each beta loop.  The file
+    Print out the ground-state RDM to a file at the end of each beta loop.  The file
     contains the trace of the RDM in the first line followed by elements of the upper
     triangle of the RDM labelled by their index.
 
