@@ -69,7 +69,7 @@ ccmc options
 ``cluster_multispawn_threshold``
     type: float.
 
-    Default: :math:`2^31-1`.
+    Default: :math:`2^{31}-1`.
 
     Set the maximum value of :math:`A_C/p_C`, where :math:`A_C` is the cluster amplitude
     and :math:`p_C` is the probability of selecting the cluster.  A cluster with a value
@@ -115,6 +115,6 @@ ccmc options
 
     Using the Hausdorff expansion of the Hamiltonian and the linked cluster theorem means 
     that the only clusters which contribute are those with at most four excitors and where 
-    the exitation sampled from the Hamiltonian has an orbital in common with each excitor 
+    the excitation sampled from the Hamiltonian has an orbital in common with each excitor 
     in the cluster operator. Using this option can give substantial reductions in the 
     plateau height.

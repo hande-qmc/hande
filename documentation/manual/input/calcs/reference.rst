@@ -9,8 +9,8 @@ calculation and trial function for the projected estimator.
 ``det``
     type: vector of integers.
 
-    Optional.  Default: a simple (but potentially not best) guess which satisfies the spin
-    and symmetry options using the aufbau principle.  In most cases the default (which for
+    Optional.  Default: a simple (but potentially not optimal) guess which satisfies the spin
+    and symmetry options using the Aufbau principle.  In most cases the default (which for
     molecules typically corresponds to the Hartree--Fock determinant) is sufficient.
 
     Specify the determinant (as a list of indices corresponding to occupied

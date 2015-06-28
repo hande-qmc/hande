@@ -9,8 +9,8 @@ the size of this subspace can be estimated via a simple Monte Carlo approach[Boo
 .. code-block:: lua
 
     hilbert_space {
-        sys = system
-        hilbert = { ... }
+        sys = system,
+        hilbert = { ... },
     }
 
 Options
@@ -57,7 +57,7 @@ The ``hilbert`` table can take the following options:
     quantum numbers of the system.
 
     The reference determinant as a list of occupied spin-orbitals.  The reference
-    determinant is used to in the generation of truncated Hilbert spaces only.
+    determinant is used in the generation of truncated Hilbert spaces only.
 ``ex_level``
     type: integer.
 

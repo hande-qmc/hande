@@ -128,7 +128,9 @@ fciqmc options
 
     Optional.  Default: false.
 
-    Enable dynamic load balancing.  See :ref:`load_bal_table` for more details.
+    Enable dynamic load balancing of determinants among processors. This will move
+    determinants to try and keep the number of walkers on each processor roughly
+    constant. See :ref:`load_bal_table` for more details.
 
 ``init_spin_inverse_reference_det``
     type: boolean.
@@ -161,9 +163,10 @@ fciqmc options
 
     The importance sampling transformation to apply to the Hamiltonian.
 
-    'neel_singlet' uses the Neel singlet state to transform the Hamiltonian such that the
-    matrix elements, :math:`H_{ij}` are replaced with :math:`a_i H_{ij} / a_j`.
-    Using 'neel_singlet' automatically sets ``trial_function`` to 'neel_singlet'.
+    'neel_singlet' uses the Neel singlet state (K. Runge, Phys. Rev. B 45, 7229 (1992))
+    to transform the Hamiltonian such that the matrix elements, :math:`H_{ij}`, are
+    replaced with :math:`a_i H_{ij} / a_j`. Using 'neel_singlet' automatically sets
+    ``trial_function`` to 'neel_singlet'.
 
 .. _load_bal_table:
 

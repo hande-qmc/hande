@@ -1,7 +1,7 @@
 Full Configuration Interaction
 ==============================
 
-Calculate the ground state of a system via diagonalisation of the Hamiltonian matrix.
+Calculate the ground state of a system via a full diagonalisation of the Hamiltonian matrix.
 
 .. code-block:: lua
 
@@ -79,7 +79,8 @@ The ``fci`` table can take the following options:
 
     Optional. Default: 'DETS'.
 
-    Filename to which the list of determinants is written.
+    Filename to which the list of determinants (or, more generally, many-body
+    basis functions) is written.
 ``write_nwfns``
     type: integer.
 

@@ -20,7 +20,7 @@ algorithms and control the core settings in the algorithms.
 ``init_pop``
     type: float.
 
-    Required.  Overridden if the calculations is initialised from a restart file..
+    Required.  Overridden if the calculations is initialised from a restart file.
 
     Set the initial population on the reference determinant.  For DMQMC calculations this
     option sets the number of psips which will be randomly distributed along the diagonal
@@ -45,7 +45,7 @@ algorithms and control the core settings in the algorithms.
 
     Required.
 
-    Maximum number of states (ie determinants, excitors or density matrix elements) to
+    Maximum number of states (i.e. determinants, excitors or density matrix elements) to
     store in the "main" list, which holds the number of particles on the state and related
     information such as the diagonal Hamiltonian matrix element.  The number of elements
     that can be stored usually should be of the same order as the target population.
@@ -63,12 +63,13 @@ algorithms and control the core settings in the algorithms.
 
     Required.
 
-    Maximum number of states (ie determinants, excitors or density matrix elements) to
-    store in the "spawned" list, ie the maximum number of states which can be spawned onto
+    Maximum number of states (i.e. determinants, excitors or density matrix elements) to
+    store in the "spawned" list, i.e. the maximum number of states which can be spawned onto
     at a given timestep.  The amount of memory required for this is usually a small
     fraction of that required for ``state_size``, unless ``real_amplitudes`` is in use,
-    this should be a sizeable fraction.  The amount of memory required is also dependent
-    on the value of ``tau``.
+    in which case this should be a sizeable fraction (or potentially even greater than the
+    memory for ``state_size``, if load balancing of states across processors is poor).
+    The amount of memory required is also dependent on the value of ``tau``.
 
     If negative, then the absolute value is used as the maximum amount of memory in MB to
     use for this information.
@@ -117,7 +118,7 @@ algorithms and control the core settings in the algorithms.
 
         The preprocessor option POP_SIZE=32 (default) uses 32-bit integers to store the
         amplitudes and stores amplitudes to within a precision/resolution of
-        :math:`2^{-11}` and to a maximum absolute population of :math:`2^20`.
+        :math:`2^{-11}` and to a maximum absolute population of :math:`2^{20}`.
 
         Consider using the preprocessor option POP_SIZE=64 to allow a greater range of
         amplitudes to be encoded (precision of :math:`2^{-31}` and maximum absolute
@@ -137,7 +138,7 @@ algorithms and control the core settings in the algorithms.
     amplitude above the cutoff is stochastically rounded such that it can be stored in a
     fixed precision value.  If ``real_amplitudes`` is not in use, the fixed precision
     corresponds to unit values.
-    
+
     Only relevant when using ``real_amplitudes``.
 ``excit_gen``
     type: string
@@ -189,7 +190,7 @@ algorithms and control the core settings in the algorithms.
 
     Optional.  Default: 0.0.
 
-    The initial value of the shift.  
+    The initial value of the shift.
 ``shift_damping``
     type: float.
 
@@ -213,9 +214,9 @@ algorithms and control the core settings in the algorithms.
 
     .. warning::
 
-        The initiator approximation is non-variational and the error should be carefully
-        converged by performing repeated calculations with increasing
-        ``target_population`` values.
+        The initiator approximation is non-variational (due to the non-variational
+        energy estimator used) and the error should be carefully converged by
+        performing repeated calculations with increasing ``target_population`` values.
 
 ``initiator_threshold``
     type: float.

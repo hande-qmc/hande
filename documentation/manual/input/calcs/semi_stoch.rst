@@ -4,7 +4,7 @@ semi_stoch options
 ==================
 
 The semi-stochastic approach divides the Hilbert space into two regions: a small region in
-which the action of the Hamiltonian is applied exactly, and a the remainder of the Hilbert
+which the action of the Hamiltonian is applied exactly, and the remainder of the Hilbert
 space, in which the action is applied stochastically.  This can substantially reduce the
 stochastic error in many cases.
 
@@ -32,8 +32,8 @@ stochastic error in many cases.
 
     The number of iterations to perform, during which the action of the Hamiltonian is
     applied entirely stochastically, before semi-stochastic projection is enabled.  This
-    allows for a period for which the population to grow and sign structure of the
-    wavefunction to emerge before the deterministic space is selected.
+    allows for a period for the population to grow and the ground-state wavefunction to
+    emerge before the deterministic space is selected.
 ``shift_start_iteration``
     type: integer.
 
