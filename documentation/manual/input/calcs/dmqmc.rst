@@ -109,11 +109,9 @@ dmqmc options
 
     Optional.  Default: false.
 
-    .. todo - why is this in dmqmc rather than ipdmqmc?
-
-     Interpret ``initial_beta`` as the inverse reduced temperature, :math:`\beta
-     = 1/\Theta = T_F/T`, where :math:`T_F` is the Fermi temperature, instead of the
-     inverse temperature in atomic units, :math:`\beta = 1/T`.
+    Rescale tau so that the simulation runs in timesteps of :math:`\Delta\tau / T_F` where :math:`T_F`
+    is the Fermi temperature. This is so results are at dimensionless inverse temperatures of :math:`\Theta^{-1}
+    =T_F/T`. This option is only valid for systems with a well defined Fermi energy.
 ``all_sym_sectors``
     type: boolean.
 
@@ -219,12 +217,12 @@ ipdmqmc options
 
     Possible values: 'free_electron', 'hartree_fock'.
 
-    Initialisation of the density matrix at :math:`\beta=0`.  'free_electron' samples the
-    free electron density matrix, i.e. :math:`\rho = \sum_i e^{-\beta \sum_j \varepsilon_j
+    Initialisation of the density matrix at :math:`\tau=0`.  'free_electron' samples the
+    free electron density matrix, i.e. :math:`\hat{\rho} = \sum_i e^{-\beta \sum_j \varepsilon_j
     \hat{n}_j} |D_i\rangle\langle D_i|`, where :math:`\varepsilon_j` is the single-particle eigenvalue
     and :math:`\hat{n}_j` the corresponding number operator.  'hartree_fock' samples
-    a 'Hartree--Fock' density matrix defined by :math:`\rho = \sum e^{-\beta H_{ii}} |D_i\rangle\langle D_i|`,
-    where :math:`H_{ii} = \langle D_i|H|D_i\rangle` and is more efficient than 'free_electron'.
+    a 'Hartree--Fock' density matrix defined by :math:`\hat{\rho} = \sum e^{-\beta H_{ii}} |D_i\rangle\langle D_i|`,
+    where :math:`H_{ii} = \langle D_i|\hat{H}|D_i\rangle`.
 
     It is normally best to use the hartree-fock option as this removes cloning/death on the diagonal if the shift
     is fixed at zero. This requires slightly more work when also using the grand_canonical_initialisation, but this
