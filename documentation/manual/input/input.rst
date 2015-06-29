@@ -38,7 +38,7 @@ Calculations
 
    calcs/fci
    calcs/hilbert
-   calcs/kinetic_energy
+   calcs/canonical_energy
    calcs/fciqmc
    calcs/ccmc
    calcs/dmqmc

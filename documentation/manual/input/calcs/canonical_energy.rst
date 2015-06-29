@@ -22,7 +22,7 @@ Options
     Required.
 
     The system on which to perform the calculation.  Must be created via a system
-    function.
+    function. chem_pot must be set.
 ``canonical_energy``
     type: lua table.
 
@@ -58,7 +58,7 @@ kinetic options
 
     Optional.  Default: false.
 
-    If true, rescale ``beta`` as the inverse reduced temperature: :math:`\beta = 1/\Theta = T_F/T`,
+    If true, rescale ``beta`` as the inverse reduced temperature: :math:`\tilde{\beta} = 1/\Theta = T_F/T`,
     where :math:`T_F` is the Fermi temperature.  If false, ``beta`` is taken to be in
     atomic units.
 ``rng_seed``

@@ -210,6 +210,9 @@ ipdmqmc options
     Optional.  Default: 1.0.
 
     The inverse temperature to propagate the density matrix to.
+    If fermi_temperature is set to True then initial_beta is interpreted as the inverse reduced temperature
+    :math:`\tilde{\beta} = 1/\Theta = T_F/T`, where :math:`T_F` is the Fermi temperature. Otherwise initial_beta is taken
+    to be in atomic units.
 ``initial_matrix``
     type: string.
 
