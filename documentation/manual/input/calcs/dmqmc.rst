@@ -28,7 +28,10 @@ not the desired behaviour.
 
     Density Matrix Quantum Monte Carlo is currently rather experimental.  In particular,
     it is not implemented for all systems yet and some options are only implemented for
-    specific systems.
+    specific systems. In particular, DMQMC is only implemented for the UEG, the real and
+    momentum-space Hubbard model, and for molecular systems. The evaluation of operators
+    other than the total energy, such as correlation functions and entanglement measures,
+    is currently only possible for the Heisenberg model.
 
 .. todo - note any options which are only implemented for certain systems.
 
