@@ -79,7 +79,7 @@ contains
                         end if
                     end do
                 end do
-                if (doing_calc(mc_canonical_kinetic_energy)) call stop_all(this, 'estimate_canonical_kinetic_energy&
+                if (doing_calc(mc_canonical_energy_estimates)) call stop_all(this, 'estimate_energy_estimates&
                                                                            & only implemented for the UEG.')
             end if
 

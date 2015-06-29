@@ -550,7 +550,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
-        use canonical_kinetic_energy, only: generate_allowed_orbital_list
+        use canonical_energy_estimates, only: generate_allowed_orbital_list
         use dmqmc_procedures, only: create_diagonal_density_matrix_particle
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
 
