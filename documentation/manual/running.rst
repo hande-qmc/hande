@@ -5,9 +5,6 @@ Usage
 
     hande.x [input_filename]
 
-If no input filename is provided then the input options are read from STDIN.
-Note that this feature is not guaranteed to work when run in parallel!
-
 Output is sent to STDOUT and can be redirected as desired.
 
 Parallel Usage

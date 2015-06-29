@@ -140,7 +140,7 @@ files or in the Makefile, as desired.
     Results should be in statistical agreement but the precise data produced by the
     calculation (even using the same random number seed) may well be changed.
 
-    This currently applies to the following options: DET_SIZE, POP_SIZE and
+    This currently applies to the following options: POP_SIZE and
     SINGLE_PRECISION.
 
 DET_SIZE
