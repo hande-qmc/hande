@@ -8,11 +8,17 @@ implicit none
 
 enum, bind(c)
     ! Ensure energy estimates are always first.
-    ! Kinetic energy estimate.
+    ! Total energy estimate from single-particle eigenvalues. Here H_0 = \sum_i epsilon_i n_i, where
+    ! epsilon_i is a single particle energy eigenvalue (e.g. the kinetic energy
+    ! for the ueg or the Hartree-Fock orbital energy for molecular systems) and
+    ! n_i is the number operator for orbital i.
     enumerator :: ke_idx = 1
-    ! Hartree-Fock energy in non-interacting ensemble.
+    ! Hartree-Fock energy in non-interacting ensemble. Here H_0 is again H_0 = \sum_i epsilon_i n_i,
+    ! as above but we now evalate Tr (H \rho_0) / Tr (\rho_0).
     enumerator :: hf_idx
-    ! Finite-T Hartree-Fock (sort of)
+    ! Finite-T Hartree-Fock (sort of). Here we evaluate Tr (H \rho_HF) /
+    ! Tr (\rho_HF), where \rho_HF = \sum_I e^{-\beta E_HF^I}, where E_HF^I are
+    ! now many-particle Hartree-Fock energies of a given many-particle state I.
     enumerator :: hft_idx
     ! Finite-T reweighted estimate for partition function.
     enumerator :: hf_part_idx
@@ -25,16 +31,13 @@ end enum
 
 contains
 
-    subroutine estimate_canonical_energy(sys, fermi_temperature, beta, nsamples, ncycles, rng_seed)
+    subroutine estimate_canonical_energy(sys, fermi_temperature, beta, nsamples, ncycles, all_spin_sectors, rng_seed)
 
         ! From the Fermi factors calculated in the grand canonical ensemble we can
         ! estimate the total energy in the canonical ensemble by generating determinants
         ! with arbitrary particle number and only keeping those with <N> = nel.
 
         ! In:
-        !    qmc_in: input options relating to QMC methods.
-        ! In/Out:
-        !    sys: system being studied.
         !    beta: target temperature.
         !    fermi_temperature: if true, rescale beta as the inverse reduced temperature:
         !        beta = 1/\Theta = T_F/T.  If false, then beta is in atomic units.
@@ -43,6 +46,10 @@ contains
         !        estimated, along with an estimate of the standard error.
         !    rng_seed (optional): seed to initialise the random number generator.
         !       Default: seed based upon the hash of the time and calculation UUID.
+        !    all_spin_sectors: if true then average over ms otherwise only
+        !       provide estimates for specified spin sector.
+        ! In/Out:
+        !    sys: system being studied.
 
         use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -51,14 +58,18 @@ contains
 
         use calc, only: GLOBAL_META, gen_seed
         use hamiltonian_ueg, only: exchange_energy_ueg
+        use hamiltonian_molecular, only: double_counting_correction_mol
         use determinants, only: sum_sp_eigenvalues
         use interact, only: calc_interact, check_comms_file
+        use proc_pointers, only: energy_diff_ptr
+        use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
+        logical, intent(in) :: all_spin_sectors
         real(p), intent(in) :: beta
         logical, intent(in) :: fermi_temperature
         integer, intent(in) :: nsamples
-        integer, intent(in) :: ncycles
+        integer, intent(in), optional :: ncycles
         integer, intent(in), optional :: rng_seed
 
         real(dp) :: p_single(sys%basis%nbasis/2)
@@ -73,7 +84,8 @@ contains
         type(sys_t) :: sys_bak
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
-        integer :: ngen
+        integer :: ngen, nalpha_allowed, nbeta_allowed
+        real(p) :: energy_zero
 
         if (present(rng_seed)) then
             seed = rng_seed
@@ -91,8 +103,19 @@ contains
             beta_loc = beta_loc / sys%ueg%ef
         end if
 
+        select case(sys%system)
+        case (ueg)
+            energy_diff_ptr => exchange_energy_ueg
+            energy_zero = 0.0_p
+        case (read_in)
+            energy_diff_ptr => double_counting_correction_mol
+            energy_zero = sys%read_in%Ecore
+        case default
+            call stop_all('estimate_canonical_energy', 'Not implemented for selected model Hamiltonian')
+        end select
+
         if (parent) then
-            write (6,'(1X,a67)') 'E_0: Estimate for thermal kinetic energy i.e. 1/Z_0 Tr(\rho_0 H_0).'
+            write (6,'(1X,a67)') 'E_0: Estimate for thermal total energy from single-particle eigenvalues i.e. 1/Z_0 Tr(\rho_0 H_0).'
             write (6,'(1X,a65)') 'E_HF0: Estimate for Hartree-Fock-0 energy i.e. 1/Z_0 Tr(\rho_0 H).'
             write (6,'(1X,a91)') '\sum\rho_HF_{ii}H_{ii}: Estimate for numerator of "Hartree-Fock" energy i.e. Tr(\rho_HF H).'
             write (6,'(1X,a77)') '\sum\rho_HF_{ii}: Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.'
@@ -105,26 +128,41 @@ contains
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
                                                           (1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-sys%chem_pot)))
 
+        if (all_spin_sectors) then
+            ! If averaging over spin we need to allow for the number of
+            ! alpha/beta orbitals to fluctuate between [0,sys%nel].
+            nalpha_allowed = sys%nel
+            nbeta_allowed = sys%nel
+        else
+            nalpha_allowed = sys%nalpha
+            nbeta_allowed = sys%nbeta
+        end if
+
         do ireport = 1, ncycles
             local_estimators = 0.0_p
             iaccept = 0 ! running number of samples this report cycle.
             do while (iaccept < nsamples)
                 ngen = 0
-                if (sys%nalpha > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nalpha, &
-                                                                       1, occ_list, ngen)
-                if (ngen /= sys%nalpha) cycle
-                if (sys%nbeta > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nbeta, &
-                                                                      0, occ_list, ngen)
+                occ_list = 0
+                if (nalpha_allowed > 0) call generate_allowed_orbital_list(sys, rng, p_single, nalpha_allowed, &
+                                                                           1, occ_list, ngen)
+                if (.not. all_spin_sectors .and. ngen /= sys%nalpha) then
+                    cycle
+                else if (ngen > nalpha_allowed) then
+                    cycle
+                end if
+                if (nbeta_allowed > 0) call generate_allowed_orbital_list(sys, rng, p_single, sys%nel-ngen, &
+                                                                          0, occ_list, ngen)
                 if (ngen /= sys%nel) cycle
                 iaccept = iaccept + 1
                 ! Calculate Kinetic and Hartree-Fock exchange energies.
                 energy(ke_idx) = sum_sp_eigenvalues(sys, occ_list)
-                hfx = exchange_energy_ueg(sys, occ_list)
-                energy(hf_idx) = energy(ke_idx) + hfx
+                hfx = energy_diff_ptr(sys, occ_list)
+                energy(hf_idx) = energy(ke_idx) + hfx + energy_zero
                 ! We generate determinants with probability p(i1,..,iN) =
                 ! 1/Z_0 \prod_{i} p(i1)X...Xp(iN), where Z_0 is the
                 ! non-interacting canonical partition function, and p(i1) =
-                ! e^{-\beta \varepsilon_i1). We can instead
+                ! e^{-\beta \varepsilon_i1}. We can instead
                 ! calculate Z_HF = \sum_{i} e^{-\beta E_HF(i)} by reweighting,
                 ! i.e.,
                 ! p(i1,..,iN)_HF = 1/Z' e^{-beta(E_HF(i)-E_0(i))}p(i1,...,iN),
@@ -152,6 +190,9 @@ contains
         end do
 
         if (parent) write(6, '()')
+
+        ! Return sys in unaltered state.
+        call copy_sys_spin_info(sys_bak, sys)
 
     end subroutine estimate_canonical_energy
 
