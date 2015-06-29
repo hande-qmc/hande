@@ -175,7 +175,7 @@ contains
         integer :: opts, err, rng_seed, ncycles, nattempts
         logical :: fermi_temperature, have_seed
         real(p) :: beta
-        character(12), parameter :: keys(2) = [character(12) :: 'sys', 'canonical_energy']
+        character(16), parameter :: keys(2) = [character(16) :: 'sys', 'canonical_energy']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
