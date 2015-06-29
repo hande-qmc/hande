@@ -21,7 +21,7 @@ produces a new set to be used on a different number of processors.
    * It is convenient to place this before the QMC calculation call in the input file.
      However, the process of redistributing particles is a somewhat serial task and hence
      ``redistribute`` may not scale well to large numbers of processors.  Hence it may be
-     more computationally efficient to do the redistribution targetting a large (ie 100s
+     more computationally efficient to do the redistribution targeting a large (ie 100s
      or 1000s) of processors using a much smaller number of processors in a separate run
      of HANDE.
    * Load balancing settings are reset to their default values.
@@ -69,7 +69,7 @@ Returns:
 
 The input file is processed and run by each processor.  It is occasionally useful to
 perform (for example) additional I/O from lua but only on one processor.  Testing if
-the procesor is the MPI root processor is a safe way to do this, e.g.
+the processor is the MPI root processor is a safe way to do this, e.g.
 
 .. code-block:: lua
 

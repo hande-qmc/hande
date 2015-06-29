@@ -18,7 +18,7 @@ Density Matrix Quantum Monte Carlo
 
 ``dmqmc`` performs a density matrix quantum Monte Carlo (DMQMC) calculation on a system.
 
-Unlike :ref:`ccmc` and :ref:`fciqmc`, where quantites are averaged inside each report
+Unlike :ref:`ccmc` and :ref:`fciqmc`, where quantities are averaged inside each report
 loop, any quantities in DMQMC are evaluated at the **first** iteration of the report loop
 only. This is because different iterations represent different temperatures in DMQMC,
 and so averaging over a report loop would average over different temperatures, which is
@@ -119,7 +119,7 @@ dmqmc options
 
     Optional.  Default: false.
 
-    Sample states with all symmetris of the system instead of just those which conserve
+    Sample states with all symmetries of the system instead of just those which conserve
     the symmetry of the reference state.
 ``all_spin_sectors``
     type: boolean.
@@ -169,7 +169,7 @@ dmqmc options
     by a factor of :math:`(W_{\gamma})^{\beta/\beta_{target}}` each iteration, where
     :math:`W_{\gamma}` is the final weight of excitation level :math:`\gamma` and
     :math:`\beta_{target}` is the beta value to vary the weights until (equal to
-    the value specified by this option, multipled by the time step size).
+    the value specified by this option, multiplied by the time step size).
 ``find_weights``
     type: boolean.
 
@@ -211,7 +211,7 @@ ipdmqmc options
 
     Optional.  Default: 1.0.
 
-    The inverse temperature to propogate the density matrix to.
+    The inverse temperature to propagate the density matrix to.
 ``initial_matrix``
     type: string.
 
@@ -221,10 +221,10 @@ ipdmqmc options
 
     Initialisation of the density matrix at :math:`\beta=0`.  'free_electron' samples the
     free electron density matrix, i.e. :math:`\rho = \sum_i e^{-\beta \sum_j \varepsilon_j
-    \hat{n}_j} |D_i><D_i|`, where :math:`\varepsilon_j` is the single-particle eigenvalue
+    \hat{n}_j} |D_i\rangle\langle D_i|`, where :math:`\varepsilon_j` is the single-particle eigenvalue
     and :math:`\hat{n}_j` the corresponding number operator.  'hartree_fock' samples
-    a 'Hartree--Fock' density matrix defined by :math:`\rho = \sum e^{-\beta H_{ii}} |D_i><D_i|`,
-    where :math:`H_ii = <D_i|H|D_i>` and is more efficient than 'free_electron'.
+    a 'Hartree--Fock' density matrix defined by :math:`\rho = \sum e^{-\beta H_{ii}} |D_i\rangle\langle D_i|`,
+    where :math:`H_{ii} = \langle D_i|H|D_i\rangle` and is more efficient than 'free_electron'.
 
     .. todo - recommendations?  What is 'efficient' measured by?
 ``grand_canonical_initialisation``
@@ -359,7 +359,7 @@ Note that the use of RDMs is currently only available with the Heisenberg model.
 
     Maximum number of states (i.e. reduced density matrix elements) to store in the
     "spawned" list, which limits the number of unique RDM elements that each processor can
-    set.  Should be a sizable fraction of ``state_size`` (see :ref:`qmc_table`) and
+    set.  Should be a sizeable fraction of ``state_size`` (see :ref:`qmc_table`) and
     depends on the size of the subsystem compared to the full space.
 
     .. todo - should allow -ve numbers to specify the MB usage instead (as in the main

@@ -69,7 +69,7 @@ ccmc options
 ``cluster_multispawn_threshold``
     type: float.
 
-    Default: :math:`2^{31}-1`.
+    Optional.  Default: :math:`2^{31}-1`.
 
     Set the maximum value of :math:`A_C/p_C`, where :math:`A_C` is the cluster amplitude
     and :math:`p_C` is the probability of selecting the cluster.  A cluster with a value
@@ -88,7 +88,7 @@ ccmc options
     Optional.  Default: false.
 
     If true, allow all non-composite clusters to attempt to spawn each iteration.  The
-    original CCMC algorithm involves randomly selected a cluster of arbitrary size
+    original CCMC algorithm involves randomly selecting a cluster of arbitrary size
     consisting of any set of excitors and then making spawning attempts from it.  The full
     non-composite algorithm is a simple modification in which all occupied non-composite
     clusters (i.e. those consisting of the reference or just a single excitor) are

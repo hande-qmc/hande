@@ -2,7 +2,7 @@ Electron gases
 ==============
 
 An electron gas contains interacting electrons in some geometry with a constant
-compensating postive charge.
+compensating positive charge.
 
 Uniform electron gas
 --------------------
@@ -65,7 +65,7 @@ Options
 ``cutoff``
     type: float.
 
-    Default: 3.
+    Optional.  Default: 3.
 
     Set the maximum kinetic energy of the orbitals included in the basis set.
 

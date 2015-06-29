@@ -49,7 +49,7 @@ types below. They are turned off by default.
     the walker configuration at the specified iteration, else the deterministic
     space will be created using the determinants present before the start of
     the first iteration. Therefore, one should only use this option in
-    conjuction with the **restart** option or with the **semi_stoch_iteration**
+    conjunction with the **restart** option or with the **semi_stoch_iteration**
     option.
 
     This option is only implemented with the **fciqmc** method.

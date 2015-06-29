@@ -38,7 +38,7 @@ Using OpenMP parallelism:
 
 Where m is the number of mpi processes and n is the number of OpenMP threads
 per mpi process.
-Hande prints this information at the top of the output file, so one can easily
+HANDE prints this information at the top of the output file, so one can easily
 check there environment is set up correctly:
 
 | Number of MPI processes running on: m

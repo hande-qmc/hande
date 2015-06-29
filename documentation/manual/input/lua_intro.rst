@@ -6,7 +6,7 @@ task of controlling a simulation.  For a quick introduction to lua, please read
 `Learn Lua in 15 Minutes <http://tylerneylon.com/a/learn-lua/>`_.  However, for most cases
 the input file format can be treated as follows:
 
-Assignment is perfomed by setting a variable name equal to an object, e.g.
+Assignment is performed by setting a variable name equal to an object, e.g.
 
 .. code-block:: lua
 

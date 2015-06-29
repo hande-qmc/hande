@@ -52,7 +52,7 @@ Options
 
     Optional.  Default: false.
 
-    If true, enable Lz symmetry.  See below for details.
+    If true, enable :math:`L_z` symmetry.  See below for details.
 ``int_file``
     type: string.
 
@@ -79,18 +79,18 @@ Options
     be in the lowest spin orbitals) and any additional high-energy spin orbitals are
     removed from the basis set.
 
-Lz symmetry
------------
+:math:`L_z` symmetry
+--------------------
 
-For cylindrically symmetrical systems, the Lz (z-component of orbital angular momentum)
+For cylindrically symmetrical systems, the :math:`L_z` (z-component of orbital angular momentum)
 operator commutes with the Hamiltonian, and this can be a convenient symmetry to conserve.
-Lz is measured in units of hbar.  Normal FCIDUMP files do not contain orbitals which are
-eigenfunctions of the Lz operator, so they must be transformed using post-processing.  The
+:math:`L_z` is measured in units of :math:`\hbar`.  Normal FCIDUMP files do not contain orbitals which are
+eigenfunctions of the :math:`L_z` operator, so they must be transformed using post-processing.  The
 TransLz  script from the `NECI <https://github.com/ghb24/NECI_STABLE>`_ project can be
 used for this purpose. The FCIDUMP file header format has been modified to include
 additional parameters: SYML, and SYMLZ which have a list of values, one for each orbital.
 SYML gives the magnitude of L for the orbital if known (or -20 if not) but is not used.
-SYMLZ give the eigenvalue of Lz (the m_l value).  Orbitals with defined values of Lz are
+SYMLZ give the eigenvalue of :math:`L_z` (the :math:`m_l` value).  Orbitals with defined values of :math:`L_z` are
 likely to be complex-valued, but luckily the integrals involving them are not, so although
 the FCIDUMP file must be translated, it still retains the same format (see comments in
 ``src/read_in.F90`` and ``src/molecular_integrals.F90`` for details if you wish to create
@@ -98,5 +98,5 @@ FCIDUMP files by other means).
 
 .. warning::
 
-    These transformed integral files require you to enforce Lz symmetry and will produce
+    These transformed integral files require you to enforce :math:`L_z` symmetry and will produce
     incorrect results if you do not.

@@ -38,7 +38,7 @@ Options
 ``fciqmc``
     type: lua table.
 
-    Required.
+    Optional.
 
     Further options to control the FCIQMC algorithm.  See :ref:`fciqmc_table`.
 ``semi_stoch``
@@ -47,7 +47,7 @@ Options
     Optional.
 
     Further options to control using a semi-stochastic projection of the Hamiltonian
-    operator instead of a purely stochastic projection.  Note that, some options in the
+    operator instead of a purely stochastic projection.  Note that some options in the
     ``semi_stoch`` table are required to be set if the table is given.  See
     :ref:`semi_stoch_table`.
 ``restart``
@@ -120,7 +120,7 @@ fciqmc options
     .. note::
 
         This is an experimental option and may or may not improve performance.  In
-        particular, it's efficiency is highly dependent upon architecture and MPI
+        particular, its efficiency is highly dependent upon architecture and MPI
         implementation.  For expert use only!
 
 ``load_balancing``
@@ -137,7 +137,7 @@ fciqmc options
 
     Optional.  Default: false.
 
-    In addition to initialsing the reference determinant with an initial
+    In addition to initialising the reference determinant with an initial
     population, initialise the spin-inversed determinant (if different) with
     the same population.  Overridden by a restart file.
 ``trial_function``

@@ -34,7 +34,7 @@ speed, etc.  Please see the testcode documentation for more details.
     Currently there are no QMC tests suitable for OpenMP parallelisation due to
     difficulties with making the scheduler behave deterministically without
     affecting performance of production simulations.
-    It is advised that you make sure to set the shell varialble OMP_NUM_THREADS
+    It is advised that you make sure to set the shell variable OMP_NUM_THREADS
     to 1 when running the test suite - otherwise these will all be marked SKIPPED.
 
 What if the tests fail?

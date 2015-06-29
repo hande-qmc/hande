@@ -17,12 +17,12 @@ stochastic error in many cases.
 
     The type of deterministic space to use.  Using 'read' uses a deterministic space
     produced from a previous calculation and saved to file using the ``write_determ_space``
-    option.  Using 'high' sets the deterministic space to consist of the states with the
+    option.  Using 'high' sets the deterministic space to consist of the states with
     the highest population when the semi-stochastic projection is enabled.
 ``size``
     type: integer.
 
-    Required if ``space`` == 'high', otherwise ignored.
+    Required if ``space`` is 'high', otherwise ignored.
 
     The number of states to include in the semi-stochastic space.
 ``start_iteration``
@@ -47,7 +47,7 @@ stochastic error in many cases.
     Optional.  Default: true.
 
     If true, the deterministic amplitudes are communicated separately at the cost of an
-    addtional MPI call.  If false, the annihilation of particles created from
+    additional MPI call.  If false, the annihilation of particles created from
     deterministic and stochastic projections are performed separately, which removes the
     need for an additional MPI call at the cost of communicating an additional
     :math:`N_p \times (N_D-1)` more amplitudes, where :math:`N_p` is the number of

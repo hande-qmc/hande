@@ -147,14 +147,16 @@ algorithms and control the core settings in the algorithms.
 
     Possible values: 'renorm', 'no_renorm'.
 
+    ============  =================     =========
     System        Implemented           Default
-    ------        -----------           -------
+    ============  =================     =========
     chung_landau  renorm, no_renorm     renorm
     heisenberg    renorm, no_renorm     renorm
     hubbard_k     renorm, no_renorm     renorm
     hubbard_real  renorm, no_renorm     renorm
     ueg           no_renorm             no_renorm
     read_in       renorm, no_renorm     renorm
+    ============  =================     =========
 
     The type of excitation generator to use.  Note that not all types are implemented for
     all systems, usually because a specific type is not suitable for (large) production

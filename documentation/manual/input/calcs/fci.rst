@@ -16,7 +16,7 @@ Calculate the ground state of a system via a full diagonalisation of the Hamilto
 
     The FCI engine in HANDE is particularly simple (i.e. slow, dumb, memory hungry) and is
     designed mainly for testing.  A conventional quantum chemistry package, such as
-    MOLPRO, Q-Chem or PSI4, is highly recomended for production FCI calculations as these
+    MOLPRO, Q-Chem or PSI4, is highly recommended for production FCI calculations as these
     implement substantially more efficient algorithms.
 
 Options
@@ -87,7 +87,7 @@ The ``fci`` table can take the following options:
     Optional.  Default: 0.
 
     Number of wavefunctions to write out (in the basis of Slater determinants).
-    A negative value 1 indicates all wavefunctions are to be written out.
+    A negative value indicates all wavefunctions are to be written out.
 ``wfn_file``
     type: string.
 
