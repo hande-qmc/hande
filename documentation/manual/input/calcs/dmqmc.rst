@@ -226,20 +226,28 @@ ipdmqmc options
     a 'Hartree--Fock' density matrix defined by :math:`\rho = \sum e^{-\beta H_{ii}} |D_i\rangle\langle D_i|`,
     where :math:`H_{ii} = \langle D_i|H|D_i\rangle` and is more efficient than 'free_electron'.
 
-    .. todo - recommendations?  What is 'efficient' measured by?
+    It is normally best to use the hartree-fock option as this removes cloning/death on the diagonal if the shift
+    is fixed at zero. This requires slightly more work when also using the grand_canonical_initialisation, but this
+    is negligeable.
+
 ``grand_canonical_initialisation``
     type: boolean.
 
     Optional.  Default: false.
 
     Use the grand canonical partition function to initialise the psip distribution.
-    .. todo - how does this differ from the default behaviour?
+    This requires a value of chem_pot to be set in sys. The default behaviour will
+    randomly distribute particles among the determinants requiring a non-zero value
+    of metropolis_attempts to be set for the correct distribution to be reached.
+
 ``metropolis_attempts``
     type: integer.
 
     Optional.  Default: 0.
 
-    .. todo - Ok, it seems I don't understand how to use these options in combination (or not).  Clearly a tutorial is required!
+    Number of Metropolis moves to perform (per particle) on the initial distribution.
+    It is up to the user to determine if the desired distribution has been reached,
+    i.e. by checking if results are independent of metropolis_attempts.
 
 .. _operators_table:
 
