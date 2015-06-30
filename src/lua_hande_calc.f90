@@ -1020,6 +1020,8 @@ contains
                     semi_stoch_in%space_type = high_pop_determ_space
                     call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
                     if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
+                case default
+                    if (parent) call stop_all('read_semi_stoch_in', 'Unknown semi stochastic space type')
                 end select
             else
                 if (parent) call stop_all('read_semi_stoch_in', 'Deterministic space not specified.')

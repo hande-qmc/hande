@@ -46,7 +46,7 @@ contains
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t
-        use check_input, only: check_qmc_opts
+        use check_input, only: check_qmc_opts, check_dmqmc_opts
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -85,6 +85,7 @@ contains
         end if
 
         call check_qmc_opts(qmc_in, .false.)
+        call check_dmqmc_opts(sys, dmqmc_in)
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in)

@@ -177,4 +177,62 @@ contains
 
     end subroutine check_load_bal_opts
 
+    subroutine check_dmqmc_opts(sys, dmqmc_in)
+
+        ! Check validity of dmqmc input options
+
+        ! In:
+        !   sys: system being studied
+        !   dmqmc_in: DMQMC options
+
+        use system, only: sys_t, heisenberg
+        use dmqmc_data, only: dmqmc_in_t
+        use calc, only: dmqmc_calc_type, dmqmc_energy, dmqmc_rdm_r2, dmqmc_staggered_magnetisation, doing_dmqmc_calc
+
+        use errors, only: stop_all
+        use const, only: depsilon
+
+        type(sys_t), intent(in) :: sys
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
+
+        character(*), parameter :: this = 'check_dmqmc_opts'
+
+        if (dmqmc_in%rdm%calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
+
+        if (sys%system == heisenberg) then
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) then
+                call stop_all(this,'Staggered magnetisation can only be calculated on a bipartite lattice.')
+            end if
+        else if (dmqmc_calc_type /= dmqmc_energy) then
+            if (dmqmc_in%all_spin_sectors) call stop_all(this, &
+                'The option to use all symmetry sectors at the same time is only available for the Heisenberg model.')
+            call stop_all(this, 'The observable requested is not currently implemented for this Hamiltonian.')
+        end if
+
+        if (allocated(dmqmc_in%correlation_sites)) then
+            if (size(dmqmc_in%correlation_sites) /= 2) &
+                call stop_all(this, 'You must enter exactly two sites for the correlation function option.')
+        end if
+
+        if (dmqmc_in%find_weights .and. dmqmc_in%calc_excit_dist) &
+            call stop_all(this, 'find_weights and excit_dist options cannot be used together.')
+
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%replica_tricks)) &
+            call stop_all(this, 'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
+        if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%rdm%calc_inst_rdm)) &
+            call stop_all(this, 'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
+
+        if (dmqmc_in%all_spin_sectors) then
+            if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
+                abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
+                call stop_all(this, 'The use_all_spin_sectors option cannot be used with magnetic fields.')
+            if (dmqmc_in%rdm%calc_ground_rdm) &
+                call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options cannot be used together.')
+        end if
+
+        if (dmqmc_in%vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
+            call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
+        end if
+    end subroutine check_dmqmc_opts
+
 end module check_input
