@@ -41,8 +41,7 @@ contains
 
         if (sys%system == heisenberg) then
             if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. (.not.sys%lattice%bipartite_lattice)) &
-                call stop_all(this, 'Cannot set a staggered field&
-                                    & for this lattice because it is frustrated.')
+                call stop_all(this, 'Cannot set a staggered field for this lattice because it is frustrated.')
             if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. sys%heisenberg%magnetic_field /= 0.0_p) &
                 call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
                         else if (sys%system == hub_k .or. sys%system == hub_real) then
@@ -55,8 +54,7 @@ contains
         end if
 
         if (sys%momentum_space .or. sys%system == read_in) then
-            if (sys%real_lattice%finite_cluster) call stop_all(this,'FINITE_CLUSTER keyword only valid for&
-                                      & calculations in real-space: ignoring keyword')
+            if (sys%real_lattice%finite_cluster) call stop_all(this,'"finite" keyword only valid for calculations in real-space.')
         end if
 
     end subroutine check_sys
@@ -79,19 +77,20 @@ contains
         character(*), parameter :: this = 'check_fciqmc_opts'
 
         if (sys%system /= heisenberg) then
-            if (fciqmc_in%trial_function /= single_basis) call stop_all(this, 'Only a single determinant can be used as the&
-                                                     & reference state for this system. Other trial functions are not available.')
-            if (fciqmc_in%guiding_function /= no_guiding) call stop_all(this, 'Importance sampling is only avaliable for the&
-                                                                              & Heisenberg model currently.')
+            if (fciqmc_in%trial_function /= single_basis) &
+                call stop_all(this, 'Only a single determinant can be used as the reference state for this system. &
+                                     &Other trial functions are not available.')
+            if (fciqmc_in%guiding_function /= no_guiding) &
+                call stop_all(this, 'Importance sampling is only avaliable for the Heisenberg model currently.')
          else
             if (fciqmc_in%guiding_function == neel_singlet_guiding .and. fciqmc_in%trial_function /= neel_singlet) &
-                call stop_all(this, 'This guiding function is only available when using the Neel singlet state&
-                                    & as an energy estimator.')
+                call stop_all(this, &
+                    'This guiding function is only available when using the Neel singlet state as an energy estimator.')
         end if
 
         if (fciqmc_in%init_spin_inv_D0 .and. sys%Ms /= 0) then
-            call stop_all(this, 'Flipping the reference state will give&
-                                            & a state which has a different value of Ms and so cannot be used here.')
+            call stop_all(this, &
+                'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
 
     end subroutine check_fciqmc_opts
@@ -121,5 +120,38 @@ contains
         end if
 
     end subroutine check_qmc_opts
+
+    subroutine check_fci_opts(sys, fci_in, lanczos)
+
+        ! Check the input options provided in the fci table
+
+        ! In:
+        !   sys: system being studied
+        !   fci_in: Input options for FCI
+        !   lanczos: is this a lanczos or full diagonalisation?
+
+        use fci_utils, only: fci_in_t
+        use system, only: sys_t, read_in
+
+        use errors, only: stop_all
+
+        type(sys_t), intent(in) :: sys
+        type(fci_in_t), intent(in) :: fci_in
+        logical, intent(in) :: lanczos
+
+        character(*), parameter :: this = 'check_fci_opts'
+
+        if (sys%system == read_in) then
+            if (fci_in%analyse_fci_wfn /= 0 .and. sys%read_in%dipole_int_file == '') then
+                call stop_all(this, 'Cannot analyse FCI wavefunction without a dipole integrals file.')
+            end if
+        end if
+
+        if (lanczos) then
+            if (fci_in%lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
+            if (fci_in%nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
+        end if
+
+    end subroutine check_fci_opts
 
 end module check_input
