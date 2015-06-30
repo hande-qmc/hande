@@ -1,0 +1,30 @@
+sys = read_in {
+    int_file = "FCIDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+    chem_pot = -1.98264116194,
+}
+
+canonical_energy {
+    sys = sys,
+    canonical_energy = {
+        beta = 0.5,
+        nattempts = 10000,
+        ncycles = 100,
+        rng_seed = 7,
+        all_spin_sectors = true,
+    },
+}
+_=[[   SCF calculation produced by psi4 using
+molecule H2O {
+    O
+    H 1 0.96
+    H 1 0.96 2 104.5
+}
+set globals {
+    basis   cc-pvdz
+    e_convergence 10
+    freeze_core FALSE
+    scf_type pk
+}]]
