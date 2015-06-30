@@ -42,12 +42,23 @@ a calculation is restarted.  More complicated analysis can be performed in pytho
 using the ``pyhande`` library --- ``reblock_hande.py`` simply provides a convenient
 interface for the most common analysis tasks.
 
-Canonical Kinetic Energy MC
+Canonical Total Energy MC
 ---------------------------
 
-.. todo
+The configurations and resulting estimates in a canonical total energy
+calculation are statistically independent and therefore no blocking analysis is
+required. The ``analyse_canonical.py`` script is available in tools/dmqmc/ which
+performs the appropriate averaging and standard error analysis on the output file
+using the pyhande suite.
+
 
 DMQMC
 -----
 
+No blocking analysis is required for the error analysis of DMQMC calculations
+as estimates are averaged over statistically independent runs. The
+``finite_temp_analysis.py`` script in tools/dmqmc can be used to perform a
+standard error analysis of the Monte Carlo data for a number of different observables.
+
 .. todo
+    The other scripts?
