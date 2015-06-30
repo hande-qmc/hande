@@ -154,4 +154,27 @@ contains
 
     end subroutine check_fci_opts
 
+    subroutine check_load_bal_opts(load_bal_in)
+
+        ! Check load balancing input options
+
+        ! In:
+        !   load_bal_in: load balancing options
+
+        use qmc_data, only: load_bal_in_t
+
+        use errors, only: stop_all
+
+        type(load_bal_in_t), intent(in) :: load_bal_in
+
+        character(*), parameter :: this = 'check_load_bal_opts'
+
+        if (load_bal_in%nslots < 0) call stop_all(this, 'Number of slots for load balancing is not positive.')
+        if (load_bal_in%pop < 0) call stop_all(this, 'Load balancing population must be positive.')
+        if (load_bal_in%percent < 0 .or. load_bal_in%percent > 1.0) &
+            call stop_all(this, 'Percentage imbalance must be positive and less that 1.')
+        if (load_bal_in%max_attempts < 0) call stop_all(this, 'Maximum number of load balancing attempts must be positive')
+
+    end subroutine check_load_bal_opts
+
 end module check_input
