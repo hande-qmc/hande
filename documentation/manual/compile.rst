@@ -95,7 +95,7 @@ To compile the code run
 
     make
     
-HANDE's build system uses the ``sfmakedepend`` script (http://www.arsc.edu/~kate/Perl/,
+HANDE's build system uses the ``sfmakedepend`` script (http://people.arsc.edu/~kate/Perl/,
 supplied in ``tools/``) by Kate Hedstrom to generate the list of dependencies for each
 Fortran source file.  These are generated automatically when make is run if the dependency
 files do not exist.
