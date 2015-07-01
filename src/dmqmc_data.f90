@@ -36,9 +36,9 @@ integer, parameter :: num_dmqmc_operators = terminator - 1
 type rdm_t
     ! The total number of sites in subsystem A.
     integer :: A_nsites
-    ! Similar to string_len, string_len is the length of the byte array
-    ! necessary to contain a bit for each subsystem-A basis function. An array
-    ! of twice this length is stored to hold both RDM indices.
+    ! Equivalent to string_len in basis_t, string_len is the length of the byte
+    ! array necessary to contain a bit for each subsystem-A basis function. An
+    ! array of twice this length is stored to hold both RDM indices.
     integer :: string_len
     ! The sites in subsystem A, as entered by the user.
     integer, allocatable :: subsystem_A(:)
