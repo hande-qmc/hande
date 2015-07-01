@@ -55,10 +55,6 @@ type rdm_t
     ! bit_pos(i,:,2) will not be sorted). This is very important so that
     ! equivalent psips will contribute to the same RDM element.
     integer, allocatable :: bit_pos(:,:,:)
-    ! Two bitstrings of length string_len. To be used as temporary
-    ! bitstrings to prevent having to regularly allocate different length
-    ! bitstrings for different RDMs.
-    integer(i0), allocatable :: end1(:), end2(:)
 end type rdm_t
 
 type dmqmc_rdm_in_t

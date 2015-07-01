@@ -901,6 +901,7 @@ contains
         integer :: irdm, isym, ireplica, nrdms, nsym_vecs
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(basis%tensor_label_len)
+        integer(i0) :: rdm_f1(basis%string_len), rdm_f2(basis%string_len)
 
         if (.not. (iteration > start_av_rdm .or. rdm_in%calc_inst_rdm)) return
 
@@ -916,8 +917,11 @@ contains
         ! Loop over every symmetry-equivalent subsystem for this RDM.
         do isym = 1, nsym_vecs
 
-        associate(rdm=>dmqmc_estimates%ground_rdm%rdm, end1=>dmqmc_estimates%rdm_info(irdm)%end1(1), &
-                  end2=>dmqmc_estimates%rdm_info(irdm)%end2(1), rdm_info=>dmqmc_estimates%rdm_info)
+        rdm_f1 = 0_i0
+        rdm_f2 = 0_i0
+
+        associate(rdm=>dmqmc_estimates%ground_rdm%rdm, end1=>rdm_f1(1), end2=>rdm_f2(1), &
+                  rdm_info=>dmqmc_estimates%rdm_info)
 
         ! Apply the mask for the B subsystem to set all sites in the A
         ! subsystem to 0.
@@ -934,15 +938,16 @@ contains
         if (sum(abs(f1-f2)) == 0_i0) then
             ! Call a function which maps the subsystem A state to two RDM
             ! bitstrings.
-            call decode_dm_bitstring(basis, f3, isym, rdm_info(irdm))
+            call decode_dm_bitstring(basis, f3, isym, rdm_info(irdm), &
+                                     rdm_f1(1:rdm_info(irdm)%string_len), rdm_f2(1:rdm_info(irdm)%string_len))
 
             if (rdm_in%calc_ground_rdm) then
                 ! The above routine actually maps to numbers between 0
                 ! and 2^rdm_info(1)%A_nsites-1, but the smallest and largest
                 ! reduced density matrix indices are one more than these,
                 ! so add one.
-                rdm_info(irdm)%end1 = rdm_info(irdm)%end1 + 1
-                rdm_info(irdm)%end2 = rdm_info(irdm)%end2 + 1
+                rdm_f1 = rdm_f1 + 1
+                rdm_f2 = rdm_f2 + 1
                 unweighted_walker_pop = real(walker_pop,p)*&
                     accumulated_probs(excitation%nexcit)/real_factor
                 ! Note, when storing the entire RDM (as done here), the
@@ -954,7 +959,7 @@ contains
             if (rdm_in%calc_inst_rdm) then
                 do ireplica = 1, size(walker_pop)
                     if (abs(walker_pop(ireplica)) > 0) then
-                        call create_spawned_particle_rdm(rdm_info(irdm), walker_pop(ireplica), ireplica, &
+                        call create_spawned_particle_rdm(rdm_f1, rdm_f2, walker_pop(ireplica), ireplica, &
                                                          dmqmc_estimates%inst_rdm%spawn(irdm))
                         ! Did we run out of the space in the RDM spawning array.
                         rdm_error = rdm_error .or. dmqmc_estimates%inst_rdm%spawn(irdm)%spawn%error

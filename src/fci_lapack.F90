@@ -278,7 +278,7 @@ contains
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(2*basis%string_len)
         integer :: i, j, rdm_size, info, ierr, lwork
-        integer(i0) :: end1, end2
+        integer(i0) :: rdm_f1(rdm_info(1)%string_len), rdm_f2(rdm_info(1)%string_len)
         real(p), allocatable :: work(:)
         real(p) :: rdm_element
 
@@ -297,15 +297,14 @@ contains
                     f3(basis%string_len+1:basis%string_len*2) = dets(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
-                    call decode_dm_bitstring(basis, f3, 1, rdm_info(1))
-                    rdm_info(1)%end1 = rdm_info(1)%end1 + 1
-                    rdm_info(1)%end2 = rdm_info(1)%end2 + 1
+                    call decode_dm_bitstring(basis, f3, 1, rdm_info(1), rdm_f1, rdm_f2)
+                    rdm_f1 = rdm_f1 + 1
+                    rdm_f2 = rdm_f2 + 1
 
                     ! The ground state wave function is stored in eigvec(:,1).
                     rdm_element = eigvec(i,1)*eigvec(j,1)
                     ! Finally add in the contribution from this density matrix element.
-                    rdm(rdm_info(1)%end1(1),rdm_info(1)%end2(1)) = &
-                        rdm(rdm_info(1)%end1(1),rdm_info(1)%end2(1)) + rdm_element
+                    rdm(rdm_f1(1),rdm_f2(1)) = rdm(rdm_f1(1),rdm_f2(1)) + rdm_element
                 end if
             end do
         end do

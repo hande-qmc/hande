@@ -229,12 +229,6 @@ contains
         do i = 1, nrdms
             ! Initialise the instance of the rdm type for this subsystem.
             rdm_info(i)%string_len = ceiling(real(rdm_info(i)%A_nsites)/i0_length)
-            allocate(rdm_info(i)%end1(rdm_info(i)%string_len), stat=ierr)
-            call check_allocate('rdm_info(i)%end1', rdm_info(i)%string_len, ierr)
-            allocate(rdm_info(i)%end2(rdm_info(i)%string_len), stat=ierr)
-            call check_allocate('rdm_info(i)%end2', rdm_info(i)%string_len, ierr)
-            rdm_info(i)%end1 = 0_i0
-            rdm_info(i)%end2 = 0_i0
 
             ! With the calc_ground_rdm option, the entire RDM is allocated. If
             ! the following condition is met then the number of rows is greater
@@ -487,11 +481,10 @@ contains
 
     end subroutine create_diagonal_density_matrix_particle
 
-    subroutine decode_dm_bitstring(basis, f, isym, rdm_info)
+    subroutine decode_dm_bitstring(basis, f, isym, rdm_info, rdm_f1, rdm_f2)
 
         ! This function maps a full DMQMC bitstring to two bitstrings encoding
-        ! the subsystem-A RDM bitstrings. These resulting bitstrings are stored
-        ! in the end1 and end2 components of rdm_info.
+        ! the subsystem-A RDM bitstrings.
 
         ! Crucially, the mapping is performed so that, if there are two
         ! subsystems which are equivalent by symmetry, then equivalent sites in
@@ -506,6 +499,9 @@ contains
         ! In/Out:
         !    rdm_info: information about the RDM and subsystem for the RDM being
         !        considered.
+        ! Out:
+        !     rdm_f1: the bitstring for the first label of the RDM.
+        !     rdm_f2: the bitstring for the second label of the RDM.
 
         use basis_types, only: basis_t
         use dmqmc_data, only: rdm_t
@@ -514,12 +510,13 @@ contains
         integer(i0), intent(in) :: f(:)
         integer, intent(in) :: isym
         type(rdm_t), intent(inout) :: rdm_info
+        integer(i0), intent(out) :: rdm_f1(:), rdm_f2(:)
 
         integer :: i, bit_pos, bit_element
 
         ! Start from all bits down, so that we can flip bits up one by one.
-        rdm_info%end1 = 0_i0
-        rdm_info%end2 = 0_i0
+        rdm_f1 = 0_i0
+        rdm_f2 = 0_i0
 
         ! Loop over all the sites in the subsystem considered for the reduced
         ! density matrix.
@@ -531,11 +528,11 @@ contains
             ! If the spin is up, set the corresponding bit in the first
             ! bitstring.
             if (btest(f(rdm_info%bit_pos(i,isym,2)),rdm_info%bit_pos(i,isym,1))) &
-                rdm_info%end1(bit_element) = ibset(rdm_info%end1(bit_element),bit_pos)
+                rdm_f1(bit_element) = ibset(rdm_f1(bit_element),bit_pos)
             ! Similarly for the second index, by looking at the second end of
             ! the bitstring.
             if (btest(f(rdm_info%bit_pos(i,isym,2)+basis%string_len),rdm_info%bit_pos(i,isym,1))) &
-                rdm_info%end2(bit_element) = ibset(rdm_info%end2(bit_element),bit_pos)
+                rdm_f2(bit_element) = ibset(rdm_f2(bit_element),bit_pos)
         end do
 
     end subroutine decode_dm_bitstring
