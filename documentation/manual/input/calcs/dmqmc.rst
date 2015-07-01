@@ -31,9 +31,9 @@ not the desired behaviour.
     specific systems. In particular, DMQMC is only implemented for the Heisenberg model, the UEG,
     the real and momentum-space Hubbard model, and for molecular systems. The evaluation of operators
     other than the total energy, such as correlation functions and entanglement measures,
-    is currently only possible for the Heisenberg model.
-
-.. todo - note any options which are only implemented for certain systems.
+    is currently only possible for the Heisenberg model. The calculation of the reduced
+    density matrices from DMQMC is also only supported for the Heisenberg model (for both
+    temperature-dependent and ground state RDM calculations).
 
 Options
 -------
