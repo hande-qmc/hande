@@ -2,7 +2,7 @@ module fci_utils
 
 ! Utility/common procedures and data structures for FCI code.
 
-use dmqmc_data, only: rdm_t
+use dmqmc_data, only: subsys_t
 
 implicit none
 
@@ -27,7 +27,7 @@ type fci_in_t
     ! This stores information for the various RDMs that the user asks to be
     ! calculated. Each element of this array corresponds to one of these RDMs.
     ! NOTE: This can only be equal to 1 currently.
-    type(rdm_t), allocatable :: rdm_info(:)
+    type(subsys_t), allocatable :: subsys_info(:)
 
     ! blacs and scalapack split a matrix up into n x n blocks which are then
     ! distributed around the processors in a cyclic fashion.

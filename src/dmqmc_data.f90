@@ -30,17 +30,16 @@ end enum
 ! for DMQMC.
 integer, parameter :: num_dmqmc_operators = terminator - 1
 
-! This type contains information for the RDM corresponding to a given
-! subsystem. It takes translational symmetry into account by storing information
-! for all subsystems which are equivalent by translational symmetry.
-type rdm_t
+! This type contains information for a given subsystem. It takes translational
+! symmetry into account by storing information for all subsystems which are
+! equivalent by translational symmetry.
+type subsys_t
     ! The total number of sites in subsystem A.
     integer :: A_nsites
     ! Equivalent to string_len in basis_t, string_len is the length of the byte
-    ! array necessary to contain a bit for each subsystem-A basis function. An
-    ! array of twice this length is stored to hold both RDM indices.
+    ! array necessary to contain a bit for each subsystem-A basis function.
     integer :: string_len
-    ! The sites in subsystem A, as entered by the user.
+    ! The sites in subsystem A.
     integer, allocatable :: subsystem_A(:)
     ! B_masks(:,i) has bits set at all bit positions corresponding to sites in
     ! version i of subsystem B, where the different 'versions' correspond to
@@ -52,10 +51,11 @@ type rdm_t
     ! 'version' j of subsystem A.
     ! Note that site i in a given version is the site that corresponds to site i
     ! in all other versions of subsystem A (and so bit_pos(i,:,1) and
-    ! bit_pos(i,:,2) will not be sorted). This is very important so that
-    ! equivalent psips will contribute to the same RDM element.
+    ! bit_pos(i,:,2) will not be sorted). This is very important for
+    ! applications to reduced density matrices, so that equivalent psips will
+    ! contribute to the same RDM element.
     integer, allocatable :: bit_pos(:,:,:)
-end type rdm_t
+end type subsys_t
 
 type dmqmc_rdm_in_t
     ! The total number of rdms beings calculated (currently only applicable to
@@ -255,10 +255,11 @@ type dmqmc_estimates_t
 
     ! RDM data.
 
-    ! This stores information for the various RDMs that the user asks to be
-    ! calculated. Each element of this array corresponds to one of these RDMs.
-    ! This is not really an estimate, but we put it here to be pragmatic.
-    type(rdm_t), allocatable :: rdm_info(:) ! (nrdms)
+    ! This stores information about the various subsystems corresponding to the
+    ! RDMs being studied. Each element of this array corresponds to one of
+    ! these RDMs. This is not really an estimate, but we put it here to be
+    ! pragmatic.
+    type(subsys_t), allocatable :: subsys_info(:) ! (nrdms)
 
     ! Info about ground-state RDM estimates.
     type(dmqmc_ground_rdm_t) :: ground_rdm

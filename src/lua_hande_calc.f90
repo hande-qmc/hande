@@ -473,7 +473,7 @@ contains
 
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in)
-        call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, sys%system, dmqmc_in, dmqmc_estimates%rdm_info)
+        call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, sys%system, dmqmc_in, dmqmc_estimates%subsys_info)
 
         sys%basis%tensor_label_len = 2*sys%basis%string_len
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
@@ -575,10 +575,10 @@ contains
             if (aot_exists(lua_state, fci_table, 'rdm')) then
                 ! Currently restricted to one RDM in a single FCI calculation.
                 fci_nrdms = 1
-                allocate(fci_in%rdm_info(fci_nrdms), stat=err)
-                call check_allocate('fci_in%rdm_info', fci_nrdms, err)
-                call aot_get_val(fci_in%rdm_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state, fci_table, 'rdm')
-                fci_in%rdm_info(fci_nrdms)%A_nsites = size(fci_in%rdm_info(fci_nrdms)%subsystem_A)
+                allocate(fci_in%subsys_info(fci_nrdms), stat=err)
+                call check_allocate('fci_in%subsys_info', fci_nrdms, err)
+                call aot_get_val(fci_in%subsys_info(fci_nrdms)%subsystem_A, err_arr, basis%nbasis, lua_state, fci_table, 'rdm')
+                fci_in%subsys_info(fci_nrdms)%A_nsites = size(fci_in%subsys_info(fci_nrdms)%subsystem_A)
             end if
 
             call aot_table_close(lua_state, fci_table)
@@ -1089,7 +1089,7 @@ contains
 
     end subroutine read_ccmc_in
 
-    subroutine read_dmqmc_in(lua_state, nbasis, opts, system_name, dmqmc_in, rdm_info)
+    subroutine read_dmqmc_in(lua_state, nbasis, opts, system_name, dmqmc_in, subsys_info)
 
         ! Read in DMQMC-related input options from various tables to a dmqmc_in_t object.
 
@@ -1139,15 +1139,15 @@ contains
         !    system_name: system being studied.
         ! Out:
         !    dmqmc_in: dmqmc_in_t object containing DMQMC input options.
-        !    rdm_info: array of rdm_t objects containing the subsystem for each
-        !       RDM of interest.  Unallocated if no RDMs are specified.
+        !    subsys_info: array of subsys_t objects containing the subsystem
+        !       for each RDM of interest. Unallocated if no RDMs are specified.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_exists, aot_table_open, aot_table_close, aot_get_val, aot_table_length
         use aot_vector_module, only: aot_get_val
 
         use calc
-        use dmqmc_data, only: dmqmc_in_t, rdm_t, hartree_fock_dm, free_electron_dm
+        use dmqmc_data, only: dmqmc_in_t, subsys_t, hartree_fock_dm, free_electron_dm
         use checking, only: check_allocate
         use parallel, only: parent
         use errors, only: stop_all
@@ -1157,7 +1157,7 @@ contains
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: nbasis, opts, system_name
         type(dmqmc_in_t), intent(out) :: dmqmc_in
-        type(rdm_t), intent(out), allocatable :: rdm_info(:)
+        type(subsys_t), intent(out), allocatable :: subsys_info(:)
 
         integer :: table, subtable, err, i
         integer, allocatable :: err_arr(:)
@@ -1256,11 +1256,11 @@ contains
                 dmqmc_in%rdm%doing_rdm = .true.
                 call aot_table_open(lua_state, table, subtable, 'rdms')
                 dmqmc_in%rdm%nrdms = aot_table_length(lua_state, subtable)
-                allocate(rdm_info(dmqmc_in%rdm%nrdms), stat=err)
-                call check_allocate('rdm_info', dmqmc_in%rdm%nrdms, err)
+                allocate(subsys_info(dmqmc_in%rdm%nrdms), stat=err)
+                call check_allocate('subsys_info', dmqmc_in%rdm%nrdms, err)
                 do i = 1, dmqmc_in%rdm%nrdms
-                    call aot_get_val(rdm_info(i)%subsystem_A, err_arr, nbasis, lua_state, subtable, pos=i)
-                    rdm_info(i)%A_nsites = size(rdm_info(i)%subsystem_A)
+                    call aot_get_val(subsys_info(i)%subsystem_A, err_arr, nbasis, lua_state, subtable, pos=i)
+                    subsys_info(i)%A_nsites = size(subsys_info(i)%subsystem_A)
                 end do
             else
                 if (parent) call stop_all('read_dmqmc_in', 'rdms not specified in rdm table.')

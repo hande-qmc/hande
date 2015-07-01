@@ -1470,7 +1470,7 @@ contains
         !        will be added.
 
         use bit_utils, only: operator(.bitstrgt.)
-        use dmqmc_data, only: rdm_t, rdm_spawn_t
+        use dmqmc_data, only: rdm_spawn_t
         use errors, only: stop_all
         use parallel, only: iproc, nprocs, nthreads
         use hash_table, only: hash_table_pos_t, lookup_hash_table_entry
