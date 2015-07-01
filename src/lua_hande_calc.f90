@@ -740,6 +740,7 @@ contains
         !     initiator = true/false,
         !     initiator_threshold = pop,
         !     use_mpi_barriers = true/false,
+        !     vary_shift_from = shift or "proje",
         ! }
 
         ! In/Out:
@@ -769,12 +770,12 @@ contains
         character(len=10) :: str
         logical :: skip, no_renorm
 
-        character(19), parameter :: keys(19) = [character(19) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(19), parameter :: keys(21) = [character(19) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'pattempt_single', 'pattempt_double', 'initial_shift', &
                                                                  'shift_damping', 'initiator', 'initiator_threshold', &
-                                                                 'use_mpi_barriers']
+                                                                 'use_mpi_barriers', 'vary_shift_from', 'excit_gen']
 
         if (present(short)) then
             skip = short

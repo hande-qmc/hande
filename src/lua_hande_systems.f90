@@ -389,8 +389,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'finite', 'ms']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'finite', 'ms', 'sym']
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
 
