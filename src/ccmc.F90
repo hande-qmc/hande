@@ -360,7 +360,7 @@ contains
         end if
 
         ! check input options
-        call check_qmc_opts(qmc_in, .false.)
+        if (parent) call check_qmc_opts(qmc_in, .false.)
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)

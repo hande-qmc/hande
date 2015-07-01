@@ -43,7 +43,7 @@ contains
         real(p), allocatable :: hamil(:,:)
         type(csrp_t) :: hamil_csr
 
-        call check_fci_opts(sys, fci_in, .true.)
+        if (parent) call check_fci_opts(sys, fci_in, .true.)
 
         call copy_sys_spin_info(sys, sys_bak)
         call copy_reference_t(ref_in, ref)

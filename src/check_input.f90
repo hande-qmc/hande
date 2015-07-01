@@ -28,7 +28,7 @@ contains
             if (sys%nel <= 0) call stop_all(this,'Number of electrons must be positive.')
         end if
 
-        if (sys%system /= ueg .and. sys%system /= read_in) then
+        if (sys%system /= ueg .and. sys%system /= read_in .and. sys%system /= ringium) then
             if (.not.(allocated(sys%lattice%lattice))) call stop_all(this, 'Lattice vectors not provided')
             do ivec = 1, sys%lattice%ndim
                 do jvec = ivec+1, sys%lattice%ndim
@@ -56,6 +56,9 @@ contains
         if (sys%momentum_space .or. sys%system == read_in) then
             if (sys%real_lattice%finite_cluster) call stop_all(this,'"finite" keyword only valid for calculations in real-space.')
         end if
+        
+        if (sys%system == ringium .and. sys%ringium%radius < depsilon) call stop_all(this, 'Ringium must have a positive radius.')
+
 
     end subroutine check_sys
 

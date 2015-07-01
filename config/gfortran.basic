@@ -1,5 +1,5 @@
 [DEFAULT]
-include_f = -I $${HDF5_ROOT-/usr}/include
+include_c = -I ${HOME}/local/include
 
 [main]
 fc = gfortran
@@ -7,16 +7,16 @@ cc = gcc
 cxx = g++
 cppflags = -DDISABLE_HDF5 -DDISABLE_LANCZOS -DDISABLE_UUID
 ld = gfortran
-ldflags = -L ${HOME}/lib
-libs = -lstdc++ -lz -llapack -lblas 
+ldflags = -L ${HOME}/local/lib
+libs = -llapack -lblas -llua -ldl
 f90_module_flag = -J
 
 [opt]
-fflags = %(include_f)s -O3
-cflags = -O3
+fflags = -O3
+cflags = %(include_c)s -O3
 cxxflags = -O3
 
 [dbg]
-fflags = %(include_f)s -g -fbounds-check -Wall -Wextra -fbacktrace
-cflags = -g -Wall -Wextra -fbacktrace
+fflags = -g -fbounds-check -Wall -Wextra -fbacktrace
+cflags = %(include_c)s -g -Wall -Wextra -fbacktrace
 cxxflags = -g -Wall -Wextra -fbacktrace

@@ -42,7 +42,7 @@ contains
         integer :: ndets, ierr, i, rdm_size
         type(blacs_info) :: proc_blacs_info
 
-        call check_fci_opts(sys, fci_in, .false.)
+        if (parent) call check_fci_opts(sys, fci_in, .false.)
 
         call copy_sys_spin_info(sys, sys_bak)
         call copy_reference_t(ref_in, ref)

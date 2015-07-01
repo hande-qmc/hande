@@ -99,10 +99,12 @@ contains
             write (6,'(1X,"------",/)')
         end if
 
-        ! Check input options
-        call check_qmc_opts(qmc_in, .false.)
-        call check_fciqmc_opts(sys, fciqmc_in)
-        call check_load_bal_opts(load_bal_in)
+        if (parent) then
+            ! Check input options
+            call check_qmc_opts(qmc_in, .false.)
+            call check_fciqmc_opts(sys, fciqmc_in)
+            call check_load_bal_opts(load_bal_in)
+        end if
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, fciqmc_in=fciqmc_in)

@@ -84,8 +84,10 @@ contains
             write (6,'(1X,"-----",/)')
         end if
 
-        call check_qmc_opts(qmc_in, .false.)
-        call check_dmqmc_opts(sys, dmqmc_in)
+        if (parent) then
+            call check_qmc_opts(qmc_in, .false.)
+            call check_dmqmc_opts(sys, dmqmc_in)
+        end if
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in)
