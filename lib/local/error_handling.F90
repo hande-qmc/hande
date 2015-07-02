@@ -13,6 +13,8 @@ contains
         !    sub_name:  calling subroutine name.
         !    error_msg: error message.
 
+        use, intrinsic :: iso_fortran_env, only: error_unit
+
 #ifdef PARALLEL
         use mpi
 #endif
@@ -27,12 +29,12 @@ contains
         integer :: ierr
 #endif
 
-        write (6,'(/a7)') 'ERROR.'
-        write (6,'(1X,a)') 'HANDE stops in subroutine: '//adjustl(sub_name)//'.'
-        write (6,'(a9,a)') 'Reason: ',adjustl(error_msg)
-        write (6,'(1X,a10)') 'EXITING...'
+        write (error_unit,'(/a7)') 'ERROR.'
+        write (error_unit,'(1X,a)') 'HANDE stops in subroutine: '//adjustl(sub_name)//'.'
+        write (error_unit,'(a9,a)') 'Reason: ',adjustl(error_msg)
+        write (error_unit,'(1X,a10)') 'EXITING...'
 
-        flush(6)
+        flush(error_unit)
 
         ! Abort all processors.
         ! error code is given to mpi_abort which (apparently) returns it to the invoking environment.
@@ -59,12 +61,14 @@ contains
         !        line is only printed after the warning message.  No blank lines
         !        are printed for any other value.
 
+        use, intrinsic :: iso_fortran_env, only: error_unit
+
         character(*), intent(in) :: sub_name,error_msg
         integer, optional :: blank_lines
 
         call write_blank(1)
-        write (6,'(1X,a)') 'WARNING: error in '//adjustl(sub_name)//'.'
-        write (6,'(1X,a)') adjustl(error_msg)
+        write (error_unit,'(1X,a)') 'WARNING: error in '//adjustl(sub_name)//'.'
+        write (error_unit,'(1X,a)') adjustl(error_msg)
         call write_blank(2)
 
         return
@@ -77,12 +81,12 @@ contains
 
                 if (present(blank_lines)) then
                     if (blank_lines == 0) then
-                        write (6,'()')
+                        write (error_unit,'()')
                     else if (blank_lines == point) then
-                        write (6,'()')
+                        write (error_unit,'()')
                     end if
                 else
-                    write (6,'()')
+                    write (error_unit,'()')
                 end if
 
             end subroutine write_blank
