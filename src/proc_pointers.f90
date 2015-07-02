@@ -160,6 +160,15 @@ abstract interface
         real(p), intent(inout) :: hmatel
     end subroutine i_trial_fn
 
+    pure function i_operator(sys, f1, f2, connection) result (opmatel)
+        use system, only: sys_t
+        import :: det_info_t, excit_t, i0, p
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f1, f2
+        type(excit_t), intent(in) :: connection
+        real(p) :: opmatel
+    end function i_operator
+
     ! generic procedures...
     subroutine i_sub()
     end subroutine i_sub
