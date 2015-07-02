@@ -42,11 +42,12 @@ None.
     # The keys hold the names to be output and the values hold the possible
     # columns names in the means and covariances DataFrames.
     observables = dict([
-        ('Tr[Hp]/Tr[p]','\\sum\\rho_{ij}H_{ji}'), 
+        ('Tr[Hp]/Tr[p]','\\sum\\rho_{ij}H_{ji}'),
         ('Tr[H2p]/Tr[p]','\\sum\\rho_{ij}H2{ji}'),
         ('Tr[Sp]/Tr[p]','\\sum\\rho_{ij}S_{ji}'),
         ('Tr[Mp]/Tr[p]','\\sum\\rho_{ij}M2{ji}'),
         ('Tr[Tp]/Tr[p]','\\sum\\rho_{ij}T_{ji}'),
+        ('Tr[H0p]/Tr[p]','\\sum\\rho_{ij}H0{ji}'),
     ])
 
     # DataFrame to hold the final mean and error estimates.

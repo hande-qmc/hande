@@ -366,17 +366,18 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2, dmqmc_kinetic_energy
+        use calc, only: dmqmc_H0_energy
         use excitations, only: get_excitation, excit_t
         use fciqmc_data, only: real_factor
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
-        use proc_pointers, only: update_dmqmc_kinetic_energy_ptr
+        use proc_pointers, only: update_dmqmc_kinetic_energy_ptr, update_dmqmc_H0_energy_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
         use qmc_data, only: reference_t, particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind, &
                               correlation_fn_ind, staggered_mag_ind, full_r2_ind, dmqmc_weighted_sampling_t, &
-                              kinetic_ind
+                              kinetic_ind, H0_ind
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -428,6 +429,9 @@ contains
                 ! Kinetic energy.
                 if (doing_dmqmc_calc(dmqmc_kinetic_energy)) call update_dmqmc_kinetic_energy_ptr&
                     &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(kinetic_ind))
+                ! H^0 energy, where H = H^0 + V.
+                if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy_ptr&
+                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(H0_ind))
                 ! Excitation distribution.
                 if (dmqmc_in%calc_excit_dist) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
@@ -1354,5 +1358,38 @@ contains
         if (excitation%nexcit == 0) kinetic_energy = kinetic_energy + pop*kinetic_diag_ptr(sys, cdet%f)
 
     end subroutine dmqmc_kinetic_energy_diag
+
+    subroutine dmqmc_H0_energy_diag(sys, cdet, excitation, H00, pop, H0_energy)
+
+        ! Add the contribution for the current density matrix element to the thermal
+        ! zeroth-order Hamiltonian (H^0) energy estimate used.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !       element under consideration.
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    H00: diagonal Hamiltonian element for the reference.
+        !    pop: number of particles on the current density matrix
+        !        element.
+        ! In/Out:
+        !    H0_energy: current thermal kinetic energy estimate.
+
+        use determinants, only: det_info_t
+        use system, only: sys_t
+        use excitations, only: excit_t
+        use proc_pointers, only: trial_dm_ptr
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: excitation
+        real(p), intent(in) :: H00, pop
+        real(p), intent(inout) :: H0_energy
+
+        if (excitation%nexcit == 0) H0_energy = H0_energy + pop*trial_dm_ptr(sys, cdet%f)
+
+    end subroutine dmqmc_H0_energy_diag
 
 end module dmqmc_estimators

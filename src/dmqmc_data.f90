@@ -14,6 +14,7 @@ enum, bind(c)
     enumerator :: staggered_mag_ind
     enumerator :: full_r2_ind
     enumerator :: kinetic_ind
+    enumerator :: H0_ind
     enumerator :: terminator ! unused except in num_dmqmc_operators
    ! NOTE: if you add a new estimator then you must insert it before terminator.
 end enum
