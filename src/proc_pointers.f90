@@ -183,10 +183,12 @@ procedure(i_update_proj_hfs), pointer :: update_proj_hfs_ptr => null()
 procedure(i_update_dmqmc_energy_and_trace), pointer :: update_dmqmc_energy_and_trace_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_kinetic_energy_ptr => null()
 procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlation_ptr => null()
 
 procedure(i_sc0), pointer :: sc0_ptr => null()
 procedure(i_sc0), pointer :: op0_ptr => null()
+procedure(i_sc0), pointer :: kinetic_diag_ptr => null()
 procedure(i_sc0), pointer :: trial_dm_ptr => null()
 procedure(i_ediff), pointer :: energy_diff_ptr => null()
 

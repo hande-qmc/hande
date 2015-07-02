@@ -46,6 +46,7 @@ None.
         ('Tr[H2p]/Tr[p]','\\sum\\rho_{ij}H2{ji}'),
         ('Tr[Sp]/Tr[p]','\\sum\\rho_{ij}S_{ji}'),
         ('Tr[Mp]/Tr[p]','\\sum\\rho_{ij}M2{ji}'),
+        ('Tr[Tp]/Tr[p]','\\sum\\rho_{ij}T_{ji}'),
     ])
 
     # DataFrame to hold the final mean and error estimates.

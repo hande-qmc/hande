@@ -63,6 +63,7 @@ integer, parameter :: dmqmc_energy_squared = 2**2
 integer, parameter :: dmqmc_correlation = 2**3
 integer, parameter :: dmqmc_rdm_r2 = 2**4
 integer, parameter :: dmqmc_full_r2 = 2**5
+integer, parameter :: dmqmc_kinetic_energy = 2**6
 
 !--- global data (to deal with in HANDE 1.1)
 

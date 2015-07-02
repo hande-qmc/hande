@@ -556,7 +556,8 @@ contains
 
         ! System and calculation data
         use calc, only: doing_calc, doing_dmqmc_calc, dmqmc_calc, hfs_fciqmc_calc, &
-                        ras, dmqmc_correlation, dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
+                        ras, dmqmc_correlation, dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation, &
+                        dmqmc_kinetic_energy
         use hfs_data
         use system
         use parallel, only: parent
@@ -824,6 +825,10 @@ contains
                     else
                         trial_dm_ptr => slater_condon0_ueg
                     end if
+                end if
+                if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
+                    kinetic_diag_ptr => kinetic_energy_ueg
+                    update_dmqmc_kinetic_energy_ptr => dmqmc_kinetic_energy_diag
                 end if
             case(hub_k)
                 if (dmqmc_in%propagate_to_beta) then
