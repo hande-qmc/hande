@@ -115,8 +115,8 @@ contains
         end select
 
         if (parent) then
-            write (6,'(1X,a67)') 'E_0: Estimate for thermal total energy from single-particle eigenvalues i.e. 1/Z_0 Tr(\rho_0 H_0).'
-            write (6,'(1X,a65)') 'E_HF0: Estimate for Hartree-Fock-0 energy i.e. 1/Z_0 Tr(\rho_0 H).'
+            write (6,'(1X,a90)') 'E_0: Estimate for total energy from single-particle Hamiltonian i.e. 1/Z_0 Tr(\rho_0 H_0).'
+            write (6,'(1X,a66)') 'E_HF0: Estimate for Hartree-Fock-0 energy i.e. 1/Z_0 Tr(\rho_0 H).'
             write (6,'(1X,a91)') '\sum\rho_HF_{ii}H_{ii}: Estimate for numerator of "Hartree-Fock" energy i.e. Tr(\rho_HF H).'
             write (6,'(1X,a77)') '\sum\rho_HF_{ii}: Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.'
             write (6,'()')
