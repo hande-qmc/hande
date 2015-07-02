@@ -47,6 +47,7 @@ None.
         ('Tr[Sp]/Tr[p]','\\sum\\rho_{ij}S_{ji}'),
         ('Tr[Mp]/Tr[p]','\\sum\\rho_{ij}M2{ji}'),
         ('Tr[Tp]/Tr[p]','\\sum\\rho_{ij}T_{ji}'),
+        ('Tr[Up]/Tr[p]','\\sum\\rho_{ij}U_{ji}'),
         ('Tr[H0p]/Tr[p]','\\sum\\rho_{ij}H0{ji}'),
     ])
 

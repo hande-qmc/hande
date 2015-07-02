@@ -164,7 +164,7 @@ abstract interface
         use system, only: sys_t
         import :: det_info_t, excit_t, i0, p
         type(sys_t), intent(in) :: sys
-        integer(i0), intent(in) :: f1, f2
+        integer(i0), intent(in) :: f1(:), f2(:)
         type(excit_t), intent(in) :: connection
         real(p) :: opmatel
     end function i_operator
@@ -185,6 +185,7 @@ procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_energy_squared_ptr
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_stag_mag_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_kinetic_energy_ptr => null()
 procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_H0_energy_ptr => null()
+procedure(i_update_dmqmc_estimators), pointer :: update_dmqmc_potential_energy_ptr => null()
 procedure(i_update_dmqmc_correlation_function), pointer :: update_dmqmc_correlation_ptr => null()
 
 procedure(i_sc0), pointer :: sc0_ptr => null()
@@ -192,6 +193,8 @@ procedure(i_sc0), pointer :: op0_ptr => null()
 procedure(i_sc0), pointer :: kinetic_diag_ptr => null()
 procedure(i_sc0), pointer :: trial_dm_ptr => null()
 procedure(i_ediff), pointer :: energy_diff_ptr => null()
+
+procedure(i_operator), pointer :: potential_energy_ptr => null()
 
 procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 

@@ -1144,6 +1144,7 @@ contains
         !     excit_dist_start = iteration,
         !     kinetic_energy = true/false,
         !     H0_energy = true/false,
+        !     potential_energy = true/false,
         ! }
         ! rdm = {
         !     spawned_state_size = X,
@@ -1196,8 +1197,9 @@ contains
                                                                       'vary_weights']
         character(30), parameter :: ip_keys(4)    = [character(30) :: 'initial_beta', 'initial_matrix',                          &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts']
-        character(30), parameter :: op_keys(8)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
-                                                                      'correlation', 'excit_dist', 'kinetic_energy', 'H0_energy']
+        character(30), parameter :: op_keys(9)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
+                                                                      'correlation', 'excit_dist', 'kinetic_energy',             &
+                                                                      'H0_energy', 'potential_energy']
         character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',              &
                                                                       'ground_rdm_start', 'instantaneous', 'write',              &
                                                                       'concurrence', 'von_neumann', 'renyi2']
@@ -1266,6 +1268,8 @@ contains
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_kinetic_energy
             call aot_get_val(op, err, lua_state, table, 'H0_energy', default=.false.)
             if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_H0_energy
+            call aot_get_val(op, err, lua_state, table, 'potential_energy', default=.false.)
+            if (op) dmqmc_calc_type = dmqmc_calc_type + dmqmc_potential_energy
             if (aot_exists(lua_state, table, 'correlation')) then
                 dmqmc_calc_type = dmqmc_calc_type + dmqmc_correlation
                 call aot_get_val(dmqmc_in%correlation_sites, err_arr, nbasis, lua_state, table, 'correlation')
