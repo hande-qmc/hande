@@ -75,18 +75,18 @@ contains
         end if
 
         ! If requested, calculate and print eigenvalues for an RDM.
-        if (allocated(fci_in%rdm_info)) then
+        if (allocated(fci_in%subsys_info)) then
             if (nprocs > 1) then
                 if (parent) call warning('diagonalise','RDM eigenvalue calculation is only implemented in serial. Skipping.',3)
             else if (sys%system /= heisenberg) then
                 if (parent) call warning('diagonalise','RDM calculations are only implemented for Heisenberg systems. Skipping.',3)
             else
                 write(6,'(1x,a46)') "Performing reduced density matrix calculation."
-                call setup_rdm_arrays(sys, .false., fci_in%rdm_info, rdm)
+                call setup_rdm_arrays(sys, .false., fci_in%subsys_info, rdm)
                 rdm_size = size(rdm, 1)
                 allocate(rdm_eigv(rdm_size), stat=ierr)
                 call check_allocate('rdm_eigv',rdm_size,ierr)
-                call get_rdm_eigenvalues(sys%basis, fci_in%rdm_info, ndets, dets, hamil, rdm, rdm_eigv)
+                call get_rdm_eigenvalues(sys%basis, fci_in%subsys_info, ndets, dets, hamil, rdm, rdm_eigv)
 
                 write (6,'(1X,"RDM eigenvalues")')
                 write (6,'(1X,"^^^^^^^^^^^^^^^",/)')
@@ -148,7 +148,7 @@ contains
         end if
 
         if (fci_in%analyse_fci_wfn /= 0 .or. fci_in%print_fci_wfn /= 0 &
-                    .or. allocated(fci_in%rdm_info)) then
+                    .or. allocated(fci_in%subsys_info)) then
             job = 'V'
         else
             job = 'N'
@@ -241,11 +241,11 @@ contains
 
     end subroutine lapack_diagonalisation
 
-    subroutine get_rdm_eigenvalues(basis, rdm_info, ndets, dets, eigvec, rdm, rdm_eigv)
+    subroutine get_rdm_eigenvalues(basis, subsys_info, ndets, dets, eigvec, rdm, rdm_eigv)
 
         ! Take an FCI ground-state wave function (eigvec) and use it to
-        ! calculate and return the RDM eigenvalues, for the RDM specified by
-        ! rdm_info.
+        ! calculate and return the RDM eigenvalues, for the RDM and subsystem
+        ! specified by subsys_info.
 
         ! In:
         !    basis: type containing information about the basis set.
@@ -254,7 +254,7 @@ contains
         !        representation).
         !    eigvec: the eigenvector from which the RDM is to be calculated.
         ! In/Out:
-        !    rdm_info: information about the subsystem for the RDM to be
+        !    subsys_info: information about the subsystem for the RDM to be
         !        calculated.
         ! Out:
         !    rdm: space for the RDM to be accumulated. The array passed in
@@ -264,11 +264,11 @@ contains
 
         use basis_types, only: basis_t
         use checking, only: check_allocate, check_deallocate
-        use dmqmc_data, only: rdm_t
+        use dmqmc_data, only: subsys_t
         use dmqmc_procedures, only: decode_dm_bitstring
 
         type(basis_t), intent(in) :: basis
-        type(rdm_t), intent(inout) :: rdm_info(:)
+        type(subsys_t), intent(inout) :: subsys_info(:)
         integer, intent(in) :: ndets
         integer(i0), intent(in) :: dets(:,:)
         real(p), intent(in) :: eigvec(:,:)
@@ -278,7 +278,7 @@ contains
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(2*basis%string_len)
         integer :: i, j, rdm_size, info, ierr, lwork
-        integer(i0) :: end1, end2
+        integer(i0) :: rdm_f1(subsys_info(1)%string_len), rdm_f2(subsys_info(1)%string_len)
         real(p), allocatable :: work(:)
         real(p) :: rdm_element
 
@@ -287,8 +287,8 @@ contains
         ! Loop over all elements of the density matrix and add all contributing elements to the RDM.
         do i = 1, ndets
             do j = 1, ndets
-                f1 = iand(rdm_info(1)%B_masks(:,1),dets(:,i))
-                f2 = iand(rdm_info(1)%B_masks(:,1),dets(:,j))
+                f1 = iand(subsys_info(1)%B_masks(:,1),dets(:,i))
+                f2 = iand(subsys_info(1)%B_masks(:,1),dets(:,j))
                 ! If the two bitstrings are the same after bits corresponding to subsystem B have
                 ! been unset, then these two bitstrings contribute to the RDM.
                 if (sum(abs(f1-f2)) == 0) then
@@ -297,15 +297,14 @@ contains
                     f3(basis%string_len+1:basis%string_len*2) = dets(:,j)
 
                     ! Get the position in the RDM of this density matrix element.
-                    call decode_dm_bitstring(basis, f3, 1, rdm_info(1))
-                    rdm_info(1)%end1 = rdm_info(1)%end1 + 1
-                    rdm_info(1)%end2 = rdm_info(1)%end2 + 1
+                    call decode_dm_bitstring(basis, f3, 1, subsys_info(1), rdm_f1, rdm_f2)
+                    rdm_f1 = rdm_f1 + 1
+                    rdm_f2 = rdm_f2 + 1
 
                     ! The ground state wave function is stored in eigvec(:,1).
                     rdm_element = eigvec(i,1)*eigvec(j,1)
                     ! Finally add in the contribution from this density matrix element.
-                    rdm(rdm_info(1)%end1(1),rdm_info(1)%end2(1)) = &
-                        rdm(rdm_info(1)%end1(1),rdm_info(1)%end2(1)) + rdm_element
+                    rdm(rdm_f1(1),rdm_f2(1)) = rdm(rdm_f1(1),rdm_f2(1)) + rdm_element
                 end if
             end do
         end do

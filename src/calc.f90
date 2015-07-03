@@ -2,7 +2,6 @@ module calc
 
 use const
 use csr, only: csrp_t
-use dmqmc_data, only: rdm_t
 use parallel, only: blacs_info
 
 implicit none
