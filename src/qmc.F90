@@ -826,16 +826,13 @@ contains
                         trial_dm_ptr => slater_condon0_ueg
                     end if
                 end if
-                if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
-                    kinetic_diag_ptr => kinetic_energy_ueg
-                    update_dmqmc_kinetic_energy_ptr => dmqmc_kinetic_energy_diag
-                end if
-                if (doing_dmqmc_calc(dmqmc_H0_energy)) &
-                                    update_dmqmc_H0_energy_ptr => dmqmc_H0_energy_diag
-                if (doing_dmqmc_calc(dmqmc_potential_energy)) then
-                    potential_energy_ptr => potential_energy_ueg
-                    update_dmqmc_potential_energy_ptr => calculate_dmqmc_potential_energy
-                end if
+                    if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
+                        kinetic_diag_ptr => kinetic_energy_ueg
+                        update_dmqmc_kinetic_energy_ptr => dmqmc_kinetic_energy_diag
+                    end if
+                    if (doing_dmqmc_calc(dmqmc_potential_energy)) then
+                        potential_energy_ptr => potential_energy_ueg
+                    end if
             case(hub_k)
                 if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then

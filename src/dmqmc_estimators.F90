@@ -78,7 +78,7 @@ contains
         nelems(nspawned_ind) = 1
         nelems(nparticles_ind) = psip_list%nspaces
         nelems(trace_ind) = psip_list%nspaces
-        nelems(operators_ind) = num_dmqmc_operators 
+        nelems(operators_ind) = num_dmqmc_operators
         nelems(excit_dist_ind) = max_num_excits + 1
         nelems(ground_rdm_trace_ind) = 1
         nelems(inst_rdm_trace_ind) = psip_list%nspaces*dmqmc_estimates%inst_rdm%nrdms
@@ -371,8 +371,7 @@ contains
         use fciqmc_data, only: real_factor
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
-        use proc_pointers, only: update_dmqmc_kinetic_energy_ptr, update_dmqmc_H0_energy_ptr
-        use proc_pointers, only: update_dmqmc_potential_energy_ptr
+        use proc_pointers, only: update_dmqmc_kinetic_energy_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
         use qmc_data, only: reference_t, particle_t
@@ -431,11 +430,11 @@ contains
                 if (doing_dmqmc_calc(dmqmc_kinetic_energy)) call update_dmqmc_kinetic_energy_ptr&
                     &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(kinetic_ind))
                 ! Potential energy.
-                if (doing_dmqmc_calc(dmqmc_potential_energy)) call update_dmqmc_potential_energy_ptr&
-                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(potential_ind))
+                if (doing_dmqmc_calc(dmqmc_potential_energy)) call update_dmqmc_potential_energy&
+                    &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(potential_ind))
                 ! H^0 energy, where H = H^0 + V.
-                if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy_ptr&
-                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(H0_ind))
+                if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy&
+                    &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
                 ! Excitation distribution.
                 if (dmqmc_in%calc_excit_dist) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
@@ -1364,7 +1363,7 @@ contains
 
     end subroutine dmqmc_kinetic_energy_diag
 
-    subroutine dmqmc_H0_energy_diag(sys, cdet, excitation, H00, pop, H0_energy)
+    subroutine update_dmqmc_H0_energy(sys, cdet, excitation, pop, H0_energy)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! zeroth-order Hamiltonian (H^0) energy estimate used.
@@ -1376,8 +1375,6 @@ contains
         !    excitation: excit_t type variable which stores information on
         !        the excitation between the two bitstring ends, corresponding
         !        to the two labels for the density matrix element.
-        !    H00: diagonal hamiltonian element for the reference. only for
-        !       interface consistency, not used.
         !    pop: number of particles on the current density matrix
         !        element.
         ! In/Out:
@@ -1391,14 +1388,14 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: H00, pop
+        real(p), intent(in) :: pop
         real(p), intent(inout) :: H0_energy
 
         if (excitation%nexcit == 0) H0_energy = H0_energy + pop*trial_dm_ptr(sys, cdet%f)
 
-    end subroutine dmqmc_H0_energy_diag
+    end subroutine update_dmqmc_H0_energy
 
-    subroutine calculate_dmqmc_potential_energy(sys, cdet, excitation, H00, pop, potential_energy)
+    subroutine update_dmqmc_potential_energy(sys, cdet, excitation, pop, potential_energy)
 
         ! Add the contribution for the current density matrix element to the thermal
         ! estimate for the (electronic) potential energy.
@@ -1410,8 +1407,6 @@ contains
         !    excitation: excit_t type variable which stores information on
         !        the excitation between the two bitstring ends, corresponding
         !        to the two labels for the density matrix element.
-        !    H00: diagonal hamiltonian element for the reference. only for
-        !       interface consistency, not used.
         !    pop: number of particles on the current density matrix
         !        element.
         ! In/Out:
@@ -1425,11 +1420,11 @@ contains
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(in) :: excitation
-        real(p), intent(in) :: H00, pop
+        real(p), intent(in) :: pop
         real(p), intent(inout) :: potential_energy
 
         potential_energy = potential_energy + pop*potential_energy_ptr(sys, cdet%f, cdet%f2, excitation)
 
-    end subroutine calculate_dmqmc_potential_energy
+    end subroutine update_dmqmc_potential_energy
 
 end module dmqmc_estimators
