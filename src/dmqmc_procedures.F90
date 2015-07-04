@@ -651,7 +651,7 @@ contains
 
         integer, intent(in) :: max_number_excitations
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
-        real(p), intent(inout) :: excit_dist(:)
+        real(p), intent(inout) :: excit_dist(0:)
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
         integer :: i, ierr
