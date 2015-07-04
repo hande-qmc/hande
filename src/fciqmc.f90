@@ -100,7 +100,7 @@ contains
         end if
 
         if (parent) then
-            ! Check input options
+            ! Check input options.
             call check_qmc_opts(qmc_in, .false.)
             call check_fciqmc_opts(sys, fciqmc_in)
             call check_load_bal_opts(load_bal_in)

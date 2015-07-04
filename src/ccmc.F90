@@ -359,7 +359,7 @@ contains
             write (6,'(1X,"----",/)')
         end if
 
-        ! check input options
+        ! Check input options.
         if (parent) call check_qmc_opts(qmc_in, .false.)
 
         ! Initialise data.

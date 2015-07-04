@@ -13,7 +13,7 @@ contains
         ! make sure a few things are not completely insane.
 
         ! In:
-        !    sys: system object, as set in read_input
+        !    sys: system object, as set in read_input.
 
         use system
 
@@ -67,8 +67,8 @@ contains
         ! Check the FCIQMC specific options.
 
         ! In:
-        !   sys: system being studied
-        !   fciqmc_in: FCIQMC input options
+        !   sys: system being studied.
+        !   fciqmc_in: FCIQMC input options.
 
         use qmc_data, only: fciqmc_in_t, single_basis, no_guiding, neel_singlet_guiding, neel_singlet
         use system, only: sys_t, heisenberg
@@ -103,7 +103,7 @@ contains
         ! Check options common to QMC methods.
 
         ! In:
-        !   qmc_in: QMC input options
+        !   qmc_in: QMC input options.
         !   simple_fciqmc: true if using the simple FCIQMC algorithm.
 
         use qmc_data, only: qmc_in_t
@@ -126,11 +126,11 @@ contains
 
     subroutine check_fci_opts(sys, fci_in, lanczos)
 
-        ! Check the input options provided in the fci table
+        ! Check the input options provided in the fci table.
 
         ! In:
-        !   sys: system being studied
-        !   fci_in: Input options for FCI
+        !   sys: system being studied.
+        !   fci_in: input options for FCI.
         !   lanczos: is this a lanczos or full diagonalisation?
 
         use fci_utils, only: fci_in_t
@@ -159,10 +159,10 @@ contains
 
     subroutine check_load_bal_opts(load_bal_in)
 
-        ! Check load balancing input options
+        ! Check load balancing input options.
 
         ! In:
-        !   load_bal_in: load balancing options
+        !   load_bal_in: load balancing options.
 
         use qmc_data, only: load_bal_in_t
 
@@ -182,15 +182,16 @@ contains
 
     subroutine check_dmqmc_opts(sys, dmqmc_in)
 
-        ! Check validity of dmqmc input options
+        ! Check validity of dmqmc input options.
 
         ! In:
-        !   sys: system being studied
-        !   dmqmc_in: DMQMC options
+        !   sys: system being studied.
+        !   dmqmc_in: DMQMC options.
 
         use system, only: sys_t, heisenberg
         use dmqmc_data, only: dmqmc_in_t
-        use calc, only: dmqmc_calc_type, dmqmc_energy, dmqmc_rdm_r2, dmqmc_staggered_magnetisation, doing_dmqmc_calc
+        use calc, only: dmqmc_calc_type, dmqmc_energy, dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
+        use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
 
         use errors, only: stop_all
         use const, only: depsilon
@@ -202,14 +203,18 @@ contains
 
         if (dmqmc_in%rdm%calc_inst_rdm .and. dmqmc_in%rdm%spawned_length == 0) call stop_all(this,'Spawned RDM length zero.')
 
-        if (sys%system == heisenberg) then
-            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) then
-                call stop_all(this,'Staggered magnetisation can only be calculated on a bipartite lattice.')
-            end if
-        else if (dmqmc_calc_type /= dmqmc_energy) then
-            if (dmqmc_in%all_spin_sectors) call stop_all(this, &
-                'The option to use all symmetry sectors at the same time is only available for the Heisenberg model.')
-            call stop_all(this, 'The observable requested is not currently implemented for this Hamiltonian.')
+        if (doing_dmqmc_calc(dmqmc_staggered_magnetisation) .and. (.not.sys%lattice%bipartite_lattice)) &
+            call stop_all(this,'Staggered magnetisation calculation is only supported on a bipartite lattice.')
+
+        if (.not. sys%system == heisenberg) then
+            if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) &
+                call stop_all(this,'The staggered magnetisation operator is not supported for this system.')
+            if (doing_dmqmc_calc(dmqmc_energy_squared)) &
+                call stop_all(this,'The energy squared operator is not supported for this system.')
+            if (doing_dmqmc_calc(dmqmc_correlation)) &
+                call stop_all(this,'The correlation function operator is not supported for this system.')
+            if (dmqmc_in%rdm%calc_ground_rdm .or. dmqmc_in%rdm%calc_inst_rdm) &
+                call stop_all(this,'The calculation of reduced density matrices is not supported for this system.')
         end if
 
         if (allocated(dmqmc_in%correlation_sites)) then
@@ -224,18 +229,21 @@ contains
             call stop_all(this, 'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
         if (doing_dmqmc_calc(dmqmc_rdm_r2) .and. (.not. dmqmc_in%rdm%calc_inst_rdm)) &
             call stop_all(this, 'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
+        if (doing_dmqmc_calc(dmqmc_full_r2) .and. (.not. dmqmc_in%replica_tricks)) &
+            call stop_all(this, 'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
 
         if (dmqmc_in%all_spin_sectors) then
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
                 abs(sys%heisenberg%staggered_magnetic_field) > depsilon) &
-                call stop_all(this, 'The use_all_spin_sectors option cannot be used with magnetic fields.')
+                call stop_all(this, 'The use of all spin sectors simultaneously is not supported with magnetic fields.')
             if (dmqmc_in%rdm%calc_ground_rdm) &
-                call stop_all(this, 'The use_all_spin_sectors and ground_state_rdm options cannot be used together.')
+                call stop_all(this, 'The use of all spin sectors simultaneously is not supported with ground-state RDMs.')
         end if
 
         if (dmqmc_in%vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
             call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
+
     end subroutine check_dmqmc_opts
 
 end module check_input
