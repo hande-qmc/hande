@@ -67,7 +67,7 @@ contains
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
         logical :: soft_exit, write_restart_shift, update_tau
-        logical :: error, rdm_error
+        logical :: error, rdm_error, attempt_spawning
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
@@ -192,10 +192,13 @@ contains
                                                          qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error)
                         end if
 
+                        ! Only attempt spawning if a valid connection exists.
+                        attempt_spawning = connection_exists(sys)
+
                         do ireplica = 1, qs%psip_list%nspaces
 
                             ! Only attempt spawning if a valid excitation exists.
-                            if (connection_exists(sys)) then
+                            if (attempt_spawning) then
                                 nattempts_current_det = decide_nattempts(rng, real_population(ireplica))
                                 do iparticle = 1, nattempts_current_det
                                     ! When using importance sampling in DMQMC we
