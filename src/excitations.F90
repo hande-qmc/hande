@@ -403,4 +403,38 @@ contains
 
     end function in_ras
 
+    pure function connection_exists(sys) result(exists)
+
+        ! This function returns true if at least one excitation with a
+        ! non-zero Hamiltonian matrix element exists, based on simple
+        ! criteria (it only considers the total number of alpha and beta
+        ! orbitals, and not symmetry label considerations).
+
+        ! In:
+        !    sys: sys_t object containing the system parameters to be
+        !        considered.
+        ! Returns:
+        !    exist: true if at least one connection exists, false otherwise.
+
+        use system, only: sys_t, heisenberg
+
+        type(sys_t), intent(in) :: sys
+        logical :: exists
+
+        exists = .true.
+
+        select case (sys%system)
+        case(heisenberg)
+            ! In the Heisenberg model, nel is the number of up spins on the
+            ! lattice. This number must be conserved in all connections.
+            exists = .not. ((sys%nel == 0) .or. (sys%nel == sys%basis%nbasis))
+        case default
+            ! Are there any remaining alpha or beta orbitals to excite to?
+            if (sys%nalpha == 0 .and. sys%nvirt_beta == 0) exists = .false.
+            if (sys%nbeta == 0 .and. sys%nvirt_alpha == 0) exists = .false.
+            if (sys%nel == 0 .or. sys%nel == sys%basis%nbasis) exists = .false.
+        end select
+
+    end function connection_exists
+
 end module excitations

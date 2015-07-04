@@ -37,7 +37,7 @@ contains
         use dmqmc_estimators
         use dmqmc_procedures
         use dmqmc_initialise_dm, only: create_initial_density_matrix
-        use excitations, only: excit_t
+        use excitations, only: excit_t, connection_exists
         use qmc, only: init_qmc
         use qmc_common
         use restart_hdf5, only: restart_info_t, dump_restart_hdf5, init_restart_info_t
@@ -67,7 +67,7 @@ contains
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
         logical :: soft_exit, write_restart_shift, update_tau
-        logical :: error, rdm_error
+        logical :: error, rdm_error, attempt_spawning
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
@@ -192,12 +192,13 @@ contains
                                                          qs%psip_list, dmqmc_estimates, weighted_sampling, rdm_error)
                         end if
 
+                        ! Only attempt spawning if a valid connection exists.
+                        attempt_spawning = connection_exists(sys)
+
                         do ireplica = 1, qs%psip_list%nspaces
 
-                            ! If this condition is met then there will only be
-                            ! one det in this symmetry sector, so don't attempt
-                            ! to spawn.
-                            if (.not. ((sys%nel == 0) .or. (sys%nel == sys%basis%nbasis))) then
+                            ! Only attempt spawning if a valid excitation exists.
+                            if (attempt_spawning) then
                                 nattempts_current_det = decide_nattempts(rng, real_population(ireplica))
                                 do iparticle = 1, nattempts_current_det
                                     ! When using importance sampling in DMQMC we
