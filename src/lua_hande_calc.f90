@@ -1168,15 +1168,16 @@ contains
         logical :: op
         character(len=13) :: str
 
-        character(30), parameter :: dmqmc_keys(9) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
-                                                                      'all_spin_sectors', 'beta_loops', 'sampling_weights',     &
-                                                                      'find_weights', 'symmetrize', 'vary_weights']
-        character(30), parameter :: ip_keys(4)    = [character(30) :: 'initial_beta', 'initial_matrix',                         &
+        character(30), parameter :: dmqmc_keys(10) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
+                                                                      'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
+                                                                      'find_weights', 'find_weights_start', 'symmetrize',        &
+                                                                      'vary_weights']
+        character(30), parameter :: ip_keys(4)    = [character(30) :: 'initial_beta', 'initial_matrix',                          &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts']
-        character(30), parameter :: op_keys(7)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation', &
-                                                                      'correlation', 'excit_dist', 'excit_dist_start']
-        character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',             &
-                                                                      'ground_state_start', 'instantaneous', 'write',           &
+        character(30), parameter :: op_keys(6)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
+                                                                      'correlation', 'excit_dist']
+        character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',              &
+                                                                      'ground_rdm_start', 'instantaneous', 'write',              &
                                                                       'concurrence', 'von_neumann', 'renyi2']
 
         dmqmc_calc_type = 0
@@ -1191,6 +1192,7 @@ contains
             call aot_get_val(dmqmc_in%all_spin_sectors, err, lua_state, table, 'all_spin_sectors')
             call aot_get_val(dmqmc_in%beta_loops, err, lua_state, table, 'beta_loops')
             call aot_get_val(dmqmc_in%find_weights, err, lua_state, table, 'find_weights')
+            call aot_get_val(dmqmc_in%find_weights_start, err, lua_state, table, 'find_weights_start')
             call aot_get_val(dmqmc_in%half_density_matrix, err, lua_state, table, 'symmetrize')
             if (aot_exists(lua_state, table, 'sampling_weights')) then
                 dmqmc_in%weighted_sampling = .true.
@@ -1239,7 +1241,6 @@ contains
                 call aot_get_val(dmqmc_in%correlation_sites, err_arr, nbasis, lua_state, table, 'correlation')
             end if
             call aot_get_val(dmqmc_in%calc_excit_dist, err, lua_state, table, 'excit_dist')
-            call aot_get_val(dmqmc_in%start_av_excit_dist, err, lua_state, table, 'excit_dist_start')
             call warn_unused_args(lua_state, op_keys, table)
             call aot_table_close(lua_state, table)
         end if
@@ -1272,7 +1273,7 @@ contains
 
             ! Optional arguments.
             call aot_get_val(dmqmc_in%rdm%calc_ground_rdm, err, lua_state, table, 'ground_state')
-            call aot_get_val(dmqmc_in%start_av_rdm, err, lua_state, table, 'ground_state_start')
+            call aot_get_val(dmqmc_in%start_av_rdm, err, lua_state, table, 'ground_rdm_start')
             call aot_get_val(dmqmc_in%rdm%output_rdm, err, lua_state, table, 'write')
             call aot_get_val(dmqmc_in%rdm%doing_concurrence, err, lua_state, table, 'concurrence')
             call aot_get_val(dmqmc_in%rdm%doing_vn_entropy, err, lua_state, table, 'von_neumann')
