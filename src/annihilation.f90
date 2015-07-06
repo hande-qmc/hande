@@ -759,8 +759,9 @@ contains
                 write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
 
                 psip_list%error = .true.
-            else if (fill_fraction > 0.95) then
+            else if (fill_fraction > 0.95 .and. psip_list%warn) then
                 write (6,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                psip_list%warn = .false.
             end if
         end if
 
