@@ -16,7 +16,7 @@ Calculate the ground state of a system via a full diagonalisation of the Hamilto
 
     The FCI engine in HANDE is particularly simple (i.e. slow, dumb, memory hungry) and is
     designed mainly for testing.  A conventional quantum chemistry package, such as
-    MOLPRO, Q-Chem or PSI4, is highly recommended for production FCI calculations as these
+    MOLPRO, or PSI4, is highly recommended for production FCI calculations as these
     implement substantially more efficient algorithms.
 
 Options

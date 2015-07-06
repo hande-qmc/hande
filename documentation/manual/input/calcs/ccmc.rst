@@ -6,7 +6,7 @@ Coupled Cluster Monte Carlo
 .. code-block:: lua
 
     ccmc {
-        sus = system,
+        sys = system,
         qmc = { ... },
         ccmc = { ... },
         restart = { ... },

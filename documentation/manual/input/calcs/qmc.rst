@@ -155,6 +155,7 @@ algorithms and control the core settings in the algorithms.
     hubbard_k     renorm, no_renorm     renorm
     hubbard_real  renorm, no_renorm     renorm
     ueg           no_renorm             no_renorm
+    ringium       no_renorm             no_renorm
     read_in       renorm, no_renorm     renorm
     ============  =================     =========
 

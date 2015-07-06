@@ -3,7 +3,7 @@ HANDE QMC: High Accuracy N-DEterminant Quantum Monte Carlo.
 
 User-level documentation detailing the HANDE program is in the `documentation/manual`
 directory, written in reStructuredText (http://docutils.sourceforge.net/rst.html) and can
-be compiled into HTML/LaTeX/PDF/etc using sphinx (http://sphinx.pocoo.org).
+be compiled into HTML/LaTeX/PDF/etc using sphinx (http://sphinx-doc.org).
 
 A makefile (`documentation/Makefile`) is provided for running sphinx on the documentation
 source files; the output is placed in the appropriate subdirectory of `documentation/build`

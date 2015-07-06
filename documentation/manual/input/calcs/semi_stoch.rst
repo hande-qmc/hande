@@ -16,8 +16,9 @@ stochastic error in many cases.
     Possible values: 'read', 'high'.
 
     The type of deterministic space to use.  Using 'read' uses a deterministic space
-    produced from a previous calculation and saved to file using the ``write_determ_space``
-    option.  Using 'high' sets the deterministic space to consist of the states with
+    produced from a previous calculation and saved to file using the semi_stoch 
+    ``write`` option (the ``write_determ_space`` can be used but is now deprecated).
+    Using 'high' sets the deterministic space to consist of the states with
     the highest population when the semi-stochastic projection is enabled.
 ``size``
     type: integer.
