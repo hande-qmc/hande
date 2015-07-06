@@ -194,7 +194,7 @@ contains
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
 
         use errors, only: stop_all
-        use const, only: depsilon
+        use const, only: depsilon, p
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -242,6 +242,26 @@ contains
 
         if (dmqmc_in%vary_weights .and. (.not. dmqmc_in%weighted_sampling)) then
             call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
+        end if
+
+        if (dmqmc_in%grand_canonical_initialisation .and. sys%chem_pot == huge(1.0_p)) then
+            call stop_all(this, 'Chemical potential must be supplied to use grand_canonical_initialisation.')
+        end if
+
+        if (dmqmc_in%propagate_to_beta .and. .not. dmqmc_in%grand_canonical_initialisation &
+            & .and.  dmqmc_in%metropolis_attempts == 0) then
+            call stop_all(this, 'metropolis_attempts must be non-zero to sample the correct initial density matrix&
+                                 & if not using grand_canonical_initialisation.')
+        end if
+
+        if (dmqmc_in%init_beta == 0 .and. dmqmc_in%grand_canonical_initialisation) then
+            call stop_all(this, 'init_beta must be greater than zero if grand_canonical_initialisation is to be used.')
+        else if (dmqmc_in%init_beta < 0) then
+            call stop_all(this, 'init_beta must be positive.')
+        end if
+
+        if (dmqmc_in%metropolis_attempts < 0) then
+            call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
 
     end subroutine check_dmqmc_opts
