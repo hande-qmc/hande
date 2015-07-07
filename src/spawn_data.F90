@@ -138,6 +138,8 @@ type spawn_t
     ! This variable will become equal to true if we ever run out of memory in
     ! sdata, in which case the program will exit at the next opportunity.
     logical :: error = .false.
+    ! True if a memory warning has been given, to avoid repeated warnings.
+    logical :: warned = .false.
 end type spawn_t
 
 interface annihilate_wrapper_spawn_t

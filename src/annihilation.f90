@@ -59,7 +59,7 @@ contains
         if (present(determ)) doing_semi_stoch = determ%doing_semi_stoch
         if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(spawn)
 
-        call memcheck_spawn_t(spawn, dont_warn=spawn%error)
+        call memcheck_spawn_t(spawn, dont_warn=spawn%warned)
 
         ! If performing a semi-stochastic calculation then the annihilation
         ! process is slightly different, so call the correct routines depending
