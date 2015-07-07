@@ -209,13 +209,14 @@ contains
         use basis_types, only: init_basis_strings, print_basis_metadata
         use determinants, only: init_determinants
         use excitations, only: init_excitations
+        use check_input, only: check_sys
+        use parallel, only: parent
 
         use system, only: sys_t, heisenberg
 
         type(sys_t), intent(inout) :: sys
 
-        ! [todo] - check_input with lua interface?  Should be able to be made simpler now...
-        ! call check_input(sys)
+        if (parent) call check_sys(sys)
 
         call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
@@ -388,8 +389,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'finite', 'ms']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'finite', 'ms', 'sym']
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
 

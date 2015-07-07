@@ -27,7 +27,7 @@ contains
         use errors, only: warning, stop_all
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
         use utils, only: int_fmt
-
+        use check_input, only: check_fci_opts
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(in) :: fci_in
@@ -42,6 +42,8 @@ contains
         type(blacs_info) :: proc_blacs_info
         real(p), allocatable :: hamil(:,:)
         type(csrp_t) :: hamil_csr
+
+        if (parent) call check_fci_opts(sys, fci_in, .true.)
 
         call copy_sys_spin_info(sys, sys_bak)
         call copy_reference_t(ref_in, ref)

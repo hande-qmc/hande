@@ -46,6 +46,7 @@ contains
         use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t
+        use check_input, only: check_qmc_opts, check_dmqmc_opts
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -81,6 +82,11 @@ contains
         if (parent) then
             write (6,'(1X,"DMQMC")')
             write (6,'(1X,"-----",/)')
+        end if
+
+        if (parent) then
+            call check_qmc_opts(qmc_in, .false.)
+            call check_dmqmc_opts(sys, dmqmc_in)
         end if
 
         ! Initialise data.

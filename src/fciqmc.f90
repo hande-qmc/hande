@@ -56,6 +56,7 @@ contains
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
                             qmc_state_t, annihilation_flags_t, reference_t, semi_stoch_separate_annihilation
+        use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -96,6 +97,13 @@ contains
         if (parent) then
             write (6,'(1X,"FCIQMC")')
             write (6,'(1X,"------",/)')
+        end if
+
+        if (parent) then
+            ! Check input options.
+            call check_qmc_opts(qmc_in, .false.)
+            call check_fciqmc_opts(sys, fciqmc_in)
+            call check_load_bal_opts(load_bal_in)
         end if
 
         ! Initialise data.

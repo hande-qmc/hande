@@ -29,6 +29,7 @@ contains
         use checking, only: check_allocate
         use errors, only: warning
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
+        use check_input, only: check_fci_opts
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(inout) :: fci_in
@@ -40,6 +41,8 @@ contains
         real(p), allocatable :: eigv(:), rdm_eigv(:), rdm(:,:), hamil(:,:)
         integer :: ndets, ierr, i, rdm_size
         type(blacs_info) :: proc_blacs_info
+
+        if (parent) call check_fci_opts(sys, fci_in, .false.)
 
         call copy_sys_spin_info(sys, sys_bak)
         call copy_reference_t(ref_in, ref)
