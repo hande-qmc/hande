@@ -307,7 +307,7 @@ contains
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t
-        use check_input, only: check_qmc_opts
+        use check_input, only: check_qmc_opts, check_ccmc_opts
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -360,7 +360,10 @@ contains
         end if
 
         ! Check input options.
-        if (parent) call check_qmc_opts(qmc_in, .false.)
+        if (parent) then
+            call check_qmc_opts(qmc_in, .false.)
+            call check_ccmc_opts(ccmc_in)
+        end if
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)

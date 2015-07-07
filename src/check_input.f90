@@ -266,4 +266,30 @@ contains
 
     end subroutine check_dmqmc_opts
 
+    subroutine check_ccmc_opts(ccmc_in)
+
+        ! Check the CCMC input options
+
+        ! In:
+        !   ccmc_in: CCMC options
+
+        use qmc_data, only: ccmc_in_t
+        use errors, only: stop_all
+
+        type(ccmc_in_t), intent(in) :: ccmc_in
+
+        character(*), parameter :: this = 'check_ccmc_opts'
+
+        if (ccmc_in%move_freq >= 32) then
+            call stop_all(this, "move_frequency must be less than 32")
+        else if (ccmc_in%move_freq < 0) then
+            call stop_all(this, "move_frequency must be non-negative")
+        end if
+
+        if (ccmc_in%cluster_multispawn_threshold <= 0) then
+            call stop_all(this, "cluster_multispawn_threshold must be positive")
+        end if
+
+    end subroutine check_ccmc_opts
+
 end module check_input
