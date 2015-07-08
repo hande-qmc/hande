@@ -138,6 +138,8 @@ type spawn_t
     ! This variable will become equal to true if we ever run out of memory in
     ! sdata, in which case the program will exit at the next opportunity.
     logical :: error = .false.
+    ! True if a memory warning has been given, to avoid repeated warnings.
+    logical :: warned = .false.
 end type spawn_t
 
 interface annihilate_wrapper_spawn_t
@@ -281,8 +283,10 @@ contains
         !       object which, if filled beyond, triggers a warning.  Note that each
         !       processor block/section is considered separately, so this should be called
         !       before any of the compression/annihilation procedures.
+        ! In/Out:
         !    dont_warn (optional): if present and true then don't actually print any
-        !        warning. This can prevent spamming the user with messages.
+        !        warning. This can prevent spamming the user with messages.  Set to true on
+        !        exit if a warning was printed (to avoid it being repeated).
 
         use parallel, only: nthreads, nprocs, iproc
         use utils, only: int_fmt
@@ -290,7 +294,7 @@ contains
 
         type(spawn_t), intent(in) :: spawn
         real, intent(in), optional :: warn_level
-        logical, intent(in), optional :: dont_warn
+        logical, intent(inout), optional :: dont_warn
 
         real :: fill(nprocs), level
         integer :: it
@@ -311,6 +315,8 @@ contains
             fill = real(maxval(spawn%head(:,:),dim=1) - spawn%head_start(it,:)) / spawn%block_size
             if (any(fill - level > 0.0)) then
                 write (6,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                ! Only want to write a warning once
+                if (present(dont_warn)) dont_warn = .true.
             end if
         end if
 

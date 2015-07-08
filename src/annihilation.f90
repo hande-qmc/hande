@@ -59,7 +59,7 @@ contains
         if (present(determ)) doing_semi_stoch = determ%doing_semi_stoch
         if (present(nspawn_events)) nspawn_events = calc_events_spawn_t(spawn)
 
-        call memcheck_spawn_t(spawn, dont_warn=spawn%error)
+        call memcheck_spawn_t(spawn, dont_warn=spawn%warned)
 
         ! If performing a semi-stochastic calculation then the annihilation
         ! process is slightly different, so call the correct routines depending
@@ -203,7 +203,7 @@ contains
         call calculate_displacements(spawn, send_counts, non_block_spawn)
         if (present(nspawn_events)) nspawn_events = non_block_spawn(1)
 
-        call memcheck_spawn_t(spawn, dont_warn=spawn%error)
+        call memcheck_spawn_t(spawn, dont_warn=spawn%warned)
 
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
@@ -759,8 +759,9 @@ contains
                 write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
 
                 psip_list%error = .true.
-            else if (fill_fraction > 0.95) then
+            else if (fill_fraction > 0.95 .and. psip_list%warn) then
                 write (6,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                psip_list%warn = .false.
             end if
         end if
 

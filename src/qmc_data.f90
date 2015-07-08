@@ -469,6 +469,8 @@ type particle_t
     ! particle lists, in which case the program will exit at the next
     ! opportunity.
     logical :: error = .false.
+    ! Set to false once a memory warning has been printed to prevent multiple warning messages.
+    logical :: warn = .true.
 end type particle_t
 
 type spawned_particle_t
