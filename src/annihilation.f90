@@ -203,7 +203,7 @@ contains
         call calculate_displacements(spawn, send_counts, non_block_spawn)
         if (present(nspawn_events)) nspawn_events = non_block_spawn(1)
 
-        call memcheck_spawn_t(spawn, dont_warn=spawn%error)
+        call memcheck_spawn_t(spawn, dont_warn=spawn%warned)
 
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
