@@ -761,10 +761,13 @@ contains
                 write (error_unit,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
 
                 psip_list%error = .true.
-            else if (fill_fraction > 0.95 .and. psip_list%warn) then
-                write (error_unit,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
-                write (error_unit,'(1x,"This warning only prints once")')
-                psip_list%warn = .false.
+            else if (fill_fraction > 0.95) then
+                if (psip_list%warn) then
+                    write (error_unit,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                    write (error_unit,'(1x,"This warning only prints once")')
+                    psip_list%warn = .false.
+                end if
+                psip_list%warning_count = psip_list%warning_count + 1
             end if
         end if
 

@@ -58,7 +58,7 @@ module bloom_handler
 
         ! -- All processor quantities (updated in write_bloom_report) --
         ! The total number of blooms.
-       integer :: nblooms = 0
+        integer :: nblooms = 0
         ! The total number of particles spawned by all blooms on the current processor.
         real(p) :: tot_bloom = 0.0_p
         ! Largest bloom

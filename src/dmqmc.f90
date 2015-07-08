@@ -47,6 +47,7 @@ contains
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t
         use check_input, only: check_qmc_opts, check_dmqmc_opts
+        use spawn_data, only: write_memcheck_report
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -316,6 +317,7 @@ contains
         call write_bloom_report(bloom_stats)
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
+        call write_memcheck_report(qs%spawn_store%spawn)
 
         if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport

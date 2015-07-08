@@ -140,6 +140,8 @@ type spawn_t
     logical :: error = .false.
     ! True if a memory warning has been given, to avoid repeated warnings.
     logical :: warned = .false.
+    ! Number of memory warnings
+    integer :: warning_count = 0
 end type spawn_t
 
 interface annihilate_wrapper_spawn_t
@@ -294,7 +296,7 @@ contains
 
         use, intrinsic :: iso_fortran_env, only: error_unit
 
-        type(spawn_t), intent(in) :: spawn
+        type(spawn_t), intent(inout) :: spawn
         real, intent(in), optional :: warn_level
         logical, intent(inout), optional :: dont_warn
 
@@ -306,21 +308,23 @@ contains
         warn = .true.
         if (present(dont_warn)) warn = .not. dont_warn
 
-        if (warn) then
-            if (present(warn_level)) then
-                level = warn_level
-            else
-                level = 0.95
-            end if
+        if (present(warn_level)) then
+            level = warn_level
+        else
+            level = 0.95
+        end if
 
-            it = nthreads - 1
-            fill = real(maxval(spawn%head(:,:),dim=1) - spawn%head_start(it,:)) / spawn%block_size
-            if (any(fill - level > 0.0)) then
-                write (error_unit,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+        it = nthreads - 1
+        fill = real(maxval(spawn%head(:,:),dim=1) - spawn%head_start(it,:)) / spawn%block_size
+        if (any(fill - level > 0.0)) then
+            if (warn) then
+                write (error_unit,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)// &
+                    ',".")') iproc
                 write (error_unit,'(1x,"This warning only prints once")')
                 ! Only want to write a warning once
                 if (present(dont_warn)) dont_warn = .true.
             end if
+            spawn%warning_count = spawn%warning_count + 1
         end if
 
     end subroutine memcheck_spawn_t
@@ -1138,5 +1142,31 @@ contains
         spawn%head(thread_id,0) = sum(nstates_left)
 
     end subroutine compress_determ_repeats
+
+    subroutine write_memcheck_report(spawn)
+
+        ! Summarise the spawn_t memory warnings
+
+        ! In:
+        !   spawn: spawn_t object
+
+        use parallel
+        use utils, only: int_fmt
+
+        type(spawn_t), intent(in) :: spawn
+
+        integer :: warnings, ierr
+
+#ifdef PARALLEL
+        call mpi_reduce(spawn%warning_count, warnings, 1, mpi_integer, mpi_sum, root, mpi_comm_world, ierr)
+#else
+        warnings = spawn%warning_count
+#endif
+
+        if (parent .and. warnings > 0) then
+            write (6, '(1x, "The spawning array was at least 95% full on",'//int_fmt(warnings,1)//'," iterations.")') warnings
+        end if
+
+    end subroutine write_memcheck_report
 
 end module spawn_data
