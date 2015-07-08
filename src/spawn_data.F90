@@ -292,6 +292,8 @@ contains
         use utils, only: int_fmt
         use errors, only: stop_all
 
+        use, intrinsic :: iso_fortran_env, only: error_unit
+
         type(spawn_t), intent(in) :: spawn
         real, intent(in), optional :: warn_level
         logical, intent(inout), optional :: dont_warn
@@ -314,7 +316,8 @@ contains
             it = nthreads - 1
             fill = real(maxval(spawn%head(:,:),dim=1) - spawn%head_start(it,:)) / spawn%block_size
             if (any(fill - level > 0.0)) then
-                write (6,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (error_unit,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (error_unit,'(1x,"This warning only prints once")')
                 ! Only want to write a warning once
                 if (present(dont_warn)) dont_warn = .true.
             end if
