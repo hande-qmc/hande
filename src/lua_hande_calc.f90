@@ -1205,6 +1205,10 @@ contains
             call aot_table_close(lua_state, table)
         end if
 
+        ! If using the 'find_weights' option then weighted sampling should
+        ! always be used, even if not asked for via a separate input.
+        if (dmqmc_in%find_weights) dmqmc_in%weighted_sampling = .true.
+
         if (aot_exists(lua_state, opts, 'ipdmqmc')) then
             dmqmc_in%propagate_to_beta = .true.
             call aot_table_open(lua_state, opts, table, 'ipdmqmc')
