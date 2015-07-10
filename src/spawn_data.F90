@@ -320,7 +320,7 @@ contains
             if (warn) then
                 write (error_unit,'(1X,"# Warning: filled over 95% of spawning array on processor",'//int_fmt(iproc,1)// &
                     ',".")') iproc
-                write (error_unit,'(1x,"This warning only prints once")')
+                write (error_unit,'(1x,"# This warning is only printed once.")')
                 ! Only want to write a warning once
                 if (present(dont_warn)) dont_warn = .true.
             end if
@@ -1164,7 +1164,7 @@ contains
 #endif
 
         if (parent .and. warnings > 0) then
-            write (6, '(1x, "The spawning array was at least 95% full on",'//int_fmt(warnings,1)//'," iterations.")') warnings
+            write (6, '(1x, "The spawning array was at least 95% full on",'//int_fmt(warnings,1)//'," iterations.",/)') warnings
         end if
 
     end subroutine write_memcheck_report
