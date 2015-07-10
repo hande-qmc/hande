@@ -419,7 +419,7 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
-            use restart_utils, only: convert_dets
+            use restart_utils, only: convert_dets, convert_ref
 #endif
             use errors, only: stop_all, warning
             use const
@@ -504,7 +504,7 @@ module restart_hdf5
                                   &Use the redistribute function.')
 
                 if (i0_length /= i0_length_restart) &
-                    call stop_all('read_restart_hdf5', &
+                    call warning('read_restart_hdf5', &
                                   'Restarting with a different DET_SIZE is not supported.  Please implement.')
             call h5gclose_f(group_id, ierr)
 
@@ -568,9 +568,13 @@ module restart_hdf5
                 ! --- qmc/reference group ---
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    call hdf5_read(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
-
-                    call hdf5_read(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)
+                    if (i0_length == i0_length_restart) then
+                        call hdf5_read(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
+                        call hdf5_read(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)
+                    else
+                        call convert_ref(subgroup_id, dref, kinds, qs%ref%f0)
+                        call convert_ref(subgroup_id, dhsref, kinds, qs%ref%hs_f0)
+                    end if
 
                     call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
                     qs%estimators%D0_population = tmp(1)
