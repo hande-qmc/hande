@@ -421,7 +421,7 @@ module restart_hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
             use restart_utils, only: convert_dets, convert_ref
 #endif
-            use errors, only: stop_all, warning
+            use errors, only: stop_all
             use const
 
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
@@ -503,9 +503,6 @@ module restart_hdf5
                                   'Restarting on a different number of processors not supported.  &
                                   &Use the redistribute function.')
 
-                if (i0_length /= i0_length_restart) &
-                    call warning('read_restart_hdf5', &
-                                  'Restarting with a different DET_SIZE is not supported.  Please implement.')
             call h5gclose_f(group_id, ierr)
 
             ! --- qmc group ---
