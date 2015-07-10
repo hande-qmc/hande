@@ -419,8 +419,9 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
+            use restart_utils, only: convert_dets
 #endif
-            use errors, only: stop_all
+            use errors, only: stop_all, warning
             use const
 
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
@@ -519,7 +520,11 @@ module restart_hdf5
                 ! Number of determinants is the last index...
                 qs%psip_list%nstates = dims(size(dims))
 
-                call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                if (i0_length == i0_length_restart) then
+                    call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                else
+                    call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
+                end if
 
                 if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p)) &
                     call stop_all('read_restart_hdf5', &
