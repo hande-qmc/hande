@@ -36,13 +36,19 @@ contains
         integer(int_32), allocatable :: dets_tmp(:,:)
         integer(hsize_t) :: dims(2)
 
+        integer :: i
+
         call dset_shape(id, dset, dims)
         allocate(dets_tmp(dims(1), dims(2)))
         call hdf5_read(id, dset, kinds, shape(dets_tmp), dets_tmp)
 
         dets = 0
-        dets(:dims(1)/2,:dims(2)) = ishft(int(dets_tmp(2::2,:),int_64),32)
-        dets(:,:dims(2)) = dets(:,:dims(2)) + dets_tmp(1::2,:)
+
+        do i = 1, dims(2)
+            ! Must convert each determinant separately as there is a different
+            ! amount of padding if the number of 32 bit integers is odd
+            dets(:,i) = transfer(dets_tmp(:,i), dets)
+        end do
 
         deallocate(dets_tmp)
 
@@ -68,8 +74,7 @@ contains
         call hdf5_read(id, dset, kinds, shape(f0_tmp), f0_tmp)
 
         f0 = 0
-        f0(:dims(1)/2) = ishft(int(f0_tmp(2::2),int_64),32)
-        f0 = f0 + f0_tmp(1::2)
+        f0 = transfer(f0_tmp, f0)
 
         deallocate(f0_tmp)
 
