@@ -704,6 +704,8 @@ contains
         use system, only: sys_t
         use utils, only: int_fmt
 
+        use, intrinsic :: iso_fortran_env, only: error_unit
+
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(inout) :: psip_list
         type(reference_t), intent(in) :: ref
@@ -752,16 +754,20 @@ contains
         if (.not. psip_list%error) then
             fill_fraction = real(psip_list%nstates+(spawn%head(thread_id,0)-spawn_start+1))/size(psip_list%states,2)
             if (fill_fraction > 1.00) then
-                write (6,'(1X,"# Error: No space left in main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
-                write (6,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
-                write (6,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
+                write (error_unit,'(1X,"# Error: No space left in main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                write (error_unit,'(1X,"# Error: HANDE will exit at the end of this report loop.")')
+                write (error_unit,'(1X,"# Error: Note that spawning until the end of the report loop will be affected and&
                               & so results from this final loop may be slightly incorrect.")')
-                write (6,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
+                write (error_unit,'(1X,"# Error: Some reconvergence time should be allowed if continuing from a subsequent restart file.")')
 
                 psip_list%error = .true.
-            else if (fill_fraction > 0.95 .and. psip_list%warn) then
-                write (6,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
-                psip_list%warn = .false.
+            else if (fill_fraction > 0.95) then
+                if (psip_list%warn) then
+                    write (error_unit,'(1X,"# Warning: filled over 95% of main particle array on processor",'//int_fmt(iproc,1)//',".")') iproc
+                    write (error_unit,'(1x,"This warning only prints once")')
+                    psip_list%warn = .false.
+                end if
+                psip_list%warning_count = psip_list%warning_count + 1
             end if
         end if
 

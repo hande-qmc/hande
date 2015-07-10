@@ -303,7 +303,7 @@ contains
         use proc_pointers
         use spawning, only: assign_particle_processor
         use system, only: sys_t
-        use spawn_data, only: calc_events_spawn_t
+        use spawn_data, only: calc_events_spawn_t, write_memcheck_report
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t
@@ -774,6 +774,7 @@ contains
         call multispawn_stats_report(ms_stats)
         call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
                                    qs%spawn_store%spawn%mpi_time)
+        call write_memcheck_report(qs%spawn_store%spawn)
 
         if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport

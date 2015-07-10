@@ -471,6 +471,8 @@ type particle_t
     logical :: error = .false.
     ! Set to false once a memory warning has been printed to prevent multiple warning messages.
     logical :: warn = .true.
+    ! Number of memory warnings
+    integer :: warning_count = 0
 end type particle_t
 
 type spawned_particle_t
