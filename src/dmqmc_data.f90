@@ -108,10 +108,6 @@ type dmqmc_in_t
     ! start accumulating the ground-state RDM?
     integer :: start_av_rdm = 0
 
-    ! When calculating the distributon of particles across excitation levels,
-    ! on what iteration do we start performing this calculation?
-    integer :: start_av_excit_dist = 0
-
     ! If this logical is true then the program runs the DMQMC algorithm with
     ! importance sampling.
     ! sampling_probs stores the factors by which the probabilities of
@@ -134,6 +130,10 @@ type dmqmc_in_t
     ! for DMQMC, so that each level will have roughly equal numbers of psips.
     ! The resulting new weights are used in the next beta loop.
     logical :: find_weights = .false.
+    ! When running a simulation to find some appropriate importance sampling
+    ! weights, on which iteration should we start averaging the excitation
+    ! distributions (which are used to find these weights)?
+    integer :: find_weights_start = 0
     ! If true then the fraction of psips at each
     ! excitation level will be output at each report loop. These fractions
     ! will be stored in the array below.

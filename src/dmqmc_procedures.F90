@@ -105,7 +105,7 @@ contains
             ! deallocated. Also, the user may have only input factors for the
             ! first few excitation levels, but we need to store factors for all
             ! levels, as done below.
-            if (.not.allocated(dmqmc_in%sampling_probs)) then
+            if (.not. allocated(dmqmc_in%sampling_probs)) then
                 allocate(dmqmc_in%sampling_probs(1:sys%max_number_excitations), stat=ierr)
                 call check_allocate('dmqmc_in%sampling_probs',sys%max_number_excitations,ierr)
                 dmqmc_in%sampling_probs = 1.0_p
@@ -117,7 +117,7 @@ contains
             weighted_sampling%probs(0) = 1.0_p
             weighted_sampling%probs_old = 1.0_p
             do i = 1, size(dmqmc_in%sampling_probs)
-            weighted_sampling%probs(i) =  weighted_sampling%probs(i-1)*dmqmc_in%sampling_probs(i)
+                weighted_sampling%probs(i) =  weighted_sampling%probs(i-1)*dmqmc_in%sampling_probs(i)
             end do
             weighted_sampling%probs(size(dmqmc_in%sampling_probs)+1:sys%max_number_excitations) = &
                weighted_sampling%probs(size(dmqmc_in%sampling_probs))
@@ -651,7 +651,7 @@ contains
 
         integer, intent(in) :: max_number_excitations
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
-        real(p), intent(inout) :: excit_dist(:)
+        real(p), intent(inout) :: excit_dist(0:)
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
         integer :: i, ierr

@@ -427,7 +427,7 @@ contains
                 if (dmqmc_in%calc_excit_dist) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
                 ! Excitation distribtuion for calculating importance sampling weights.
-                if (dmqmc_in%find_weights .and. iteration > dmqmc_in%start_av_excit_dist) est%excit_dist(excitation%nexcit) = &
+                if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
             end if
 

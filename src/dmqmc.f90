@@ -156,7 +156,7 @@ contains
 
             do ireport = 1, qmc_in%nreport
 
-                call init_dmqmc_report_loop(bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
+                call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
                 do icycle = 1, qmc_in%ncycles
@@ -306,7 +306,7 @@ contains
             ! Calculate and output all requested estimators based on the reduced
             ! density matrix. This is for ground-state RDMs only.
             if (dmqmc_in%rdm%calc_ground_rdm) call call_ground_rdm_procedures(dmqmc_estimates, beta_cycle, dmqmc_in%rdm)
-            ! Calculate and output new weights based on the psip distirubtion in
+            ! Calculate and output new weights based on the psip distriubtion in
             ! the previous loop.
             if (dmqmc_in%find_weights) call output_and_alter_weights(dmqmc_in, sys%max_number_excitations, &
                                                                      dmqmc_estimates%excit_dist, weighted_sampling)
@@ -403,11 +403,14 @@ contains
 
     end subroutine init_dmqmc_beta_loop
 
-    subroutine init_dmqmc_report_loop(bloom_stats, dmqmc_estimates, rspawn)
+    subroutine init_dmqmc_report_loop(calc_excit_dist, bloom_stats, dmqmc_estimates, rspawn)
 
         ! Initialise a report loop (basically zero quantities accumulated over
         ! a report loop).
 
+        ! In:
+        !    calc_excit_dist: true if the excitation distribution is being
+        !        calculated at each report loop.
         ! In/Out:
         !    bloom_stats: type containing information regarding blooming events.
         !    dmqmc_estimates: type containing estimates of observables.
@@ -417,6 +420,7 @@ contains
         use bloom_handler, only: bloom_stats_t, bloom_stats_init_report_loop
         use dmqmc_data, only: dmqmc_estimates_t
 
+        logical, intent(in) :: calc_excit_dist
         type(bloom_stats_t), intent(inout) :: bloom_stats
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         real(p), intent(out) :: rspawn
@@ -424,8 +428,7 @@ contains
         call bloom_stats_init_report_loop(bloom_stats)
 
         rspawn = 0.0_p
-
-        if (allocated(dmqmc_estimates%excit_dist)) dmqmc_estimates%excit_dist = 0.0_p
+        if (calc_excit_dist) dmqmc_estimates%excit_dist = 0.0_p
         dmqmc_estimates%trace = 0.0_p
         dmqmc_estimates%numerators = 0.0_p
 
