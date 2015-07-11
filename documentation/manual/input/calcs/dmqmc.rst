@@ -185,15 +185,27 @@ dmqmc options
 
     The weights are output at the end of each beta loop.
 
-    This option should be used with the **exict_dist** option in the operators
-    table. The excitation distribution accumulated through the **excit_dist** option
-    is used for this option.
+    This option should be used together with the **find_weights_start** option,
+    which is used to specify at which iteration the ground state is reached
+    and therefore when averaging of the excitation distribution begins.
+
+    This option cannot be used together with the **excit_dist** option. The
+    **find_weights** option averages the excitation distribution in the ground
+    state, whereas the **excit_dist** option accumulates and prints out the
+    excitation distribution at every report loop.
 
     .. warning::
     
         This feature is found to be unsuccessful for some larger lattices (for example,
         6x6x6, for the Heisenberg model). The weights output should be checked. Increasing
         the number of psips used may improve the weights calculated.
+``find_weights_start``
+    type: integer.
+
+    Optional.  Default: 0.
+
+    The iteration number at which averaging of the excitation distribution begins,
+    when using the **find_weights** option.
 ``symmetrize``
     type: boolean.
 
@@ -292,13 +304,11 @@ operators options
 
     Calculate the fraction of psips at each excitation level, where the excitation level
     is the number of excitations separating the two states labelling a given density matrix
-    element.  Accumulated from ``excit_dist_start`` iterations onwards.
-``excit_dist_start``
-    type: integer.
+    element. This fraction is then output to the data table at each report loop, and so the
+    temperature-dependent excitation distribution is printed out.
 
-    Optional.  Default: 0.
-
-    The iteration number from which ``excit_dist`` is accumulated.
+    This option should not be used with the **find_weights** option, which averages the
+    excitation distribution within the ground state.
 ``correlation``
     type: 2D vector of integers.
 
