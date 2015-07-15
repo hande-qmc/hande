@@ -266,6 +266,8 @@ contains
         type(sys_t), intent(inout) :: sys
         logical, intent(in), optional :: store_info
 
+        character(*), parameter :: this = 'init_model_basis_fns'
+
         logical :: t_store
 
         integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
@@ -371,7 +373,7 @@ contains
                         kp = (/ i, j, k /)
                         if (in_FBZ(sys%system, sys%lattice, kp(1:sys%lattice%ndim))) then
                             if (ibasis == nspatial) then
-                                call stop_all('init_basis_fns','Too many basis functions found.')
+                                call stop_all(this,'Too many basis functions found.')
                             else
                                 ! Have found an allowed wavevector/site.
                                 ! Add 2 spin orbitals to the set of the basis functions.
@@ -405,7 +407,7 @@ contains
 
         select case(sys%system)
         case(hub_k, hub_real, heisenberg, chung_landau, ringium)
-            if (ibasis /= nspatial) call stop_all('init_basis_fns','Not enough basis functions found.')
+            if (ibasis /= nspatial) call stop_all(this,'Not enough basis functions found.')
         case(ueg)
         end select
 
