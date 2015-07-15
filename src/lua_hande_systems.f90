@@ -209,14 +209,11 @@ contains
         use basis_types, only: init_basis_strings, print_basis_metadata
         use determinants, only: init_determinants
         use excitations, only: init_excitations
-        use check_input, only: check_sys
         use parallel, only: parent
 
         use system, only: sys_t, heisenberg
 
         type(sys_t), intent(inout) :: sys
-
-        if (parent) call check_sys(sys)
 
         call init_basis_strings(sys%basis)
         call print_basis_metadata(sys%basis, sys%nel, sys%system == heisenberg)
@@ -257,6 +254,8 @@ contains
         use system, only: sys_t, hub_k, init_system
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
+        use check_input, only: check_sys
+        use parallel, only: parent
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -288,6 +287,7 @@ contains
             call get_lattice(lua_state, sys, opts)
             ! [todo] - deallocate existing basis info and start afresh.
             call init_system(sys)
+            if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
             call init_momentum_symmetry(sys)
@@ -378,6 +378,8 @@ contains
         use system, only: sys_t, hub_real, chung_landau, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
+        use check_input, only: check_sys
+        use parallel, only: parent
 
         integer(c_int) :: nreturn
         type(c_ptr) :: L
@@ -410,6 +412,7 @@ contains
             call get_lattice(lua_state, sys, opts)
             ! [todo] - deallocate existing basis info and start afresh.
             call init_system(sys)
+            if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
             call init_real_space(sys)
@@ -456,6 +459,8 @@ contains
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
         use system, only: sys_t, read_in, init_system
+        use check_input, only: check_sys
+        use parallel, only: parent
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -492,6 +497,7 @@ contains
             ! [todo] - deallocate existing basis info and start afresh.
 
             call init_system(sys)
+            if (parent) call check_sys(sys)
             call read_in_integrals(sys, cas_info=sys%cas)
             call init_generic_system_basis(sys)
             call print_pg_symmetry_info(sys)
@@ -534,6 +540,8 @@ contains
         use system, only: sys_t, heisenberg, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
+        use check_input, only: check_sys
+        use parallel, only: parent
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -568,6 +576,7 @@ contains
             call get_lattice(lua_state, sys, opts)
             ! [todo] - deallocate existing basis info and start afresh.
             call init_system(sys)
+            if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
             call init_real_space(sys)
@@ -611,6 +620,8 @@ contains
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
         use ueg_system, only: init_ueg_proc_pointers
+        use check_input, only: check_sys
+        use parallel, only: parent
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -653,6 +664,7 @@ contains
             ! [todo] - deallocate existing basis info and start afresh.
 
             call init_system(sys)
+            if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
             call init_momentum_symmetry(sys)
@@ -694,6 +706,8 @@ contains
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
         use ringium_system, only: init_symmetry_ringium
+        use check_input, only: check_sys
+        use parallel, only: parent
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -733,6 +747,7 @@ contains
             ! [todo] - deallocate existing basis info and start afresh.
 
             call init_system(sys)
+            if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
             call init_symmetry_ringium(sys)
