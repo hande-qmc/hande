@@ -63,6 +63,7 @@ contains
         use interact, only: calc_interact, check_comms_file
         use proc_pointers, only: energy_diff_ptr
         use errors, only: stop_all
+        use reference_determinant, only: set_reference_det
 
         type(sys_t), intent(inout) :: sys
         logical, intent(in) :: all_spin_sectors
@@ -85,7 +86,8 @@ contains
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
         integer :: ngen, nalpha_allowed, nbeta_allowed
-        real(p) :: energy_zero
+        real(p) :: energy_zero, ref_shift
+        integer, allocatable :: occ_list0(:)
 
         if (present(rng_seed)) then
             seed = rng_seed
@@ -103,6 +105,12 @@ contains
             beta_loc = beta_loc / sys%ueg%ef
         end if
 
+        if (sys%symmetry < sys%sym_max) then
+            call set_reference_det(sys, occ_list0, .false., sys%symmetry)
+        else
+            call set_reference_det(sys, occ_list0, .false.)
+        end if
+
         select case(sys%system)
         case (ueg)
             energy_diff_ptr => exchange_energy_ueg
@@ -113,6 +121,9 @@ contains
         case default
             call stop_all('estimate_canonical_energy', 'Not implemented for selected model Hamiltonian')
         end select
+        ! Add a shift to the exponentials of the Boltzman factors to prevent
+        ! numerical problems at lower temperatures.
+        ref_shift = energy_diff_ptr(sys, occ_list0)
 
         if (parent) then
             write (6,'(1X,a90)') 'E_0: Estimate for total energy from single-particle Hamiltonian i.e. 1/Z_0 Tr(\rho_0 H_0).'
@@ -167,7 +178,7 @@ contains
                 ! i.e.,
                 ! p(i1,..,iN)_HF = 1/Z' e^{-beta(E_HF(i)-E_0(i))}p(i1,...,iN),
                 ! where Z' = \sum_{i} e^{-\beta(E_HF(i)-E_0(i))}.
-                energy(hf_part_idx) = exp(-beta_loc*hfx)
+                energy(hf_part_idx) = exp(-beta_loc*(hfx-ref_shift))
                 energy(hft_idx) = energy(hf_part_idx)*energy(hf_idx)
                 local_estimators(ke_idx:hf_part_idx) = local_estimators(ke_idx:hf_part_idx) + energy
             end do
