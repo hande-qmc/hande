@@ -7,15 +7,13 @@ import re
 import sys
 import tempfile
 
-def extract_data_sets(filenames, temp_file=True):
+def extract_data_sets(filenames):
     '''Extract QMC data tables from multiple HANDE calculations.
 
 Parameters
 ----------
 filenames : list of strings
     names of files containing HANDE QMC calculation output.
-temp_file : bool
-    passed to extract_data.
 
 Returns
 -------
@@ -36,14 +34,13 @@ See Also
     metadata = []
     for filename in filenames:
         # For now, ignore output from any other calculations.
-        (calc_metadata, calc_data, junk) = extract_data(filename, offset,
-                                                        temp_file)
+        (calc_metadata, calc_data, junk) = extract_data(filename, offset)
         data.append(calc_data)
         metadata.append(calc_metadata)
         offset += data[-1].index.levshape[0]
     return (pd.concat(metadata).unstack(level=0), pd.concat(data))
 
-def extract_data(filename, offset=0, temp_file=True):
+def extract_data(filename, offset=0):
     '''Extract QMC data table from a HANDE calculation.
 
 .. note::
@@ -58,11 +55,6 @@ filename : string
     name of file containing the HANDE QMC calculation output.
 offset : int
     first index for the calculation level label in data (default: 0).
-temp_file : bool
-    if True convert data tables in large files (ie those over 8MB) to CSV format
-    before parsing.  This is much faster and has lower memory usage as it allows
-    pandas' C parser to be used.  This requires a temporary file to be created
-    in TMPDIR (default: /tmp).
 
 Returns
 -------
@@ -236,42 +228,12 @@ calc_data : list of `:class:`pandas.Series`
                 if v in line:
                     metadata[k] = extract_last_field(line, k, md_int, md_float)
 
-        if float(os.path.getsize(filename))/1024 < 8000 or not temp_file:
-            # Read table --- only read the first N columns, where N is the
-            # number of column names found.
-            try:
-                # pandas 0.15 introduced default behaviour to skip blank lines.
-                # Unfortunately this has a bad interaction with skipfooter if
-                # the data table only contains one line and the line after the
-                # table is blank (see https://github.com/pydata/pandas/issues/10164).
-                # Given the data table doesn't have any blank lines, it's safe
-                # to disable this.
-                qmc_data = pd.io.parsers.read_table(filename, sep='\s+',
-                           engine='python', skiprows=start_line,
-                           skipfooter=skip_footer, names=column_names,
-                           comment='#', skip_blank_lines=False)
-            except TypeError:
-                # pandas < 0.15
-                qmc_data = pd.io.parsers.read_table(filename, sep='\s+',
-                           engine='python', skiprows=start_line,
-                           skipfooter=skip_footer, names=column_names,
-                           comment='#')
-            # Remove comment lines and convert all columns to numeric data.
-            # Lines starting with a comment have been set to NaN in the
-            # iterations column.
-            try:
-                qmc_data.dropna(subset=['iterations'], inplace=True)
-            except TypeError:
-                # Be slightly less efficient if using pandas version < 0.13.
-                qmc_data = qmc_data.dropna(subset=['iterations'])
-            qmc_data.reset_index(drop=True, inplace=True)
-        else:
-            # Work around pandas slow and very memory-hungry pure-python parser
-            # by converting the data table into CSV format (and stripping out
-            # comments whilst we're at it) and reading that in.
-            tmp_csv = _convert_to_csv(filename, start_line)
-            qmc_data = pd.io.parsers.read_csv(tmp_csv, names=column_names)
-            os.remove(tmp_csv)
+        # Work around pandas slow and very memory-hungry pure-python parser
+        # by converting the data table into CSV format (and stripping out
+        # comments whilst we're at it) and reading that in.
+        tmp_csv = _convert_to_csv(filename, start_line)
+        qmc_data = pd.io.parsers.read_csv(tmp_csv, names=column_names)
+        os.remove(tmp_csv)
 
         # If the number of iterations counter goes over 8 digits then the hande
         # output file prints stars.  This has now been fixed, however for
