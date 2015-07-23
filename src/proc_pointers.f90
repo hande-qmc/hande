@@ -147,6 +147,16 @@ abstract interface
         integer, intent(in) :: spawning_end, particle_indx
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
+    subroutine i_create_diagonal_dm_particle(f, string_len, tensor_label_len, nspawned, particle_type, spawn)
+        use spawn_data, only: spawn_t
+        import :: excit_t, det_info_t, int_p, i0
+        implicit none
+        integer(i0), intent(in) :: f(:)
+        integer, intent(in) :: string_len, tensor_label_len
+        integer(int_p), intent(in) :: nspawned
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
+    end subroutine i_create_diagonal_dm_particle
     subroutine i_trial_fn(sys, cdet, connection, weights, hmatel)
         use system, only: sys_t
         import :: det_info_t, excit_t, p
@@ -195,6 +205,7 @@ procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
+procedure(i_create_diagonal_dm_particle), pointer :: create_diagonal_dm_particle_ptr => null()
 
 
 ! Single structure for all types of excitation generator so we can use the same

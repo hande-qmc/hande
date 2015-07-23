@@ -686,8 +686,13 @@ contains
         if (doing_calc(dmqmc_calc)) then
 
             if (.not.present(dmqmc_in)) call stop_all('init_proc_pointers', 'DMQMC options not present.')
+            if (qmc_in%initiator_approx) then
+                create_diagonal_dm_particle_ptr => create_diagonal_density_matrix_particle_initiator
+            else
+                create_diagonal_dm_particle_ptr => create_diagonal_density_matrix_particle
+            end if
 
-            ! Spawned particle creation. 
+            ! Spawned particle creation.
             if (dmqmc_in%half_density_matrix) then
                 if (truncate_space) then
                     create_spawned_particle_dm_ptr => create_spawned_particle_truncated_half_density_matrix

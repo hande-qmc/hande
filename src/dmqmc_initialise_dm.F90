@@ -223,7 +223,7 @@ contains
 
         use basis_types, only: basis_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use dmqmc_procedures, only: create_diagonal_density_matrix_particle
+        use proc_pointers, only: create_diagonal_dm_particle_ptr
         use spawn_data, only: spawn_t
         use parallel
         use system
@@ -266,8 +266,8 @@ contains
 
             ! Now call a routine to add the corresponding diagonal element to
             ! the spawned walkers list.
-            call create_diagonal_density_matrix_particle(f,basis%string_len, &
-                    basis%tensor_label_len, pop_real_factor,ireplica, spawn)
+            call create_diagonal_dm_particle_ptr(f,basis%string_len, &
+                    basis%tensor_label_len, pop_real_factor, ireplica, spawn)
 
         end do
 
@@ -299,7 +299,7 @@ contains
         use hilbert_space, only: gen_random_det_full_space
         use system, only: sys_t
         use spawn_data, only: spawn_t
-        use dmqmc_procedures, only: create_diagonal_density_matrix_particle
+        use proc_pointers, only: create_diagonal_dm_particle_ptr
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
@@ -319,7 +319,7 @@ contains
                 ! symmetry sector and spin polarisation.
                 call gen_random_det_full_space(rng, sys, f, occ_list)
                 if (all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
-                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                    call create_diagonal_dm_particle_ptr(f, sys%basis%string_len, &
                         sys%basis%tensor_label_len, pop_real_factor, ireplica, spawn)
                     exit
                 end if
@@ -560,7 +560,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use determinants, only: encode_det
         use canonical_energy_estimates, only: generate_allowed_orbital_list
-        use dmqmc_procedures, only: create_diagonal_density_matrix_particle
+        use proc_pointers, only: create_diagonal_dm_particle_ptr
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
 
         type(sys_t), intent(in) :: sys
@@ -630,7 +630,7 @@ contains
                                 & reweight_spawned_particle(sys, occ_list, init_beta, &
                                                             energy_shift, spawn%cutoff, pop_real_factor, rng)
                 call encode_det(sys%basis, occ_list, f)
-                call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
+                call create_diagonal_dm_particle_ptr(f, sys%basis%string_len, &
                                             sys%basis%tensor_label_len, nspawn, ireplica, spawn)
                 ipsip = ipsip + 1
             end if
