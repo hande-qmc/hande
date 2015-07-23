@@ -294,7 +294,7 @@ contains
             ! cpu_time outputs an elapsed time, so update the reference timer.
             t1 = t2
 
-            call calc_interact(comms_found, soft_exit, qmc_in, qs)
+            call calc_interact(comms_found, soft_exit, qs)
             if (soft_exit) exit
 
         end do

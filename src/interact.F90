@@ -8,7 +8,7 @@ character(*), parameter :: comms_file = "HANDE.COMM"
 
 contains
 
-    subroutine calc_interact(comms_found, soft_exit, qmc_in, qs)
+    subroutine calc_interact(comms_found, soft_exit, qs)
 
         ! Read HANDE.COMM if it exists in the working directory of any
         ! processor and set the variables according to the options defined in
@@ -36,7 +36,6 @@ contains
 
         logical, intent(in) :: comms_found
         logical, intent(out) :: soft_exit
-        type(qmc_in_t), optional, intent(inout) :: qmc_in
         type(qmc_state_t), optional, intent(inout) :: qs
 
         real(p), allocatable :: tmpshift(:)
@@ -152,10 +151,8 @@ contains
                             qs%shift(:size(tmpshift)) = tmpshift(:)
                         end if
                     end if
-                end if
-                if (present(qmc_in)) then
-                    call aot_get_val(qmc_in%target_particles, ierr, lua_state, key='target_population')
-                    if (qmc_in%target_particles < 0 .and. present(qs)) qs%vary_shift = .true.
+                    call aot_get_val(qs%target_particles, ierr, lua_state, key='target_population')
+                    if (qs%target_particles < 0 .and. present(qs)) qs%vary_shift = .true.
                 end if
             end if
 

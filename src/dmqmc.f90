@@ -168,7 +168,7 @@ contains
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            qs%vary_shift = qs%psip_list%tot_nparticles >= qmc_in%target_particles
+            qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
 
             do ireport = 1, qmc_in%nreport
 

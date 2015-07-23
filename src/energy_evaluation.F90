@@ -385,7 +385,7 @@ contains
         end if
         ntot_particles_old = ntot_particles
         qs%estimators%hf_signed_pop = new_hf_signed_pop
-        if (ntot_particles(1) > qmc_in%target_particles .and. .not.qs%vary_shift(1)) then
+        if (ntot_particles(1) > qs%target_particles .and. .not.qs%vary_shift(1)) then
             qs%vary_shift(1) = .true.
             if (qmc_in%vary_shift_from_proje) then
                 ! Set shift to be instantaneous projected energy.

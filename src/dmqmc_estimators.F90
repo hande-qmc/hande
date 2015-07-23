@@ -332,7 +332,7 @@ contains
                 call update_shift(qmc_in, qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
                     loc_totnparticles(ireplica), qmc_in%ncycles)
             end if
-            if (loc_totnparticles(ireplica) > qmc_in%target_particles .and. (.not. qs%vary_shift(ireplica))) &
+            if (loc_totnparticles(ireplica) > qs%target_particles .and. (.not. qs%vary_shift(ireplica))) &
                 qs%vary_shift(ireplica) = .true.
         end do
 

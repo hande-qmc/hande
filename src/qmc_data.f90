@@ -542,6 +542,8 @@ type qmc_state_t
     ! of the shift array refer to the shifts in the corresponding replica systems.
     ! When replica_tricks is not being used, only the first element is used.
     logical, allocatable :: vary_shift(:) ! (psip_list%nspaces)
+    ! Number of particles above which varyshift is turned on.
+    real(p) :: target_particles = huge(1.0_p)
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store

@@ -485,7 +485,8 @@ contains
 #endif
 
             ! Decide whether the shift should be turned on from the start.
-            qmc_state%vary_shift = pl%tot_nparticles >= qmc_in%target_particles
+            qmc_state%target_particles = qmc_in%target_particles
+            qmc_state%vary_shift = pl%tot_nparticles >= qmc_state%target_particles
 
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
