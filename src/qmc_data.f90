@@ -544,6 +544,8 @@ type qmc_state_t
     logical, allocatable :: vary_shift(:) ! (psip_list%nspaces)
     ! Number of particles above which varyshift is turned on.
     real(p) :: target_particles = huge(1.0_p)
+    ! Probability of attempting single or double excitations.
+    real(p) :: pattempt_single, pattempt_double
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store

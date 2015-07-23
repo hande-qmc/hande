@@ -62,7 +62,7 @@ contains
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(fciqmc_in_t), intent(inout) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
@@ -221,7 +221,7 @@ contains
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
+                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
                                         qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, nspawned, connection)
 
                         ! Spawn if attempt was successful.
@@ -421,7 +421,7 @@ contains
             do iparticle = 1, nattempts_current_det
 
                 ! Attempt to spawn.
-                call spawner_ptr(rng, sys, qmc_in, qs%tau, spawn_to_send%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
+                call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
                                  neel_singlet_amp, nspawned, connection)
 
                 ! Spawn if attempt was successful.

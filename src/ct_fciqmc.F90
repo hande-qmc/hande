@@ -32,7 +32,7 @@ contains
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(in) :: reference
         real(p), intent(in) :: matel ! either U or t, depending whether we are working in the real or k-space

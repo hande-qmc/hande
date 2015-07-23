@@ -52,7 +52,7 @@ contains
         use spawn_data, only: write_memcheck_report
 
         type(sys_t), intent(inout) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(restart_in_t), intent(in) :: restart_in
@@ -168,7 +168,7 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs%ref, annihilation_flags, &
+            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
                                                init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn)
 
             ! Allow the shift to vary from the very start of the beta loop, if
@@ -235,7 +235,7 @@ contains
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, &
+                                    call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, &
                                                      cdet1, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
                                                      weighted_sampling%probs, nspawned, connection)
                                     ! Spawn if attempt was successful.
@@ -251,7 +251,7 @@ contains
                                     ! Now attempt to spawn from the second end.
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
-                                        call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, &
+                                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, &
                                                          cdet2, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
                                                          weighted_sampling%probs, nspawned, connection)
                                         if (nspawned /= 0_int_p) then

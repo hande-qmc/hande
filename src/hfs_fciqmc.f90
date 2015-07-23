@@ -62,7 +62,7 @@ contains
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t, reference_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
@@ -180,7 +180,7 @@ contains
                     do iparticle = 1, abs(qs%psip_list%pops(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
+                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
                                          qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, &
                                          nspawned, connection)
                         ! Spawn if attempt was successful.
@@ -193,7 +193,7 @@ contains
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         ! [todo] - JSS: real populations for HFS spawner.
-                        call spawner_hfs_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
+                        call spawner_hfs_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
                                              qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, neel_singlet_amp, &
                                              nspawned, connection)
                         ! Spawn if attempt was successful.
@@ -210,7 +210,7 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
+                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
                                          qs%psip_list%pops(2,idet), gen_excit_ptr, neel_singlet_amp, &
                                          nspawned, connection)
                         ! Spawn if attempt was successful.

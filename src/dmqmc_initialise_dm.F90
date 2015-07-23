@@ -16,7 +16,7 @@ implicit none
 
 contains
 
-    subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, reference, annihilation_flags, &
+    subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qmc_state, annihilation_flags, &
                                              target_nparticles_tot, psip_list, spawn)
 
         ! Create a starting density matrix by sampling the elements of the
@@ -36,7 +36,7 @@ contains
         ! In:
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
-        !    reference: current reference determinant.
+        !    qmc_state: QMC state
         !    annihilation_flags: calculation specific annihilation flags.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
@@ -49,7 +49,7 @@ contains
         use system, only: sys_t, heisenberg, ueg, hub_k, hub_real, read_in, copy_sys_spin_info
         use utils, only: binom_r
         use qmc_common, only: redistribute_particles
-        use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: qmc_state_t, particle_t, annihilation_flags_t, qmc_in_t
         use spawn_data, only:spawn_t
         use dmqmc_data, only: dmqmc_in_t
 
@@ -57,7 +57,7 @@ contains
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(dmqmc_in_t), intent(in) :: dmqmc_in
-        type(reference_t), intent(in) :: reference
+        type(qmc_state_t), intent(in) :: qmc_state
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
         type(particle_t), intent(inout) :: psip_list
@@ -113,14 +113,14 @@ contains
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, &
-                                                           reference%energy_shift, rng)
+                                                           qmc_state%ref%energy_shift, rng)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                                         dmqmc_in%all_sym_sectors, spawn)
                     end if
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
-                    if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, &
+                    if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, &
                                                                                npsips_this_proc, ireplica, spawn)
                 else
                     if (dmqmc_in%all_spin_sectors) then
@@ -180,7 +180,7 @@ contains
             psip_list%tot_nparticles = target_nparticles_tot
         end if
 
-        call direct_annihilation(sys, rng, reference, annihilation_flags, psip_list, spawn)
+        call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
 
         if (dmqmc_in%metropolis_attempts > 0) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -193,7 +193,7 @@ contains
                                         psip_list%nparticles, spawn)
             if (spawn%error) call stop_all('create_initial_density_matrix', 'Ran out of space in the spawning array while&
                                       & generating the initial density matrix.')
-            call direct_annihilation(sys, rng, reference, annihilation_flags, psip_list, spawn)
+            call direct_annihilation(sys, rng, qmc_state%ref, annihilation_flags, psip_list, spawn)
         end if
 
     end subroutine create_initial_density_matrix
@@ -323,7 +323,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, qmc_in, dmqmc_in, npsips, ireplica, spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, npsips, ireplica, spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -340,7 +340,7 @@ contains
         !     matrix is indeed being sampled correctly.
 
         ! In:
-        !    qmc_in: input options relating to QMC methods.
+        !    qmc_state: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
         !    npsips: number of psips to distribute in this sector.
         !    ireplica: replica index.
@@ -359,14 +359,14 @@ contains
         use parallel, only: nprocs, nthreads, parent
         use hilbert_space, only: gen_random_det_truncate_space
         use proc_pointers, only: trial_dm_ptr, gen_excit_ptr, decoder_ptr
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use utils, only: int_fmt
         use spawn_data, only: spawn_t
         use dmqmc_data, only: dmqmc_in_t
         use symmetry, only: symmetry_orb_list
 
         type(sys_t), intent(inout) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qmc_state
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
         integer, intent(in) :: ireplica
@@ -416,7 +416,7 @@ contains
                         call encode_det(sys%basis, cdet%occ_list, f_new)
                     else
                         call decoder_ptr(sys, cdet%f, cdet)
-                        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+                        call gen_excit_ptr%full(rng, sys, qmc_state, cdet, pgen, connection, hmatel)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
                         if (abs(hmatel) < depsilon) cycle

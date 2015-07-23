@@ -77,28 +77,28 @@ abstract interface
         integer(i0), allocatable, intent(in) :: mask(:)
         real(p), intent(inout) :: cfunc
     end subroutine i_update_dmqmc_correlation_function
-    subroutine i_gen_excit(rng, sys, qmc_in, d, pgen, connection, hmatel)
+    subroutine i_gen_excit(rng, sys, qmc_state, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qmc_state
         type(det_info_t), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
     end subroutine i_gen_excit
-    subroutine i_gen_excit_finalise(rng, sys, qmc_in, d, connection, hmatel)
+    subroutine i_gen_excit_finalise(rng, sys, qmc_state, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qmc_state
         type(det_info_t), intent(in) :: d
         type(excit_t), intent(inout) :: connection
         real(p), intent(out) :: hmatel
@@ -212,17 +212,16 @@ end type gen_excit_ptr_t
 type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
-    subroutine i_spawner(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, weights, &
+    subroutine i_spawner(rng, sys, qmc_state, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, weights, &
                          nspawned, connection)
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         import :: det_info_t, excit_t, gen_excit_ptr_t, int_p, p, dp
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: tau
+        type(qmc_state_t), intent(in) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: d

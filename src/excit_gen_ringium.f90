@@ -11,14 +11,14 @@ implicit none
 
 contains
 
-    subroutine gen_excit_ringium_no_renorm(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_ringium_no_renorm(rng, sys, qmc_state, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods
+        !    qmc_state: input options relating to QMC methods
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! Out:
@@ -35,12 +35,12 @@ contains
         use system, only: sys_t
         use hamiltonian_ringium, only: slater_condon2_ringium_excit
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use excit_gen_ueg, only: choose_ij_k
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qmc_state
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection

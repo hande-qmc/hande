@@ -18,14 +18,14 @@ contains
 
 !--- Excitation generators: Hubbard model ---
 
-    subroutine gen_excit_hub_real(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_real(rng, sys, qmc_state, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
+        !    qmc_state: input options relating to QMC methods.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         ! In/Out:
@@ -41,12 +41,12 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qmc_state
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -69,7 +69,7 @@ contains
 
     end subroutine gen_excit_hub_real
 
-    subroutine gen_excit_hub_real_no_renorm(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_real_no_renorm(rng, sys, qmc_state, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -86,7 +86,7 @@ contains
         !
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
+        !    qmc_state: input options relating to QMC methods.
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
         ! In/Out:
@@ -102,13 +102,13 @@ contains
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use hamiltonian_hub_real, only: slater_condon1_hub_real_excit
         use spawning, only: attempt_to_spawn
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qmc_state
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
@@ -153,14 +153,14 @@ contains
 
 !--- Excitation generators: Heisenberg model ---
 
-    subroutine gen_excit_heisenberg(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_heisenberg(rng, sys, qmc_state, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
+        !    qmc_state: input options relating to QMC methods.
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
         ! In/Out:
@@ -175,12 +175,12 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qmc_state
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -206,7 +206,7 @@ contains
 
     end subroutine gen_excit_heisenberg
 
-    subroutine gen_excit_heisenberg_no_renorm(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_heisenberg_no_renorm(rng, sys, qmc_state, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -223,7 +223,7 @@ contains
         !
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
+        !    qmc_state: input options relating to QMC methods.
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
         ! In/Out:
@@ -238,13 +238,13 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(in) :: qmc_state
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel

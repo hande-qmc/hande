@@ -311,7 +311,7 @@ contains
         use json_out, only: json_out_t, json_object_init, json_object_end
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
@@ -1469,7 +1469,7 @@ contains
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qs, cdet, pgen, connection, hmatel)
 
         if (linked_ccmc .and. abs(hmatel) > depsilon) then
             ! For Linked Coupled Cluster we reject any spawning where the
@@ -2259,7 +2259,7 @@ contains
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then
             call decoder_ptr(sys, rdet%f, rdet)
-            call gen_excit_ptr%full(rng, sys, qmc_in, rdet, pgen, connection, hmatel)
+            call gen_excit_ptr%full(rng, sys, qs, rdet, pgen, connection, hmatel)
             ! If hmatel is 0 then the excitation generator returned an invalid excitor
             if (hmatel /= 0.0_p) then
                 ! check that left_cluster can be applied to the resulting excitor to

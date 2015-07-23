@@ -136,7 +136,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(inout) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
@@ -499,11 +499,11 @@ contains
             ! determinants have a roughly similar ratio of single:double
             ! excitations.
             if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-                call find_single_double_prob(sys, reference%occ_list0, qmc_in%pattempt_single, qmc_in%pattempt_double)
+                call find_single_double_prob(sys, reference%occ_list0, qmc_state%pattempt_single, qmc_state%pattempt_double)
             else
                 ! renormalise just in case input wasn't
-                qmc_in%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
-                qmc_in%pattempt_double = 1.0_p - qmc_in%pattempt_single
+                qmc_state%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
+                qmc_state%pattempt_double = 1.0_p - qmc_in%pattempt_single
             end if
 
             ! Set initial values from input
@@ -524,6 +524,8 @@ contains
             case default
                 write(6,'(1X,i0)') ref_sym
             end select
+            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', qmc_state%pattempt_single
+            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', qmc_state%pattempt_double
 
             if (doing_calc(dmqmc_calc)) then
                 write (6,'(1X,"Initial population on the trace of the density matrix:",1X,i0)') int(qmc_in%D0_population,int_64)
