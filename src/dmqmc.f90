@@ -60,7 +60,7 @@ contains
         type(reference_t), intent(in) :: reference_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
-        integer :: beta_cycle
+        integer :: beta_cycle, nreport
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
         real(p), allocatable :: tot_nparticles_old(:), real_population(:)
@@ -134,13 +134,18 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
+        ! When using the propagate_to_beta option the number of iterations in imaginary
+        ! time we want to do depends on what value of beta we are seeking. It's
+        ! annoying to have to modify this in the input file, so just do it here.
+        if (dmqmc_in%propagate_to_beta) nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
+
         ! When we accumulate data throughout a run, we are actually accumulating
         ! results from the psips distribution from the previous iteration.
         ! For example, in the first iteration, the trace calculated will be that
         ! of the initial distribution, which corresponds to beta=0. Hence, in the
         ! output we subtract one from the iteration number, and run for one more
         ! report loop, asimplemented in the line of code below.
-        qmc_in%nreport = qmc_in%nreport+1
+        nreport = nreport+1
 
         if (dmqmc_in%all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
@@ -170,7 +175,7 @@ contains
             ! this condition is met.
             qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
 
-            do ireport = 1, qmc_in%nreport
+            do ireport = 1, nreport
 
                 call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles

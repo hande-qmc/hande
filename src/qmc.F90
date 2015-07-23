@@ -36,7 +36,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
 
         integer :: i, ierr
 
@@ -65,13 +65,6 @@ contains
         end if
         ! Store 2**real_bit_shift for ease.
         real_factor = 2_int_p**(int(real_bit_shift, int_p))
-
-        if (present(dmqmc_in)) then
-            ! When using the propagate_to_beta option the number of iterations in imaginary
-            ! time we want to do depends on what value of beta we are seeking. It's
-            ! annoying to have to modify this in the input file, so just do it here.
-            if (dmqmc_in%propagate_to_beta) qmc_in%nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
-        end if
 
         if (present(fciqmc_in)) then
             ! Calculate all the possible different amplitudes for the Neel singlet state
