@@ -130,6 +130,7 @@ contains
         call check_allocate('qs%vary_shift', size(qs%vary_shift), ierr)
         qs%vary_shift = .false.
 
+        qs%target_particles = qmc_in%target_particles
         qs%tau = qmc_in%tau
 
         ! Now we need to set the reference determinant.
