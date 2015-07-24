@@ -10,7 +10,7 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc_legacy(sys, qmc_in, fciqmc_in, dmqmc_in)
+    subroutine init_qmc_legacy(sys, qmc_in, fciqmc_in)
 
         ! Do some legacy initialisation (ie things which should not be
         ! global/modified in input structures/etc).
@@ -29,12 +29,10 @@ contains
         use parallel, only: parent
         use utils, only: factorial_combination_1
 
-        use dmqmc_data, only: dmqmc_in_t
         use qmc_data, only: qmc_in_t, fciqmc_in_t, qmc_state_t, neel_singlet
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_in_t), intent(in) :: qmc_in
 
@@ -266,7 +264,7 @@ contains
                                             'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
 
-            call init_qmc_legacy(sys, qmc_in, fciqmc_in, dmqmc_in)
+            call init_qmc_legacy(sys, qmc_in, fciqmc_in)
 
             ! If not using real amplitudes then we always want spawn_cutoff to be
             ! equal to 1.0, so overwrite the default before creating spawn_t objects.

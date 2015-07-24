@@ -101,6 +101,19 @@ contains
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('real_population', size(real_population), ierr)
 
+        nreport = qmc_in%nreport
+        ! When using the propagate_to_beta option the number of iterations in imaginary
+        ! time we want to do depends on what value of beta we are seeking. It's
+        ! annoying to have to modify this in the input file, so just do it here.
+        if (dmqmc_in%propagate_to_beta) nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
+        ! When we accumulate data throughout a run, we are actually accumulating
+        ! results from the psips distribution from the previous iteration.
+        ! For example, in the first iteration, the trace calculated will be that
+        ! of the initial distribution, which corresponds to beta=0. Hence, in the
+        ! output we subtract one from the iteration number, and run for one more
+        ! report loop, asimplemented in the line of code below.
+        nreport = nreport+1
+
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
@@ -133,19 +146,6 @@ contains
         end if
         ! Initialise timer.
         call cpu_time(t1)
-
-        ! When using the propagate_to_beta option the number of iterations in imaginary
-        ! time we want to do depends on what value of beta we are seeking. It's
-        ! annoying to have to modify this in the input file, so just do it here.
-        if (dmqmc_in%propagate_to_beta) nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
-
-        ! When we accumulate data throughout a run, we are actually accumulating
-        ! results from the psips distribution from the previous iteration.
-        ! For example, in the first iteration, the trace calculated will be that
-        ! of the initial distribution, which corresponds to beta=0. Hence, in the
-        ! output we subtract one from the iteration number, and run for one more
-        ! report loop, asimplemented in the line of code below.
-        nreport = nreport+1
 
         if (dmqmc_in%all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
@@ -343,7 +343,7 @@ contains
         if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
-            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
+            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*nreport
         end if
 
         if (restart_in%write_restart) then
