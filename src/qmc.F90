@@ -136,7 +136,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
-        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
         type(qmc_state_t), intent(inout) :: qmc_state
@@ -240,7 +240,6 @@ contains
 
             ! --- Memory allocation ---
 
-            if (nprocs == 1 .or. .not. fciqmc_in_loc%doing_load_balancing) load_bal_in%nslots = 1
             call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, qmc_state%par_info, &
                                  load_bal_in%nslots)
 

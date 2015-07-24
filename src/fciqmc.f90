@@ -66,7 +66,7 @@ contains
         type(fciqmc_in_t), intent(in) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
-        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
 
         type(det_info_t) :: cdet

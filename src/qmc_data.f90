@@ -231,9 +231,9 @@ end type nb_rep_t
 
 type load_bal_in_t
     ! Number of slots walker lists are initially subdivided into for proc_map
-    ! Default = 20. This reverts to 1 when run in serial.
+    ! Default = 1 unless using load balancing (in which case 20).
     ! Input option: load_balancing_slots
-    integer :: nslots = 20
+    integer :: nslots = 1
     ! Population which must be reached before load balancing is attempted.
     ! Default = 1000.
     ! Input option: load_balancing_pop

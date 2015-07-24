@@ -56,7 +56,7 @@ contains
         type(dmqmc_in_t), intent(inout) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(restart_in_t), intent(in) :: restart_in
-        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
