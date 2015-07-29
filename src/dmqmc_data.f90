@@ -279,6 +279,10 @@ type dmqmc_weighted_sampling_t
     real(p), allocatable :: probs(:) ! (max_number_excitations + 1)
     ! The value of accumulated_probs on the last report cycle.
     real(p), allocatable :: probs_old(:) ! (max_number_excitations + 1)
+    ! When using the old weighted importance sampling, sampling_probs
+    ! stores the factors by which probabilities are to be reduced when spawning
+    ! away from the diagonal.
+    real(p), allocatable :: sampling_probs(:) ! (max_number_excitations)
 
     ! If varying the weights then this array holds the factors by which the
     ! weights are changed each iteration.

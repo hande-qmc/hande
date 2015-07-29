@@ -140,7 +140,7 @@ contains
         type(reference_t), intent(in) :: reference_in
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
         type(qmc_state_t), intent(inout) :: qmc_state
-        type(dmqmc_in_t), intent(inout), optional :: dmqmc_in
+        type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         integer :: ierr

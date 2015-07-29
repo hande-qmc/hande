@@ -53,7 +53,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
-        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
