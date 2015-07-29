@@ -161,12 +161,6 @@ type dmqmc_in_t
     ! initially (as orbital labels), to be used in the calculation of
     ! spin correlation functions.
     integer, allocatable :: correlation_sites(:)
-    ! correlation_mask is a bit string with a 1 at positions i and j which
-    ! are considered when finding the spin correlation function, C(r_{i,j}).
-    ! All other bits are set to 0. i and j are chosen by the user initially.
-    ! This is not actually an input option but is calculated from
-    ! correlation_sites, but we store it here to be pragmatic.
-    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
 
     ! When using the old weighted importance sampling, sampling_probs
     ! stores the factors by which probabilities are to be reduced when spawning
@@ -255,6 +249,12 @@ type dmqmc_estimates_t
     ! This array is used to hold the number of particles on each excitation
     ! level of the density matrix.
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
+
+    ! correlation_mask is a bit string with a 1 at positions i and j which
+    ! are considered when finding the spin correlation function, C(r_{i,j}).
+    ! All other bits are set to 0. i and j are chosen by the user initially.
+    ! Not an estimate, but needed to calculate one.
+    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
 
     ! RDM data.
 

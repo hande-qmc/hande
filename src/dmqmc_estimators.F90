@@ -421,7 +421,7 @@ contains
                     &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(energy_squared_ind))
                 ! Spin-spin correlation function.
                 if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), dmqmc_in%correlation_mask, &
+                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), dmqmc_estimates%correlation_mask, &
                       est%numerators(correlation_fn_ind))
                 ! Staggered magnetisation.
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&

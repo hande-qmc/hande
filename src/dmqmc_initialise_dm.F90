@@ -113,7 +113,7 @@ contains
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, spawn, &
-                                                           qmc_state%ref%energy_shift, rng)
+                                                           qmc_state%ref%energy_shift, qmc_state%init_beta, rng)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, ireplica, &
                                                                         dmqmc_in%all_sym_sectors, spawn)
@@ -425,7 +425,7 @@ contains
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
                     E_new = trial_dm_ptr(sys, f_new)
-                    prob = exp(-1.0_p*dmqmc_in%init_beta*(E_new-E_old))
+                    prob = exp(-1.0_p*qmc_state%init_beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
                         call decode_det(sys%basis, f_new, occ_list)
@@ -530,7 +530,7 @@ contains
 
     end subroutine dmqmc_spin_cons_metropolis_move
 
-    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, spawn, energy_shift, rng)
+    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, spawn, energy_shift, init_beta, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -557,7 +557,7 @@ contains
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
-        real(p), intent(in) :: energy_shift
+        real(p), intent(in) :: energy_shift, init_beta
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
@@ -588,7 +588,7 @@ contains
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                          (1+exp(dmqmc_in%init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%chem_pot)))
+                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%chem_pot)))
 
         ! In the grand canoical ensemble the probability of occupying a
         ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the
@@ -617,7 +617,7 @@ contains
             ! Create the determinant.
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                 if (dmqmc_in%initial_matrix /= free_electron_dm .and. dmqmc_in%metropolis_attempts == 0) nspawn = &
-                                & reweight_spawned_particle(sys, occ_list, dmqmc_in%init_beta, &
+                                & reweight_spawned_particle(sys, occ_list, init_beta, &
                                                             energy_shift, spawn%cutoff, real_factor, rng)
                 call encode_det(sys%basis, occ_list, f)
                 call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &

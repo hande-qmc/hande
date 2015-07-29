@@ -47,17 +47,17 @@ contains
         call check_allocate('dmqmc_estimates%inst_rdm%traces', size(dmqmc_estimates%inst_rdm%traces),ierr)
         dmqmc_estimates%inst_rdm%traces = 0.0_p
 
-        ! If calculating a correlaton function then set up the necessary bit
+        ! If calculating a correlation function then set up the necessary bit
         ! mask. This has a bit set for each of the two sites/orbitals being
         ! considered in the correlation function.
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            allocate(dmqmc_in%correlation_mask(1:sys%basis%string_len), stat=ierr)
-            call check_allocate('dmqmc_in%correlation_mask',sys%basis%string_len,ierr)
-            dmqmc_in%correlation_mask = 0_i0
+            allocate(dmqmc_estimates%correlation_mask(1:sys%basis%string_len), stat=ierr)
+            call check_allocate('dmqmc_estimates%correlation_mask',sys%basis%string_len,ierr)
+            dmqmc_estimates%correlation_mask = 0_i0
             do i = 1, 2
                 bit_position = sys%basis%bit_lookup(1,dmqmc_in%correlation_sites(i))
                 bit_element = sys%basis%bit_lookup(2,dmqmc_in%correlation_sites(i))
-                dmqmc_in%correlation_mask(bit_element) = ibset(dmqmc_in%correlation_mask(bit_element), bit_position)
+                dmqmc_estimates%correlation_mask(bit_element) = ibset(dmqmc_estimates%correlation_mask(bit_element), bit_position)
             end do
         end if
 
@@ -89,7 +89,9 @@ contains
         ! to set the appropriate beta = Beta / T_F.
         if (dmqmc_in%fermi_temperature) then
             qs%tau = qs%tau / sys%ueg%ef
-            dmqmc_in%init_beta = dmqmc_in%init_beta / sys%ueg%ef
+            qs%init_beta = dmqmc_in%init_beta / sys%ueg%ef
+        else
+            qs%init_beta = dmqmc_in%init_beta
         end if
 
 

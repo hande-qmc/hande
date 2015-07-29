@@ -546,6 +546,8 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Probability of attempting single or double excitations.
     real(p) :: pattempt_single, pattempt_double
+    ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
+    real(p) :: init_beta = 1.0
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
