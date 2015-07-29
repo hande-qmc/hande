@@ -305,7 +305,7 @@ args : :class:`ArgumentParser`
 
     parser_ueg = subparsers.add_parser('ueg', parents=[parent_parser],
                         help='Chemical potential for 3d UEG.')
-    parser_ueg.add_argument('rs', type=int, help='Wigner-Seitz radius.')
+    parser_ueg.add_argument('rs', type=float, help='Wigner-Seitz radius.')
     parser_ueg.add_argument('ecutoff', type=float, help='Plane wave cutoff '
                         'in units of 0.5*(2\pi/L)**2.')
     parser_ueg.add_argument('-t', '--use--fermi', action='store_true',
