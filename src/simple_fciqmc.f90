@@ -202,11 +202,13 @@ contains
         !    sparse_hamil: true if using a sparse matrix for the Hamiltonian.
 
         use csr, only: csrp_t
+        use json_out
 
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
         use fciqmc_data, only: write_fciqmc_report_header, write_fciqmc_report
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t, qmc_state_t, &
+                            qmc_in_t_json, restart_in_t_json, reference_t_json
         use qmc_common, only: dump_restart_file_wrapper
         use spawn_data, only: spawn_t
         use system, only: sys_t
@@ -235,6 +237,7 @@ contains
         type(restart_info_t) :: ri, ri_shift
         real(p), allocatable :: hamil(:,:)
         type(csrp_t) :: hamil_csr
+        type(json_out_t) :: js
 
         ! Check input options
         call check_qmc_opts(qmc_in, .true.)
@@ -242,7 +245,16 @@ contains
         call init_simple_fciqmc(sys, qmc_in, reference, qs, sparse_hamil, restart_in%read_restart, ndets, dets, ref_det, &
                                 psip_list, spawn, hamil, hamil_csr)
 
-        if (parent) call rng_init_info(qmc_in%seed+iproc)
+        if (parent) then
+            call rng_init_info(qmc_in%seed+iproc)
+            call json_object_init(js, tag=.true.)
+            call qmc_in_t_json(js, qmc_in)
+            call restart_in_t_json(js, restart_in)
+            call reference_t_json(js, reference)
+            call json_write_key(js, 'sparse_hamil', sparse_hamil, .true.)
+            call json_object_end(js, terminal=.true., tag=.true.)
+            write (js%io,'()')
+        end if
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         nparticles = real(sum(abs(psip_list%pops(1,:))),p)

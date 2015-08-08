@@ -50,6 +50,7 @@ contains
         use determinants, only: encode_det, det_info_t, alloc_det_info_t,  &
                                 dealloc_det_info_t, decode_det_spinocc_spinunocc
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use json_out
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
         use system
@@ -75,6 +76,7 @@ contains
         type(sys_t) :: sys_bak
         type(det_info_t) :: det0
         logical :: truncate_space
+        type(json_out_t) :: js
 
         if (parent) write (6,'(1X,a13,/,1X,13("-"),/)') 'Hilbert space'
 
@@ -89,6 +91,16 @@ contains
             seed = rng_seed
         else
             seed = gen_seed(GLOBAL_META%uuid)
+        end if
+
+        if (parent) then
+            call json_object_init(js, tag=.true.)
+            call json_write_key(js, 'ex_level', truncation_level)
+            call json_write_key(js, 'ncycles', ncycles)
+            call json_write_key(js, 'occ_list', occ_list0)
+            call json_write_key(js, 'rng_seed', seed, .true.)
+            call json_object_end(js, terminal=.true., tag=.true.)
+            write (js%io,'()')
         end if
 
         if (parent) call rng_init_info(seed+iproc)

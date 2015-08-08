@@ -31,6 +31,7 @@ contains
 
         use parallel
         use checking, only: check_allocate
+        use json_out
 
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
@@ -56,7 +57,9 @@ contains
                               write_memcheck_report
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
-                            qmc_state_t, annihilation_flags_t, reference_t, semi_stoch_separate_annihilation
+                            qmc_state_t, annihilation_flags_t, reference_t, semi_stoch_separate_annihilation,        &
+                            qmc_in_t_json, fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json, &
+                            reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
 
         type(sys_t), intent(in) :: sys
@@ -71,6 +74,7 @@ contains
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(semi_stoch_t) :: determ
+        type(json_out_t) :: js
 
         integer :: idet, ireport, icycle, iparticle, ideterm, ierr
         integer :: iter, semi_stoch_iter
@@ -109,6 +113,18 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, fciqmc_in=fciqmc_in)
+
+        if (parent) then
+            call json_object_init(js, tag=.true.)
+            call qmc_in_t_json(js, qmc_in)
+            call fciqmc_in_t_json(js, fciqmc_in)
+            call semi_stoch_in_t_json(js, semi_stoch_in)
+            call restart_in_t_json(js, restart_in)
+            call load_bal_in_t_json(js, load_bal_in)
+            call reference_t_json(js, qs%ref, .true.)
+            call json_object_end(js, terminal=.true., tag=.true.)
+            write (js%io, '()')
+        end if
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)

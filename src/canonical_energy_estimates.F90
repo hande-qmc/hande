@@ -53,6 +53,7 @@ contains
 
         use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use json_out
         use parallel
         use utils, only: rng_init_info
 
@@ -88,6 +89,7 @@ contains
         integer :: ngen, nalpha_allowed, nbeta_allowed
         real(p) :: energy_zero, ref_shift
         integer, allocatable :: occ_list0(:)
+        type(json_out_t) :: js
 
         if (parent) write (6,'(1X,a16,/,1X,16("-"),/)') 'Canonical energy'
 
@@ -95,6 +97,18 @@ contains
             seed = rng_seed
         else
             seed = gen_seed(GLOBAL_META%uuid)
+        end if
+
+        if (parent) then
+            call json_object_init(js, tag=.true.)
+            call json_write_key(js, 'all_spin_sectors', all_spin_sectors)
+            call json_write_key(js, 'beta', beta)
+            call json_write_key(js, 'fermi_temperature', fermi_temperature)
+            call json_write_key(js, 'nsamples', nsamples)
+            call json_write_key(js, 'ncycles', ncycles)
+            call json_write_key(js, 'rng_seed', seed)
+            call json_object_end(js, terminal=.true., tag=.true.)
+            write (js%io,'()')
         end if
 
         if (parent) call rng_init_info(seed+iproc)

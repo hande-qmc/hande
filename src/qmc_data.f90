@@ -583,4 +583,211 @@ integer :: real_bit_shift
 integer(int_p) :: real_factor
 ! [todo] - procedures for encoding and decoding the populations.
 
+contains
+
+    subroutine qmc_in_t_json(js, qmc, terminal)
+
+        ! Serialise a qmc_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   qmc_in: qmc_in_t object containing qmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(qmc_in_t), intent(in) :: qmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'qmc')
+        call json_write_key(js, 'seed', qmc%seed)
+        call json_write_key(js, 'real_amplitudes', qmc%real_amplitudes)
+        call json_write_key(js, 'spawn_cutoff', qmc%spawn_cutoff)
+        call json_write_key(js, 'excit_gen', qmc%excit_gen)
+        call json_write_key(js, 'pattempt_single', qmc%pattempt_single)
+        call json_write_key(js, 'pattempt_double', qmc%pattempt_double)
+        call json_write_key(js, 'tau', qmc%tau)
+        call json_write_key(js, 'tau_search', qmc%tau_search)
+        call json_write_key(js, 'vary_shift_from', qmc%vary_shift_from)
+        call json_write_key(js, 'vary_shift_from_proje', qmc%vary_shift_from_proje)
+        call json_write_key(js, 'initial_shift', qmc%initial_shift)
+        call json_write_key(js, 'shift_damping', qmc%shift_damping)
+        call json_write_key(js, 'walker_length', qmc%walker_length)
+        call json_write_key(js, 'spawned_walker_length', qmc%spawned_walker_length)
+        call json_write_key(js, 'D0_population', qmc%D0_population)
+        call json_write_key(js, 'target_particles', qmc%target_particles)
+        call json_write_key(js, 'initiator_approx', qmc%initiator_approx)
+        call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
+        call json_write_key(js, 'ncycles', qmc%ncycles)
+        call json_write_key(js, 'nreport', qmc%nreport)
+        call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine qmc_in_t_json
+
+    subroutine fciqmc_in_t_json(js, fciqmc, terminal)
+
+        ! Serialise a fciqmc_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   fciqmc_in: fciqmc_in_t object containing fciqmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(fciqmc_in_t), intent(in) :: fciqmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'fciqmc')
+        call json_write_key(js, 'select_ref_det_every_nreports', fciqmc%select_ref_det_every_nreports)
+        call json_write_key(js, 'init_spin_inv_D0', fciqmc%init_spin_inv_D0)
+        call json_write_key(js, 'ref_det_factor', fciqmc%ref_det_factor)
+        call json_write_key(js, 'non_blocking_comm', fciqmc%non_blocking_comm)
+        call json_write_key(js, 'doing_load_balancing', fciqmc%doing_load_balancing)
+        call json_write_key(js, 'trial_function', fciqmc%trial_function)
+        call json_write_key(js, 'guiding_function', fciqmc%guiding_function, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine fciqmc_in_t_json
+
+    subroutine semi_stoch_in_t_json(js, semi_stoch, terminal)
+
+        ! Serialise a semi_stoch_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   semi_stoch_in: semi_stoch_in_t object containing semi-stochastic input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(semi_stoch_in_t), intent(in) :: semi_stoch
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'semi_stoch')
+        call json_write_key(js, 'start_iter', semi_stoch%start_iter)
+        call json_write_key(js, 'shift_iter', semi_stoch%shift_iter)
+        call json_write_key(js, 'space_type', semi_stoch%space_type)
+        call json_write_key(js, 'target_size', semi_stoch%target_size)
+        call json_write_key(js, 'write_determ_space', semi_stoch%write_determ_space)
+        call json_write_key(js, 'projection_mode', semi_stoch%projection_mode)
+        call json_write_key(js, 'read_id', semi_stoch%read_id)
+        call json_write_key(js, 'write_id', semi_stoch%write_id, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine semi_stoch_in_t_json
+
+    subroutine ccmc_in_t_json(js, ccmc, terminal)
+
+        ! Serialise a ccmc_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   ccmc_in: ccmc_in_t object containing ccmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(ccmc_in_t), intent(in) :: ccmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'ccmc')
+        call json_write_key(js, 'move_freq', ccmc%move_freq)
+        call json_write_key(js, 'cluster_multispawn_threshold', ccmc%cluster_multispawn_threshold)
+        call json_write_key(js, 'full_nc', ccmc%full_nc)
+        call json_write_key(js, 'linked', ccmc%linked, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine ccmc_in_t_json
+
+    subroutine restart_in_t_json(js, restart, terminal)
+
+        ! Serialise a restart_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   restart_in: restart_in_t object containing restart input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(restart_in_t), intent(in) :: restart
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'restart')
+        call json_write_key(js, 'read_restart', restart%read_restart)
+        call json_write_key(js, 'read_id', restart%read_id)
+        call json_write_key(js, 'write_restart', restart%write_restart)
+        call json_write_key(js, 'write_id', restart%write_id)
+        call json_write_key(js, 'write_freq', restart%write_freq)
+        call json_write_key(js, 'write_restart_shift', restart%write_restart_shift)
+        call json_write_key(js, 'write_shift_id', restart%write_shift_id, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine restart_in_t_json
+
+    subroutine load_bal_in_t_json(js, lb, terminal)
+
+        ! Serialise a load_bal_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   load_bal_in: load_bal_in_t object containing load balancing input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(load_bal_in_t), intent(in) :: lb
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'load balancing')
+        call json_write_key(js, 'nslots', lb%nslots)
+        call json_write_key(js, 'pop', lb%pop)
+        call json_write_key(js, 'percent', lb%percent)
+        call json_write_key(js, 'max_attempts', lb%max_attempts)
+        call json_write_key(js, 'write_info', lb%write_info, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine load_bal_in_t_json
+
+    subroutine reference_t_json(js, ref, terminal)
+
+        ! Serialise a reference_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   reference: reference_t object containing the information about reference state (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(reference_t), intent(in) :: ref
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'reference')
+        if (allocated(ref%occ_list0)) call json_write_key(js, 'occ_list', ref%occ_list0)
+        if (allocated(ref%hs_occ_list0)) call json_write_key(js, 'hs_occ_list', ref%hs_occ_list0)
+        call json_write_key(js, 'ex_level', ref%ex_level)
+        call json_write_key(js, 'H00', ref%H00)
+        call json_write_key(js, 'shift', ref%energy_shift, .true.)
+        call json_object_end(js, terminal)
+
+    end subroutine reference_t_json
+
 end module qmc_data

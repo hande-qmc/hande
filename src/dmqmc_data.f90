@@ -282,4 +282,35 @@ type dmqmc_weighted_sampling_t
     real(dp), allocatable :: altering_factors(:)
 end type dmqmc_weighted_sampling_t
 
+contains
+
+    subroutine subsys_t_json(js, subsys, terminal)
+
+        ! Serialise an array of subsys_t objects in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   subsys: array of subsys_t objects.  The subsystem_A array is printed out for each subsys_t object,
+        !       with each object labelled by its index in the "subsys" JSON object.
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(subsys_t), intent(in) :: subsys(:)
+        logical, intent(in), optional :: terminal
+        integer :: i
+        character(10) :: ic
+
+        ! Only need to output subsystem_A to reproduce the subsystem information.
+        call json_object_init(js, 'subsys')
+        do i = 1, size(subsys)
+            write (ic,*) i
+            call json_write_key(js, trim(ic), subsys(i)%subsystem_A, i==size(subsys))
+        end do
+        call json_object_end(js, terminal)
+
+    end subroutine subsys_t_json
+
 end module dmqmc_data
