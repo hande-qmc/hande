@@ -296,6 +296,7 @@ contains
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
+        use utils, only: int_fmt
 
         type(json_out_t), intent(inout) :: js
         type(subsys_t), intent(in) :: subsys(:)
@@ -306,7 +307,7 @@ contains
         ! Only need to output subsystem_A to reproduce the subsystem information.
         call json_object_init(js, 'subsys')
         do i = 1, size(subsys)
-            write (ic,*) i
+            write (ic,"("//int_fmt(i, 0)//")") i
             call json_write_key(js, trim(ic), subsys(i)%subsystem_A, i==size(subsys))
         end do
         call json_object_end(js, terminal)
