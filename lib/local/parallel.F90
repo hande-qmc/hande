@@ -177,7 +177,7 @@ contains
         ! This is just a empty procedure in serial mode.
         use errors
 
-#if PARALLEL
+#ifdef PARALLEL
         integer :: ierr
 
         call mpi_finalize(ierr)
@@ -209,7 +209,7 @@ contains
         integer :: i, j, k, nproc_rows, nproc_cols
         integer :: procy, procx, nrows, ncols
         integer :: desc_m(9), desc_v(9)
-#if PARALLEL
+#ifdef PARALLEL
         integer :: numroc ! scalapack function
         integer :: ierr
         integer :: context
