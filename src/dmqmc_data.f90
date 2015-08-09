@@ -21,7 +21,7 @@ end enum
 ! IP-DMQMC.
 enum, bind(c)
     ! "Hartree-Fock" density matrix, i.e. \rho = \sum e^{-\beta H_ii} |D_i><D_i|.
-    enumerator :: hartree_fock_dm
+    enumerator :: hartree_fock_dm = 1
     ! Free-electron density matrix, i.e. \rho = \sum_i e^{-\beta \sum_j \varepsilon_j \hat{n}_j} |D_i><D_i|.
     enumerator :: free_electron_dm
 end enum
@@ -283,6 +283,98 @@ type dmqmc_weighted_sampling_t
 end type dmqmc_weighted_sampling_t
 
 contains
+
+
+    subroutine dmqmc_in_t_json(js, dmqmc, terminal)
+
+        ! Serialise a dmqmc_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   dmqmc_in: dmqmc_in_t object containing dmqmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(dmqmc_in_t), intent(in) :: dmqmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'dmqmc')
+        call json_write_key(js, 'beta_loops', dmqmc%beta_loops)
+        call json_write_key(js, 'replica_tricks', dmqmc%replica_tricks)
+        call json_write_key(js, 'start_av_rdm', dmqmc%start_av_rdm)
+        call json_write_key(js, 'weighted_sampling', dmqmc%weighted_sampling)
+        call json_write_key(js, 'vary_weights', dmqmc%vary_weights)
+        call json_write_key(js, 'find_weights', dmqmc%find_weights)
+        call json_write_key(js, 'find_weights_start', dmqmc%find_weights_start)
+        call json_write_key(js, 'calc_excit_dist', dmqmc%calc_excit_dist)
+        call json_write_key(js, 'all_sym_sectors', dmqmc%all_sym_sectors)
+        call json_write_key(js, 'all_spin_sectors', dmqmc%all_spin_sectors)
+        call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
+        call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
+        call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
+        call json_write_key(js, 'init_beta', dmqmc%init_beta)
+        call json_object_end(js, terminal)
+
+    end subroutine dmqmc_in_t_json
+
+    subroutine ipdmqmc_in_t_json(js, dmqmc, terminal)
+
+        ! Serialise a dmqmc_in_t object in JSON format. IP-DMQMC specific input
+        ! options.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   dmqmc_in: dmqmc_in_t object containing dmqmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(dmqmc_in_t), intent(in) :: dmqmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'ipdmqmc')
+        call json_write_key(js, 'propagate_to_beta', dmqmc%propagate_to_beta)
+        call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
+        call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
+        call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts)
+        call json_object_end(js, terminal)
+
+    end subroutine ipdmqmc_in_t_json
+
+    subroutine rdm_in_t_json(js, dmqmc, terminal)
+
+        ! Serialise a dmqmc_in_t object in JSON format. IP-DMQMC specific input
+        ! options.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   dmqmc_in: dmqmc_in_t object containing dmqmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(dmqmc_in_t), intent(in) :: dmqmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'rdm')
+        call json_write_key(js, 'nrdms', dmqmc%rdm%nrdms)
+        call json_write_key(js, 'spawned_length', dmqmc%rdm%spawned_length)
+        call json_write_key(js, 'doing_rdm', dmqmc%rdm%doing_rdm)
+        call json_write_key(js, 'calc_ground_rdm', dmqmc%rdm%calc_ground_rdm)
+        call json_write_key(js, 'calc_inst_rdm', dmqmc%rdm%calc_inst_rdm)
+        call json_write_key(js, 'doing_concurrence', dmqmc%rdm%doing_concurrence)
+        call json_write_key(js, 'doing_vn_entropy', dmqmc%rdm%doing_vn_entropy)
+        call json_write_key(js, 'output_rdm', dmqmc%rdm%output_rdm)
+        call json_object_end(js, terminal)
+
+    end subroutine rdm_in_t_json
 
     subroutine subsys_t_json(js, subsys, terminal)
 
