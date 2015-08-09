@@ -282,9 +282,9 @@ contains
 
         call write_key(js, key)
         if (val) then
-            write (js%io,*) 'true'//record_delim(terminal)
+            write (js%io,'(a)') 'true'//record_delim(terminal)
         else
-            write (js%io,*) 'false'//record_delim(terminal)
+            write (js%io,'(a)') 'false'//record_delim(terminal)
         end if
 
     end subroutine write_bool
