@@ -676,7 +676,11 @@ contains
         end if
 #else
         ntot_particles = qs%psip_list%nparticles
+        qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
+
+        qs%estimators%tot_nspawn_events = 0
+        qs%spawn_store%rspawn = 0.0_p
 
         if (.not. nb_comm_local .and. parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
