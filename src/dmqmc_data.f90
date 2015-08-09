@@ -315,7 +315,7 @@ contains
         call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
-        call json_write_key(js, 'init_beta', dmqmc%init_beta)
+        call json_write_key(js, 'init_beta', dmqmc%init_beta, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine dmqmc_in_t_json
@@ -341,7 +341,7 @@ contains
         call json_write_key(js, 'propagate_to_beta', dmqmc%propagate_to_beta)
         call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
         call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
-        call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts)
+        call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine ipdmqmc_in_t_json
@@ -371,7 +371,7 @@ contains
         call json_write_key(js, 'calc_inst_rdm', dmqmc%rdm%calc_inst_rdm)
         call json_write_key(js, 'doing_concurrence', dmqmc%rdm%doing_concurrence)
         call json_write_key(js, 'doing_vn_entropy', dmqmc%rdm%doing_vn_entropy)
-        call json_write_key(js, 'output_rdm', dmqmc%rdm%output_rdm)
+        call json_write_key(js, 'output_rdm', dmqmc%rdm%output_rdm, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine rdm_in_t_json
