@@ -540,6 +540,7 @@ contains
         !    dmqmc_in: input options for dmqmc.
         !    npsips: number of psips to create on the diagonal.
         !    energy_shift: <D_0|H_new|D_0> - <D_0|H_old|D_0>.
+        !    init_beta: temperature at which we initialise the density matrix.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
