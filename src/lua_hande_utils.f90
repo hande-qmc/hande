@@ -40,8 +40,8 @@ contains
         do while (flu_next(lua_state, pos_loc))
             ! key is at index -2 and value at index -1
             str => flu_tolstring(lua_state, -2, len)
-            allocate(character(size(str)) :: key)
-            do j = 1, size(str)
+            allocate(character(len) :: key)
+            do j = 1, len
                 key(j:j) = str(j)
             end do
             if (all(valid_keys /= key)) then
