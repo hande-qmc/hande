@@ -38,7 +38,7 @@ contains
 
         ! Abort all processors.
         ! error code is given to mpi_abort which (apparently) returns it to the invoking environment.
-#if PARALLEL
+#ifdef PARALLEL
         call mpi_abort(mpi_comm_world, error_code, ierr)
 #endif
 
@@ -116,7 +116,7 @@ contains
 
         ! Abort all processors.
         ! error code is given to mpi_abort which (apparently) returns it to the invoking environment.
-#if PARALLEL
+#ifdef PARALLEL
         call mpi_abort(mpi_comm_world, 0, ierr)
 #endif
         stop
