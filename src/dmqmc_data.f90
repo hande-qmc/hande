@@ -177,7 +177,7 @@ type dmqmc_in_t
     logical :: propagate_to_beta = .false.
     ! Initial density matrix to use in IP-DMQMC see enum at beginning of module
     ! for description of available values.
-    integer :: initial_matrix
+    integer :: initial_matrix = hartree_fock_dm
     ! Use the grand canonical partition function to inititally distribute the psips.
     logical :: grand_canonical_initialisation = .false.
     ! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
