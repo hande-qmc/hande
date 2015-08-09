@@ -194,7 +194,7 @@ contains
         logical, intent(in), optional :: terminal
 
         call write_key(js, key)
-        write (js%io,*) val, record_delim(terminal)
+        write (js%io,'(i0,a)') val, record_delim(terminal)
 
     end subroutine write_int_32
 
@@ -210,7 +210,7 @@ contains
         logical, intent(in), optional :: terminal
 
         call write_key(js, key)
-        write (js%io,*) val, record_delim(terminal)
+        write (js%io,'(i0,a)') val, record_delim(terminal)
 
     end subroutine write_int_64
 
@@ -226,7 +226,7 @@ contains
         logical, intent(in), optional :: terminal
 
         call write_key(js, key)
-        write (js%io,*) val, record_delim(terminal)
+        write (js%io,'(f0.8,a)') val, record_delim(terminal)
 
     end subroutine write_real_32
 
@@ -242,7 +242,7 @@ contains
         logical, intent(in), optional :: terminal
 
         call write_key(js, key)
-        write (js%io,*) val, record_delim(terminal)
+        write (js%io,'(f0.8,a)') val, record_delim(terminal)
 
     end subroutine write_real_64
 
@@ -275,9 +275,9 @@ contains
 
         call write_key(js, key)
         if (val) then
-            write (js%io,*) 'true', record_delim(terminal)
+            write (js%io,*) 'true'//record_delim(terminal)
         else
-            write (js%io,*) 'false', record_delim(terminal)
+            write (js%io,*) 'false'//record_delim(terminal)
         end if
 
     end subroutine write_bool
@@ -343,7 +343,7 @@ contains
         call write_key(js, key)
         write (js%io, '("[")', advance='no')
         do i = 1, size(val)
-            write (js%io,'(f14.8)', advance='no') val(i)
+            write (js%io,'(f0.8)', advance='no') val(i)
             if (i/=size(val)) write (js%io,'(",")', advance='no')
         end do
         write (js%io,'("]"'//record_delim(terminal, .true.)//')')
@@ -365,7 +365,7 @@ contains
         call write_key(js, key)
         write (js%io, '("[")', advance='no')
         do i = 1, size(val)
-            write (js%io,'(f14.8)', advance='no') val(i)
+            write (js%io,'(f0.8)', advance='no') val(i)
             if (i/=size(val)) write (js%io,'(",")', advance='no')
         end do
         write (js%io,'("]"'//record_delim(terminal, .true.)//')')
