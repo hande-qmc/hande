@@ -48,7 +48,7 @@ contains
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             qmc_in_t_json, restart_in_t_json, load_bal_in_t_json, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
-                              rdm_in_t_json
+                              rdm_in_t_json, operators_in_t_json
         use check_input, only: check_qmc_opts, check_dmqmc_opts
         use spawn_data, only: write_memcheck_report
 
@@ -110,7 +110,8 @@ contains
             call qmc_in_t_json(js, qmc_in)
             call dmqmc_in_t_json(js, dmqmc_in)
             call ipdmqmc_in_t_json(js, dmqmc_in)
-            call rdm_in_t_json(js, dmqmc_in)
+            call rdm_in_t_json(js, dmqmc_in%rdm)
+            call operators_in_t_json(js)
             call restart_in_t_json(js, restart_in)
             call load_bal_in_t_json(js, load_bal_in)
             call reference_t_json(js, qs%ref, .true.)

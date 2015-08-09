@@ -346,35 +346,63 @@ contains
 
     end subroutine ipdmqmc_in_t_json
 
-    subroutine rdm_in_t_json(js, dmqmc, terminal)
+    subroutine rdm_in_t_json(js, rdm, terminal)
 
-        ! Serialise a dmqmc_in_t object in JSON format. IP-DMQMC specific input
+        ! Serialise a dmqmc_rdm_in_t object in JSON format.
         ! options.
 
         ! In/Out:
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
-        !   dmqmc_in: dmqmc_in_t object containing dmqmc input values (including any defaults set).
+        !   rdm_in: dmqmc_rdm_in_t object containing dmqmc input values (including any defaults set).
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
 
         type(json_out_t), intent(inout) :: js
-        type(dmqmc_in_t), intent(in) :: dmqmc
+        type(dmqmc_rdm_in_t), intent(in) :: rdm
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'rdm')
-        call json_write_key(js, 'nrdms', dmqmc%rdm%nrdms)
-        call json_write_key(js, 'spawned_length', dmqmc%rdm%spawned_length)
-        call json_write_key(js, 'doing_rdm', dmqmc%rdm%doing_rdm)
-        call json_write_key(js, 'calc_ground_rdm', dmqmc%rdm%calc_ground_rdm)
-        call json_write_key(js, 'calc_inst_rdm', dmqmc%rdm%calc_inst_rdm)
-        call json_write_key(js, 'doing_concurrence', dmqmc%rdm%doing_concurrence)
-        call json_write_key(js, 'doing_vn_entropy', dmqmc%rdm%doing_vn_entropy)
-        call json_write_key(js, 'output_rdm', dmqmc%rdm%output_rdm, terminal=.true.)
+        call json_write_key(js, 'nrdms', rdm%nrdms)
+        call json_write_key(js, 'spawned_length', rdm%spawned_length)
+        call json_write_key(js, 'doing_rdm', rdm%doing_rdm)
+        call json_write_key(js, 'calc_ground_rdm', rdm%calc_ground_rdm)
+        call json_write_key(js, 'calc_inst_rdm', rdm%calc_inst_rdm)
+        call json_write_key(js, 'doing_concurrence', rdm%doing_concurrence)
+        call json_write_key(js, 'doing_vn_entropy', rdm%doing_vn_entropy)
+        call json_write_key(js, 'output_rdm', rdm%output_rdm, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine rdm_in_t_json
+
+    subroutine operators_in_t_json(js, terminal)
+
+        ! serialise operators in json format.
+        ! options.
+
+        ! in/out:
+        !   js: json_out_t controlling the output unit and handling json internal state.  unchanged on output.
+        ! in:
+        !   terminal (optional): if true, this is the last entry in the enclosing json object.  default: false.
+
+        use json_out
+        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared, dmqmc_correlation, &
+                        dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2
+
+        type(json_out_t), intent(inout) :: js
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'operators')
+        call json_write_key(js, 'energy', doing_dmqmc_calc(dmqmc_energy))
+        call json_write_key(js, 'energy_squared', doing_dmqmc_calc(dmqmc_energy_squared))
+        call json_write_key(js, 'correlation_fn', doing_dmqmc_calc(dmqmc_correlation))
+        call json_write_key(js, 'staggered_mad_ind', doing_dmqmc_calc(dmqmc_staggered_magnetisation))
+        call json_write_key(js, 'rdm_r2', doing_dmqmc_calc(dmqmc_rdm_r2))
+        call json_write_key(js, 'full_r2', doing_dmqmc_calc(dmqmc_full_r2), terminal=.true.)
+        call json_object_end(js, terminal)
+
+    end subroutine operators_in_t_json
 
     subroutine subsys_t_json(js, subsys, terminal)
 
