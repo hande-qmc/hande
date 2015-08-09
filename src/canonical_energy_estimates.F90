@@ -70,7 +70,7 @@ contains
         real(p), intent(in) :: beta
         logical, intent(in) :: fermi_temperature
         integer, intent(in) :: nsamples
-        integer, intent(in), optional :: ncycles
+        integer, intent(in) :: ncycles
         integer, intent(in), optional :: rng_seed
 
         real(dp) :: p_single(sys%basis%nbasis/2)
