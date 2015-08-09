@@ -89,6 +89,8 @@ contains
         real(p) :: energy_zero, ref_shift
         integer, allocatable :: occ_list0(:)
 
+        if (parent) write (6,'(1X,a16,/,1X,16("-"),/)') 'Canonical energy'
+
         if (present(rng_seed)) then
             seed = rng_seed
         else
