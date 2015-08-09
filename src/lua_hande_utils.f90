@@ -27,7 +27,7 @@ contains
         type(flu_State), intent(inout) :: lua_state
         character(*), intent(in) :: valid_keys(:)
         integer, intent(in), optional :: pos
-        integer :: pos_loc, len, j
+        integer :: pos_loc, strlen, j
         character(:), allocatable :: key, key_list
         character, pointer :: str(:)
 
@@ -39,9 +39,9 @@ contains
         call flu_pushnil(lua_state)
         do while (flu_next(lua_state, pos_loc))
             ! key is at index -2 and value at index -1
-            str => flu_tolstring(lua_state, -2, len)
-            allocate(character(len) :: key)
-            do j = 1, len
+            str => flu_tolstring(lua_state, -2, strlen)
+            allocate(character(strlen) :: key)
+            do j = 1, strlen
                 key(j:j) = str(j)
             end do
             if (all(valid_keys /= key)) then
