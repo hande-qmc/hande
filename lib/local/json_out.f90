@@ -50,6 +50,11 @@ interface json_write_key
     module procedure :: write_real_64_arr
 end interface json_write_key
 
+interface write_real_val
+    module procedure :: write_real_val_32
+    module procedure :: write_real_val_64
+end interface write_real_val
+
 contains
 
     !--- Internal helper procedures ---
@@ -226,7 +231,8 @@ contains
         logical, intent(in), optional :: terminal
 
         call write_key(js, key)
-        write (js%io,'(f0.8,a)') val, record_delim(terminal)
+        call write_real_val(js%io, val)
+        write (js%io,'(a)') record_delim(terminal)
 
     end subroutine write_real_32
 
@@ -242,7 +248,8 @@ contains
         logical, intent(in), optional :: terminal
 
         call write_key(js, key)
-        write (js%io,'(f0.8,a)') val, record_delim(terminal)
+        call write_real_val(js%io, val)
+        write (js%io,'(a)') record_delim(terminal)
 
     end subroutine write_real_64
 
@@ -343,7 +350,7 @@ contains
         call write_key(js, key)
         write (js%io, '("[")', advance='no')
         do i = 1, size(val)
-            write (js%io,'(f0.8)', advance='no') val(i)
+            call write_real_val(js%io, val(i))
             if (i/=size(val)) write (js%io,'(",")', advance='no')
         end do
         write (js%io,'("]"'//record_delim(terminal, .true.)//')')
@@ -365,11 +372,59 @@ contains
         call write_key(js, key)
         write (js%io, '("[")', advance='no')
         do i = 1, size(val)
-            write (js%io,'(f0.8)', advance='no') val(i)
+            call write_real_val(js%io, val(i))
             if (i/=size(val)) write (js%io,'(",")', advance='no')
         end do
         write (js%io,'("]"'//record_delim(terminal, .true.)//')')
 
     end subroutine write_real_64_arr
+
+    ! -- private utility procedures --
+
+    ! Print out a nicely formatted real value for JSON output.
+    ! JSON requires a leading zero in output of real values of magnitude less than 1.
+    ! Ensure this is the case.  Note the line is *not* advanced.
+
+    ! In:
+    !    io: unit to print to.
+    !    val: real value to print out.
+
+    subroutine write_real_val_32(io, val)
+
+        use const, only: sp
+
+        integer, intent(in) :: io
+        real(sp), intent(in) :: val
+
+        if (abs(val) < 1.0_sp) then
+            if (val < 0.0_sp) then
+                write (io, '(f11.8)', advance='no') val
+            else
+                write (io, '(f10.8)', advance='no') val
+            end if
+        else
+            write (io, '(f0.8)', advance='no') val
+        end if
+
+    end subroutine write_real_val_32
+
+    subroutine write_real_val_64(io, val)
+
+        use const, only: dp
+
+        integer, intent(in) :: io
+        real(dp), intent(in) :: val
+
+        if (abs(val) < 1.0_dp) then
+            if (val < 0.0_dp) then
+                write (io, '(f11.8)', advance='no') val
+            else
+                write (io, '(f10.8)', advance='no') val
+            end if
+        else
+            write (io, '(f0.8)', advance='no') val
+        end if
+
+    end subroutine write_real_val_64
 
 end module json_out
