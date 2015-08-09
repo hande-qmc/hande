@@ -99,6 +99,7 @@ contains
 
         use, intrinsic :: iso_c_binding, only: c_char, c_ptr, c_size_t, c_int, c_associated
         use utils, only: carray_to_fstring
+        use const, only: i0, int_p
 
         ! Accessing the hostname and working directory directly from Fortran are
         ! (admittedly commonly implemented) extensions so we cannot rely on them
@@ -176,6 +177,41 @@ contains
                    "Started running on", date_values(3:1:-1), "at", date_values(5:7)
         call get_uuid(GLOBAL_UUID)
         write (io_unit,'(1X,"Calculation UUID:",1X,a36,".")') GLOBAL_UUID
+
+        write (io_unit,'(1X,"Preprocessor settings:")')
+        ! Sadly preprocessor does not retokenize the output, so have to do this by hand...
+#ifdef DISABLE_HDF5
+        write (io_unit,'(5X,"DISABLE_HDF5 defined.  HDF5 disabled.")')
+#else
+        write (io_unit,'(5X,"DISABLE_HDF5 not defined.  HDF5 enabled.")')
+#endif
+#ifdef DISABLE_LANCZOS
+        write (io_unit,'(5X,"DISABLE_LANCZOS defined.  Lanczos disabled.")')
+#else
+        write (io_unit,'(5X,"DISABLE_LANCZOS not defined.  Lanczos enabled.")')
+#endif
+#ifdef DISABLE_UUID
+        write (io_unit,'(5X,"DISABLE_UUID defined.  UUID disabled.")')
+#else
+        write (io_unit,'(5X,"DISABLE_UUID not defined.  UUID enabled.")')
+#endif
+#ifdef PARALLEL
+        write (io_unit,'(5X,"PARALLEL defined.  MPI parallelization enabled.")')
+#else
+        write (io_unit,'(5X,"PARALLEL not defined.  MPI parallelization disabled.")')
+#endif
+#ifdef SINGLE_PRECISION
+        write (io_unit,'(5X,"SINGLE_PRECISION defined.  Single precision used where relevant.")')
+#else
+        write (io_unit,'(5X,"SINGLE_PRECISION not defined.  Double precision used throughout.")')
+#endif
+#ifdef USE_POPCNT
+        write (io_unit,'(5X,"USE_POPCNT defined.  Fortran 2003 POPCNT procedure used.")')
+#else
+        write (io_unit,'(5X,"USE_POPCNT not defined.  Internal POPCNT procedure used.")')
+#endif
+        write (io_unit,'(5X,"DET_SIZE = ",i2,".")') bit_size(0_i0)
+        write (io_unit,'(5X,"POP_SIZE = ",i2,".")') bit_size(0_int_p)
 
         write (io_unit,'(1X,64("="),/)')
 
