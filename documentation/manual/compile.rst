@@ -60,7 +60,7 @@ ccd
     if cc doesn't support -MM and -MT flags.  Default: use cc.
 cdflags
     Set the flags for the c++ compiler used to generate the C++ dependency files.
-    Default: -MM -MT $CFLAGS
+    Default: $CFLAGS -MM -MT
 cxx
     Set the C++ compiler.
 cxxflags
@@ -70,7 +70,7 @@ cxxd
     if cc doesn't support -MM and -MT flags.  Default: use cxx.
 cxxdflags
     Set the flags for the c++ compiler used to generate the C++ dependency files.
-    Default: -MM -MT $CXXFLAGS
+    Default: $CXXFLAGS -MM -MT
 cpp
     Set the C preprocessor to be used on Fortran source files.  If not defined
     then the Fortran compiler is used to do the preprocessing.

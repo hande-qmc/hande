@@ -237,13 +237,13 @@ ifeq ($(CCD),)
 CCD = $(CC)
 endif
 ifeq ($(CCDFLAGS),)
-CCDFLAGS = -MM -MT $(CFLAGS)
+CCDFLAGS = $(CFLAGS) -MM -MT
 endif
 ifeq ($(CXXD),)
 CXXD = $(CXX)
 endif
 ifeq ($(CXXDFLAGS),)
-CXXDFLAGS = -MM -MT $(CXXFLAGS)
+CXXDFLAGS = $(CXXFLAGS) -MM -MT
 endif
 
 #-----
@@ -292,7 +292,7 @@ $(DEST)/%.o: %.c
 
 # corresponding dependency...
 $(DEPEND_DIR)/%.d: %.c
-	$(CCD) $(CPPFLAGS) $(INCLUDE) $(CDFLAGS) -MM -MT '$$(DEST)/$(@F:.d=.o)' $< -o $@
+	$(CCD) $(CPPFLAGS) $(INCLUDE) $(CCDFLAGS) '$$(DEST)/$(@F:.d=.o)' $< -o $@
 
 #--- C++ ---
 
@@ -304,7 +304,7 @@ $(DEST)/%.o: %.cpp
 
 # corresponding dependency...
 $(DEPEND_DIR)/%.d: %.cpp
-	$(CXXD) $(CPPFLAGS) $(INCLUDE) $(CXXDFLAGS) -MM -MT '$$(DEST)/$(@F:.d=.o)' $< -o $@
+	$(CXXD) $(CPPFLAGS) $(INCLUDE) $(CXXDFLAGS) '$$(DEST)/$(@F:.d=.o)' $< -o $@
 
 #-----
 # Goals.
