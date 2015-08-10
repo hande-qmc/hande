@@ -35,32 +35,59 @@ main, opt and dbg.  For instance::
     fflags = -g
 
 Any option not specified in the 'opt' and 'dbg' sections is inherited from the
-'main' section.  The optimised settings in 'opt' are used by default; the debug
-options can be selected by passing the -g option to ``mkconfig.py``.
+'main' section.  The settings in 'opt' are used by default; the debug options
+can be selected by passing the -g option to mkconfig.
 
-Available options are:
+All options are strings unless otherwise specified.  Available options are:
 
 fc
     Set the fortran compiler.
 fflags
     Set flags to be passed to the fortran compiler during compilation.
+f90_module_flag
+    Set the flag used by the compiler which is used to specify the directory
+    where module (.mod) files are placed when created and where they should be
+    searched for.
+f90_module_flag_pad [boolean]
+    True if a space needs to be inserted between the defined f90_module_flag
+    and the corresponding directory argument.  Default: true.
 cc
     Set the C compiler.
 cflags
     Set flags to be passed to the C compiler during compilation.
-cppdefs
-    Set definitions to be used in the C pre-processing step.
+ccd
+    Set the C compiler used to generate the C dependency files.  Only required
+    if cc doesn't support -MM and -MT flags.  Default: use cc.
+cdflags
+    Set the flags for the c++ compiler used to generate the C++ dependency files.
+    Default: -MM -MT $CFLAGS
+cxx
+    Set the C++ compiler.
+cxxflags
+    Set flags to be passed to the C++ compiler during compilation.
+cxxd
+    Set the C compiler used to generate the C++ dependency files.  Only required
+    if cc doesn't support -MM and -MT flags.  Default: use cxx.
+cxxdflags
+    Set the flags for the c++ compiler used to generate the C++ dependency files.
+    Default: -MM -MT $CXXFLAGS
+cpp
+    Set the C preprocessor to be used on Fortran source files.  If not defined
+    then the Fortran compiler is used to do the preprocessing.
 cppflags
-    Set flags to be used in the C pre-processing step.
+    Set flags to be used in the C preprocessing step.
+    C preprocessing is applied to .F90, .F, .c and .cpp files (and not .f90
+    files).
 ld
     Set the linker program.
 ldflags
     Set flags to be passed to the linker during linking of the compiled objects.
 libs
     Set libraries to be used during the linking step.
-module_flag
-    Set the compiler-specific flag which specifies the directory where module
-    (.mod) files are placed when created and where they should be searched for.
+ar
+    Set the archive program.  Default: ar.
+arflags
+    Set the flags to be passed to the archive program.  Default: -rcs.
 
 To compile the code run 
 
