@@ -533,6 +533,7 @@ contains
             case default
                 write(6,'(i2)') ref_sym
             end select
+
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', qmc_in%pattempt_single
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', qmc_in%pattempt_double
             if (qmc_in%initiator_approx) then
@@ -549,68 +550,6 @@ contains
                               'Initial population on reference determinant:',qmc_in%D0_population
                 write (6,'(1X,a53,/)') 'Note that the correlation energy is relative to |D0>.'
             end if
-
-            write (6,'(1X,a46,/)') 'Information printed out every QMC report loop:'
-            write (6,'(1X,a69)') 'Note that all particle populations are averaged over the report loop.'
-            write (6,'(1X,a58,/)') 'Shift: the shift calculated at the end of the report loop.'
-            if (.not. doing_calc(dmqmc_calc)) then
-                write (6,'(1X,a46)') 'H_0j: <D_0|H|D_j>, Hamiltonian matrix element.'
-                write (6,'(1X,a60)') 'N_j: population of Hamiltonian particles on determinant D_j.'
-                if (doing_calc(hfs_fciqmc_calc)) then
-                    write (6,'(1X,a43)') 'O_0j: <D_0|O|D_j>, operator matrix element.'
-                    write (6,'(1X,a67)') "N'_j: population of Hellmann--Feynman particles on determinant D_j."
-                    write (6,'(1X,a68)') '# HF psips: current total population of Hellmann--Feynman particles.'
-                end if
-            else
-                if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                    write (6, '(1X,a104)') 'Trace: The current total population on the diagonal elements of the &
-                                         &first replica of the density matrix.'
-                    write (6, '(1X,a107)') 'Trace 2: The current total population on the diagonal elements of the &
-                                         &second replica of the density matrix.'
-                else
-                    write (6, '(1X,a83)') 'Trace: The current total population on the diagonal elements of the &
-                                         &density matrix.'
-                end if
-                if (doing_dmqmc_calc(dmqmc_full_r2)) then
-                    write (6, '(1X,a81)') 'Full S2: The numerator of the estimator for the Renyi entropy of the &
-                                          &full system.'
-                end if
-                if (doing_dmqmc_calc(dmqmc_energy)) then
-                    write (6, '(1X,a92)') '\sum\rho_{ij}H_{ji}: The numerator of the estimator for the expectation &
-                                         &value of the energy.'
-                end if
-                if (doing_dmqmc_calc(dmqmc_energy_squared)) then
-                    write (6, '(1X,a100)') '\sum\rho_{ij}H2{ji}: The numerator of the estimator for the expectation &
-                                         &value of the energy squared.'
-                end if
-                if (doing_dmqmc_calc(dmqmc_correlation)) then
-                    write (6, '(1X,a111)') '\sum\rho_{ij}S_{ji}: The numerator of the estimator for the expectation &
-                                         &value of the spin correlation function.'
-                end if
-                if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) then
-                    write (6, '(1X,a109)') '\sum\rho_{ij}M2{ji}: The numerator of the estimator for the expectation &
-                                         &value of the staggered magnetisation.'
-                end if
-                if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-                    write (6, '(1x,a73)') 'RDM(n) S2: The numerator of the estimator for the Renyi entropy of RDM n.'
-                end if
-                if (dmqmc_in%rdm%calc_inst_rdm) then
-                    write (6, '(1x,a83)') 'RDM(n) trace m: The current total population on the diagonal of replica m &
-                                          &of RDM n.'
-                end if
-                if (present(dmqmc_in)) then
-                    if (dmqmc_in%calc_excit_dist) write (6, '(1x,a86)') &
-                        'Excit. level n: The fraction of particles on excitation level n of the density matrix.'
-                end if
-            end if
-
-            write (6,'(1X,a61)') '# H psips: current total population of Hamiltonian particles.'
-            write (6,'(1X,"# states: number of many-particle states occupied.")')
-            if (.not. fciqmc_in_loc%non_blocking_comm) then
-                write (6,'(1X,"# spawn_events: number of successful spawning events across all processors.")')
-            end if
-            write (6,'(1X,a56,/)') 'R_spawn: average rate of spawning across all processors.'
-            write (6,'(1X,a41,/)') 'time: average time per Monte Carlo cycle.'
         end if
 
     end subroutine init_qmc
