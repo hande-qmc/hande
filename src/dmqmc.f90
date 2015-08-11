@@ -44,7 +44,6 @@ contains
         use restart_hdf5, only: restart_info_t, dump_restart_hdf5, init_restart_info_t
         use system
         use dSFMT_interface, only: dSFMT_t
-        use utils, only: rng_init_info
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             qmc_in_t_json, restart_in_t_json, load_bal_in_t_json, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
@@ -129,7 +128,6 @@ contains
 
         ! Main DMQMC loop.
         if (parent) then
-            call rng_init_info(qmc_in%seed+iproc)
             call write_fciqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations)
         end if
         ! Initialise timer.

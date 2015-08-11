@@ -580,15 +580,6 @@ contains
 
 !--- Informative output ---
 
-    subroutine rng_init_info(seed)
-
-        integer, intent(in) :: seed
-
-        write (6,'(1X,a3,/,1X,3("^"),/)') 'RNG'
-        write (6,'(1X,a51,'//int_fmt(seed,1)//',a1,/)') 'Initialised random number generator with a seed of:', seed, '.'
-
-    end subroutine rng_init_info
-
     subroutine print_matrix(matrix)
 
         ! Print out a given real matrix in a neat format.

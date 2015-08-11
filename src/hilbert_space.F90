@@ -55,7 +55,7 @@ contains
         use symmetry, only: symmetry_orb_list
         use system
         use parallel
-        use utils, only: binom_r, rng_init_info
+        use utils, only: binom_r
 
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: ex_level, ncycles
@@ -103,7 +103,6 @@ contains
             write (js%io,'()')
         end if
 
-        if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
 
         call copy_sys_spin_info(sys, sys_bak)

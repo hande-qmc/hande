@@ -55,7 +55,6 @@ contains
         use interact, only: calc_interact, check_comms_file
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
-        use utils, only: rng_init_info
         use proc_pointers
         use qmc, only: init_qmc
         use system, only: sys_t
@@ -100,7 +99,6 @@ contains
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('real_population', size(real_population), ierr)
 
-        if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         ! Allocate det_info_t components.

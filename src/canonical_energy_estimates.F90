@@ -55,7 +55,6 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use json_out
         use parallel
-        use utils, only: rng_init_info
 
         use calc, only: GLOBAL_META, gen_seed
         use hamiltonian_ueg, only: exchange_energy_ueg
@@ -111,7 +110,6 @@ contains
             write (js%io,'()')
         end if
 
-        if (parent) call rng_init_info(seed+iproc)
         call dSFMT_init(seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)

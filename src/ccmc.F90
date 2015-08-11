@@ -284,7 +284,6 @@ contains
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
-        use utils, only: rng_init_info
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
 
@@ -401,7 +400,6 @@ contains
         call check_allocate('rng', size(rng), ierr)
         allocate(ms_stats(0:nthreads-1), stat=ierr)
         call check_allocate('ms_stats', size(ms_stats), ierr)
-        if (parent) call rng_init_info(qmc_in%seed+iproc)
 
         if (ccmc_in%linked) then
             call init_cluster(sys, 4, cdet, cluster)

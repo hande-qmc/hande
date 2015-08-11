@@ -48,7 +48,6 @@ contains
         use qmc, only: init_qmc
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
-        use utils, only: rng_init_info
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
         use system, only: sys_t
@@ -129,7 +128,6 @@ contains
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)
 
-        if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         ! Initialise bloom_stats components to the following parameters.

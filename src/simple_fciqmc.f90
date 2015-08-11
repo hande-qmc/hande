@@ -212,7 +212,6 @@ contains
         use qmc_common, only: dump_restart_file_wrapper
         use spawn_data, only: spawn_t
         use system, only: sys_t
-        use utils, only: rng_init_info
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
         use check_input, only: check_qmc_opts
 
@@ -246,7 +245,6 @@ contains
                                 psip_list, spawn, hamil, hamil_csr)
 
         if (parent) then
-            call rng_init_info(qmc_in%seed+iproc)
             call json_object_init(js, tag=.true.)
             call qmc_in_t_json(js, qmc_in)
             call restart_in_t_json(js, restart_in)
