@@ -522,17 +522,25 @@ contains
         end associate
 
         if (parent) then
-            write (6,'(1X,a29,1X)',advance='no') 'Reference determinant, |D0> ='
+            write (6,'(1X,"Reference determinant, |D0> =",1X)',advance='no')
             call write_det(sys%basis, sys%nel, qmc_state%ref%f0, new_line=.true.)
-            write (6,'(1X,a16,f20.12)') 'E0 = <D0|H|D0> =',qmc_state%ref%H00
-            if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,a17,f20.12)') 'O00 = <D0|O|D0> =', qmc_state%ref%O00
-            write(6,'(1X,a34)',advance='no') 'Symmetry of reference determinant:'
+            write (6,'(1X,"E0 = <D0|H|D0> =",f20.12)') qmc_state%ref%H00
+            if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,"O00 = <D0|O|D0> =",f20.12)')  qmc_state%ref%O00
+            write(6,'(1X,"Symmetry of reference determinant:")',advance='no')
             select case(sys%system)
             case (hub_k)
                 call write_basis_fn(sys, sys%basis%basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
             case default
-                write(6,'(i2)') ref_sym
+                write(6,'(1X,i0)') ref_sym
             end select
+
+            if (doing_calc(dmqmc_calc)) then
+                write (6,'(1X,"Initial population on the trace of the density matrix:",1X,i0)') int(qmc_in%D0_population,int_64)
+            else
+                write (6,'(1X,"Initial population on reference determinant:",1X,f11.4)') qmc_in%D0_population
+                write (6,'(1X,"Note that the correlation energy is relative to |D0>.")')
+            end if
+            write (6,'()')
 
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', qmc_in%pattempt_single
             write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', qmc_in%pattempt_double
@@ -542,14 +550,6 @@ contains
                     'Population for a determinant to be an initiator:', qmc_in%initiator_pop
             end if
 
-            if (doing_calc(dmqmc_calc)) then
-                write (6,'(1X,a54,'//int_fmt(int(qmc_in%D0_population,int_64),1)//')') &
-                              'Initial population on the trace of the density matrix:', int(qmc_in%D0_population,int_64)
-            else
-                write (6,'(1X,a44,1X,f11.4,/)') &
-                              'Initial population on reference determinant:',qmc_in%D0_population
-                write (6,'(1X,a53,/)') 'Note that the correlation energy is relative to |D0>.'
-            end if
         end if
 
     end subroutine init_qmc
