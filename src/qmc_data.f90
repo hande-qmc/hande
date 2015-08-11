@@ -603,7 +603,7 @@ contains
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'qmc')
-        call json_write_key(js, 'seed', qmc%seed)
+        call json_write_key(js, 'rng_seed', qmc%seed)
         call json_write_key(js, 'real_amplitudes', qmc%real_amplitudes)
         call json_write_key(js, 'spawn_cutoff', qmc%spawn_cutoff)
         call json_write_key(js, 'excit_gen', qmc%excit_gen)
