@@ -50,8 +50,8 @@ max_nprocs = 4
 # By default, run serial MC tests (with POP_SIZE=32) + deterministic tests.
 _default_ = fci lanczos mc_hilbert_space/np1 mc_canonical_energy/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
 
-mpi = _default_ mc_hilbert_space/ mc_canonical_kinetic_energy *mc *mc_real_32
+mpi = _default_ mc_hilbert_space/ mc_canonical_energy *mc *mc_real_32
 
-pop64 = fci lanczos mc_hilbert_space/np1 mc_canonical_kinetic_energy/np1 simple_fciqmc *mc/np1 *mc_real_64/np1
+pop64 = fci lanczos mc_hilbert_space/np1 mc_canonical_energy/np1 simple_fciqmc *mc/np1 *mc_real_64/np1
 
-pop64_mpi = pop64 mc_hilbert_space/ mc_canonical_kinetic_energy *mc/ *mc_real_64
+pop64_mpi = pop64 mc_hilbert_space/ mc_canonical_energy *mc/ *mc_real_64
