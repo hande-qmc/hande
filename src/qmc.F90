@@ -542,14 +542,6 @@ contains
             end if
             write (6,'()')
 
-            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', qmc_in%pattempt_single
-            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', qmc_in%pattempt_double
-            if (qmc_in%initiator_approx) then
-                write (6,'(1X,a24)') 'Initiator method in use.'
-                write (6,'(1X,a48,1X,f3.1,/)') &
-                    'Population for a determinant to be an initiator:', qmc_in%initiator_pop
-            end if
-
         end if
 
     end subroutine init_qmc
