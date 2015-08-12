@@ -170,7 +170,7 @@ contains
         integer :: i, j, virt_syms(2, sys%sym0_tot:sys%sym_max_tot), nsingles, ndoubles, isyma, isymb, ims1, ims2
 
         select case(sys%system)
-        case(hub_k)
+        case(hub_k,ueg,ringium)
             ! Only double excitations
             psingle = 0.0_p
             pdouble = 1.0_p
