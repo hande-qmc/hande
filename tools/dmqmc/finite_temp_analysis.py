@@ -264,21 +264,21 @@ None.
     (metadata, data) = pyhande.extract.extract_data_sets(files)
 
     # Convert the iteration number to the beta value.
-    tau = metadata[0]['tau']
+    tau = metadata['tau']
     data.rename(columns={'iterations' : 'Beta'}, inplace=True)
     data['Beta'] = data['Beta']*tau
 
     # Make the Beta column a MultiIndex.
     data.set_index('Beta', inplace=True, append=True)
     # The number of beta loops contributing to each beta value.
-    nsamples = data['Trace'].groupby(level=2).count()
+    nsamples = data['Trace'].groupby(level=1).count()
     beta_values = nsamples.index.values
     # The data that we are going to use.
     estimates = data.loc[:,'Shift':'# H psips']
     # Compute the mean of all estimates across all beta loops.
-    means = estimates.groupby(level=2).mean()
+    means = estimates.groupby(level=1).mean()
     # Compute the covariances between all pairs of columns.
-    covariances = estimates.groupby(level=2).cov()
+    covariances = estimates.groupby(level=1).cov()
 
     columns = list(estimates.columns.values)
 

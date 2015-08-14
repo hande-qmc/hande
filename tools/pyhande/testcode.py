@@ -30,7 +30,7 @@ output : dict
         # Compare every 1/4 of the calculation...
         indxs = [0] + [int((i*len(qmc_data))/4)-1 for i in range(1,5)]
         test_data = qmc_data.ix[indxs]
-        output[metadata[(0, 'calc_type')]] = test_data
+        output[metadata['calc_type']] = test_data
     for calc in other_calcs:
         if 'FCI' in calc.name:
             # Compare at most the first 5 eigenvalues (just to be quick/minimise

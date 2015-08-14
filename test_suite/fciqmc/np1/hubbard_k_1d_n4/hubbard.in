@@ -11,10 +11,11 @@ fciqmc {
         rng_seed = 7,
         init_pop = 10,
         mc_cycles = 25,
-        nreports = 100,
+        nreports = 400,
         target_population = 550,
         shift_damping = 0.06,
         state_size = 500,
         spawned_state_size = 500,
     },
+    restart = { read = true },
 }

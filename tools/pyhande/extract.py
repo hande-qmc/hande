@@ -29,18 +29,16 @@ See Also
 ``extract_data`` : underlying data extraction implementation.
 '''
 
-    offset = 0
     data = []
     metadata = []
     for filename in filenames:
         # For now, ignore output from any other calculations.
-        (calc_metadata, calc_data, junk) = extract_data(filename, offset)
+        (calc_metadata, calc_data, junk) = extract_data(filename)
         data.append(calc_data)
         metadata.append(calc_metadata)
-        offset += data[-1].index.levshape[0]
-    return (pd.concat(metadata).unstack(level=0), pd.concat(data))
+    return (pd.concat(metadata), pd.concat(data))
 
-def extract_data(filename, offset=0):
+def extract_data(filename):
     '''Extract QMC data table from a HANDE calculation.
 
 .. note::
@@ -53,8 +51,6 @@ Parameters
 ----------
 filename : string
     name of file containing the HANDE QMC calculation output.
-offset : int
-    first index for the calculation level label in data (default: 0).
 
 Returns
 -------
@@ -62,9 +58,7 @@ metadata : :class:`pandas.Series`
     metadata (i.e. calculation information, parameters and settings) extracted
     from output file..
 qmc_data : :class:`pandas.DataFrame`
-    HANDE QMC data.  Multiple loops over iterations (e.g. in DMQMC) are labelled
-    using a hierarchical index, starting from the supplied offset, otherwise the
-    entire data set is given the offset as the hierarchical index.
+    HANDE QMC data.
 calc_data : list of `:class:`pandas.Series`
     data from other HANDE calculations (i.e. diagonalisation, Hilbert space
     estimation).
@@ -244,33 +238,6 @@ calc_data : list of `:class:`pandas.Series`
                         i*metadata['mc_cycles'] + qmc_data['iterations'][0]
 
         qmc_data = qmc_data.convert_objects(convert_numeric=True, copy=False)
-
-        unique_iterations = qmc_data['iterations'].unique()
-        # if repeated iterations:
-        #     assume there's a full calculation (i.e. DMQMC style) followed by
-        #     a subsequent ones (the final one might not be complete), e.g.
-        #         iteration  label_1 label_2 ...
-        #            10       ....
-        #            20       ....
-        #            ..       ....
-        #           300       ....
-        #            10       ....
-        #            20       ....
-        #            ..       ....
-        #           300       ....
-        #            10       ....
-        #            20       ....
-        #     then label each set of iterations with X.
-        # Otherwise just label the data just read in by the same X.
-        niterations = len(qmc_data)
-        nunique = len(unique_iterations)
-        nitems = int(numpy.ceil(float(niterations)/nunique))
-        qmc_data = [ qmc_data[i*nunique:(i+1)*nunique] for i in range(nitems) ]
-        multi_keys = [i+offset for i in range(len(qmc_data))]
-        qmc_data = pd.concat(qmc_data, keys=multi_keys)
-        qmc_data.index.names = ['calc', '']
-        metadata = pd.concat([metadata], keys=[multi_keys[0]])
-        metadata.index.names = ['calc', '']
 
         # Do we have an old table?  If so, rename the headings to the new ones
         # for convenience...
@@ -466,5 +433,5 @@ value : string
     value associated with variable in input file.
 '''
 
-    value = [x.split()[2].split(',')[0] for x in metadata[0]['input'] if variable in x]
+    value = [x.split()[2].split(',')[0] for x in metadata['input'] if variable in x]
     return (value)
