@@ -6,7 +6,7 @@ fc = gfortran
 cc = gcc
 cxx = g++
 ld = gfortran
-libs = -ltrlan -lacml -lstdc++ -lhdf5_fortran -luuid -llua
+libs = -ltrlan -lacml -lstdc++ -lhdf5_fortran -luuid -llua -ldl
 f90_module_flag = -J
 
 [opt]
