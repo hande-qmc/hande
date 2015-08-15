@@ -21,30 +21,34 @@ output : dict
     calculations and all data in other cases.
 '''
 
-    (metadata, qmc_data, other_calcs) = pyhande.extract.extract_data(fname)
+    hande_out = pyhande.extract.extract_data(fname)
 
     output = {}
-    if not qmc_data.empty:
-        if underscore:
-            qmc_data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
-        # Compare every 1/4 of the calculation...
-        indxs = [0] + [int((i*len(qmc_data))/4)-1 for i in range(1,5)]
-        test_data = qmc_data.ix[indxs]
-        output[metadata['calc_type']] = test_data
-    for calc in other_calcs:
-        if 'FCI' in calc.name:
+    for (metadata, data) in hande_out:
+        if metadata['calc_type'] == 'FCI':
             # Compare at most the first 5 eigenvalues (just to be quick/minimise
             # test output/handle different orders of states within Lanczos):
-            select_data = calc[:min(len(calc),5)].to_frame().T
+            select_data = data[:min(len(data),5)].to_frame().T
             if underscore:
                 select_data.rename(columns=lambda x: 'eigv_%s' % (x,), inplace=True)
             else:
                 select_data.rename(columns=lambda x: 'eigv %s' % (x,), inplace=True)
-        elif 'Hilbert space' in calc.name:
-            select_data = calc.to_frame().T
+            output[data.name] = select_data
+        elif metadata['calc_type'] == 'Hilbert space':
+            select_data = data.to_frame().T
             if underscore:
                 select_data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
-        output[calc.name] = select_data
+            output[data.name] = select_data
+        else:
+            if underscore:
+                data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
+            # Compare every 1/4 of the calculation...
+            if len(data) > 10:
+                indxs = [0] + [int((i*len(data))/4)-1 for i in range(1,5)]
+                test_data = data.ix[indxs]
+                output[metadata['calc_type']] = test_data
+            else:
+                output[metadata['calc_type']] = data
 
     return output
 

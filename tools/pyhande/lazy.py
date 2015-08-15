@@ -59,7 +59,43 @@ size from the blocking analysis:
 ...              select_function=lambda d: d['iterations'] > 10000)
 '''
 
-    (metadata, data) = pyhande.extract.extract_data_sets(datafiles)
+    hande_out = pyhande.extract.extract_data_sets(datafiles)
+
+    # Concat all QMC data (We did say 'lazy', so assumptions are being made...)
+    data = []
+    metadata = []
+    for (md, df) in hande_out:
+        if any(calc in md['calc_type'] for calc in ('FCIQMC', 'CCMC')):
+            if reweight_history > 0:
+                if 'qmc' in md:
+                    # New JSON-based metadata
+                    mc_cycles = md['qmc']['ncycles']
+                    tau = md['qmc']['tau']
+                else:
+                    # legacy...
+                    mc_cycles =  md['mc_cycles']
+                    tau = md['tau']
+                df = pyhande.weight.reweight(df, metadata['mc_cycles'],
+                    metadata['tau'], reweight_history, mean_shift,
+                    arith_mean=arith_mean)
+                df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
+                df['W * N_0'] = df['N_0'] * df['Weight']
+            data.append(df)
+            metadata.append(md)
+    if data:
+        # Check concatenating data is at least possibly sane.
+        step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
+        prev_iteration = data[0]['iterations'].iloc[-1]
+        calc_type = metadata[0]['calc_type']
+        for i in range(1, len(data)):
+            if metadata[i]['calc_type'] != calc_type:
+                warnings.warn('Different calculation types detected.')
+            elif data[i]['iterations'].iloc[0] - step != prev_iteration:
+                warnings.warn('')
+            prev_iteration = data[i]['iterations'].iloc[-1]
+        data = pd.concat(data)
+    else:
+        data = pd.DataFrame() # throw an error in a moment...
 
     # Reblock Monte Carlo data over desired window.
     if select_function is None:
@@ -70,14 +106,7 @@ size from the blocking analysis:
     if extract_psips:
         to_block.append('# H psips')
     to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
-
-    # Compute and define new weighted columns to reblock.
     if reweight_history > 0:
-        data = pyhande.weight.reweight(data, metadata['mc_cycles'],
-            metadata['tau'], reweight_history, mean_shift,
-            arith_mean=arith_mean)
-        data['W * \sum H_0j N_j'] = data['\sum H_0j N_j'] * data['Weight']
-        data['W * N_0'] = data['N_0'] * data['Weight']
         to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
 
     mc_data = data.ix[indx, to_block]

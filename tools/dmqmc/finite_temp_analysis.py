@@ -261,12 +261,24 @@ None.
 '''
 
     (files, options) = parse_args(args)
-    (metadata, data) = pyhande.extract.extract_data_sets(files)
+    hande_out = pyhande.extract.extract_data_sets(files)
 
-    # Convert the iteration number to the beta value.
-    tau = metadata['tau']
-    data.rename(columns={'iterations' : 'Beta'}, inplace=True)
-    data['Beta'] = data['Beta']*tau
+    (metadata, data) = ([], [])
+    for (md, df) in hande_out:
+        if 'DMQMC' in md['calc_type']:
+            metadata.append(md)
+            # Convert the iteration number to the beta value.
+            if 'qmc' in metadata:
+                # New style JSON-based metadata
+                tau = md['qmc']['tau']
+            else:
+                # Grudgingly support hacked old metadata extraction.
+                tau = md['tau']
+            df.rename(columns={'iterations' : 'Beta'}, inplace=True)
+            df['Beta'] = df['Beta']*tau
+            data.append(df)
+    if data:
+        data = pd.concat(data)
 
     # Make the Beta column a MultiIndex.
     data.set_index('Beta', inplace=True, append=True)
