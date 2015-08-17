@@ -312,7 +312,11 @@ contains
         call json_write_key(js, 'calc_excit_dist', dmqmc%calc_excit_dist)
         call json_write_key(js, 'all_sym_sectors', dmqmc%all_sym_sectors)
         call json_write_key(js, 'all_spin_sectors', dmqmc%all_spin_sectors)
-        call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
+        if (allocated(dmqmc%sampling_probs)) then
+            call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
+        else
+            call json_write_key(js, 'sampling_probs', '[]')
+        end if
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
         call json_write_key(js, 'init_beta', dmqmc%init_beta, terminal=.true.)
