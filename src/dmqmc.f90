@@ -27,6 +27,7 @@ contains
         !    dmqmc_estimates: type containing all DMQMC estimates.
 
         use parallel
+        use json_out
         use checking, only: check_allocate
         use annihilation, only: direct_annihilation
         use bit_utils, only: count_set_bits
@@ -43,9 +44,10 @@ contains
         use restart_hdf5, only: restart_info_t, dump_restart_hdf5, init_restart_info_t
         use system
         use dSFMT_interface, only: dSFMT_t
-        use utils, only: rng_init_info
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
-        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
+                            qmc_in_t_json, restart_in_t_json, load_bal_in_t_json, reference_t_json
+        use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
+                              rdm_in_t_json, operators_in_t_json
         use check_input, only: check_qmc_opts, check_dmqmc_opts
         use spawn_data, only: write_memcheck_report
 
@@ -79,6 +81,7 @@ contains
         type(restart_info_t) :: ri
         integer :: ms, occ_list(sys%nel)
         type(sys_t) :: sys_copy
+        type(json_out_t) :: js
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -101,6 +104,20 @@ contains
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
+        if (parent) then
+            call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
+            call qmc_in_t_json(js, qmc_in)
+            call dmqmc_in_t_json(js, dmqmc_in)
+            call ipdmqmc_in_t_json(js, dmqmc_in)
+            call rdm_in_t_json(js, dmqmc_in%rdm)
+            call operators_in_t_json(js)
+            call restart_in_t_json(js, restart_in)
+            call load_bal_in_t_json(js, load_bal_in)
+            call reference_t_json(js, qs%ref, .true.)
+            call json_object_end(js, terminal=.true., tag=.true.)
+            write (js%io, '()')
+        end if
 
         ! Allocate det_info_t components. We need two cdet objects for each 'end'
         ! which may be spawned from in the DMQMC algorithm.
@@ -112,7 +129,6 @@ contains
 
         ! Main DMQMC loop.
         if (parent) then
-            call rng_init_info(qmc_in%seed+iproc)
             call write_fciqmc_report_header(qs%psip_list%nspaces, dmqmc_in, sys%max_number_excitations)
         end if
         ! Initialise timer.

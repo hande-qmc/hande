@@ -284,7 +284,6 @@ contains
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
-        use utils, only: rng_init_info
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
 
@@ -302,12 +301,14 @@ contains
                               redistribute_particles, rescale_tau, dump_restart_file_wrapper
         use proc_pointers
         use spawning, only: assign_particle_processor
-        use system, only: sys_t
+        use system, only: sys_t, sys_t_json
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts
+        use json_out, only: json_out_t, json_object_init, json_object_end
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(inout) :: qmc_in
@@ -332,6 +333,7 @@ contains
         type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
         real(p) :: junk, bloom_threshold
+        type(json_out_t) :: js
 
         logical :: soft_exit, dump_restart_shift
 
@@ -368,6 +370,18 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
 
+        if (parent) then
+            call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
+            call qmc_in_t_json(js, qmc_in)
+            call ccmc_in_t_json(js, ccmc_in)
+            call semi_stoch_in_t_json(js, semi_stoch_in)
+            call restart_in_t_json(js, restart_in)
+            call reference_t_json(js, qs%ref, .true.)
+            call json_object_end(js, terminal=.true., tag=.true.)
+            write (js%io, '()')
+        end if
+
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)
         allocate(nparticles_change(qs%psip_list%nspaces), stat=ierr)
@@ -387,7 +401,6 @@ contains
         call check_allocate('rng', size(rng), ierr)
         allocate(ms_stats(0:nthreads-1), stat=ierr)
         call check_allocate('ms_stats', size(ms_stats), ierr)
-        if (parent) call rng_init_info(qmc_in%seed+iproc)
 
         if (ccmc_in%linked) then
             call init_cluster(sys, 4, cdet, cluster)

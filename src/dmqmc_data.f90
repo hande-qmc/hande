@@ -21,7 +21,7 @@ end enum
 ! IP-DMQMC.
 enum, bind(c)
     ! "Hartree-Fock" density matrix, i.e. \rho = \sum e^{-\beta H_ii} |D_i><D_i|.
-    enumerator :: hartree_fock_dm
+    enumerator :: hartree_fock_dm = 1
     ! Free-electron density matrix, i.e. \rho = \sum_i e^{-\beta \sum_j \varepsilon_j \hat{n}_j} |D_i><D_i|.
     enumerator :: free_electron_dm
 end enum
@@ -177,7 +177,7 @@ type dmqmc_in_t
     logical :: propagate_to_beta = .false.
     ! Initial density matrix to use in IP-DMQMC see enum at beginning of module
     ! for description of available values.
-    integer :: initial_matrix
+    integer :: initial_matrix = hartree_fock_dm
     ! Use the grand canonical partition function to inititally distribute the psips.
     logical :: grand_canonical_initialisation = .false.
     ! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
@@ -281,5 +281,157 @@ type dmqmc_weighted_sampling_t
     ! weights are changed each iteration.
     real(dp), allocatable :: altering_factors(:)
 end type dmqmc_weighted_sampling_t
+
+contains
+
+
+    subroutine dmqmc_in_t_json(js, dmqmc, terminal)
+
+        ! Serialise a dmqmc_in_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   dmqmc_in: dmqmc_in_t object containing dmqmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(dmqmc_in_t), intent(in) :: dmqmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'dmqmc')
+        call json_write_key(js, 'beta_loops', dmqmc%beta_loops)
+        call json_write_key(js, 'replica_tricks', dmqmc%replica_tricks)
+        call json_write_key(js, 'start_av_rdm', dmqmc%start_av_rdm)
+        call json_write_key(js, 'weighted_sampling', dmqmc%weighted_sampling)
+        call json_write_key(js, 'vary_weights', dmqmc%vary_weights)
+        call json_write_key(js, 'find_weights', dmqmc%find_weights)
+        call json_write_key(js, 'find_weights_start', dmqmc%find_weights_start)
+        call json_write_key(js, 'calc_excit_dist', dmqmc%calc_excit_dist)
+        call json_write_key(js, 'all_sym_sectors', dmqmc%all_sym_sectors)
+        call json_write_key(js, 'all_spin_sectors', dmqmc%all_spin_sectors)
+        call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
+        call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
+        call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
+        call json_write_key(js, 'init_beta', dmqmc%init_beta, terminal=.true.)
+        call json_object_end(js, terminal)
+
+    end subroutine dmqmc_in_t_json
+
+    subroutine ipdmqmc_in_t_json(js, dmqmc, terminal)
+
+        ! Serialise a dmqmc_in_t object in JSON format. IP-DMQMC specific input
+        ! options.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   dmqmc_in: dmqmc_in_t object containing dmqmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(dmqmc_in_t), intent(in) :: dmqmc
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'ipdmqmc')
+        call json_write_key(js, 'propagate_to_beta', dmqmc%propagate_to_beta)
+        call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
+        call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
+        call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts, terminal=.true.)
+        call json_object_end(js, terminal)
+
+    end subroutine ipdmqmc_in_t_json
+
+    subroutine rdm_in_t_json(js, rdm, terminal)
+
+        ! Serialise a dmqmc_rdm_in_t object in JSON format.
+        ! options.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   rdm_in: dmqmc_rdm_in_t object containing dmqmc input values (including any defaults set).
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(dmqmc_rdm_in_t), intent(in) :: rdm
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'rdm')
+        call json_write_key(js, 'nrdms', rdm%nrdms)
+        call json_write_key(js, 'spawned_length', rdm%spawned_length)
+        call json_write_key(js, 'doing_rdm', rdm%doing_rdm)
+        call json_write_key(js, 'calc_ground_rdm', rdm%calc_ground_rdm)
+        call json_write_key(js, 'calc_inst_rdm', rdm%calc_inst_rdm)
+        call json_write_key(js, 'doing_concurrence', rdm%doing_concurrence)
+        call json_write_key(js, 'doing_vn_entropy', rdm%doing_vn_entropy)
+        call json_write_key(js, 'output_rdm', rdm%output_rdm, terminal=.true.)
+        call json_object_end(js, terminal)
+
+    end subroutine rdm_in_t_json
+
+    subroutine operators_in_t_json(js, terminal)
+
+        ! serialise operators in json format.
+        ! options.
+
+        ! in/out:
+        !   js: json_out_t controlling the output unit and handling json internal state.  unchanged on output.
+        ! in:
+        !   terminal (optional): if true, this is the last entry in the enclosing json object.  default: false.
+
+        use json_out
+        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared, dmqmc_correlation, &
+                        dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2
+
+        type(json_out_t), intent(inout) :: js
+        logical, intent(in), optional :: terminal
+
+        call json_object_init(js, 'operators')
+        call json_write_key(js, 'energy', doing_dmqmc_calc(dmqmc_energy))
+        call json_write_key(js, 'energy_squared', doing_dmqmc_calc(dmqmc_energy_squared))
+        call json_write_key(js, 'correlation_fn', doing_dmqmc_calc(dmqmc_correlation))
+        call json_write_key(js, 'staggered_mad_ind', doing_dmqmc_calc(dmqmc_staggered_magnetisation))
+        call json_write_key(js, 'rdm_r2', doing_dmqmc_calc(dmqmc_rdm_r2))
+        call json_write_key(js, 'full_r2', doing_dmqmc_calc(dmqmc_full_r2), terminal=.true.)
+        call json_object_end(js, terminal)
+
+    end subroutine operators_in_t_json
+
+    subroutine subsys_t_json(js, subsys, terminal)
+
+        ! Serialise an array of subsys_t objects in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   subsys: array of subsys_t objects.  The subsystem_A array is printed out for each subsys_t object,
+        !       with each object labelled by its index in the "subsys" JSON object.
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
+        use json_out
+        use utils, only: int_fmt
+
+        type(json_out_t), intent(inout) :: js
+        type(subsys_t), intent(in) :: subsys(:)
+        logical, intent(in), optional :: terminal
+        integer :: i
+        character(10) :: ic
+
+        ! Only need to output subsystem_A to reproduce the subsystem information.
+        call json_object_init(js, 'subsys')
+        do i = 1, size(subsys)
+            write (ic,"("//int_fmt(i, 0)//")") i
+            call json_write_key(js, trim(ic), subsys(i)%subsystem_A, i==size(subsys))
+        end do
+        call json_object_end(js, terminal)
+
+    end subroutine subsys_t_json
 
 end module dmqmc_data

@@ -31,6 +31,7 @@ contains
 
         use parallel
         use checking, only: check_allocate
+        use json_out
 
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
@@ -47,16 +48,17 @@ contains
         use qmc, only: init_qmc
         use qmc_common
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
-        use utils, only: rng_init_info
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
-        use system, only: sys_t
+        use system, only: sys_t, sys_t_json
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn, &
                               write_memcheck_report
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
-                            qmc_state_t, annihilation_flags_t, reference_t, semi_stoch_separate_annihilation
+                            qmc_state_t, annihilation_flags_t, reference_t, semi_stoch_separate_annihilation,        &
+                            qmc_in_t_json, fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json, &
+                            reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
 
         type(sys_t), intent(in) :: sys
@@ -71,6 +73,7 @@ contains
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(semi_stoch_t) :: determ
+        type(json_out_t) :: js
 
         integer :: idet, ireport, icycle, iparticle, ideterm, ierr
         integer :: iter, semi_stoch_iter
@@ -110,10 +113,22 @@ contains
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, fciqmc_in=fciqmc_in)
 
+        if (parent) then
+            call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
+            call qmc_in_t_json(js, qmc_in)
+            call fciqmc_in_t_json(js, fciqmc_in)
+            call semi_stoch_in_t_json(js, semi_stoch_in)
+            call restart_in_t_json(js, restart_in)
+            call load_bal_in_t_json(js, load_bal_in)
+            call reference_t_json(js, qs%ref, .true.)
+            call json_object_end(js, terminal=.true., tag=.true.)
+            write (js%io, '()')
+        end if
+
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', size(nparticles_old), ierr)
 
-        if (parent) call rng_init_info(qmc_in%seed+iproc)
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         ! Initialise bloom_stats components to the following parameters.

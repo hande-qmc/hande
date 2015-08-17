@@ -116,6 +116,8 @@ contains
 
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
+        if (parent) call fci_json(sys, fci_in)
+
         if (.not.allocated(ref%occ_list0) .and. ref%ex_level /= sys%nel) then
             ! Provide a best guess at the reference determinant given symmetry and spin options.
             call set_reference_det(sys, ref%occ_list0, .true., sys%symmetry)
@@ -144,6 +146,47 @@ contains
         end if
 
     end subroutine init_fci
+
+    subroutine fci_json(sys, fci_in)
+
+        ! Serialise a fci_in_t object in JSON format.
+
+        ! In:
+        !   sys: system of interest.
+        !   fci_in: fci_in_t object containing fci input values (including any defaults set).
+
+        use json_out
+        use dmqmc_data, only: subsys_t_json
+        use system, only: sys_t, sys_t_json
+
+        type(sys_t), intent(in) :: sys
+        type(fci_in_t), intent(in) :: fci_in
+        type(json_out_t) :: js
+
+        call json_object_init(js, tag=.true.)
+        call sys_t_json(js, sys)
+        call json_object_init(js, 'fci_in')
+
+        call json_write_key(js, 'write_hamiltonian', fci_in%write_hamiltonian)
+        call json_write_key(js, 'hamiltonian_file', fci_in%hamiltonian_file)
+        call json_write_key(js, 'write_determinants', fci_in%write_determinants)
+        call json_write_key(js, 'determinant_file', fci_in%determinant_file)
+        call json_write_key(js, 'print_fci_wfn', fci_in%print_fci_wfn)
+        call json_write_key(js, 'print_fci_wfn_file', fci_in%print_fci_wfn_file)
+        call json_write_key(js, 'analyse_fci_wfn', fci_in%analyse_fci_wfn)
+        if (allocated(fci_in%subsys_info)) then
+            call subsys_t_json(js, fci_in%subsys_info)
+        end if
+        call json_write_key(js, 'block_size', fci_in%block_size)
+        call json_write_key(js, 'nlanczos_eigv', fci_in%nlanczos_eigv)
+        call json_write_key(js, 'lanczos_string_len', fci_in%lanczos_string_len)
+        call json_write_key(js, 'direct_lanczos', fci_in%direct_lanczos, .true.)
+
+        call json_object_end(js, terminal=.true.)
+        call json_object_end(js, terminal=.true., tag=.true.)
+        write (js%io,'()')
+
+    end subroutine fci_json
 
     subroutine generate_hamil(sys, ndets, dets, hamil, hamil_csr, proc_blacs_info, full_mat)
 
