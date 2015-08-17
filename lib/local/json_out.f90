@@ -46,6 +46,8 @@ interface json_write_key
     module procedure :: write_bool
     module procedure :: write_int_32_arr
     module procedure :: write_int_64_arr
+    module procedure :: write_int_32_arr_2d
+    module procedure :: write_int_64_arr_2d
     module procedure :: write_real_32_arr
     module procedure :: write_real_64_arr
 end interface json_write_key
@@ -334,6 +336,62 @@ contains
         write (js%io,'("]"'//record_delim(terminal, .true.)//')')
 
     end subroutine write_int_64_arr
+
+    subroutine write_int_32_arr_2d(js, key, val, terminal)
+
+        ! Write out a key/pair for a integer(int_32) 2D array.
+
+        use const, only: int_32
+        use utils, only: int_fmt
+
+        type(json_out_t), intent(in) :: js
+        character(*), intent(in) :: key
+        integer(int_32), intent(in) :: val(:,:)
+        logical, intent(in), optional :: terminal
+        integer :: i, j
+
+        call write_key(js, key)
+        write (js%io, '("[")', advance='no')
+        do i = 1, size(val, dim=2)
+            write (js%io, '("[")', advance='no')
+            do j = 1, size(val, dim=1)
+                write (js%io,'('//int_fmt(val(j,i),1)//')', advance='no') val(j,i)
+                if (j/=size(val)) write (js%io,'(",")', advance='no')
+            end do
+            write (js%io,'("]")', advance='no')
+            if (i/=size(val)) write (js%io,'(",")', advance='no')
+        end do
+        write (js%io,'("]"'//record_delim(terminal, .true.)//')')
+
+    end subroutine write_int_32_arr_2d
+
+    subroutine write_int_64_arr_2d(js, key, val, terminal)
+
+        ! Write out a key/pair for a integer(int_64) 2D array.
+
+        use const, only: int_64
+        use utils, only: int_fmt
+
+        type(json_out_t), intent(in) :: js
+        character(*), intent(in) :: key
+        integer(int_64), intent(in) :: val(:,:)
+        logical, intent(in), optional :: terminal
+        integer :: i, j
+
+        call write_key(js, key)
+        write (js%io, '("[")', advance='no')
+        do i = 1, size(val, dim=2)
+            write (js%io, '("[")', advance='no')
+            do j = 1, size(val, dim=1)
+                write (js%io,'('//int_fmt(val(j,i),1)//')', advance='no') val(j,i)
+                if (j/=size(val)) write (js%io,'(",")', advance='no')
+            end do
+            write (js%io,'("]")', advance='no')
+            if (i/=size(val)) write (js%io,'(",")', advance='no')
+        end do
+        write (js%io,'("]"'//record_delim(terminal, .true.)//')')
+
+    end subroutine write_int_64_arr_2d
 
     subroutine write_real_32_arr(js, key, val, terminal)
 
