@@ -578,22 +578,6 @@ type annihilation_flags_t
     integer :: trial_function = single_basis
 end type annihilation_flags_t
 
-! --- GLOBAL STATE (TEMPORARY) ---
-
-! When using the Neel singlet trial wavefunction, it is convenient
-! to store all possible amplitudes in the wavefunction, since
-! there are relativley few of them and they are expensive to calculate
-real(p), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
-
-! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
-! encoded as integers by multiplying them by 2**(real_bit_shift).
-! [todo] - compile-time parameter
-integer :: real_bit_shift
-! real_factor = 2**(real_bit_shift)
-! [todo] - compile-time parameter
-integer(int_p) :: real_factor
-! [todo] - procedures for encoding and decoding the populations.
-
 contains
 
     subroutine qmc_in_t_json(js, qmc, terminal)
