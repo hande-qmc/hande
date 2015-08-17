@@ -748,6 +748,14 @@ contains
 
     subroutine sys_t_json(js, sys, terminal)
 
+        ! Serialise a sys_t object in JSON format.
+
+        ! In/Out:
+        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
+        ! In:
+        !   sys: sys_t object describing system being studied.
+        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
+
         use json_out
 
         type(json_out_t), intent(inout) :: js
@@ -779,9 +787,9 @@ contains
         call json_write_key(js, 'symmetry', sys%symmetry)
         call json_write_key(js, 'max_number_excitations', sys%max_number_excitations)
         if (abs(sys%chem_pot - huge(1.0_p)) < 1.0_p) then
-            call json_write_key(js, 'chem_pot', 'nan', terminal=.not.lattice_system)
+            call json_write_key(js, 'chem_pot', 'nan')
         else
-            call json_write_key(js, 'chem_pot', sys%chem_pot, terminal=.not.lattice_system)
+            call json_write_key(js, 'chem_pot', sys%chem_pot)
         end if
 
         if (lattice_system) then
