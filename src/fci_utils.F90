@@ -97,9 +97,6 @@ contains
                 open(iunit, file=fci_in%print_fci_wfn_file, status='unknown')
                 close(iunit, status='delete')
             end if
-
-            call fci_in_t_json(fci_in)
-
         end if
 
         spin_flip = .false.
@@ -118,6 +115,8 @@ contains
         end if
 
         call set_spin_polarisation(sys%basis%nbasis, sys)
+
+        if (parent) call fci_json(sys, fci_in)
 
         if (.not.allocated(ref%occ_list0) .and. ref%ex_level /= sys%nel) then
             ! Provide a best guess at the reference determinant given symmetry and spin options.
@@ -148,23 +147,24 @@ contains
 
     end subroutine init_fci
 
-    subroutine fci_in_t_json(fci_in)
+    subroutine fci_json(sys, fci_in)
 
         ! Serialise a fci_in_t object in JSON format.
 
-        ! In/Out:
-        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
+        !   sys: system of interest.
         !   fci_in: fci_in_t object containing fci input values (including any defaults set).
-        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
         use dmqmc_data, only: subsys_t_json
+        use system, only: sys_t, sys_t_json
 
+        type(sys_t), intent(in) :: sys
         type(fci_in_t), intent(in) :: fci_in
         type(json_out_t) :: js
 
         call json_object_init(js, tag=.true.)
+        call sys_t_json(js, sys)
         call json_object_init(js, 'fci_in')
 
         call json_write_key(js, 'write_hamiltonian', fci_in%write_hamiltonian)
@@ -186,7 +186,7 @@ contains
         call json_object_end(js, terminal=.true., tag=.true.)
         write (js%io,'()')
 
-    end subroutine fci_in_t_json
+    end subroutine fci_json
 
     subroutine generate_hamil(sys, ndets, dets, hamil, hamil_csr, proc_blacs_info, full_mat)
 

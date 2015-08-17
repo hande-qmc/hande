@@ -211,7 +211,7 @@ contains
                             qmc_in_t_json, restart_in_t_json, reference_t_json
         use qmc_common, only: dump_restart_file_wrapper
         use spawn_data, only: spawn_t
-        use system, only: sys_t
+        use system, only: sys_t, sys_t_json
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
         use check_input, only: check_qmc_opts
 
@@ -246,6 +246,7 @@ contains
 
         if (parent) then
             call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
             call qmc_in_t_json(js, qmc_in)
             call restart_in_t_json(js, restart_in)
             call reference_t_json(js, reference)

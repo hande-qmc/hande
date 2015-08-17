@@ -50,7 +50,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
-        use system, only: sys_t
+        use system, only: sys_t, sys_t_json
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn, &
                               write_memcheck_report
@@ -115,6 +115,7 @@ contains
 
         if (parent) then
             call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
             call qmc_in_t_json(js, qmc_in)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)

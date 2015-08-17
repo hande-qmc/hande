@@ -301,7 +301,7 @@ contains
                               redistribute_particles, rescale_tau, dump_restart_file_wrapper
         use proc_pointers
         use spawning, only: assign_particle_processor
-        use system, only: sys_t
+        use system, only: sys_t, sys_t_json
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
@@ -372,6 +372,7 @@ contains
 
         if (parent) then
             call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
             call qmc_in_t_json(js, qmc_in)
             call ccmc_in_t_json(js, ccmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)

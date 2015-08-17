@@ -106,6 +106,7 @@ contains
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
         if (parent) then
             call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
             call qmc_in_t_json(js, qmc_in)
             call dmqmc_in_t_json(js, dmqmc_in)
             call ipdmqmc_in_t_json(js, dmqmc_in)

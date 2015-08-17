@@ -93,8 +93,13 @@ contains
             seed = gen_seed(GLOBAL_META%uuid)
         end if
 
+        call dSFMT_init(seed+iproc, 50000, rng)
+        call copy_sys_spin_info(sys, sys_bak)
+        call set_spin_polarisation(sys%basis%nbasis, sys)
+
         if (parent) then
             call json_object_init(js, tag=.true.)
+            call sys_t_json(js, sys)
             call json_write_key(js, 'ex_level', truncation_level)
             call json_write_key(js, 'ncycles', ncycles)
             call json_write_key(js, 'occ_list', occ_list0)
@@ -102,11 +107,6 @@ contains
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io,'()')
         end if
-
-        call dSFMT_init(seed+iproc, 50000, rng)
-
-        call copy_sys_spin_info(sys, sys_bak)
-        call set_spin_polarisation(sys%basis%nbasis, sys)
 
         select case(sys%system)
 

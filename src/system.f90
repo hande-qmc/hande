@@ -746,4 +746,113 @@ contains
 
     end subroutine set_fermi_energy
 
+    subroutine sys_t_json(js, sys, terminal)
+
+        use json_out
+
+        type(json_out_t), intent(inout) :: js
+        type(sys_t), intent(in) :: sys
+        logical, intent(in), optional :: terminal
+        character(10) :: isite
+        integer :: i
+        logical :: lattice_system
+
+        lattice_system = sys%system == heisenberg .or. sys%system == hub_k .or. &
+                         sys%system == hub_real .or. sys%system == chung_landau
+
+        call json_object_init(js, 'system')
+
+        call json_write_key(js, 'nbasis', sys%basis%nbasis)
+        call json_write_key(js, 'nel', sys%nel)
+        call json_write_key(js, 'nvirt', sys%nvirt)
+        call json_write_key(js, 'Ms', sys%Ms)
+        call json_write_key(js, 'nalpha', sys%nalpha)
+        call json_write_key(js, 'nbeta', sys%nbeta)
+        call json_write_key(js, 'nvirt_alpha', sys%nvirt_alpha)
+        call json_write_key(js, 'nvirt_beta', sys%nvirt_beta)
+        call json_write_key(js, 'nsym', sys%nsym)
+        call json_write_key(js, 'sym0', sys%sym0)
+        call json_write_key(js, 'sym_max', sys%sym_max)
+        call json_write_key(js, 'nsym_tot', sys%nsym_tot)
+        call json_write_key(js, 'sym0_tot', sys%sym0_tot)
+        call json_write_key(js, 'sym_max_tot', sys%sym_max_tot)
+        call json_write_key(js, 'symmetry', sys%symmetry)
+        call json_write_key(js, 'max_number_excitations', sys%max_number_excitations)
+        if (abs(sys%chem_pot - huge(1.0_p)) < 1.0_p) then
+            call json_write_key(js, 'chem_pot', 'nan', terminal=.not.lattice_system)
+        else
+            call json_write_key(js, 'chem_pot', sys%chem_pot, terminal=.not.lattice_system)
+        end if
+
+        if (lattice_system) then
+            call json_object_init(js, 'lattice')
+            call json_write_key(js, 'ndim', sys%lattice%ndim)
+            call json_write_key(js, 'nsites', sys%lattice%nsites)
+            call json_write_key(js, 'lattice', sys%lattice%lattice, terminal=sys%system == hub_k)
+            if (sys%system /= hub_k) then
+                call json_write_key(js, 'triangular_lattice', sys%lattice%triangular_lattice)
+                call json_write_key(js, 'bipartite_lattice', sys%lattice%bipartite_lattice)
+                do i = 1, sys%basis%nbasis
+                    write (isite,'(i0)') i
+                    call json_write_key(js, trim(isite), sys%real_lattice%connected_sites(1:,i), i==sys%basis%nbasis)
+                end do
+                call json_write_key(js, 'self_image', sys%real_lattice%t_self_images)
+                call json_write_key(js, 'finite_cluster', sys%real_lattice%finite_cluster, terminal=.true.)
+            end if
+            call json_object_end(js)
+        end if
+
+        if (sys%system == hub_real .or. sys%system == hub_k .or. sys%system == chung_landau) then
+            call json_object_init(js, 'hubbard')
+            call json_write_key(js, 'U', sys%hubbard%u)
+            call json_write_key(js, 't', sys%hubbard%t)
+            if (sys%system == hub_k) call json_write_key(js, 'ktwist', sys%k_lattice%ktwist, terminal=.true.)
+            call json_object_end(js, terminal=.true.)
+        end if
+
+        if (sys%system == heisenberg) then
+            call json_object_init(js, 'heisenberg')
+            call json_write_key(js, 'J', sys%heisenberg%J)
+            call json_write_key(js, 'magnetic_field', sys%heisenberg%magnetic_field)
+            call json_write_key(js, 'staggered_magnetic_field', sys%heisenberg%staggered_magnetic_field)
+            call json_write_key(js, 'nbonds', sys%heisenberg%nbonds, terminal=.true.)
+            call json_object_end(js, terminal=.true.)
+        end if
+
+        if (sys%system == ueg) then
+            call json_object_init(js, 'ueg')
+            call json_write_key(js, 'r_s', sys%ueg%r_s)
+            call json_write_key(js, 'ecutoff', sys%ueg%ecutoff)
+            call json_write_key(js, 'k_fermi', sys%ueg%kf)
+            call json_write_key(js, 'E_fermi', sys%ueg%ef)
+            call json_write_key(js, 'ktwist', sys%k_lattice%ktwist)
+            call json_write_key(js, 'L', sys%lattice%box_length, terminal=.true.)
+            call json_object_end(js, terminal=.true.)
+        end if
+
+        if (sys%system == read_in) then
+            call json_object_init(js, 'read_in')
+            call json_write_key(js, 'int_file', trim(sys%read_in%fcidump))
+            call json_write_key(js, 'uhf', sys%read_in%uhf)
+            call json_write_key(js, 'Ecore', sys%read_in%Ecore)
+            if (trim(sys%read_in%dipole_int_file) /= '') then
+                call json_write_key(js, 'dipole_int_file', trim(sys%read_in%dipole_int_file))
+                call json_write_key(js, 'dipole_core', sys%read_in%dipole_core)
+            end if
+            call json_write_key(js, 'CAS', sys%CAS)
+            call json_write_key(js, 'useLz', sys%read_in%useLz, terminal=.true.)
+            call json_object_end(js, terminal=.true.)
+        end if
+
+        if (sys%system == ringium) then
+            call json_object_init(js, 'ringium')
+            call json_write_key(js, 'radius', sys%ringium%radius)
+            call json_write_key(js, 'maxlz', sys%ringium%maxlz, terminal=.true.)
+            call json_object_end(js, terminal=.true.)
+        end if
+
+        call json_object_end(js, terminal)
+
+    end subroutine sys_t_json
+
 end module system
