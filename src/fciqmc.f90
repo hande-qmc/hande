@@ -258,22 +258,20 @@ contains
                         call receive_spawned_walkers(spawn_recv, req_data_s)
                         call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
                                                     load_bal_in%nslots)
-                        call direct_annihilation_received_list(sys, rng, qmc_in, qs%ref, annihilation_flags, &
-                                                               pl, spawn_recv)
+                        call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
                             call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn)
                             qs%par_info%load%needed = .false.
                         end if
-                        call direct_annihilation_spawned_list(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, &
-                                                              send_counts, req_data_s, qs%par_info%report_comm%nb_spawn, &
-                                                              nspawn_events)
+                        call direct_annihilation_spawned_list(sys, rng, qs%ref, annihilation_flags, pl, spawn, send_counts, &
+                                                              req_data_s, qs%par_info%report_comm%nb_spawn, nspawn_events)
                         call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic projection step.
                         if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
-                        call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
+                        call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
 
                         call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
                     end if

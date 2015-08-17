@@ -276,8 +276,8 @@ contains
                     ! Perform the annihilation step where the spawned walker
                     ! list is merged with the main walker list, and walkers of
                     ! opposite sign on the same sites are annihilated.
-                    call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, &
-                                             qs%spawn_store%spawn, nspawn_events)
+                    call direct_annihilation(sys, rng, qs%ref, annihilation_flags, qs%psip_list, qs%spawn_store%spawn, &
+                                             nspawn_events)
 
                     call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
 

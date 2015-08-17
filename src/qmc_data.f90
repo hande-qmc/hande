@@ -398,7 +398,7 @@ end type semi_stoch_t
 ! For the Heisenberg model, several different trial functions can be used in the
 ! energy estimator. Only a single determinant can be used for the Hubbard model.
 enum, bind(c)
-    enumerator :: single_basis
+    enumerator :: single_basis = 0
     enumerator :: neel_singlet
 end enum
 
@@ -557,14 +557,19 @@ end type qmc_state_t
 
 ! Copies of various settings that are required during annihilation.  This avoids having to pass through lots of different
 ! structs/flags for various settings.  Set in init_qmc.
+! NOTE: the defaults here correspond to the defaults for the corresponding components of qmc_in_t, fciqmc_in_t and dmqmc_in_t.
 type annihilation_flags_t
+    ! Using the initiator approximation?
+    logical :: initiator_approx = .false.
+    ! True if allowing non-integer values for psip populations.
+    logical :: real_amplitudes = .false.
     ! Calculate replicas (ie evolve two wavefunctions/density matrices at once)?
     ! Currently only implemented for DMQMC.
     logical :: replica_tricks = .false.
     ! Propagate a trial density matrix to a specific temeperature.
     logical :: propagate_to_beta = .false.
     ! Trial function used (FCIQMC & Heisenberg model only).
-    integer :: trial_function
+    integer :: trial_function = single_basis
 end type annihilation_flags_t
 
 ! --- GLOBAL STATE (TEMPORARY) ---
