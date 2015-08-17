@@ -180,7 +180,7 @@ contains
             psip_list%tot_nparticles = target_nparticles_tot
         end if
 
-        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
+        call direct_annihilation(sys, rng, reference, annihilation_flags, psip_list, spawn)
 
         if (dmqmc_in%metropolis_attempts > 0) then
             ! Reset the position of the first spawned particle in the spawning array
@@ -193,7 +193,7 @@ contains
                                         psip_list%nparticles, spawn)
             if (spawn%error) call stop_all('create_initial_density_matrix', 'Ran out of space in the spawning array while&
                                       & generating the initial density matrix.')
-            call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
+            call direct_annihilation(sys, rng, reference, annihilation_flags, psip_list, spawn)
         end if
 
     end subroutine create_initial_density_matrix

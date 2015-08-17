@@ -193,17 +193,14 @@ contains
             nwalker_int_p = pl%nspaces
             nwalker_real = pl%nspaces + pl%info_size
 
+            annihilation_flags%initiator_approx = qmc_in%initiator_approx
+            annihilation_flags%real_amplitudes = qmc_in%real_amplitudes
             if (present(dmqmc_in)) then
                 annihilation_flags%propagate_to_beta = dmqmc_in%propagate_to_beta
                 annihilation_flags%replica_tricks = dmqmc_in%replica_tricks
-            else
-                annihilation_flags%propagate_to_beta = .false.
-                annihilation_flags%replica_tricks = .false.
             end if
             if (present(fciqmc_in)) then
                 annihilation_flags%trial_function = fciqmc_in%trial_function
-            else
-                annihilation_flags%trial_function = single_basis
             end if
 
             ! Thus the number of bits occupied by each determinant in the main

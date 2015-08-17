@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, &
+    subroutine direct_annihilation(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                    nspawn_events, determ)
 
         ! Annihilation algorithm.
@@ -21,7 +21,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
@@ -40,11 +39,10 @@ contains
         use spawn_data, only: spawn_t, annihilate_wrapper_spawn_t, calc_events_spawn_t, memcheck_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, particle_t, annihilation_flags_t, semi_stoch_separate_annihilation
+        use qmc_data, only: reference_t, semi_stoch_t, particle_t, annihilation_flags_t, semi_stoch_separate_annihilation
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
-        type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(particle_t), intent(inout) :: psip_list
@@ -67,21 +65,20 @@ contains
         if (doing_semi_stoch) then
             if (determ%projection_mode == semi_stoch_separate_annihilation) then
                 call deterministic_annihilation(sys, rng, psip_list, determ)
-                call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx)
+                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
             else
-                call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx, determ%sizes(iproc))
+                call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, determ%sizes(iproc))
             end if
 
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, &
-                                              spawn, determ_flags=determ%flags)
+            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, determ_flags=determ%flags)
         else
-            call annihilate_wrapper_spawn_t(spawn, qmc_in%initiator_approx)
-            call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
+            call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
+            call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn)
         end if
 
     end subroutine direct_annihilation
 
-    subroutine direct_annihilation_received_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv)
+    subroutine direct_annihilation_received_list(sys, rng, reference, annihilation_flags, psip_list, spawn_recv)
 
         ! Annihilation algorithm for non-blocking communications.
         ! Spawned walkers are added to the main list, by which new walkers are
@@ -105,7 +102,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
@@ -120,10 +116,9 @@ contains
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: reference_t, particle_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(dSFMT_t), intent(inout) :: rng
@@ -137,13 +132,13 @@ contains
         ! (not including the current processor) from  the previous iteration.
         ! They have since been evolved so they can be annihilated with the main list.
         ! First annihilate within spawn_recv.
-        call annihilate_wrapper_non_blocking_spawn(spawn_recv, qmc_in%initiator_approx)
+        call annihilate_wrapper_non_blocking_spawn(spawn_recv, annihilation_flags%initiator_approx)
         ! Annihilate with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn_recv)
+        call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn_recv)
 
     end subroutine direct_annihilation_received_list
 
-    subroutine direct_annihilation_spawned_list(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, send_counts, &
+    subroutine direct_annihilation_spawned_list(sys, rng, reference, annihilation_flags, psip_list, spawn, send_counts, &
                                                 req_data_s, non_block_spawn, nspawn_events)
 
         ! Annihilation algorithm for non-blocking communications.
@@ -156,7 +151,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
@@ -181,12 +175,11 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: reference_t, particle_t, annihilation_flags_t
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
-        type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         type(particle_t), intent(inout) :: psip_list
@@ -208,9 +201,9 @@ contains
         ! Perform annihilation within the spawned walker list.
         ! This involves locating, compressing and sorting the section of the spawned
         ! list which needs to be annihilated with the main list on this processor.
-        call annihilate_wrapper_non_blocking_spawn(spawn, qmc_in%initiator_approx, iproc)
+        call annihilate_wrapper_non_blocking_spawn(spawn, annihilation_flags%initiator_approx, iproc)
         ! Annihilate portion of spawned list with main list.
-        call annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, &
+        call annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                           spawn%head_start(thread_id, iproc)+nthreads)
         ! Communicate walkers spawned onto other processors during this
         ! evolution step to their new processors.
@@ -218,7 +211,7 @@ contains
 
     end subroutine direct_annihilation_spawned_list
 
-    subroutine annihilate_main_list_wrapper(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn, &
+    subroutine annihilate_main_list_wrapper(sys, rng, reference, annihilation_flags, psip_list, spawn, &
                                             lower_bound, determ_flags)
 
         ! This is a wrapper around various utility functions which perform the
@@ -227,7 +220,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
@@ -246,11 +238,10 @@ contains
         use system, only: sys_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: reference_t, particle_t, annihilation_flags_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
-        type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer, optional, intent(in) :: lower_bound
@@ -270,7 +261,7 @@ contains
         if (spawn%head(thread_id,0) >= spawn_start) then
             ! Have spawned walkers on this processor.
 
-            if (qmc_in%initiator_approx) then
+            if (annihilation_flags%initiator_approx) then
                 call annihilate_main_list_initiator(psip_list, spawn, sys%basis%tensor_label_len, lower_bound)
             else
                 call annihilate_main_list(psip_list, spawn, sys%basis%tensor_label_len, lower_bound)
@@ -278,11 +269,11 @@ contains
 
             ! Remove determinants with zero walkers on them from the main
             ! walker list.
-            call remove_unoccupied_dets(rng, psip_list, qmc_in%real_amplitudes, determ_flags)
+            call remove_unoccupied_dets(rng, psip_list, annihilation_flags%real_amplitudes, determ_flags)
 
             ! Remove low-population spawned walkers by stochastically
             ! rounding their population up to one or down to zero.
-            if (qmc_in%real_amplitudes) call round_low_population_spawns(rng, spawn, lower_bound)
+            if (annihilation_flags%real_amplitudes) call round_low_population_spawns(rng, spawn, lower_bound)
 
             ! Insert new walkers into main walker list.
             call insert_new_walkers(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound)
@@ -291,7 +282,7 @@ contains
 
             ! No spawned walkers so we only have to check to see if death has
             ! killed the entire population on a determinant.
-            call remove_unoccupied_dets(rng, psip_list, qmc_in%real_amplitudes, determ_flags)
+            call remove_unoccupied_dets(rng, psip_list, annihilation_flags%real_amplitudes, determ_flags)
 
         end if
 

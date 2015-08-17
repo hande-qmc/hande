@@ -270,8 +270,7 @@ contains
 
                 end do
 
-                call direct_annihilation(sys, rng, qmc_in, qs%ref, annihilation_flags, qs%psip_list, qs%spawn_store%spawn, &
-                                         nspawn_events)
+                call direct_annihilation(sys, rng, qs%ref, annihilation_flags, qs%psip_list, qs%spawn_store%spawn, nspawn_events)
 
             end do
 

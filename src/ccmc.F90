@@ -735,7 +735,7 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
                     if (nprocs > 1) call redistribute_particles(pl%states, real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
 
-                    call direct_annihilation(sys, rng(0), qmc_in, qs%ref, annihilation_flags, pl, spawn)
+                    call direct_annihilation(sys, rng(0), qs%ref, annihilation_flags, pl, spawn)
                 end associate
 
                 call end_mc_cycle(nspawn_events, ndeath, nattempts_spawn, qs%spawn_store%rspawn)

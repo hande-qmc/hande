@@ -823,8 +823,8 @@ contains
 
         if (par_info%load%needed) then
             call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
-            call redistribute_load_balancing_dets(rng, sys, qmc_in, reference, psip_list%states, real_factor, determ, &
-                                                  psip_list, spawn, annihilation_flags)
+            call redistribute_load_balancing_dets(rng, sys, reference, psip_list%states, real_factor, determ, psip_list, spawn, &
+                                                  annihilation_flags)
             ! If using non-blocking communications we still need this flag to
             ! be set.
             if (.not. nb_comm) par_info%load%needed = .false.
@@ -1037,8 +1037,8 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(rng, sys, qmc_in, reference, states, real_factor, &
-                                                determ, psip_list, spawn, annihilation_flags)
+    subroutine redistribute_load_balancing_dets(rng, sys, reference, states, real_factor, determ, psip_list, spawn, &
+                                                annihilation_flags)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -1051,7 +1051,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
         !    states: list of occupied excitors on the current processor.
         !    real_factor: The factor by which populations are multiplied to
@@ -1071,13 +1070,12 @@ contains
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_in_t, reference_t, semi_stoch_t, particle_t, annihilation_flags_t
+        use qmc_data, only: reference_t, semi_stoch_t, particle_t, annihilation_flags_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         integer(i0), intent(in) :: states(:,:)
         integer(int_p), intent(in) :: real_factor
@@ -1090,7 +1088,7 @@ contains
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.
-        call direct_annihilation(sys, rng, qmc_in, reference, annihilation_flags, psip_list, spawn)
+        call direct_annihilation(sys, rng, reference, annihilation_flags, psip_list, spawn)
         spawn%head = spawn%head_start
 
         if (present(determ)) call redistribute_semi_stoch_t(sys, reference, annihilation_flags, psip_list, spawn, determ)
