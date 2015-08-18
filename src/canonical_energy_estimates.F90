@@ -110,7 +110,7 @@ contains
             call json_write_key(js, 'fermi_temperature', fermi_temperature)
             call json_write_key(js, 'nsamples', nsamples)
             call json_write_key(js, 'ncycles', ncycles)
-            call json_write_key(js, 'rng_seed', seed)
+            call json_write_key(js, 'rng_seed', seed, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io,'()')
         end if
