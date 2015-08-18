@@ -131,3 +131,50 @@ quick64 = _quick_
           fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64/
           dmqmc_real_64/np4/n2_sto3g/
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
+
+_vquick_ = fci/heisenberg_1d_fci_rdm
+           fci/heisenberg_1d_finite_cluster_fci
+           fci/hubbard_k_1d
+           fci/hubbard_k_nontilted_2d_fci
+           fci/ringium
+           fci/H2O-RHF-sto-2g
+           fci/heisenberg_1d_fci
+           fciqmc/np1/Ne-RHF-cc-pVDZ_softexit
+           lanczos/hubbard_real_nontilted_2d_direct
+           fci/hubbard_k_tilted_2d_fci
+           mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
+           fci/H2-RHF-cc-pVTZ-Lz/
+           fciqmc/np1/hubbard_real_1d_fciqmc
+           ifciqmc/np1/hubbard_k_1d_ifciqmc
+           ifciqmc/np1/hubbard_k_1d_ifciqmc_cas
+           fci/ueg_n4_rs2_e1_fci
+           lanczos/hubbard_k_nontilted_2d_lanczos
+           ifciqmc/np1/hubbard_k_1d_ifciqmc
+           ifciqmc/np1/hubbard_k_nontilted_2d_ifciqmc
+           lanczos/hubbard_k_tilted_2d_sparse
+           fciqmc/np1/hubbard_k_nontilted_2d_fciqmc
+           fciqmc/np1/hubbard_k_1d_n4
+           mc_hilbert_space/np1/hf_hilbert_space
+           mc_hilbert_space/np1/hf_hilbert_space
+           fciqmc/np1/hubbard_real_1d_fciqmc
+           fciqmc/np1/heisenberg_1d_neel_ref_fciqmc
+           simple_fciqmc/hubbard_k_nontilted_2d_sfciqmc
+           lanczos/hubbard_real_rectangle_2d_lanczos
+           fci/chung_landau_1d_fci
+           ccmc/np2/H2O-cc-pVDZ_tau_search
+           mc_canonical_energy/np1/H2O_ccpvdz_RHF
+           mc_canonical_energy/np2/H2O_ccpvdz_RHF
+           fciqmc/np1/heisenberg_1d_ferro_field_fciqmc
+           mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
+           dmqmc/np1/heisenberg_1d
+           fciqmc/np2/ueg_n10_rs2_e4_tau_search
+
+vquick   = _vquick_
+           ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32
+           ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS
+           fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
+           fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
+           dmqmc_real_32/np2/heisenberg_4_gs_entropy
+
+vquick64 = _vquick_
+           fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64
