@@ -815,7 +815,7 @@ contains
         if (sys%system == hub_real .or. sys%system == hub_k .or. sys%system == chung_landau) then
             call json_object_init(js, 'hubbard')
             call json_write_key(js, 'U', sys%hubbard%u)
-            call json_write_key(js, 't', sys%hubbard%t)
+            call json_write_key(js, 't', sys%hubbard%t, terminal=sys%system/=hub_k)
             if (sys%system == hub_k) call json_write_key(js, 'ktwist', sys%k_lattice%ktwist, terminal=.true.)
             call json_object_end(js, terminal=.true.)
         end if
