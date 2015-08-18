@@ -356,10 +356,10 @@ contains
             write (js%io, '("[")', advance='no')
             do j = 1, size(val, dim=1)
                 write (js%io,'('//int_fmt(val(j,i),1)//')', advance='no') val(j,i)
-                if (j/=size(val)) write (js%io,'(",")', advance='no')
+                if (j/=size(val, dim=1)) write (js%io,'(",")', advance='no')
             end do
             write (js%io,'("]")', advance='no')
-            if (i/=size(val)) write (js%io,'(",")', advance='no')
+            if (i/=size(val, dim=2)) write (js%io,'(",")', advance='no')
         end do
         write (js%io,'("]"'//record_delim(terminal, .true.)//')')
 
