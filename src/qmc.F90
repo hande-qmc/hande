@@ -833,6 +833,10 @@ contains
                     if (doing_dmqmc_calc(dmqmc_potential_energy)) then
                         potential_energy_ptr => potential_energy_ueg
                     end if
+                    if (doing_dmqmc_calc(dmqmc_H0_energy) .and. .not. dmqmc_in%propagate_to_beta) then
+                        ! Assume that we want to evaluate <H_HF> rather than the kinetic energy.
+                        trial_dm_ptr => slater_condon0_ueg
+                    end if
             case(hub_k)
                 if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
