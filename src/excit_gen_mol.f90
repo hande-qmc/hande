@@ -56,6 +56,7 @@ contains
 
         ! 1. Select single or double.
 
+        ! [review] - JSS: is passing in qmc_state to the excitation generators a bit much if we just want pattempt_{single,double}?
         if (get_rand_close_open(rng) < qmc_state%pattempt_single) then
 
             ! 2a. Select orbital to excite from and orbital to excite into.
