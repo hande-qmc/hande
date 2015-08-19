@@ -6,6 +6,7 @@ import sys
 script_dir = os.path.dirname(__file__)
 sys.path.extend([os.path.join(script_dir, '../')])
 import pyhande
+import warnings
 
 def main(filename):
     ''' Analyse the output from a canonical kinetic energy calculation.
@@ -37,7 +38,7 @@ filename : list of strings
         beta = metadata[0]['beta']
         for md in metadata[1:]:
             if 'beta' in md and md['beta'] != beta:
-                warnings.warn('Beta values for input files not consistent.')
+                warnings.warn('Beta values in input files not consistent.')
 
     results = pyhande.canonical.estimates(metadata[0], data)
 
