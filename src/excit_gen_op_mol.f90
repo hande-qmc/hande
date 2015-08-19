@@ -22,7 +22,7 @@ contains
 ! This is a hack until the excitation generators support generating excitations
 ! for operators of arbitrary symmetries.
 
-    subroutine gen_excit_one_body_mol(rng, sys, qmc_state, cdet, pgen, connection, matel)
+    subroutine gen_excit_one_body_mol(rng, sys, pattempt_single, cdet, pgen, connection, matel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the corresponding matrix element of
@@ -30,7 +30,8 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: QMC state.  Unused but included for interface compatibility.
+        !    pattempt_single: Probability to attempt a single excitation.
+        !        Unused but included for interface compatibility.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -49,14 +50,13 @@ contains
         use excitations, only: excit_t, find_excitation_permutation1
         use excit_gen_mol, only: choose_ia_mol, calc_pgen_single_mol
         use operators, only: one_body1_mol_excit
-        use qmc_data, only: qmc_state_t
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection
@@ -92,7 +92,7 @@ contains
 
     end subroutine gen_excit_one_body_mol
 
-    subroutine gen_excit_one_body_mol_no_renorm(rng, sys, qmc_state, cdet, pgen, connection, matel)
+    subroutine gen_excit_one_body_mol_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, matel)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the corresponding matrix element of
@@ -107,7 +107,8 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: QMC state.  Unused but included for interface compatibility.
+        !    pattempt_single: Probability to attempt a single excitation.
+        !        Unused but included for interface compatibility.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -126,13 +127,12 @@ contains
         use excitations, only: excit_t, find_excitation_permutation1
         use excit_gen_mol, only: find_ia_mol, calc_pgen_single_mol_no_renorm
         use operators, only: one_body1_mol_excit
-        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: cdet
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection

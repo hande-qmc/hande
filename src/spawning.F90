@@ -85,7 +85,7 @@ contains
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_state, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
@@ -150,7 +150,7 @@ contains
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_state, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel)
@@ -230,7 +230,7 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, qmc_state, cdet, pgen, connection, abs_hmatel)
+        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel/pgen, rng)
@@ -238,7 +238,7 @@ contains
         if (nspawn /= 0_int_p) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_ptr%finalise(rng, sys, qmc_state, cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
 
             ! 4. Find sign of offspring.
             call set_child_sign(hmatel, parent_sign, nspawn)
@@ -314,7 +314,7 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, qmc_state, cdet, pgen, connection, tilde_hmatel)
+        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel)
@@ -327,7 +327,7 @@ contains
             ! 4. Complete excitation and find sign of connecting matrix element.
             ! *NOTE*: this returns the original matrix element and *not* the
             ! matrix element after the trial function transformation.
-            call gen_excit_ptr%finalise(rng, sys, qmc_state, cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
 
             ! 5. Find sign of offspring.
             ! Note that we don't care about the value of H_ij at this step, only

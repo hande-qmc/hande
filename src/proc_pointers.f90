@@ -77,28 +77,25 @@ abstract interface
         integer(i0), allocatable, intent(in) :: mask(:)
         real(p), intent(inout) :: cfunc
     end subroutine i_update_dmqmc_correlation_function
-    subroutine i_gen_excit(rng, sys, qmc_state, d, pgen, connection, hmatel)
+    subroutine i_gen_excit(rng, sys, pattempt_single, d, pgen, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
     end subroutine i_gen_excit
-    subroutine i_gen_excit_finalise(rng, sys, qmc_state, d, connection, hmatel)
+    subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_state_t), intent(in) :: qmc_state
         type(det_info_t), intent(in) :: d
         type(excit_t), intent(inout) :: connection
         real(p), intent(out) :: hmatel
