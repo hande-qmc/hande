@@ -20,7 +20,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state including input options relevant to excitation generators.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -131,7 +131,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state including input options relevant to excitation generators.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.

@@ -9,11 +9,11 @@ contains
 
         ! In:
         !    nreplicas: number of replicas being used.
-        ! In/Out:
         !    sys: system being studied. This should be left in an unmodified
         !       state on output.
         !    qmc_in: Input options relating to QMC methods.
         !    dmqmc_in: Input options relating to DMQMC.
+        ! In/Out:
         !    qs: estimators not specific to DMQMC.
         !    dmqmc_estimates: type containing estimates for observables.
         !    weighted_sampling: type containing information for weighted
@@ -639,10 +639,10 @@ contains
         ! weights are output and can then be used in future DMQMC runs.
 
         ! In:
+        !    dmqmc_in: input options relating to DMQMC.
         !    max_number_excitations: maximum number of excitations possible (see
         !       sys_t type in system for details).
         ! In/Out:
-        !    dmqmc_in: input options relating to DMQMC.
         !    excit_dist: distribution of particles across excitations levels of
         !        the density matrix.
         !    weighted_sampling: type containing weighted sampling information.

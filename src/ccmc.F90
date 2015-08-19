@@ -2462,7 +2462,7 @@ contains
 
         ! In:
         !    sys: the system being studied
-        !    excit_gen: which excitation generator is being used.
+        !    excit_gen: which excitation generator is being used.  Should correspond to a value in the excit_gen_* enum in qmc_data.
         !    qmc_state: input options relating to QMC methods.
         !    f: bit string representation of parent excitor
         !    connection: excitation connection between the current excitor

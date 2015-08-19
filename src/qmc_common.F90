@@ -840,13 +840,13 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input optons relating to QMC methods.
         !    iteration: The current iteration of the simulation.
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
         !    load_bal_in: input options for load balancing.
         ! In/Out:
-        !    qmc_in: input optons relating to QMC methods.
         !    update_tau: true if the processor thinks the timestep should be
         !        rescaled. This will be updated on output to only be true if
         !        in variable shift mode and if tau_search is being used.

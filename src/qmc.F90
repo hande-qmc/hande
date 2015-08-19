@@ -17,12 +17,11 @@ contains
 
         ! In:
         !    sys: the system being studied.
+        !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
+        !       if dmqmc_in%propagate_to_beta is true.
         ! In (optional):
         !    fciqmc_in: FCIQMC input options.
         !    dmqmc_in: DMQMC input options.
-        ! In/Out:
-        !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
-        !       if dmqmc_in%propagate_to_beta is true.
 
         use checking, only: check_allocate
         use errors, only: warning

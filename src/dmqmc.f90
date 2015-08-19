@@ -16,14 +16,14 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
         ! In/Out:
-        !    qmc_in: input options relating to QMC methods.
-        !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_estimates: type containing all DMQMC estimates.
 
         use parallel

@@ -34,7 +34,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interace compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -107,7 +107,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interace compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -171,7 +171,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interace compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -267,7 +267,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interace compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connection between the current determinant
@@ -311,7 +311,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interace compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! Out:
@@ -381,7 +381,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interace compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:

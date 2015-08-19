@@ -25,7 +25,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interface compatibility.
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         ! In/Out:
@@ -86,7 +86,7 @@ contains
         !
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interface compatibility.
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
         ! In/Out:
@@ -160,7 +160,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interface compatibility.
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
         ! In/Out:
@@ -223,7 +223,7 @@ contains
         !
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods.
+        !    qmc_state: QMC state.  Unused but included for interface compatibility.
         !    cdet: info on the current basis function (equivalent to determinant
         !        in electron systems) that we will gen from.
         ! In/Out:

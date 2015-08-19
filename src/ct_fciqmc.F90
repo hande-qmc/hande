@@ -15,6 +15,7 @@ contains
 
         ! In:
         !    sys: system being studied
+        !    qmc_in: Input options relating to QMC methods.
         !    restart_in: input options for HDF5 restart files.
         !    reference: reference determinant.
         !    matel: off-diagonal Hamiltonian matrix element (ignoring sign due
@@ -22,8 +23,6 @@ contains
         !       t (atomic/real-space orbitals).
         !    load_bal_in: input options for load balancing.
         !    annihilation_flags: calculation specific annihilation flags.
-        ! In/Out:
-        !    qmc_in: Input options relating to QMC methods.
 
         use system, only: sys_t
         use interact

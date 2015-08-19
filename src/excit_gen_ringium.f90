@@ -18,7 +18,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_state: input options relating to QMC methods
+        !    qmc_state: QMC state.  Unused but included for interface compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! Out:
