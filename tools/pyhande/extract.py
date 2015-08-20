@@ -228,11 +228,11 @@ fhandle : file
     The start should be at a block for the start of the results containing the
     eigenvalues.  A given FCI calculation can contain multiple such blocks.  The
     metadata is identical for all such blocks and is given at the start of the
-    FCI section and hence should be extracted separately.)
+    FCI section and hence should be extracted separately.
 
 Returns
 -------
-data : :class:`pandas.Series`)
+data : :class:`pandas.Series`
     FCI eigenvalues obtained from the output file.
 '''
 
