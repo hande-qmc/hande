@@ -58,15 +58,15 @@ A platform is defined using a simple configuration file which is an ini file
 consisting of three sections: main, opt and dbg.  For instance:
 
     [main]
-    cc = gfortran
+    fc = gfortran
     ld = gfortran
     libs = -llapack -lblas
 
     [opt]
-    cflags = -O3
+    fflags = -O3
 
     [dbg]
-    cflags = -g
+    fflags = -g
 
 Any option not specified in the 'opt' and 'dbg' sections is inherited from the
 'main' section.  The settings in 'opt' are used by default; the debug options
@@ -89,16 +89,22 @@ cc
     Set the C compiler.
 cflags
     Set flags to be passed to the C compiler during compilation.
-cxxd
+ccd
     Set the C compiler used to generate the C dependency files.  Only required
     if cc doesn't support -MM and -MT flags.  Default: use cc.
+cdflags
+    Set the flags for the c++ compiler used to generate the C++ dependency files.
+    Default: -MM -MT $CFLAGS
 cxx
     Set the C++ compiler.
 cxxflags
     Set flags to be passed to the C++ compiler during compilation.
 cxxd
-    Set the C++ compiler used to generate the C++ dependency files.  Only
-    required if cxx doesn't support -MM and -MT flags.  Default: use cxx.
+    Set the C compiler used to generate the C++ dependency files.  Only required
+    if cc doesn't support -MM and -MT flags.  Default: use cxx.
+cxxdflags
+    Set the flags for the c++ compiler used to generate the C++ dependency files.
+    Default: -MM -MT $CXXFLAGS
 cpp
     Set the C preprocessor to be used on Fortran source files.  If not defined
     then the Fortran compiler is used to do the preprocessing.
@@ -188,6 +194,9 @@ CFLAGS = %(cflags)s
 # kicking around which does.  If CCD is defined, then use that to generate the
 # C dependency files, otherwise CC is used.
 CCD = %(ccd)s
+# If very custom flags are needed for the dependencies, they should be placed 
+# here, and will replace the -MM -MT $CFLAGS entirely
+CCDFLAGS = %(ccdflags)s
 
 # --- C++ ---
 # compiler
@@ -199,6 +208,10 @@ CXXFLAGS = %(cxxflags)s
 # kicking around which does.  If CXXD is defined, then use that to generate the
 # C++ dependency files, otherwise CXX is used.
 CXXD = %(cxxd)s
+# If very custom flags are needed for the dependencies, they should be placed 
+# here, and will replace the -MM -MT $CFLAGS entirely
+CXXDFLAGS = %(cxxdflags)s
+
 
 # --- Linker ---
 # linker
@@ -298,7 +311,7 @@ def parse_config(config_file):
     valid_sections_upper = [section.upper() for section in valid_sections]
 
     valid_options = ['fc', 'fflags', 'cc', 'cflags', 'cxx', 'cxxflags', 'ccd',
-            'cxxd', 'cpp', 'cppflags', 'ld', 'ldflags', 'libs', 'ar', 'arflags',
+            'cxxd', 'ccdflags', 'cxxdflags', 'cpp', 'cppflags', 'ld', 'ldflags', 'libs', 'ar', 'arflags',
             'f90_module_flag', 'f90_module_flag_pad']
 
     boolean_states = {'0': False,
