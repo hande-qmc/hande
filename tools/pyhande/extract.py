@@ -218,14 +218,15 @@ Returns
             # column name can contain words separated by just one space.
             column_names = re.split('   *', line[3:].strip())
             # Work around pandas slow and very memory-hungry pure-python parser
-            # by converting the data table into CSV format (and removing comment_file
-            # whilst we're at it) and reading that in.
+            # by converting the data table into CSV format (and removing
+            # comment_file whilst we're at it) and reading that in.
             (data_csv, comment_file) = _convert_to_csv(fhandle)
             # Done now -- return to main extraction procedure.
             break
         elif 'Start JSON block' in line:
             metadata = _extract_json(fhandle)
-    #it's possible that the output file didn't have any info, so we need to test data_csv
+    # It's possible that the output file didn't have any info, so we need to
+    # test data_csv
     if data_csv:
         data = pd.io.parsers.read_csv(data_csv, names=column_names)
         if calc_type == 'DMQMC':
@@ -369,7 +370,7 @@ Returns
             metadata = _extract_json(fhandle)
     return (metadata, data)
 
-def _convert_to_csv(fhandle, comment='#'):
+def _convert_to_csv(fhandle, comment='#', parse_comments=True):
     '''Convert the HANDE data table in a file to CSV format.
 
 Parameters
@@ -379,6 +380,8 @@ fhandle: file
 comment : string
     Single character which indicates a comment line if its the first
     non-whitespace character in a line.
+parse_comments : boolean
+    If true , also save the comment lines to a separate file.
 
 .. note::
 
@@ -389,22 +392,29 @@ Returns
 temp_filename : string
     name of the CSV temporary file containing the data table.
 comment_file_filename : string
-    name of file containing the comment lines extracted from the data table.
+    name of file containing the comment lines extracted from the data table
+    and an empty string if parse_comments.if False.
 '''
     data = tempfile.NamedTemporaryFile(delete=False, mode='w')
-    comment_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+    if parse_comments:
+        comment_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+        comment_fname = comment_file.name
+    else:
+        comment_fname = ''
     for line in fhandle:
         csv_line = ','.join(line.strip().split())
         if not csv_line:
             # blank line => end of data table.
             break
         elif csv_line.startswith(comment):
-            comment_file.write(line)
+            if parse_comments:
+                comment_file.write(line)
         else:
             data.write(csv_line+'\n')
     data.close()
-    comment_file.close()
-    return (data.name, comment_file.name)
+    if parse_comments:
+        comment_file.close()
+    return (data.name, comment_fname)
 
 def _extract_json(fhandle, find_start=False, max_end=None):
     '''Extract JSON output from a HANDE output file.
