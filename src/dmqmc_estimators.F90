@@ -432,7 +432,8 @@ contains
                 ! Potential energy.
                 if (doing_dmqmc_calc(dmqmc_potential_energy)) call update_dmqmc_potential_energy&
                     &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(potential_ind))
-                ! H^0 energy, where H = H^0 + V.
+                ! H^0 energy, where H^0 = H - V. See subroutines interface
+                ! comments for description.
                 if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy&
                     &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
                 ! Excitation distribution.
@@ -1367,6 +1368,15 @@ contains
 
         ! Add the contribution for the current density matrix element to the thermal
         ! zeroth-order Hamiltonian (H^0) energy estimate used.
+
+        ! Usually one writes H = T + U, where T is the kinetic energy and U is the potential
+        ! energy. However we can in principle partition H in many different
+        ! ways. When working in the interaction pitcture using DMQMC it is
+        ! useful to split H = H^0 + V where H^0 is the zeroth order Hamiltonian
+        ! and V is some perturbation. Currently two partitions are implemented
+        ! so that if dmqmc_in%initial_matrix = 'free_electron' then the
+        ! partitioning H^0 = T, V = U is used, and if dmqmc_in%initial_matrix =
+        ! 'hartree_fock' H^0 = \sum_i |D_i> <D_i|H|D_i> <D_i| and V = H - H^0.
 
         ! In:
         !    sys: system being studied.
