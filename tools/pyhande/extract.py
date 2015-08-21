@@ -41,7 +41,7 @@ Returns
 -------
 data : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     Calculation output represented by a tuple for each calculation, consisting
-    of metadata (dict) and a :class:`pandas.DataFrame` (QMC calculations) or
+    of metadata (dict) and a :class:`pandas.DataFrame` (MC calculations) or
     :class:`pandas.Series` (other calculations) containing the calculation
     output/results.
 
@@ -72,7 +72,7 @@ Returns
 -------
 data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     Calculation output represented by a tuple for each calculation, consisting
-    of metadata (dict) and a :class:`pandas.DataFrame` (QMC calculations) or
+    of metadata (dict) and a :class:`pandas.DataFrame` (MC calculations) or
     :class:`pandas.Series` (other calculations) containing the calculation
     output/results.
 '''
@@ -342,32 +342,48 @@ fhandle : file
 
 Returns
 -------
-(metadata, data) : (dict, :class:`pandas.Series`)
+(metadata, data) : (dict, :class:`pandas.DataFrame`)
     Dictionary of calculation metadata (input values, defaults, etc) and the
     Hilbert space results obtained from the output file.
 '''
 
     metadata = {}
     for line in fhandle:
-        if 'Monte-Carlo estimate of size of space is' in line:
+        if '# iterations' in line:
+            # Columns are separated by at least two spaces but each
+            # column name can contain words separated by just one space.
+            column_names = re.split('   *', line[3:].strip())
+            (data_csv, junk) = _convert_to_csv(fhandle, parse_comments=False)
+            data = pd.io.parsers.read_csv(data_csv, names=column_names)
+            os.remove(data_csv)
+            data_table = True
+            break
+        elif 'Monte-Carlo estimate of size of space is' in line:
+            # Old Monte Carlo algorithm (no iterations, std. err. estimate from
+            # different MPI ranks).
             if '+/-' in line:
                 estimate = float(line.split()[-3])
                 std_err = float(line.split()[-1])
-                data = {'Monte Carlo estimate': estimate,
-                        'standard error': std_err}
             else:
                 estimate = float(line.split()[-1])
-                data = {'Monte Carlo estimate': estimate}
-            data = pd.Series(data)
-            data.name = 'Hilbert space'
+                std_err = float('nan')
+            data_table = False
             break
         elif 'Size of space is' in line:
             # Deterministic value rather than MC estimate.
-            data = pd.Series({'size': float(line.split()[-1])})
-            data.name = 'Hilbert space'
+            estimate = float(line.split()[-1])
+            std_err = 0.0
+            data_table = False
             break
         elif 'Start JSON block' in line:
             metadata = _extract_json(fhandle)
+    if not data_table:
+        data = {'iterations': [1],
+                'space size': [estimate],
+                'mean': [estimate],
+                'std. err.': [std_err]}
+        data = pd.DataFrame(data)
+    data.name = 'Hilbert space'
     return (metadata, data)
 
 def _convert_to_csv(fhandle, comment='#', parse_comments=True):
