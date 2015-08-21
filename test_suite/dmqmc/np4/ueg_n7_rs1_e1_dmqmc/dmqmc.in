@@ -24,5 +24,8 @@ dmqmc {
     },
     operators = {
         energy = true,
+        kinetic_energy = true,
+        potential_energy = true,
+        H0_energy = true,
     },
 }

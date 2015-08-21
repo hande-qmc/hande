@@ -224,4 +224,37 @@ contains
 
     end function slater_condon2_ueg_excit
 
+    pure function potential_energy_ueg(sys, f1, f2, excitation) result (potential_energy)
+
+        ! Evalute the potential energy matrix element from a given bra (f1) and
+        ! ket(f2), i.e.,  if H = T + V, then <f2| V |f1> .
+        ! This amounts to calculate the exchange contribution as well
+        ! as <D| H | D^ab>.
+
+        use system, only: sys_t
+        use excitations, only: excit_t
+        use determinants, only: decode_det
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f1(:), f2(:)
+        type(excit_t), intent(in) :: excitation
+
+        real(p) :: potential_energy
+        integer :: occ_list(sys%nel)
+
+        potential_energy = 0.0_p
+
+        select case(excitation%nexcit)
+        case(0)
+            ! Evaluate the exchange contribution.
+            call decode_det(sys%basis, f1, occ_list)
+            potential_energy = exchange_energy_ueg(sys, occ_list)
+        case(2)
+            ! Evaluate  <D| H | D^ab>.
+            potential_energy = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                                                  & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
+        end select
+
+    end function potential_energy_ueg
+
 end module hamiltonian_ueg

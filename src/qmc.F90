@@ -556,7 +556,8 @@ contains
 
         ! System and calculation data
         use calc, only: doing_calc, doing_dmqmc_calc, dmqmc_calc, hfs_fciqmc_calc, &
-                        ras, dmqmc_correlation, dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
+                        ras, dmqmc_correlation, dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation, &
+                        dmqmc_kinetic_energy, dmqmc_H0_energy, dmqmc_potential_energy
         use hfs_data
         use system
         use parallel, only: parent
@@ -583,7 +584,7 @@ contains
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol
         use hamiltonian_ringium, only: slater_condon0_ringium
-        use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg
+        use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
         use importance_sampling
         use operators
@@ -825,6 +826,17 @@ contains
                         trial_dm_ptr => slater_condon0_ueg
                     end if
                 end if
+                    if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
+                        kinetic_diag_ptr => kinetic_energy_ueg
+                        update_dmqmc_kinetic_energy_ptr => dmqmc_kinetic_energy_diag
+                    end if
+                    if (doing_dmqmc_calc(dmqmc_potential_energy)) then
+                        potential_energy_ptr => potential_energy_ueg
+                    end if
+                    if (doing_dmqmc_calc(dmqmc_H0_energy) .and. .not. dmqmc_in%propagate_to_beta) then
+                        ! Assume that we want to evaluate <H_HF> rather than the kinetic energy.
+                        trial_dm_ptr => slater_condon0_ueg
+                    end if
             case(hub_k)
                 if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
