@@ -237,7 +237,6 @@ contains
         use excit_gen_real_lattice
         use excit_gen_ringium
         use excit_gen_ueg, only: gen_excit_ueg_no_renorm
-        use hamiltonian_chung_landau, only: slater_condon0_chung_landau
         use hamiltonian_hub_k, only: slater_condon0_hub_k
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
@@ -251,6 +250,7 @@ contains
                                                 single_excitation_weight_periodic
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
+
         use heisenberg_estimators
         use importance_sampling
         use operators
@@ -311,11 +311,6 @@ contains
             ! 115115) is contains spinless fermions.
             decoder_ptr => decode_det_occ
             update_proj_energy_ptr => update_proj_energy_hub_real
-            if (sys%system == hub_real) then
-                sc0_ptr => slater_condon0_hub_real
-            else
-                sc0_ptr => slater_condon0_chung_landau
-            end if
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
@@ -339,13 +334,6 @@ contains
                 case (neel_singlet)
                     update_proj_energy_ptr => update_proj_energy_heisenberg_neel_singlet
                 end select
-            end if
-
-            ! Set whether the applied staggered magnetisation is non-zero.
-            if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon) then
-                sc0_ptr => diagonal_element_heisenberg_staggered
-            else
-                sc0_ptr => diagonal_element_heisenberg
             end if
 
             ! Set which guiding wavefunction to use, if requested.
@@ -444,6 +432,7 @@ contains
 
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
+            energy_diff_ptr => exchange_energy_ueg
 
             gen_excit_ptr%full => gen_excit_ueg_no_renorm
             decoder_ptr => decode_det_occ
@@ -463,7 +452,6 @@ contains
         case(ringium)
 
             update_proj_energy_ptr => update_proj_energy_ringium
-            sc0_ptr => slater_condon0_ringium
 
             gen_excit_ptr%full => gen_excit_ringium_no_renorm
             decoder_ptr => decode_det_occ
