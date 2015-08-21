@@ -107,9 +107,13 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                 metadata['calc_type'] = calc_type
                 data_pairs.append((metadata, data))
             else:
-                (metadata, data) = _extract_mc_calc(f)
+                (metadata, data, comment_data) = _extract_mc_calc(f, calc_type)
                 metadata['calc_type'] = calc_type
                 data_pairs.append((metadata, data))
+                if calc_type == 'DMQMC' and not comment_data.empty:
+                    # Also got some results in the comment_file...
+                    metadata['calc_type'] = 'DMQMC (RDM)'
+                    data_pairs.append((metadata, comment_data))
         elif calc_type == 'FCI' and fci_block.search(line):
             data = _extract_fci_data(f, line)
             data_pairs.append((metadata, data))
@@ -157,7 +161,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
 
     return data_pairs
 
-def _extract_mc_calc(fhandle):
+def _extract_mc_calc(fhandle, calc_type):
     '''Extract metadata and calculation data for a QMC calculation.
 
 Parameters
@@ -165,12 +169,16 @@ Parameters
 fhandle : file
     File handle to a HANDE output file opened at the start of a QMC calculation
     block, as denoted by the section title.
+calc_type : string
+    Type of calculation being analysed, e.g. 'CCMC', 'DMQMC' or 'FCIQMC'.
+    Currently only used in dealing with data encoded in comment lines.
 
 Returns
 -------
-(metadata, data) : (dict, :class:`pandas.DataFrame`)
-    Dictionary of calculation metadata (input values, defaults, etc) and the QMC
-    data table obtained from the output file.
+(metadata, data, comment_data) : (dict, :class:`pandas.DataFrame`, :class:`pandas.DataFrame`)
+    Dictionary of calculation metadata (input values, defaults, etc), the QMC
+    data table obtained from the output file and any data extracted from the
+    comment lines.
 '''
 
     # Standard Monte Carlo table with an '# iterations ...' header.
@@ -182,15 +190,20 @@ Returns
             # column name can contain words separated by just one space.
             column_names = re.split('   *', line[3:].strip())
             # Work around pandas slow and very memory-hungry pure-python parser
-            # by converting the data table into CSV format (and removing comments
+            # by converting the data table into CSV format (and removing comment_file
             # whilst we're at it) and reading that in.
-            tmp_csv = _convert_to_csv(fhandle)
-            data = pd.io.parsers.read_csv(tmp_csv, names=column_names)
-            os.remove(tmp_csv)
+            (data_csv, comment_file) = _convert_to_csv(fhandle)
             # Done now -- return to main extraction procedure.
             break
         elif 'Start JSON block' in line:
             metadata = _extract_json(fhandle)
+
+    data = pd.io.parsers.read_csv(data_csv, names=column_names)
+    if calc_type == 'DMQMC':
+        comment_data = _extract_dmqmc_data(comment_file)
+
+    os.remove(data_csv)
+    os.remove(comment_file)
 
     if not data.empty:
         # If the number of iterations counter goes over 8 digits then the hande
@@ -212,7 +225,37 @@ Returns
                         '# particles': '# H psips',
                 })
 
-    return (metadata, data)
+    return (metadata, data, comment_data)
+
+def _extract_dmqmc_data(comment_file):
+    '''Extract data from comments produced by a DMQMC calculation.
+
+Parameters
+----------
+comment_file : string
+    Name of file containing the comment lines, as produced by
+    :func:`_convert_to_csv`.
+
+Returns
+-------
+data : :class:`pandas.DataFrame`
+    Data contained in the comments (e.g. ground state RDM quantities).
+'''
+    data = {}
+    keys = ['RDM trace', 'von Neumann', 'concurrence']
+    f = open(comment_file)
+    for line in f:
+        for key in keys:
+            if key in line:
+                val = float(line.split()[-1])
+                if key in data:
+                    data[key].append(val)
+                else:
+                    data[key] = [val]
+    f.close()
+    data = pd.DataFrame(data)
+    data.index.name = 'beta loop'
+    return data
 
 def _extract_fci_data(fhandle, title_line):
     '''Extract metadata and calculation data for an FCI calculation.
@@ -314,19 +357,25 @@ comment : string
 
 Returns
 -------
-temp_file_name : string
-    name of the CSV temporary file.
+temp_filename : string
+    name of the CSV temporary file containing the data table.
+comment_file_filename : string
+    name of file containing the comment lines extracted from the data table.
 '''
-    tmp = tempfile.NamedTemporaryFile(delete=False, mode='w')
+    data = tempfile.NamedTemporaryFile(delete=False, mode='w')
+    comment_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
     for line in fhandle:
         csv_line = ','.join(line.strip().split())
         if not csv_line:
             # blank line => end of data table.
             break
-        elif not csv_line.startswith(comment):
-            tmp.write(csv_line+'\n')
-    tmp.close()
-    return tmp.name
+        elif csv_line.startswith(comment):
+            comment_file.write(line)
+        else:
+            data.write(csv_line+'\n')
+    data.close()
+    comment_file.close()
+    return (data.name, comment_file.name)
 
 def _extract_json(fhandle, find_start=False, max_end=None):
     '''Extract JSON output from a HANDE output file.
