@@ -105,7 +105,7 @@ contains
 
         type(c_ptr) :: sys_ptr
         type(sys_t), pointer :: sys
-        integer :: truncation_level, ncycles, rng_seed
+        integer :: truncation_level, nattempts, ncycles, rng_seed
         integer, allocatable :: ref_det(:)
         integer :: opts, err
         logical :: have_seed
@@ -115,7 +115,7 @@ contains
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        call read_hilbert_args(lua_state, opts, sys%nel, ncycles, truncation_level, ref_det, rng_seed, have_seed)
+        call read_hilbert_args(lua_state, opts, sys%nel, nattempts, ncycles, truncation_level, ref_det, rng_seed, have_seed)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -128,9 +128,9 @@ contains
 
         calc_type = mc_hilbert_space
         if (have_seed) then
-            call estimate_hilbert_space(sys, truncation_level, ncycles, ref_det, rng_seed)
+            call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed)
         else
-            call estimate_hilbert_space(sys, truncation_level, ncycles, ref_det)
+            call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det)
         end if
 
         ! [todo] - return estimate of space and error to lua.
@@ -609,7 +609,7 @@ contains
 
     end subroutine read_fci_in
 
-    subroutine read_hilbert_args(lua_state, opts, nel, ncycles, ex_level, ref_det, rng_seed, have_seed)
+    subroutine read_hilbert_args(lua_state, opts, nel, nattempts, ncycles, ex_level, ref_det, rng_seed, have_seed)
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
@@ -618,8 +618,8 @@ contains
         !        routine.
         !    nel: The number of electrons in the system.
         ! Out:
-        !    ncycles: number of cycles i.e. number of random determinants to
-        !        generate.
+        !    nattempts: number of samples, i.e. number of random determinants, to use each cycle.
+        !    ncycles: number of Monte Carlo cycles to perform.
         !    ex_level: maximum excitation level relative to the reference
         !        determinant to include in the Hilbert space.
         !    ref_det: reference determinant.  If not supplied by the user then
@@ -638,20 +638,21 @@ contains
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts, nel
-        integer, intent(out) :: ncycles, ex_level, rng_seed
+        integer, intent(out) :: nattempts, ncycles, ex_level, rng_seed
         integer, allocatable :: ref_det(:)
         logical, intent(out) :: have_seed
 
         integer :: hilbert_table, err
         integer, allocatable :: err_arr(:)
-        character(10), parameter :: keys(5) = [character(10) :: 'sys', 'ncycles', 'ex_level', 'reference', 'rng_seed']
+        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'nattempts', 'ncycles', 'ex_level', 'reference', 'rng_seed']
 
         if (.not. aot_exists(lua_state, opts, 'hilbert') .and. parent) &
             call stop_all('read_hilbert_args','"hilbert" table not present.')
         call aot_table_open(lua_state, opts, hilbert_table, 'hilbert')
 
-        call aot_get_val(ncycles, err, lua_state, hilbert_table, 'ncycles')
-        if (err /= 0 .and. parent) call stop_all('read_hilbert_args', 'Number of cycles not supplied.')
+        call aot_get_val(nattempts, err, lua_state, hilbert_table, 'nattempts')
+        if (err /= 0 .and. parent) call stop_all('read_hilbert_args', 'Number of attempts not supplied.')
+        call aot_get_val(ncycles, err, lua_state, hilbert_table, 'ncycles', default=20)
         call aot_get_val(ex_level, err, lua_state, hilbert_table, 'ex_level', default=-1)
         call aot_get_val(ref_det, err_arr, nel, lua_state, hilbert_table, key='reference')
         have_seed = aot_exists(lua_state, hilbert_table, 'rng_seed')
