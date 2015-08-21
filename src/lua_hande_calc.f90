@@ -670,6 +670,58 @@ contains
 
     end function lua_dmqmc
 
+    function lua_mp1_mc(L) result(nresult) bind(c)
+
+        ! Run a Monte Carlo calculation to estimate various mean-field energies of a
+        ! system in the canonical ensemble.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    canonical_energy {
+        !       sys = system,      -- required
+        !       canonical_energy = { ... }, -- required
+        !    }
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_table_module, only: aot_table_top, aot_table_close
+
+        use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
+
+        use system, only: sys_t
+        use qmc_data, only: reference_t
+        use mp1, only: mp1_in_t, sample_mp1_wfn
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_state) :: lua_state
+        type(sys_t), pointer :: sys
+
+        type(mp1_in_t) :: mp1_in
+        type(reference_t) :: ref
+
+        integer :: opts, ierr, rng_seed
+        logical :: have_seed
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys)
+
+        opts = aot_table_top(lua_state)
+        call read_mp1_args(lua_state, opts, mp1_in, rng_seed, have_seed)
+        call read_reference_t(lua_state, opts, sys, ref)
+
+        if (have_seed) then
+            call sample_mp1_wfn(sys, mp1_in, ref, rng_seed)
+        else
+            call sample_mp1_wfn(sys, mp1_in, ref)
+        end if
+
+    end function lua_mp1_mc
+
     ! --- table-derived type wrappers ---
 
     subroutine read_fci_in(lua_state, opts, basis, fci_in)
@@ -852,6 +904,60 @@ contains
         call aot_table_close(lua_state, canonical_estimates_table)
 
     end subroutine read_canonical_args
+
+    subroutine read_mp1_args(lua_state, opts, mp1_in, rng_seed, have_seed)
+
+        ! mp1 = {
+        !     D0_population = nD0,              -- required
+        !     ncycles = Y,                      -- required
+        !     nattempts = X,                    -- required
+        !     state_size = S,                   -- required
+        !     real_amplitudes = true/false,
+        !     spawn_cutoff = cutoff,
+        !     rng_seed = seed,
+        ! }
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+
+        use mp1, only: mp1_in_t
+        use parallel, only: parent
+        use errors, only: stop_all
+        use lua_hande_utils, only: warn_unused_args
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: opts
+        type(mp1_in_t), intent(out) :: mp1_in
+        integer, intent(out) :: rng_seed
+        logical, intent(out) :: have_seed
+
+        integer :: mp1_table, err
+        character(15), parameter :: keys(7) = [character(15) :: 'D0_population', 'ncycles', 'nattempts', 'state_size', &
+                                                                'real_amplitudes', 'spawn_cutoff', 'rng_seed']
+
+        if (.not. aot_exists(lua_state, opts, 'mp1') .and. parent) call stop_all('read_mp1_args', '"mp1" table not present.')
+        call aot_table_open(lua_state, opts, mp1_table, 'mp1')
+
+        call aot_get_val(mp1_in%D0_norm, err, lua_state, mp1_table, 'D0_population')
+        if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'D0_population: Internal normalisation not supplied.')
+        call aot_get_val(mp1_in%ncycles, err, lua_state, mp1_table, 'ncycles')
+        if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'ncycles: number of Monte Carlo cycles not supplied.')
+        call aot_get_val(mp1_in%nattempts, err, lua_state, mp1_table, 'nattempts')
+        if (err /= 0 .and. parent) &
+            call stop_all('read_mp1_args', 'nattempts: number of sampling attempts per MC cycle not supplied.')
+        call aot_get_val(mp1_in%state_size, err, lua_state, mp1_table, 'state_size')
+        if (err /= 0 .and. parent) call stop_all('read_mp1_args', 'state_size not set.')
+
+        call aot_get_val(mp1_in%real_amplitudes, err, lua_state, mp1_table, 'real_amplitudes')
+        call aot_get_val(mp1_in%spawn_cutoff, err, lua_state, mp1_table, 'spawn_cutoff')
+
+        have_seed = aot_exists(lua_state, mp1_table, 'rng_seed')
+        call aot_get_val(rng_seed, err, lua_state, mp1_table, 'rng_seed')
+
+        call warn_unused_args(lua_state, keys, mp1_table)
+        call aot_table_close(lua_state, mp1_table)
+
+    end subroutine read_mp1_args
 
     subroutine read_qmc_in(lua_state, opts, qmc_in, short)
 
