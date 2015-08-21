@@ -38,12 +38,21 @@ hilbert options
 
 The ``hilbert`` table can take the following options:
 
-``ncycles``
+``nattempts``
     type: integer.
 
     Required.
 
-    Number of cycles  to perform (i.e. number of random determinants to generate).
+    Number of random attempts (i.e. the number of random determinants to generate) to
+    perform per Monte Carlo cycle.
+``ncycles``
+    type: integer
+
+    Optional.  Default: 20.
+
+    Number of Monte Carlo cycles to perform.  Each cycle produces an independent estimate
+    of the Hilbert space size.  Estimates of the mean and standard error are automatically
+    calculated from each independent value.
 ``rng_seed``
     type: integer.
 
