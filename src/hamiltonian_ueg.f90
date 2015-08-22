@@ -226,10 +226,15 @@ contains
 
     pure function potential_energy_ueg(sys, f1, f2, excitation) result (potential_energy)
 
-        ! Evalute the potential energy matrix element from a given bra (f1) and
-        ! ket(f2), i.e.,  if H = T + V, then <f2| V |f1> .
-        ! This amounts to calculate the exchange contribution as well
-        ! as <D| H | D^ab>.
+        ! In:
+        !    sys: system of interest.
+        !    f1, f2: bit string representations of two determinants.
+        !    excitation: excit_t object describing the excitation connecting f1 and f2.
+        ! Returns:
+        !    The potential energy matrix element from a given bra (f1) and
+        !    ket(f2), i.e. if H = T + V, then <f2| V |f1>.  This amounts to
+        !    calculating the exchange contribution if f1=f2 and <D| H | D^ab>
+        !    if f1 and f2 are related by a double excitation.
 
         use system, only: sys_t
         use excitations, only: excit_t
