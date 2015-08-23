@@ -184,6 +184,8 @@ Returns
     # Standard Monte Carlo table with an '# iterations ...' header.
     metadata = {}
     data = pd.DataFrame()
+    comment_data = None
+    data_csv = None
     for line in fhandle:
         if ' # iterations' in line:
             # Columns are separated by at least two spaces but each
@@ -197,13 +199,14 @@ Returns
             break
         elif 'Start JSON block' in line:
             metadata = _extract_json(fhandle)
+    #it's possible that the output file didn't have any info, so we need to test data_csv
+    if data_csv:
+        data = pd.io.parsers.read_csv(data_csv, names=column_names)
+        if calc_type == 'DMQMC':
+            comment_data = _extract_dmqmc_data(comment_file)
 
-    data = pd.io.parsers.read_csv(data_csv, names=column_names)
-    if calc_type == 'DMQMC':
-        comment_data = _extract_dmqmc_data(comment_file)
-
-    os.remove(data_csv)
-    os.remove(comment_file)
+        os.remove(data_csv)
+        os.remove(comment_file)
 
     if not data.empty:
         # If the number of iterations counter goes over 8 digits then the hande
