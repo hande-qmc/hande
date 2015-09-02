@@ -24,7 +24,12 @@ output : dict
     hande_out = pyhande.extract.extract_data(fname)
 
     output = {}
-    for (metadata, data) in hande_out:
+    for (calc_ind, (metadata, data)) in enumerate(hande_out):
+        # Label each calculation by the index of the calculation (in order
+        # extracted from the test file, which is fixed) to handle the case where
+        # multiple calculations of the same type are present in the same output
+        # file.
+        calc_ind = ' [%i]' % (calc_ind)
         if metadata['calc_type'] == 'FCI':
             # Compare at most the first 5 eigenvalues (just to be quick/minimise
             # test output/handle different orders of states within Lanczos):
@@ -33,12 +38,12 @@ output : dict
                 select_data.rename(columns=lambda x: 'eigv_%s' % (x,), inplace=True)
             else:
                 select_data.rename(columns=lambda x: 'eigv %s' % (x,), inplace=True)
-            output[data.name] = select_data
+            output[data.name + calc_ind] = select_data
         elif metadata['calc_type'] == 'Hilbert space':
             select_data = data.to_frame().T
             if underscore:
                 select_data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
-            output[data.name] = select_data
+            output[data.name + calc_ind] = select_data
         else:
             if underscore:
                 data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
@@ -46,9 +51,9 @@ output : dict
             if len(data) > 10:
                 indxs = [0] + [int((i*len(data))/4)-1 for i in range(1,5)]
                 test_data = data.ix[indxs]
-                output[metadata['calc_type']] = test_data
+                output[metadata['calc_type'] + calc_ind] = test_data
             else:
-                output[metadata['calc_type']] = data
+                output[metadata['calc_type'] + calc_ind] = data
 
     return output
 
