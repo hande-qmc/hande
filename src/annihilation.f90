@@ -2,8 +2,6 @@ module annihilation
 
 use const
 
-use fciqmc_data, only: real_factor
-
 implicit none
 
 contains
@@ -273,7 +271,9 @@ contains
 
             ! Remove low-population spawned walkers by stochastically
             ! rounding their population up to one or down to zero.
-            if (annihilation_flags%real_amplitudes) call round_low_population_spawns(rng, spawn, lower_bound)
+            if (annihilation_flags%real_amplitudes) then
+                call round_low_population_spawns(rng, psip_list%pop_real_factor, spawn, lower_bound)
+            end if
 
             ! Insert new walkers into main walker list.
             call insert_new_walkers(sys, psip_list, reference, annihilation_flags, spawn, determ_flags, lower_bound)
@@ -349,7 +349,7 @@ contains
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
                 associate(nparticles=>psip_list%nparticles)
-                    nparticles = nparticles + real(abs(psip_list%pops(:,pos)) - abs(old_pop),p)/real_factor
+                    nparticles = nparticles + real(abs(psip_list%pops(:,pos)) - abs(old_pop),p)/psip_list%pop_real_factor
                 end associate
                 ! Next spawned walker cannot annihilate any determinant prior to
                 ! this one as the lists are sorted.
@@ -439,7 +439,7 @@ contains
                 ! iii) annihilation changing the sign of the population (i.e.
                 !      killing the population and then some).
                 associate(nparticles=>psip_list%nparticles)
-                    nparticles = nparticles + real(abs(psip_list%pops(:,pos)) - abs(old_pop),p)/real_factor
+                    nparticles = nparticles + real(abs(psip_list%pops(:,pos)) - abs(old_pop),p)/psip_list%pop_real_factor
                 end associate
                 ! One more entry to be removed from the spawn%sdata array.
                 nannihilate = nannihilate + 1
@@ -512,7 +512,7 @@ contains
         do i = 1, size(determ%vector)
             ind = determ%indices(i)
 
-            scaled_amp = determ%vector(i)*real_factor
+            scaled_amp = determ%vector(i)*psip_list%pop_real_factor
             spawn_sign = sign(1.0_p, scaled_amp)
             ! Stochastically round the scaled amplitude to the nearest integer
             ! in order to encode it.
@@ -524,7 +524,7 @@ contains
             ! Add in the now-encoded deterministic spawning amplitude.
             old_pop = psip_list%pops(:,ind)
             psip_list%pops(1,ind) = psip_list%pops(1,ind) + spawn_sign*nspawn
-            psip_list%nparticles = psip_list%nparticles + real(abs(psip_list%pops(:,ind)) - abs(old_pop),p)/real_factor
+            psip_list%nparticles = psip_list%nparticles + real(abs(psip_list%pops(:,ind))-abs(old_pop),p)/psip_list%pop_real_factor
         end do
 
     end subroutine deterministic_annihilation
@@ -573,9 +573,9 @@ contains
             ! zero. This is not done for deterministic states.
             if (real_amplitudes .and. (.not. determ_det)) then
                 old_pop = psip_list%pops(:,i)
-                call stochastic_round(rng, psip_list%pops(:,i), real_factor, psip_list%nspaces)
+                call stochastic_round(rng, psip_list%pops(:,i), psip_list%pop_real_factor, psip_list%nspaces)
                 associate(nparticles=>psip_list%nparticles)
-                    nparticles = nparticles + real(abs(psip_list%pops(:,i)) - abs(old_pop),p)/real_factor
+                    nparticles = nparticles + real(abs(psip_list%pops(:,i)) - abs(old_pop),p)/psip_list%pop_real_factor
                 end associate
             end if
 
@@ -593,7 +593,7 @@ contains
 
     end subroutine remove_unoccupied_dets
 
-    subroutine round_low_population_spawns(rng, spawn, lower_bound)
+    subroutine round_low_population_spawns(rng, pop_real_factor, spawn, lower_bound)
 
         ! Loop over all spawned walkers. For each walker with a population of
         ! less than one, round it up to one with a probability equal to its
@@ -610,6 +610,8 @@ contains
 
         ! In/Out:
         !    rng: random number generator.
+        !    pop_real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    spawn: spawn_t object containing the set of spawned particles.
         ! In (optional):
         !    lower_bound: starting point we annihiliate from in spawn_t object.
@@ -620,6 +622,7 @@ contains
         use stoch_utils, only: stochastic_round
 
         type(dSFMT_t), intent(inout) :: rng
+        integer(int_p), intent(in) :: pop_real_factor
         type(spawn_t), intent(inout) :: spawn
         integer, optional, intent(in) :: lower_bound
 
@@ -634,7 +637,7 @@ contains
             spawn_start = 1
         end if
 
-        real_factor_s = int(real_factor, int_s)
+        real_factor_s = int(pop_real_factor, int_s)
 
         nremoved = 0
         ! [note] - It might be more efficient to combine this with insert_new_walkers.
@@ -793,7 +796,7 @@ contains
                     call insert_new_walker(sys, psip_list, annihilation_flags, k, int(spawn%sdata(:tbl,i), i0), &
                                            int(spawned_population, int_p), ref)
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(spawned_population,p)/real_factor
+                    real_population = real(spawned_population,p)/psip_list%pop_real_factor
                     psip_list%nparticles = psip_list%nparticles + abs(real_population)
                 end associate
 

@@ -12,24 +12,6 @@ implicit none
 
 !--- Input data: FCIQMC ---
 
-! [todo] - It is somewhat inelegant to store/pass around real_factor separately,
-! [todo] - when really they are variables telling us about the representation of the population data.
-! [todo] - As such, the separation is not entrely helpful.  It would make more sense encoded with the
-! [todo] - data itself -  it makes no sense without the data, and the data make no sense without it.
-! [todo] - Convert to a derived type.  (From AJWT.)
-!
-! [todo] - The code currently uses c = real(a)/real_factor everywhere.  However, one of 
-! [todo] - the joys of fixed precision arithmetic is that c=(a*b)>>pop_bit_shift.
-! [todo] - is (or used to be) a lot faster than c=(real(a)/real_factor)*(real(b)/real_factor)
-! [todo] - It is however a little more obfuscated though, but carrying fixed-precision all the
-! [todo] - through the code might give a benefit.  Of course the best implementation would
-! [todo] - be to hide the details in a class.  (From AJWT.)
-!
-! Real amplitudes can be any multiple of 2**(-pop_bit_shift). They are
-! encoded as integers by multiplying them by 2**(pop_bit_shift).
-! real_factor = 2**(pop_bit_shift)
-integer(int_p) :: real_factor
-
 ! When using the Neel singlet trial wavefunction, it is convenient
 ! to store all possible amplitudes in the wavefunction, since
 ! there are relativley few of them and they are expensive to calculate
@@ -39,7 +21,7 @@ contains
 
     !--- Statistics. ---
 
-    function spawning_rate(nspawn_events, ndeath, nattempts) result(rate)
+    function spawning_rate(nspawn_events, ndeath, real_factor, nattempts) result(rate)
 
         ! Calculate the rate of spawning on the current processor.
         ! In:
@@ -47,6 +29,8 @@ contains
         !       MC cycle.
         !    ndeath: (unscaled) number of particles that were killed/cloned
         !       during the MC cycle.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    nattempts: The number of attempts to spawn made in order to
         !       generate the current population of walkers in the spawned arrays.
 
@@ -54,7 +38,7 @@ contains
 
         real(p) :: rate
         integer, intent(in) :: nspawn_events
-        integer(int_p), intent(in) :: ndeath
+        integer(int_p), intent(in) :: ndeath, real_factor
         integer(int_64), intent(in) :: nattempts
         real(p) :: ndeath_real
 

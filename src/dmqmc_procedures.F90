@@ -22,7 +22,6 @@ contains
         use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
         use checking, only: check_allocate
-        use fciqmc_data
         use system, only: sys_t
 
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -148,11 +147,11 @@ contains
         ! subsystems A or B.
         if (dmqmc_in%rdm%doing_rdm) call setup_rdm_arrays(sys, .true., dmqmc_estimates%subsys_info, &
                                                           dmqmc_estimates%ground_rdm%rdm, qmc_in, dmqmc_in%rdm, &
-                                                          dmqmc_estimates%inst_rdm, nreplicas)
+                                                          dmqmc_estimates%inst_rdm, nreplicas, qs%psip_list%pop_real_factor)
 
     end subroutine init_dmqmc
 
-    subroutine setup_rdm_arrays(sys, called_from_dmqmc, subsys_info, ground_rdm, qmc_in, rdm_in, inst_rdms, nreplicas)
+    subroutine setup_rdm_arrays(sys, called_from_dmqmc, subsys_info, ground_rdm, qmc_in, rdm_in, inst_rdms, nreplicas, real_factor)
 
         ! Setup the bit masks needed for RDM calculations. These are masks for
         ! the bits referring to either subsystem A or B. Also calculate the
@@ -172,6 +171,9 @@ contains
         !    rdm_in: Input options relating to reduced density matrices.
         !    nreplicas: number of replicas being used.  Must be specified if
         !        qmc_in is.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.  Must be specified if
+        !        calc_inst_rdm is true.
         ! Out:
         !     ground_rdm: The array used to store the RDM in ground-state
         !         calculations.
@@ -184,7 +186,6 @@ contains
         use checking, only: check_allocate
         use dmqmc_data, only: subsys_t, dmqmc_inst_rdms_t
         use errors
-        use fciqmc_data, only: real_factor
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t, proc_map_t
@@ -202,6 +203,7 @@ contains
         type(dmqmc_rdm_in_t), intent(in), optional :: rdm_in
         type(dmqmc_inst_rdms_t), intent(inout), optional :: inst_rdms
         integer, intent(in), optional :: nreplicas
+        integer(int_p), intent(in), optional :: real_factor
 
         integer :: i, ierr, ipos, nrdms
         integer :: basis_find, bit_position, bit_element
@@ -303,6 +305,7 @@ contains
 
                     ! Also we use spawn_t only as a lookup/storage/compression device for the RDMs so
                     ! need not worry about hashing identical amounts of data irrespective of DET_SIZE.
+                    if (.not.present(real_factor)) call stop_all('setup_rdm_arrays', 'real_factor not supplied.')
                     call alloc_spawn_t(subsys_info(i)%string_len*2, subsys_info(i)%string_len*2*i0_length, nreplicas, .false., &
                                        spawn_length_loc, qmc_in%spawn_cutoff, real_factor, pm_dummy, 27, &
                                        qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
@@ -558,7 +561,6 @@ contains
         use basis_types, only: basis_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: get_excitation_level
-        use fciqmc_data, only: real_factor
         use qmc_data, only: qmc_in_t, particle_t
         use dmqmc_data, only: dmqmc_weighted_sampling_t
 
@@ -614,7 +616,7 @@ contains
             end do
 
             ! Update the total number of walkers.
-            psip_list%nparticles = psip_list%nparticles + real(new_population - old_population, p)/real_factor
+            psip_list%nparticles = psip_list%nparticles + real(new_population - old_population, p)/psip_list%pop_real_factor
 
         end do
 

@@ -24,7 +24,6 @@ contains
         !    dmqmc_in: DMQMC input options.
 
         use checking, only: check_allocate
-        use errors, only: warning
         use parallel, only: parent
         use utils, only: factorial_combination_1
 
@@ -35,33 +34,7 @@ contains
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_in_t), intent(in) :: qmc_in
 
-        integer :: i, ierr, pop_bit_shift
-
-        ! Set the real encoding shift, depending on whether 32 or 64-bit integers
-        ! are being used.
-        if (qmc_in%real_amplitudes) then
-            if (bit_size(0_int_p) == 64) then
-                ! Allow a maximum population of 2^32, and a minimum fractional
-                ! part of 2^-31.
-                pop_bit_shift = 31
-            else if (bit_size(0_int_p) == 32) then
-                ! Allow a maximum population of 2^20, and a minimum fractional
-                ! part of 2^-11.
-                pop_bit_shift = 11
-                if (parent) then
-                    call warning('init_qmc_legacy', &
-                        'You are using 32-bit walker populations with real amplitudes.'//new_line('')// &
-                        ' The maximum population size on a given determinant is 2^20=1048576.&
-                        & Errors will occur if this is exceeded.'//new_line('')//&
-                        ' Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
-                end if
-            end if
-        else
-            ! Allow no fractional part for walker populations.
-            pop_bit_shift = 0
-        end if
-        ! Store 2**pop_bit_shift for ease.
-        real_factor = 2_int_p**(int(pop_bit_shift, int_p))
+        integer :: i, ierr
 
         if (present(fciqmc_in)) then
             ! Calculate all the possible different amplitudes for the Neel singlet state
@@ -107,7 +80,7 @@ contains
         !       correctly allocated and useful information printed out...
 
         use checking, only: check_allocate, check_deallocate
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use parallel
         use utils, only: int_fmt
 
@@ -152,6 +125,7 @@ contains
         real(p) :: spawn_cutoff
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(restart_info_t) :: ri
+        integer :: pop_bit_shift
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
 
@@ -192,6 +166,32 @@ contains
             if (present(fciqmc_in)) then
                 annihilation_flags%trial_function = fciqmc_in%trial_function
             end if
+
+            ! Set the real encoding shift, depending on whether 32 or 64-bit integers
+            ! are being used.
+            if (qmc_in%real_amplitudes) then
+                if (bit_size(0_int_p) == 64) then
+                    ! Allow a maximum population of 2^32, and a minimum fractional
+                    ! part of 2^-31.
+                    pop_bit_shift = 31
+                else if (bit_size(0_int_p) == 32) then
+                    ! Allow a maximum population of 2^20, and a minimum fractional
+                    ! part of 2^-11.
+                    pop_bit_shift = 11
+                    if (parent) then
+                        call warning('init_qmc_legacy', &
+                            'You are using 32-bit walker populations with real amplitudes.'//new_line('')// &
+                            ' The maximum population size on a given determinant is 2^20=1048576.&
+                            & Errors will occur if this is exceeded.'//new_line('')//&
+                            ' Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
+                    end if
+                end if
+            else
+                ! Allow no fractional part for walker populations.
+                pop_bit_shift = 0
+            end if
+            ! Store 2**pop_bit_shift for ease.
+            pl%pop_real_factor = 2_int_p**(int(pop_bit_shift, int_p))
 
             ! Thus the number of bits occupied by each determinant in the main
             ! walker list is given by string_len*i0_length+nwalker_int*32+
@@ -277,11 +277,11 @@ contains
                 nhash_bits = sys%basis%nbasis
             end if
             call alloc_spawn_t(sys%basis%tensor_label_len, nhash_bits, pl%nspaces, qmc_in%initiator_approx, &
-                               max_nspawned_states, spawn_cutoff, real_factor, qmc_state%par_info%load%proc_map, 7, &
+                               max_nspawned_states, spawn_cutoff, pl%pop_real_factor, qmc_state%par_info%load%proc_map, 7, &
                                qmc_in%use_mpi_barriers, spawn)
             if (fciqmc_in_loc%non_blocking_comm) then
                 call alloc_spawn_t(sys%basis%tensor_label_len, nhash_bits, pl%nspaces, qmc_in%initiator_approx, &
-                                   max_nspawned_states, spawn_cutoff, real_factor, qmc_state%par_info%load%proc_map, 7, &
+                                   max_nspawned_states, spawn_cutoff, pl%pop_real_factor, qmc_state%par_info%load%proc_map, 7, &
                                    .false., spawn_recv)
             end if
 
@@ -357,7 +357,7 @@ contains
                     ! Zero all populations...
                     pl%pops(:,pl%nstates) = 0_int_p
                     ! Set initial population of Hamiltonian walkers.
-                    pl%pops(1,pl%nstates) = nint(qmc_in%D0_population)*real_factor
+                    pl%pops(1,pl%nstates) = nint(qmc_in%D0_population)*pl%pop_real_factor
                     ! Set the bitstring of this psip to be that of the
                     ! reference state.
                     pl%states(:,pl%nstates) = reference%f0
@@ -431,7 +431,7 @@ contains
                         ! Zero all populations for this determinant.
                         pl%pops(:,pl%nstates) = 0_int_p
                         ! Set the population for this basis function.
-                        pl%pops(1,pl%nstates) = nint(qmc_in%D0_population)*real_factor
+                        pl%pops(1,pl%nstates) = nint(qmc_in%D0_population)*pl%pop_real_factor
                         pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
                         select case(sys%system)
                         case(heisenberg)
@@ -458,7 +458,7 @@ contains
             ! Total number of particles on processor.
             ! Probably should be handled more simply by setting it to be either 0 or
             ! D0_population or obtaining it from the restart file, as appropriate.
-            forall (i=1:pl%nspaces) pl%nparticles(i) = sum(abs( real(pl%pops(i,:pl%nstates),p)/real_factor))
+            forall (i=1:pl%nspaces) pl%nparticles(i) = sum(abs( real(pl%pops(i,:pl%nstates),p)/pl%pop_real_factor))
             ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
             do i=1, pl%nspaces
@@ -479,11 +479,11 @@ contains
 
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
-                tmp_int_64 = calculate_hf_signed_pop(pl%nstates, pl%pops)
+                tmp_int_64 = calculate_hf_signed_pop(pl)
                 call mpi_allreduce(tmp_int_64, qmc_state%estimators%hf_signed_pop, pl%nspaces, MPI_INTEGER8, MPI_SUM, &
                                    MPI_COMM_WORLD, ierr)
 #else
-                qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl%nstates, pl%pops)
+                qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl)
 #endif
             end if
 

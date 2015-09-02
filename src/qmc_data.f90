@@ -436,6 +436,12 @@ type particle_t
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
     integer :: info_size
+    ! Amplitudes can be integers or floats.  They are stored as integers using
+    ! fixed precision and encoded by multiplying by pop_real_factor (with some
+    ! stochastic rounding to account for the resolution of the fixed precision)
+    ! and decoded by dividing by pop_real_factor.  In principle this could be done
+    ! with bit shifts and care over the sign...
+    integer(int_p) :: pop_real_factor
     ! a) determinants
     integer(i0), allocatable :: states(:,:) ! (string_len, walker_length)
     ! [todo] - nicer referencing for elements of dat and ! pops

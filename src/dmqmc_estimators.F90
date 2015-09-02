@@ -368,7 +368,6 @@ contains
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2, dmqmc_kinetic_energy
         use calc, only: dmqmc_H0_energy, dmqmc_potential_energy
         use excitations, only: get_excitation, excit_t
-        use fciqmc_data, only: real_factor
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
         use proc_pointers, only: update_dmqmc_kinetic_energy_ptr
@@ -403,8 +402,7 @@ contains
         ! excitation levels correctly.
 
         ! In the case of no importance sampling, unweighted_walker_pop = particle_t%pops(1,idet).
-        unweighted_walker_pop = real(psip_list%pops(:,idet),p)*weighted_sampling%probs(excitation%nexcit)/&
-                                real_factor
+        unweighted_walker_pop = real(psip_list%pops(:,idet),p)*weighted_sampling%probs(excitation%nexcit)/psip_list%pop_real_factor
 
         ! The following only use the populations with ireplica = 1, so only call
         ! them if the determinant is occupied in the first replica.
@@ -438,10 +436,10 @@ contains
                     &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
                 ! Excitation distribution.
                 if (dmqmc_in%calc_excit_dist) est%excit_dist(excitation%nexcit) = &
-                    est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
+                    est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
                 ! Excitation distribtuion for calculating importance sampling weights.
                 if (dmqmc_in%find_weights .and. iteration > dmqmc_in%find_weights_start) est%excit_dist(excitation%nexcit) = &
-                    est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/real_factor
+                    est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
             end if
 
             ! Full Renyi entropy (S_2).
@@ -454,9 +452,11 @@ contains
             end if
 
             ! Reduced density matrices.
-            if (dmqmc_in%rdm%doing_rdm) call update_reduced_density_matrix_heisenberg&
-                (sys%basis, est, dmqmc_in%rdm, cdet, excitation, psip_list%pops(:,idet), &
-                 iteration, dmqmc_in%start_av_rdm, weighted_sampling%probs, rdm_error)
+            if (dmqmc_in%rdm%doing_rdm) then
+                call update_reduced_density_matrix_heisenberg(sys%basis, est, dmqmc_in%rdm, cdet, excitation,               &
+                                                              psip_list%pops(:,idet), psip_list%pop_real_factor, iteration, &
+                                                              dmqmc_in%start_av_rdm, weighted_sampling%probs, rdm_error)
+            end if
 
             weighted_sampling%probs_old = weighted_sampling%probs
 
@@ -855,7 +855,7 @@ contains
     end subroutine update_full_renyi_2
 
     subroutine update_reduced_density_matrix_heisenberg(basis, dmqmc_estimates, rdm_in, cdet, excitation, walker_pop, &
-                                                        iteration, start_av_rdm, accumulated_probs, rdm_error)
+                                                        pop_real_factor, iteration, start_av_rdm, accumulated_probs, rdm_error)
 
         ! Add the contribution from the current walker to the reduced density
         ! matrices being sampled. This is performed by 'tracing out' the
@@ -880,6 +880,8 @@ contains
         !        element. Note that this walker population is still weighted
         !        by the importance sampling factors. These factors must be
         !        removed before any estimates can be calculated.
+        !    pop_real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    iteration: interation number.  No accumulation of the RDM is
         !        performed if iteration <= start_av_rdm.
         !    start_av_rdm: iteration we start averaging the rdm on.
@@ -896,7 +898,6 @@ contains
         use dmqmc_data, only: dmqmc_rdm_in_t, dmqmc_estimates_t
         use dmqmc_procedures, only: decode_dm_bitstring
         use excitations, only: excit_t
-        use fciqmc_data, only: real_factor
         use spawning, only: create_spawned_particle_rdm
 
         type(basis_t), intent(in) :: basis
@@ -905,6 +906,7 @@ contains
         type(det_info_t), intent(in) :: cdet
         integer, intent(in) :: iteration
         integer(int_p), intent(in) :: walker_pop(:)
+        integer(int_p), intent(in) :: pop_real_factor
         type(excit_t), intent(in) :: excitation
         integer, intent(in) :: start_av_rdm
         real(p), intent(in) :: accumulated_probs(0:)
@@ -962,7 +964,7 @@ contains
                 rdm_f1 = rdm_f1 + 1
                 rdm_f2 = rdm_f2 + 1
                 unweighted_walker_pop = real(walker_pop,p)*&
-                    accumulated_probs(excitation%nexcit)/real_factor
+                    accumulated_probs(excitation%nexcit)/pop_real_factor
                 ! Note, when storing the entire RDM (as done here), the
                 ! maximum value of subsys_info(i)%string_len is 1, so we
                 ! only consider this one element here.

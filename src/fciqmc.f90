@@ -137,7 +137,7 @@ contains
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
         ! Initialise bloom_stats components to the following parameters.
-        call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=real_factor)
+        call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=qs%psip_list%pop_real_factor)
 
         ! Allocate det_info_t components.
         call alloc_det_info_t(sys, cdet, .false.)
@@ -190,9 +190,8 @@ contains
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
-                call load_balancing_wrapper(sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, real_factor, &
-                                            fciqmc_in%non_blocking_comm, rng, qs%psip_list, qs%spawn_store%spawn, &
-                                            qs%par_info, determ)
+                call load_balancing_wrapper(sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, fciqmc_in%non_blocking_comm, &
+                                            rng, qs%psip_list, qs%spawn_store%spawn, qs%par_info, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                 ideterm = 0
 
@@ -204,7 +203,7 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet)
 
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(qs%psip_list%pops(1,idet),p)/real_factor
+                    real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor
                     weighted_population = importance_sampling_weight(fciqmc_in%guiding_function, cdet, real_population)
 
                     ! If this is a deterministic state then copy its population
@@ -226,8 +225,8 @@ contains
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
-                                        qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, nspawned, connection)
+                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
+                                        cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
@@ -266,19 +265,20 @@ contains
                         call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
-                            call redistribute_particles(pl%states, real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn)
+                            call redistribute_particles(pl%states, pl%pop_real_factor,  pl%pops, pl%nstates,  pl%nparticles, spawn)
                             qs%par_info%load%needed = .false.
                         end if
                         call direct_annihilation_spawned_list(sys, rng, qs%ref, annihilation_flags, pl, spawn, send_counts, &
                                                               req_data_s, qs%par_info%report_comm%nb_spawn, nspawn_events)
-                        call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, nattempts, qs%spawn_store%rspawn)
+                        call end_mc_cycle(qs%par_info%report_comm%nb_spawn(1), ndeath, pl%pop_real_factor, nattempts, &
+                                          qs%spawn_store%rspawn)
                     else
                         ! If using semi-stochastic then perform the deterministic projection step.
                         if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
 
-                        call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
+                        call end_mc_cycle(nspawn_events, ndeath, pl%pop_real_factor, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate
 
@@ -401,7 +401,7 @@ contains
         do idet = 1, spawn_recv%head(0,0) ! loop over walkers/dets
 
             int_pop = int(spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet), int_p)
-            real_pop = real(int_pop(1),p) / real_factor
+            real_pop = real(int_pop(1),p) / qs%psip_list%pop_real_factor
             ftmp = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
             tmp_data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
@@ -426,8 +426,8 @@ contains
             do iparticle = 1, nattempts_current_det
 
                 ! Attempt to spawn.
-                call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
-                                 neel_singlet_amp, nspawned, connection)
+                call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, qs%psip_list%pop_real_factor, cdet, int_pop(1), &
+                                 gen_excit_ptr, neel_singlet_amp, nspawned, connection)
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then

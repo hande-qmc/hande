@@ -49,7 +49,7 @@ contains
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
-        use fciqmc_data, only: real_factor, neel_singlet_amp
+        use fciqmc_data, only: neel_singlet_amp, write_fciqmc_report_header, write_fciqmc_report
         use hfs_data
         use ifciqmc, only: set_parent_flag
         use interact, only: calc_interact, check_comms_file
@@ -152,7 +152,7 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet)
 
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(qs%psip_list%pops(1,idet),p)/real_factor
+                    real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor
 
                     ! It is much easier to evaluate projected values at the
                     ! start of the FCIQMC cycle than at the end, as we're
@@ -180,8 +180,8 @@ contains
                     do iparticle = 1, abs(qs%psip_list%pops(1,idet))
 
                         ! Attempt to spawn Hamiltonian walkers..
-                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
-                                         qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, &
+                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
+                                         cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, &
                                          nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
@@ -193,8 +193,8 @@ contains
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hamiltonian walkers.
                         ! [todo] - JSS: real populations for HFS spawner.
-                        call spawner_hfs_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
-                                             qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, neel_singlet_amp, &
+                        call spawner_hfs_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
+                                             cdet, qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, neel_singlet_amp, &
                                              nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
@@ -210,8 +210,8 @@ contains
 
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
-                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
-                                         qs%psip_list%pops(2,idet), gen_excit_ptr, neel_singlet_amp, &
+                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
+                                         cdet, qs%psip_list%pops(2,idet), gen_excit_ptr, neel_singlet_amp, &
                                          nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then

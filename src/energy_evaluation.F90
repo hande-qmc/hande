@@ -263,7 +263,7 @@ contains
             rep_loop_loc(bloom_num_ind) = bloom_stats%nblooms_curr
         end if
         if (doing_calc(hfs_fciqmc_calc)) &
-            rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(qs%psip_list%nstates, qs%psip_list%pops)
+            rep_loop_loc(hf_signed_pop_ind) = calculate_hf_signed_pop(qs%psip_list)
         rep_loop_loc(hf_proj_O_ind) = qs%estimators%proj_hf_O_hpsip
         rep_loop_loc(hf_proj_H_ind) = qs%estimators%proj_hf_H_hfpsip
         rep_loop_loc(hf_D0_pop_ind) = qs%estimators%D0_hf_population
@@ -494,7 +494,7 @@ contains
 
     end subroutine update_hf_shift
 
-    function calculate_hf_signed_pop(nstates_active, populations) result(hf_signed_pop)
+    function calculate_hf_signed_pop(psip_list) result(hf_signed_pop)
 
         ! Find
         !    \sum_j sign(N_j(\beta)) \tilde{N}_j(\beta)
@@ -503,25 +503,22 @@ contains
         ! j at imaginary time \beta.
 
         ! In:
-        !    nstates_active: number of occupied states in the populations list
-        !       (ie the limit in the sum over j).
-        !    populations: populations in the Hamiltonian and Hellmann-Feynman
-        !       spaces on each occupied state.
+        !    psip_list: particle_t object containing occupied states and their populations in both the Hamiltonian and
+        !       Hellmann--Feynman spaces.
 
-        use fciqmc_data, only: real_factor
+        use qmc_data, only: particle_t
 
-        integer, intent(in) :: nstates_active
-        integer(int_p), intent(in) :: populations(:,:)
+        type(particle_t), intent(in) :: psip_list
 
         real(p) :: hf_signed_pop
-        real(p) :: real_population(size(populations,dim=1))
+        real(p) :: real_population(psip_list%nspaces)
 
         integer :: i
 
         hf_signed_pop = 0.0_dp
-        do i = 1, nstates_active
-            real_population = real(abs(populations(:,i)),p)/real_factor
-            if (populations(1,i) == 0_int_p) then
+        do i = 1, psip_list%nstates
+            real_population = real(abs(psip_list%pops(:,i)),p)/psip_list%pop_real_factor
+            if (psip_list%pops(1,i) == 0_int_p) then
                 ! An approximation: let alpha->0_+ (using alpha->0_- appears not to make much of a difference).
                 ! letting alpha->0_+
                 hf_signed_pop = hf_signed_pop + real_population(2)
