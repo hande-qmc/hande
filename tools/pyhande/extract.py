@@ -112,8 +112,9 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                 data_pairs.append((metadata, data))
                 if calc_type == 'DMQMC' and not comment_data.empty:
                     # Also got some results in the comment_file...
-                    metadata['calc_type'] = 'DMQMC (RDM)'
-                    data_pairs.append((metadata, comment_data))
+                    metadata_rdm = metadata.copy()
+                    metadata_rdm['calc_type'] = 'DMQMC (RDM)'
+                    data_pairs.append((metadata_rdm, comment_data))
         elif calc_type == 'FCI' and fci_block.search(line):
             data = _extract_fci_data(f, line)
             data_pairs.append((metadata, data))
