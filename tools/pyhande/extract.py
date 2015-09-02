@@ -15,6 +15,13 @@ import re
 import sys
 import tempfile
 
+import bz2
+import gzip
+try:
+    import lzma
+except ImportError:
+    pass
+
 import pyhande.legacy
 
 def extract_data_sets(filenames):
@@ -24,6 +31,11 @@ Parameters
 ----------
 filenames : list of strings
     names of files containing HANDE QMC calculation output.
+
+.. note::
+
+    Files compressed with gzip, bzip2 or xz (python 3 only) are automatically
+    decompressed.
 
 Returns
 -------
@@ -50,6 +62,11 @@ Parameters
 ----------
 filename : string
     name of file containing the HANDE QMC calculation output.
+
+.. note::
+
+    Files compressed with gzip, bzip2 or xz (python 3 only) are automatically
+    decompressed.
 
 Returns
 -------
@@ -97,7 +114,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     have_input = False
 
     calc_type = ''
-    f = open(filename)
+    (f, compressed) = _open_file(filename)
     for line in f:
 
         # Start of calculation block?
@@ -159,9 +176,11 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     if data_pairs and 'system' not in data_pairs[0][0]:
         # Uhoh!  Have an old output with no JSON.  :-(
         # Note legacy metadata is *not* in the same format...
-        md_legacy = pyhande.legacy.extract_metadata(filename)
+        (f, compressed) = _open_file(filename)
+        md_legacy = pyhande.legacy.extract_metadata(f)
         for (md, dat) in data_pairs:
             md.update(md_legacy)
+        f.close()
 
     for (md, dat) in data_pairs:
         md.update(md_generic)
@@ -433,3 +452,52 @@ json_dict : dict
         return json.loads(json_text)
     else:
         return {}
+
+def _open_file(fname):
+    '''Open a gzip/bz2/ascii file.
+
+Parameters
+----------
+fname : string
+    name of file to be opened.
+
+Returns
+-------
+(fhandle, compressed) : (file, bool)
+    fhandle is the handle of opened file (a BZ2File or GzipFile or file object,
+    depending upon the file passed in) and compressed is set to True if
+    a compressed file (of any type) is detected and False otherwise.
+'''
+
+    # See http://stackoverflow.com/a/13044946/3412233.
+    py3 = sys.version_info[0] == 3
+    if py3:
+        magic_nos = {
+            b'\x1f\x8b\x08': gzip.open,             # gzip
+            b'\x42\x5a\x68': bz2.open,              # bz2
+            b'\xfd\x37\x7a\x58\x5a\x00': lzma.open, # xz
+        }
+    else:
+        magic_nos = {
+            b'\x1f\x8b\x08': gzip.GzipFile,      # gzip
+            b'\x42\x5a\x68': bz2.BZ2File,        # bz2
+            b'\xfd\x37\x7a\x58\x5a\x00': 'lzma', # xz
+        }
+
+    max_magic_len = max(len(x) for x in magic_nos)
+    f = open(fname, 'rb')
+    file_start = f.read(max_magic_len)
+    f.close()
+    compressed = False
+    for (magic, fzopen) in magic_nos.items():
+        if file_start.startswith(magic):
+            compressed = True
+            if py3:
+                f = fzopen(fname, encoding='utf-8', mode='rt')
+            elif fzopen == 'lzma':
+                raise RuntimeError('xz compression not available on python 2.')
+            else:
+                f = fzopen(fname)
+    if not compressed:
+        f = open(fname)
+    return (f, compressed)

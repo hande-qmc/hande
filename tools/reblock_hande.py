@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-'''Run a reblocking analysis on HANDE QMC output files.  CCMC and FCIQMC
-calculations only are supported.'''
+'''Run a reblocking analysis on HANDE QMC output files.  Files may be compressed
+with either gzip, bzip2 or xz (python 3 only).  CCMC and FCIQMC calculations
+only are supported; other calculations have specific analysis scripts and/or
+should be analysed directly with pyhande.'''
 
 import pandas as pd
 from os import path
