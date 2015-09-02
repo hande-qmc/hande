@@ -6,6 +6,7 @@ import sys
 script_dir = os.path.dirname(__file__)
 sys.path.extend([os.path.join(script_dir, '../')])
 import pyhande
+import warnings
 
 def main(filename):
     ''' Analyse the output from a canonical kinetic energy calculation.
@@ -20,9 +21,26 @@ filename : list of strings
         print("Usage: ./analyse_canonical.py files")
         sys.exit()
 
-    (metadata, data) = pyhande.extract.extract_data_sets(filename)
+    hande_out = pyhande.extract.extract_data_sets(filename)
 
-    results = pyhande.canonical.estimates(metadata, data)
+    (metadata, data) = ([], [])
+    for (md, df) in hande_out:
+        # Handle old output with incorrect title...
+        if md['calc_type'] == 'Canonical energy' or md['calc_type'] == 'RNG':
+            metadata.append(md)
+            data.append(df)
+    if data:
+        data = pd.concat(data)
+
+    # Sanity check: are all the calculations from the same calculation?
+    # Only check for new metadata format...
+    if 'beta' in metadata[0]:
+        beta = metadata[0]['beta']
+        for md in metadata[1:]:
+            if 'beta' in md and md['beta'] != beta:
+                warnings.warn('Beta values in input files not consistent.')
+
+    results = pyhande.canonical.estimates(metadata[0], data)
 
     try:
         float_fmt = '{0:-#.8e}'.format

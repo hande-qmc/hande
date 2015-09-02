@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pyblock
-import pyhande
+import pyhande.legacy
 import numpy as np
 
 def estimates(metadata, data):
@@ -10,7 +10,7 @@ def estimates(metadata, data):
 
 Parameters
 ----------
-metadata : :class:`pandas.DataFrame`
+metadata : dict
     metadata (i.e. calculation information, parameters and settings) extracted
     from output files.
 data : :class:`pandas.DataFrame`
@@ -42,7 +42,12 @@ results : :class:`pandas.DataFrame`
     e_thf.reset_index(inplace=True)
 
     results = pd.DataFrame()
-    results['Beta'] = pyhande.extract.extract_input(metadata, 'beta')
+    if 'beta' in metadata:
+        # New, richer JSON-based metadata.
+        results['Beta'] = [metadata['beta']]
+    else:
+        # Hope to find it in the input file...
+        results['Beta'] = pyhande.legacy.extract_input(metadata, 'beta')
     # E_0 and E_HF0 contain no denominator so the error is
     # just the standard error.
     results['E_0'] = [means['E_0']]

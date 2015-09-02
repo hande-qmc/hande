@@ -10,6 +10,7 @@ import pyblock
 import pyhande
 
 import argparse
+import pprint
 
 def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
@@ -46,10 +47,8 @@ verbose : int
 
 Returns
 -------
-metadata : :class:`pandas.DataFrame`
-    Metadata extracted from the calculation output file.
-data : :class:`pandas.DataFrame`
-    QMC data extracted from the calculation output file.
+info :
+    Output from :func:`pyhande.lazy.std_analysis`.
 opt_block: :class:`pandas.DataFrame`
     Recommended statistics based upon the estimated 'optimal' block size
     as suggested by Wolff and Lee et al. (see
@@ -73,25 +72,20 @@ opt_block: :class:`pandas.DataFrame`
 
     infos = []
     for calc in files:
+        # [todo] - Future work: automatically handle the case of different
+        # [todo] - calculations within the same file.
         info = pyhande.lazy.std_analysis(calc, start_iteration,
                                          extract_psips=True)
         if verbose >= v_analysis:
             print('Analysing file(s): %s' % (' '.join(calc)))
         if verbose >= v_meta:
-            col_name = info.metadata.columns.name
-            for (calc_name, calc) in info.metadata.iteritems():
-                calc_local = calc.copy()
-                # problems with pop on pandas 0.13?  It seems to return a list.
-                calc_input = calc_local['input']
-                calc_local = calc_local.drop('input')
-                # Add the calc index to the series and make it come first.
-                calc_local[col_name] = calc_name
-                indx = calc_local.index.copy()
-                indx = indx.delete(indx.get_loc(col_name)).insert(0, col_name)
-                calc_local = calc_local.reindex(indx)
-                print(calc_local.to_string(na_rep='n/a'))
+            for md in info.metadata:
+                calc_type = md.pop('calc_type')
+                calc_input = md.pop('input')
+                print('\ncalc_type: %s' % (calc_type))
+                pprint.pprint(md)
                 if verbose >= v_input:
-                    print('\nFull input options:\n\n%s' % '\n'.join(calc_input))
+                    print('\nFull input options:\n%s' % '\n'.join(calc_input))
                 print('')
         if verbose >= v_analysis:
             print(info.reblock.to_string(float_format=float_fmt, line_width=90))

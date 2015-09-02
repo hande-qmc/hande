@@ -2,118 +2,66 @@
 
 import numpy
 import pandas as pd
+
+import json
 import os
 import re
 import sys
 import tempfile
 
-def extract_data_sets(filenames, temp_file=True):
+import pyhande.legacy
+
+def extract_data_sets(filenames):
     '''Extract QMC data tables from multiple HANDE calculations.
 
 Parameters
 ----------
 filenames : list of strings
     names of files containing HANDE QMC calculation output.
-temp_file : bool
-    passed to extract_data.
 
 Returns
 -------
-metadata : :class:`pandas.DataFrame`
-    metadata (i.e. calculation information, parameters and settings) extracted
-    from output files.
-data : :class:`pandas.DataFrame`
-    HANDE QMC data.  Each calculation (and each beta loop in the case of DMQMC)
-    is labelled separately using a hierarchical index.
+data : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
+    Calculation output represented by a tuple for each calculation, consisting
+    of metadata (dict) and a :class:`pandas.DataFrame` (QMC calculations) or
+    :class:`pandas.Series` (other calculations) containing the calculation
+    output/results.
 
 See Also
 --------
 ``extract_data`` : underlying data extraction implementation.
 '''
 
-    offset = 0
     data = []
-    metadata = []
     for filename in filenames:
-        # For now, ignore output from any other calculations.
-        (calc_metadata, calc_data, junk) = extract_data(filename, offset,
-                                                        temp_file)
-        data.append(calc_data)
-        metadata.append(calc_metadata)
-        offset += data[-1].index.levshape[0]
-    return (pd.concat(metadata).unstack(level=0), pd.concat(data))
+        data.extend(extract_data(filename))
+    return data
 
-def extract_data(filename, offset=0, temp_file=True):
+def extract_data(filename):
     '''Extract QMC data table from a HANDE calculation.
-
-.. note::
-
-    We assume that the data table is continuous (i.e. not split by anything
-    other than comments) and that the final line of the table is within the
-    final 2KB of the file.
 
 Parameters
 ----------
 filename : string
     name of file containing the HANDE QMC calculation output.
-offset : int
-    first index for the calculation level label in data (default: 0).
-temp_file : bool
-    if True convert data tables in large files (ie those over 8MB) to CSV format
-    before parsing.  This is much faster and has lower memory usage as it allows
-    pandas' C parser to be used.  This requires a temporary file to be created
-    in TMPDIR (default: /tmp).
 
 Returns
 -------
-metadata : :class:`pandas.Series`
-    metadata (i.e. calculation information, parameters and settings) extracted
-    from output file..
-qmc_data : :class:`pandas.DataFrame`
-    HANDE QMC data.  Multiple loops over iterations (e.g. in DMQMC) are labelled
-    using a hierarchical index, starting from the supplied offset, otherwise the
-    entire data set is given the offset as the hierarchical index.
-calc_data : list of `:class:`pandas.Series`
-    data from other HANDE calculations (i.e. diagonalisation, Hilbert space
-    estimation).
+data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
+    Calculation output represented by a tuple for each calculation, consisting
+    of metadata (dict) and a :class:`pandas.DataFrame` (QMC calculations) or
+    :class:`pandas.Series` (other calculations) containing the calculation
+    output/results.
 '''
 
     # metadata from ...
-
     # ... output header
-    md_header = dict(
+    md_generic_header = dict(
         UUID = 'Calculation UUID:',
         git_hash = 'VCS BASE repository version:',
     )
-
-    # ... input (echoed in output)
-    md_input = dict(
-        calc_type = '^ *(simple_fciqmc|fciqmc|ccmc|ifciqmc|iccmc|dmqmc|idmqmc|\
-                         |canonical_energy)',
-        sym = r'\bsym\b +\d+',
-        ms = r'\bms\b +-*\d+',
-        nel = r'\bnel\b|\belectrons\b',
-        tau = r'\btau\b',
-        truncation = 'truncation_level',
-        target = 'varyshift_target',
-        shift_damping = 'shift_damping',
-        mc_cycles = 'mc_cycles',
-    )
-
-    # ... main body of output (ie after input but before QMC data table)
-    md_body = dict(
-        nbasis = 'Number of basis functions:',
-        seed = 'random number generator with a seed of',
-        bit_length = 'Bit-length',
-        ref = 'Reference determinant, |D0> = ',
-        ref_energy = r'E0 = <D0|H|D0>',
-        psingle = 'Probability of attempting a single',
-        pdouble = 'Probability of attempting a double',
-        init_pop = 'Initial population on',
-    )
-
     # ... footer of output (ie after QMC data table)
-    md_footer = dict(
+    comms_footer = dict(
         min_psips_per_mpi_process = 'Min # of particles on a processor:',
         max_psips_per_mpi_process = 'Max # of particles on a processor:',
         mean_psips_per_mpi_process = 'Mean # of particles on a processor:',
@@ -123,386 +71,358 @@ calc_data : list of `:class:`pandas.Series`
         min_communication_time = 'Min time taken by walker communication:',
         max_communication_time = 'Max time taken by walker communication:',
         mean_communication_time = 'Mean time taken by walker communication:',
+    )
+    md_generic_footer = dict(
         wall_time = 'Wall time (seconds):',
         cpu_time = 'CPU time (per processor, seconds):'
     )
-    md_keys = [x for v in (md_header, md_input, md_body, md_footer)
-            for x in v.keys()]
-    md_int = ['sym', 'ms', 'nel', 'nbasis', 'truncation', 'seed', 'mc_cycles',
-         'bit_length',  'min_dets_per_mpi_process', 'max_dets_per_mpi_process']
 
-    md_float = ['tau', 'ref_energy', 'psingle', 'pdouble', 'init_pop',
-         'min_psips_per_mpi_process', 'mean_psips_per_mpi_process',
-         'mean_dets_per_mpi_process', 'mean_communication_time', 'wall_time',
-         'cpu_time', 'min_communication_time', 'max_communication_time']
+    data_pairs = []
+    md_generic = {'input':[]}
 
+    # RNG is for old calculations without proper calculation block headers.
+    calc_block = re.compile('^ (FCI|FCIQMC|CCMC|DMQMC|Simple FCIQMC|'
+                            'Hilbert space|Canonical energy|RNG)$')
+    fci_block = re.compile('Exact|Lanczos|LAPACK|LANCZOS|RDM')
+
+    # input block delimiters
     input_pattern = 'Input options'
     underline_regex = re.compile('----+')
+    have_input = False
 
-    # Read metadata and figure out how the start line of the data table.
-    f = open(filename, 'r')
-    start_line = 0
-    metadata = pd.Series(index=md_keys, name='metadata')
-    metadata['input'] = []
-    unseen_calc = True
-    have_git_hash_next = False
-    have_input = 0
-    calc_data = []
-    calc_titles = ['diagonalisation results', 'RDM eigenvalues', 'Hilbert space']
-    column_names = []
+    calc_type = ''
+    f = open(filename)
     for line in f:
-        hit = False
-        start_line += 1
-        # extract metadata.
-        if have_input <= 3:
-            # input
-            if have_input == 2 and line.strip() and \
-                    not underline_regex.search(line):
-                metadata['input'].append(line.strip())
-                for (k,v) in md_input.items():
-                    if re.search(v,line):
-                        if k == 'calc_type':
-                            if unseen_calc:
-                                unseen_calc = False
-                                metadata[k] = line.split()[0]
-                        else:
-                            metadata[k] = \
-                                    extract_last_field(line, k, md_int, md_float)
-                        hit = True
-                        break
-                if hit:
-                    # only need to find each key once...
-                    md_input.pop(k)
-            if input_pattern in line or \
-                    (have_input > 0 and underline_regex.search(line)):
-                have_input += 1
-        if have_input < 2:
-            # header
-            if have_git_hash_next:
-                metadata['git_hash'] = line.split()[0]
-                have_git_hash_next = False
-            for (k,v) in md_header.items():
-                if v in line:
-                    if k == 'git_hash':
-                        have_git_hash_next = True
-                    elif k :
-                        metadata[k] = extract_last_field(line, k, md_int, md_float)
-        elif have_input > 3:
-            # body
-            hit = False
-            for (k,v) in md_body.items():
-                if v in line:
-                    # Special cases for unusual formats...
-                    if k == 'ref':
-                        metadata[k] = ' '.join(line.split(v)).strip()
-                    elif k == 'seed':
-                        metadata[k] = int(float(line.split()[-1]))
-                    else:
-                        metadata[k] = extract_last_field(line, k, md_int, md_float)
-                    hit = True
-                    break
-            if hit:
-                md_body.pop(k)
-            if any(k in line for k in calc_titles):
-                (cdata, nread) = _extract_calc_data(f, line)
-                calc_data.append(cdata)
-                start_line += nread
 
-        # Hunt for start of data table.
-        if ' # iterations' in line:
-            # Columns are separated by at least two spaces but each column name
-            # can contain words separated by just one space.
-            column_names = re.split('   *', line[3:].strip())
-            break
-    f.close()
+        # Start of calculation block?
+        match = calc_block.search(line)
+        if match:
+            calc_type = match.group().strip()
 
-    # Remapping to match old and new input files
-    if metadata['calc_type'] == 'estimate_canonical_kinetic_energy':
-        metadata['calc_type'] = 'kinetic_energy'
-
-    if column_names:
-        # Hunt for the end of the table.
-        skip_footer = 0
-        end_lines = _get_last_lines(filename)
-        for line in end_lines[::-1]:
-            if re.match('  *\d\d?', line):
-                break
+            if calc_type == 'FCI':
+                metadata = _extract_json(f, find_start=True, max_end='subspace')
+                metadata['calc_type'] = calc_type
+            elif calc_type == 'Hilbert space':
+                (metadata, data) = _extract_hilbert_data(f)
+                metadata['calc_type'] = calc_type
+                data_pairs.append((metadata, data))
             else:
-                skip_footer += 1
-
-        # Extract meta data from the end of the calulation.
-        for line in end_lines[-skip_footer:]:
-            for (k,v) in md_footer.items():
-                if v in line:
-                    metadata[k] = extract_last_field(line, k, md_int, md_float)
-
-        if float(os.path.getsize(filename))/1024 < 8000 or not temp_file:
-            # Read table --- only read the first N columns, where N is the
-            # number of column names found.
-            try:
-                # pandas 0.15 introduced default behaviour to skip blank lines.
-                # Unfortunately this has a bad interaction with skipfooter if
-                # the data table only contains one line and the line after the
-                # table is blank (see https://github.com/pydata/pandas/issues/10164).
-                # Given the data table doesn't have any blank lines, it's safe
-                # to disable this.
-                qmc_data = pd.io.parsers.read_table(filename, sep='\s+',
-                           engine='python', skiprows=start_line,
-                           skipfooter=skip_footer, names=column_names,
-                           comment='#', skip_blank_lines=False)
-            except TypeError:
-                # pandas < 0.15
-                qmc_data = pd.io.parsers.read_table(filename, sep='\s+',
-                           engine='python', skiprows=start_line,
-                           skipfooter=skip_footer, names=column_names,
-                           comment='#')
-            # Remove comment lines and convert all columns to numeric data.
-            # Lines starting with a comment have been set to NaN in the
-            # iterations column.
-            try:
-                qmc_data.dropna(subset=['iterations'], inplace=True)
-            except TypeError:
-                # Be slightly less efficient if using pandas version < 0.13.
-                qmc_data = qmc_data.dropna(subset=['iterations'])
-            qmc_data.reset_index(drop=True, inplace=True)
+                (metadata, data, comment_data) = _extract_mc_calc(f, calc_type)
+                metadata['calc_type'] = calc_type
+                data_pairs.append((metadata, data))
+                if calc_type == 'DMQMC' and not comment_data.empty:
+                    # Also got some results in the comment_file...
+                    metadata['calc_type'] = 'DMQMC (RDM)'
+                    data_pairs.append((metadata, comment_data))
+        elif calc_type == 'FCI' and fci_block.search(line):
+            data = _extract_fci_data(f, line)
+            data_pairs.append((metadata, data))
+        elif not calc_type:
+            # Generic header
+            for (key, val) in md_generic_header.items():
+                if val in line:
+                    if key == 'git_hash':
+                        md_generic[key] = next(f).strip()
+                    else:
+                        md_generic[key] = line.split()[-1]
+            # Parse input block.
+            if input_pattern in line:
+                # skip next line and then start getting the input block.
+                next(f)
+                have_input = True
+            elif have_input:
+                if underline_regex.search(line):
+                    have_input = False
+                else:
+                    md_generic['input'].append(line.strip())
         else:
-            # Work around pandas slow and very memory-hungry pure-python parser
-            # by converting the data table into CSV format (and stripping out
-            # comments whilst we're at it) and reading that in.
-            tmp_csv = _convert_to_csv(filename, start_line)
-            qmc_data = pd.io.parsers.read_csv(tmp_csv, names=column_names)
-            os.remove(tmp_csv)
+            # QMC footer
+            if calc_type != 'Hibert space' and calc_type != 'FCI':
+                for (key, val) in comms_footer.items():
+                    if val in line:
+                        md_val = line.split()[-1].replace('s','')
+                        data_pairs[-1][0][key] = float(md_val)
+            # Generic footer
+            for (key, val) in md_generic_footer.items():
+                if val in line:
+                    md_generic[key] = float(line.split()[-1])
 
-        # If the number of iterations counter goes over 8 digits then the hande
-        # output file prints stars.  This has now been fixed, however for
-        # legacy reasons:
-        for (i,iteration) in enumerate(qmc_data['iterations']):
-            if numpy.isnan(iteration):
-                qmc_data['iterations'][i] = \
-                        i*metadata['mc_cycles'] + qmc_data['iterations'][0]
-
-        qmc_data = qmc_data.convert_objects(convert_numeric=True, copy=False)
-
-        unique_iterations = qmc_data['iterations'].unique()
-        # if repeated iterations:
-        #     assume there's a full calculation (i.e. DMQMC style) followed by
-        #     a subsequent ones (the final one might not be complete), e.g.
-        #         iteration  label_1 label_2 ...
-        #            10       ....
-        #            20       ....
-        #            ..       ....
-        #           300       ....
-        #            10       ....
-        #            20       ....
-        #            ..       ....
-        #           300       ....
-        #            10       ....
-        #            20       ....
-        #     then label each set of iterations with X.
-        # Otherwise just label the data just read in by the same X.
-        niterations = len(qmc_data)
-        nunique = len(unique_iterations)
-        nitems = int(numpy.ceil(float(niterations)/nunique))
-        qmc_data = [ qmc_data[i*nunique:(i+1)*nunique] for i in range(nitems) ]
-        multi_keys = [i+offset for i in range(len(qmc_data))]
-        qmc_data = pd.concat(qmc_data, keys=multi_keys)
-        qmc_data.index.names = ['calc', '']
-        metadata = pd.concat([metadata], keys=[multi_keys[0]])
-        metadata.index.names = ['calc', '']
-
-        # Do we have an old table?  If so, rename the headings to the new ones
-        # for convenience...
-        qmc_data.rename(inplace=True, columns={
-                'Instant shift': 'Shift',
-                '\sum H_0j Nj': '\sum H_0j N_j',
-                '# D0': 'N_0',
-                '# particles': '# H psips',
-            })
-    else:
-        qmc_data = pd.DataFrame()
-
-    return (metadata, qmc_data, calc_data)
-
-def extract_last_field(line, key, md_int=None, md_float=None):
-    '''Extract the final field from the last (space-separated) entry in a line.
-
-Parameters
-----------
-line: string
-    a line in the file
-key: string
-    the key to which has been matched
-md_int: list
-    a list of keys which should be stored as ints
-md_float: list
-    a list of keys which should be stored as floats
-
-Returns
--------
-val:
-    The record, converted to an integer or a float if the key (the preceding
-    fields in the line) is in md_int or md_float.
-'''
-    val = line.split()[-1]
-    if val[-1] in ('.', ','):
-        # Remove trailing commas and full-stops.
-        val = val[:-1]
-    if key in md_int:
-        if "*" not in val:
-            val = int(val)
-    elif key in md_float:
-        if val[-1] == 's':
-            # Remove trailing s
-            val = float(val[:-1])
-        else:
-            if "*" not in val:
-                val = float(val)
-
-    return val
-
-
-def _get_last_lines(filename, bytes=2048):
-    '''Get the lines within a given number of bytes from the end of the file.
-
-Parameters
-----------
-filename : string
-    name of file.
-bytes : int
-    number of bytes from the end of file to examine.
-
-Returns
--------
-last_lines : list
-    list of lines.
-'''
-
-    f = open(filename, 'r')
-    f.seek (0, 2)
-    fsize = f.tell()
-    f.seek(max(fsize-2048, 0), 0) # Get the last 2k of file.
-    lines = f.readlines()
     f.close()
-    return lines
 
-def _convert_to_csv(filename, start_line, comment='#'):
+    if data_pairs and 'system' not in data_pairs[0][0]:
+        # Uhoh!  Have an old output with no JSON.  :-(
+        # Note legacy metadata is *not* in the same format...
+        md_legacy = pyhande.legacy.extract_metadata(filename)
+        for (md, dat) in data_pairs:
+            md.update(md_legacy)
+
+    for (md, dat) in data_pairs:
+        md.update(md_generic)
+
+    return data_pairs
+
+def _extract_mc_calc(fhandle, calc_type):
+    '''Extract metadata and calculation data for a QMC calculation.
+
+Parameters
+----------
+fhandle : file
+    File handle to a HANDE output file opened at the start of a QMC calculation
+    block, as denoted by the section title.
+calc_type : string
+    Type of calculation being analysed, e.g. 'CCMC', 'DMQMC' or 'FCIQMC'.
+    Currently only used in dealing with data encoded in comment lines.
+
+Returns
+-------
+(metadata, data, comment_data) : (dict, :class:`pandas.DataFrame`, :class:`pandas.DataFrame`)
+    Dictionary of calculation metadata (input values, defaults, etc), the QMC
+    data table obtained from the output file and any data extracted from the
+    comment lines.
+'''
+
+    # Standard Monte Carlo table with an '# iterations ...' header.
+    metadata = {}
+    data = pd.DataFrame()
+    comment_data = None
+    data_csv = None
+    for line in fhandle:
+        if ' # iterations' in line:
+            # Columns are separated by at least two spaces but each
+            # column name can contain words separated by just one space.
+            column_names = re.split('   *', line[3:].strip())
+            # Work around pandas slow and very memory-hungry pure-python parser
+            # by converting the data table into CSV format (and removing comment_file
+            # whilst we're at it) and reading that in.
+            (data_csv, comment_file) = _convert_to_csv(fhandle)
+            # Done now -- return to main extraction procedure.
+            break
+        elif 'Start JSON block' in line:
+            metadata = _extract_json(fhandle)
+    #it's possible that the output file didn't have any info, so we need to test data_csv
+    if data_csv:
+        data = pd.io.parsers.read_csv(data_csv, names=column_names)
+        if calc_type == 'DMQMC':
+            comment_data = _extract_dmqmc_data(comment_file)
+
+        os.remove(data_csv)
+        os.remove(comment_file)
+
+    if not data.empty:
+        # If the number of iterations counter goes over 8 digits then the hande
+        # output file prints stars.  This has now been fixed, however for legacy
+        # reasons:
+        for (i,iteration) in enumerate(data['iterations']):
+            if numpy.isnan(iteration):
+               data['iterations'][i] = \
+                   i*metadata['qmc']['ncycles'] + data['iterations'][0]
+
+        data = data.convert_objects(convert_numeric=True, copy=False)
+
+        # Do we have an old table?  If so, rename the headings to the new
+        # ones for convenience...
+        data.rename(inplace=True, columns={
+                        'Instant shift': 'Shift',
+                        '\sum H_0j Nj': '\sum H_0j N_j',
+                        '# D0': 'N_0',
+                        '# particles': '# H psips',
+                })
+
+    return (metadata, data, comment_data)
+
+def _extract_dmqmc_data(comment_file):
+    '''Extract data from comments produced by a DMQMC calculation.
+
+Parameters
+----------
+comment_file : string
+    Name of file containing the comment lines, as produced by
+    :func:`_convert_to_csv`.
+
+Returns
+-------
+data : :class:`pandas.DataFrame`
+    Data contained in the comments (e.g. ground state RDM quantities).
+'''
+    data = {}
+    keys = ['RDM trace', 'von Neumann', 'concurrence']
+    f = open(comment_file)
+    for line in f:
+        for key in keys:
+            if key in line:
+                val = float(line.split()[-1])
+                if key in data:
+                    data[key].append(val)
+                else:
+                    data[key] = [val]
+    f.close()
+    data = pd.DataFrame(data)
+    data.index.name = 'beta loop'
+    return data
+
+def _extract_fci_data(fhandle, title_line):
+    '''Extract metadata and calculation data for an FCI calculation.
+
+Parameters
+----------
+fhandle : file
+    File handle to a HANDE output file opened at the start of a FCI calculation
+    results block, as denoted by the section title.
+
+.. note::
+
+    The start should be at a block for the start of the results containing the
+    eigenvalues.  A given FCI calculation can contain multiple such blocks.  The
+    metadata is identical for all such blocks and is given at the start of the
+    FCI section and hence should be extracted separately.
+
+Returns
+-------
+data : :class:`pandas.Series`
+    FCI eigenvalues obtained from the output file.
+'''
+
+    if 'Exact' in title_line or 'LAPACK' in title_line:
+        title = 'FCI (LAPACK)'
+    elif 'Lanczos' in title_line or 'LANCZOS' in title_line:
+        title = 'FCI (Lanczos)'
+    elif 'RDM' in title_line:
+        title = 'FCI RDM'
+    for line in fhandle:
+        if 'State' in line:
+            break
+    eigvals = []
+    for line in fhandle:
+        if not line.split():
+            break
+        else:
+            eigvals.append(float(line.split()[-1]))
+
+    data = pd.Series(eigvals, index=list(range(1,len(eigvals)+1)))
+    data.index.name = 'Eigenvalue'
+    data.name = title
+
+    return data
+
+def _extract_hilbert_data(fhandle):
+    '''Extract metadata and calculation data for a Hilbert space calculation.
+
+Parameters
+----------
+fhandle : file
+    File handle to a HANDE output file opened at the start of a Hilbert space
+    calculation block, as denoted by the section title.
+
+Returns
+-------
+(metadata, data) : (dict, :class:`pandas.Series`)
+    Dictionary of calculation metadata (input values, defaults, etc) and the
+    Hilbert space results obtained from the output file.
+'''
+
+    metadata = {}
+    for line in fhandle:
+        if 'Monte-Carlo estimate of size of space is' in line:
+            if '+/-' in line:
+                estimate = float(line.split()[-3])
+                std_err = float(line.split()[-1])
+                data = {'Monte Carlo estimate': estimate,
+                        'standard error': std_err}
+            else:
+                estimate = float(line.split()[-1])
+                data = {'Monte Carlo estimate': estimate}
+            data = pd.Series(data)
+            data.name = 'Hilbert space'
+            break
+        elif 'Size of space is' in line:
+            # Deterministic value rather than MC estimate.
+            data = pd.Series({'size': float(line.split()[-1])})
+            data.name = 'Hilbert space'
+            break
+        elif 'Start JSON block' in line:
+            metadata = _extract_json(fhandle)
+    return (metadata, data)
+
+def _convert_to_csv(fhandle, comment='#'):
     '''Convert the HANDE data table in a file to CSV format.
 
 Parameters
 ----------
-filename : string
-    name of HANDE output file.
-start_line : int
-    line number at which the QMC data table starts.
+fhandle: file
+    python file handle of HANDE output file open at start of data table.
 comment : string
     Single character which indicates a comment line if its the first
     non-whitespace character in a line.
 
 .. note::
 
-    We assume the table finishes at the first blank line after start_line.
+    We assume the table finishes at the next blank line.
 
 Returns
 -------
-temp_file_name : string
-    name of the CSV temporary file.
+temp_filename : string
+    name of the CSV temporary file containing the data table.
+comment_file_filename : string
+    name of file containing the comment lines extracted from the data table.
 '''
-    tmp = tempfile.NamedTemporaryFile(delete=False, mode='w')
-    nlines = 0
-    f = open(filename)
-    for line in f:
-        nlines += 1
-        if nlines >= start_line:
-            csv_line = ','.join(line.strip().split())
-            if not csv_line:
-                # blank line => end of data table.
-                break
-            elif not csv_line.startswith(comment):
-                tmp.write(csv_line+'\n')
-    f.close()
-    tmp.close()
+    data = tempfile.NamedTemporaryFile(delete=False, mode='w')
+    comment_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+    for line in fhandle:
+        csv_line = ','.join(line.strip().split())
+        if not csv_line:
+            # blank line => end of data table.
+            break
+        elif csv_line.startswith(comment):
+            comment_file.write(line)
+        else:
+            data.write(csv_line+'\n')
+    data.close()
+    comment_file.close()
+    return (data.name, comment_file.name)
 
-    return tmp.name
-
-def _extract_calc_data(fh, line):
-    '''Extract non-QMC calculation output from a HANDE output file.
+def _extract_json(fhandle, find_start=False, max_end=None):
+    '''Extract JSON output from a HANDE output file.
 
 Parameters
 ----------
+fhandle : file
+    File handle to a HANDE output file.
+find_start : boolean
+    If true, search for the start of the JSON block.  If false (default), then
+    the file is assumed to be opened at the start of the JSON block.
+max_end : string
+    If find_start is True and max_end is not None, the search for the JSON block
+    is aborted if a line containing max_end is found, in which case an empty
+    dict is returned.
 
-fh : file handle
-    Open file handle to a HANDE output file, positioned at the start of a
-    section containing the results from a non-QMC calculation.
-line : string
-    Contents of the current line in fh.
+.. note::
 
-Returns
--------
-data : `:class:`pandas.Series`
-    Calculation data found.
-nread : int
-    Number of lines read.
-'''
-    nread = 0
-    if any(key in line for key in ('Exact', 'Lanczos', 'LAPACK', 'LANCZOS', 'RDM')):
-        if 'Exact' in line or 'LAPACK' in line:
-            title = 'FCI (LAPACK)'
-        elif 'Lanczos' in line or 'LANCZOS' in line:
-            title = 'FCI (Lanczos)'
-        elif 'RDM' in line:
-            title = 'FCI RDM'
-        for line in fh:
-            nread += 1
-            if 'State' in line:
-                break
-        eigvals = []
-        for line in fh:
-            nread += 1
-            if not line.split():
-                break
-            eigvals.append(float(line.split()[-1]))
-        data = pd.Series(eigvals, index=list(range(1,len(eigvals)+1)))
-        data.index.name = 'Eigenvalue'
-        data.name = title
-    elif 'Hilbert space' in line:
-        for line in fh:
-            nread += 1
-            if 'Monte-Carlo estimate of size of space is' in line:
-                if '+/-' in line:
-                    estimate = float(line.split()[-3])
-                    std_err = float(line.split()[-1])
-                    data = {'Monte Carlo estimate': estimate,
-                            'standard error': std_err}
-                else:
-                    estimate = float(line.split()[-1])
-                    data = {'Monte Carlo estimate': estimate}
-                data = pd.Series(data)
-                data.name = 'Hilbert space'
-                break
-            elif 'Size of space is' in line:
-                # Deterministic value rather than MC estimate.
-                data = pd.Series({'size': float(line.split()[-1])})
-                data.name = 'Hilbert space'
-                break
-    return (data, nread)
-
-
-def extract_input(metadata, variable):
-    '''Extract input information about specific variable.
-
-Parameters
-----------
-metadata : :class:`pandas.DataFrame`
-    metadata (i.e. calculation information, parameters and settings) extracted
-    from output files.
-variable : string
-    input variable whose value is desired.
+    HANDE output contains blocks of output in JSON format.  The start of such
+    a block is denoted by a line containing the string 'Start JSON block' and
+    then end by a line containing the string 'End JSON block'.
 
 Returns
 -------
-value : string
-    value associated with variable in input file.
+json_dict : dict
+    JSON output loaded into a dictionary.
 '''
 
-    value = [x.split()[2].split(',')[0] for x in metadata[0]['input'] if variable in x]
-    return (value)
+    found_json = True
+    if find_start:
+        for line in fhandle:
+            if 'Start JSON block' in line:
+                break
+            elif max_end is not None and max_end in line:
+                found_json = False
+                break
+    json_text = ''
+    if found_json:
+        for line in fhandle:
+            if ' End JSON block' in line:
+                break
+            else:
+                json_text += line
+    if json_text:
+        return json.loads(json_text)
+    else:
+        return {}

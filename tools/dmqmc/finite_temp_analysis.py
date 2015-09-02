@@ -15,6 +15,7 @@ import pyblock
 import optparse
 import numpy as np
 import scipy.interpolate
+import warnings
 
 def analyse_observables(means, covariances, nsamples):
     '''Calculate all mean and error estimates of the form Tr(\rho O)/Tr(\rho).
@@ -264,24 +265,44 @@ None.
 '''
 
     (files, options) = parse_args(args)
-    (metadata, data) = pyhande.extract.extract_data_sets(files)
+    hande_out = pyhande.extract.extract_data_sets(files)
 
-    # Convert the iteration number to the beta value.
-    tau = metadata[0]['tau']
-    data.rename(columns={'iterations' : 'Beta'}, inplace=True)
-    data['Beta'] = data['Beta']*tau
+    (metadata, data) = ([], [])
+    for (md, df) in hande_out:
+        if 'DMQMC' in md['calc_type']:
+            metadata.append(md)
+            # Convert the iteration number to the beta value.
+            if 'qmc' in md:
+                # New style JSON-based metadata
+                tau = md['qmc']['tau']
+            else:
+                # Grudgingly support hacked old metadata extraction.
+                tau = md['tau']
+            df.rename(columns={'iterations' : 'Beta'}, inplace=True)
+            df['Beta'] = df['Beta']*tau
+            data.append(df)
+    if data:
+        data = pd.concat(data)
+
+    # Sanity check: Same time step used in all calculations?
+    # Only check for new metadata format...
+    if 'qmc' in metadata[0]:
+        tau = metadata[0]['qmc']['tau']
+        for md in metadata[1:]:
+            if 'tau' in md['qmc'] and md['qmc']['tau'] != tau:
+                warnings.warn('Tau values in input files not consistent.')
 
     # Make the Beta column a MultiIndex.
     data.set_index('Beta', inplace=True, append=True)
     # The number of beta loops contributing to each beta value.
-    nsamples = data['Trace'].groupby(level=2).count()
+    nsamples = data['Trace'].groupby(level=1).count()
     beta_values = nsamples.index.values
     # The data that we are going to use.
     estimates = data.loc[:,'Shift':'# H psips']
     # Compute the mean of all estimates across all beta loops.
-    means = estimates.groupby(level=2).mean()
+    means = estimates.groupby(level=1).mean()
     # Compute the covariances between all pairs of columns.
-    covariances = estimates.groupby(level=2).cov()
+    covariances = estimates.groupby(level=1).cov()
 
     columns = list(estimates.columns.values)
 
