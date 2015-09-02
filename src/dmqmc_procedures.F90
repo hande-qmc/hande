@@ -184,7 +184,7 @@ contains
         use checking, only: check_allocate
         use dmqmc_data, only: subsys_t, dmqmc_inst_rdms_t
         use errors
-        use fciqmc_data, only: real_bit_shift
+        use fciqmc_data, only: real_factor
         use hash_table, only: alloc_hash_table
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t, proc_map_t
@@ -304,7 +304,7 @@ contains
                     ! Also we use spawn_t only as a lookup/storage/compression device for the RDMs so
                     ! need not worry about hashing identical amounts of data irrespective of DET_SIZE.
                     call alloc_spawn_t(subsys_info(i)%string_len*2, subsys_info(i)%string_len*2*i0_length, nreplicas, .false., &
-                                       spawn_length_loc, qmc_in%spawn_cutoff, real_bit_shift, pm_dummy, 27, &
+                                       spawn_length_loc, qmc_in%spawn_cutoff, real_factor, pm_dummy, 27, &
                                        qmc_in%use_mpi_barriers, inst_rdms%spawn(i)%spawn)
                     ! Hard code hash table collision limit for now.  The length of
                     ! the table is three times as large as the spawning arrays and

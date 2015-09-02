@@ -12,24 +12,22 @@ implicit none
 
 !--- Input data: FCIQMC ---
 
-! [todo] - It is somewhat inelegant to store/pass around real_factor or real_bit_shift separately,
+! [todo] - It is somewhat inelegant to store/pass around real_factor separately,
 ! [todo] - when really they are variables telling us about the representation of the population data.
 ! [todo] - As such, the separation is not entrely helpful.  It would make more sense encoded with the
 ! [todo] - data itself -  it makes no sense without the data, and the data make no sense without it.
 ! [todo] - Convert to a derived type.  (From AJWT.)
 !
 ! [todo] - The code currently uses c = real(a)/real_factor everywhere.  However, one of 
-! [todo] - the joys of fixed precision arithmetic is that c=(a*b)>>real_bit_shift.
+! [todo] - the joys of fixed precision arithmetic is that c=(a*b)>>pop_bit_shift.
 ! [todo] - is (or used to be) a lot faster than c=(real(a)/real_factor)*(real(b)/real_factor)
 ! [todo] - It is however a little more obfuscated though, but carrying fixed-precision all the
 ! [todo] - through the code might give a benefit.  Of course the best implementation would
 ! [todo] - be to hide the details in a class.  (From AJWT.)
 !
-! [todo] - real_bit_shift and real_factor really should be compile-time constants.
-! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
-! encoded as integers by multiplying them by 2**(real_bit_shift).
-integer :: real_bit_shift
-! real_factor = 2**(real_bit_shift)
+! Real amplitudes can be any multiple of 2**(-pop_bit_shift). They are
+! encoded as integers by multiplying them by 2**(pop_bit_shift).
+! real_factor = 2**(pop_bit_shift)
 integer(int_p) :: real_factor
 
 ! When using the Neel singlet trial wavefunction, it is convenient

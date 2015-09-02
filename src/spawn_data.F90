@@ -56,8 +56,8 @@ type spawn_t
     ! with populations below this threshold should be stochastically rounded
     ! up to it or down to zero.
     ! During creation of a spawn_t instance, cutoff is multiplied by
-    ! 2^(real_bit_shift) and rounded up to nearest integer, and then stored in
-    ! this format.
+    ! real_factor = 2^(real_bit_shift) and rounded up to nearest integer, and
+    ! then stored in this format.
     integer(int_p) :: cutoff
 
     ! sdata holds the spawned particles and associated information.
@@ -153,7 +153,7 @@ contains
 
 !--- Initialisation/finalisation ---
 
-    subroutine alloc_spawn_t(bit_str_len, bit_str_nbits, ntypes, flag, array_len, cutoff, bit_shift, proc_map, hash_seed, &
+    subroutine alloc_spawn_t(bit_str_len, bit_str_nbits, ntypes, flag, array_len, cutoff, real_factor, proc_map, hash_seed, &
                              mpi_barriers, spawn)
 
         ! Allocate and initialise a spawn_t object.
@@ -166,6 +166,8 @@ contains
         !       for each entry.
         !    cutoff: The size of the minimum spawning event allowed.
         !    bit_shift: The number of bits to shift the cutoff by when encoding it.
+        !    real_factor: The factor by which populations are multiplied to
+        !        encode non-integer populations as fixed-precision integers.
         !    mpi_barriers: If true then use an mpi_barrier call to measure
         !        load balancing before semi-stochastic communication.
         ! Out:
@@ -178,7 +180,8 @@ contains
         use checking, only: check_allocate
         use errors, only: stop_all
 
-        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_shift, bit_str_nbits
+        integer, intent(in) :: bit_str_len, ntypes, array_len, hash_seed, bit_str_nbits
+        integer(int_p) :: real_factor
         real(p) :: cutoff
         logical, intent(in) :: flag, mpi_barriers
         type(proc_map_t), intent(in) :: proc_map
@@ -209,7 +212,7 @@ contains
         ! populations (see comments for particle_t%pops) and round up to
         ! nearest integer. (It may not be possible to use the exact cutoff
         ! requested. This will be the case if rounding is required).
-        spawn%cutoff = ceiling(cutoff*(2_int_p**int(bit_shift,int_p)), int_p)
+        spawn%cutoff = ceiling(cutoff*real_factor, int_p)
 
         ! Dare not risk allocate(A, mold=B) from F2008 yet...
         allocate(spawn%proc_map%map(lbound(proc_map%map,dim=1):ubound(proc_map%map,dim=1)), stat=ierr)

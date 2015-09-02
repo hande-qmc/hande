@@ -35,7 +35,7 @@ contains
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_in_t), intent(in) :: qmc_in
 
-        integer :: i, ierr
+        integer :: i, ierr, pop_bit_shift
 
         ! Set the real encoding shift, depending on whether 32 or 64-bit integers
         ! are being used.
@@ -43,11 +43,11 @@ contains
             if (bit_size(0_int_p) == 64) then
                 ! Allow a maximum population of 2^32, and a minimum fractional
                 ! part of 2^-31.
-                real_bit_shift = 31
+                pop_bit_shift = 31
             else if (bit_size(0_int_p) == 32) then
                 ! Allow a maximum population of 2^20, and a minimum fractional
                 ! part of 2^-11.
-                real_bit_shift = 11
+                pop_bit_shift = 11
                 if (parent) then
                     call warning('init_qmc_legacy', &
                         'You are using 32-bit walker populations with real amplitudes.'//new_line('')// &
@@ -58,10 +58,10 @@ contains
             end if
         else
             ! Allow no fractional part for walker populations.
-            real_bit_shift = 0
+            pop_bit_shift = 0
         end if
-        ! Store 2**real_bit_shift for ease.
-        real_factor = 2_int_p**(int(real_bit_shift, int_p))
+        ! Store 2**pop_bit_shift for ease.
+        real_factor = 2_int_p**(int(pop_bit_shift, int_p))
 
         if (present(fciqmc_in)) then
             ! Calculate all the possible different amplitudes for the Neel singlet state
@@ -277,11 +277,11 @@ contains
                 nhash_bits = sys%basis%nbasis
             end if
             call alloc_spawn_t(sys%basis%tensor_label_len, nhash_bits, pl%nspaces, qmc_in%initiator_approx, &
-                               max_nspawned_states, spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, &
+                               max_nspawned_states, spawn_cutoff, real_factor, qmc_state%par_info%load%proc_map, 7, &
                                qmc_in%use_mpi_barriers, spawn)
             if (fciqmc_in_loc%non_blocking_comm) then
                 call alloc_spawn_t(sys%basis%tensor_label_len, nhash_bits, pl%nspaces, qmc_in%initiator_approx, &
-                                   max_nspawned_states, spawn_cutoff, real_bit_shift, qmc_state%par_info%load%proc_map, 7, &
+                                   max_nspawned_states, spawn_cutoff, real_factor, qmc_state%par_info%load%proc_map, 7, &
                                    .false., spawn_recv)
             end if
 
