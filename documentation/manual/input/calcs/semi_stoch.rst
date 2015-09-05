@@ -51,7 +51,7 @@ stochastic error in many cases.
     additional MPI call.  If false, the annihilation of particles created from
     deterministic and stochastic projections are performed separately, which removes the
     need for an additional MPI call at the cost of communicating an additional
-    :math:`N_p \times (N_D-1)` more amplitudes, where :math:`N_p` is the number of
+    :math:`\mathcal{O}(N_p N_D)` more amplitudes, where :math:`N_p` is the number of
     processors and :math:`N_D` the size of the deterministic space.  If the deterministic
     space is small and communication latency high, setting ``separate_annihilation`` to
     false might improve performance.  For most systems and computer architectures, the
