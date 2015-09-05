@@ -41,34 +41,33 @@ implicit none
 
 contains
 
-    pure function importance_sampling_weight(guiding_function, cdet, pop) result(weight)
+    pure function importance_sampling_weight(trial, cdet, pop) result(weight)
 
         ! Calculate c_i from f_i.
 
         ! In:
-        !    guiding_function: guiding function in use.  See enum in qmc_data for possible options.
+        !    trial: guiding wavefunction in use, containing both wavefunction type and (if relevant)
+        !       associated data.  See importance_sampling_data for supported wavefunctions.
         !    cdet: det_info_t object representing the i-th state (tensor product, determinant, etc.).
         !    pop: current population on i, giving a stochastic representation of f_i.
         ! Returns:
         !    stochastic representation of c_i.
 
         use determinants, only: det_info_t
-        use qmc_data, only: single_basis, neel_singlet_guiding
-
-        use fciqmc_data, only: neel_singlet_amp
+        use importance_sampling_data
 
         real(p) :: weight
-        integer, intent(in) :: guiding_function
+        type(trial_t), intent(in) :: trial
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         integer :: n
 
-        select case(guiding_function)
+        select case(trial%guide)
         case(single_basis)
             weight = pop
         case(neel_singlet_guiding)
             n = nint(cdet%data(size(cdet%data)-1))
-            weight = pop/neel_singlet_amp(n)
+            weight = pop/trial%wfn_dat(n)
         end select
 
     end function importance_sampling_weight
@@ -120,7 +119,7 @@ contains
 
         ! For a given number of spins up on sublattice 1, n, the corresponding
         ! ampltidue of this basis function in the trial function is stored as
-        ! neel_singlet_amp(n), for this particular trial function. Hence we have:
+        ! trial_func(n), for this particular trial function. Hence we have:
         hmatel = (trial_func(up_spins_to)*hmatel)/trial_func(up_spins_from)
 
     end subroutine neel_trial_state

@@ -165,10 +165,9 @@ contains
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
-            call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len, &
-                                       fciqmc_in%guiding_function)
+            call initial_fciqmc_status(sys, qmc_in, qs, .true., send_counts(iproc)/qs%spawn_store%spawn_recv%element_len)
         else
-            call initial_fciqmc_status(sys, qmc_in, qs, guiding_function=fciqmc_in%guiding_function)
+            call initial_fciqmc_status(sys, qmc_in, qs)
         end if
         ! Initialise timer.
         call cpu_time(t1)
@@ -204,7 +203,7 @@ contains
 
                     ! Extract the real sign from the encoded sign.
                     real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor
-                    weighted_population = importance_sampling_weight(fciqmc_in%guiding_function, cdet, real_population)
+                    weighted_population = importance_sampling_weight(qs%trial, cdet, real_population)
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array.
@@ -214,8 +213,8 @@ contains
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, cdet, weighted_population, qs%estimators%D0_population, &
-                                                qs%estimators%proj_energy, connection, hmatel)
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
+                                                qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
                     call set_parent_flag(real_population, qmc_in%initiator_pop, cdet%f, determ%flags(idet), cdet%initiator_flag)
@@ -226,7 +225,7 @@ contains
 
                         ! Attempt to spawn.
                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                        cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, nspawned, connection)
+                                        cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, qs%trial%wfn_dat, nspawned, connection)
 
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
@@ -413,7 +412,7 @@ contains
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, cdet, real_pop, qs%estimators%D0_population, &
+            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators%D0_population, &
                                         qs%estimators%proj_energy, connection, hmatel)
 
             ! Is this determinant an initiator?
@@ -427,7 +426,7 @@ contains
 
                 ! Attempt to spawn.
                 call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, qs%psip_list%pop_real_factor, cdet, int_pop(1), &
-                                 gen_excit_ptr, neel_singlet_amp, nspawned, connection)
+                                 gen_excit_ptr, qs%trial%wfn_dat, nspawned, connection)
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then

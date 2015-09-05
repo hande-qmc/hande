@@ -659,7 +659,7 @@ contains
                             ! must divide through by the probability of selecting
                             ! the cluster.
                             connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%ref%f0)
-                            call update_proj_energy_ptr(sys, qs%ref%f0, cdet(it), &
+                            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet(it), &
                                      cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
                                      D0_population_cycle, proj_energy_cycle, connection, junk)
                         end if

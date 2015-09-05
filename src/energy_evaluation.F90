@@ -532,7 +532,7 @@ contains
 
 !--- Projected estimator updates ---
 
-    pure subroutine update_proj_energy_hub_k(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_hub_k(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -546,6 +546,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    f0: reference determinant.
+        !    wfn_dat: trial wavefunction data (unused, included for interface compatibility).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -569,6 +570,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -588,7 +590,7 @@ contains
 
     end subroutine update_proj_energy_hub_k
 
-    pure subroutine update_proj_energy_hub_real(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_hub_real(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -602,6 +604,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    f0: reference determinant.
+        !    wfn_dat: trial wavefunction data (unused, included for interface compatibility).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -625,6 +628,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -643,7 +647,7 @@ contains
 
     end subroutine update_proj_energy_hub_real
 
-    pure subroutine update_proj_energy_mol(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_mol(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -658,6 +662,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    f0: reference determinant.
+        !    wfn_dat: trial wavefunction data (unused, included for interface compatibility).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -682,6 +687,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -725,7 +731,7 @@ contains
 
     end subroutine update_proj_energy_mol
 
-    pure subroutine update_proj_energy_ueg(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_ueg(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -738,6 +744,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    f0: reference determinant.
+        !    wfn_dat: trial wavefunction data (unused, included for interface compatibility).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -761,6 +768,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -782,7 +790,7 @@ contains
 
     end subroutine update_proj_energy_ueg
 
-    pure subroutine update_proj_energy_ringium(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_ringium(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -795,6 +803,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    f0: reference determinant.
+        !    wfn_dat: trial wavefunction data (unused, included for interface compatibility).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -819,6 +828,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum

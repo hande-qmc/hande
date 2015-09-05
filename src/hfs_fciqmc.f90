@@ -49,7 +49,7 @@ contains
         use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
-        use fciqmc_data, only: neel_singlet_amp, write_fciqmc_report_header, write_fciqmc_report
+        use fciqmc_data, only: write_fciqmc_report_header, write_fciqmc_report
         use hfs_data
         use ifciqmc, only: set_parent_flag
         use interact, only: calc_interact, check_comms_file
@@ -158,7 +158,7 @@ contains
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, cdet, real_population(1),  &
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_population(1),  &
                                                 qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(qs%psip_list%pops(1,idet)),&
@@ -181,8 +181,7 @@ contains
 
                         ! Attempt to spawn Hamiltonian walkers..
                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                         cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, &
-                                         nspawned, connection)
+                                         cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, qs%trial%wfn_dat, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
@@ -194,8 +193,8 @@ contains
                         ! Hamiltonian walkers.
                         ! [todo] - JSS: real populations for HFS spawner.
                         call spawner_hfs_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                             cdet, qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, neel_singlet_amp, &
-                                             nspawned, connection)
+                                             cdet, qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, qs%trial%wfn_dat, nspawned, &
+                                             connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
@@ -211,8 +210,7 @@ contains
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                         cdet, qs%psip_list%pops(2,idet), gen_excit_ptr, neel_singlet_amp, &
-                                         nspawned, connection)
+                                         cdet, qs%psip_list%pops(2,idet), gen_excit_ptr, qs%trial%wfn_dat, nspawned, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)

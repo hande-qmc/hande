@@ -10,50 +10,6 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc_legacy(sys, qmc_in, fciqmc_in)
-
-        ! Do some legacy initialisation (ie things which should not be
-        ! global/modified in input structures/etc).
-
-        ! In:
-        !    sys: the system being studied.
-        !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
-        !       if dmqmc_in%propagate_to_beta is true.
-        ! In (optional):
-        !    fciqmc_in: FCIQMC input options.
-        !    dmqmc_in: DMQMC input options.
-
-        use checking, only: check_allocate
-        use parallel, only: parent
-        use utils, only: factorial_combination_1
-
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, qmc_state_t, neel_singlet
-        use system, only: sys_t
-
-        type(sys_t), intent(in) :: sys
-        type(fciqmc_in_t), intent(in), optional :: fciqmc_in
-        type(qmc_in_t), intent(in) :: qmc_in
-
-        integer :: i, ierr
-
-        if (present(fciqmc_in)) then
-            ! Calculate all the possible different amplitudes for the Neel singlet state
-            ! and store them in an array
-            if (fciqmc_in%trial_function == neel_singlet) then
-                allocate(neel_singlet_amp(-1:(sys%lattice%nsites/2)+1), stat=ierr)
-                call check_allocate('neel_singlet_amp',(sys%lattice%nsites/2)+1,ierr)
-
-                neel_singlet_amp(-1) = 0
-                neel_singlet_amp((sys%lattice%nsites/2)+1) = 0
-                do i=0,(sys%lattice%nsites/2)
-                    neel_singlet_amp(i) = factorial_combination_1( (sys%lattice%nsites/2)-i , i )
-                    neel_singlet_amp(i) = -(2*mod(i,2)-1) * neel_singlet_amp(i)
-                end do
-            end if
-        end if
-
-    end subroutine init_qmc_legacy
-
     subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, dmqmc_in, fciqmc_in)
 
         ! Initialisation for fciqmc calculations.
@@ -165,6 +121,8 @@ contains
             end if
             if (present(fciqmc_in)) then
                 annihilation_flags%trial_function = fciqmc_in%trial_function
+                qmc_state%trial%wfn = fciqmc_in%trial_function
+                qmc_state%trial%guide = fciqmc_in%guiding_function
             end if
 
             ! Set the real encoding shift, depending on whether 32 or 64-bit integers
@@ -179,7 +137,7 @@ contains
                     ! part of 2^-11.
                     pop_bit_shift = 11
                     if (parent) then
-                        call warning('init_qmc_legacy', &
+                        call warning('init_qmc', &
                             'You are using 32-bit walker populations with real amplitudes.'//new_line('')// &
                             ' The maximum population size on a given determinant is 2^20=1048576.&
                             & Errors will occur if this is exceeded.'//new_line('')//&
@@ -262,8 +220,6 @@ contains
                                             'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
 
-            call init_qmc_legacy(sys, qmc_in, fciqmc_in)
-
             ! If not using real amplitudes then we always want spawn_cutoff to be
             ! equal to 1.0, so overwrite the default before creating spawn_t objects.
             spawn_cutoff = qmc_in%spawn_cutoff
@@ -288,6 +244,22 @@ contains
             call check_allocate('reference%f0',sys%basis%string_len,ierr)
             allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
             call check_allocate('reference%hs_f0', size(reference%hs_f0), ierr)
+
+            ! --- Importance sampling ---
+
+            if (qmc_state%trial%wfn == neel_singlet) then
+                ! Calculate all the possible different amplitudes for the Neel singlet state
+                ! and store them in an array
+                allocate(qmc_state%trial%wfn_dat(-1:(sys%lattice%nsites/2)+1), stat=ierr)
+                call check_allocate('qmc_state%trial%wfn_dat',(sys%lattice%nsites/2)+1,ierr)
+
+                qmc_state%trial%wfn_dat(-1) = 0
+                qmc_state%trial%wfn_dat((sys%lattice%nsites/2)+1) = 0
+                do i=0,(sys%lattice%nsites/2)
+                    qmc_state%trial%wfn_dat(i) = factorial_combination_1( (sys%lattice%nsites/2)-i , i )
+                    qmc_state%trial%wfn_dat(i) = -(2*mod(i,2)-1) * qmc_state%trial%wfn_dat(i)
+                end do
+            end if
 
             ! --- Initial walker distributions ---
             ! Note occ_list could be set and allocated in the input.

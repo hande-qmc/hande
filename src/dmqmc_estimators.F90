@@ -498,9 +498,11 @@ contains
         real(p), intent(inout) :: energy
 
         real(p) :: hmatel
+        ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
+        real(p) :: trial_wfn_dat(0)
 
         ! Update trace and off-diagonal contributions to the total enegy
-        call update_proj_energy_ptr(sys, cdet%f2, cdet, pop, trace(1), energy, excitation, hmatel)
+        call update_proj_energy_ptr(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
 
         ! Update diagaonal contribution to the total energy
         if (excitation%nexcit == 0) energy = energy + (diagonal_contribution+H00)*pop
@@ -542,9 +544,11 @@ contains
         real(p), intent(inout) :: energy
 
         real(p) :: hmatel
+        ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
+        real(p) :: trial_wfn_dat(0)
 
         ! Update trace and off-diagonal contributions to the total enegy
-        call update_proj_energy_ptr(sys, cdet%f2, cdet, pop, trace(1), energy, excitation, hmatel)
+        call update_proj_energy_ptr(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
 
         ! Update diagaonal contribution to the total energy
         if (excitation%nexcit == 0) energy = energy + sc0_ptr(sys, cdet%f)*pop
