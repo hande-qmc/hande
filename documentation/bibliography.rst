@@ -1,11 +1,19 @@
 Bibliography
 ============
 
-.. [BoothThomAlavi09] Booth GH, Thom AJW, Alavi A. Fermion Monte Carlo without fixed nodes: a game of life, death, and annihilation in Slater determinant space. The Journal of Chemical Physics. 2009;131(5):054106.
-.. [ClelandBoothAlavi10] Cleland D, Booth GH, Alavi A. Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. The Journal of Chemical Physics. 2010;132(4):041103. 
-.. [Thom10] Thom AJW, Stochastic Coupled Cluster Theory, Physical Review Letters, 236004, 105 (2010).
-.. [FlyvbjergPetersen89] Flyvbjerg, H., & Petersen, H. G. (1989). Error estimates on averages of correlated data. The Journal of Chemical Physics, 91(July), 461. 
-.. [KnowlesHandy89] Knowles, P. J., Handy N. C., A determinant based full configuration interaction program. Computer Physics Communications 1989;54(1):75.
-.. [BluntRogersSpencerFoulkes14] N. S. Blunt, T. W. Rogers, J. S. Spencer, and W. M. C. Foulkes, Density-matrix quantum Monte Carlo method. Physical Review B, 2014;89(24):245124.
-.. [BoothPhD] GH Booth, "A novel Quantum Monte Carlo method for molecular systems", PhD thesis, University of Cambridge (2010).
-.. [LoosGill13] Loos PF, Gill PMW, Uniform electron gases. I. Electrons on a ring. The Journal of Chemical Physics, 2013;138(16):164124.
+.. [Blunt14] N.S. Blunt, T.W. Rogers, J.S. Spencer, W.M.C. Foulkes, Density-matrix quantum Monte Carlo method, Phys. Rev. B, 89, 245124 (2014).
+.. [Blunt15] N.S. Blunt, S.D. Smart, J.A.F. Kersten, J.S. Spencer, G.H. Booth, A. Alavi, Semi-stochastic full configuration interaction quantum Monte Carlo: Developments and application., J. Chem. Phys. 142, 184107 (2015).
+.. [Booth09] G.H. Booth, A.J.W. Thom, A. Alavi, Fermion Monte Carlo without fixed nodes: a game of life, death, and annihilation in Slater determinant space, J. Chem. Phys. 131, 054106 (2009).
+.. [Booth10] G.H. Booth, A novel Quantum Monte Carlo method for molecular systems, PhD thesis, University of Cambridge (2010).
+.. [Cleland10] D. Cleland, G.H. Booth, A. Alavi, Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. The Journal of Chemical Physics. 132, 041103 (2010). 
+.. [Flyvbjerg89] H. Flyvbjerg, H. G. Petersen, Error estimates on averages of correlated data, J. Chem. Phys. 91, 461 (1989). 
+.. [Knowles89] P.J. Knowles, N.C. Handy, A determinant based full configuration interaction program, Comput. Phys. Comm. 54, 75 (1989).
+.. [Loos13] P.F. Loos, P.M.W. Gill, Uniform electron gases. I. Electrons on a ring. J. Chem. Phys. 138, 164124 (2013).
+.. [Malone15] F.D. Malone, N.S. Blunt, J.J. Shepherd, D.K.K. Lee, J.S. Spencer, W.M.C. Foulkes, Interaction picture density matrix quantum Monte Carlo, J. Chem. Phys. 143, 044116 (2015).
+.. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
+.. [Shepherd14] J.J. Shepherd, G.E. Scuseria, J.S. Spencer, Sign problem in full configuration interaction quantum Monte Carlo: Linear and sublinear representation regimes for the exact wave function, Phys. Rev. B 90, 155130 (2014).
+.. [Spencer12] J.S. Spencer, N.S. Blunt, W.M.C. Foulkes, The sign problem and population dynamics in the full configuration interaction quantum Monte Carlo method, J. Chem. Phys. 136, 054110 (2012).
+.. [Spencer14] J.S. Spencer, N.S. Blunt, W.A. Vigor, F.D. Malone, W.M.C. Foulkes, J.J. Shepherd, and A.J.W. Thom, The Highly Accurate N-DEterminant (HANDE) quantum Monte Carlo project: Open-source stochastic diagonalisation for quantum chemistry, arXiv:1407.5407 (2014).
+.. [Thom10] A.J.W. Thom, Stochastic Coupled Cluster Theory, Phys. Rev. Lett. 105, 236004 (2010).
+.. [Umrigar93] C.J. Umrigar, M.P. Nightingale, K.J. Runge, A diffusion Monte Carlo algorithm with very small time‐step errors, J. Chem. Phys. 99, 2865 (1993).
+.. [Vigor15] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom. "Minimising biases in full configuration interaction quantum Monte Carlo, J. Chem. Phys. 142, 104101 (2015).

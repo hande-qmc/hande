@@ -144,7 +144,7 @@ proportion of the population on the reference (excluding points when the
 population drops below min_pop excips (psips). The shoulder height is the total
 population at this point.
 
-Credit to AJWT for original implementation.
+Credit to Alex Thom for original implementation.
 
 Parameters
 ----------
@@ -198,7 +198,7 @@ This tends to give similar numbers to shoulder_estimator, though may be less
 useful for shoulder-like plateaus.  Detecting a plateau automatically is tricky
 so having multiple approaches for comparison helps with corner cases.
 
-Used in PRB 90, 155130 (2014) by Shepherd, Scuseria, Spencer.
+Used in [Shepherd14]_.
 
 Credit to James Shepherd for the idea and original (perl) implementation.
 
@@ -222,6 +222,11 @@ Returns
 -------
 plateau : float
     An estimate of the population at the plateau.
+
+References
+----------
+Shepherd14
+    J.J. Shepherd et al., Phys. Rev. B 90, 155130 (2014).
 '''
     if pop_data is None:
         pop_data = extract_pop_growth(data, shift_key=shift_key, min_ref_pop=0)

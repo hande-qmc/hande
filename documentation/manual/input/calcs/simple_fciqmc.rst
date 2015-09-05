@@ -3,7 +3,7 @@
 Full Configuration Interaction Quantum Monte Carlo (simple)
 ===========================================================
 
-Find the ground state of a system via FCIQMC.
+Find the ground state of a system via FCIQMC [Booth09]_.
 
 .. code-block:: lua
 

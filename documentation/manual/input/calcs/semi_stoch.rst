@@ -3,7 +3,7 @@
 semi_stoch options
 ==================
 
-The semi-stochastic approach divides the Hilbert space into two regions: a small region in
+The semi-stochastic approach [Petruzielo12]_, [Blunt15]_ divides the Hilbert space into two regions: a small region in
 which the action of the Hamiltonian is applied exactly, and the remainder of the Hilbert
 space, in which the action is applied stochastically.  This can substantially reduce the
 stochastic error in many cases.

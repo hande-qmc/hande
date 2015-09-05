@@ -13,7 +13,7 @@ Coupled Cluster Monte Carlo
         reference = { ... },
     }
 
-``ccmc`` performs a coupled cluster Monte Carlo (CCMC) calculation on a system.
+``ccmc`` performs a coupled cluster Monte Carlo (CCMC) calculation [Thom10]_ on a system.
 
 Options
 -------

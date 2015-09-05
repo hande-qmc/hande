@@ -63,9 +63,9 @@ Options
 
     Optional.
 
-    If set, even to an empty table, then interaction picture DMQMC is performed.  The
-    table can contain further options to control the IP-DMQMC algorithm.  See
-    :ref:`ipdmqmc_table`.
+    If set, even to an empty table, then interaction picture DMQMC [Malone15]_ is
+    performed.  The table can contain further options to control the IP-DMQMC algorithm.
+    See :ref:`ipdmqmc_table`.
 ``operators``
     type: lua table.
 

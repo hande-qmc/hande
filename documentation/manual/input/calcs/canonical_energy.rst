@@ -11,7 +11,7 @@ Canonical total energy
 
 ``canonical_energy`` calculates various energy estimates of a system in the canonical ensemble
 at a given temperature, using knowledge of the grand canonical ensemble and the single-particle
-eigenvalues of the underlying non-interacting system. Currently only implemented for the 3D-UEG.
+eigenvalues of the underlying non-interacting system.  See [Malone15]_ for details. Currently only implemented for the 3D-UEG.
 
 Options
 -------

@@ -16,7 +16,7 @@ Full Configuration Interaction Quantum Monte Carlo
     }
 
 ``fciqmc`` performs a full configuration interaction quantum Monte Carlo (FCIQMC)
-calculation on a system.
+calculation [Booth09]_ on a system.
 
 Options
 -------

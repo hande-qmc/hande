@@ -1,7 +1,7 @@
 Full Configuration Interaction
 ==============================
 
-Calculate the ground state of a system via a full diagonalisation of the Hamiltonian matrix.
+Calculate the ground state of a system via a full diagonalisation of the Hamiltonian matrix [Knowles89]_.
 
 .. code-block:: lua
 

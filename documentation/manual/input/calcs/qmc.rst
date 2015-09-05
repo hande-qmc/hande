@@ -205,7 +205,7 @@ algorithms and control the core settings in the algorithms.
 
     Optional.  Default: false.
 
-    Enable the initiator approximation, in which spawned particles are only kept if they
+    Enable the initiator approximation [Cleland10]_, in which spawned particles are only kept if they
     are created onto states which already have a non-zero population, or were produced by
     states which are already highly occupied (see ``initiator_threshold``), or multiple
     spawning events onto a previously unoccupied state occurred in the same timestep.

@@ -27,10 +27,10 @@ extract_psips : bool
     also extract the mean number of psips from the calculation.
 reweight_history : integer
     reweight in an attempt to remove population control bias. According to
-    C. J. Umirigar et. al. J. Chem. Phys. 99, 2865 (1993) this should be set
-    to be a few correlation times.
+    [Umrigar93]_ this should be set to be a few correlation times.
 mean_shift: float
     prevent the weights from beoming to large.
+
 Returns
 -------
 info : :func:`collections.namedtuple`
@@ -57,6 +57,11 @@ size from the blocking analysis:
 >>> std_analysis(['hande.fciqmc.out'], 10000)
 >>> std_analysis(['hande.fciqmc.out'],
 ...              select_function=lambda d: d['iterations'] > 10000)
+
+References
+----------
+Umrigar93
+    Umrigar et al., J. Chem. Phys. 99, 2865 (1993).
 '''
 
     hande_out = pyhande.extract.extract_data_sets(datafiles)

@@ -107,7 +107,7 @@ Ringium
 Returns:
     a system object.
 
-Ringium [LoosGill13]_, is a 1D system of electrons confined to a ring of radius :math:`R`:
+Ringium [Loos13]_, is a 1D system of electrons confined to a ring of radius :math:`R`:
 
 .. math::
 

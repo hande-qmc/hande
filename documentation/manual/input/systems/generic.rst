@@ -13,7 +13,7 @@ Returns:
 A generic system, including atoms and molecules, can be specified by providing a file
 containing information about the single-particle basis set and the one- and two-body
 integrals between these basis functions.  This file is in FCIDUMP format
-[KnowlesHandy89]_, which can be produced by several quantum chemistry packages including
+[Knowles89]_, which can be produced by several quantum chemistry packages including
 MOLPRO, Q-Chem (via additions from Alex Thom) and PSI4 (via a plugin from James Spencer).
 
 Options

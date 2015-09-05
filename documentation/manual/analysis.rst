@@ -28,7 +28,7 @@ As the particle distribution at one iteration is not independent from the distri
 the previous iteration, estimators at each iteration are not independent.  This
 correlation in the data needs to be taken into account when estimating standard errors.
 A simple and effective way of doing this is to use a blocking analysis
-[FlyvbjergPetersen89]_.
+[Flyvbjerg89]_.
 
 The ``reblock_hande.py`` script (in the ``tools`` subdirectory) does this.  Run
 
