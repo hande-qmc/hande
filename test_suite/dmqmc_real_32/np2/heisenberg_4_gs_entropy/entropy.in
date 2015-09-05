@@ -28,8 +28,9 @@ dmqmc {
    rdm = {
        rdms = { {1, 2} },
        spawned_state_size = 100,
---        start_averaging_rdm = 500,
---        concurrence = true,
---        von_neumann = true,
+       ground_state = true,
+       ground_state_start = 500,
+       concurrence = true,
+       von_neumann = true,
    },
 }
