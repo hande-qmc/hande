@@ -1,4 +1,4 @@
-'''Analysis helper routines for HANDE data.'''
+'''Analysis of data from FCIQMC and CCMC calculations.'''
 
 from os import path
 import numpy
@@ -18,7 +18,7 @@ The projected energy estimator is given by
 
 .. math::
 
-    E = \\frac{\\sum_H_0j N_j}{N_0}
+    E = \\frac{\\sum H_0j N_j}{N_0}
 
 The numerator and denominator are correlated and so their covariance must be
 taken into account.
@@ -34,11 +34,11 @@ covariance: :class:`pandas.DataFrame`
 data_length: :class:`pandas.DataFrame`
     number of data points in each reblock iteration.
 sum_key : string
-    column name in reblock_data containing :math:`\\sum_H_0j N_j``, i.e. the sum
+    column name in reblock_data containing :math:`\\sum H_0j N_j`, i.e. the sum
     of the population weighted by the Hamiltonian matrix element with the trial
     wavefunction.
 ref_key : string
-    column name in reblock_data containing :math:`N_0``, i.e. the population of
+    column name in reblock_data containing :math:`N_0`, i.e. the population of
     the trial wavefunction (often/originally just a single determinant).
 
 Returns
@@ -106,8 +106,8 @@ held constant.
 Parameters
 ----------
 data : :class:`pandas.DataFrame`
-    HANDE QMC data. The function pyhande.extract.extract_data_sets can be used
-    to extract this from a HANDE output file.
+    HANDE QMC data. :func:`pyhande.extract.extract_data_sets` can be used to
+    extract this from a HANDE output file.
 ref_key : string
     column name in reblock_data containing the number of psips on the reference
     determinant.
@@ -149,8 +149,8 @@ Credit to AJWT for original implementation.
 Parameters
 ----------
 data : :class:`pandas.DataFrame`
-    HANDE QMC data. The function pyhande.extract.extract_data_sets can 
-    be used to extract this from a HANDE output file.
+    HANDE QMC data. :func:`pyhande.extract.extract_data_sets` can be used to
+    extract this from a HANDE output file.
 total_key : string
     column name in reblock_data containing the total number of psips.
 ref_key : string
@@ -205,8 +205,8 @@ Credit to James Shepherd for the idea and original (perl) implementation.
 Parameters
 ----------
 data : :class:`pandas.DataFrame`
-    HANDE QMC data. The function pyhande.extract.extract_data_sets can
-    be used to extract this from a HANDE output file.
+    HANDE QMC data. func:`pyhande.extract.extract_data_sets` can be used to
+    extract this from a HANDE output file.
 total_key : string
     column name in reblock_data containing the total number of psips.
 shift_key : string

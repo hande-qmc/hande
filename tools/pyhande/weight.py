@@ -1,4 +1,4 @@
-'''Attempt to remove population control bias by reweighting averages.'''
+'''Attempt to remove the population control bias by reweighting estimates.'''
 
 import pandas as pd
 import numpy as np
@@ -12,11 +12,12 @@ Reweight estimators linear in the number of psips by the factor:
 
 .. math::
 
-    W(tau, N) = \\Pi^{N-1}_{m=0} e^{-\\delta A \\tau S(\\tau - m)}
+    W(\\tau, N) = \\Pi^{N-1}_{m=0} e^{-A \\delta \\tau S(\\tau - m\\delta\\tau)}
 
-where `A` is the number of steps per shift update cycle `S(\\tau - m)` is the
-shift on iteration `\\tau - m`, `\\delta \\tau` is the time step and `m` is the
-number of iterations to reweight over.
+where :math:`A` is the number of steps per shift update cycle,
+:math:`\\delta\\tau` is the time step and :math:`S(\\tau - m\\delta\\tau)` is
+the shift at time :math:`\\tau - m\\delta\\tau`, and :math:`m` is the number of
+iterations to reweight over.
 
 See C. J. Umirigar et. al. J. Chem. Phys. 99, 2865 (1993), Eqs. 14-20.
 

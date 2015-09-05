@@ -1,4 +1,4 @@
-'''Utility procedures'''
+'''Utility procedures for manipulating HANDE data.'''
 
 import numpy as np
 

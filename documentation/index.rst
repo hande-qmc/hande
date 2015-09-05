@@ -6,6 +6,7 @@ Contents
    :glob:
 
    manual/index
+   pyhande/pyhande
    dev_guide/index
 
    bibliography

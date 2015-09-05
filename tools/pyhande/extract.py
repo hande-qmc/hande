@@ -1,4 +1,10 @@
-'''Data extraction from the (standard) output of a HANDE calculation.'''
+'''Extract data from the output of a HANDE calculation.
+
+.. note::
+
+    All :mod:`pyhande` analysis procedures assume data is in the format
+    produced by :func:`extract_data` and :func:`extract_data_sets`.
+'''
 
 import numpy
 import pandas as pd
@@ -29,7 +35,7 @@ data : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
 
 See Also
 --------
-``extract_data`` : underlying data extraction implementation.
+:func:``extract_data`` : underlying data extraction implementation.
 '''
 
     data = []

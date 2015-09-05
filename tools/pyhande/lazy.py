@@ -1,4 +1,4 @@
-'''Tools for the lazy amongst us: automate common analysis tasks.'''
+'''Tools for the lazy amongst us: automation of common HANDE analysis tasks.'''
 
 import collections
 import pandas as pd

@@ -12,7 +12,9 @@ source files; the output is placed in the appropriate subdirectory of `documenta
     make help
 
 to see the full list of available formats sphinx can produce.  Of course, the
-reStructuredText is very readable in its own right.
+reStructuredText is very readable in its own right.  Compiling the documentation with
+sphinx 1.3 onwards requires no additional dependencies; earlier versions of sphinx require
+sphinxcontrib.napoleon (http://sphinxcontrib-napoleon.readthedocs.org/) to be installed.
 
 Documentation detailing the theory behind the program as well as current and potential
 future research directions is contained in the documentation/theory directory.
