@@ -1,6 +1,16 @@
 Analysis
 ========
 
+The following provides a brief overview for the most common analysis required for each
+type of Monte Carlo calculation.  The guides in :ref:`tutorials` provide a step-by-step
+guide to analysing HANDE calculations and explain the reasoning behind the required
+analysis parameters.
+
+HANDE includes a variety of scripts and utilities in the ``tools`` subdirectory.  However,
+these only provide a simple, command-line interface.  A comprehensive python module,
+:ref:`pyhande`, drives all the analysis.  :ref:`pyhande` is extremely powerful for dealing
+with complex analysis, data-driven investigation or bulk data analysis.
+
 FCIQMC and CCMC
 ---------------
 
@@ -20,7 +30,7 @@ correlation in the data needs to be taken into account when estimating standard 
 A simple and effective way of doing this is to use a blocking analysis
 [FlyvbjergPetersen89]_.
 
-The ``reblock_hande.py`` script (in the tools subdirectory) does this.  Run
+The ``reblock_hande.py`` script (in the ``tools`` subdirectory) does this.  Run
 
 .. code-block:: bash
 
@@ -33,8 +43,8 @@ typically obtained using
 
     reblock_hande.py --start N out
 
-respectively, where N is the iteration from which data should be blocked (i.e.
-after the calculation has equilibrated) and out is the file to which the
+respectively, where ``N`` is the iteration from which data should be blocked (i.e.
+after the calculation has equilibrated) and ``out`` is the file to which the
 calculation output was saved.
 
 Note that reblock_hande.py can accept multiple output files for the case when
@@ -47,18 +57,14 @@ Canonical Total Energy MC
 
 The configurations and resulting estimates in a canonical total energy
 calculation are statistically independent and therefore no blocking analysis is
-required. The ``analyse_canonical.py`` script is available in tools/dmqmc/ which
+required. The ``analyse_canonical.py`` script is available in ``tools/dmqmc/`` which
 performs the appropriate averaging and standard error analysis on the output file
 using the pyhande suite.
-
 
 DMQMC
 -----
 
 No blocking analysis is required for the error analysis of DMQMC calculations
 as estimates are averaged over statistically independent runs. The
-``finite_temp_analysis.py`` script in tools/dmqmc can be used to perform a
+``finite_temp_analysis.py`` script in ``tools/dmqmc`` can be used to perform a
 standard error analysis of the Monte Carlo data for a number of different observables.
-
-.. todo
-    The other scripts?
