@@ -70,7 +70,7 @@ type dmqmc_rdm_in_t
     ! same length array. Note, this is only used for instantaneous RDMs.
     ! Ground-state RDM calculations allocate an array exactly the size of the
     ! full RDM.
-    integer :: spawned_length
+    integer :: spawned_length = 0
 
     ! If true then the reduced density matricies will be calulated for the 'A'
     ! subsystems specified by the user.
