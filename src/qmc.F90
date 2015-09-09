@@ -520,8 +520,6 @@ contains
             case default
                 write(6,'(1X,i0)') ref_sym
             end select
-            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a single excitation:', qmc_state%pattempt_single
-            write (6,'(1X,a46,1X,f8.4)') 'Probability of attempting a double excitation:', qmc_state%pattempt_double
 
             if (doing_calc(dmqmc_calc)) then
                 write (6,'(1X,"Initial population on the trace of the density matrix:",1X,i0)') int(qmc_in%D0_population,int_64)

@@ -74,6 +74,7 @@ contains
         type(bloom_stats_t) :: bloom_stats
         type(semi_stoch_t) :: determ
         type(json_out_t) :: js
+        type(qmc_in_t) :: qmc_in_loc
 
         integer :: idet, ireport, icycle, iparticle, ideterm, ierr
         integer :: iter, semi_stoch_iter
@@ -116,7 +117,11 @@ contains
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
-            call qmc_in_t_json(js, qmc_in)
+            ! The default values of pattempt_* are not in qmc_in
+            qmc_in_loc = qmc_in
+            qmc_in_loc%pattempt_single = qs%pattempt_single
+            qmc_in_loc%pattempt_double = qs%pattempt_double
+            call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in)

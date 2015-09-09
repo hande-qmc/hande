@@ -82,6 +82,7 @@ contains
         integer :: ms, occ_list(sys%nel)
         type(sys_t) :: sys_copy
         type(json_out_t) :: js
+        type(qmc_in_t) :: qmc_in_loc
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -120,7 +121,11 @@ contains
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
-            call qmc_in_t_json(js, qmc_in)
+            ! The default values of pattempt_* are not in qmc_in
+            qmc_in_loc = qmc_in
+            qmc_in_loc%pattempt_single = qs%pattempt_single
+            qmc_in_loc%pattempt_double = qs%pattempt_double
+            call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             call ipdmqmc_in_t_json(js, dmqmc_in)
             call rdm_in_t_json(js, dmqmc_in%rdm)

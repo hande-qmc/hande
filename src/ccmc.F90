@@ -334,6 +334,7 @@ contains
         type(dSFMT_t), allocatable :: rng(:)
         real(p) :: junk, bloom_threshold
         type(json_out_t) :: js
+        type(qmc_in_t) :: qmc_in_loc
 
         logical :: soft_exit, dump_restart_shift
 
@@ -373,7 +374,11 @@ contains
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
-            call qmc_in_t_json(js, qmc_in)
+            ! The default values of pattempt_* are not in qmc_in
+            qmc_in_loc = qmc_in
+            qmc_in_loc%pattempt_single = qs%pattempt_single
+            qmc_in_loc%pattempt_double = qs%pattempt_double
+            call qmc_in_t_json(js, qmc_in_loc)
             call ccmc_in_t_json(js, ccmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in)
