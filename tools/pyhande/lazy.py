@@ -29,8 +29,9 @@ reweight_history : integer
     reweight in an attempt to remove population control bias. According to
     C. J. Umirigar et. al. J. Chem. Phys. 99, 2865 (1993) this should be set
     to be a few correlation times.
-mean_shift: float
-    prevent the weights from beoming to large.
+mean_shift : float
+    prevent the weights from becoming too large.
+
 Returns
 -------
 info : :func:`collections.namedtuple`
@@ -83,64 +84,69 @@ size from the blocking analysis:
             data.append(df)
             metadata.append(md)
     if data:
-        # Check concatenating data is at least possibly sane.
-        step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
-        prev_iteration = data[0]['iterations'].iloc[-1]
-        calc_type = metadata[0]['calc_type']
-        for i in range(1, len(data)):
-            if metadata[i]['calc_type'] != calc_type:
-                warnings.warn('Different calculation types detected.')
-            elif data[i]['iterations'].iloc[0] - step != prev_iteration:
-                warnings.warn('')
-            prev_iteration = data[i]['iterations'].iloc[-1]
-        data = pd.concat(data)
+        # If there are multiple calculations per file, don't concatenate
+        if len(data) <= len(datafiles):
+            # Check concatenating data is at least possibly sane.
+            step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
+            prev_iteration = data[0]['iterations'].iloc[-1]
+            calc_type = metadata[0]['calc_type']
+            for i in range(1, len(data)):
+                if metadata[i]['calc_type'] != calc_type:
+                    warnings.warn('Different calculation types detected.')
+                elif data[i]['iterations'].iloc[0] - step != prev_iteration:
+                    warnings.warn('Concatenating calculations with non-contiguous iteration numbers')
+                prev_iteration = data[i]['iterations'].iloc[-1]
+            data = [pd.concat(data)]
     else:
-        data = pd.DataFrame() # throw an error in a moment...
+        data = [pd.DataFrame()] # throw an error in a moment...
 
-    # Reblock Monte Carlo data over desired window.
-    if select_function is None:
-        indx = data['iterations'] > start
-    else:
-        indx = select_function(data)
-    to_block = []
-    if extract_psips:
-        to_block.append('# H psips')
-    to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
-    if reweight_history > 0:
-        to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
+    return_vals = []
+    for df in data:
+        # Reblock Monte Carlo data over desired window.
+        if select_function is None:
+            indx = df['iterations'] > start
+        else:
+            indx = select_function(df)
+        to_block = []
+        if extract_psips:
+            to_block.append('# H psips')
+        to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
+        if reweight_history > 0:
+            to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
 
-    mc_data = data.ix[indx, to_block]
+        mc_data = df.ix[indx, to_block]
 
-    if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
-        warnings.warn('The blocking analysis starts from before the shift '
-                     'begins to vary.')
+        if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
+            warnings.warn('The blocking analysis starts from before the shift '
+                         'begins to vary.')
 
-    (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
-    
-    proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
-    reblock = pd.concat([reblock, proje], axis=1)
-    to_block.append('Proj. Energy')
-
-    if reweight_history > 0:
-        proje = pyhande.analysis.projected_energy(reblock, covariance, 
-                    data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
-                    col_name='Weighted Proj. E.')
+        (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
+        
+        proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
         reblock = pd.concat([reblock, proje], axis=1)
-        to_block.append('Weighted Proj. E.')
+        to_block.append('Proj. Energy')
 
-    # Summary (including pretty printing of estimates).
-    (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
+        if reweight_history > 0:
+            proje = pyhande.analysis.projected_energy(reblock, covariance, 
+                        data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
+                        col_name='Weighted Proj. E.')
+            reblock = pd.concat([reblock, proje], axis=1)
+            to_block.append('Weighted Proj. E.')
 
-    estimates = []
-    for (name, row) in opt_block.iterrows():
-        estimates.append(
-                pyblock.error.pretty_fmt_err(row['mean'], row['standard error'])
-                       )
-    opt_block['estimate'] = estimates
+        # Summary (including pretty printing of estimates).
+        (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
 
-    tuple_fields = ('metadata data data_len reblock covariance opt_block '
-                   'no_opt_block'.split())
-    info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
+        estimates = []
+        for (name, row) in opt_block.iterrows():
+            estimates.append(
+                    pyblock.error.pretty_fmt_err(row['mean'], row['standard error'])
+                           )
+        opt_block['estimate'] = estimates
 
-    return info_tuple(metadata, data, data_len, reblock, covariance, opt_block,
-                      no_opt_block)
+        tuple_fields = ('metadata data data_len reblock covariance opt_block '
+                       'no_opt_block'.split())
+        info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
+        return_vals.append(info_tuple(metadata, data, data_len, reblock,
+                                      covariance, opt_block, no_opt_block))
+
+    return return_vals
