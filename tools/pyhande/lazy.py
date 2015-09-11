@@ -84,29 +84,36 @@ size from the blocking analysis:
             data.append(df)
             metadata.append(md)
     if data:
-        # If there are multiple calculations per file, don't concatenate
-        if len(data) <= len(datafiles):
-            # Check concatenating data is at least possibly sane.
-            step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
-            prev_iteration = data[0]['iterations'].iloc[-1]
-            calc_type = metadata[0]['calc_type']
-            for i in range(1, len(data)):
-                if metadata[i]['calc_type'] != calc_type:
-                    warnings.warn('Different calculation types detected.')
-                elif data[i]['iterations'].iloc[0] - step != prev_iteration:
-                    warnings.warn('Concatenating calculations with non-contiguous iteration numbers')
-                prev_iteration = data[i]['iterations'].iloc[-1]
-            data = [pd.concat(data)]
+        # Check concatenating data is at least possibly sane.
+        step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
+        prev_iteration = data[0]['iterations'].iloc[-1]
+        calc_type = metadata[0]['calc_type']
+        calcs = []
+        xcalc = [data[0]]
+        for i in range(1, len(data)):
+            if metadata[i]['calc_type'] != calc_type or \
+                    data[i]['iterations'].iloc[0] - step != prev_iteration or \
+                    data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2] != step:
+                # Different calculation
+                step = data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2]
+                calc_type = metadata[i]['calc_type']
+                calcs.append(pd.concat(xcalc))
+                xcalc = [data[i]]
+            else:
+                # Continuation of same calculation (probably)
+                xcalc.append(data[i])
+            prev_iteration = data[i]['iterations'].iloc[-1]
+        calcs.append(pd.concat(xcalc))
     else:
         data = [pd.DataFrame()] # throw an error in a moment...
 
     return_vals = []
-    for df in data:
+    for calc in calcs:
         # Reblock Monte Carlo data over desired window.
         if select_function is None:
-            indx = df['iterations'] > start
+            indx = calc['iterations'] > start
         else:
-            indx = select_function(df)
+            indx = select_function(calc)
         to_block = []
         if extract_psips:
             to_block.append('# H psips')
@@ -114,7 +121,7 @@ size from the blocking analysis:
         if reweight_history > 0:
             to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
 
-        mc_data = df.ix[indx, to_block]
+        mc_data = calc.ix[indx, to_block]
 
         if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
             warnings.warn('The blocking analysis starts from before the shift '
