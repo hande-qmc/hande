@@ -6,7 +6,8 @@ implicit none
 
 contains
 
-    pure subroutine update_proj_energy_heisenberg_basic(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_heisenberg_basic(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, &
+                                                        hmatel)
 
         ! Add the contribution of the current basis function to the
         ! projected energy.
@@ -20,6 +21,7 @@ contains
         ! In:
         !    sys: system being studied.
         !    f0: reference basis function.
+        !    wfn_dat: trial wavefunction data (unused, included for interface compatibility).
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
@@ -42,6 +44,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -70,7 +73,8 @@ contains
 
     end subroutine update_proj_energy_heisenberg_basic
 
-    pure subroutine update_proj_energy_heisenberg_neel_singlet(sys, f0, cdet, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine update_proj_energy_heisenberg_neel_singlet(sys, f0, wfn_dat, cdet, pop, D0_pop_sum, proj_energy_sum, &
+                                                               excitation, hmatel)
 
         ! Add the contribution of the current basis function to the
         ! projected energy.
@@ -86,6 +90,8 @@ contains
         ! In:
         !    sys: system being studied.
         !    f0: reference basis function (unused, for interface compatibility only).
+        !    wfn_dat: trial wavefunction data, where wfn_dat(n) is the Neel amplitude
+        !        of a state with n spin-up particles in the first sublattice.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.  Only the bit string and data fields need to be set.
         !    pop: population on current determinant, unweighted by the trial function.
@@ -114,11 +120,11 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use fciqmc_data, only: neel_singlet_amp
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(-1:)
         type(det_info_t), intent(in) :: cdet
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
@@ -152,7 +158,7 @@ contains
 
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
-        hmatel = neel_singlet_amp(n) * cdet%data(1)
+        hmatel = wfn_dat(n) * cdet%data(1)
 
         ! Now consider off-diagonal contributions, |D_i> /= |D_j>.
         ! To create a connected |D_i> from |D_j>, simply find a pair of anti-parallel
@@ -164,16 +170,16 @@ contains
         ! sublattice 1 or 2. If the up spin was on lattice 1, there will be one less up
         ! spin on sublattice 1 after the flip. If it was on sublattice 2, there will be
         ! one extra spin. So we can have either of the two amplitudes, neel_singlet_amp(n-1)
-        ! or neel_singlet_amp(n+1) respectively. We just need to know how many of each type
-        ! of 0-1 bonds there are. But we have these already - they are stored as lattice_1_up
-        ! and lattice_2_up. Finally note that the matrix element is -J/2, and we can put
-        ! this together...
+        ! or neel_singlet_amp(n+1) respectively, where neel_singlet_amp == wfn_dat. We just
+        ! need to know how many of each type of 0-1 bonds there are. But we have these
+        ! already - they are stored as lattice_1_up and lattice_2_up. Finally note that the
+        ! matrix element is -J/2, and we can put this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        hmatel = hmatel - (sys%heisenberg%J * lattice_1_up * neel_singlet_amp(n-1))/2
+        hmatel = hmatel - (sys%heisenberg%J * lattice_1_up * wfn_dat(n-1))/2
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        hmatel = hmatel - (sys%heisenberg%J * lattice_2_up * neel_singlet_amp(n+1))/2
+        hmatel = hmatel - (sys%heisenberg%J * lattice_2_up * wfn_dat(n+1))/2
 
         proj_energy_sum = proj_energy_sum + hmatel * pop
 
@@ -182,7 +188,7 @@ contains
         ! \sum_{i} (a_i * n_i)
         ! Hence from this particular basis function, |D_j>, we just add (a_j * n_j)
 
-        D0_pop_sum = D0_pop_sum + pop*neel_singlet_amp(n)
+        D0_pop_sum = D0_pop_sum + pop*wfn_dat(n)
 
     end subroutine update_proj_energy_heisenberg_neel_singlet
 

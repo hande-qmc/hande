@@ -35,7 +35,7 @@ contains
         !   population, e.g. either a set of Hamiltonian walkers or a set of
         !   Hellmann--Feynman walkers.
         ! * the population and ndeath should be unscaled (ie not divided by
-        !   real_factor) so to avoid a scaling and unscaling step.
+        !   pop_real_factor) so to avoid a scaling and unscaling step.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
@@ -100,7 +100,7 @@ contains
             population = population - kill
         end if
         tot_population = tot_population + &
-            real(abs(population) - abs(old_population),p)/real_factor
+            real(abs(population) - abs(old_population),p)/qs%psip_list%pop_real_factor
         ndeath = ndeath + abs(kill)
 
     end subroutine stochastic_death

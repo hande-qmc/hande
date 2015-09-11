@@ -143,7 +143,7 @@ contains
         call alloc_det_info_t(sys, cdet2, .false.)
 
         ! Initialise bloom_stats components to the following parameters.
-        call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=real_factor)
+        call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fixedn, encoding_factor=qs%psip_list%pop_real_factor)
 
         ! Main DMQMC loop.
         if (parent) then
@@ -212,7 +212,7 @@ contains
                         if (dmqmc_in%all_spin_sectors) call update_sys_spin_info(cdet1, sys)
 
                         ! Extract the real signs from the encoded signs.
-                        real_population = real(qs%psip_list%pops(:,idet),p)/real_factor
+                        real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
 
                         ! Call wrapper function which calls routines to update
                         ! all estimators being calculated, and also always
@@ -240,9 +240,9 @@ contains
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, &
-                                                     cdet1, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
-                                                     weighted_sampling%probs, nspawned, connection)
+                                    call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+                                                     qs%psip_list%pop_real_factor, cdet1, qs%psip_list%pops(ireplica,idet), &
+                                                     gen_excit_ptr, weighted_sampling%probs, nspawned, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet1%f, cdet2%f, connection, &
@@ -256,9 +256,9 @@ contains
                                     ! Now attempt to spawn from the second end.
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
-                                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, &
-                                                         cdet2, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
-                                                         weighted_sampling%probs, nspawned, connection)
+                                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
+                                                         qs%psip_list%pop_real_factor, cdet2, qs%psip_list%pops(ireplica,idet), &
+                                                         gen_excit_ptr, weighted_sampling%probs, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2%f, cdet1%f, &
                                                                                 connection, nspawned, spawning_end, ireplica, &
@@ -289,7 +289,7 @@ contains
                     call direct_annihilation(sys, rng, qs%ref, annihilation_flags, qs%psip_list, qs%spawn_store%spawn, &
                                              nspawn_events)
 
-                    call end_mc_cycle(nspawn_events, ndeath, nattempts, qs%spawn_store%rspawn)
+                    call end_mc_cycle(nspawn_events, ndeath, qs%psip_list%pop_real_factor, nattempts, qs%spawn_store%rspawn)
 
                     ! If doing importance sampling *and* varying the weights of
                     ! the trial function, call a routine to update these weights

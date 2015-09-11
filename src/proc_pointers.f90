@@ -18,12 +18,13 @@ abstract interface
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(det_info_t), intent(inout) :: d
     end subroutine i_decoder
-    pure subroutine i_update_proj_energy(sys, f0, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
+    pure subroutine i_update_proj_energy(sys, f0, wfn_dat, d, pop, D0_pop_sum, proj_energy_sum, excitation, hmatel)
         use system, only: sys_t
         import :: det_info_t, p, i0, excit_t
         implicit none
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
+        real(p), intent(in) :: wfn_dat(:)
         type(det_info_t), intent(in) :: d
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum

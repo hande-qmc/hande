@@ -4,6 +4,7 @@ use const
 use spawn_data, only: spawn_t, proc_map_t
 use csr, only: csrp_t
 use parallel, only: parallel_timing_t
+use importance_sampling_data
 
 implicit none
 
@@ -133,13 +134,13 @@ type fciqmc_in_t
     ! Default: False.
     logical :: doing_load_balancing = .false.
 
-    ! Importance sampling (see enumerators below for allowed values).  Currently
-    ! only relevant to the Heisenberg model.  trial_function will always be
-    ! single_basis for other models to represent a single determinant.
+    ! Importance sampling (see enumerator in importance_sampling_data for allowed
+    ! values).  Currently only relevant to the Heisenberg model.  trial_function
+    ! will always be single_basis for other models to represent a single determinant.
     integer :: trial_function = 0
     ! If we are not using importance sampling, this is set to no_guiding, otherwise
-    ! to a specific enumerator below to specify the corresponding guiding function
-    ! being used.
+    ! to a specific enumerator in importance_sampling_data to specify the corresponding
+    ! guiding function being used.
     integer :: guiding_function = 0
 
 end type fciqmc_in_t
@@ -393,26 +394,6 @@ type semi_stoch_t
     type(parallel_timing_t) :: mpi_time
 end type semi_stoch_t
 
-! --- Importance sampling ---
-
-! For the Heisenberg model, several different trial functions can be used in the
-! energy estimator. Only a single determinant can be used for the Hubbard model.
-enum, bind(c)
-    enumerator :: single_basis = 0
-    enumerator :: neel_singlet
-end enum
-
-! For the Heisenberg model, a guiding function may be used,
-! |psi_G> = \sum_{i} a_i |psi_i>, so that the new Hamiltonian matrix elements are
-! H_ij^new = (a_i*H_ij)/a_j. This is just importance sampling. These functions
-! represent the different types of functions which may be used.
-enum, bind(c)
-    enumerator :: no_guiding
-    ! Note that when we use the Neel singlet state as a guiding function, it must also
-    ! be used as the trial function in calculating the projected energy.
-    enumerator :: neel_singlet_guiding
-end enum
-
 ! --- Estimators ---
 
 type particle_t
@@ -436,6 +417,12 @@ type particle_t
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
     integer :: info_size
+    ! Amplitudes can be integers or floats.  They are stored as integers using
+    ! fixed precision and encoded by multiplying by pop_real_factor (with some
+    ! stochastic rounding to account for the resolution of the fixed precision)
+    ! and decoded by dividing by pop_real_factor.  In principle this could be done
+    ! with bit shifts and care over the sign...
+    integer(int_p) :: pop_real_factor
     ! a) determinants
     integer(i0), allocatable :: states(:,:) ! (string_len, walker_length)
     ! [todo] - nicer referencing for elements of dat and ! pops
@@ -552,6 +539,7 @@ type qmc_state_t
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store
     type(reference_t) :: ref
+    type(trial_t) :: trial
     ! WARNING: par_info is the 'reference/master' (ie correct) version
     ! of parallel_t, in particular of proc_map_t.  However, copies of it
     ! are kept in spawn_t objects, and it is these copies which are used
@@ -577,22 +565,6 @@ type annihilation_flags_t
     ! Trial function used (FCIQMC & Heisenberg model only).
     integer :: trial_function = single_basis
 end type annihilation_flags_t
-
-! --- GLOBAL STATE (TEMPORARY) ---
-
-! When using the Neel singlet trial wavefunction, it is convenient
-! to store all possible amplitudes in the wavefunction, since
-! there are relativley few of them and they are expensive to calculate
-real(p), allocatable :: neel_singlet_amp(:) ! (nsites/2) + 1
-
-! Real amplitudes can be any multiple of 2**(-real_bit_shift). They are
-! encoded as integers by multiplying them by 2**(real_bit_shift).
-! [todo] - compile-time parameter
-integer :: real_bit_shift
-! real_factor = 2**(real_bit_shift)
-! [todo] - compile-time parameter
-integer(int_p) :: real_factor
-! [todo] - procedures for encoding and decoding the populations.
 
 contains
 

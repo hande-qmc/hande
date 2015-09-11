@@ -2,7 +2,7 @@ module qmc_common
 
 ! Module containing routines common to different qmc algorithms.
 
-use fciqmc_data
+use const
 
 implicit none
 
@@ -579,7 +579,7 @@ contains
 
 ! --- Output routines ---
 
-    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere, guiding_function)
+    subroutine initial_fciqmc_status(sys, qmc_in, qs, nb_comm, spawn_elsewhere)
 
         ! Calculate the projected energy based upon the initial walker
         ! distribution (either via a restart or as set during initialisation)
@@ -595,13 +595,11 @@ contains
         !    spawn_elsewhere: number of particles spawned from the current
         !       processor to other processors.  Relevant only when restarting
         !       non-blocking calculations.
-        !    guiding_function: parameter specifying the guiding trial function
-        !       used.  FCIQMC-only.  If not present, assume no importance
-        !       sampling is being used.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
         use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
         use excitations, only: excit_t, get_excitation
+        use fciqmc_data, only: write_fciqmc_report
         use importance_sampling, only: importance_sampling_weight
         use parallel
         use proc_pointers, only: update_proj_energy_ptr
@@ -612,7 +610,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
         logical, optional, intent(in) :: nb_comm
-        integer, optional, intent(in) :: spawn_elsewhere, guiding_function
+        integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet, ispace
         real(p) :: ntot_particles(qs%psip_list%nspaces)
@@ -636,16 +634,12 @@ contains
             cdet%f = qs%psip_list%states(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
             cdet%data => qs%psip_list%dat(:,idet)
-            real_population = real(qs%psip_list%pops(:,idet),p)/real_factor
-            if (present(guiding_function)) then
-                weighted_population = importance_sampling_weight(guiding_function, cdet, real_population(1))
-            else
-                weighted_population = real_population(1)
-            end if
+            real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
+            weighted_population = importance_sampling_weight(qs%trial, cdet, real_population(1))
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, cdet, weighted_population, &
+            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
                                         qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, hmatel)
         end do
         call dealloc_det_info_t(cdet)
@@ -771,8 +765,8 @@ contains
 
     end subroutine init_mc_cycle
 
-    subroutine load_balancing_wrapper(sys, qmc_in, reference, load_bal_in, annihilation_flags, real_factor, nb_comm, &
-                                      rng, psip_list, spawn, par_info, determ)
+    subroutine load_balancing_wrapper(sys, qmc_in, reference, load_bal_in, annihilation_flags, nb_comm, rng, psip_list, spawn, &
+                                      par_info, determ)
 
         ! In:
         !    sys: system being studied
@@ -780,8 +774,6 @@ contains
         !    reference: current reference determinant.
         !    load_bal_in: input options for load balancing.
         !    annihilation_flags: calculation specific annihilation flags.
-        !    real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
         !    nb_comm: true if using non-blocking communications.
         ! In/Out:
         !    rng: random number generator.
@@ -805,6 +797,7 @@ contains
         use system, only: sys_t
         use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t, particle_t
         use qmc_data, only: parallel_t, semi_stoch_t
+        use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
 
@@ -813,7 +806,6 @@ contains
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(annihilation_flags_t), intent(in) :: annihilation_flags
-        integer(int_p), intent(in) :: real_factor
         logical, intent(in) :: nb_comm
         type(dSFMT_t), intent(inout) :: rng
         type(particle_t), intent(inout) :: psip_list
@@ -822,9 +814,8 @@ contains
         type(semi_stoch_t), optional, intent(inout) :: determ
 
         if (par_info%load%needed) then
-            call do_load_balancing(psip_list, spawn, real_factor, par_info, load_bal_in)
-            call redistribute_load_balancing_dets(rng, sys, reference, psip_list%states, real_factor, determ, psip_list, spawn, &
-                                                  annihilation_flags)
+            call do_load_balancing(psip_list, spawn, par_info, load_bal_in)
+            call redistribute_load_balancing_dets(rng, sys, reference, determ, psip_list, spawn, annihilation_flags)
             ! If using non-blocking communications we still need this flag to
             ! be set.
             if (.not. nb_comm) par_info%load%needed = .false.
@@ -989,25 +980,29 @@ contains
 
     end subroutine dump_restart_file_wrapper
 
-    subroutine end_mc_cycle(nspawn_events, ndeath, nattempts, rspawn)
+    subroutine end_mc_cycle(nspawn_events, ndeath, real_factor, nattempts, rspawn)
 
         ! Execute common code at the end of a Monte Carlo cycle.
 
         ! In:
         !    nspawn_events: number of successful spawning events in the cycle.
         !    ndeath: (unscaled) number of particle deaths in the cycle.
+        !    real_factor: the encoding factor by which the stored populations are multiplied
+        !       to enable non-integer populations.
         !    nattempts: number of attempted spawning events in the cycle.
         ! In/Out:
         !    rspawn: running total of spawning rate.
 
+        use fciqmc_data, only: spawning_rate
+
         integer, intent(in) :: nspawn_events
-        integer(int_p), intent(in) :: ndeath
+        integer(int_p), intent(in) :: ndeath, real_factor
         integer(int_64), intent(in) :: nattempts
         real(p), intent(inout) :: rspawn
 
         ! Add the spawning rate (for the processor) to the running
         ! total.
-        rspawn = rspawn + spawning_rate(nspawn_events, ndeath, nattempts)
+        rspawn = rspawn + spawning_rate(nspawn_events, ndeath, real_factor, nattempts)
 
     end subroutine end_mc_cycle
 
@@ -1037,8 +1032,7 @@ contains
 
     end subroutine rescale_tau
 
-    subroutine redistribute_load_balancing_dets(rng, sys, reference, states, real_factor, determ, psip_list, spawn, &
-                                                annihilation_flags)
+    subroutine redistribute_load_balancing_dets(rng, sys, reference, determ, psip_list, spawn, annihilation_flags)
 
         ! When doing load balancing we need to redistribute chosen sections of
         ! main list to be sent to their new processors. This is a wrapper which
@@ -1052,9 +1046,6 @@ contains
         ! In:
         !    sys: system being studied.
         !    reference: current reference determinant.
-        !    states: list of occupied excitors on the current processor.
-        !    real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
         !    annihilation_flags: calculation specific annihilation flags.
         ! In/Out:
         !    rng: random number generator.
@@ -1077,14 +1068,14 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
-        integer(i0), intent(in) :: states(:,:)
-        integer(int_p), intent(in) :: real_factor
         type(semi_stoch_t), optional, intent(inout) :: determ
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         type(annihilation_flags_t), intent(in) :: annihilation_flags
 
-        call redistribute_particles(psip_list%states, real_factor, psip_list%pops, psip_list%nstates, psip_list%nparticles, spawn)
+        associate(pl=>psip_list)
+            call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, pl%nparticles, spawn)
+        end associate
 
         ! Merge determinants which have potentially moved processor back into
         ! the appropriate main list.

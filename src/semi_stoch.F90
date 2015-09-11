@@ -780,8 +780,8 @@ contains
                     ! contribution from the shift.
                     out_vec = -out_vec + qs%shift(1)*determ%vector(i)
                     out_vec = out_vec*qs%tau
-                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, &
-                                                        rng, spawn)
+                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
+                                                        qmc_in%initiator_approx, rng, spawn)
                 end do
             else
                 do i = 1, determ%sizes(proc)
@@ -789,8 +789,8 @@ contains
                     row = row + 1
                     call csrpgemv_single_row(determ%hamil, determ%vector, row, out_vec)
                     out_vec = -out_vec*qs%tau
-                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, proc, qmc_in%initiator_approx, &
-                                                        rng, spawn)
+                    call create_spawned_particle_determ(determ%dets(:,row), out_vec, qs%psip_list%pop_real_factor, proc, &
+                                                        qmc_in%initiator_approx, rng, spawn)
                 end do
             end if
         end do
@@ -871,7 +871,7 @@ contains
 
     end subroutine determ_proj_separate_annihil
 
-    subroutine create_spawned_particle_determ(f, target_nspawn, proc, initiator_approx, rng, spawn)
+    subroutine create_spawned_particle_determ(f, target_nspawn, real_factor, proc, initiator_approx, rng, spawn)
 
         ! Add a deterministic spawning to the spawning array. Before
         ! this can be done, the target population must be encoded as an
@@ -883,6 +883,8 @@ contains
         !    target_nspawn: the number of spawns we want to add to the
         !        spawning array, before the integer encoding has
         !        been performed.
+        !    real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         !    proc: the processor to which the determinant to be added belongs.
         !    initiator_approx: is the initiator approximation in use?
         ! In/Out:
@@ -890,12 +892,12 @@ contains
         !    spawn: spawn_t object to which deterministic spawning will occur.
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use fciqmc_data, only: real_factor
         use spawn_data, only: spawn_t
         use spawning, only: add_spawned_particle, add_flagged_spawned_particle
 
         integer(i0), intent(in) :: f(:)
         real(p), intent(in) :: target_nspawn
+        integer(int_p), intent(in) :: real_factor
         integer, intent(in) :: proc
         logical, intent(in) :: initiator_approx
         type(dSFMT_t), intent(inout) :: rng

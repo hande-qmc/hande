@@ -97,7 +97,7 @@ end type dbin_t
 
 contains
 
-    subroutine do_load_balancing(psip_list, spawn, real_factor, parallel_info, load_bal_in)
+    subroutine do_load_balancing(psip_list, spawn, parallel_info, load_bal_in)
 
         ! Main subroutine in module, carries out load balancing as follows:
         ! 1. If doing load balancing then:
@@ -110,8 +110,6 @@ contains
         !   that they can be moved to their new processor.
 
         ! In:
-        !    real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
         !    load_bal_in: number of load balancing slots.
         ! In/Out:
         !    parallel_info: parallel_t type object containing information for
@@ -130,7 +128,6 @@ contains
         use qmc_data, only: load_bal_in_t, particle_t, parallel_t
 
         type(particle_t), intent(inout) :: psip_list
-        integer(int_p), intent(in) :: real_factor
         type(parallel_t), intent(inout) :: parallel_info
         type(spawn_t), intent(inout) :: spawn
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -149,7 +146,7 @@ contains
         associate(lb=>parallel_info%load, proc_map=>parallel_info%load%proc_map)
 
         ! Find slot populations.
-        call initialise_slot_pop(psip_list, spawn, real_factor, slot_pop)
+        call initialise_slot_pop(psip_list, spawn, slot_pop)
 #ifdef PARALLEL
         ! Gather slot populations from every process into slot_list.
         call MPI_AllReduce(slot_pop, slot_list, size(slot_pop), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -515,14 +512,12 @@ contains
 
     end subroutine find_processors
 
-    subroutine initialise_slot_pop(psip_list, spawn, real_factor, slot_pop)
+    subroutine initialise_slot_pop(psip_list, spawn, slot_pop)
 
         ! In:
         !   psip_list: particle_t object containing the current psip locations and
         !       populations.
         !   spawn: spawn_t object containing 'active' proc_map used to map states to processors.
-        !   real_factor: The factor by which populations are multiplied to
-        !       enable non-integer populations.
         ! In/Out:
         !   slot_pop: array containing population of slots in proc_map. Processor dependendent.
 
@@ -533,7 +528,6 @@ contains
 
         type(particle_t), intent(in) :: psip_list
         type(spawn_t), intent(in) :: spawn
-        integer(int_p), intent(in) :: real_factor
         real(p), intent(out) :: slot_pop(0:)
 
         integer :: i, det_pos, iproc_slot
@@ -546,7 +540,7 @@ contains
         end do
 
         ! Remove encoding factor to obtain the true populations.
-        slot_pop = slot_pop/real_factor
+        slot_pop = slot_pop/psip_list%pop_real_factor
 
    end subroutine initialise_slot_pop
 
