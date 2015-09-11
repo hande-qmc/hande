@@ -31,7 +31,7 @@ contains
 
 !--- Spawning wrappers ---
 
-    subroutine spawn_standard(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+    subroutine spawn_standard(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
                               gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -43,8 +43,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
-        !    tau: timestep.
+        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -66,15 +65,14 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: tau
+        type(qmc_state_t), intent(in) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -87,14 +85,14 @@ contains
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_standard
 
-    subroutine spawn_importance_sampling(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+    subroutine spawn_importance_sampling(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
                                          gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -110,8 +108,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
-        !    tau: timestep.
+        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -135,13 +132,12 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: tau
+        type(qmc_state_t), intent(in) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -154,17 +150,17 @@ contains
         real(p) :: pgen, hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = attempt_to_spawn(rng, tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
+        nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
 
     end subroutine spawn_importance_sampling
 
-    subroutine spawn_lattice_split_gen(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+    subroutine spawn_lattice_split_gen(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
                                        gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -187,8 +183,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
-        !    tau: timestep.
+        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -216,13 +211,12 @@ contains
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
         use stoch_utils, only: stochastic_round_spawned_particle
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: tau
+        type(qmc_state_t), intent(in) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -236,15 +230,15 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, qmc_in, cdet, pgen, connection, abs_hmatel)
+        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, abs_hmatel)
 
         ! 2. Attempt spawning.
-        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*tau*abs_hmatel/pgen, rng)
+        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel/pgen, rng)
 
         if (nspawn /= 0_int_p) then
 
             ! 3. Complete excitation and find sign of connecting matrix element.
-            call gen_excit_ptr%finalise(rng, sys, qmc_in, cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
 
             ! 4. Find sign of offspring.
             call set_child_sign(hmatel, parent_sign, nspawn)
@@ -253,7 +247,7 @@ contains
 
     end subroutine spawn_lattice_split_gen
 
-    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, &
+    subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
                                                            gen_excit_ptr, weights, nspawn, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
@@ -273,8 +267,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
-        !    tau: timestep.
+        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -301,14 +294,13 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use stoch_utils, only: stochastic_round_spawned_particle
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: tau
+        type(qmc_state_t), intent(in) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet
@@ -322,20 +314,20 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, qmc_in, cdet, pgen, connection, tilde_hmatel)
+        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, tilde_hmatel)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel)
 
         ! 3. Attempt spawning.
-        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*tau*abs(tilde_hmatel)/pgen, rng)
+        nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs(tilde_hmatel)/pgen, rng)
 
         if (nspawn /= 0_int_p) then
 
             ! 4. Complete excitation and find sign of connecting matrix element.
             ! *NOTE*: this returns the original matrix element and *not* the
             ! matrix element after the trial function transformation.
-            call gen_excit_ptr%finalise(rng, sys, qmc_in, cdet, connection, hmatel)
+            call gen_excit_ptr%finalise(rng, sys, cdet, connection, hmatel)
 
             ! 5. Find sign of offspring.
             ! Note that we don't care about the value of H_ij at this step, only
@@ -346,7 +338,7 @@ contains
 
     end subroutine spawn_lattice_split_gen_importance_sampling
 
-    subroutine spawn_null(rng, sys, qmc_in, tau, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, weights, &
+    subroutine spawn_null(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, weights, &
                           nspawn, connection)
 
         ! This is a null spawning routine for use with operators which are
@@ -357,8 +349,7 @@ contains
         !    rng: random number generator.
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
-        !    tau: timestep.
+        !    qmc_state: input options relating to QMC methods.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
         !        stochastically rounded up to this value or down to zero.
@@ -380,13 +371,12 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: gen_excit_ptr_t
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use dSFMT_interface, only: dSFMT_t
 
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
-        real(p), intent(in) :: tau
+        type(qmc_state_t), intent(in) :: qmc_state
         integer(int_p), intent(in) :: spawn_cutoff
         integer(int_p), intent(in) :: real_factor
         type(det_info_t), intent(in) :: cdet

@@ -9,11 +9,11 @@ contains
 
         ! In:
         !    nreplicas: number of replicas being used.
-        ! In/Out:
         !    sys: system being studied. This should be left in an unmodified
         !       state on output.
         !    qmc_in: Input options relating to QMC methods.
         !    dmqmc_in: Input options relating to DMQMC.
+        ! In/Out:
         !    qs: estimators not specific to DMQMC.
         !    dmqmc_estimates: type containing estimates for observables.
         !    weighted_sampling: type containing information for weighted
@@ -31,7 +31,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: nreplicas
         type(qmc_in_t), intent(in) :: qmc_in
-        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
@@ -47,17 +47,17 @@ contains
         call check_allocate('dmqmc_estimates%inst_rdm%traces', size(dmqmc_estimates%inst_rdm%traces),ierr)
         dmqmc_estimates%inst_rdm%traces = 0.0_p
 
-        ! If calculating a correlaton function then set up the necessary bit
+        ! If calculating a correlation function then set up the necessary bit
         ! mask. This has a bit set for each of the two sites/orbitals being
         ! considered in the correlation function.
         if (doing_dmqmc_calc(dmqmc_correlation)) then
-            allocate(dmqmc_in%correlation_mask(1:sys%basis%string_len), stat=ierr)
-            call check_allocate('dmqmc_in%correlation_mask',sys%basis%string_len,ierr)
-            dmqmc_in%correlation_mask = 0_i0
+            allocate(dmqmc_estimates%correlation_mask(1:sys%basis%string_len), stat=ierr)
+            call check_allocate('dmqmc_estimates%correlation_mask',sys%basis%string_len,ierr)
+            dmqmc_estimates%correlation_mask = 0_i0
             do i = 1, 2
                 bit_position = sys%basis%bit_lookup(1,dmqmc_in%correlation_sites(i))
                 bit_element = sys%basis%bit_lookup(2,dmqmc_in%correlation_sites(i))
-                dmqmc_in%correlation_mask(bit_element) = ibset(dmqmc_in%correlation_mask(bit_element), bit_position)
+                dmqmc_estimates%correlation_mask(bit_element) = ibset(dmqmc_estimates%correlation_mask(bit_element), bit_position)
             end do
         end if
 
@@ -89,7 +89,9 @@ contains
         ! to set the appropriate beta = Beta / T_F.
         if (dmqmc_in%fermi_temperature) then
             qs%tau = qs%tau / sys%ueg%ef
-            dmqmc_in%init_beta = dmqmc_in%init_beta / sys%ueg%ef
+            qs%init_beta = dmqmc_in%init_beta / sys%ueg%ef
+        else
+            qs%init_beta = dmqmc_in%init_beta
         end if
 
 
@@ -105,10 +107,11 @@ contains
             ! deallocated. Also, the user may have only input factors for the
             ! first few excitation levels, but we need to store factors for all
             ! levels, as done below.
-            if (.not. allocated(dmqmc_in%sampling_probs)) then
-                allocate(dmqmc_in%sampling_probs(1:sys%max_number_excitations), stat=ierr)
-                call check_allocate('dmqmc_in%sampling_probs',sys%max_number_excitations,ierr)
-                dmqmc_in%sampling_probs = 1.0_p
+            allocate(weighted_sampling%sampling_probs(sys%max_number_excitations), stat=ierr)
+            call check_allocate('weighted_sampling%sampling_probs', sys%max_number_excitations, ierr)
+            weighted_sampling%sampling_probs = 1.0_p
+            if (allocated(dmqmc_in%sampling_probs)) then
+                weighted_sampling%sampling_probs(:size(dmqmc_in%sampling_probs)) = dmqmc_in%sampling_probs
             end if
             allocate(weighted_sampling%probs(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('weighted_sampling%probs',sys%max_number_excitations+1,ierr)
@@ -116,11 +119,9 @@ contains
             call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
             weighted_sampling%probs(0) = 1.0_p
             weighted_sampling%probs_old = 1.0_p
-            do i = 1, size(dmqmc_in%sampling_probs)
-                weighted_sampling%probs(i) =  weighted_sampling%probs(i-1)*dmqmc_in%sampling_probs(i)
+            do i = 1, sys%max_number_excitations
+                weighted_sampling%probs(i) = weighted_sampling%probs(i-1)*weighted_sampling%sampling_probs(i)
             end do
-            weighted_sampling%probs(size(dmqmc_in%sampling_probs)+1:sys%max_number_excitations) = &
-               weighted_sampling%probs(size(dmqmc_in%sampling_probs))
             if (dmqmc_in%vary_weights) then
                 ! Allocate an array to store the factors by which the weights
                 ! will change each iteration.
@@ -638,10 +639,10 @@ contains
         ! weights are output and can then be used in future DMQMC runs.
 
         ! In:
+        !    dmqmc_in: input options relating to DMQMC.
         !    max_number_excitations: maximum number of excitations possible (see
         !       sys_t type in system for details).
         ! In/Out:
-        !    dmqmc_in: input options relating to DMQMC.
         !    excit_dist: distribution of particles across excitations levels of
         !        the density matrix.
         !    weighted_sampling: type containing weighted sampling information.
@@ -650,7 +651,7 @@ contains
         use parallel
 
         integer, intent(in) :: max_number_excitations
-        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         real(p), intent(inout) :: excit_dist(0:)
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
@@ -669,15 +670,15 @@ contains
             if (excit_dist(i-1) > 10.0_p .and. excit_dist(i) > 10.0_p) then
                 ! Alter the sampling weights using the relevant excitation
                 ! distribution.
-                dmqmc_in%sampling_probs(i) = dmqmc_in%sampling_probs(i)*&
+                weighted_sampling%sampling_probs(i) = weighted_sampling%sampling_probs(i)*&
                     (excit_dist(i)/excit_dist(i-1))
-                dmqmc_in%sampling_probs(max_number_excitations+1-i) = dmqmc_in%sampling_probs(i)**(-1)
+                weighted_sampling%sampling_probs(max_number_excitations+1-i) = weighted_sampling%sampling_probs(i)**(-1)
             end if
         end do
 
         ! Recalculate weighted_sampling%probs with the new weights.
         do i = 1, max_number_excitations
-            weighted_sampling%probs(i) = weighted_sampling%probs(i-1)*dmqmc_in%sampling_probs(i)
+            weighted_sampling%probs(i) = weighted_sampling%probs(i-1)*weighted_sampling%sampling_probs(i)
         end do
 
         ! If vary_weights is true then the weights are to be introduced
@@ -694,7 +695,7 @@ contains
             ! file.
             write(6, '(a31,2X)', advance = 'no') ' # Importance sampling weights:'
             do i = 1, max_number_excitations
-                write (6, '(es12.4,2X)', advance = 'no') dmqmc_in%sampling_probs(i)
+                write (6, '(es12.4,2X)', advance = 'no') weighted_sampling%sampling_probs(i)
             end do
             write (6, '()', advance = 'yes')
         end if

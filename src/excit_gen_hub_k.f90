@@ -26,7 +26,7 @@ contains
 ! gen_excit_finalise_hub_k*: provides rest of excitation required to determine
 !                            the sign of the child walkers.
 
-    subroutine gen_excit_init_hub_k(rng, sys, qmc_in, cdet, pgen, connection, abs_hmatel)
+    subroutine gen_excit_init_hub_k(rng, sys, pattempt_single, cdet, pgen, connection, abs_hmatel)
 
         ! Select orbitals from which to excite electrons and hence the
         ! generation probability (which is independent of the virtual orbitals
@@ -34,7 +34,8 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
+        !    pattempt_single: Probability to attempt a single excitation.
+        !        Unused but included for interface compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -50,12 +51,11 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
@@ -99,7 +99,7 @@ contains
 
     end subroutine gen_excit_init_hub_k
 
-    subroutine gen_excit_finalise_hub_k(rng, sys, qmc_in, cdet, connection, hmatel)
+    subroutine gen_excit_finalise_hub_k(rng, sys, cdet, connection, hmatel)
 
         ! Complete the excitation started in gen_excit_hub_k:
         !    * select the virtual orbitals electrons are excited into.
@@ -107,7 +107,6 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -125,12 +124,10 @@ contains
         use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use momentum_symmetry, only: sym_table
-        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(inout) :: connection
@@ -156,7 +153,7 @@ contains
 
     end subroutine gen_excit_finalise_hub_k
 
-    subroutine gen_excit_init_hub_k_no_renorm(rng, sys, qmc_in, cdet, pgen, connection, abs_hmatel)
+    subroutine gen_excit_init_hub_k_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, abs_hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -171,7 +168,8 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
+        !    pattempt_single: Probability to attempt a single excitation.
+        !        Unused but included for interface compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -188,11 +186,11 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
-        use qmc_data, only: qmc_in_t
+        use qmc_data, only: qmc_state_t
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
@@ -260,14 +258,13 @@ contains
 
     end subroutine gen_excit_init_hub_k_no_renorm
 
-    subroutine gen_excit_finalise_hub_k_no_renorm(rng, sys, qmc_in, cdet, connection, hmatel)
+    subroutine gen_excit_finalise_hub_k_no_renorm(rng, sys, cdet, connection, hmatel)
 
         ! Complete the excitation started in gen_excit_hub_k_no_renorm:
         !    * find the connecting Hamiltonian matrix element.
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         !    connection: excitation connection between the current determinant
@@ -282,12 +279,10 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
-        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(inout) :: connection ! inout for interface compatibility
@@ -304,14 +299,15 @@ contains
 
 !--- Excitation generation (see also split excitation generators) ---
 
-    subroutine gen_excit_hub_k(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_k(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
+        !    pattempt_single: Probability to attempt a single excitation.
+        !        Unused but included for interface compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! Out:
@@ -326,13 +322,12 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -366,7 +361,7 @@ contains
 
     end subroutine gen_excit_hub_k
 
-    subroutine gen_excit_hub_k_no_renorm(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_k_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -381,7 +376,8 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    qmc_in: input options relating to QMC methods.
+        !    pattempt_single: Probability to attempt a single excitation.
+        !        Unused but included for interface compatibility.
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! In/Out:
@@ -396,13 +392,12 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use qmc_data, only: qmc_in_t
         use system, only: sys_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        real(p), intent(in) :: pattempt_single
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel

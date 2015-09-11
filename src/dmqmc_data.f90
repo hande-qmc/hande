@@ -70,7 +70,7 @@ type dmqmc_rdm_in_t
     ! same length array. Note, this is only used for instantaneous RDMs.
     ! Ground-state RDM calculations allocate an array exactly the size of the
     ! full RDM.
-    integer :: spawned_length
+    integer :: spawned_length = 0
 
     ! If true then the reduced density matricies will be calulated for the 'A'
     ! subsystems specified by the user.
@@ -161,12 +161,6 @@ type dmqmc_in_t
     ! initially (as orbital labels), to be used in the calculation of
     ! spin correlation functions.
     integer, allocatable :: correlation_sites(:)
-    ! correlation_mask is a bit string with a 1 at positions i and j which
-    ! are considered when finding the spin correlation function, C(r_{i,j}).
-    ! All other bits are set to 0. i and j are chosen by the user initially.
-    ! This is not actually an input option but is calculated from
-    ! correlation_sites, but we store it here to be pragmatic.
-    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
 
     ! When using the old weighted importance sampling, sampling_probs
     ! stores the factors by which probabilities are to be reduced when spawning
@@ -256,6 +250,12 @@ type dmqmc_estimates_t
     ! level of the density matrix.
     real(p), allocatable :: excit_dist(:) ! (0:max_number_excitations)
 
+    ! correlation_mask is a bit string with a 1 at positions i and j which
+    ! are considered when finding the spin correlation function, C(r_{i,j}).
+    ! All other bits are set to 0. i and j are chosen by the user initially.
+    ! Not an estimate, but needed to calculate one.
+    integer(i0), allocatable :: correlation_mask(:) ! (string_len)
+
     ! RDM data.
 
     ! This stores information about the various subsystems corresponding to the
@@ -279,6 +279,10 @@ type dmqmc_weighted_sampling_t
     real(p), allocatable :: probs(:) ! (max_number_excitations + 1)
     ! The value of accumulated_probs on the last report cycle.
     real(p), allocatable :: probs_old(:) ! (max_number_excitations + 1)
+    ! When using the old weighted importance sampling, sampling_probs
+    ! stores the factors by which probabilities are to be reduced when spawning
+    ! away from the diagonal.
+    real(p), allocatable :: sampling_probs(:) ! (max_number_excitations)
 
     ! If varying the weights then this array holds the factors by which the
     ! weights are changed each iteration.

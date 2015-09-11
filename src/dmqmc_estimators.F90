@@ -332,7 +332,7 @@ contains
                 call update_shift(qmc_in, qs, qs%shift(ireplica), loc_totnparticles_old(ireplica), &
                     loc_totnparticles(ireplica), qmc_in%ncycles)
             end if
-            if (loc_totnparticles(ireplica) > qmc_in%target_particles .and. (.not. qs%vary_shift(ireplica))) &
+            if (loc_totnparticles(ireplica) > qs%target_particles .and. (.not. qs%vary_shift(ireplica))) &
                 qs%vary_shift(ireplica) = .true.
         end do
 
@@ -421,7 +421,7 @@ contains
                     &(sys, cdet, excitation, H00, unweighted_walker_pop(1), est%numerators(energy_squared_ind))
                 ! Spin-spin correlation function.
                 if (doing_dmqmc_calc(dmqmc_correlation)) call update_dmqmc_correlation_ptr&
-                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), dmqmc_in%correlation_mask, &
+                    &(sys, cdet, excitation, H00, unweighted_walker_pop(1), dmqmc_estimates%correlation_mask, &
                       est%numerators(correlation_fn_ind))
                 ! Staggered magnetisation.
                 if (doing_dmqmc_calc(dmqmc_staggered_magnetisation)) call update_dmqmc_stag_mag_ptr&

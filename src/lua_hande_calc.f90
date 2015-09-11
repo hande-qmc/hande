@@ -1363,6 +1363,7 @@ contains
             call aot_table_open(lua_state, opts, load_bal_table, 'load_bal')
 
             ! Optional arguments (defaults set in derived type).
+            load_bal_in%nslots = 20 ! Default for when load balancing in use
             call aot_get_val(load_bal_in%nslots, err, lua_state, load_bal_table, 'nslots')
             call aot_get_val(load_bal_in%pop, err, lua_state, load_bal_table, 'min_pop')
             call aot_get_val(load_bal_in%percent, err, lua_state, load_bal_table, 'target')

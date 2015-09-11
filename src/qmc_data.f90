@@ -231,9 +231,9 @@ end type nb_rep_t
 
 type load_bal_in_t
     ! Number of slots walker lists are initially subdivided into for proc_map
-    ! Default = 20. This reverts to 1 when run in serial.
+    ! Default = 1 unless using load balancing (in which case 20).
     ! Input option: load_balancing_slots
-    integer :: nslots = 20
+    integer :: nslots = 1
     ! Population which must be reached before load balancing is attempted.
     ! Default = 1000.
     ! Input option: load_balancing_pop
@@ -542,6 +542,12 @@ type qmc_state_t
     ! of the shift array refer to the shifts in the corresponding replica systems.
     ! When replica_tricks is not being used, only the first element is used.
     logical, allocatable :: vary_shift(:) ! (psip_list%nspaces)
+    ! Number of particles above which varyshift is turned on.
+    real(p) :: target_particles = huge(1.0_p)
+    ! Probability of attempting single or double excitations.
+    real(p) :: pattempt_single, pattempt_double
+    ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
+    real(p) :: init_beta = 1.0
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store

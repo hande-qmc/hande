@@ -16,14 +16,14 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
+        !    dmqmc_in: input options relating to DMQMC.
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
         ! In/Out:
-        !    qmc_in: input options relating to QMC methods.
-        !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_estimates: type containing all DMQMC estimates.
 
         use parallel
@@ -52,15 +52,15 @@ contains
         use spawn_data, only: write_memcheck_report
 
         type(sys_t), intent(inout) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
-        type(dmqmc_in_t), intent(inout) :: dmqmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         type(restart_in_t), intent(in) :: restart_in
-        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
-        integer :: beta_cycle
+        integer :: beta_cycle, nreport
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
         real(p), allocatable :: tot_nparticles_old(:), real_population(:)
@@ -82,6 +82,7 @@ contains
         integer :: ms, occ_list(sys%nel)
         type(sys_t) :: sys_copy
         type(json_out_t) :: js
+        type(qmc_in_t) :: qmc_in_loc
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -101,13 +102,30 @@ contains
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('real_population', size(real_population), ierr)
 
+        nreport = qmc_in%nreport
+        ! When using the propagate_to_beta option the number of iterations in imaginary
+        ! time we want to do depends on what value of beta we are seeking. It's
+        ! annoying to have to modify this in the input file, so just do it here.
+        if (dmqmc_in%propagate_to_beta) nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
+        ! When we accumulate data throughout a run, we are actually accumulating
+        ! results from the psips distribution from the previous iteration.
+        ! For example, in the first iteration, the trace calculated will be that
+        ! of the initial distribution, which corresponds to beta=0. Hence, in the
+        ! output we subtract one from the iteration number, and run for one more
+        ! report loop, asimplemented in the line of code below.
+        nreport = nreport+1
+
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
-            call qmc_in_t_json(js, qmc_in)
+            ! The default values of pattempt_* are not in qmc_in
+            qmc_in_loc = qmc_in
+            qmc_in_loc%pattempt_single = qs%pattempt_single
+            qmc_in_loc%pattempt_double = qs%pattempt_double
+            call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             call ipdmqmc_in_t_json(js, dmqmc_in)
             call rdm_in_t_json(js, dmqmc_in%rdm)
@@ -134,14 +152,6 @@ contains
         ! Initialise timer.
         call cpu_time(t1)
 
-        ! When we accumulate data throughout a run, we are actually accumulating
-        ! results from the psips distribution from the previous iteration.
-        ! For example, in the first iteration, the trace calculated will be that
-        ! of the initial distribution, which corresponds to beta=0. Hence, in the
-        ! output we subtract one from the iteration number, and run for one more
-        ! report loop, asimplemented in the line of code below.
-        qmc_in%nreport = qmc_in%nreport+1
-
         if (dmqmc_in%all_spin_sectors) nel_temp = sys%nel
         init_tot_nparticles = nint(qmc_in%D0_population, int_64)
 
@@ -163,14 +173,14 @@ contains
 
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
-            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs%ref, annihilation_flags, &
+            call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
                                                init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
-            qs%vary_shift = qs%psip_list%tot_nparticles >= qmc_in%target_particles
+            qs%vary_shift = qs%psip_list%tot_nparticles >= qs%target_particles
 
-            do ireport = 1, qmc_in%nreport
+            do ireport = 1, nreport
 
                 call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
@@ -230,7 +240,7 @@ contains
                                     ! Spawn from the first end.
                                     spawning_end = 1
                                     ! Attempt to spawn.
-                                    call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, &
+                                    call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, &
                                                      cdet1, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
                                                      weighted_sampling%probs, nspawned, connection)
                                     ! Spawn if attempt was successful.
@@ -246,7 +256,7 @@ contains
                                     ! Now attempt to spawn from the second end.
                                     if (.not. dmqmc_in%propagate_to_beta) then
                                         spawning_end = 2
-                                        call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, &
+                                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, &
                                                          cdet2, qs%psip_list%pops(ireplica,idet), gen_excit_ptr, &
                                                          weighted_sampling%probs, nspawned, connection)
                                         if (nspawned /= 0_int_p) then
@@ -338,7 +348,7 @@ contains
         if (soft_exit .or. error) then
             qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*ireport
         else
-            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*qmc_in%nreport
+            qs%mc_cycles_done = qs%mc_cycles_done + qmc_in%ncycles*nreport
         end if
 
         if (restart_in%write_restart) then

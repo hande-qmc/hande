@@ -10,33 +10,30 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc_legacy(sys, qmc_in, fciqmc_in, dmqmc_in)
+    subroutine init_qmc_legacy(sys, qmc_in, fciqmc_in)
 
         ! Do some legacy initialisation (ie things which should not be
         ! global/modified in input structures/etc).
 
         ! In:
         !    sys: the system being studied.
+        !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
+        !       if dmqmc_in%propagate_to_beta is true.
         ! In (optional):
         !    fciqmc_in: FCIQMC input options.
         !    dmqmc_in: DMQMC input options.
-        ! In/Out:
-        !    qmc_in: generic QMC input options.  qmc_in%nreport is correctly set
-        !       if dmqmc_in%propagate_to_beta is true.
 
         use checking, only: check_allocate
         use errors, only: warning
         use parallel, only: parent
         use utils, only: factorial_combination_1
 
-        use dmqmc_data, only: dmqmc_in_t
         use qmc_data, only: qmc_in_t, fciqmc_in_t, qmc_state_t, neel_singlet
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
-        type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
 
         integer :: i, ierr
 
@@ -65,13 +62,6 @@ contains
         end if
         ! Store 2**real_bit_shift for ease.
         real_factor = 2_int_p**(int(real_bit_shift, int_p))
-
-        if (present(dmqmc_in)) then
-            ! When using the propagate_to_beta option the number of iterations in imaginary
-            ! time we want to do depends on what value of beta we are seeking. It's
-            ! annoying to have to modify this in the input file, so just do it here.
-            if (dmqmc_in%propagate_to_beta) qmc_in%nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
-        end if
 
         if (present(fciqmc_in)) then
             ! Calculate all the possible different amplitudes for the Neel singlet state
@@ -143,13 +133,13 @@ contains
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(restart_in_t), intent(in) :: restart_in
-        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
         type(annihilation_flags_t), intent(inout) :: annihilation_flags
         type(qmc_state_t), intent(inout) :: qmc_state
-        type(dmqmc_in_t), intent(inout), optional :: dmqmc_in
+        type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         integer :: ierr
@@ -249,7 +239,6 @@ contains
 
             ! --- Memory allocation ---
 
-            if (nprocs == 1 .or. .not. fciqmc_in_loc%doing_load_balancing) load_bal_in%nslots = 1
             call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, qmc_state%par_info, &
                                  load_bal_in%nslots)
 
@@ -273,7 +262,7 @@ contains
                                             'Increasing spawned_walker_length to',max_nspawned_states,'.'
             end if
 
-            call init_qmc_legacy(sys, qmc_in, fciqmc_in, dmqmc_in)
+            call init_qmc_legacy(sys, qmc_in, fciqmc_in)
 
             ! If not using real amplitudes then we always want spawn_cutoff to be
             ! equal to 1.0, so overwrite the default before creating spawn_t objects.
@@ -485,7 +474,8 @@ contains
 #endif
 
             ! Decide whether the shift should be turned on from the start.
-            qmc_state%vary_shift = pl%tot_nparticles >= qmc_in%target_particles
+            qmc_state%target_particles = qmc_in%target_particles
+            qmc_state%vary_shift = pl%tot_nparticles >= qmc_state%target_particles
 
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
@@ -505,11 +495,11 @@ contains
             ! determinants have a roughly similar ratio of single:double
             ! excitations.
             if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-                call find_single_double_prob(sys, reference%occ_list0, qmc_in%pattempt_single, qmc_in%pattempt_double)
+                call find_single_double_prob(sys, reference%occ_list0, qmc_state%pattempt_single, qmc_state%pattempt_double)
             else
                 ! renormalise just in case input wasn't
-                qmc_in%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
-                qmc_in%pattempt_double = 1.0_p - qmc_in%pattempt_single
+                qmc_state%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
+                qmc_state%pattempt_double = 1.0_p - qmc_in%pattempt_single
             end if
 
             ! Set initial values from input

@@ -840,13 +840,13 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input optons relating to QMC methods.
         !    iteration: The current iteration of the simulation.
         !    nspawn_events: The total number of spawning events to this process.
         !    semi_stoch_shift_it: How many iterations after the shift starts
         !        to vary to begin using semi-stochastic.
         !    load_bal_in: input options for load balancing.
         ! In/Out:
-        !    qmc_in: input optons relating to QMC methods.
         !    update_tau: true if the processor thinks the timestep should be
         !        rescaled. This will be updated on output to only be true if
         !        in variable shift mode and if tau_search is being used.
@@ -879,7 +879,7 @@ contains
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: iteration
         logical, intent(inout) :: update_tau
         type(qmc_state_t), intent(inout) :: qs
@@ -943,7 +943,7 @@ contains
         if ((.not. vary_shift_before) .and. all(qs%vary_shift) .and. (semi_stoch_shift_it /= -1)) &
             semi_stoch_start_it = semi_stoch_shift_it + iteration + 1
 
-        call calc_interact(comms_found, soft_exit, qmc_in, qs)
+        call calc_interact(comms_found, soft_exit, qs)
 
     end subroutine end_report_loop
 

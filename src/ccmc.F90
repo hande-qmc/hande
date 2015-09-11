@@ -311,11 +311,11 @@ contains
         use json_out, only: json_out_t, json_object_init, json_object_end
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
         type(ccmc_in_t), intent(in) :: ccmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
-        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
@@ -334,6 +334,7 @@ contains
         type(dSFMT_t), allocatable :: rng(:)
         real(p) :: junk, bloom_threshold
         type(json_out_t) :: js
+        type(qmc_in_t) :: qmc_in_loc
 
         logical :: soft_exit, dump_restart_shift
 
@@ -373,7 +374,11 @@ contains
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
-            call qmc_in_t_json(js, qmc_in)
+            ! The default values of pattempt_* are not in qmc_in
+            qmc_in_loc = qmc_in
+            qmc_in_loc%pattempt_single = qs%pattempt_single
+            qmc_in_loc%pattempt_double = qs%pattempt_double
+            call qmc_in_t_json(js, qmc_in_loc)
             call ccmc_in_t_json(js, ccmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in)
@@ -1469,7 +1474,7 @@ contains
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, sys, qmc_in, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qs%pattempt_single, cdet, pgen, connection, hmatel)
 
         if (linked_ccmc .and. abs(hmatel) > depsilon) then
             ! For Linked Coupled Cluster we reject any spawning where the
@@ -2259,7 +2264,7 @@ contains
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then
             call decoder_ptr(sys, rdet%f, rdet)
-            call gen_excit_ptr%full(rng, sys, qmc_in, rdet, pgen, connection, hmatel)
+            call gen_excit_ptr%full(rng, sys, qs%pattempt_single, rdet, pgen, connection, hmatel)
             ! If hmatel is 0 then the excitation generator returned an invalid excitor
             if (hmatel /= 0.0_p) then
                 ! check that left_cluster can be applied to the resulting excitor to
@@ -2317,7 +2322,7 @@ contains
                     ! It's possible to get the same excitation from different partitionings
                     ! of the cluster so they all need to be accounted for in pgen
                     call create_excited_det(sys%basis, rdet%f, connection, new_det)
-                    pgen = pgen + calc_pgen(sys, qmc_in, rdet%f, connection, rdet)
+                    pgen = pgen + calc_pgen(sys, qmc_in%excit_gen, qs, rdet%f, connection, rdet)
 
                     ! Sign of the term in the commutator depends on the number of Ts in left_cluster
                     ! also need to account for possible sign change on going from excitor to determinant
@@ -2455,14 +2460,15 @@ contains
 
     end subroutine partition_cluster
 
-    function calc_pgen(sys, qmc_in, f, connection, parent_det) result(pgen)
+    function calc_pgen(sys, excit_gen, qmc_state, f, connection, parent_det) result(pgen)
 
         ! Calculate the probability of an excitation being selected.
         ! Wrapper round system specific functions.
 
         ! In:
         !    sys: the system being studied
-        !    qmc_in: input options relating to QMC methods.
+        !    excit_gen: which excitation generator is being used.  Should correspond to a value in the excit_gen_* enum in qmc_data.
+        !    qmc_state: input options relating to QMC methods.
         !    f: bit string representation of parent excitor
         !    connection: excitation connection between the current excitor
         !        and the child excitor, on which progeny are spawned.
@@ -2481,10 +2487,11 @@ contains
         use excit_gen_ringium, only: calc_pgen_ringium
         use point_group_symmetry, only: gamma_sym, cross_product_pg_basis, pg_sym_conj
         use determinants, only: det_info_t
-        use qmc_data, only: qmc_in_t, excit_gen_no_renorm
+        use qmc_data, only: qmc_state_t, excit_gen_no_renorm
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
+        integer, intent(in) :: excit_gen
+        type(qmc_state_t), intent(in) :: qmc_state
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(excit_t), intent(in) :: connection
         type(det_info_t), intent(in) :: parent_det
@@ -2496,21 +2503,21 @@ contains
         associate(a=>connection%to_orb(1), b=>connection%to_orb(2), i=>connection%from_orb(1), j=>connection%from_orb(2))
             select case(sys%system)
             case(read_in)
-                if (qmc_in%excit_gen == excit_gen_no_renorm) then
+                if (excit_gen == excit_gen_no_renorm) then
                     if (connection%nexcit == 1) then
-                        pgen = qmc_in%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
+                        pgen = qmc_state%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
-                        pgen = qmc_in%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
+                        pgen = qmc_state%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
                     end if
                 else
                     if (connection%nexcit == 1) then
-                        pgen = qmc_in%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, &
+                        pgen = qmc_state%pattempt_single * calc_pgen_single_mol(sys, gamma_sym, parent_det%occ_list, &
                                                                              parent_det%symunocc, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
                         ij_sym = pg_sym_conj(cross_product_pg_basis(a, b, sys%basis%basis_fns))
-                        pgen = qmc_in%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
+                        pgen = qmc_state%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
                     end if
                 end if
             case(ueg)

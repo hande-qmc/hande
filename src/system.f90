@@ -658,6 +658,7 @@ contains
 
             sys%nvirt_alpha = nbasis/2 - sys%nel
             sys%nvirt_beta = 0
+            sys%max_number_excitations = min(sys%nalpha, sys%nvirt_alpha)
 
         case default
 

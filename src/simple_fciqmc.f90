@@ -130,6 +130,7 @@ contains
         call check_allocate('qs%vary_shift', size(qs%vary_shift), ierr)
         qs%vary_shift = .false.
 
+        qs%target_particles = qmc_in%target_particles
         qs%tau = qmc_in%tau
 
         ! Now we need to set the reference determinant.
@@ -237,6 +238,7 @@ contains
         real(p), allocatable :: hamil(:,:)
         type(csrp_t) :: hamil_csr
         type(json_out_t) :: js
+        type(qmc_in_t) :: qmc_in_loc
 
         ! Check input options
         call check_qmc_opts(qmc_in, .true.)
@@ -247,7 +249,11 @@ contains
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
-            call qmc_in_t_json(js, qmc_in)
+            ! The default values of pattempt_* are not in qmc_in
+            qmc_in_loc = qmc_in
+            qmc_in_loc%pattempt_single = qs%pattempt_single
+            qmc_in_loc%pattempt_double = qs%pattempt_double
+            call qmc_in_t_json(js, qmc_in_loc)
             call restart_in_t_json(js, restart_in)
             call reference_t_json(js, reference)
             call json_write_key(js, 'sparse_hamil', sparse_hamil, .true.)
@@ -333,7 +339,7 @@ contains
                 call update_shift(qmc_in, qs, qs%shift(1), nparticles_old, nparticles, qmc_in%ncycles)
             end if
             nparticles_old = nparticles
-            if (nparticles > qmc_in%target_particles .and. .not.qs%vary_shift(1)) then
+            if (nparticles > qs%target_particles .and. .not.qs%vary_shift(1)) then
                 qs%vary_shift(1) = .true.
             end if
 

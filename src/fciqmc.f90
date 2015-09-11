@@ -62,11 +62,11 @@ contains
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(inout) :: qmc_in
-        type(fciqmc_in_t), intent(inout) :: fciqmc_in
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(fciqmc_in_t), intent(in) :: fciqmc_in
         type(semi_stoch_in_t), intent(in) :: semi_stoch_in
         type(restart_in_t), intent(in) :: restart_in
-        type(load_bal_in_t), intent(inout) :: load_bal_in
+        type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
 
         type(det_info_t) :: cdet
@@ -74,6 +74,7 @@ contains
         type(bloom_stats_t) :: bloom_stats
         type(semi_stoch_t) :: determ
         type(json_out_t) :: js
+        type(qmc_in_t) :: qmc_in_loc
 
         integer :: idet, ireport, icycle, iparticle, ideterm, ierr
         integer :: iter, semi_stoch_iter
@@ -116,7 +117,11 @@ contains
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
-            call qmc_in_t_json(js, qmc_in)
+            ! The default values of pattempt_* are not in qmc_in
+            qmc_in_loc = qmc_in
+            qmc_in_loc%pattempt_single = qs%pattempt_single
+            qmc_in_loc%pattempt_double = qs%pattempt_double
+            call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in)
@@ -221,7 +226,7 @@ contains
                     do iparticle = 1, nattempts_current_det
 
                         ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qmc_in, qs%tau, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
+                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, real_factor, cdet, &
                                         qs%psip_list%pops(1,idet), gen_excit_ptr, neel_singlet_amp, nspawned, connection)
 
                         ! Spawn if attempt was successful.
@@ -421,7 +426,7 @@ contains
             do iparticle = 1, nattempts_current_det
 
                 ! Attempt to spawn.
-                call spawner_ptr(rng, sys, qmc_in, qs%tau, spawn_to_send%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
+                call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, real_factor, cdet, int_pop(1), gen_excit_ptr, &
                                  neel_singlet_amp, nspawned, connection)
 
                 ! Spawn if attempt was successful.
