@@ -83,24 +83,21 @@ opt_block: :class:`pandas.DataFrame`
         infos.extend(info)
 
     opt_blocks = [info.opt_block for info in infos]
-    if len(opt_blocks) == 1:
-        opt_block = opt_blocks[0]
-    else:
-        if verbose < v_rec_stats:
-            levels = ['mean', 'standard error', 'standard error error']
-            for level in levels:
-                opt_blocks = [opt_block.drop(level, axis=1)
-                                for opt_block in opt_blocks
-                                if level in opt_block]
-        opt_blocks = [opt_block.stack() for opt_block in opt_blocks]
-        indices = [','.join(calcs) for calcs in files]
-        if len(indices) < len(opt_blocks):
-            # Multiple calculations per file: number sequentially
-            # assume we only have only one file in this case
-            indices = ['%s %i'%(indices[0],i) for i in range(len(opt_blocks))]
-        opt_block = pd.DataFrame(dict(zip(indices, opt_blocks))).T
-        if verbose < v_rec_stats and not opt_block.empty:
-            opt_block.columns = opt_block.columns.droplevel(1)
+    if verbose < v_rec_stats:
+        levels = ['mean', 'standard error', 'standard error error']
+        for level in levels:
+            opt_blocks = [opt_block.drop(level, axis=1)
+                            for opt_block in opt_blocks
+                            if level in opt_block]
+    opt_blocks = [opt_block.stack() for opt_block in opt_blocks]
+    indices = [','.join(calcs) for calcs in files]
+    if len(indices) < len(opt_blocks):
+        # Multiple calculations per file: number sequentially
+        # assume we only have only one file in this case
+        indices = ['%s %i'%(indices[0],i) for i in range(len(opt_blocks))]
+    opt_block = pd.DataFrame(dict(zip(indices, opt_blocks))).T
+    if verbose < v_rec_stats and not opt_block.empty:
+        opt_block.columns = opt_block.columns.droplevel(1)
 
     if not opt_block.empty and verbose > v_silent:
         print('Recommended statistics from optimal block size:')
