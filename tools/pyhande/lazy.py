@@ -89,6 +89,7 @@ size from the blocking analysis:
         prev_iteration = data[0]['iterations'].iloc[-1]
         calc_type = metadata[0]['calc_type']
         calcs = []
+        calcs_metadata = [metadata[0]]
         xcalc = [data[0]]
         for i in range(1, len(data)):
             if metadata[i]['calc_type'] != calc_type or \
@@ -99,6 +100,7 @@ size from the blocking analysis:
                 calc_type = metadata[i]['calc_type']
                 calcs.append(pd.concat(xcalc))
                 xcalc = [data[i]]
+                calcs_metadata.append(metadata[i])
             else:
                 # Continuation of same calculation (probably)
                 xcalc.append(data[i])
@@ -107,8 +109,11 @@ size from the blocking analysis:
     else:
         data = [pd.DataFrame()] # throw an error in a moment...
 
+    tuple_fields = ('metadata data data_len reblock covariance opt_block '
+                   'no_opt_block'.split())
+    info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
     return_vals = []
-    for calc in calcs:
+    for calc,md in zip(calcs,calcs_metadata):
         # Reblock Monte Carlo data over desired window.
         if select_function is None:
             indx = calc['iterations'] > start
@@ -150,10 +155,7 @@ size from the blocking analysis:
                            )
         opt_block['estimate'] = estimates
 
-        tuple_fields = ('metadata data data_len reblock covariance opt_block '
-                       'no_opt_block'.split())
-        info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
-        return_vals.append(info_tuple(metadata, data, data_len, reblock,
+        return_vals.append(info_tuple(md, calc, data_len, reblock,
                                       covariance, opt_block, no_opt_block))
 
     return return_vals
