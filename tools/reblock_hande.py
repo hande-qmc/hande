@@ -62,6 +62,7 @@ opt_block: :class:`pandas.DataFrame`
     (v_estimate, v_rec_stats, v_analysis, v_meta, v_input) = (0, 1, 2, 3, 4)
 
     infos = []
+    indices = []
     for calc in files:
         info = pyhande.lazy.std_analysis(calc, start_iteration,
                                          extract_psips=True)
@@ -81,6 +82,10 @@ opt_block: :class:`pandas.DataFrame`
                 print(i.reblock.to_string(float_format=float_fmt, line_width=90))
                 print('')
         infos.extend(info)
+        if len(info) == 1:
+            indices.append(','.join(calc))
+        else:
+            indices.extend('%s %i'%(','.join(calc),i) for i in range(len(info)))
 
     opt_blocks = [info.opt_block for info in infos]
     if verbose < v_rec_stats:
@@ -90,11 +95,6 @@ opt_block: :class:`pandas.DataFrame`
                             for opt_block in opt_blocks
                             if level in opt_block]
     opt_blocks = [opt_block.stack() for opt_block in opt_blocks]
-    indices = [','.join(calcs) for calcs in files]
-    if len(indices) < len(opt_blocks):
-        # Multiple calculations per file: number sequentially
-        # assume we only have only one file in this case
-        indices = ['%s %i'%(indices[0],i) for i in range(len(opt_blocks))]
     opt_block = pd.DataFrame(dict(zip(indices, opt_blocks))).T
     if verbose < v_rec_stats and not opt_block.empty:
         opt_block.columns = opt_block.columns.droplevel(1)
