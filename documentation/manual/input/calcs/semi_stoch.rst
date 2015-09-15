@@ -49,7 +49,7 @@ stochastic error in many cases.
 
     If true, the deterministic amplitudes are communicated separately at the cost of an
     additional MPI call.  If false, the annihilation of particles created from
-    deterministic and stochastic projections are performed separately, which removes the
+    deterministic and stochastic projections are performed together, which removes the
     need for an additional MPI call at the cost of communicating an additional
     :math:`\mathcal{O}(N_p N_D)` more amplitudes, where :math:`N_p` is the number of
     processors and :math:`N_D` the size of the deterministic space.  If the deterministic
