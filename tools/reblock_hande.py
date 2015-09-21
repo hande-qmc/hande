@@ -69,7 +69,8 @@ opt_block: :class:`pandas.DataFrame`
         if verbose >= v_analysis:
             print('Analysing file(s): %s' % (' '.join(calc)))
         if verbose >= v_meta:
-            for md in info.metadata:
+            for i in info:
+                md = i.metadata
                 calc_type = md.pop('calc_type')
                 calc_input = md.pop('input')
                 print('\ncalc_type: %s' % (calc_type))
