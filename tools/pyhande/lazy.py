@@ -29,15 +29,18 @@ reweight_history : integer
     reweight in an attempt to remove population control bias. According to
     C. J. Umirigar et. al. J. Chem. Phys. 99, 2865 (1993) this should be set
     to be a few correlation times.
-mean_shift: float
-    prevent the weights from beoming to large.
+mean_shift : float
+    prevent the weights from becoming too large.
+
 Returns
 -------
-info : :func:`collections.namedtuple`
+info : list of :func:`collections.namedtuple`
     raw and analysed data, consisting of:
 
         metadata, data
-            from :func:`pyhande.extract.extract_data_sets`.
+            from :func:`pyhande.extract.extract_data_sets`.  If ``data``
+            consists of several concatenated calculations, then the only
+            ``metadata`` object is from the first calculation.
         data_len, reblock, covariance
             from :func:`pyblock.pd_utils.reblock`.  The projected energy
             estimator (evaluated by :func:`pyhande.analysis.projected_energy`)
@@ -87,60 +90,74 @@ size from the blocking analysis:
         step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
         prev_iteration = data[0]['iterations'].iloc[-1]
         calc_type = metadata[0]['calc_type']
+        calcs = []
+        calcs_metadata = [metadata[0]]
+        xcalc = [data[0]]
         for i in range(1, len(data)):
-            if metadata[i]['calc_type'] != calc_type:
-                warnings.warn('Different calculation types detected.')
-            elif data[i]['iterations'].iloc[0] - step != prev_iteration:
-                warnings.warn('')
+            if metadata[i]['calc_type'] != calc_type or \
+                    data[i]['iterations'].iloc[0] - step != prev_iteration or \
+                    data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2] != step:
+                # Different calculation
+                step = data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2]
+                calc_type = metadata[i]['calc_type']
+                calcs.append(pd.concat(xcalc))
+                xcalc = [data[i]]
+                calcs_metadata.append(metadata[i])
+            else:
+                # Continuation of same calculation (probably)
+                xcalc.append(data[i])
             prev_iteration = data[i]['iterations'].iloc[-1]
-        data = pd.concat(data)
+        calcs.append(pd.concat(xcalc))
     else:
-        data = pd.DataFrame() # throw an error in a moment...
-
-    # Reblock Monte Carlo data over desired window.
-    if select_function is None:
-        indx = data['iterations'] > start
-    else:
-        indx = select_function(data)
-    to_block = []
-    if extract_psips:
-        to_block.append('# H psips')
-    to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
-    if reweight_history > 0:
-        to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
-
-    mc_data = data.ix[indx, to_block]
-
-    if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
-        warnings.warn('The blocking analysis starts from before the shift '
-                     'begins to vary.')
-
-    (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
-    
-    proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
-    reblock = pd.concat([reblock, proje], axis=1)
-    to_block.append('Proj. Energy')
-
-    if reweight_history > 0:
-        proje = pyhande.analysis.projected_energy(reblock, covariance, 
-                    data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
-                    col_name='Weighted Proj. E.')
-        reblock = pd.concat([reblock, proje], axis=1)
-        to_block.append('Weighted Proj. E.')
-
-    # Summary (including pretty printing of estimates).
-    (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
-
-    estimates = []
-    for (name, row) in opt_block.iterrows():
-        estimates.append(
-                pyblock.error.pretty_fmt_err(row['mean'], row['standard error'])
-                       )
-    opt_block['estimate'] = estimates
+        data = [pd.DataFrame()] # throw an error in a moment...
 
     tuple_fields = ('metadata data data_len reblock covariance opt_block '
                    'no_opt_block'.split())
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
+    return_vals = []
+    for calc,md in zip(calcs,calcs_metadata):
+        # Reblock Monte Carlo data over desired window.
+        if select_function is None:
+            indx = calc['iterations'] > start
+        else:
+            indx = select_function(calc)
+        to_block = []
+        if extract_psips:
+            to_block.append('# H psips')
+        to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
+        if reweight_history > 0:
+            to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
 
-    return info_tuple(metadata, data, data_len, reblock, covariance, opt_block,
-                      no_opt_block)
+        mc_data = calc.ix[indx, to_block]
+
+        if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
+            warnings.warn('The blocking analysis starts from before the shift '
+                         'begins to vary.')
+
+        (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
+        
+        proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
+        reblock = pd.concat([reblock, proje], axis=1)
+        to_block.append('Proj. Energy')
+
+        if reweight_history > 0:
+            proje = pyhande.analysis.projected_energy(reblock, covariance, 
+                        data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
+                        col_name='Weighted Proj. E.')
+            reblock = pd.concat([reblock, proje], axis=1)
+            to_block.append('Weighted Proj. E.')
+
+        # Summary (including pretty printing of estimates).
+        (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
+
+        estimates = []
+        for (name, row) in opt_block.iterrows():
+            estimates.append(
+                    pyblock.error.pretty_fmt_err(row['mean'], row['standard error'])
+                           )
+        opt_block['estimate'] = estimates
+
+        return_vals.append(info_tuple(md, calc, data_len, reblock,
+                                      covariance, opt_block, no_opt_block))
+
+    return return_vals

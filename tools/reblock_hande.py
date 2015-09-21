@@ -34,16 +34,10 @@ verbose : int
     Level of verbosity.
 
     <0: print nothing
-    0: print only the recommended statistics from the optimal block length.
-    1: print blocking analysis and recommended statistics.
-    2: print calculation metadata, blocking analysis and recommended statistics.
-
-    If multiple independent calculations are analysed (i.e. len(files) > 1) then
-    the first verbosity level is:
-
     0: print only the estimate from the optimal block length.
-
-    and the value for levels 0-2 above are increased by 1.
+    1: print only the recommended statistics from the optimal block length.
+    2: print blocking analysis and recommended statistics.
+    3: print calculation metadata, blocking analysis and recommended statistics.
 
 Returns
 -------
@@ -65,21 +59,18 @@ opt_block: :class:`pandas.DataFrame`
 
     # verbosity levels
     v_silent = -1
-    if len(files) > 1:
-        (v_estimate, v_rec_stats, v_analysis, v_meta, v_input) = (0, 1, 2, 3, 4)
-    else:
-        (v_rec_stats, v_analysis, v_meta, v_input) = (0, 1, 2, 3)
+    (v_estimate, v_rec_stats, v_analysis, v_meta, v_input) = (0, 1, 2, 3, 4)
 
     infos = []
+    indices = []
     for calc in files:
-        # [todo] - Future work: automatically handle the case of different
-        # [todo] - calculations within the same file.
         info = pyhande.lazy.std_analysis(calc, start_iteration,
                                          extract_psips=True)
         if verbose >= v_analysis:
             print('Analysing file(s): %s' % (' '.join(calc)))
         if verbose >= v_meta:
-            for md in info.metadata:
+            for i in info:
+                md = i.metadata
                 calc_type = md.pop('calc_type')
                 calc_input = md.pop('input')
                 print('\ncalc_type: %s' % (calc_type))
@@ -88,25 +79,26 @@ opt_block: :class:`pandas.DataFrame`
                     print('\nFull input options:\n%s' % '\n'.join(calc_input))
                 print('')
         if verbose >= v_analysis:
-            print(info.reblock.to_string(float_format=float_fmt, line_width=90))
-            print('')
-        infos.append(info)
+            for i in info: 
+                print(i.reblock.to_string(float_format=float_fmt, line_width=90))
+                print('')
+        infos.extend(info)
+        if len(info) == 1:
+            indices.append(','.join(calc))
+        else:
+            indices.extend('%s %i'%(','.join(calc),i) for i in range(len(info)))
 
     opt_blocks = [info.opt_block for info in infos]
-    if len(opt_blocks) == 1:
-        opt_block = opt_blocks[0]
-    else:
-        if verbose < v_rec_stats:
-            levels = ['mean', 'standard error', 'standard error error']
-            for level in levels:
-                opt_blocks = [opt_block.drop(level, axis=1)
-                                for opt_block in opt_blocks
-                                if level in opt_block]
-        opt_blocks = [opt_block.stack() for opt_block in opt_blocks]
-        indices = [','.join(calcs) for calcs in files]
-        opt_block = pd.DataFrame(dict(zip(indices, opt_blocks))).T
-        if verbose < v_rec_stats and not opt_block.empty:
-            opt_block.columns = opt_block.columns.droplevel(1)
+    if verbose < v_rec_stats:
+        levels = ['mean', 'standard error', 'standard error error']
+        for level in levels:
+            opt_blocks = [opt_block.drop(level, axis=1)
+                            for opt_block in opt_blocks
+                            if level in opt_block]
+    opt_blocks = [opt_block.stack() for opt_block in opt_blocks]
+    opt_block = pd.DataFrame(dict(zip(indices, opt_blocks))).T
+    if verbose < v_rec_stats and not opt_block.empty:
+        opt_block.columns = opt_block.columns.droplevel(1)
 
     if not opt_block.empty and verbose > v_silent:
         print('Recommended statistics from optimal block size:')
@@ -114,11 +106,11 @@ opt_block: :class:`pandas.DataFrame`
         print(opt_block.to_string(float_format=float_fmt, na_rep='n/a',
                                   line_width=130))
 
-    for (calc, info) in zip(files, infos):
+    for (calc, info) in zip(indices, infos):
         if info.no_opt_block and verbose > v_silent:
             fnames = ''
-            if (len(files) > 1):
-                fnames = ' in ' + ' '.join(calc)
+            if (len(indices) > 1):
+                fnames = ' in ' + calc.replace(',',' ')
             print('WARNING: could not find optimal block size%s.' % (fnames))
             print('Insufficient statistics collected for the following '
                   'variables: %s.' % (', '.join(info.no_opt_block)))
