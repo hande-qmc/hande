@@ -34,11 +34,13 @@ mean_shift : float
 
 Returns
 -------
-info : :func:`collections.namedtuple`
+info : list of :func:`collections.namedtuple`
     raw and analysed data, consisting of:
 
         metadata, data
-            from :func:`pyhande.extract.extract_data_sets`.
+            from :func:`pyhande.extract.extract_data_sets`.  If ``data``
+            consists of several concatenated calculations, then the only
+            ``metadata`` object is from the first calculation.
         data_len, reblock, covariance
             from :func:`pyblock.pd_utils.reblock`.  The projected energy
             estimator (evaluated by :func:`pyhande.analysis.projected_energy`)
