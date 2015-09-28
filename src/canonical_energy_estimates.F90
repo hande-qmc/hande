@@ -96,7 +96,7 @@ contains
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
         integer :: ngen, nalpha_allowed, nbeta_allowed
-        real(p) :: energy_zero, ref_shift
+        real(p) :: ref_shift
         integer, allocatable :: occ_list0(:)
         type(json_out_t) :: js
 
@@ -139,10 +139,8 @@ contains
         select case(sys%system)
         case (ueg)
             energy_diff_ptr => exchange_energy_ueg
-            energy_zero = 0.0_p
         case (read_in)
             energy_diff_ptr => double_counting_correction_mol
-            energy_zero = sys%read_in%Ecore
         case default
             call stop_all('estimate_canonical_energy', 'Not implemented for selected model Hamiltonian')
         end select
