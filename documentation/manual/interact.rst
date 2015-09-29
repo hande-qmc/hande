@@ -20,8 +20,8 @@ softexit
     or cleanly stopping a calculation before the walltime is reached to allow it to be
     restarted.
 
-    The send_softexit.py script  scripts in the tools subdirectory are useful for running
-    HANDE on a queueing system as they write **softexit** to HANDE.COMM a certain amount
+    The send_softexit.py script in the tools subdirectory is useful for running
+    HANDE on a queueing system as it writes **softexit = true** to HANDE.COMM a certain amount
     of time before the walltime is reached.
 tau
     type: float.

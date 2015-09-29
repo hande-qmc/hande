@@ -17,6 +17,7 @@ import sys, os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../../tools'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -25,7 +26,23 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.mathjax', 'sphinx.ext.ifconfig']
+extensions = ['sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.autodoc', 'sphinx.ext.intersphinx']
+
+# Use napoleon to aprse docstrings.  From sphinx 1.3 onwards, this is packaged
+# with sphinx.  Earlier versions: require user to install it.
+try:
+    import sphinx.ext.napoleon
+    extensions.append('sphinx.ext.napoleon')
+except ImportError:
+    extensions.append('sphinxcontrib.napoleon')
+
+intersphinx_mapping = {
+    'python': ('http://docs.python.org/2.7', None),
+    'numpy':('http://docs.scipy.org/doc/numpy', 'http://docs.scipy.org/doc/numpy/objects.inv'),
+    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/',   None),
+    'matplotlib': ('http://matplotlib.sourceforge.net', None),
+    'pyblock': ('http://pyblock.readthedocs.org/en/latest/', None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['.templates']
@@ -99,7 +116,10 @@ elif os.path.exists('../MathJax'):
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'haiku'
+if os.environ.get('READTHEDOCS', None) == 'True':
+    html_theme = 'default'
+else:
+    html_theme = 'haiku'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

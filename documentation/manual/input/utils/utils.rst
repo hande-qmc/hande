@@ -2,16 +2,13 @@ Utilities
 =========
 
 Redistribution of restart files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------
 
 .. code-block:: lua
 
     redistribute {
         -- options
     }
-
-Returns:
-    nil
 
 For speed in reading in restart files and for simplicity, HANDE produces restart files
 specific to the number of MPI ranks used in the calculation and hence by default
@@ -24,7 +21,7 @@ produces a new set to be used on a different number of processors.
    * It is convenient to place this before the QMC calculation call in the input file.
      However, the process of redistributing particles is a somewhat serial task and hence
      ``redistribute`` may not scale well to large numbers of processors.  Hence it may be
-     more computationally efficient to do the redistribution targetting a large (ie 100s
+     more computationally efficient to do the redistribution targeting a large (ie 100s
      or 1000s) of processors using a much smaller number of processors in a separate run
      of HANDE.
    * Load balancing settings are reset to their default values.
@@ -34,20 +31,20 @@ where ``X`` is the restart index and ``Y`` is the MPI rank.
 
 Options:
 
-nprocs
+``nprocs``
     type: integer.
 
     Optional.  Default: number of processors the calculation is running on.
 
     Set the number of processors that the new set of restart files are to be used on.
-read
+``read``
     type: integer.
 
     Optional.  Default: highest non-negative integer for which a set of restart files
     exists.
 
     Set the index, ``X`` of the set of restart files to be read in.
-write
+``write``
     type: integer.
 
     Optional.  Default: highest non-negative integer for which a set of restart files does
@@ -61,7 +58,7 @@ write
    are assumed to be in the working directory.
 
 MPI information
-^^^^^^^^^^^^^^^
+---------------
 
 .. code-block:: lua
 
@@ -72,7 +69,7 @@ Returns:
 
 The input file is processed and run by each processor.  It is occasionally useful to
 perform (for example) additional I/O from lua but only on one processor.  Testing if
-the procesor is the MPI root processor is a safe way to do this, e.g.
+the processor is the MPI root processor is a safe way to do this, e.g.
 
 .. code-block:: lua
 

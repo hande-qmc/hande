@@ -95,7 +95,7 @@ To compile the code run
 
     make
     
-HANDE's build system uses the ``sfmakedepend`` script (http://www.arsc.edu/~kate/Perl/,
+HANDE's build system uses the ``sfmakedepend`` script (http://people.arsc.edu/~kate/Perl/,
 supplied in ``tools/``) by Kate Hedstrom to generate the list of dependencies for each
 Fortran source file.  These are generated automatically when make is run if the dependency
 files do not exist.
@@ -140,7 +140,7 @@ files or in the Makefile, as desired.
     Results should be in statistical agreement but the precise data produced by the
     calculation (even using the same random number seed) may well be changed.
 
-    This currently applies to the following options: DET_SIZE, POP_SIZE and
+    This currently applies to the following options: POP_SIZE and
     SINGLE_PRECISION.
 
 DET_SIZE
@@ -148,7 +148,7 @@ DET_SIZE
 
     HANDE uses bit strings to store Slater determinants, where each bit
     corresponds to an occupied spin-orbital if the bit is set and an unoccupied
-    spin orbital otherwise.  As fortran does not include a type for a single
+    spin orbital otherwise.  As Fortran does not include a type for a single
     bit, integers are used.  Note that this does lead to some wasted memory when
     the number of spin-orbitals is not a multiple of the size of the integer used.
     An array of integers is used to store the determinant bit string if
@@ -169,14 +169,14 @@ POP_SIZE
     be needed when using the integer code but this option is more critical
     when the **real_amplitudes** option is being used. When using the
     **real_amplitudes** option with POP_SIZE=32, the largest walker amplitude
-    that can be stored is 2^20=1048576, while the smallest fractional part that
-    can be represented is 2^-11=0.00049. When using this option and POP_SIZE=64
-    the largest amplitude is 2^32=4.3x10^9 and the smallest fractional part
-    is 2^-31=4.66x10^-10.
+    that can be stored is :math:`2^{20}=1048576`, while the smallest fractional part that
+    can be represented is :math:`2^{-11}=0.00049`. When using this option and POP_SIZE=64
+    the largest amplitude is :math:`2^{32}=4.3\times10^9` and the smallest fractional part
+    is :math:`2^{-31}=4.66\times10^{-10}`.
 DISABLE_LANCZOS
     Default: not defined.
 
-    If defined then Lanczos diagonalisation is disabled.  This removes the dependency on the TRLan
+    If defined then Lanczos diagonalisation is disabled.  This removes the dependency on the TRLan library.
 DISABLE_HDF5
     Default: not defined.
 
@@ -187,8 +187,8 @@ DISABLE_HDF5
 DISABLE_UUID
     Default: not defined.
 
-    If defined then each calulation will not print universally unique identifier. This removes the
-    dependancy on libuuid.
+    If defined then each calculation will not print universally unique identifier. This removes the
+    dependency on libuuid.
 DSFMT_MEXP 
     Default: 19937.
 
@@ -200,7 +200,7 @@ DSFMT_MEXP
     DSFMT_EXP sets the exponent of the period of the RNG.  Allowed values are
     521, 1279, 2203, 4253, 11213, 19937, 44497, 86243,
     132049 and 216091 and lead to, for example, random numbers with a period of
-    a Mersenne Prime such as 2^512-1.
+    a Mersenne Prime such as :math:`2^{512}-1`.
 NAGF95  
     Default: not defined.
 
@@ -228,7 +228,7 @@ USE_POPCNT
     standard compilation flags, we expect the HANDE version to be competitive or more
     performant, based upon some simple tests.  The key difference is on modern
     processors containing the popcnt instruction: the popcnt intrinsic can then
-    make use of this instruction and will be much faster than the implmentation
+    make use of this instruction and will be much faster than the implementation
     in HANDE.  The existence of the popcnt instruction can be found, on Unix
     and Linux platforms, by inspecting the flags field in ``/proc/cpuinfo``: if
     it contains ``popcnt``, then the processor contains the popcnt instruction.
@@ -263,7 +263,7 @@ We attempt to work round any compiler and library issues we encounter but someti
 is not possible.  Issues and, where known, workarounds we have found are:
 
 * HDF5 1.8.14 (and possibly 1.8.13) has a bug revealed by Intel compilers v15 onwards.
-  This results in unusual error messages and/or segementation faults when writing out
+  This results in unusual error messages and/or segmentation faults when writing out
   restart files.  Possibly workarounds:
 
   * use HDF5 1.8.15 (best).

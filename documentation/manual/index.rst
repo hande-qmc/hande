@@ -11,8 +11,9 @@ User's guide
    compile
    tests
    running
-   analysis
    input/input
    interact
+   analysis
    tips
    removed
+   tutorials/tutorials

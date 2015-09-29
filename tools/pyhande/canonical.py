@@ -1,4 +1,4 @@
-'''Analyse output of canonical free-particle thermodynamic calculation.'''
+'''Analysis of data from  canonical free-particle thermodynamic calculations.'''
 
 import pandas as pd
 import pyblock

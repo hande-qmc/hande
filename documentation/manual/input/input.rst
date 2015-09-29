@@ -38,15 +38,18 @@ Calculations
 
    calcs/fci
    calcs/hilbert
+   calcs/canonical_energy
    calcs/fciqmc
    calcs/ccmc
    calcs/dmqmc
+   calcs/simple_fciqmc
+   calcs/common
 
 Utilities
 ^^^^^^^^^
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    utils/utils
 
@@ -54,6 +57,6 @@ Appendix
 ^^^^^^^^
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    lua_intro
