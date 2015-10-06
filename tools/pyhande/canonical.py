@@ -1,12 +1,14 @@
-'''Analysis of data from  canonical free-particle thermodynamic calculations.'''
+'''Analysis of data from  canonical thermodynamic calculations.'''
 
 import pandas as pd
 import pyblock
 import pyhande.legacy
 import numpy as np
 
+
 def analyse_hf_observables(means, covariances, nsamples):
-    ''' Perform Error analysis for Hartree-Fock estimates which are the ratio of two quantities.
+    ''' Perform Error analysis for Hartree-Fock estimates which
+are the ratio of two quantities.
 
 Parameters
 ----------
@@ -33,9 +35,10 @@ results : :class:`pandas.DataFrame`
     trace = pd.DataFrame()
     results = pd.DataFrame()
     trace['mean'] = [means[r'Tr(\rho_HF)']]
-    trace['standard error'] = [np.sqrt(covariances[r'Tr(\rho_HF)'][r'Tr(\rho_HF)']/nsamples)]
+    trace['standard error'] = (
+            [np.sqrt(covariances[r'Tr(\rho_HF)'][r'Tr(\rho_HF)']/nsamples)])
 
-    for (k,v) in observables.items():
+    for (k, v) in observables.items():
         num['mean'] = [means[v]]
         num['standard error'] = [np.sqrt(covariances[v][v]/nsamples)]
         cov_ab = covariances[v][r'Tr(\rho_HF)']
@@ -88,7 +91,9 @@ results : :class:`pandas.DataFrame`
     results['<V>_0'] = [means['<V>_0']]
     results['<V>_0_Error'] = [np.sqrt(covariances['<V>_0']['<V>_0']/nsamples)]
 
-    # Take care of the correlation between numerator and denominator in Hartree-Fock estimates.
-    results = results.join(analyse_hf_observables(means, covariances, nsamples))
+    # Take care of the correlation between numerator and denominator
+    # in Hartree-Fock estimates.
+    results = (
+            results.join(analyse_hf_observables(means, covariances, nsamples)))
 
     return results

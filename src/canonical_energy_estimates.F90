@@ -1,6 +1,20 @@
 module canonical_energy_estimates
 
 ! Estimate the various energy estimates in the canonical ensemble.
+! Let H = T + V, then we can estimate thermodynamic values for <H>,
+! where <X> = Tr(X\rho)/Tr(\rho), for the density matrix \rho using
+! various level of approximations.
+! Here we calculate <H> using two different density matrices, namely:
+! 1) \rho_0 = \sum_I e^{-\beta \sum_{i}^{M} \varepsilon_i n_i} |D_I><D_I|,
+! for many particle states |D_I>, and varepsilon_i is the single-particle orbital
+! energy.
+! 2) \rho_HF = \sum_I e^{-\beta E^HF_I} |D_I><D_I|, where E^HF_I = <D_I|H|D_I>.
+! With these definitions we can the calculate the kinetic energy (T) and potential
+! energies V) using a Monte Carlo sampling scheme.
+! Note that for molecular systems we don't actually evaluate the kinetic energy
+! directly but rather the sum of Hartree-Fock eigenvalues. The double counting
+! correction is then added from the potential contribution.
+! The folowing enumerators set the location in the estimates array.
 
 use const
 
@@ -8,20 +22,6 @@ implicit none
 
 enum, bind(c)
     ! Ensure energy estimates are always first.
-    ! Let H = T + V,
-    ! then we can estimate thermodynamic values for <H>, where <X> = Tr(X\rho)/Tr(\rho), for the density matrix \rho
-    ! using various level of approximations.
-    ! Here we use calculate <H> using two different density matrices, namely:
-    ! 1) \rho_0 = \sum_I e^{-\beta \sum_{i}^{M} \varepsilon_i n_i} |D_I><D_I|, for many particle states |D_I>, and varepsilon_i is the
-    ! single-particle orbital energy.
-    ! 2) \rho_HF = \sum_I e^{-\beta E^HF_I} |D_I><D_I|,
-    ! where E^HF_I = <D_I|H|D_I>.
-    ! With these definitions we can the calculate the kinetic energy (T) and potential energies (V) using a Monte Carlo sampling
-    ! scheme.
-    ! Note that for molecular systems we don't actually evaluate the kinetic energy
-    ! directly but rather the sum of Hartree-Fock eigenvalues. The double counting
-    ! correction is then added from the potential contribution.
-    ! The folowing enumerators set the location in the estimates array.
     ! <T>_0.
     enumerator :: ke_idx = 1
     ! <V>_0.
@@ -218,7 +218,8 @@ contains
             ! Average over processors.
             estimators(ke_idx:hf_part_idx) = estimators(ke_idx:hf_part_idx) / (nprocs*nsamples)
             if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,3(es17.10,5X))') ireport, estimators(ke_idx), &
-                                                             estimators(pe_idx), estimators(hf_ke_idx), estimators(hf_pe_idx), estimators(hf_part_idx)
+                                                             estimators(pe_idx), estimators(hf_ke_idx), &
+                                                             estimators(hf_pe_idx), estimators(hf_part_idx)
             comms_found = abs(estimators(comms_found_idx)) > depsilon
             call calc_interact(comms_found, soft_exit)
             if (soft_exit) exit
