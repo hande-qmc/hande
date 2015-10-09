@@ -71,7 +71,7 @@ None.
             stats = pyblock.error.ratio(num, tr1, cov_AB, nsamples)
 
             results[k] = stats['mean']
-            results[k+' error'] = stats['standard error']
+            results[k+'_error'] = stats['standard error']
 
     return results
 
@@ -336,7 +336,7 @@ None.
     # columns in alphabetical order.
     columns = sorted(results.columns.values)
     columns.insert(1, columns.pop(columns.index('Tr[Hp]/Tr[p]')))
-    columns.insert(2, columns.pop(columns.index('Tr[Hp]/Tr[p] error')))
+    columns.insert(2, columns.pop(columns.index('Tr[Hp]/Tr[p]_error')))
     print(results.to_string(index=False, columns=columns))
 
 if __name__ == '__main__':
