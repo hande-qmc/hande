@@ -1131,6 +1131,7 @@ contains
         !     vary_weights = N,
         !     find_weights = true/false,
         !     symmetrize = true/false,
+        !     initiator_level = ilevel,
         ! }
         ! ipdmqmc = { -- sets propagate_to_beta to true
         !     initial_beta = b,
@@ -1195,10 +1196,10 @@ contains
         logical :: op
         character(len=13) :: str
 
-        character(30), parameter :: dmqmc_keys(10) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
+        character(30), parameter :: dmqmc_keys(11) = [character(30) :: 'replica_tricks', 'fermi_temperature', 'all_sym_sectors', &
                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
                                                                       'find_weights', 'find_weights_start', 'symmetrize',        &
-                                                                      'vary_weights']
+                                                                      'vary_weights', 'initiator_level']
         character(30), parameter :: ip_keys(4)    = [character(30) :: 'initial_beta', 'initial_matrix',                          &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts']
         character(30), parameter :: op_keys(9)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
@@ -1226,6 +1227,9 @@ contains
                 dmqmc_in%weighted_sampling = .true.
                 ! Certainly can't have more excitation levels than basis functions, so that's a handy upper-limit.
                 call aot_get_val(dmqmc_in%sampling_probs, err_arr, nbasis, lua_state, table, 'sampling_weights')
+            end if
+            if (aot_exists(lua_state, table, 'initiator_level')) then
+                call aot_get_val(dmqmc_in%initiator_level, err, lua_state, table, 'initiator_level')
             end if
             dmqmc_in%vary_weights = aot_exists(lua_state, table, 'vary_weights')
             call aot_get_val(dmqmc_in%finish_varying_weights, err, lua_state, table, 'vary_weights')

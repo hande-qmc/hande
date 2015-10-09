@@ -11,7 +11,7 @@ implicit none
 
 contains
 
-    subroutine set_parent_flag_dmqmc(parent_population, initiator_pop, f1, f2, parent_flag)
+    subroutine set_parent_flag_dmqmc(parent_population, initiator_pop, f1, f2, level, parent_flag)
 
         ! Test whether the parent determinant is an initiator.
         !
@@ -21,6 +21,7 @@ contains
         !    initiator_pop: the population above which a determinant is an initiator.
         !    f1: bit string representation of the parent determinant bra/ket.
         !    f2: bit string representation of the parent determinant bra/ket.
+        !    level: excitation level at which to set determinant to be an initiator.
         ! Out:
         !    parent_flag: set to 0 if the determinant is an initiator and 1 otherwise.
 
@@ -30,6 +31,7 @@ contains
 
         real(p), intent(in) :: parent_population, initiator_pop
         integer(i0), intent(in) :: f1(:), f2(:)
+        integer, intent(in) :: level
         integer, intent(out) :: parent_flag
         integer :: excitation
 
@@ -38,7 +40,10 @@ contains
         if (abs(parent_population) > initiator_pop) then
             ! Has a high enough population to be an initiator.
             parent_flag = 0
-        else if (excitation == 0) then
+        else if (level == 2 .and. excitation == 2) then
+            ! Is on excitation level 2.
+            parent_flag = 0
+        else if (level >= 0 .and. excitation == 0) then
             ! Is a diagonal element.
             parent_flag = 0
         else

@@ -215,7 +215,8 @@ contains
                         real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
                         ! Is this density matrix element an initiator?
                         if (qmc_in%initiator_approx) then
-                            call set_parent_flag_dmqmc(real_population(1), qmc_in%initiator_pop, cdet1%f, cdet1%f2, cdet1%initiator_flag)
+                            call set_parent_flag_dmqmc(real_population(1), qmc_in%initiator_pop, cdet1%f, cdet1%f2, &
+                                                       dmqmc_in%initiator_level, cdet1%initiator_flag)
                             cdet2%initiator_flag = cdet1%initiator_flag
                         end if
 

@@ -551,7 +551,7 @@ contains
                                        nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
 #endif
 
-        call set_parent_flag_dmqmc(real(nspawn,p)/pop_real_factor, initiator_pop, f_new, f_new, flag)
+        call set_parent_flag_dmqmc(real(nspawn,p)/pop_real_factor, initiator_pop, f_new, f_new, 0, flag)
         call add_flagged_spawned_particle(f_new, nspawn, particle_type, flag, iproc_spawn, spawn)
 
         if (spawn%error) call stop_all('create_diagonal_density_matrix_particle', 'Ran out of space in the spawned list while&

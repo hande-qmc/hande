@@ -686,7 +686,7 @@ contains
         if (doing_calc(dmqmc_calc)) then
 
             if (.not.present(dmqmc_in)) call stop_all('init_proc_pointers', 'DMQMC options not present.')
-            if (qmc_in%initiator_approx) then
+            if (qmc_in%initiator_approx .and. dmqmc_in%initiator_level >= 0) then
                 create_diagonal_dm_particle_ptr => create_diagonal_density_matrix_particle_initiator
             else
                 create_diagonal_dm_particle_ptr => create_diagonal_density_matrix_particle
