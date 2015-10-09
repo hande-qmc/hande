@@ -3,10 +3,11 @@
 import pandas as pd
 import os
 import sys
-script_dir = os.path.dirname(__file__)
-sys.path.extend([os.path.join(script_dir, '../')])
 import pyhande
 import warnings
+script_dir = os.path.dirname(__file__)
+sys.path.extend([os.path.join(script_dir, '../')])
+
 
 def main(filename):
     ''' Analyse the output from a canonical kinetic energy calculation.

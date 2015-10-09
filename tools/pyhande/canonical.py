@@ -1,9 +1,55 @@
-'''Analysis of data from  canonical free-particle thermodynamic calculations.'''
+'''Analysis of data from  canonical thermodynamic calculations.'''
 
 import pandas as pd
 import pyblock
 import pyhande.legacy
 import numpy as np
+
+
+def analyse_hf_observables(means, covariances, nsamples):
+    ''' Perform Error analysis for Hartree-Fock estimates which
+are the ratio of two quantities.
+
+Parameters
+----------
+means : :class:`pandas.DataFrame`
+    Data frame containing means of verious observables.
+covariances : :class:`pandas.DataFrame`
+    Data frame containing covariances between various observables.
+nsamples : int
+    Number of samples contributing to estimates and standard errors
+
+Returns
+-------
+results : :class:`pandas.DataFrame`
+    Averaged Hartree-Fock estimates along with error estimates.
+'''
+
+    observables = dict([
+        ('<T>_HF', r'Tr(T\rho_HF)'),
+        ('<V>_HF', r'Tr(V\rho_HF)'),
+        ('<H>_HF', r'Tr(H\rho_HF)'),
+    ])
+
+    num = pd.DataFrame()
+    trace = pd.DataFrame()
+    results = pd.DataFrame()
+    trace['mean'] = [means[r'Tr(\rho_HF)']]
+    trace['standard error'] = (
+            [np.sqrt(covariances[r'Tr(\rho_HF)'][r'Tr(\rho_HF)']/nsamples)])
+
+    for (k, v) in observables.items():
+        num['mean'] = [means[v]]
+        num['standard error'] = [np.sqrt(covariances[v][v]/nsamples)]
+        cov_ab = covariances[v][r'Tr(\rho_HF)']
+
+        stats = pyblock.error.ratio(num, trace, cov_ab, nsamples)
+
+        results[k] = stats['mean']
+        results[k+'_Error'] = stats['standard error']
+
+    return results
+
 
 def estimates(metadata, data):
     '''Perform error analysis for canonical thermodynamic estimates.
@@ -22,24 +68,12 @@ results : :class:`pandas.DataFrame`
     Averaged estimates.
 '''
 
-    num = r'\sum\rho_HF_{ii}H_{ii}'
-    denom = r'\sum\rho_HF_{ii}'
+    data['<H>_0'] = data['<T>_0'] + data['<V>_0']
+    data[r'Tr(H\rho_HF)'] = data[r'Tr(T\rho_HF)'] + data[r'Tr(V\rho_HF)']
 
     means = data.mean()
     covariances = data.cov()
-    nsamples = len(data[num])
-
-    numerator = pd.DataFrame()
-    numerator['mean'] = [means[num]]
-    numerator['standard error'] = [np.sqrt(covariances[num][num]/nsamples)]
-    denominator = pd.DataFrame()
-    denominator['mean'] = [means[denom]]
-    denominator['standard error'] = [np.sqrt(covariances[denom][denom]/nsamples)]
-    cov_thf = covariances[num][denom]
-    # The numerator and denominator are correlated for the
-    # HF estimate for the total energy.
-    e_thf = pyblock.error.ratio(numerator, denominator, cov_thf, nsamples)
-    e_thf.reset_index(inplace=True)
+    nsamples = len(data['<T>_0'])
 
     results = pd.DataFrame()
     if 'beta' in metadata:
@@ -48,13 +82,18 @@ results : :class:`pandas.DataFrame`
     else:
         # Hope to find it in the input file...
         results['Beta'] = pyhande.legacy.extract_input(metadata, 'beta')
-    # E_0 and E_HF0 contain no denominator so the error is
+    # Free estimates contain no denominator so the error is
     # just the standard error.
-    results['E_0'] = [means['E_0']]
-    results['E_0-Error'] = [np.sqrt(covariances['E_0']['E_0']/nsamples)]
-    results['E_HF0'] = [means['E_HF0']]
-    results['E_HF0-Error'] = [np.sqrt(covariances['E_HF0']['E_HF0']/nsamples)]
-    results['E_THF'] = list(e_thf['mean'])
-    results['E_THF-Error'] = list(e_thf['standard error'])
+    results['<H>_0'] = [means['<H>_0']]
+    results['<H>_0_Error'] = [np.sqrt(covariances['<H>_0']['<H>_0']/nsamples)]
+    results['<T>_0'] = [means['<T>_0']]
+    results['<T>_0_Error'] = [np.sqrt(covariances['<T>_0']['<T>_0']/nsamples)]
+    results['<V>_0'] = [means['<V>_0']]
+    results['<V>_0_Error'] = [np.sqrt(covariances['<V>_0']['<V>_0']/nsamples)]
 
-    return (results)
+    # Take care of the correlation between numerator and denominator
+    # in Hartree-Fock estimates.
+    results = (
+            results.join(analyse_hf_observables(means, covariances, nsamples)))
+
+    return results

@@ -1,6 +1,20 @@
 module canonical_energy_estimates
 
 ! Estimate the various energy estimates in the canonical ensemble.
+! Let H = T + V, then we can estimate thermodynamic values for <H>,
+! where <X> = Tr(X\rho)/Tr(\rho), for the density matrix \rho using
+! various level of approximations.
+! Here we calculate <H> using two different density matrices, namely:
+! 1) \rho_0 = \sum_I e^{-\beta \sum_{i}^{M} \varepsilon_i n_i} |D_I><D_I|,
+! for many particle states |D_I>, and varepsilon_i is the single-particle orbital
+! energy.
+! 2) \rho_HF = \sum_I e^{-\beta E^HF_I} |D_I><D_I|, where E^HF_I = <D_I|H|D_I>.
+! With these definitions we can the calculate the kinetic energy (T) and potential
+! energies V) using a Monte Carlo sampling scheme.
+! Note that for molecular systems we don't actually evaluate the kinetic energy
+! directly but rather the sum of Hartree-Fock eigenvalues. The double counting
+! correction is then added from the potential contribution.
+! The folowing enumerators set the location in the estimates array.
 
 use const
 
@@ -8,21 +22,17 @@ implicit none
 
 enum, bind(c)
     ! Ensure energy estimates are always first.
-    ! Total energy estimate from single-particle eigenvalues. Here H_0 = \sum_i epsilon_i n_i, where
-    ! epsilon_i is a single particle energy eigenvalue (e.g. the kinetic energy
-    ! for the ueg or the Hartree-Fock orbital energy for molecular systems) and
-    ! n_i is the number operator for orbital i.
+    ! <T>_0.
     enumerator :: ke_idx = 1
-    ! Hartree-Fock energy in non-interacting ensemble. Here H_0 is again H_0 = \sum_i epsilon_i n_i,
-    ! as above but we now evalate Tr (H \rho_0) / Tr (\rho_0).
-    enumerator :: hf_idx
-    ! Finite-T Hartree-Fock (sort of). Here we evaluate Tr (H \rho_HF) /
-    ! Tr (\rho_HF), where \rho_HF = \sum_I e^{-\beta E_HF^I}, where E_HF^I are
-    ! now many-particle Hartree-Fock energies of a given many-particle state I.
-    enumerator :: hft_idx
-    ! Finite-T reweighted estimate for partition function.
+    ! <V>_0.
+    enumerator :: pe_idx
+    ! <T>_HF.
+    enumerator :: hf_ke_idx
+    ! <V>_HF.
+    enumerator :: hf_pe_idx
+    ! Finite-T reweighted estimate for partition function = Tr(\rho_HF).
     enumerator :: hf_part_idx
-    ! Index for checking for interaction with the calculation
+    ! Index for checking for interaction with the calculation.
     enumerator :: comms_found_idx
     ! last_idx-1 gives number of estimates.
     enumerator :: last_idx
@@ -86,7 +96,7 @@ contains
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
         integer :: ngen, nalpha_allowed, nbeta_allowed
-        real(p) :: energy_zero, ref_shift
+        real(p) :: ref_shift
         integer, allocatable :: occ_list0(:)
         type(json_out_t) :: js
 
@@ -129,10 +139,8 @@ contains
         select case(sys%system)
         case (ueg)
             energy_diff_ptr => exchange_energy_ueg
-            energy_zero = 0.0_p
         case (read_in)
             energy_diff_ptr => double_counting_correction_mol
-            energy_zero = sys%read_in%Ecore
         case default
             call stop_all('estimate_canonical_energy', 'Not implemented for selected model Hamiltonian')
         end select
@@ -141,15 +149,16 @@ contains
         ref_shift = energy_diff_ptr(sys, occ_list0)
 
         if (parent) then
-            write (6,'(1X,a90)') 'E_0: Estimate for total energy from single-particle Hamiltonian i.e. 1/Z_0 Tr(\rho_0 H_0).'
-            write (6,'(1X,a66)') 'E_HF0: Estimate for Hartree-Fock-0 energy i.e. 1/Z_0 Tr(\rho_0 H).'
-            write (6,'(1X,a91)') '\sum\rho_HF_{ii}H_{ii}: Estimate for numerator of "Hartree-Fock" energy i.e. Tr(\rho_HF H).'
-            write (6,'(1X,a77)') '\sum\rho_HF_{ii}: Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.'
+            write (6,'(1X,a87)') '<T>_0: Estimate for kinetic energy in non-interacting ensemble i.e. 1/Z_0 Tr(\rho_0 T).'
+            write (6,'(1X,a96)') '<V>_0: Estimate for potential energy in non-interacting ensemble energy i.e. 1/Z_0 Tr(\rho_0 V).'
+            write (6,'(1X,a70)') 'Tr(T\rho_HF): Estimate for numerator of "Hartree-Fock" kinetic energy.'
+            write (6,'(1X,a72)') 'Tr(V\rho_HF): Estimate for numerator of "Hartree-Fock" potential energy.'
+            write (6,'(1X,a72)') 'Tr(\rho_HF): Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.'
             write (6,'()')
         end if
 
-        if (parent) write (6,'(1X,a12,19X,a3,17X,a5,4x,a22,6X,a16)') &
-                    '# iterations', 'E_0', 'E_HF0', '\sum\rho_HF_{ii}H_{ii}', '\sum\rho_HF_{ii}'
+        if (parent) write (6,'(1X,a12,17X,a5,17X,a5,14x,a12,10X,a12,11X,a11)') &
+                    '# iterations', '<T>_0', '<V>_0', 'Tr(T\rho_HF)', 'Tr(V\rho_HF)', 'Tr(\rho_HF)'
 
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
                                                           (1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-sys%chem_pot)))
@@ -183,8 +192,8 @@ contains
                 iaccept = iaccept + 1
                 ! Calculate Kinetic and Hartree-Fock exchange energies.
                 energy(ke_idx) = sum_sp_eigenvalues(sys, occ_list)
-                hfx = energy_diff_ptr(sys, occ_list)
-                energy(hf_idx) = energy(ke_idx) + hfx + energy_zero
+                ! Add in the core contribution here for molecular systems.
+                energy(pe_idx) = energy_diff_ptr(sys, occ_list)
                 ! We generate determinants with probability p(i1,..,iN) =
                 ! 1/Z_0 \prod_{i} p(i1)X...Xp(iN), where Z_0 is the
                 ! non-interacting canonical partition function, and p(i1) =
@@ -193,8 +202,8 @@ contains
                 ! i.e.,
                 ! p(i1,..,iN)_HF = 1/Z' e^{-beta(E_HF(i)-E_0(i))}p(i1,...,iN),
                 ! where Z' = \sum_{i} e^{-\beta(E_HF(i)-E_0(i))}.
-                energy(hf_part_idx) = exp(-beta_loc*(hfx-ref_shift))
-                energy(hft_idx) = energy(hf_part_idx)*energy(hf_idx)
+                energy(hf_part_idx) = exp(-beta_loc*(energy(pe_idx)-ref_shift))
+                energy(hf_ke_idx:hf_pe_idx) = energy(hf_part_idx)*energy(ke_idx:pe_idx)
                 local_estimators(ke_idx:hf_part_idx) = local_estimators(ke_idx:hf_part_idx) + energy
             end do
 
@@ -208,8 +217,9 @@ contains
 #endif
             ! Average over processors.
             estimators(ke_idx:hf_part_idx) = estimators(ke_idx:hf_part_idx) / (nprocs*nsamples)
-            if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,2(es17.10,5X))') ireport, estimators(ke_idx), &
-                                                             estimators(hf_idx), estimators(hft_idx), estimators(hf_part_idx)
+            if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,3(es17.10,5X))') ireport, estimators(ke_idx), &
+                                                             estimators(pe_idx), estimators(hf_ke_idx), &
+                                                             estimators(hf_pe_idx), estimators(hf_part_idx)
             comms_found = abs(estimators(comms_found_idx)) > depsilon
             call calc_interact(comms_found, soft_exit)
             if (soft_exit) exit
