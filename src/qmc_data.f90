@@ -413,10 +413,10 @@ type particle_t
     ! Walker information: main list.
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
     ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
-    integer :: nspaces
+    integer :: nspaces = 1
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
-    integer :: info_size
+    integer :: info_size = 0
     ! Amplitudes can be integers or floats.  They are stored as integers using
     ! fixed precision and encoded by multiplying by pop_real_factor (with some
     ! stochastic rounding to account for the resolution of the fixed precision)
