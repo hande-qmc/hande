@@ -3,10 +3,10 @@
 import pandas as pd
 import os
 import sys
-import pyhande
 import warnings
 script_dir = os.path.dirname(__file__)
 sys.path.extend([os.path.join(script_dir, '../')])
+import pyhande
 
 
 def main(filename):
