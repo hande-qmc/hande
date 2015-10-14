@@ -1,7 +1,7 @@
 '''Obtain metadata for legacy output files (i.e. not containing JSON blocks).'''
 import re
 
-def extract_metadata(filename):
+def extract_metadata(fh):
     '''Extract metadata from a legacy output file.
 
 .. note::
@@ -11,8 +11,9 @@ def extract_metadata(filename):
 
 Parameters
 ----------
-filename : string
-    Name of file containing HANDE output.
+fh : file
+    File handle to (open) file containing HANDE output, positioned at the
+    beginning of the file (or at least at the start of the input section).
 
 Returns
 -------
@@ -54,7 +55,6 @@ metadata : dict
     input_pattern = 'Input options'
     underline_regex = re.compile('----+')
 
-    fh = open(filename)
     for line in fh:
         if input_pattern in line:
             next(fh)
