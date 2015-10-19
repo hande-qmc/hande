@@ -181,8 +181,8 @@ reblock_plot : string
     parser.add_argument('-w', '--width', type=int, default=cols,
                         help='Width (in characters) of data to print out '
                         'before wrapping them.  A non-positive value disables '
-                        'wrapping.  Default: %(default)s if printing to a '
-                        'terminal, -1 if redirecting.')
+                        'wrapping.  Default: current terminal width if printing '
+                        'to a terminal, -1 if redirecting.')
     parser.add_argument('filenames', nargs=argparse.REMAINDER,
                         help='Space-separated list of files to analyse.')
 
