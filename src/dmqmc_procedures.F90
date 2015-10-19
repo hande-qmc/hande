@@ -492,8 +492,8 @@ contains
 
     end subroutine create_diagonal_density_matrix_particle
 
-    subroutine create_diagonal_density_matrix_particle_initiator(f, string_len, tensor_label_len, nspawn, particle_type, initiator_pop, &
-                                                                 pop_real_factor, spawn)
+    subroutine create_diagonal_density_matrix_particle_initiator(f, string_len, tensor_label_len, nspawn, &
+                                                                 & particle_type, initiator_pop, pop_real_factor, spawn)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly

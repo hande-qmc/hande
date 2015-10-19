@@ -114,7 +114,8 @@ contains
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
-                                                           qmc_state%ref%energy_shift, qmc_state%init_beta, qmc_in%initiator_pop, rng)
+                                                           qmc_state%ref%energy_shift, qmc_state%init_beta, &
+                                                           & qmc_in%initiator_pop, rng)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
                                                             dmqmc_in%all_sym_sectors, qmc_in%initiator_pop, spawn)
@@ -543,7 +544,8 @@ contains
 
     end subroutine dmqmc_spin_cons_metropolis_move
 
-    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, pop_real_factor, spawn, energy_shift, init_beta, initiator_pop, rng)
+    subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, pop_real_factor, spawn, energy_shift, &
+                                             init_beta, initiator_pop, rng)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.

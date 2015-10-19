@@ -147,7 +147,8 @@ abstract interface
         integer, intent(in) :: spawning_end, particle_indx
         type(spawn_t), intent(inout) :: spawn
     end subroutine i_create_spawned_particle_dm
-    subroutine i_create_diagonal_dm_particle(f, string_len, tensor_label_len, nspawned, particle_type, initiator_pop, real_factor, spawn)
+    subroutine i_create_diagonal_dm_particle(f, string_len, tensor_label_len, nspawned, particle_type, &
+                                             & initiator_pop, real_factor, spawn)
         use spawn_data, only: spawn_t
         import :: excit_t, det_info_t, int_p, i0, p
         implicit none
