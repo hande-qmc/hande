@@ -92,11 +92,11 @@ opt_block: :class:`pandas.DataFrame`
 
     opt_blocks = [info.opt_block for info in infos]
     if verbose < v_rec_stats:
-        levels = ['mean', 'standard error', 'standard error error']
-        for level in levels:
-            opt_blocks = [opt_block.drop(level, axis=1)
-                            for opt_block in opt_blocks
-                            if level in opt_block]
+        for opt_block in opt_blocks:
+            if not opt_block.empty:
+                levels = ['mean', 'standard error', 'standard error error']
+                for level in levels:
+                    opt_block.drop(level, axis=1, inplace=True)
     opt_blocks = [opt_block.stack() for opt_block in opt_blocks]
     opt_block = pd.DataFrame(dict(zip(indices, opt_blocks))).T
     if verbose < v_rec_stats and not opt_block.empty:
