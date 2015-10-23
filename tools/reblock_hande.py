@@ -14,7 +14,8 @@ import pyhande
 import argparse
 import pprint
 
-def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1):
+def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1,
+                       width=0):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
@@ -41,6 +42,11 @@ verbose : int
     2: print blocking analysis and recommended statistics.
     3: print calculation metadata, blocking analysis and recommended statistics.
 
+width : int
+    Maximum width (in characters) of lines to print out for
+    :class:`pandas.DataFrame` objects; exceeding this results in line wrapping.
+    A non-positive value corresponds to disabling line wrapping.
+
 Returns
 -------
 info :
@@ -58,6 +64,9 @@ opt_block: :class:`pandas.DataFrame`
         # GAH.  Alternate formatting only added to format function after
         # python 2.6..
         float_fmt = '{0:-.8e}'.format
+
+    if width <= 0:
+        width = None
 
     # verbosity levels
     v_silent = -1
@@ -82,7 +91,7 @@ opt_block: :class:`pandas.DataFrame`
                 print('')
         if verbose >= v_analysis:
             for i in info: 
-                print(i.reblock.to_string(float_format=float_fmt, line_width=90))
+                print(i.reblock.to_string(float_format=float_fmt, line_width=width))
                 print('')
         infos.extend(info)
         if len(info) == 1:
@@ -106,7 +115,7 @@ opt_block: :class:`pandas.DataFrame`
         print('Recommended statistics from optimal block size:')
         print('')
         print(opt_block.to_string(float_format=float_fmt, na_rep='n/a',
-                                  line_width=130))
+                                  line_width=width))
 
     for (calc, info) in zip(indices, infos):
         if info.no_opt_block and verbose > v_silent:
@@ -145,6 +154,10 @@ reblock_plot : string
     filename for the reblock convergence plot output.
 '''
 
+    cols = pd.util.terminal.get_terminal_size()[0]
+    if not sys.stdout.isatty():
+        cols = -1
+
     parser = argparse.ArgumentParser(description = __doc__)
     parser.add_argument('-m', '--merge', default=False, action='store_true',
                         help='Combine data from each file before analysing. '
@@ -165,6 +178,11 @@ reblock_plot : string
     parser.add_argument('-v', '--verbose', dest='verbose', action='count',
                         default=1, help='Increase verbosity of the output.  Can '
                         'be specified multiple times.')
+    parser.add_argument('-w', '--width', type=int, default=cols,
+                        help='Width (in characters) of data to print out '
+                        'before wrapping them.  A non-positive value disables '
+                        'wrapping.  Default: current terminal width if printing '
+                        'to a terminal, -1 if redirecting.')
     parser.add_argument('filenames', nargs=argparse.REMAINDER,
                         help='Space-separated list of files to analyse.')
 
@@ -187,7 +205,7 @@ reblock_plot : string
         options.filenames = [[fname] for fname in options.filenames]
 
     return (options.filenames, options.start_iteration, options.plotfile,
-            options.verbose)
+            options.verbose, options.width)
 
 def main(args):
     '''Run reblocking and data analysis on HANDE output.
@@ -202,8 +220,8 @@ Returns
 None.
 '''
 
-    (files, start_iteration, reblock_plot, verbose) = parse_args(args)
-    run_hande_blocking(files, start_iteration, reblock_plot, verbose)
+    (files, start_iteration, reblock_plot, verbose, width) = parse_args(args)
+    run_hande_blocking(files, start_iteration, reblock_plot, verbose, width)
 
 if __name__ == '__main__':
 
