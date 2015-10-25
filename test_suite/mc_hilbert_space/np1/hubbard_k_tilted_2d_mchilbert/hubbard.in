@@ -7,7 +7,7 @@ sys = hubbard_k {
 hilbert_space {
     sys = sys,
     hilbert = {
-        ncycles = 10000,
+        nattempts = 10000,
         rng_seed = 7,
     },
 }
