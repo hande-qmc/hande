@@ -245,7 +245,8 @@ contains
                             naccept_sum = naccept_sum + 1
                         end if
 
-                        ! On-fly mean and standard error estimation.
+                        ! On-fly mean and standard error estimation, as proposed by Knuth/Welford.
+                        ! See https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm
                         do i = 1, ireport_ind
                             n = ireport - ireport_ind + i
                             delta = naccept_sum(i) - space_size_mean
