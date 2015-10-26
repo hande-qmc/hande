@@ -1,0 +1,195 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Oct 25 2015 at 10:07:55
+ Compiled using pintsize.mpi.(optimised)
+ VCS BASE repository version:
+     b64820a8af4e5a83dca389977f16f16986b7ebda
+ Hostname:
+     localhost
+ Working directory: 
+     /home/james/projects/hande/test_suite/mc_hilbert_space/np1/hf_hilbert_space
+ Started running on 25/10/2015 at 10:13:34
+ Calculation UUID: c76379d2-e241-4272-bbaa-827dd9dfbc35.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS defined.  Lanczos disabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 32.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
+
+hilbert_space {
+    sys = sys,
+    hilbert = {
+        nattempts = 1000000,
+        ex_level = 3,
+        rng_seed = 160806604,
+    },
+}
+-- Exact size of CISDT space is 36021.
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms     <i|h|i>
+     1      1       0       1       0       1    -26.27811388
+     2      1       0       2       0      -1    -26.27811388
+     3      2       0       3       0       1     -1.58372889
+     4      2       0       4       0      -1     -1.58372889
+     5      3       0       5       0       1     -0.74750846
+     6      3       0       6       0      -1     -0.74750846
+     7      4       3       1      -1       1     -0.62906712
+     8      4       3       2      -1      -1     -0.62906712
+     9      5       2       1       1       1     -0.62886712
+    10      5       2       2       1      -1     -0.62886712
+    11      6       0       7       0       1      0.18400559
+    12      6       0       8       0      -1      0.18400559
+    13      7       0       9       0       1      0.81082104
+    14      7       0      10       0      -1      0.81082104
+    15      8       3       3      -1       1      1.41204147
+    16      8       3       4      -1      -1      1.41204147
+    17      9       2       3       1       1      1.41224147
+    18      9       2       4       1      -1      1.41224147
+    19     10       0      11       0       1      1.41535499
+    20     10       0      12       0      -1      1.41535499
+    21     11       3       5      -1       1      1.60395920
+    22     11       3       6      -1      -1      1.60395920
+    23     12       2       5       1       1      1.60415920
+    24     12       2       6       1      -1      1.60415920
+    25     13       0      13       0       1      2.13401951
+    26     13       0      14       0      -1      2.13401951
+    27     14       0      15       0       1      2.50103390
+    28     14       0      16       0      -1      2.50103390
+    29     15       1       1      -2       1      4.00407558
+    30     15       1       2      -2      -1      4.00407558
+    31     16       0      17       2       1      4.00447558
+    32     16       0      18       2      -1      4.00447558
+    33     17       3       7      -1       1      4.28098597
+    34     17       3       8      -1      -1      4.28098597
+    35     18       2       7       1       1      4.28118597
+    36     18       2       8       1      -1      4.28118597
+    37     19       0      19       0       1      5.05739815
+    38     19       0      20       0      -1      5.05739815
+
+ E_core =    5.198090956821
+ Number of electrons: 10
+ Number of basis functions: 38
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 2
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 4
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3
+  1  0  3  2
+  2  3  0  1
+  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     20      10         10
+   1     0    1      2       1          1
+   2     0    2      8       4          4
+   3     0    3      8       4          4
+
+ Hilbert space
+ -------------
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 38,   
+         "nel": 10,   
+         "nvirt": 28,   
+         "Ms": 0,   
+         "nalpha": 5,   
+         "nbeta": 5,   
+         "nvirt_alpha": 14,   
+         "nvirt_beta": 14,   
+         "nsym": 3,   
+         "sym0": 0,   
+         "sym_max": 3,   
+         "nsym_tot": 4,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 3,   
+         "symmetry": 0,   
+         "max_number_excitations": 10,   
+         "chem_pot":  "nan",   
+         "read_in": {
+             "int_file":  "INTDUMP",   
+             "uhf": false,   
+             "Ecore": 5.19809096,   
+             "CAS": [ -1, -1],
+             "useLz": false    
+         }
+     },
+     "ex_level": 3,   
+     "nattempts": 1000000,   
+     "ncycles": 20,   
+     "occ_list": [],
+     "rng_seed": 160806604    
+ }
+ -- End JSON block --
+
+ Symmetry of reference determinant:  0
+
+ space size: estimate of the Hilbert space size from a single iteration.
+ mean: running estimate of the mean of the Hilbert space size.
+ std. err.: running estimate of the standard error in the estimate of the mean.
+
+ # iterations  space size    mean          std. err.
+            1  3.603284E+04  3.603284E+04           NaN
+            2  3.600071E+04  3.601677E+04  1.606479E+01
+            3  3.597891E+04  3.600415E+04  1.566227E+01
+            4  3.608365E+04  3.602403E+04  2.275197E+01
+            5  3.598457E+04  3.601614E+04  1.930950E+01
+            6  3.604883E+04  3.602159E+04  1.668131E+01
+            7  3.607020E+04  3.602853E+04  1.571631E+01
+            8  3.599929E+04  3.602488E+04  1.409287E+01
+            9  3.599377E+04  3.602142E+04  1.290028E+01
+           10  3.598188E+04  3.601747E+04  1.219694E+01
+           11  3.607601E+04  3.602279E+04  1.224907E+01
+           12  3.591295E+04  3.601364E+04  1.445023E+01
+           13  3.594338E+04  3.600823E+04  1.434876E+01
+           14  3.596391E+04  3.600507E+04  1.365643E+01
+           15  3.600623E+04  3.600514E+04  1.271368E+01
+           16  3.593178E+04  3.600056E+04  1.274590E+01
+           17  3.604614E+04  3.600324E+04  1.226929E+01
+           18  3.610219E+04  3.600874E+04  1.280745E+01
+           19  3.597311E+04  3.600686E+04  1.225890E+01
+           20  3.594084E+04  3.600356E+04  1.208928E+01
+
+ Monte-Carlo estimate of size of space is: 3.600356E+04 +/- 1.208928E+01
+
+ ================================================================
+ Finished running on 25/10/2015 at 10:13:48
+ Wall time (seconds):                          14.71
+ CPU time (per processor, seconds):            14.72
+ ================================================================
+

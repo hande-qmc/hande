@@ -41,7 +41,7 @@ Returns
 -------
 data : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     Calculation output represented by a tuple for each calculation, consisting
-    of metadata (dict) and a :class:`pandas.DataFrame` (QMC calculations) or
+    of metadata (dict) and a :class:`pandas.DataFrame` (MC calculations) or
     :class:`pandas.Series` (other calculations) containing the calculation
     output/results.
 
@@ -72,7 +72,7 @@ Returns
 -------
 data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     Calculation output represented by a tuple for each calculation, consisting
-    of metadata (dict) and a :class:`pandas.DataFrame` (QMC calculations) or
+    of metadata (dict) and a :class:`pandas.DataFrame` (MC calculations) or
     :class:`pandas.Series` (other calculations) containing the calculation
     output/results.
 '''
@@ -218,14 +218,15 @@ Returns
             # column name can contain words separated by just one space.
             column_names = re.split('   *', line[3:].strip())
             # Work around pandas slow and very memory-hungry pure-python parser
-            # by converting the data table into CSV format (and removing comment_file
-            # whilst we're at it) and reading that in.
+            # by converting the data table into CSV format (and removing
+            # comment_file whilst we're at it) and reading that in.
             (data_csv, comment_file) = _convert_to_csv(fhandle)
             # Done now -- return to main extraction procedure.
             break
         elif 'Start JSON block' in line:
             metadata = _extract_json(fhandle)
-    #it's possible that the output file didn't have any info, so we need to test data_csv
+    # It's possible that the output file didn't have any info, so we need to
+    # test data_csv
     if data_csv:
         data = pd.io.parsers.read_csv(data_csv, names=column_names)
         if calc_type == 'DMQMC':
@@ -341,35 +342,51 @@ fhandle : file
 
 Returns
 -------
-(metadata, data) : (dict, :class:`pandas.Series`)
+(metadata, data) : (dict, :class:`pandas.DataFrame`)
     Dictionary of calculation metadata (input values, defaults, etc) and the
     Hilbert space results obtained from the output file.
 '''
 
     metadata = {}
     for line in fhandle:
-        if 'Monte-Carlo estimate of size of space is' in line:
+        if '# iterations' in line:
+            # Columns are separated by at least two spaces but each
+            # column name can contain words separated by just one space.
+            column_names = re.split('   *', line[3:].strip())
+            (data_csv, junk) = _convert_to_csv(fhandle, parse_comments=False)
+            data = pd.io.parsers.read_csv(data_csv, names=column_names)
+            os.remove(data_csv)
+            data_table = True
+            break
+        elif 'Monte-Carlo estimate of size of space is' in line:
+            # Old Monte Carlo algorithm (no iterations, std. err. estimate from
+            # different MPI ranks).
             if '+/-' in line:
                 estimate = float(line.split()[-3])
                 std_err = float(line.split()[-1])
-                data = {'Monte Carlo estimate': estimate,
-                        'standard error': std_err}
             else:
                 estimate = float(line.split()[-1])
-                data = {'Monte Carlo estimate': estimate}
-            data = pd.Series(data)
-            data.name = 'Hilbert space'
+                std_err = float('nan')
+            data_table = False
             break
         elif 'Size of space is' in line:
             # Deterministic value rather than MC estimate.
-            data = pd.Series({'size': float(line.split()[-1])})
-            data.name = 'Hilbert space'
+            estimate = float(line.split()[-1])
+            std_err = 0.0
+            data_table = False
             break
         elif 'Start JSON block' in line:
             metadata = _extract_json(fhandle)
+    if not data_table:
+        data = {'iterations': [1],
+                'space size': [estimate],
+                'mean': [estimate],
+                'std. err.': [std_err]}
+        data = pd.DataFrame(data)
+    data.name = 'Hilbert space'
     return (metadata, data)
 
-def _convert_to_csv(fhandle, comment='#'):
+def _convert_to_csv(fhandle, comment='#', parse_comments=True):
     '''Convert the HANDE data table in a file to CSV format.
 
 Parameters
@@ -379,6 +396,8 @@ fhandle: file
 comment : string
     Single character which indicates a comment line if its the first
     non-whitespace character in a line.
+parse_comments : boolean
+    If true , also save the comment lines to a separate file.
 
 .. note::
 
@@ -389,22 +408,29 @@ Returns
 temp_filename : string
     name of the CSV temporary file containing the data table.
 comment_file_filename : string
-    name of file containing the comment lines extracted from the data table.
+    name of file containing the comment lines extracted from the data table
+    and an empty string if parse_comments.if False.
 '''
     data = tempfile.NamedTemporaryFile(delete=False, mode='w')
-    comment_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+    if parse_comments:
+        comment_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+        comment_fname = comment_file.name
+    else:
+        comment_fname = ''
     for line in fhandle:
         csv_line = ','.join(line.strip().split())
         if not csv_line:
             # blank line => end of data table.
             break
         elif csv_line.startswith(comment):
-            comment_file.write(line)
+            if parse_comments:
+                comment_file.write(line)
         else:
             data.write(csv_line+'\n')
     data.close()
-    comment_file.close()
-    return (data.name, comment_file.name)
+    if parse_comments:
+        comment_file.close()
+    return (data.name, comment_fname)
 
 def _extract_json(fhandle, find_start=False, max_end=None):
     '''Extract JSON output from a HANDE output file.

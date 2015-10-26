@@ -8,8 +8,9 @@ sys = read_in {
 hilbert_space {
     sys = sys,
     hilbert = {
-        ncycles = 10000000,
-        rng_seed = 7,
+        ncycles = 25,
+        nattempts = 400000,
+        rng_seed = 17,
     },
 }
 fciqmc {

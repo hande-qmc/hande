@@ -11,7 +11,7 @@ public :: nhilbert_cycles, estimate_hilbert_space, gen_random_det_full_space, ge
 
 contains
 
-    subroutine estimate_hilbert_space(sys, ex_level, ncycles, occ_list0, rng_seed)
+    subroutine estimate_hilbert_space(sys, ex_level, nattempts, ncycles, occ_list0, rng_seed)
 
         ! Based on Appendix A in George Booth's thesis.
 
@@ -34,8 +34,10 @@ contains
         !       determinant to include in the Hilbert space.  If negative or
         !       greater than the number of electrons, the entire Hilbert space
         !       is considered.
-        !    ncycles: number of cycles i.e. number of random determinants to
-        !       generate.
+        !    nattempts: number of attempts, i.e. number of random determinants to
+        !       generate, per Monte Carlo cycle.
+        !    ncycles: number of blocks of nattempts to perform.  Statistics are
+        !       estimated based upon the space size estimate from each block.
         !    occ_list0: reference determinant.  If not allocated, then a best
         !       guess is generated based upon the spin and symmetry quantum
         !       numbers.
@@ -58,19 +60,19 @@ contains
         use utils, only: binom_r
 
         type(sys_t), intent(inout) :: sys
-        integer, intent(in) :: ex_level, ncycles
+        integer, intent(in) :: ex_level, nattempts
         integer, intent(inout), allocatable :: occ_list0(:)
+        integer, intent(in) :: ncycles
         integer, intent(in), optional :: rng_seed
 
-        integer :: truncation_level, seed, icycle, i, ierr, a
+        integer :: truncation_level, seed, icycle, i, ierr, a, n, ireport, ireport_ind, nattempts_local
         integer :: ref_sym, det_sym
         integer(i0) :: f(sys%basis%string_len), f0(sys%basis%string_len)
         integer :: occ_list(sys%nel)
-        real(dp) :: space_size, naccept
+        integer, parameter :: nreport_block = 100
+        real(dp) :: full_space_size, space_size_mean, space_size_mean2, space_size_se, delta
+        real(dp) :: naccept(nreport_block), naccept_sum(nreport_block)
         real(dp), allocatable :: ptrunc_level(:,:)
-#ifdef PARALLEL
-        real(dp) :: proc_space_size(nprocs), sd_space_size
-#endif
 
         type(dSFMT_t) :: rng
         type(sys_t) :: sys_bak
@@ -101,6 +103,7 @@ contains
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
             call json_write_key(js, 'ex_level', truncation_level)
+            call json_write_key(js, 'nattempts', nattempts)
             call json_write_key(js, 'ncycles', ncycles)
             call json_write_key(js, 'occ_list', occ_list0)
             call json_write_key(js, 'rng_seed', seed, .true.)
@@ -119,11 +122,11 @@ contains
             ! See comments in system for how nel and nvirt are used in the
             ! Heisenberg model.
             if (truncate_space) then
-                space_size = binom_r(sys%lattice%nsites-(sys%nel-truncation_level),truncation_level)
+                full_space_size = binom_r(sys%lattice%nsites-(sys%nel-truncation_level),truncation_level)
             else
-                space_size = binom_r(sys%lattice%nsites, sys%nel)
+                full_space_size = binom_r(sys%lattice%nsites, sys%nel)
             end if
-            if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', space_size
+            if (parent) write (6,'(1X,a,g12.4,/)') 'Size of space is', full_space_size
 
         case default
 
@@ -163,7 +166,7 @@ contains
                     allocate(ptrunc_level(0:min(sys%nalpha, truncation_level), truncation_level), stat=ierr)
                     call check_allocate('ptrunc_level', size(ptrunc_level), ierr)
                     ptrunc_level = 0.0_dp
-                    space_size = 0.0_dp
+                    full_space_size = 0.0_dp
                     do i = 1, truncation_level
                         ! Number of possible determinants at excitation level i is (whilst
                         ! conserving the spin of the reference):
@@ -172,13 +175,13 @@ contains
                         ! of choosing the holes.  N_a (N_b) is the number of alpha (beta)
                         ! electrons and M is the number of alpha/beta spin orbitals.
                         do a = max(0,i-sys%nbeta), min(sys%nalpha,i)
-                            space_size = space_size + &
+                            full_space_size = full_space_size + &
                                 binom_r(sys%nalpha,a)*binom_r(sys%nvirt_alpha,a) &
                                 *binom_r(sys%nbeta,i-a)*binom_r(sys%nvirt_beta,i-a)
-                            ptrunc_level(a,i) = space_size
+                            ptrunc_level(a,i) = full_space_size
                         end do
                     end do
-                    ptrunc_level = ptrunc_level / space_size
+                    ptrunc_level = ptrunc_level / full_space_size
                     ! Need a completely decoded representation of the reference for efficient excitations.
                     call alloc_det_info_t(sys, det0)
                     call decode_det_spinocc_spinunocc(sys, f0, det0)
@@ -187,7 +190,7 @@ contains
                     ! Size of the complete Hilbert space in the desired symmetry block is given
                     ! by
                     !   C(nalpha_orbitals, nalpha_electrons)*C(nbeta_orbitals, nbeta_electrons).
-                    space_size = binom_r(sys%basis%nbasis/2,sys%nalpha) * binom_r(sys%basis%nbasis/2,sys%nbeta)
+                    full_space_size = binom_r(sys%basis%nbasis/2,sys%nalpha) * binom_r(sys%basis%nbasis/2,sys%nbeta)
                 end if
 
                 if (parent) then
@@ -197,54 +200,67 @@ contains
                     else
                         write (6,'(1X,i2)') ref_sym
                     end if
+                    write (6,'(/,1X,"space size: estimate of the Hilbert space size from a single iteration.")')
+                    write (6,'(1X,"mean: running estimate of the mean of the Hilbert space size.")')
+                    write (6,'(1X,"std. err.: running estimate of the standard error in the estimate of the mean.")')
+                    write (6,'(/,1X,"# iterations  space size    mean          std. err.")')
                 end if
+
+                nattempts_local = nattempts/nprocs
+                if (iproc < mod(nattempts,nprocs)) nattempts_local = nattempts_local + 1
 
                 naccept = 0.0_dp
-                do icycle = 1, ncycles
-                    ! Generate a random determinant.
-                    if (truncate_space) then
-                        ! More efficient sampling (especially if Hilbert space is large
-                        ! and truncation level is low) if we just excite randomly from the
-                        ! reference determinant.
-                        call gen_random_det_truncate_space(rng, sys, truncation_level, det0, ptrunc_level, &
-                                                           occ_list)
-                    else
-                        call gen_random_det_full_space(rng, sys, f, occ_list)
+                space_size_mean = 0.0_dp
+                space_size_mean2 = 0.0_dp
+                do ireport = 1, ncycles
+                    ireport_ind = mod(ireport, nreport_block)
+                    if (ireport_ind == 0) ireport_ind = nreport_block
+                    do icycle = 1, nattempts_local
+                        ! Generate a random determinant.
+                        if (truncate_space) then
+                            ! More efficient sampling (especially if Hilbert space is large
+                            ! and truncation level is low) if we just excite randomly from the
+                            ! reference determinant.
+                            call gen_random_det_truncate_space(rng, sys, truncation_level, det0, ptrunc_level, &
+                                                               occ_list)
+                        else
+                            call gen_random_det_full_space(rng, sys, f, occ_list)
+                        end if
+                        det_sym = symmetry_orb_list(sys, occ_list)
+                        ! Is this the same symmetry as the reference determinant?
+                        if (det_sym == ref_sym) naccept(ireport_ind) = naccept(ireport_ind) + 1
+                    end do
+                    if (ireport == ncycles .or. ireport_ind == nreport_block) then
+#ifdef PARALLEL
+                        call MPI_Reduce(naccept, naccept_sum, nreport_block, MPI_REAL8, MPI_SUM, root, MPI_COMM_WORLD, ierr)
+#else
+                        naccept_sum = naccept
+#endif
+                        ! space_size is the max number of excitations from the reference.  Account
+                        ! for the fraction of determinants with the correct symmetry.
+                        naccept_sum = (full_space_size * naccept_sum) / nattempts
+                        if (truncate_space) then
+                            ! We never allowed for the generation of the reference determinant but, by
+                            ! definition,it is in the truncated Hilbert space so explicitly include it.
+                            naccept_sum = naccept_sum + 1
+                        end if
+
+                        ! On-fly mean and standard error estimation, as proposed by Knuth/Welford.
+                        ! See https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm
+                        do i = 1, ireport_ind
+                            n = ireport - ireport_ind + i
+                            delta = naccept_sum(i) - space_size_mean
+                            space_size_mean = space_size_mean + delta/n
+                            space_size_mean2 = space_size_mean2 + delta*(naccept_sum(i) - space_size_mean)
+                            space_size_se = sqrt(space_size_mean2 / (n*(n-1)))
+                            if (parent) write (6,'(1X,i12,3(2X,es12.6))') n, naccept_sum(i), space_size_mean, space_size_se
+                        end do
+                        naccept = 0.0_p
                     end if
-                    det_sym = symmetry_orb_list(sys, occ_list)
-                    ! Is this the same symmetry as the reference determinant?
-                    if (det_sym == ref_sym) naccept = naccept + 1
                 end do
 
-                ! space_size is the max number of excitations from the reference.  Account
-                ! for the fraction of determinants with the correct symmetry.
-                space_size = (space_size * naccept) / ncycles
-                if (truncate_space) then
-                    ! We never allowed for the generation of the reference determinant
-                    ! but, by definition, it is in the truncated Hilbert space so
-                    ! explicitly include it.
-                    space_size = space_size + 1
-                end if
-
-#ifdef PARALLEL
-                ! If we did this on multiple processors then we can get an estimate
-                ! of the error as well as a better mean...
-                call mpi_gather(space_size, 1, mpi_real8, proc_space_size, 1, mpi_real8, root, mpi_comm_world, ierr)
-                space_size = sum(proc_space_size)/nprocs
-                sd_space_size = sqrt(sum((proc_space_size-space_size)**2))/(nprocs-1)
-                if (parent) then
-                    write (6,'(1X,a41,1X,es10.4)',advance='no') 'Monte-Carlo estimate of size of space is:', space_size
-                    if (nprocs > 1) then
-                        write (6,'(1X,a3,1X,es10.4)') '+/-', sd_space_size
-                    else
-                        write (6,'()')
-                    end if
-                end if
-#else
-                if (parent) write (6,'(1X,a41,1X,es10.4)') 'Monte-Carlo estimate of size of space is:', space_size
-#endif
-
-                if (parent) write (6,'()')
+                if (parent) write (6,'(/,1X,"Monte-Carlo estimate of size of space is: ",es12.6," +/- ",es12.6,/)') &
+                                    space_size_mean, space_size_se
 
                 if (truncate_space) call dealloc_det_info_t(det0)
 
