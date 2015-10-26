@@ -801,9 +801,9 @@ module restart_hdf5
                     psip_new%nspaces = psip_read%nspaces
                     psip_new%info_size = psip_read%info_size
 
-                    call init_particle_t(max_nstates, 0, tensor_label_len, .false., psip_read, .false.)
+                    call init_particle_t(max_nstates, 0, tensor_label_len, .false., .false., psip_read, .false.)
                     do iproc_min = 0, min(nmax_files-1, iproc_target_end-iproc_target_start)
-                        call init_particle_t(max_nstates, 0, tensor_label_len, .false., psip_new(iproc_min), .false.)
+                        call init_particle_t(max_nstates, 0, tensor_label_len, .false., .false., psip_new(iproc_min), .false.)
                     end do
 
                     ! Read.

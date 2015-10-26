@@ -7,12 +7,20 @@ implicit none
 
 contains
 
-    subroutine init_particle_t(max_nstates, nwalker_int_extra, tensor_label_len, real_amplitudes, pl, verbose_output)
+    subroutine init_particle_t(max_nstates, nwalker_int_extra, tensor_label_len, real_amplitudes, real32, pl, verbose_output)
 
         ! In:
         !    max_nstates: maximum number of states that can be held in pl.  Sets the
         !       second dimension of the states, pops and dat arrays.
+        !    nwalker_int_extra: the number of additional (32-bit) integers used per state
+        !       outside of particle_t, e.g. for semi_stoch_t%determ.
         !    tensor_label_len: number of integers which make up the tensor label bit string.
+        !    real_amplitudes: if true, use real ampltiudes (via fixed precision) rather
+        !       than integer amplitudes.
+        !    real32: if true, use the fractional precision used when POP_SIZE=32 even if
+        !       POP_SIZE=64.
+        !    verbose_output (optional): if true (default: false) print out information about
+        !       the memory allocation of pl.
         ! In/Out:
         !    pl: particle_t object.  On input pl%nspaces and pl%info_size must be set.  On
         !       output all allocatable components are appropriately allocated.
@@ -27,7 +35,7 @@ contains
 
         integer, intent(in) :: max_nstates, tensor_label_len
         integer, intent(in) :: nwalker_int_extra ! (e.g.) for semi_stoch_t%determ
-        logical, intent(in) :: real_amplitudes
+        logical, intent(in) :: real_amplitudes, real32
         type(particle_t), intent(inout) :: pl
         logical, intent(in), optional :: verbose_output
         integer :: ierr, nwalker_int_p, nwalker_real, size_main_walker, pop_bit_shift, max_nstates_elements
@@ -40,9 +48,14 @@ contains
         ! are being used.
         if (real_amplitudes) then
             if (bit_size(0_int_p) == 64) then
-                ! Allow a maximum population of 2^32, and a minimum fractional
-                ! part of 2^-31.
-                pop_bit_shift = 31
+                if (real32) then
+                    ! Use same space for fractional part as 32-bit integers.
+                    pop_bit_shift = 11
+                else
+                    ! Allow a maximum population of 2^32, and a minimum fractional
+                    ! part of 2^-31.
+                    pop_bit_shift = 31
+                end if
             else if (bit_size(0_int_p) == 32) then
                 ! Allow a maximum population of 2^20, and a minimum fractional
                 ! part of 2^-11.

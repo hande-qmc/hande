@@ -46,6 +46,9 @@ type qmc_in_t
 
     ! True if allowing non-integer values for psip populations.
     logical :: real_amplitudes = .false.
+    ! Force the fractional part of the population to have the same precision
+    ! as used when POP_SIZE=32.
+    logical :: real_amplitude_force_32 = .false.
     ! The minimum amplitude of a spawning event which can be added to
     ! the spawned list.
     ! If real amplitudes are not used then the following default will be
@@ -588,6 +591,7 @@ contains
         call json_object_init(js, 'qmc')
         call json_write_key(js, 'rng_seed', qmc%seed)
         call json_write_key(js, 'real_amplitudes', qmc%real_amplitudes)
+        call json_write_key(js, 'real_amplitude_force_32', qmc%real_amplitude_force_32)
         call json_write_key(js, 'spawn_cutoff', qmc%spawn_cutoff)
         call json_write_key(js, 'excit_gen', qmc%excit_gen)
         call json_write_key(js, 'pattempt_single', qmc%pattempt_single)

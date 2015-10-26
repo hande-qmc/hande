@@ -146,7 +146,8 @@ contains
 
             ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
             ! calculation of memory occupied by the main particle lists.
-            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, pl)
+            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                                 qmc_in%real_amplitude_force_32, pl)
 
             ! Allocate the shift.
             allocate(qmc_state%shift(pl%nspaces), stat=ierr)
