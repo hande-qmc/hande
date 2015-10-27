@@ -20,6 +20,7 @@ dmqmc {
         state_size = -200,
         spawned_state_size = -100,
         real_amplitudes = true,
+        real_amplitude_force_32 = true,
     },
     dmqmc = {
         beta_loops = 5,

@@ -127,6 +127,20 @@ algorithms and control the core settings in the algorithms.
 
         By default uses integer weights, i.e. with the minimum resolution of 1.
 
+``real_amplitude_force_32``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Force the precision of the real amplitudes to that used for POP_SIZE=32 irrespective
+    of the actual POP_SIZE compile-time parameter.
+
+    .. note::
+
+        The main use-case for this is reproducing results produced by binaries compiled
+        using POP_SIZE=32 with binaries compiled using POP_SIZE=64; it is not intended for
+        use in production calculations.
+
 ``spawn_cutoff``
     type: float.
 

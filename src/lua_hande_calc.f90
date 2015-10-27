@@ -735,6 +735,7 @@ contains
         !     rng_seed = seed,
         !     target_population = pop,
         !     real_amplitudes = true/false,
+        !     real_amplitude_force_32 = true/false,
         !     spawn_cutoff = cutoff,
         !     no_renorm = true/false,
         !     tau_search = true/false,
@@ -775,9 +776,10 @@ contains
         character(len=10) :: str
         logical :: skip, no_renorm
 
-        character(19), parameter :: keys(21) = [character(19) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(23), parameter :: keys(22) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
+                                                                 'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'initial_shift', &
                                                                  'shift_damping', 'initiator', 'initiator_threshold', &
                                                                  'use_mpi_barriers', 'vary_shift_from', 'excit_gen']
@@ -810,6 +812,7 @@ contains
 
         ! Optional arguments (defaults set in derived type).
         call aot_get_val(qmc_in%real_amplitudes, err, lua_state, qmc_table, 'real_amplitudes')
+        call aot_get_val(qmc_in%real_amplitude_force_32, err, lua_state, qmc_table, 'real_amplitude_force_32')
         call aot_get_val(qmc_in%spawn_cutoff, err, lua_state, qmc_table, 'spawn_cutoff')
         call aot_get_val(qmc_in%pattempt_single, err, lua_state, qmc_table, 'pattempt_single')
         call aot_get_val(qmc_in%pattempt_double, err, lua_state, qmc_table, 'pattempt_double')

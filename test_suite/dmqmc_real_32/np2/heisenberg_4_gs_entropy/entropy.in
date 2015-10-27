@@ -14,6 +14,7 @@ dmqmc {
         nreports = 100,
         target_population = 100,
         real_amplitudes = true,
+        real_amplitude_force_32 = true,
         spawn_cutoff = 0.01,
         shift_damping = 0.1,
         state_size = 3000,

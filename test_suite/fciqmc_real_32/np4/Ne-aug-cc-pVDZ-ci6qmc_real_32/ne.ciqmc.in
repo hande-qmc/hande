@@ -16,6 +16,7 @@ fciqmc {
         nreports = 1200,
         target_population = 50000,
         real_amplitudes = true,
+        real_amplitude_force_32 = true,
         spawn_cutoff = 0.01,
         state_size = 50000,
         spawned_state_size = 50000,

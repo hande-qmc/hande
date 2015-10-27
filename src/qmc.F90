@@ -73,15 +73,14 @@ contains
 
         integer :: ierr
         integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
-        integer :: step, size_main_walker, size_spawned_walker, max_nstates, max_nspawned_states
-        integer :: nwalker_int, nwalker_int_p, nwalker_real, nhash_bits
+        integer :: step, size_spawned_walker, max_nstates, max_nspawned_states
+        integer :: nhash_bits
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(sys%basis%string_len)
         integer(int_64) :: tmp_int_64
         real(p) :: spawn_cutoff
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(restart_info_t) :: ri
-        integer :: pop_bit_shift
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
 
@@ -92,7 +91,6 @@ contains
         associate(pl=>qmc_state%psip_list, reference=>qmc_state%ref, spawn=>qmc_state%spawn_store%spawn, &
                   spawn_recv=>qmc_state%spawn_store%spawn_recv)
 
-            pl%nspaces = 1
             if (doing_calc(hfs_fciqmc_calc)) then
                 pl%nspaces = pl%nspaces + 1
             else if (present(dmqmc_in)) then
@@ -104,14 +102,7 @@ contains
             ! integer. If the Neel singlet state is used as the reference state for
             ! the projected estimator, then a further 2 reals are used per
             ! determinant.
-            if (fciqmc_in_loc%trial_function == neel_singlet) then
-                pl%info_size = 2
-            else
-                pl%info_size = 0
-            end if
-            nwalker_int = 1
-            nwalker_int_p = pl%nspaces
-            nwalker_real = pl%nspaces + pl%info_size
+            if (fciqmc_in_loc%trial_function == neel_singlet) pl%info_size = 2
 
             annihilation_flags%initiator_approx = qmc_in%initiator_approx
             annihilation_flags%real_amplitudes = qmc_in%real_amplitudes
@@ -123,50 +114,6 @@ contains
                 annihilation_flags%trial_function = fciqmc_in%trial_function
                 qmc_state%trial%wfn = fciqmc_in%trial_function
                 qmc_state%trial%guide = fciqmc_in%guiding_function
-            end if
-
-            ! Set the real encoding shift, depending on whether 32 or 64-bit integers
-            ! are being used.
-            if (qmc_in%real_amplitudes) then
-                if (bit_size(0_int_p) == 64) then
-                    ! Allow a maximum population of 2^32, and a minimum fractional
-                    ! part of 2^-31.
-                    pop_bit_shift = 31
-                else if (bit_size(0_int_p) == 32) then
-                    ! Allow a maximum population of 2^20, and a minimum fractional
-                    ! part of 2^-11.
-                    pop_bit_shift = 11
-                    if (parent) then
-                        call warning('init_qmc', &
-                            'You are using 32-bit walker populations with real amplitudes.'//new_line('')// &
-                            ' The maximum population size on a given determinant is 2^20=1048576.&
-                            & Errors will occur if this is exceeded.'//new_line('')//&
-                            ' Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
-                    end if
-                end if
-            else
-                ! Allow no fractional part for walker populations.
-                pop_bit_shift = 0
-            end if
-            ! Store 2**pop_bit_shift for ease.
-            pl%pop_real_factor = 2_int_p**(int(pop_bit_shift, int_p))
-
-            ! Thus the number of bits occupied by each determinant in the main
-            ! walker list is given by string_len*i0_length+nwalker_int*32+
-            ! nwalker_int_p*int_p_length+nwalker_real*32 (*64 if double precision).
-            ! The number of bytes is simply 1/8 this.
-#ifdef SINGLE_PRECISION
-            size_main_walker = sys%basis%tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &
-                               nwalker_int*4 + nwalker_real*4
-#else
-            size_main_walker = sys%basis%tensor_label_len*i0_length/8 + nwalker_int_p*int_p_length/8 + &
-                               nwalker_int*4 + nwalker_real*8
-#endif
-            max_nstates = qmc_in%walker_length
-            if (max_nstates < 0) then
-                ! Given in MB.  Convert.  Note: important to avoid overflow in the
-                ! conversion!
-                max_nstates = int((-real(max_nstates,p)*10**6)/size_main_walker)
             end if
 
             ! Each spawned_walker occupies spawned_size kind=int_s integers.
@@ -183,14 +130,9 @@ contains
             end if
 
             if (parent) then
-                write (6,'(1X,a53,f7.2)') &
-                    'Memory allocated per core for main walker list (MB): ', &
-                    size_main_walker*real(max_nstates,p)/10**6
                 write (6,'(1X,a57,f7.2)') &
                     'Memory allocated per core for spawned walker lists (MB): ', &
                     size_spawned_walker*real(2*max_nspawned_states,p)/10**6
-                write (6,'(1X,a48,'//int_fmt(max_nstates,1)//')') &
-                    'Number of elements per core in main walker list:', max_nstates
                 write (6,'(1X,a51,'//int_fmt(max_nspawned_states,1)//',/)') &
                     'Number of elements per core in spawned walker list:', max_nspawned_states
             end if
@@ -202,8 +144,10 @@ contains
 
             allocate(reference%f0(sys%basis%string_len), stat=ierr)
 
-            ! Allocate main walker lists.
-            call alloc_particle_t(max_nstates, sys%basis%tensor_label_len, pl)
+            ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
+            ! calculation of memory occupied by the main particle lists.
+            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                                 qmc_in%real_amplitude_force_32, pl)
 
             ! Allocate the shift.
             allocate(qmc_state%shift(pl%nspaces), stat=ierr)
@@ -212,7 +156,7 @@ contains
             call check_allocate('qmc_state%vary_shift', size(qmc_state%vary_shift), ierr)
             qmc_state%shift = qmc_in%initial_shift
 
-            ! Allocate spawned walker lists.
+            ! Allocate spawned particle lists.
             if (mod(max_nspawned_states, nprocs) /= 0) then
                 if (parent) write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
                 max_nspawned_states = ceiling(real(max_nspawned_states)/nprocs)*nprocs
