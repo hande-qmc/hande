@@ -8,7 +8,7 @@ sys = read_in {
 hilbert_space {
     sys = sys,
     hilbert = {
-        ncycles = 10000000,
+        nattempts = 10000000,
         rng_seed = 7,
     },
 }
