@@ -19,6 +19,7 @@ contains
         !       nprocs = N,
         !       read = id,
         !       write = id,
+        !       sys = system,
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -29,6 +30,8 @@ contains
         use errors, only: stop_all
         use parallel, only: nprocs
         use restart_hdf5, only: restart_info_t, init_restart_info_t, redistribute_restart_hdf5
+        use system, only: sys_t
+        use lua_hande_system, only: get_sys_t
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -38,6 +41,7 @@ contains
         integer :: opts, nprocs_target, read_id, write_id, err
         logical :: read_exists, write_exists
         type(restart_info_t) :: ri
+        type(sys_t), pointer :: sys
 
         lua_state = flu_copyptr(l)
         opts = aot_table_top(lua_state)
@@ -61,7 +65,12 @@ contains
             call init_restart_info_t(ri)
         end if
 
-        call redistribute_restart_hdf5(ri, nprocs_target)
+        if (aot_exists(lua_state, opts, 'sys')) then
+            call get_sys_t(lua_state, sys)
+            call redistribute_restart_hdf5(ri, nprocs_target, sys)
+        else
+            call redistribute_restart_hdf5(ri, nprocs_target)
+        end if
 
         nresult = 0
 

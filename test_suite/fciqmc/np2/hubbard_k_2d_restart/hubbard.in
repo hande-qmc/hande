@@ -10,7 +10,7 @@ sys = hubbard_k {
 -- writing out a restart file rather than reading one in.
 np1_id = 0
 np2_id = 1
-redistribute { nprocs = 2, read = np1_id, write = np2_id }
+redistribute { nprocs = 2, read = np1_id, write = np2_id, sys = sys, }
 
 fciqmc {
     sys = sys,
