@@ -1,6 +1,6 @@
 module restart_utils
 
-! Convert restart files for calculations with different parameters.
+! Convert restart files for calculations with different compile-time parameters.
 
 #ifndef DISABLE_HDF5
 
@@ -28,7 +28,15 @@ contains
 
     subroutine convert_dets_32_to_64(id, dset, kinds, dets)
 
-        ! Convert determinants from 32 to 64 bit integers
+        ! Convert determinants from 32 to 64 bit integers from a restart file.
+
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        ! Out:
+        !   dets: determinant list read from restart file converted to 64 bit.
 
         use const, only: int_64, int_32
 
@@ -62,7 +70,17 @@ contains
     end subroutine convert_dets_32_to_64
 
     subroutine convert_ref_32_to_64(id, dset, kinds, f0)
-        
+ 
+        ! Convert a reference determinant from a restart file from 32 to 64 bit integers.
+
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        ! Out:
+        !   f0: determinant read from restart file converted to 64 bit.
+       
         use const, only: int_64, int_32
 
         use hdf5
@@ -93,6 +111,15 @@ contains
         ! different routine from determinants because transfer will not
         ! handle negative numbers correctly.
 
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        ! Out:
+        !   pops: population list read from restart file converted to 64 bit.
+
+
         use const, only: int_32, int_64
 
         use hdf5
@@ -119,6 +146,14 @@ contains
     subroutine convert_dets_64_to_32(id, dset, kinds, dets)
 
         ! Convert determinants from 64 to 32 bit integers
+
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        ! Out:
+        !   dets: determinant list read from restart file converted to 32 bit.
 
         use const, only: int_32, int_64
 
@@ -152,7 +187,17 @@ contains
     end subroutine convert_dets_64_to_32
 
     subroutine convert_ref_64_to_32(id, dset, kinds, f0)
-        
+
+        ! Convert a reference determinant from a restart file from 64 to 32 bit integers.
+ 
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        ! Out:
+        !   f0: determinant read from restart file converted to 32 bit.
+       
         use const, only: int_32, int_64
 
         use hdf5
@@ -182,6 +227,14 @@ contains
         ! Convert populations from 64 to 32 bit integers.  Needs to be a
         ! different routine from determinants because transfer will not
         ! handle negative numbers correctly.
+
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        ! Out:
+        !   pops: population list read from restart file converted to 32 bit.
 
         use const, only: int_64, int_32
 
