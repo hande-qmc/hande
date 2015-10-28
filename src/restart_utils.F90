@@ -137,7 +137,7 @@ contains
         allocate(pops_tmp(dims(1),dims(2)))
         call hdf5_read(id, dset, kinds, shape(pops_tmp), pops_tmp)
 
-        pops = pops_tmp
+        pops(:,:dims(2)) = pops_tmp
 
         deallocate(pops_tmp)
 
@@ -253,7 +253,7 @@ contains
         allocate(pops_tmp(dims(1),dims(2)))
         call hdf5_read(id, dset, kinds, shape(pops_tmp), pops_tmp)
 
-        pops = pops_tmp
+        pops(:,:dims(2)) = pops_tmp
 
         deallocate(pops_tmp)
 

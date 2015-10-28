@@ -421,7 +421,7 @@ module restart_hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
             use restart_utils, only: convert_dets, convert_ref, convert_pops
 #endif
-            use errors, only: stop_all
+            use errors, only: stop_all, warning
             use const
 
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
