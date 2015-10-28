@@ -419,7 +419,7 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
-            use restart_utils, only: convert_dets, convert_ref
+            use restart_utils, only: convert_dets, convert_ref, convert_pops
 #endif
             use errors, only: stop_all
             use const
@@ -523,10 +523,16 @@ module restart_hdf5
                     call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
                 end if
 
-                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p)) &
-                    call stop_all('read_restart_hdf5', &
-                                  'Restarting with a different POP_SIZE is not supported.  Please implement.')
-                call hdf5_read(subgroup_id, dpops, kinds, shape(qs%psip_list%pops), qs%psip_list%pops)
+                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32)) &
+                    call warning('read_restart_hdf5', &
+                                  'Converting populations from 64 to 32 bit integers.  Overflow may occur. '// &
+                                  'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
+
+                if (dtype_equal(subgroup_id, dpops, kinds%int_p)) then
+                    call hdf5_read(subgroup_id, dpops, kinds, shape(qs%psip_list%pops), qs%psip_list%pops)
+                else
+                    call convert_pops(subgroup_id, dpops, kinds, qs%psip_list%pops)
+                end if
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(qs%psip_list%dat), qs%psip_list%dat)
 
@@ -620,7 +626,7 @@ module restart_hdf5
             use spawn_data, only: proc_map_t
             use particle_t_utils, only: init_particle_t, dealloc_particle_t
             use spawning, only: assign_particle_processor
-            use restart_utils, only: convert_dets, convert_ref
+            use restart_utils, only: convert_dets, convert_ref, convert_pops
             use system, only: sys_t
 #else
             use errors, only: stop_all
@@ -860,16 +866,21 @@ module restart_hdf5
                     end do
 
                     ! Read.
-                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p)) &
-                        call stop_all('redistribute_restart_hdf5', &
-                                      'Restarting with a different POP_SIZE is not supported.  Please implement.')
+                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32)) &
+                        call warning('redistribute_restart_hdf5', &
+                                      'Converting populations from 64 to 32 bit integers.  Overflow may occur. '// &
+                                      'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
 
                     if (i0_length == i0_length_restart) then
                         call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states), psip_read%states)
                     else
                         call convert_dets(orig_subgroup_id, ddets, kinds, psip_read%states)
                     end if
-                    call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops), psip_read%pops)
+                    if (dtype_equal(orig_subgroup_id, dpops, kinds%int_p)) then
+                        call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops), psip_read%pops)
+                    else
+                        call convert_pops(orig_subgroup_id, dpops, kinds, psip_read%pops)
+                    end if
                     call hdf5_read(orig_subgroup_id, ddata, kinds, shape(psip_read%dat), psip_read%dat)
 
                     ! Distribute.
