@@ -1,6 +1,10 @@
 module restart_utils
 
 ! Convert restart files for calculations with different compile-time parameters.
+! Note that we do not attempt to be memory efficient -- converting from one kind
+! to another uses arrays of equal size of both kinds.  This could be reduced by
+! using hyperslabs to read in part of the array at a time, so the array of the
+! original kind (as in the HDF5 file) could be made smaller than the array on file.
 
 #ifndef DISABLE_HDF5
 
@@ -137,6 +141,7 @@ contains
         allocate(pops_tmp(dims(1),dims(2)))
         call hdf5_read(id, dset, kinds, shape(pops_tmp), pops_tmp)
 
+        ! [review] - JSS: note different scaling factor for POP_SIZE=32 and POP_SIZE=64...
         pops(:,:dims(2)) = pops_tmp
 
         deallocate(pops_tmp)
@@ -253,6 +258,8 @@ contains
         allocate(pops_tmp(dims(1),dims(2)))
         call hdf5_read(id, dset, kinds, shape(pops_tmp), pops_tmp)
 
+        ! [review] - JSS: note different scaling factor for POP_SIZE=32 and POP_SIZE=64...
+        ! [review] - JSS: also need to handle force_32 option (I guess should be added to restart file?)
         pops(:,:dims(2)) = pops_tmp
 
         deallocate(pops_tmp)

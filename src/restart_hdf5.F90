@@ -610,6 +610,8 @@ module restart_hdf5
             ! In:
             !    number of processors the restart files are to be split over (ie the number of
             !        processors the user wishes to restart the calculation on).
+            ! [review] - JSS: is it worth writing the asis information out to the restart file
+            ! [review] - JSS: so this would only be required for backward compatibility?
             !    sys (optional): a sys_t object, used to get the basis size.  Only necessary if
             !        changing DET_SIZE.
 
@@ -759,6 +761,7 @@ module restart_hdf5
             call hdf5_read(orig_id, hdf5_path(gmetadata, di0_length), i0_length_restart)
             if (i0_length /= i0_length_restart) then
                 if (present(sys)) then
+                    ! [review] - JSS: should be string_len?
                     allocate(f0(sys%basis%tensor_label_len))
                 else
                     call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
@@ -775,6 +778,7 @@ module restart_hdf5
                 if (i0_length /= i0_length_restart) then
                     call h5dopen_f(new_id, hdf5_path(gmetadata, di0_length), dset_id, ierr)
                     ! Can't use hdf5_write to replace an existing dataset
+                    ! [todo] - can combine this into a single h5dwrite_f?
                     call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, i0_length, [0_HSIZE_T,0_HSIZE_T], ierr)
                     call h5dclose_f(dset_id, ierr)
                 end if
@@ -790,6 +794,7 @@ module restart_hdf5
                         ! Need to convert to a different datatype
                         call h5gopen_f(orig_group_id, gref, orig_subgroup_id, ierr)
                         call h5gcreate_f(group_id, gref, subgroup_id, ierr)
+                        ! [review] - JSS: open after create is not required (and could lead to a resource leak)
                         call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                         call convert_ref(orig_subgroup_id, dref, kinds, f0)
@@ -849,6 +854,8 @@ module restart_hdf5
                     if (i0_length == i0_length_restart) then
                         tensor_label_len = dims(1)
                     else
+                        ! [review] - JSS: this is dangerous as tensor_label_len is not correctly set for DMQMC at this point.
+                        ! [review] - JSS: I guess compare dims(1) to the dimension of f0 in the original restart file?
                         tensor_label_len = sys%basis%tensor_label_len
                     end if
                     max_nstates = dims(2)
