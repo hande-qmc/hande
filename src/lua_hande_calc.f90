@@ -478,7 +478,9 @@ contains
         call read_qmc_in(lua_state, opts, qmc_in)
         call read_dmqmc_in(lua_state, sys%basis%nbasis, opts, sys%system, dmqmc_in, dmqmc_estimates%subsys_info)
 
+        ! We are required to handle the tensor length ourselves.
         sys%basis%tensor_label_len = 2*sys%basis%string_len
+
         if (doing_dmqmc_calc(dmqmc_energy_squared)) then
             ! Create info no longer set in init_real_space.
             allocate(sys%real_lattice%next_nearest_orbs(sys%basis%nbasis,sys%basis%nbasis), stat=ierr)
@@ -506,6 +508,8 @@ contains
         calc_type = dmqmc_calc
         call init_proc_pointers(sys, qmc_in, reference, dmqmc_in)
         call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference)
+
+        sys%basis%tensor_label_len = sys%basis%string_len
 
         nresult = 0
 
