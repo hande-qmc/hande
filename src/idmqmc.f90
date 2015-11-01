@@ -40,11 +40,8 @@ contains
         if (abs(parent_population) > initiator_pop) then
             ! Has a high enough population to be an initiator.
             parent_flag = 0
-        else if (level == 2 .and. excitation == 2) then
-            ! Is on excitation level 2.
-            parent_flag = 0
-        else if (level >= 0 .and. excitation == 0) then
-            ! Is a diagonal element.
+        else if (level >= excitation) then
+            ! Is on excitation level "level" or below.
             parent_flag = 0
         else
             ! Isn't an initiator.
