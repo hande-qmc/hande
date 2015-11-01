@@ -226,8 +226,7 @@ algorithms and control the core settings in the algorithms.
 
     .. note::
 
-        Not currently implemented for DMQMC and should be considered experimental for
-        CCMC.
+        should be considered experimental for CCMC and DMQMC.
 
     .. warning::
 
