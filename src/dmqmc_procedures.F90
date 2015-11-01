@@ -429,7 +429,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, initiator_pop, &
+    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, &
                                                        pop_real_factor, spawn)
 
         ! Create a psip on a diagonal element of the density matrix by adding
@@ -462,7 +462,6 @@ contains
         integer, intent(in) :: string_len, tensor_label_len
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
-        real(p), intent(in) :: initiator_pop
         integer(int_p), intent(in) :: pop_real_factor
         type(spawn_t), intent(inout) :: spawn
 
