@@ -199,22 +199,13 @@ module bloom_handler
 
             type(bloom_stats_t), intent(inout) :: bloom_stats
 
-            type(bloom_stats_t) :: bloom_stats_sum
-
 #ifdef PARALLEL
             integer :: ierr
 
-            bloom_stats_sum = bloom_stats
-            call mpi_reduce(bloom_stats%nblooms_curr, bloom_stats_sum%nblooms, 1, &
-                            MPI_INTEGER, MPI_SUM, root, MPI_COMM_WORLD, ierr)
-            call mpi_reduce(bloom_stats%tot_bloom_curr, bloom_stats_sum%tot_bloom, 1, &
-                            mpi_preal, MPI_SUM, root, MPI_COMM_WORLD, ierr)
-            call mpi_reduce(bloom_stats%max_bloom_proc , bloom_stats_sum%max_bloom, 1, &
+            call mpi_reduce(bloom_stats%max_bloom_proc , bloom_stats%max_bloom, 1, &
                             MPI_preal, MPI_MAX, root, MPI_COMM_WORLD, ierr)
-            bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats_sum%nblooms
-            bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats_sum%tot_bloom
-            if (bloom_stats_sum%max_bloom > bloom_stats%max_bloom) &
-                bloom_stats%max_bloom = bloom_stats_sum%max_bloom
+#else
+            bloom_stats%max_bloom = bloom_stats%max_bloom_proc
 #endif
 
             if (bloom_stats%nblooms > 0 .and. parent) then
@@ -222,7 +213,7 @@ module bloom_handler
                     &with a smaller timestep.")')
                 write (6, '(1X, "Total number of blooming events:", '//int_fmt(bloom_stats%nblooms,1)//')') &
                     bloom_stats%nblooms
-                write (6, '(1X, "Maxium number of particles spawned in a blooming event:",f11.2)') &
+                write (6, '(1X, "Maximum number of particles spawned in a blooming event:",f11.2)') &
                     bloom_stats%max_bloom
                 write (6, '(1X, "Mean number of particles spawned in a blooming event:", 2X, f11.2, /)') &
                     bloom_stats%tot_bloom/bloom_stats%nblooms
