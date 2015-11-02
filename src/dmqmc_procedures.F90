@@ -429,7 +429,8 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, spawn)
+    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, &
+                                                       pop_real_factor, spawn)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly
@@ -446,6 +447,8 @@ contains
         !        element.
         !    particle_type: the label of the replica to which this particle is
         !        to sample.
+        !    pop_real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle is added.
 
@@ -455,11 +458,13 @@ contains
         use spawn_data, only: spawn_t
         use spawning, only: assign_particle_processor_dmqmc, add_spawned_particle
 
+        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: string_len, tensor_label_len
-        integer(i0), intent(in) :: f(string_len)
         integer(int_p), intent(in) :: nspawn
-        integer, intent(in) ::particle_type
+        integer, intent(in) :: particle_type
+        integer(int_p), intent(in) :: pop_real_factor
         type(spawn_t), intent(inout) :: spawn
+
         integer(i0) :: f_new(tensor_label_len)
         integer :: nslots2
 #ifndef PARALLEL
@@ -485,6 +490,73 @@ contains
                                   & generating the initial density matrix.')
 
     end subroutine create_diagonal_density_matrix_particle
+
+    subroutine create_diagonal_density_matrix_particle_initiator(f, string_len, tensor_label_len, nspawn, &
+                                                                 & particle_type, initiator_pop, pop_real_factor, spawn)
+
+        ! Create a psip on a diagonal element of the density matrix by adding
+        ! it to the spawned walkers list. This list can then be sorted correctly
+        ! by the direct_annihilation routine. This routine also checks if the
+        ! psip resides on and initiator determinant.
+
+        ! In:
+        !    f: bitstring representation of index of the diagonal element upon
+        !        which a new psip shall be placed.
+        !    string_len: length of bit array storing a many-particle basis function
+        !        (e.g. a determinant or spin product).
+        !    tensor_label_len: length of bit array storing the label of a density
+        !        matrix element (usually 2xstring_len).
+        !    nspawn: the number of particles to be added to this diagonal
+        !        element.
+        !    particle_type: the label of the replica to which this particle is
+        !        to sample.
+        !    pop_real_factor: The factor by which populations are multiplied to
+        !        enable non-integer populations.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spawned particle is added.
+
+        use hashing
+        use parallel
+        use errors, only: stop_all
+        use spawn_data, only: spawn_t
+        use spawning, only: assign_particle_processor_dmqmc, add_flagged_spawned_particle
+        use idmqmc, only: set_parent_flag_dmqmc
+
+        integer(i0), intent(in) :: f(:)
+        integer, intent(in) :: string_len, tensor_label_len
+        integer(int_p), intent(in) :: nspawn
+        integer, intent(in) :: particle_type
+        real(p), intent(in) :: initiator_pop
+        integer(int_p), intent(in) :: pop_real_factor
+        type(spawn_t), intent(inout) :: spawn
+
+        integer(i0) :: f_new(tensor_label_len)
+        integer :: nslots2
+        integer :: flag
+#ifndef PARALLEL
+        integer, parameter :: iproc_spawn = 0
+#else
+        integer :: iproc_spawn, slot
+#endif
+
+        ! Create the bitstring of the determinant.
+        f_new = 0_i0
+        f_new(:string_len) = f
+        f_new((string_len+1):(tensor_label_len)) = f
+
+#ifdef PARALLEL
+        ! Need to determine which processor the spawned psip should be sent to.
+        call assign_particle_processor_dmqmc(f_new, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                       nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+#endif
+
+        call set_parent_flag_dmqmc(real(nspawn,p)/pop_real_factor, initiator_pop, f_new, f_new, 0, flag)
+        call add_flagged_spawned_particle(f_new, nspawn, particle_type, flag, iproc_spawn, spawn)
+
+        if (spawn%error) call stop_all('create_diagonal_density_matrix_particle', 'Ran out of space in the spawned list while&
+                                  & generating the initial density matrix.')
+
+    end subroutine create_diagonal_density_matrix_particle_initiator
 
     subroutine decode_dm_bitstring(basis, f, isym, subsys_info, rdm_f1, rdm_f2)
 

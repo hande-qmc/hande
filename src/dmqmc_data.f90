@@ -188,6 +188,15 @@ type dmqmc_in_t
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
 
+    ! Excitation level at which to set a psip to be an initiator.
+    ! Can be either set to be negative meaning no initiator space is imposed,
+    ! to zero meaning that diagonal elements are automatically initiators or to
+    ! two meaning that those density matrix elements at excitation level 2 are also
+    ! set to be initiators.
+    ! Default: Use normal initiator approximation, i.e., allow initiator space to develop
+    ! by itself.
+    integer :: initiator_level = -1
+
 end type dmqmc_in_t
 
 ! Spawned lists for rdms.

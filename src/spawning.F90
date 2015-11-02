@@ -1133,8 +1133,8 @@ contains
 
     end subroutine create_spawned_particle_initiator_ras
 
-    subroutine create_spawned_particle_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
-                                                      particle_type, spawn)
+    subroutine create_spawned_particle_density_matrix(basis, reference, cdet, connection, nspawn, &
+                                                      spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1143,10 +1143,8 @@ contains
         !    basis: information about the single-particle basis.
         !    reference: current reference determinant defining the
         !         accessible region of the Hilbert space.
-        !    f1: bitstring corresponding to the end which is currently
-        !         being spawned from.
-        !    f2: bitstring corresponding to the 'inactive' end, which
-        !         was not involved in the current spawning step.
+        !    cdet: det_info_t object containing bit string representations of
+        !        determinants which we are spawning from and to.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
@@ -1162,11 +1160,12 @@ contains
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
+        use determinants, only: det_info_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
-        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
@@ -1183,14 +1182,14 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(basis, f1, connection, f_new)
+        call create_excited_det(basis, cdet%f, connection, f_new)
 
         f_new_tot = 0_i0
         if (spawning_end==1) then
             f_new_tot(:basis%string_len) = f_new
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
         else
-            f_new_tot(:basis%string_len) = f2
+            f_new_tot(:basis%string_len) = cdet%f2
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
@@ -1201,8 +1200,77 @@ contains
 
     end subroutine create_spawned_particle_density_matrix
 
-    subroutine create_spawned_particle_half_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
-                                                           particle_type, spawn)
+    subroutine create_spawned_particle_density_matrix_initiator(basis, reference, cdet, connection, nspawn, &
+                                                                spawning_end, particle_type, spawn)
+
+        ! Create a spawned walker in the spawned walkers lists.
+        ! The current position in the spawning array is updated.
+
+        ! In:
+        !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
+        !    cdet: det_info_t object containing bit string representations of
+        !        determinants which we are spawning from and to.
+        !    connection: excitation connecting the current determinant to its
+        !        offspring.  Note that the perm field is not used.
+        !    nspawn: the (signed) number of particles to create on the
+        !        spawned determinant.
+        !    spawning_end: Specifies which 'end' we are spawning from
+        !        currently, ie, if the elements of the density matrix are
+        !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spawned particle will be added.
+
+        use basis_types, only: basis_t
+        use errors, only: stop_all
+        use excitations, only: excit_t, create_excited_det
+        use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
+        use determinants, only: det_info_t
+        use spawn_data, only: spawn_t
+
+        type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
+        type(det_info_t), intent(in) :: cdet
+        integer(int_p), intent(in) :: nspawn
+        integer, intent(in) :: spawning_end
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
+        type(excit_t), intent(in) :: connection
+
+        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new_tot(basis%tensor_label_len)
+
+        ! DMQMC is not yet OpenMP parallelised.
+        integer, parameter :: thread_id = 0
+
+        integer :: iproc_spawn, slot
+
+        ! Create bit string of new determinant. The entire two-ended
+        ! bitstring is eventually stored in f_new_tot.
+        call create_excited_det(basis, cdet%f, connection, f_new)
+
+        f_new_tot = 0_i0
+        if (spawning_end==1) then
+            f_new_tot(:basis%string_len) = f_new
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
+        else
+            f_new_tot(:basis%string_len) = cdet%f2
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
+        end if
+
+
+        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                             nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+
+        call add_flagged_spawned_particle(f_new_tot, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
+
+    end subroutine create_spawned_particle_density_matrix_initiator
+
+    subroutine create_spawned_particle_half_density_matrix(basis, reference, cdet, connection, nspawn, &
+                                                           spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! If walker tries to spawn in the lower triangle of density matrix
@@ -1213,10 +1281,8 @@ contains
         !    basis: information about the single-particle basis.
         !    reference: current reference determinant defining the
         !         accessible region of the Hilbert space.
-        !    f1: bitstring corresponding to the end which is currently
-        !         being spawned from.
-        !    f2: bitstring corresponding to the 'inactive' end, which
-        !         was not involved in the current spawning step.
+        !    cdet: det_info_t object containing bit string representations of
+        !        determinants which we are spawning from and to.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
@@ -1231,13 +1297,14 @@ contains
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
+        use determinants, only: det_info_t
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
-        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
@@ -1254,7 +1321,7 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(basis, f1, connection, f_new)
+        call create_excited_det(basis, cdet%f, connection, f_new)
         f_new_tot = 0_i0
 
         ! Test to see whether the new determinant resides in the upper
@@ -1262,11 +1329,11 @@ contains
         ! as they are. If not then swap bitstring ends so that the
         ! new psips are reflected into the upper triangle of the density
         ! matrix as they try to spawn.
-        if (bit_str_cmp(f_new, f2) == -1) then
+        if (bit_str_cmp(f_new, cdet%f2) == -1) then
             f_new_tot(:basis%string_len) = f_new
-            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
         else
-            f_new_tot(:basis%string_len) = f2
+            f_new_tot(:basis%string_len) = cdet%f2
             f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
         end if
 
@@ -1277,8 +1344,83 @@ contains
 
     end subroutine create_spawned_particle_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_half_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
-                                                                     particle_type, spawn)
+    subroutine create_spawned_particle_half_density_matrix_initiator(basis, reference, cdet, connection, nspawn, &
+                                                           spawning_end, particle_type, spawn)
+
+        ! Create a spawned walker in the spawned walkers lists.
+        ! If walker tries to spawn in the lower triangle of density matrix
+        ! then reflect it to upper triangle by swapping bit strings for the
+        ! two ends. The current position in the spawning array is updated.
+
+        ! In:
+        !    basis: information about the single-particle basis.
+        !    reference: current reference determinant defining the
+        !         accessible region of the Hilbert space.
+        !    cdet: det_info_t object containing bit string representations of
+        !        determinants which we are spawning from and to.
+        !    connection: excitation connecting the current determinant to its
+        !        offspring.  Note that the perm field is not used.
+        !    nspawn: the (signed) number of particles to create on the
+        !        spawned determinant.
+        !    spawning_end: Specifies which 'end' we are spawning from
+        !        currently, ie, if the elements of the density matrix are
+        !        \rho_{i,j}, are we spawning from the i end, 1, or the j end, 2.
+        !    particle_type: the index of particle type to be created.
+        ! In/Out:
+        !    spawn: spawn_t object to which the spawned particle will be added.
+
+        use bit_utils, only: bit_str_cmp
+        use basis_types, only: basis_t
+        use excitations, only: excit_t, create_excited_det
+        use determinants, only: det_info_t
+        use parallel, only: nprocs, nthreads
+        use qmc_data, only: reference_t
+        use spawn_data, only: spawn_t
+
+        type(basis_t), intent(in) :: basis
+        type(reference_t), intent(in) :: reference
+        type(det_info_t), intent(in) :: cdet
+        integer(int_p), intent(in) :: nspawn
+        integer, intent(in) :: spawning_end
+        integer, intent(in) :: particle_type
+        type(spawn_t), intent(inout) :: spawn
+        type(excit_t), intent(in) :: connection
+
+        integer(i0) :: f_new(basis%string_len)
+        integer(i0) :: f_new_tot(basis%tensor_label_len)
+
+        ! DMQMC is not yet OpenMP parallelised.
+        integer, parameter :: thread_id = 0
+
+        integer :: iproc_spawn, slot
+
+        ! Create bit string of new determinant. The entire two-ended
+        ! bitstring is eventually stored in f_new_tot.
+        call create_excited_det(basis, cdet%f, connection, f_new)
+        f_new_tot = 0_i0
+
+        ! Test to see whether the new determinant resides in the upper
+        ! triangle of the density matrix. If so keep bit string ends
+        ! as they are. If not then swap bitstring ends so that the
+        ! new psips are reflected into the upper triangle of the density
+        ! matrix as they try to spawn.
+        if (bit_str_cmp(f_new, cdet%f2) == -1) then
+            f_new_tot(:basis%string_len) = f_new
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
+        else
+            f_new_tot(:basis%string_len) = cdet%f2
+            f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
+        end if
+
+        call assign_particle_processor_dmqmc(f_new_tot, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, spawn%move_freq, &
+                                             nprocs, iproc_spawn, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+
+        call add_flagged_spawned_particle(f_new_tot, nspawn, particle_type, cdet%initiator_flag, iproc_spawn, spawn)
+
+    end subroutine create_spawned_particle_half_density_matrix_initiator
+
+    subroutine create_spawned_particle_truncated_half_density_matrix(basis, reference, cdet, connection, nspawn, &
+                                                                          spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1296,10 +1438,8 @@ contains
         !    basis: information about the single-particle basis.
         !    reference: current reference determinant defining the
         !         accessible region of the Hilbert space.
-        !    f1: bitstring corresponding to the end which is currently
-        !         being spawned from.
-        !    f2: bitstring corresponding to the 'inactive' end, which
-        !         was not involved in the current spawning step.
+        !    cdet: det_info_t object containing bit string representations of
+        !        determinants which we are spawning from and to.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
@@ -1314,13 +1454,14 @@ contains
         use bit_utils, only: bit_str_cmp
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use determinants, only: det_info_t
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
-        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
@@ -1337,9 +1478,9 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(basis, f1, connection, f_new)
+        call create_excited_det(basis, cdet%f, connection, f_new)
 
-        if (get_excitation_level(f2, f_new) <= reference%ex_level) then
+        if (get_excitation_level(cdet%f2, f_new) <= reference%ex_level) then
 
             f_new_tot = 0_i0
             ! Test to see whether the new determinant resides in the upper
@@ -1347,11 +1488,11 @@ contains
             ! as they are. If not then swap bitstring ends so that the
             ! new psips are reflected into the upper triangle of the density
             ! matrix as they try to spawn.
-            if (bit_str_cmp(f_new, f2) == -1) then
+            if (bit_str_cmp(f_new, cdet%f2) == -1) then
                 f_new_tot(:basis%string_len) = f_new
-                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
+                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
             else
-                f_new_tot(:basis%string_len) = f2
+                f_new_tot(:basis%string_len) = cdet%f2
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 
@@ -1365,8 +1506,8 @@ contains
 
     end subroutine create_spawned_particle_truncated_half_density_matrix
 
-    subroutine create_spawned_particle_truncated_density_matrix(basis, reference, f1, f2, connection, nspawn, spawning_end, &
-                                                                particle_type, spawn)
+    subroutine create_spawned_particle_truncated_density_matrix(basis, reference, cdet, connection, &
+                                                                nspawn, spawning_end, particle_type, spawn)
 
         ! Create a spawned walker in the spawned walkers lists.
         ! The current position in the spawning array is updated.
@@ -1379,10 +1520,8 @@ contains
         !    basis: information about the single-particle basis.
         !    reference: current reference determinant defining the
         !         accessible region of the Hilbert space.
-        !    f1: bitstring corresponding to the end which is currently
-        !         being spawned from.
-        !    f2: bitstring corresponding to the 'inactive' end, which
-        !         was not involved in the current spawning step.
+        !    cdet: det_info_t object containing bit string representations of
+        !        determinants which we are spawning from and to.
         !    connection: excitation connecting the current determinant to its
         !        offspring.  Note that the perm field is not used.
         !    nspawn: the (signed) number of particles to create on the
@@ -1396,13 +1535,14 @@ contains
 
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use determinants, only: det_info_t
         use parallel, only: nprocs, nthreads
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
-        integer(i0), intent(in) :: f1(basis%string_len), f2(basis%string_len)
+        type(det_info_t), intent(in) :: cdet
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: spawning_end
         integer, intent(in) :: particle_type
@@ -1419,16 +1559,16 @@ contains
 
         ! Create bit string of new determinant. The entire two-ended
         ! bitstring is eventually stored in f_new_tot.
-        call create_excited_det(basis, f1, connection, f_new)
+        call create_excited_det(basis, cdet%f, connection, f_new)
 
-        if (get_excitation_level(f2, f_new) <= reference%ex_level) then
+        if (get_excitation_level(cdet%f2, f_new) <= reference%ex_level) then
 
             f_new_tot = 0_i0
             if (spawning_end==1) then
                 f_new_tot(:basis%string_len) = f_new
-                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f2
+                f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = cdet%f2
             else
-                f_new_tot(:basis%string_len) = f2
+                f_new_tot(:basis%string_len) = cdet%f2
                 f_new_tot((basis%string_len+1):(basis%tensor_label_len)) = f_new
             end if
 

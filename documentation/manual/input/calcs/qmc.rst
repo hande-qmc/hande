@@ -226,8 +226,8 @@ algorithms and control the core settings in the algorithms.
 
     .. note::
 
-        Not currently implemented for DMQMC and should be considered experimental for
-        CCMC.
+        The initiator approximation should be considered experimental for CCMC and DMQMC (see
+        ``initiator_level`` option for DMQMC).
 
     .. warning::
 
