@@ -213,6 +213,19 @@ dmqmc options
 
     Explicitly symmetrize the density matrix, thus only sampling one triangle of the
     matrix.  This can yield significant improvements in stochastic error in some cases.
+``initiator_level``
+    type: integer.
+
+    Optional.  Default: -1.
+
+    Set all density matrix elements at excitation level **initiator_level** and
+    below to be initiator determinants. An **initiator_level** of -1 indicates
+    that no preferential treatment is given to density matrix elements and the
+    usual initiator approximation is imposed, 0 indicates that the diagonal
+    elements are initiators, etc.
+
+    This is experimental and the user should identity when convergence has been
+    reached.
 
 .. _ipdmqmc_table:
 
