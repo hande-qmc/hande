@@ -761,8 +761,7 @@ module restart_hdf5
             call hdf5_read(orig_id, hdf5_path(gmetadata, di0_length), i0_length_restart)
             if (i0_length /= i0_length_restart) then
                 if (present(sys)) then
-                    ! [review] - JSS: should be string_len?
-                    allocate(f0(sys%basis%tensor_label_len))
+                    allocate(f0(sys%basis%string_len))
                 else
                     call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
                 end if
@@ -794,8 +793,6 @@ module restart_hdf5
                         ! Need to convert to a different datatype
                         call h5gopen_f(orig_group_id, gref, orig_subgroup_id, ierr)
                         call h5gcreate_f(group_id, gref, subgroup_id, ierr)
-                        ! [review] - JSS: open after create is not required (and could lead to a resource leak)
-                        call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                         call convert_ref(orig_subgroup_id, dref, kinds, f0)
                         call hdf5_write(subgroup_id, dref, kinds, shape(f0), f0)
@@ -856,6 +853,8 @@ module restart_hdf5
                     else
                         ! [review] - JSS: this is dangerous as tensor_label_len is not correctly set for DMQMC at this point.
                         ! [review] - JSS: I guess compare dims(1) to the dimension of f0 in the original restart file?
+                        ! [reply] - RSTF: I thought (from an email in April, though it might have changed since) restarting was not supported for DMQMC?
+                        ! [reply] - RSTF: At any rate, there are no tests for it...
                         tensor_label_len = sys%basis%tensor_label_len
                     end if
                     max_nstates = dims(2)
