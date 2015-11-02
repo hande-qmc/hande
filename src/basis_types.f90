@@ -90,6 +90,7 @@ module basis_types
         ! formed from concatenating the bit strings of the individual tensor
         ! labels.  Then length of this array is given by tensor_label_len.
         ! tensor_label_len = (rank of tensor) * string_len.
+        ! NOTE: this must be set before running a QMC algorithm where the rank is not 1.
         integer :: tensor_label_len
 
         ! Bit masks to reveal the list of alpha basis functions and beta functions occupied
@@ -128,7 +129,6 @@ module basis_types
             !   b: basis_t object to be set.  On input b%nbasis must be set.
             !      On output the bit string look-up tables are also set.
 
-            use calc, only: doing_calc, dmqmc_calc
             use const, only: i0_end, i0_length
             use checking, only: check_allocate
 
@@ -138,11 +138,7 @@ module basis_types
 
             b%string_len = ceiling(real(b%nbasis)/i0_length)
 
-            if(doing_calc(dmqmc_calc)) then
-                b%tensor_label_len = 2*b%string_len
-            else
-                b%tensor_label_len = b%string_len
-            end if
+            b%tensor_label_len = b%string_len
 
             ! Lookup arrays.
             allocate(b%bit_lookup(2,b%nbasis), stat=ierr)
