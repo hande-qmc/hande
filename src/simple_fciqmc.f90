@@ -355,7 +355,7 @@ contains
 
             ! Write restart file if required.
             call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, [nparticles_old], &
-                                           ireport, qmc_in%ncycles, ri, ri_shift, .false.)
+                                           ireport, qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, .false.)
 
             t1 = t2
 
@@ -365,7 +365,7 @@ contains
 
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done+qmc_in%ncycles*qmc_in%nreport, &
-                                   (/nparticles_old/), .false.)
+                                   (/nparticles_old/), sys%basis%nbasis, .false.)
             if (parent) write (6,'()')
         end if
 
