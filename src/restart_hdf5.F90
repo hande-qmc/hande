@@ -420,7 +420,7 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nb_comm, qs)
+        subroutine read_restart_hdf5(ri, nbasis, nb_comm, qs)
 
             ! Read QMC data from restart file.
 
@@ -434,8 +434,8 @@ module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
-            use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path
+            use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
 #endif
             use errors, only: stop_all, warning
             use const
@@ -448,6 +448,7 @@ module restart_hdf5
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
+            integer, intent(in) :: nbasis
             type(qmc_state_t), intent(inout) :: qs
 
 #ifndef DISABLE_HDF5
@@ -458,7 +459,7 @@ module restart_hdf5
 
             character(255) :: restart_file
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
-            integer :: i0_length_restart
+            integer :: i0_length_restart, nbasis_restart
             type(c_ptr) :: ptr
             integer :: ierr
             real(p), target :: tmp(1)
@@ -522,9 +523,17 @@ module restart_hdf5
 
             call h5gclose_f(group_id, ierr)
 
-            ! --- qmc group ---
-            call h5gopen_f(file_id, gqmc, group_id, ierr)
+            ! --- basis group ---
+            call h5lexists_f(file_id, gbasis, exists, ierr)
+            if (exists) then
+                call hdf5_read(file_id, hdf5_path(gbasis, dnbasis), nbasis_restart)
+                if (nbasis_restart > nbasis) &
+                    call stop_all('read_restart_hdf5', &
+                                  'Restarting with a smaller basis not supported.  Please implement.')
+            end if
 
+            ! --- qmc group ---
+                call h5gopen_f(file_id, gqmc, group_id, ierr)
                 ! --- qmc/psips group ---
                 call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
@@ -535,7 +544,14 @@ module restart_hdf5
                 qs%psip_list%nstates = dims(size(dims))
 
                 if (i0_length == i0_length_restart) then
-                    call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                    if (nbasis == nbasis_restart) then
+                        call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                    else
+                        ! Change array bounds to restart with a larger basis
+                        ! Assume that basis functions 1..nbasis_restart correspond to the original basis
+                        call change_nbasis(subgroup_id, ddets, kinds, qs%psip_list%states)
+                        ! Need to redistribute across processors
+                    end if
                 else
                     call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
                 end if
@@ -600,6 +616,7 @@ module restart_hdf5
                 ! --- qmc/reference group ---
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
+                    qs%ref%f0 = 0
                     if (i0_length == i0_length_restart) then
                         call hdf5_read(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
                         call hdf5_read(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)

@@ -214,7 +214,7 @@ contains
                     call check_allocate('reference%occ_list0',sys%nel,ierr)
                 end if
                 call init_restart_info_t(ri, read_id=restart_in%read_id)
-                call read_restart_hdf5(ri, fciqmc_in_loc%non_blocking_comm, qmc_state)
+                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
                 ! Need to re-calculate the reference determinant data
                 call decode_det(sys%basis, reference%f0, reference%occ_list0)
                 if (fciqmc_in_loc%trial_function == neel_singlet) then
