@@ -68,7 +68,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_correlation, dmqmc_full_r2, dmqmc_rdm_r2, dmqmc_kinetic_energy
-        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy
+        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use dmqmc_data, only: dmqmc_in_t
         use utils, only: int_fmt
 
@@ -166,6 +166,9 @@ contains
             if (doing_dmqmc_calc(dmqmc_H0_energy)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}H0{ji}'
             end if
+            if (doing_dmqmc_calc(dmqmc_HI_energy)) then
+                write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}HI{ji}'
+            end if
             if (doing_dmqmc_calc(dmqmc_potential_energy)) then
                 write (6, '(2X,a19)', advance = 'no') '\sum\rho_{ij}U_{ji}'
             end if
@@ -228,10 +231,10 @@ contains
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
         use calc, only: dmqmc_correlation, dmqmc_staggered_magnetisation, dmqmc_kinetic_energy
-        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy
+        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind
         use dmqmc_data, only: correlation_fn_ind, staggered_mag_ind, full_r2_ind, kinetic_ind
-        use dmqmc_data, only: H0_ind, potential_ind
+        use dmqmc_data, only: H0_ind, potential_ind, HI_ind
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(qmc_in_t), intent(in) :: qmc_in
@@ -305,6 +308,11 @@ contains
             ! H^0 energy, where H = H^0 + V.
             if (doing_dmqmc_calc(dmqmc_H0_energy)) then
                 write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(H0_ind)
+            end if
+
+            ! H^I energy, where H^I = exp(-(beta-tau)/2 H^0) H exp(-(beta-tau)/2. H^0).
+            if (doing_dmqmc_calc(dmqmc_HI_energy)) then
+                write (6, '(4X,es17.10)', advance = 'no') dmqmc_estimates%numerators(HI_ind)
             end if
 
             ! Potential energy.
