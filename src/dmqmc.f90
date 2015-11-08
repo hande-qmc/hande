@@ -262,7 +262,7 @@ contains
                                     end if
 
                                     ! Now attempt to spawn from the second end.
-                                    if (.not. dmqmc_in%propagate_to_beta) then
+                                    if (dmqmc_in%symmetric) then
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                                                          qs%psip_list%pop_real_factor, cdet2, qs%psip_list%pops(ireplica,idet), &

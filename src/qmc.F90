@@ -110,6 +110,7 @@ contains
             if (present(dmqmc_in)) then
                 annihilation_flags%propagate_to_beta = dmqmc_in%propagate_to_beta
                 annihilation_flags%replica_tricks = dmqmc_in%replica_tricks
+                annihilation_flags%symmetric = dmqmc_in%symmetric
             end if
             if (present(fciqmc_in)) then
                 annihilation_flags%trial_function = fciqmc_in%trial_function
@@ -738,8 +739,16 @@ contains
                 if (dmqmc_in%propagate_to_beta) then
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         trial_dm_ptr => kinetic_energy_ueg
+                        if (dmqmc_in%symmetric) then
+                            gen_excit_ptr%trial_fn => interaction_picture_reweighting_free
+                            spawner_ptr => spawn_importance_sampling
+                        end if
                     else
                         trial_dm_ptr => slater_condon0_ueg
+                        if (dmqmc_in%symmetric) then
+                            gen_excit_ptr%trial_fn => interaction_picture_reweighting_hartree_fock
+                            spawner_ptr => spawn_importance_sampling
+                        end if
                     end if
                 end if
                     if (doing_dmqmc_calc(dmqmc_kinetic_energy)) then
