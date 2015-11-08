@@ -68,7 +68,7 @@ contains
         ! When using an importance sampled initial density matrix we use then
         ! unsymmetrised version of Bloch's equation. This means we don't have
         ! to worry about these factors of 1/2.
-        if (.not. dmqmc_in%propagate_to_beta) then
+        if (dmqmc_in%symmetric) then
             ! In DMQMC we want the spawning probabilities to have an extra factor
             ! of a half, because we spawn from two different ends with half
             ! probability. To avoid having to multiply by an extra variable in
@@ -105,13 +105,19 @@ contains
             ! deallocated. Also, the user may have only input factors for the
             ! first few excitation levels, but we need to store factors for all
             ! levels, as done below.
+            if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) then
+                ! If using symmetric version of ipdmqmc let the last entry contain 0.5*(beta-tau).
+                allocate(weighted_sampling%probs(0:sys%max_number_excitations+1), stat=ierr)
+                call check_allocate('weighted_sampling%probs',sys%max_number_excitations+2,ierr)
+            else
+                allocate(weighted_sampling%probs(0:sys%max_number_excitations), stat=ierr)
+                call check_allocate('weighted_sampling%sampling_probs', sys%max_number_excitations, ierr)
+            end if
             allocate(weighted_sampling%sampling_probs(sys%max_number_excitations), stat=ierr)
-            call check_allocate('weighted_sampling%sampling_probs', sys%max_number_excitations, ierr)
             weighted_sampling%sampling_probs = 1.0_p
             if (allocated(dmqmc_in%sampling_probs)) then
                 weighted_sampling%sampling_probs(:size(dmqmc_in%sampling_probs)) = dmqmc_in%sampling_probs
             end if
-            allocate(weighted_sampling%probs(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('weighted_sampling%probs',sys%max_number_excitations+1,ierr)
             allocate(weighted_sampling%probs_old(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
@@ -125,7 +131,8 @@ contains
                 ! will change each iteration.
                 allocate(weighted_sampling%altering_factors(0:sys%max_number_excitations), stat=ierr)
                 call check_allocate('weighted_sampling%altering_factors',sys%max_number_excitations+1,ierr)
-                weighted_sampling%altering_factors = real(weighted_sampling%probs,dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
+                weighted_sampling%altering_factors = &
+                    & real(weighted_sampling%probs(:sys%max_number_excitations),dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
                 ! If varying the weights, start the accumulated probabilties
                 ! as all 1.0 initially, and then alter them gradually later.
                 weighted_sampling%probs = 1.0_p
@@ -133,8 +140,14 @@ contains
         else
             ! If not using the importance sampling procedure, turn it off by
             ! setting all amplitudes to 1.0 in the relevant arrays.
-            allocate(weighted_sampling%probs(0:sys%max_number_excitations), stat=ierr)
-            call check_allocate('weighted_sampling%probs',sys%max_number_excitations+1,ierr)
+            if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) then
+                ! If using symmetric version of ipdmqmc let the last entry contain 0.5*(beta-tau).
+                allocate(weighted_sampling%probs(0:sys%max_number_excitations+1), stat=ierr)
+                call check_allocate('weighted_sampling%probs',sys%max_number_excitations+2,ierr)
+            else
+                allocate(weighted_sampling%probs(0:sys%max_number_excitations), stat=ierr)
+                call check_allocate('weighted_sampling%probs',sys%max_number_excitations+1,ierr)
+            end if
             allocate(weighted_sampling%probs_old(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
             weighted_sampling%probs = 1.0_p
@@ -606,7 +619,7 @@ contains
 
     end subroutine decode_dm_bitstring
 
-    subroutine update_sampling_weights(rng, basis, qmc_in, psip_list, weighted_sampling)
+    subroutine update_sampling_weights(rng, basis, qmc_in, psip_list, max_number_excitations, weighted_sampling)
 
         ! This routine updates the values of the weights used in importance
         ! sampling. It also removes or adds psips from the various excitation
@@ -618,6 +631,7 @@ contains
         ! In:
         !    basis: information about the single-particle basis.
         !    qmc_in: Input options relating to QMC methods.
+        !    max_number_excitations: maximum number of excitations allowed in the system.
         ! In/Out:
         !    weighted_sampling: type containing weighted sampling information.
 
@@ -631,6 +645,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(basis_t), intent(in) :: basis
         type(qmc_in_t), intent(in) :: qmc_in
+        integer, intent(in) :: max_number_excitations
         type(particle_t), intent(inout) :: psip_list
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
@@ -640,7 +655,8 @@ contains
         real(dp) :: r, pextra
 
         ! Alter weights for the next iteration.
-        weighted_sampling%probs = real(weighted_sampling%probs,p)*weighted_sampling%altering_factors
+        weighted_sampling%probs(:max_number_excitations) = &
+                    & real(weighted_sampling%probs(:max_number_excitations),p)*weighted_sampling%altering_factors
 
         ! When the weights for an excitation level are increased by a factor,
         ! the number of psips on that level has to decrease by the same factor,
@@ -752,7 +768,8 @@ contains
         ! gradually at the start of each beta loop. This requires redefining
         ! weighted_sampling%altering_factors to coincide with the new sampling weights.
         if (dmqmc_in%vary_weights) then
-            weighted_sampling%altering_factors = real(weighted_sampling%probs,dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
+            weighted_sampling%altering_factors = &
+                & real(weighted_sampling%probs(:max_number_excitations),dp)**(1/real(dmqmc_in%finish_varying_weights,dp))
             ! Reset the weights for the next loop.
             weighted_sampling%probs = 1.0_p
         end if
