@@ -184,6 +184,9 @@ type dmqmc_in_t
     ! Number of metropolis attempts (per psip) we use when generating
     ! the trial density matrix.
     integer :: metropolis_attempts = 0
+    ! Do a symmetric version of DMQMC, default true and only changeable for the ip-dmqmc algorith.
+    ! This considerably changes the IP-DMQMC algorithm.
+    logical :: symmetric = .true.
 
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
