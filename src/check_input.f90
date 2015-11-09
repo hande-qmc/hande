@@ -56,9 +56,8 @@ contains
         if (sys%momentum_space .or. sys%system == read_in) then
             if (sys%real_lattice%finite_cluster) call stop_all(this,'"finite" keyword only valid for calculations in real-space.')
         end if
-        
-        if (sys%system == ringium .and. sys%ringium%radius < depsilon) call stop_all(this, 'Ringium must have a positive radius.')
 
+        if (sys%system == ringium .and. sys%ringium%radius < depsilon) call stop_all(this, 'Ringium must have a positive radius.')
 
     end subroutine check_sys
 
@@ -95,6 +94,8 @@ contains
             call stop_all(this, &
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
+
+        if (sys%symmetry < 0) call stop_all(this, 'symmetry must be greater than zero')
 
     end subroutine check_fciqmc_opts
 
@@ -154,6 +155,8 @@ contains
             if (fci_in%lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
             if (fci_in%nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
+
+        if (sys%symmetry < 0) call stop_all(this, 'symmetry must be greater than zero')
 
     end subroutine check_fci_opts
 
@@ -264,6 +267,8 @@ contains
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
 
+        if (sys%symmetry < 0) call stop_all(this, 'symmetry must be greater than zero')
+
     end subroutine check_dmqmc_opts
 
     subroutine check_ccmc_opts(ccmc_in)
@@ -289,6 +294,8 @@ contains
         if (ccmc_in%cluster_multispawn_threshold <= 0) then
             call stop_all(this, "cluster_multispawn_threshold must be positive")
         end if
+
+        if (sys%symmetry < 0) call stop_all(this, 'symmetry must be greater than zero')
 
     end subroutine check_ccmc_opts
 
