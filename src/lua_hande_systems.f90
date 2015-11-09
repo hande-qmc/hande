@@ -290,7 +290,7 @@ contains
             if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
-            call init_momentum_symmetry(sys)
+            if (sys%symmetry > 0) call init_momentum_symmetry(sys)
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -667,7 +667,7 @@ contains
             if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
-            call init_momentum_symmetry(sys)
+            if (sys%symmetry > 0) call init_momentum_symmetry(sys)
             call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
         end if
 
