@@ -332,6 +332,7 @@ contains
         call json_write_key(js, 'calc_excit_dist', dmqmc%calc_excit_dist)
         call json_write_key(js, 'all_sym_sectors', dmqmc%all_sym_sectors)
         call json_write_key(js, 'all_spin_sectors', dmqmc%all_spin_sectors)
+        call json_write_key(js, 'initiator_level', dmqmc%initiator_level)
         if (allocated(dmqmc%sampling_probs)) then
             call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
         else
@@ -365,6 +366,7 @@ contains
         call json_write_key(js, 'propagate_to_beta', dmqmc%propagate_to_beta)
         call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
         call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
+        call json_write_key(js, 'symmetric', dmqmc%symmetric)
         call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts, terminal=.true.)
         call json_object_end(js, terminal)
 
@@ -412,7 +414,8 @@ contains
 
         use json_out
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared, dmqmc_correlation, &
-                        dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2
+                        dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2, dmqmc_kinetic_energy, &
+                        dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy
 
         type(json_out_t), intent(inout) :: js
         logical, intent(in), optional :: terminal
@@ -420,6 +423,10 @@ contains
         call json_object_init(js, 'operators')
         call json_write_key(js, 'energy', doing_dmqmc_calc(dmqmc_energy))
         call json_write_key(js, 'energy_squared', doing_dmqmc_calc(dmqmc_energy_squared))
+        call json_write_key(js, 'kinetic_energy', doing_dmqmc_calc(dmqmc_kinetic_energy))
+        call json_write_key(js, 'potential_energy', doing_dmqmc_calc(dmqmc_potential_energy))
+        call json_write_key(js, 'H0_energy', doing_dmqmc_calc(dmqmc_H0_energy))
+        call json_write_key(js, 'HI_energy', doing_dmqmc_calc(dmqmc_HI_energy))
         call json_write_key(js, 'correlation_fn', doing_dmqmc_calc(dmqmc_correlation))
         call json_write_key(js, 'staggered_mad_ind', doing_dmqmc_calc(dmqmc_staggered_magnetisation))
         call json_write_key(js, 'rdm_r2', doing_dmqmc_calc(dmqmc_rdm_r2))
