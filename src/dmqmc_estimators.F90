@@ -434,7 +434,7 @@ contains
                 ! comments for description.
                 if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy&
                     &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
-                ! HI energy, HI(tau-beta) = e^{-(beta-tau)H^0} H e^{(beta-tau)H^0}
+                ! HI energy, HI(tau-beta) = e^{-0.5(beta-tau)H^0} H e^{0.5(beta-tau)H^0}
                 if (doing_dmqmc_calc(dmqmc_HI_energy)) call update_dmqmc_HI_energy&
                     &(sys, cdet, excitation, unweighted_walker_pop(1), weighted_sampling%probs(sys%max_number_excitations+1), &
                     & est%numerators(HI_ind))
@@ -1439,7 +1439,7 @@ contains
         !        to the two labels for the density matrix element.
         !    pop: number of particles on the current density matrix
         !        element.
-        !    tdiff: beta-tau.
+        !    tdiff: 0.5*(beta-tau).
         ! In/Out:
         !    HI_energy: current thermal interaction picture Hamiltonian energy estimate.
 
@@ -1472,7 +1472,7 @@ contains
             diff_ijab = trial_dm_ptr(sys, cdet%f) - trial_dm_ptr(sys, cdet%f2)
         end if
 
-        HI_energy = HI_energy + exp(-0.5*tdiff*diff_ijab)*hmatel*pop
+        HI_energy = HI_energy + exp(-tdiff*diff_ijab)*hmatel*pop
 
     end subroutine update_dmqmc_HI_energy
 
