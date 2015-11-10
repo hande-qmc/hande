@@ -105,20 +105,19 @@ contains
             ! deallocated. Also, the user may have only input factors for the
             ! first few excitation levels, but we need to store factors for all
             ! levels, as done below.
+            allocate(weighted_sampling%sampling_probs(sys%max_number_excitations), stat=ierr)
+            if (allocated(dmqmc_in%sampling_probs)) then
+                weighted_sampling%sampling_probs(:size(dmqmc_in%sampling_probs)) = dmqmc_in%sampling_probs
+            end if
+            call check_allocate('weighted_sampling%sampling_probs',sys%max_number_excitations,ierr)
             if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) then
                 ! If using symmetric version of ipdmqmc let the last entry contain 0.5*(beta-tau).
                 allocate(weighted_sampling%probs(0:sys%max_number_excitations+1), stat=ierr)
                 call check_allocate('weighted_sampling%probs',sys%max_number_excitations+2,ierr)
             else
                 allocate(weighted_sampling%probs(0:sys%max_number_excitations), stat=ierr)
-                call check_allocate('weighted_sampling%sampling_probs', sys%max_number_excitations, ierr)
+                call check_allocate('weighted_sampling%probs', sys%max_number_excitations+1, ierr)
             end if
-            allocate(weighted_sampling%sampling_probs(sys%max_number_excitations), stat=ierr)
-            weighted_sampling%sampling_probs = 1.0_p
-            if (allocated(dmqmc_in%sampling_probs)) then
-                weighted_sampling%sampling_probs(:size(dmqmc_in%sampling_probs)) = dmqmc_in%sampling_probs
-            end if
-            call check_allocate('weighted_sampling%probs',sys%max_number_excitations+1,ierr)
             allocate(weighted_sampling%probs_old(0:sys%max_number_excitations), stat=ierr)
             call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
             weighted_sampling%probs(0) = 1.0_p
