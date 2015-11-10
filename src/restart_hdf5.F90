@@ -445,6 +445,7 @@ module restart_hdf5
             use spawn_data, only: spawn_t
             use qmc_data, only: qmc_state_t
             use sort, only: qsort
+            use qmc_common, only: redistribute_particles
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
@@ -550,7 +551,6 @@ module restart_hdf5
                         ! Change array bounds to restart with a larger basis
                         ! Assume that basis functions 1..nbasis_restart correspond to the original basis
                         call change_nbasis(subgroup_id, ddets, kinds, qs%psip_list%states)
-                        ! Need to redistribute across processors
                     end if
                 else
                     call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
@@ -578,6 +578,12 @@ module restart_hdf5
                 if (restart_scale_factor(1) /= qs%psip_list%pop_real_factor) then
                     call change_pop_scaling(qs%psip_list%pops, restart_scale_factor(1), int(qs%psip_list%pop_real_factor,int_64))
                 end if
+
+                ! Need to redistribute across processors if int(nbasis/32) changed
+                associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map, pl=>qs%psip_list)
+                    if (nbasis /= nbasis_restart .and. nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, &
+                                                                              pl%nparticles, spawn)
+                end associate
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(qs%psip_list%dat), qs%psip_list%dat)
 
