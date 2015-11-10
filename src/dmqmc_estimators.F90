@@ -1441,7 +1441,7 @@ contains
         !        element.
         !    tdiff: beta-tau.
         ! In/Out:
-        !    H0_energy: current thermal zeroth order Hamiltonian energy estimate.
+        !    HI_energy: current thermal interaction picture Hamiltonian energy estimate.
 
         use determinants, only: det_info_t
         use system, only: sys_t
