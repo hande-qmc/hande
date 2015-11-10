@@ -271,16 +271,19 @@ contains
 
     end subroutine check_dmqmc_opts
 
-    subroutine check_ccmc_opts(ccmc_in)
+    subroutine check_ccmc_opts(sys, ccmc_in)
 
         ! Check the CCMC input options
 
         ! In:
+        !   sys: system being studied.
         !   ccmc_in: CCMC options
 
         use qmc_data, only: ccmc_in_t
+        use system, only: sys_t
         use errors, only: stop_all
 
+        type(sys_t), intent(in) :: sys
         type(ccmc_in_t), intent(in) :: ccmc_in
 
         character(*), parameter :: this = 'check_ccmc_opts'

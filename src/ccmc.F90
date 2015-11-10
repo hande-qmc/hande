@@ -365,7 +365,7 @@ contains
         ! Check input options.
         if (parent) then
             call check_qmc_opts(qmc_in, .false.)
-            call check_ccmc_opts(ccmc_in)
+            call check_ccmc_opts(sys, ccmc_in)
         end if
 
         ! Initialise data.
