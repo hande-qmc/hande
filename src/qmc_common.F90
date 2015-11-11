@@ -83,7 +83,7 @@ contains
         if (all(fmax == qs%ref%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
             in_data = (/ 0_int_p, int(iproc,int_p) /)
-        else if (abs(max_pop) > ref_det_factor*abs(qs%estimators%D0_population)) then
+        else if (real(abs(max_pop),p)/qs%psip_list%pop_real_factor > ref_det_factor*abs(qs%estimators%D0_population)) then
             in_data = (/ max_pop, int(iproc,int_p) /)
         else
             ! No det with sufficient population to become reference det on this
@@ -106,7 +106,8 @@ contains
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(qs%estimators%D0_population) .and. any(fmax /= qs%ref%f0)) then
+        if (real(abs(max_pop),p)/qs%psip_list%pop_real_factor > ref_det_factor*abs(qs%estimators%D0_population) .and. &
+                any(fmax /= qs%ref%f0)) then
             updated = .true.
             qs%ref%f0 = fmax
             qs%ref%H00 = H00_max
@@ -134,7 +135,7 @@ contains
                 call write_det(sys%basis, sys%nel, qs%ref%f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
                             qs%estimators%D0_population
-                write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
+                write (6,'(1X,"#",1X,"Population on new reference det:",27X,f10.2)') real(max_pop,p)/qs%psip_list%pop_real_factor
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
                 write (6,'(1X,"#",1X,62("-"))')
