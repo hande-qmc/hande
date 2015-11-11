@@ -933,12 +933,12 @@ contains
                 call aot_table_open(lua_state, fciqmc_table, ref_det, 'select_reference_det')
                 if (ref_det == 0) then
                     ! Just passed a boolean (hopefully).
-                    call aot_get_val(ref_det_flag, err, lua_state, ref_det, 'select_reference_det', default=.false.)
+                    call aot_get_val(ref_det_flag, err, lua_state, fciqmc_table, 'select_reference_det', default=.false.)
                     if (ref_det_flag) fciqmc_in%select_ref_det_every_nreports = 20
                 else
-                    call aot_table_close(lua_state, ref_det)
                     call aot_get_val(fciqmc_in%select_ref_det_every_nreports, err, lua_state, ref_det, 'update_every', default=20)
                     call aot_get_val(fciqmc_in%ref_det_factor, err, lua_state, ref_det, 'pop_factor')
+                    call aot_table_close(lua_state, ref_det)
                 end if
             end if
             if (aot_exists(lua_state, fciqmc_table, 'guiding_function')) then
