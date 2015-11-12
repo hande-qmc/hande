@@ -91,7 +91,7 @@ contains
             in_data = (/ 0_int_p, int(iproc, int_p) /)
         end if
 
-        call mpi_allreduce(in_data, out_data, 2, mpi_pop_integer, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(in_data, out_data, 1, mpi_2integer, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
         if (out_data(1) /= 0) then
             max_pop = out_data(1)
