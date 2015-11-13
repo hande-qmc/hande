@@ -95,7 +95,7 @@ contains
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
 
-        if (sys%symmetry < 0) call stop_all(this, 'symmetry must be greater than zero')
+        if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be non-negative.')
 
     end subroutine check_fciqmc_opts
 
@@ -156,7 +156,7 @@ contains
             if (fci_in%nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
 
-        if (sys%symmetry < 0) call stop_all(this, 'symmetry must be greater than zero')
+        if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be non-negative.')
 
     end subroutine check_fci_opts
 
@@ -260,14 +260,14 @@ contains
         if (dmqmc_in%init_beta == 0 .and. dmqmc_in%grand_canonical_initialisation) then
             call stop_all(this, 'init_beta must be greater than zero if grand_canonical_initialisation is to be used.')
         else if (dmqmc_in%init_beta < 0) then
-            call stop_all(this, 'init_beta must be positive.')
+            call stop_all(this, 'init_beta must be non-negative.')
         end if
 
         if (dmqmc_in%metropolis_attempts < 0) then
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
 
-        if (sys%symmetry < 0) call stop_all(this, 'symmetry must be greater than zero')
+        if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be positive.')
 
     end subroutine check_dmqmc_opts
 
@@ -298,7 +298,7 @@ contains
             call stop_all(this, "cluster_multispawn_threshold must be positive")
         end if
 
-        if (sys%symmetry < 0) call stop_all(this, 'symmetry must be greater than zero')
+        if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be non-negative.')
 
     end subroutine check_ccmc_opts
 
