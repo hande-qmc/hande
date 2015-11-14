@@ -289,6 +289,7 @@ type dmqmc_weighted_sampling_t
     ! This holds the factors by which the populations on each excitation level
     ! (from 0 to max_number_excitations) are reduced, relative to DMQMC
     ! without any importance sampling.
+    ! [review] - JSS: dimensions incorrect for symmetric IP-DMQMC.
     real(p), allocatable :: probs(:) ! (max_number_excitations + 1)
     ! The value of accumulated_probs on the last report cycle.
     real(p), allocatable :: probs_old(:) ! (max_number_excitations + 1)

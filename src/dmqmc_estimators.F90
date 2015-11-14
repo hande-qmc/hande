@@ -1417,7 +1417,7 @@ contains
     subroutine update_dmqmc_HI_energy(sys, cdet, excitation, pop, tdiff, HI_energy)
 
         ! Add the contribution for the current density matrix element to the thermal
-        ! interaction picutre Hamiltonian (H^I) energy estimate used.
+        ! interaction picture Hamiltonian (H^I) energy estimate used.
 
         ! H^I(tau-beta) = e^{-(beta-tau)/2 H^0} H e^{(beta-tau)/2 H^0}.
 

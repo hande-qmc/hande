@@ -1237,6 +1237,8 @@ contains
                     if (parent) call stop_all('read_dmqmc_in', 'Unknown  inital density matrix')
                 end select
             end if
+            ! [review] - JSS: to preserve former behaviour, shouldn't this default to false if not present and ipdmqmc is in use?
+            ! [review] - JSS: do this by adding default=.false. to the aot_get_val call.
             call aot_get_val(dmqmc_in%symmetric, err, lua_state, table, 'symmetric')
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
