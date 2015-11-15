@@ -264,10 +264,7 @@ contains
 
         integer :: iorb
         integer(i0) :: f_new(sys%basis%string_len)
-        real(p) :: diff_ijab, E_i, E_k
-
-        ! [review] - JSS: unused?
-        diff_ijab = 0.0_p
+        real(p) :: E_i, E_k
 
         call create_excited_det(sys%basis, cdet%f, connection, f_new)
 
