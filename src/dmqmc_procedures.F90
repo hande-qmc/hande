@@ -114,12 +114,14 @@ contains
                 ! If using symmetric version of ipdmqmc let the last entry contain 0.5*(beta-tau).
                 allocate(weighted_sampling%probs(0:sys%max_number_excitations+1), stat=ierr)
                 call check_allocate('weighted_sampling%probs',sys%max_number_excitations+2,ierr)
+                allocate(weighted_sampling%probs_old(0:sys%max_number_excitations+1), stat=ierr)
+                call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+2,ierr)
             else
                 allocate(weighted_sampling%probs(0:sys%max_number_excitations), stat=ierr)
                 call check_allocate('weighted_sampling%probs', sys%max_number_excitations+1, ierr)
+                allocate(weighted_sampling%probs_old(0:sys%max_number_excitations), stat=ierr)
+                call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
             end if
-            allocate(weighted_sampling%probs_old(0:sys%max_number_excitations), stat=ierr)
-            call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
             weighted_sampling%probs(0) = 1.0_p
             weighted_sampling%probs_old = 1.0_p
             do i = 1, sys%max_number_excitations
@@ -143,12 +145,14 @@ contains
                 ! If using symmetric version of ipdmqmc let the last entry contain 0.5*(beta-tau).
                 allocate(weighted_sampling%probs(0:sys%max_number_excitations+1), stat=ierr)
                 call check_allocate('weighted_sampling%probs',sys%max_number_excitations+2,ierr)
+                allocate(weighted_sampling%probs_old(0:sys%max_number_excitations), stat=ierr)
+                call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
             else
                 allocate(weighted_sampling%probs(0:sys%max_number_excitations), stat=ierr)
                 call check_allocate('weighted_sampling%probs',sys%max_number_excitations+1,ierr)
+                allocate(weighted_sampling%probs_old(0:sys%max_number_excitations), stat=ierr)
+                call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
             end if
-            allocate(weighted_sampling%probs_old(0:sys%max_number_excitations), stat=ierr)
-            call check_allocate('weighted_sampling%probs_old',sys%max_number_excitations+1,ierr)
             weighted_sampling%probs = 1.0_p
             weighted_sampling%probs_old = 1.0_p
         end if
