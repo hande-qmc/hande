@@ -255,6 +255,7 @@ contains
         use excitations, only: excit_t, get_excitation_level, create_excited_det
         use system, only: sys_t
         use proc_pointers, only: trial_dm_ptr
+        use hamiltonian_ueg, only: exchange_energy_orb
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
@@ -262,16 +263,47 @@ contains
         real(p), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
 
-        integer :: iorb
+        integer :: iorb, new, occ_list(sys%nel+2)
         integer(i0) :: f_new(sys%basis%string_len)
-        real(p) :: E_i, E_k
+        real(p) :: E_i, E_k, diff_ijab
 
         call create_excited_det(sys%basis, cdet%f, connection, f_new)
 
-        E_i = trial_dm_ptr(sys, f_new)
-        E_k = trial_dm_ptr(sys, cdet%f)
+        ! Order occ_list so that a and b orbitals appear first for convenience later.
+        new = 2
+        do iorb = 1, sys%nel
+            if (cdet%occ_list(iorb) /= connection%from_orb(1) .and. cdet%occ_list(iorb) /= connection%from_orb(2)) then
+                new = new + 1
+                occ_list(new) = cdet%occ_list(iorb)
+            end if
+        end do
+        ! Set last two entries to be new orbitals.
+        occ_list(1) = connection%from_orb(1)
+        occ_list(2) = connection%from_orb(2)
+        occ_list(sys%nel+1) = connection%to_orb(1)
+        occ_list(sys%nel+2) = connection%to_orb(2)
 
-        hmatel = exp(-trial_func(sys%max_number_excitations+1)*(E_i-E_k)) * hmatel
+        diff_ijab = 0.0_p
+        if (abs(hmatel) > depsilon) then
+            ! Work out <D|H|D> - <D_{ij}^{ab}|H|D_{ij}^{ab}> as
+            ! E_i - E_k = (\varepsilon_a+ex_a+\varepsilon_b+ex_b) -
+            ! (\varepsilon_i+ex_i+\varepsilon_j+ex_j) - double counting.
+            ! Where ex_i is the Hartree-Fock exchange potential of orbital i
+            ! .i.e. ex_i ~ -\sum_{occ != i} 1/|k_occ-k_i|^2 (for the UEG).
+            do iorb = 1, 2
+                diff_ijab = diff_ijab - &
+                    & (sys%basis%basis_fns(connection%from_orb(iorb))%sp_eigv + &
+                    & exchange_energy_orb(sys, occ_list(:sys%nel), connection%from_orb(iorb))) + &
+                    & (sys%basis%basis_fns(connection%to_orb(iorb))%sp_eigv + &
+                    & exchange_energy_orb(sys, occ_list(3:), connection%to_orb(iorb)))
+            end do
+            ! Double counted the ab, and ij exchange terms so remove these explicitly.
+            diff_ijab = diff_ijab + &
+                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%to_orb(1), connection%to_orb(2)) - &
+                        sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%from_orb(1), connection%from_orb(2))
+
+            hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
+        end if
 
     end subroutine interaction_picture_reweighting_hartree_fock
 
