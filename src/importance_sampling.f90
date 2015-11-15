@@ -263,28 +263,32 @@ contains
         real(p), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
 
-        integer :: iorb, new, occ_list(sys%nel+2)
+        integer :: iorb, new, occ_list(sys%nel+2), a, b, i, j
         integer(i0) :: f_new(sys%basis%string_len)
         real(p) :: E_i, E_k, diff_ijab
 
-        call create_excited_det(sys%basis, cdet%f, connection, f_new)
-
-        ! Order occ_list so that a and b orbitals appear first for convenience later.
-        new = 2
-        do iorb = 1, sys%nel
-            if (cdet%occ_list(iorb) /= connection%from_orb(1) .and. cdet%occ_list(iorb) /= connection%from_orb(2)) then
-                new = new + 1
-                occ_list(new) = cdet%occ_list(iorb)
-            end if
-        end do
-        ! Set last two entries to be new orbitals.
-        occ_list(1) = connection%from_orb(1)
-        occ_list(2) = connection%from_orb(2)
-        occ_list(sys%nel+1) = connection%to_orb(1)
-        occ_list(sys%nel+2) = connection%to_orb(2)
-
-        diff_ijab = 0.0_p
         if (abs(hmatel) > depsilon) then
+            call create_excited_det(sys%basis, cdet%f, connection, f_new)
+            a = connection%to_orb(1)
+            b = connection%to_orb(2)
+            i = connection%from_orb(1)
+            j = connection%from_orb(2)
+            ! Order occ_list so that a and b orbitals appear first for convenience later.
+            occ_list(1) = i
+            occ_list(2) =  j
+            new = 2
+            do iorb = 1, sys%nel
+                if (cdet%occ_list(iorb) /= i .and. cdet%occ_list(iorb) /= j) then
+                    new = new + 1
+                    occ_list(new) = cdet%occ_list(iorb)
+                end if
+            end do
+            ! Set last two entries to be new orbitals.
+            occ_list(sys%nel+1) = a
+            occ_list(sys%nel+2) = b
+
+            diff_ijab = 0.0_p
+
             ! Work out <D|H|D> - <D_{ij}^{ab}|H|D_{ij}^{ab}> as
             ! E_i - E_k = (\varepsilon_a+ex_a+\varepsilon_b+ex_b) -
             ! (\varepsilon_i+ex_i+\varepsilon_j+ex_j) - double counting.
@@ -298,10 +302,14 @@ contains
                     & exchange_energy_orb(sys, occ_list(3:), connection%to_orb(iorb)))
             end do
             ! Double counted the ab, and ij exchange terms so remove these explicitly.
+            if (mod(a,2) == mod(b,2)) then
             diff_ijab = diff_ijab + &
-                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%to_orb(1), connection%to_orb(2)) - &
-                        sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%from_orb(1), connection%from_orb(2))
-
+                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%to_orb(1), connection%to_orb(2))
+            end if
+            if (mod(i,2) == mod(j,2)) then
+                diff_ijab = diff_ijab - &
+                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%from_orb(1), connection%from_orb(2))
+            end if
             hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
         end if
 
