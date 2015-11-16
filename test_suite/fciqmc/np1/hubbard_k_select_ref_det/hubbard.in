@@ -1,0 +1,29 @@
+-- This deliberately uses a low population determinant as the reference
+-- to test the select_reference_det functionality
+
+sys = hubbard_k {
+    electrons = 4,
+    lattice = { {4} },
+    ms = 0,
+}
+
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.01,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 2,
+        nreports = 1000,
+        target_population = 550,
+        shift_damping = 0.06,
+        state_size = 500,
+        spawned_state_size = 500,
+    },
+    reference = {
+        det = { 5, 6, 7, 8 },
+    },
+    fciqmc = {
+        select_reference_det = true,
+    },
+}
