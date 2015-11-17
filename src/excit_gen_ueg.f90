@@ -233,6 +233,7 @@ contains
 
         integer :: ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
         integer(i0) :: poss_a(sys%basis%string_len)
+        integer :: nposs_a(sys%basis%string_len)
 
         ! Let's just check there are possible a,b first!
         ! Adjust for spin.  Allow a to be up (without bias) if possible.
@@ -243,7 +244,8 @@ contains
         else
             poss_a = iand(not(f), sys%ueg%ternary_conserve(1:,k3(1),k3(2),k3(3)))
         end if
-        max_na = sum(count_set_bits(poss_a))
+        nposs_a = count_set_bits(poss_a)
+        max_na = sum(nposs_a)
 
         if (max_na > 0) then
 
@@ -252,15 +254,17 @@ contains
 
             n = 0
             finda: do ibe = 1, sys%basis%string_len
-                if (poss_a(ibe) /= 0_i0) then
+                if (n + nposs_a(ibe) >= a) then
                     do ibp = 0, i0_end
                         if (btest(poss_a(ibe), ibp)) n = n + 1
                         if (n == a) then
-                            ! Found our basis funtion!
+                            ! Found our basis function!
                             a = sys%basis%basis_lookup(ibp, ibe)
                             exit finda
                         end if
                     end do
+                else
+                    n = n + nposs_a(ibe)
                 end if
             end do finda
 
