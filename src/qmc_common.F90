@@ -49,10 +49,11 @@ contains
         integer(i0), allocatable :: fmax(:)
         integer(int_p) :: max_pop
 #ifdef PARALLEL
-        integer(int_p) :: in_data(2), out_data(2)
+        real(dp) :: in_data(2), out_data(2)
         integer :: ierr
 #endif
         real(p) :: H00_max, H00_old
+        real(dp) :: real_pop
         logical :: updated
 
         allocate(fmax(lbound(qs%psip_list%states, dim=1):ubound(qs%psip_list%states, dim=1)))
@@ -70,6 +71,8 @@ contains
             end if
         end do
 
+        real_pop = real(max_pop,dp)/qs%psip_list%pop_real_factor
+
         ! Only change reference determinant if the population is larger than the
         ! reference determinant by a given factor to avoid switching
         ! continuously between degenerate determinants.
@@ -82,19 +85,19 @@ contains
 
         if (all(fmax == qs%ref%f0)) then
             ! Max population on this processor is already the reference.  Don't change.
-            in_data = (/ 0_int_p, int(iproc,int_p) /)
-        else if (abs(max_pop) > ref_det_factor*abs(qs%estimators%D0_population)) then
-            in_data = (/ max_pop, int(iproc,int_p) /)
+            in_data = (/ 0.0_dp, real(iproc,dp) /)
+        else if (abs(real_pop) > ref_det_factor*abs(qs%estimators%D0_population)) then
+            in_data = (/ real_pop, real(iproc,dp) /)
         else
             ! No det with sufficient population to become reference det on this
             ! processor.
-            in_data = (/ 0_int_p, int(iproc, int_p) /)
+            in_data = (/ 0.0_dp, real(iproc, dp) /)
         end if
 
-        call mpi_allreduce(in_data, out_data, 2, mpi_pop_integer, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(in_data, out_data, 1, mpi_2double_precision, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
         if (out_data(1) /= 0) then
-            max_pop = out_data(1)
+            real_pop = out_data(1)
             updated = .true.
             D0_proc = out_data(2)
             qs%ref%f0 = fmax
@@ -106,7 +109,7 @@ contains
 
 #else
 
-        if (abs(max_pop) > ref_det_factor*abs(qs%estimators%D0_population) .and. any(fmax /= qs%ref%f0)) then
+        if (abs(real_pop) > ref_det_factor*abs(qs%estimators%D0_population) .and. any(fmax /= qs%ref%f0)) then
             updated = .true.
             qs%ref%f0 = fmax
             qs%ref%H00 = H00_max
@@ -134,7 +137,7 @@ contains
                 call write_det(sys%basis, sys%nel, qs%ref%f0, new_line=.true.)
                 write (6,'(1X,"#",1X,"Population on old reference det (averaged over report loop):",f10.2)') &
                             qs%estimators%D0_population
-                write (6,'(1X,"#",1X,"Population on new reference det:",27X,i8)') max_pop
+                write (6,'(1X,"#",1X,"Population on new reference det:",27X,f10.2)') real_pop
                 write (6,'(1X,"#",1X,"E0 = <D0|H|D0> = ",f20.12)') qs%ref%H00
                 write (6,'(1X,"#",1X,"Care should be taken with accumulating statistics before this point.")')
                 write (6,'(1X,"#",1X,62("-"))')
