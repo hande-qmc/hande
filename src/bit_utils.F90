@@ -273,26 +273,33 @@ contains
         !    d are set to -1.
         !    The bit string is 0-indexed.
 
-        ! NOTE:
-        !    This is a simple and rather naive algorithm and should not be used
-        !    in performance-critical code.  It can be greatly improved by using
-        !    a chunk-wise loop coupled a data table.
+        ! See comments in decode_det for a description of the algorithm.
+
+        use bit_table_256_m, only: bit_table_256
 
         integer(i0), intent(in) :: b
         integer, intent(out) :: d(:)
 
-        integer :: ipos, i
+        integer :: nbits_seen, offset, ifield, nfound
+        integer(i0) :: field
 
-        i = lbound(d, dim=1) - 1
-        do ipos = 0, i0_end
-            if (btest(b, ipos)) then
-                i = i + 1
-                if (i > ubound(d, dim=1)) then
-                    d = -1
-                    exit
-                end if
-                d(i) = ipos
-            end if
+        integer, parameter :: field_size = ubound(bit_table_256, dim=1)
+        integer, parameter :: nfields = i0_length/field_size
+        integer, parameter :: mask = 2**field_size - 1
+
+        nfound = 0
+        offset = 0
+        ! 1-based index in lookup table, but bits in Fortran are indexed from 0.
+        nbits_seen = -1
+        do ifield = 1, nfields
+            ! Inspect one byte at a time.
+            field = iand(mask, ishft(b, -offset))
+            associate(in_field=>bit_table_256(0,field))
+                d(nfound+1:nfound+in_field) = bit_table_256(1:in_field, field) + nbits_seen
+                nfound = nfound + in_field
+            end associate
+            offset = offset + field_size
+            nbits_seen = nbits_seen + field_size
         end do
 
     end subroutine decode_bit_string
