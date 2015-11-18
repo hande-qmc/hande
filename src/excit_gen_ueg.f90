@@ -217,8 +217,8 @@ contains
         !    allowed_excitation: if true, then the excitation is allowed.
 
 
-        use const, only: i0_end
-        use bit_utils, only: count_set_bits
+        use const, only: i0_end, i0_length
+        use bit_utils, only: count_set_bits, decode_bit_string
         use system, only: sys_t
         use ueg_system, only: ueg_basis_index
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -233,7 +233,7 @@ contains
 
         integer :: ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
         integer(i0) :: poss_a(sys%basis%string_len)
-        integer :: nposs_a(sys%basis%string_len)
+        integer :: nposs_a(sys%basis%string_len), poss_a_orbs(i0_length)
 
         ! Let's just check there are possible a,b first!
         ! Adjust for spin.  Allow a to be up (without bias) if possible.
@@ -255,14 +255,9 @@ contains
             n = 0
             finda: do ibe = 1, sys%basis%string_len
                 if (n + nposs_a(ibe) >= a) then
-                    do ibp = 0, i0_end
-                        if (btest(poss_a(ibe), ibp)) n = n + 1
-                        if (n == a) then
-                            ! Found our basis function!
-                            a = sys%basis%basis_lookup(ibp, ibe)
-                            exit finda
-                        end if
-                    end do
+                    call decode_bit_string(poss_a(ibe), poss_a_orbs)
+                    a = sys%basis%basis_lookup(poss_a_orbs(a-n), ibe)
+                    exit finda
                 else
                     n = n + nposs_a(ibe)
                 end if
