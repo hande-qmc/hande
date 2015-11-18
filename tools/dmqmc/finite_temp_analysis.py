@@ -11,6 +11,7 @@ import optparse
 import numpy as np
 import scipy.interpolate
 import warnings
+import scipy.integrate
 
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 try:
@@ -58,6 +59,7 @@ None.
         ('Tr[Up]/Tr[p]','\\sum\\rho_{ij}U_{ji}'),
         ('Tr[H0p]/Tr[p]','\\sum\\rho_{ij}H0{ji}'),
         ('Tr[HIp]/Tr[p]','\\sum\\rho_{ij}HI{ji}'),
+        ('VI', '\\sum\\rho_{ij}VI_{ji}'),
     ])
 
     # DataFrame to hold the final mean and error estimates.
@@ -82,6 +84,66 @@ None.
             results[k+'_error'] = stats['standard error']
 
     return results
+
+
+def free_energy_error_analysis(data, results, dtau, its, nbloops):
+    '''Calculate the mean and error estimates for the exchange correlation
+       free energy (appropriately defined)
+
+Parameters
+----------
+data : :class:`pandas.DatFrame`
+    Raw dmqmc data.
+results : :class:`pandas.DataFrame`
+    The mean estimates, obtained by averaging over beta loops, as a function of
+    beta, which is used as the index.
+dtau : float
+    Time step used in simulation.
+its : int
+    Number of iterations performed per beta loop.
+nbloops : int
+    Number of completed beta loops in total simulation.
+
+Returns
+-------
+results : :class:`pandas.DataFrame`
+    The mean estimates, obtained by averaging over beta loops, as a function of
+    beta, which is used as the index. On output estimates for f_xc and its error
+    are appended.
+
+'''
+
+    ratio = (data['\\sum\\rho_{ij}VI_{ji}'] / data['Trace']).values
+
+    # Integral is evaulated as cumulative integral of integral for each
+    # temperature/imaginary time value. Naturally I(tau=0) = 0.
+    I = scipy.integrate.cumtrapz(results['VI'], dx=dtau, initial=0)
+
+    # An estimate for the error can be found by considering the variance of each
+    # simulations estimate for the Integral.
+    I_single = [scipy.integrate.cumtrapz(ratio[i*its:(i+1)*its], dx=dtau,
+                                             initial=0) for i in range(nbloops)]
+
+    # Place cumulative integrals in frame so variance can be easily calculated.
+    frame = pd.DataFrame(I_single)
+    I_single_mean = frame.mean().values
+    I_error = ((frame.var() / nbloops).values)**0.5
+
+    # Some sort of check for poor estimation of mean/error.
+    # Check if last point's 'ratio' error (not quite the normal definition) is
+    # significant (so comparible to the stochastic error).
+    err = abs(I[-1]-I_single_mean[-1])
+    if (abs(err) > I_error[-1]):
+        warnings.warn("Ratio error of %f is not insignificant - check results."
+                      %err)
+
+    # Need to multiply integral by kT. Any scaling factor drops out due to
+    # presence in timestep as well.
+    results['f_xc'] = I / results['Beta'].values
+    results['f_xc_error'] = I_error / results['Beta'].values
+
+    return results
+
 
 def analyse_renyi_entropy(means, covariances, nsamples):
     '''Calculate the mean and error estimates for the Renyi entropy (S2), for
@@ -246,6 +308,8 @@ options : :class:`OptionParser`
     parser.add_option('-t', '--with-trace', action='store_true', dest='with_trace',
                       default=False, help='Output the averaged traces and the '
                       'standard deviation of these traces, for all replicas present.')
+    parser.add_option('-f', '--with-free-energy', action='store_true', dest='with_free_energy',
+                      default=False, help='Calculate Free energy')
     parser.add_option('-b', '--with-spline', action='store_true', dest='with_spline',
                       default=False, help='Output a B-spline fit for each of '
                       ' estimates calculated')
@@ -283,6 +347,9 @@ None.
             if 'qmc' in md:
                 # New style JSON-based metadata
                 tau = md['qmc']['tau']
+                cycles = md['qmc']['ncycles']
+            if 'dmqmc' in md:
+                target_beta = md['dmqmc']['target_beta']
             else:
                 # Grudgingly support hacked old metadata extraction.
                 tau = md['tau']
@@ -307,6 +374,25 @@ None.
     beta_values = nsamples.index.values
     # The data that we are going to use.
     estimates = data.loc[:,'Shift':'# H psips']
+
+    if options.with_free_energy:
+        # Set up estimator we need to integrate wrt time/temperature to evaluate
+        # free energy difference.
+        if md['ipdmqmc']['propagate_to_beta']:
+            if md['ipdmqmc']['symmetric']:
+                estimates['\\sum\\rho_{ij}VI_{ji}'] = (
+                                                 data['\\sum\\rho_{ij}HI{ji}'] -
+                                                 data['\\sum\\rho_{ij}H0{ji}']
+                                                 )
+            else:
+                estimates['\\sum\\rho_{ij}VI_{ji}'] = (
+                                                  data['\\sum\\rho_{ij}H_{ji}'] -
+                                                  data['\\sum\\rho_{ij}H0{ji}']
+                                                  )
+        else:
+            estimates['\\sum\\rho_{ij}VI_{ji}'] = data['\\sum\\rho_{ij}H{ji}']
+
+
     # Compute the mean of all estimates across all beta loops.
     means = estimates.groupby(level=1).mean()
     # Compute the covariances between all pairs of columns.
@@ -338,6 +424,15 @@ None.
         for column in results_columns:
             if ('Tr[p]' in column or 'S2' in column) and (not 'error' in column):
                 results[column+' spline'] = calc_spline_fit(column, results)
+
+    # If requested, calculate excess free-energy.
+    if options.with_free_energy:
+        # Need to modify spacing for integration grid to account for reduced
+        # output.
+        its_per_loop = target_beta/(cycles*tau) + 1
+        nbloops = int(len(data)/its_per_loop)
+        results = free_energy_error_analysis(estimates, results, cycles*tau,
+                                                        its_per_loop, nbloops)
 
     # Finally, output the results!
     # For anal-retentiveness, print the energy first after beta and then all
