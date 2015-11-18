@@ -74,7 +74,8 @@ module restart_hdf5
     implicit none
 
     private
-    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_t, init_restart_info_t, redistribute_restart_hdf5
+    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_t, init_restart_info_t, redistribute_restart_hdf5, &
+              dump_restart_file_wrapper
 
     type restart_info_t
         ! If write_id is negative, then set Y=-ID-1 in parse_input, where Y is in the restart
@@ -1082,5 +1083,48 @@ module restart_hdf5
 #endif
 
         end subroutine redistribute_restart_hdf5
+
+        subroutine dump_restart_file_wrapper(qs, dump_restart_shift, dump_freq, ntot_particles, ireport, ncycles, &
+                                             nbasis, ri_freq, ri_shift, nb_comm)
+
+            ! Check if a restart file needs to be written, and if so then do so.
+
+            ! In:
+            !     qs: qmc_state_t object.  Particle and related info written out (if desired).
+            !     dump_freq: How often (in iterations) to write out a restart file.  Pass in
+            !         huge(0) to (effectively) disable.
+            !     ntot_particles: total number of particles in each space.
+            !     ireport: index of current report loop.
+            !     ncycles: the number of iterations per report loop.
+            !     nbasis: the number of basis functions
+            !     ri_freq: restart_info_t object for periodically writing out the restart file.
+            !     ri_freq: restart_info_t object for writing out the restart file once the shift
+            !         is turned on.
+            !     nb_comm: true if using non-blocking communications.
+            ! In/Out:
+            !     dump_restart_shift: should we dump a restart file just before
+            !         the shift turns on?  If true and a restart file is written out, then
+            !         returned as false.
+
+            use const, only: p
+            use qmc_data, only: qmc_state_t
+
+            type(qmc_state_t), intent(in) :: qs
+            logical, intent(inout) :: dump_restart_shift
+            real(p), intent(in) :: ntot_particles(qs%psip_list%nspaces)
+            integer, intent(in) :: ireport, ncycles, dump_freq, nbasis
+            type(restart_info_t), intent(in) :: ri_freq, ri_shift
+            logical, intent(in) :: nb_comm
+
+            if (dump_restart_shift .and. any(qs%vary_shift)) then
+                dump_restart_shift = .false.
+                call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
+                                       ntot_particles, nbasis, nb_comm)
+            else if (mod(ireport*ncycles,dump_freq) == 0) then
+                call dump_restart_hdf5(ri_freq, qs, qs%mc_cycles_done+ncycles*ireport, &
+                                       ntot_particles, nbasis, nb_comm)
+            end if
+
+        end subroutine dump_restart_file_wrapper
 
 end module restart_hdf5
