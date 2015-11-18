@@ -435,7 +435,7 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
-            use restart_utils, only: convert_dets, convert_ref, convert_pops
+            use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling
 #endif
             use errors, only: stop_all, warning
             use const
@@ -556,7 +556,11 @@ module restart_hdf5
                 if (dtype_equal(subgroup_id, dpops, kinds%int_p)) then
                     call hdf5_read(subgroup_id, dpops, kinds, shape(qs%psip_list%pops), qs%psip_list%pops)
                 else
-                    call convert_pops(subgroup_id, dpops, kinds, qs%psip_list%pops)
+                    call convert_pops(subgroup_id, dpops, kinds, qs%psip_list%pops, restart_scale_factor(1))
+                end if
+
+                if (restart_scale_factor(1) /= qs%psip_list%pop_real_factor) then
+                    call change_pop_scaling(qs%psip_list%pops, restart_scale_factor(1), int(qs%psip_list%pop_real_factor,int_64))
                 end if
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(qs%psip_list%dat), qs%psip_list%dat)
@@ -919,7 +923,7 @@ module restart_hdf5
                     if (dtype_equal(orig_subgroup_id, dpops, kinds%int_p)) then
                         call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops), psip_read%pops)
                     else
-                        call convert_pops(orig_subgroup_id, dpops, kinds, psip_read%pops)
+                        call convert_pops(orig_subgroup_id, dpops, kinds, psip_read%pops, restart_scale_factor(1))
                     end if
                     call hdf5_read(orig_subgroup_id, ddata, kinds, shape(psip_read%dat), psip_read%dat)
 
