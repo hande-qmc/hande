@@ -216,6 +216,8 @@ contains
 #endif
             ! Average over processors.
             estimators(ke_idx:hf_part_idx) = estimators(ke_idx:hf_part_idx) / estimators(naccept_idx)
+            if (estimators(naccept_idx) == 0) call stop_all('estimate_canonical_energy', 'Number of generated configurations is &
+                                                        &zero, increase number of attempts in input file.')
             if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,4(es17.10,5X))') ireport, estimators(ke_idx), &
                                                              estimators(pe_idx), estimators(hf_ke_idx), &
                                                              estimators(hf_pe_idx), estimators(hf_part_idx), &
