@@ -46,7 +46,7 @@ results : :class:`pandas.DataFrame`
         stats = pyblock.error.ratio(num, trace, cov_ab, nsamples)
 
         results[k] = stats['mean']
-        results[k+'_Error'] = stats['standard error']
+        results[k+'_error'] = stats['standard error']
 
     return results
 
@@ -85,11 +85,14 @@ results : :class:`pandas.DataFrame`
     # Free estimates contain no denominator so the error is
     # just the standard error.
     results['<H>_0'] = [means['<H>_0']]
-    results['<H>_0_Error'] = [np.sqrt(covariances['<H>_0']['<H>_0']/nsamples)]
+    results['<H>_0_error'] = [np.sqrt(covariances['<H>_0']['<H>_0']/nsamples)]
     results['<T>_0'] = [means['<T>_0']]
-    results['<T>_0_Error'] = [np.sqrt(covariances['<T>_0']['<T>_0']/nsamples)]
+    results['<T>_0_error'] = [np.sqrt(covariances['<T>_0']['<T>_0']/nsamples)]
     results['<V>_0'] = [means['<V>_0']]
-    results['<V>_0_Error'] = [np.sqrt(covariances['<V>_0']['<V>_0']/nsamples)]
+    results['<V>_0_error'] = [np.sqrt(covariances['<V>_0']['<V>_0']/nsamples)]
+    results['N_acc/N_att'] = [means['N_ACC/N_ATT']]
+    results['N_acc/N_att_error'] = (
+                  [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT'])/nsamples])
 
     # Take care of the correlation between numerator and denominator
     # in Hartree-Fock estimates.
