@@ -214,6 +214,15 @@ algorithms and control the core settings in the algorithms.
     Optional.  Default: 0.05.
 
     The shift damping factor, :math:`\xi`.
+``vary_shift_from``
+    type: float or string.
+
+    Optional.  Default: ``initial_shift``.
+
+    Specify a value to set the shift to when ``target_population`` is reached.  If the
+    string 'proje' is specified then the instantaneous projected energy is used.  By
+    instantly setting the shift to a value closer to the correlation energy, the total
+    population can be stabilised substantially faster.
 ``initiator``
     type: boolean.
 
