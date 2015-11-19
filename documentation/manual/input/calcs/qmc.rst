@@ -223,6 +223,12 @@ algorithms and control the core settings in the algorithms.
     string 'proje' is specified then the instantaneous projected energy is used.  By
     instantly setting the shift to a value closer to the correlation energy, the total
     population can be stabilised substantially faster.
+
+   There is no guarantee that the instantaneous projected energy is a good
+   estimate of the ground state (particularly in the real-space formulation of
+   the Hubbard model), but it is likely to be closer to it than the default
+   shift value of 0.
+
 ``initiator``
     type: boolean.
 
