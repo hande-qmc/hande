@@ -662,7 +662,7 @@ contains
                 call encode_det(sys%basis, occ_list, f)
                 if (initiator_approx) then
                     call create_diagonal_density_matrix_particle_initiator(f, sys%basis%string_len, &
-                            sys%basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
+                            sys%basis%tensor_label_len, nspawn, ireplica, initiator_pop, pop_real_factor, spawn)
                 else
                     call create_diagonal_density_matrix_particle(f, sys%basis%string_len, sys%basis%tensor_label_len, &
                             nspawn, ireplica, spawn)
