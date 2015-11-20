@@ -108,14 +108,13 @@ contains
         integer :: truncation_level, nattempts, ncycles, rng_seed
         integer, allocatable :: ref_det(:)
         integer :: opts, err
-        logical :: have_seed
         character(12), parameter :: keys(2) = [character(12) :: 'sys', 'hilbert']
 
         lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        call read_hilbert_args(lua_state, opts, sys%nel, nattempts, ncycles, truncation_level, ref_det, rng_seed, have_seed)
+        call read_hilbert_args(lua_state, opts, sys%nel, nattempts, ncycles, truncation_level, ref_det, rng_seed)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -127,11 +126,7 @@ contains
         end if
 
         calc_type = mc_hilbert_space
-        if (have_seed) then
-            call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed)
-        else
-            call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det)
-        end if
+        call estimate_hilbert_space(sys, truncation_level, nattempts, ncycles, ref_det, rng_seed)
 
         ! [todo] - return estimate of space and error to lua.
         nresult = 0
@@ -175,7 +170,7 @@ contains
         type(c_ptr) :: sys_ptr
         type(sys_t), pointer :: sys
         integer :: opts, err, rng_seed, ncycles, nattempts
-        logical :: fermi_temperature, have_seed, all_spin_sectors
+        logical :: fermi_temperature, all_spin_sectors
         real(p) :: beta
         character(16), parameter :: keys(2) = [character(16) :: 'sys', 'canonical_energy']
 
@@ -186,17 +181,12 @@ contains
                                                                         'chem_pot: chemical potential not supplied.')
 
         opts = aot_table_top(lua_state)
-        call read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed, &
-                                        all_spin_sectors)
+        call read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         calc_type = mc_canonical_energy_estimates
-        if (have_seed) then
-            call estimate_canonical_energy(sys, fermi_temperature, beta, nattempts, ncycles, all_spin_sectors, rng_seed)
-        else
-            call estimate_canonical_energy(sys, fermi_temperature, beta, nattempts, ncycles, all_spin_sectors)
-        end if
+        call estimate_canonical_energy(sys, fermi_temperature, beta, nattempts, ncycles, all_spin_sectors, rng_seed)
 
         ! [todo] - return estimate of various canonical mean-field energies and error to lua.
         nresult = 0
@@ -613,7 +603,7 @@ contains
 
     end subroutine read_fci_in
 
-    subroutine read_hilbert_args(lua_state, opts, nel, nattempts, ncycles, ex_level, ref_det, rng_seed, have_seed)
+    subroutine read_hilbert_args(lua_state, opts, nel, nattempts, ncycles, ex_level, ref_det, rng_seed)
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
@@ -629,7 +619,6 @@ contains
         !    ref_det: reference determinant.  If not supplied by the user then
         !        this will be deallocated on output.
         !    rng_seed: seed to initialise the random number generator.
-        !    have_seed: True is the user inputs an RNG seed, false otherwise.
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
@@ -638,13 +627,12 @@ contains
         use const, only: p
         use parallel, only: parent
         use errors, only: stop_all
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, get_rng_seed
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts, nel
         integer, intent(out) :: nattempts, ncycles, ex_level, rng_seed
         integer, allocatable :: ref_det(:)
-        logical, intent(out) :: have_seed
 
         integer :: hilbert_table, err
         integer, allocatable :: err_arr(:)
@@ -659,16 +647,14 @@ contains
         call aot_get_val(ncycles, err, lua_state, hilbert_table, 'ncycles', default=20)
         call aot_get_val(ex_level, err, lua_state, hilbert_table, 'ex_level', default=-1)
         call aot_get_val(ref_det, err_arr, nel, lua_state, hilbert_table, key='reference')
-        have_seed = aot_exists(lua_state, hilbert_table, 'rng_seed')
-        call aot_get_val(rng_seed, err, lua_state, hilbert_table, 'rng_seed')
+        call get_rng_seed(lua_state, hilbert_table, rng_seed)
 
         call warn_unused_args(lua_state, keys, hilbert_table)
         call aot_table_close(lua_state, hilbert_table)
 
     end subroutine read_hilbert_args
 
-    subroutine read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, have_seed, &
-                                          all_spin_sectors)
+    subroutine read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
@@ -682,7 +668,6 @@ contains
         !    nattempts: number of samples to use each cycle.
         !    ncycles: number of Monte Carlo cycles to perform.
         !    rng_seed: seed to initialise the random number generator.
-        !    have_seed: True is the user inputs an RNG seed, false otherwise.
         !    all_spin_sectors: True if averaging over spin.
 
         use flu_binding, only: flu_State
@@ -691,11 +676,11 @@ contains
         use const, only: p
         use parallel, only: parent
         use errors, only: stop_all
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, get_rng_seed
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
-        logical, intent(out) :: fermi_temperature, have_seed, all_spin_sectors
+        logical, intent(out) :: fermi_temperature, all_spin_sectors
         integer, intent(out) :: nattempts, ncycles, rng_seed
         real(p), intent(out) :: beta
 
@@ -716,8 +701,7 @@ contains
         if (err /= 0 .and. parent) call stop_all('read_canonical_energy_args', 'beta: target temperature not supplied.')
         call aot_get_val(fermi_temperature, err, lua_state, canonical_energy_table, 'fermi_temperature', default=.false.)
 
-        have_seed = aot_exists(lua_state, canonical_energy_table, 'rng_seed')
-        call aot_get_val(rng_seed, err, lua_state, canonical_energy_table, 'rng_seed')
+        call get_rng_seed(lua_state, canonical_energy_table, rng_seed)
         call aot_get_val(all_spin_sectors, err, lua_state, canonical_energy_table, 'all_spin_sectors', default=.false.)
 
         call warn_unused_args(lua_state, keys, canonical_energy_table)
@@ -767,7 +751,7 @@ contains
 
         use calc, only: GLOBAL_META, gen_seed
         use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
         use errors, only: stop_all, warning
 
@@ -856,11 +840,7 @@ contains
         qmc_in%vary_shift_from = qmc_in%initial_shift
 
         ! Optional arguments requiring special care.
-        if (aot_exists(lua_state, qmc_table, 'rng_seed')) then
-            call aot_get_val(qmc_in%seed, err, lua_state, qmc_table, 'rng_seed')
-        else
-            qmc_in%seed = gen_seed(GLOBAL_META%uuid)
-        end if
+        call get_rng_seed(lua_state, qmc_table, qmc_in%seed)
         if (aot_exists(lua_state, qmc_table, 'vary_shift_from')) then
             call aot_get_val(qmc_in%vary_shift_from, err, lua_state, qmc_table, 'vary_shift_from')
             if (err /= 0) then

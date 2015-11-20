@@ -101,4 +101,32 @@ contains
 
     end subroutine get_flag_and_id
 
+    subroutine get_rng_seed(lua_state, table, rng_seed)
+
+        ! Get the rng_seed value.  If set by user, read from table, otherwise generate one based upon the UUID and time.
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    table: handle for the table (possibly) containing a 'rng_seed' value.
+        ! Out:
+        !    rng_seed: set to table['rng_seed'] if it exists and to a randomly-ish generated value otherwise.
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_exists, aot_get_val
+        use calc, only: gen_seed, GLOBAL_META
+
+        type(flu_State), intent(inout) :: lua_state
+        integer, intent(in) :: table
+        integer, intent(out) :: rng_seed
+        integer :: err
+
+        if (aot_exists(lua_state, table, 'rng_seed')) then
+            call aot_get_val(rng_seed, err, lua_state, table, 'rng_seed')
+        else
+            rng_seed = gen_seed(GLOBAL_META%uuid)
+        end if
+
+    end subroutine get_rng_seed
+
 end module lua_hande_utils
