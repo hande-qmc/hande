@@ -54,8 +54,7 @@ contains
         !    nsamples: number of samples to use each cycle
         !    ncycles: number of Monte Carlo cycles to perform, over which the kinetic energy is
         !        estimated, along with an estimate of the standard error.
-        !    rng_seed (optional): seed to initialise the random number generator.
-        !       Default: seed based upon the hash of the time and calculation UUID.
+        !    rng_seed : seed to initialise the random number generator.
         !    all_spin_sectors: if true then average over ms otherwise only
         !       provide estimates for specified spin sector.
         ! In/Out:
@@ -66,7 +65,6 @@ contains
         use json_out
         use parallel
 
-        use calc, only: GLOBAL_META, gen_seed
         use hamiltonian_ueg, only: exchange_energy_ueg
         use hamiltonian_molecular, only: double_counting_correction_mol
         use determinants, only: sum_sp_eigenvalues
@@ -81,11 +79,11 @@ contains
         logical, intent(in) :: fermi_temperature
         integer, intent(in) :: nsamples
         integer, intent(in) :: ncycles
-        integer, intent(in), optional :: rng_seed
+        integer, intent(in) :: rng_seed
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         real(dp) :: r
-        integer :: occ_list(sys%nel), seed
+        integer :: occ_list(sys%nel)
         logical :: gen
         real(p) :: energy(hf_part_idx), beta_loc, hfx
         integer :: ierr, ireport, iorb
@@ -102,13 +100,7 @@ contains
 
         if (parent) write (6,'(1X,a16,/,1X,16("-"),/)') 'Canonical energy'
 
-        if (present(rng_seed)) then
-            seed = rng_seed
-        else
-            seed = gen_seed(GLOBAL_META%uuid)
-        end if
-
-        call dSFMT_init(seed+iproc, 50000, rng)
+        call dSFMT_init(rng_seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
@@ -120,7 +112,7 @@ contains
             call json_write_key(js, 'fermi_temperature', fermi_temperature)
             call json_write_key(js, 'nsamples', nsamples)
             call json_write_key(js, 'ncycles', ncycles)
-            call json_write_key(js, 'rng_seed', seed, terminal=.true.)
+            call json_write_key(js, 'rng_seed', rng_seed, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io,'()')
         end if

@@ -41,10 +41,7 @@ contains
         !    occ_list0: reference determinant.  If not allocated, then a best
         !       guess is generated based upon the spin and symmetry quantum
         !       numbers.
-        !    rng_seed (optional): seed to initialise the random number generator.
-        !       Default: seed based upon the hash of the time and calculation UUID.
-
-        use calc, only: GLOBAL_META, gen_seed
+        !    rng_seed: seed to initialise the random number generator.
 
         use basis, only: write_basis_fn
         use const, only: dp
@@ -65,7 +62,7 @@ contains
         integer, intent(in) :: ncycles
         integer, intent(in), optional :: rng_seed
 
-        integer :: truncation_level, seed, icycle, i, ierr, a, n, ireport, ireport_ind, nattempts_local
+        integer :: truncation_level, icycle, i, ierr, a, n, ireport, ireport_ind, nattempts_local
         integer :: ref_sym, det_sym
         integer(i0) :: f(sys%basis%string_len), f0(sys%basis%string_len)
         integer :: occ_list(sys%nel)
@@ -89,13 +86,7 @@ contains
             truncation_level = sys%nel
         end if
 
-        if (present(rng_seed)) then
-            seed = rng_seed
-        else
-            seed = gen_seed(GLOBAL_META%uuid)
-        end if
-
-        call dSFMT_init(seed+iproc, 50000, rng)
+        call dSFMT_init(rng_seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
@@ -106,7 +97,7 @@ contains
             call json_write_key(js, 'nattempts', nattempts)
             call json_write_key(js, 'ncycles', ncycles)
             call json_write_key(js, 'occ_list', occ_list0)
-            call json_write_key(js, 'rng_seed', seed, .true.)
+            call json_write_key(js, 'rng_seed', rng_seed, .true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io,'()')
         end if
