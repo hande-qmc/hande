@@ -656,10 +656,10 @@ module restart_hdf5
             use particle_t_utils, only: init_particle_t, dealloc_particle_t
             use spawning, only: assign_particle_processor
             use restart_utils, only: convert_dets, convert_ref, convert_pops
-            use system, only: sys_t
 #else
             use errors, only: stop_all
 #endif
+            use system, only: sys_t
 
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: nprocs_target
