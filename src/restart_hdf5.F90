@@ -639,10 +639,8 @@ module restart_hdf5
             ! In:
             !    number of processors the restart files are to be split over (ie the number of
             !        processors the user wishes to restart the calculation on).
-            ! [review] - JSS: is it worth writing the asis information out to the restart file
-            ! [review] - JSS: so this would only be required for backward compatibility?
             !    sys (optional): a sys_t object, used to get the basis size.  Only necessary if
-            !        changing DET_SIZE.
+            !        changing DET_SIZE for an old restart file.
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -685,7 +683,7 @@ module restart_hdf5
             integer(hsize_t) :: dims(2)
 
             integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
-            integer :: max_nstates, tensor_label_len, i0_length_restart
+            integer :: max_nstates, tensor_label_len, i0_length_restart, nbasis
             integer :: iproc_target_start, iproc_target_end
             integer, allocatable :: istate_proc(:)
             type(particle_t) :: psip_read, psip_new(0:nmax_files-1)
@@ -790,7 +788,13 @@ module restart_hdf5
             ! settings.
             call hdf5_read(orig_id, hdf5_path(gmetadata, di0_length), i0_length_restart)
             if (i0_length /= i0_length_restart) then
-                if (present(sys)) then
+                ! Try to get determinant string length (needed to convert DET_SIZE) from file,
+                ! otherwise the user must supply a system object.
+                call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
+                if (exists) then
+                    call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
+                    allocate(f0(ceiling(real(nbasis)/i0_length)))
+                else if (present(sys)) then
                     allocate(f0(sys%basis%string_len))
                 else
                     call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
