@@ -11,6 +11,6 @@ skip_cmd_template = tc.skip tc.args tc.test tc.error
 
 [user]
 diff = vimdiff
-benchmark = cd519f6 b64820a 45350cc 26dfea0 5cc4584 543b7ac 6f9db3a 08697fc 99cb577 405310d 09f703e 99ea97f bcf832c a194b12 dd0d782 41fcefb aa000da 5d67858 3d87083 133c55b c231dd7
+benchmark = 41c15db cd519f6 b64820a 45350cc 26dfea0 5cc4584 543b7ac 6f9db3a 08697fc 99cb577 405310d 09f703e 99ea97f bcf832c a194b12 dd0d782 41fcefb aa000da 5d67858 3d87083 133c55b c231dd7
 tolerance = (1.e-10, 1.e-10, None, False)
 
