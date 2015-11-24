@@ -567,7 +567,8 @@ type annihilation_flags_t
     logical :: propagate_to_beta = .false.
     ! Trial function used (FCIQMC & Heisenberg model only).
     integer :: trial_function = single_basis
-    logical :: symmetric = .false.
+    ! Use symmetric version of dmqmc algortithm?
+    logical :: symmetric = .true.
 end type annihilation_flags_t
 
 contains

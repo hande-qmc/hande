@@ -265,7 +265,7 @@ contains
             call stop_all(this, 'metropolis_attempts must be non-zero to sample the correct initial density matrix&
                                  & if not using grand_canonical_initialisation.')
         end if
-        if (dmqmc_in%symmetric .and. sys%system /= ueg) then
+        if (dmqmc_in%symmetric .and. dmqmc_in%propagate_to_beta .and. sys%system /= ueg) then
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
         end if
 

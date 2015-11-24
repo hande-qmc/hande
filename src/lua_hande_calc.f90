@@ -1237,7 +1237,7 @@ contains
                     if (parent) call stop_all('read_dmqmc_in', 'Unknown  inital density matrix')
                 end select
             end if
-            call aot_get_val(dmqmc_in%symmetric, err, lua_state, table, 'symmetric', default=.false.)
+            call aot_get_val(dmqmc_in%symmetric, err, lua_state, table, 'symmetric', default=.true.)
             call aot_get_val(dmqmc_in%grand_canonical_initialisation, err, lua_state, table, 'grand_canonical_initialisation')
             call aot_get_val(dmqmc_in%metropolis_attempts, err, lua_state, table, 'metropolis_attempts')
             call warn_unused_args(lua_state, ip_keys, table)
