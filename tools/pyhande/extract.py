@@ -165,7 +165,11 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                 for (key, val) in comms_footer.items():
                     if val in line:
                         md_val = line.split()[-1].replace('s','')
-                        data_pairs[-1][0][key] = float(md_val)
+			# Check if fortran has stared out the number
+			if "*" in md_val:
+                            data_pairs[-1][0][key] = float('nan')
+                        else:
+                            data_pairs[-1][0][key] = float(md_val)
             # Generic footer
             for (key, val) in md_generic_footer.items():
                 if val in line:

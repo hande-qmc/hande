@@ -72,7 +72,7 @@ Umrigar93
     data = []
     metadata = []
     for (md, df) in hande_out:
-        if any(calc in md['calc_type'] for calc in ('FCIQMC', 'CCMC')):
+        if any(calc in md['calc_type'] for calc in ('FCIQMC', 'CCMC', 'RNG')):
             if reweight_history > 0:
                 if 'qmc' in md:
                     # New JSON-based metadata
