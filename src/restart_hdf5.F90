@@ -582,8 +582,8 @@ module restart_hdf5
 
                 ! Need to redistribute across processors if int(nbasis/32) changed
                 associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map, pl=>qs%psip_list)
-                    if (nbasis /= nbasis_restart .and. nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, pl%pops, pl%nstates, &
-                                                                              pl%nparticles, spawn)
+                    if (nbasis /= nbasis_restart .and. nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, &
+                                                                            pl%pops, pl%nstates, pl%nparticles, spawn)
                 end associate
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(qs%psip_list%dat), qs%psip_list%dat)
