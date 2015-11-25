@@ -554,6 +554,9 @@ module restart_hdf5
                         call change_nbasis(subgroup_id, ddets, kinds, qs%psip_list%states)
                     end if
                 else
+                    if (nbasis /= nbasis_restart) &
+                        call stop_all('read_restart_hdf5', &
+                                      'Changing DET_SIZE and basis size simultaneously not supported.  Please implement.')
                     call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
                 end if
 
