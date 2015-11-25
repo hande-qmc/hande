@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import tempfile
+import warnings
 
 import bz2
 import gzip
@@ -103,9 +104,8 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     data_pairs = []
     md_generic = {'input':[]}
 
-    # RNG is for old calculations without proper calculation block headers.
     calc_block = re.compile('^ (FCI|FCIQMC|CCMC|DMQMC|Simple FCIQMC|'
-                            'Hilbert space|Canonical energy|RNG)$')
+                            'Hilbert space|Canonical energy)$')
     fci_block = re.compile('Exact|Lanczos|LAPACK|LANCZOS|RDM')
 
     # input block delimiters
@@ -119,7 +119,11 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
 
         # Start of calculation block?
         match = calc_block.search(line)
-        if match:
+        if 'RNG' in line:
+            warnings.warn('Data extraction identified from an RNG block no '
+	                  'longer supported.  Please use an older version of '
+			  'pyhande.')
+        elif match:
             calc_type = match.group().strip()
 
             if calc_type == 'FCI':
@@ -165,7 +169,11 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                 for (key, val) in comms_footer.items():
                     if val in line:
                         md_val = line.split()[-1].replace('s','')
-                        data_pairs[-1][0][key] = float(md_val)
+			# Check if fortran has stared out the number
+			if "*" in md_val:
+                            data_pairs[-1][0][key] = float('nan')
+                        else:
+                            data_pairs[-1][0][key] = float(md_val)
             # Generic footer
             for (key, val) in md_generic_footer.items():
                 if val in line:
