@@ -624,6 +624,7 @@ module restart_hdf5
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
                     qs%ref%f0 = 0
+                    qs%ref%hs_f0 = 0
                     if (i0_length == i0_length_restart) then
                         call hdf5_read(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
                         call hdf5_read(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)
