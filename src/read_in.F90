@@ -33,7 +33,7 @@ contains
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
-                                        is_gamma_irrep_pg_sym, pg_sym_conj, gamma_sym
+                                        is_gamma_irrep_pg_sym, pg_sym_conj, pg_sym_global
         use system, only: sys_t
 
         use checking, only: check_allocate, check_deallocate
@@ -351,8 +351,8 @@ contains
 
         ! Initialise integral stores.
         if (t_store) then
-            call init_one_body_t(sys%read_in%uhf, gamma_sym, sys%read_in%one_e_h_integrals)
-            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, gamma_sym, sys%read_in%coulomb_integrals)
+            call init_one_body_t(sys%read_in%uhf, pg_sym_global%gamma_sym, sys%read_in%one_e_h_integrals)
+            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, pg_sym_global%gamma_sym, sys%read_in%coulomb_integrals)
         end if
 
         if (parent) then

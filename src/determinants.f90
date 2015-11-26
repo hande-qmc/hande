@@ -343,7 +343,7 @@ contains
         !            spin/symmetry.  The same indexing scheme is used for
         !            nbasis_sym_spin.
 
-        use point_group_symmetry, only: nbasis_sym_spin
+        use point_group_symmetry, only: pg_sym_global
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -353,7 +353,7 @@ contains
 
         call decode_det(sys%basis, f, d%occ_list)
 
-        d%symunocc = nbasis_sym_spin
+        d%symunocc = pg_sym_global%nbasis_sym_spin
         do i = 1, sys%nel
             associate(orb=>d%occ_list(i))
                 ims = (sys%basis%basis_fns(orb)%ms+3)/2

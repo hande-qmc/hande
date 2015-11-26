@@ -34,7 +34,7 @@ contains
         !    store: one-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
 
-        use point_group_symmetry, only: nbasis_sym_spin
+        use point_group_symmetry, only: pg_sym_global
 
         use checking, only: check_allocate
 
@@ -56,7 +56,8 @@ contains
         end if
 
         ! Allocate general store for the one-electron integrals.
-        allocate(store%integrals(nspin,lbound(nbasis_sym_spin, dim=2):ubound(nbasis_sym_spin, dim=2)), stat=ierr)
+        allocate(store%integrals(nspin,lbound(pg_sym_global%nbasis_sym_spin, dim=2):ubound(pg_sym_global%nbasis_sym_spin, dim=2)), &
+                    stat=ierr)
         call check_allocate('one_body_store', size(store%integrals), ierr)
 
         ! <i|o|j> is only non-zero if the integrand is totally symmetric, ie
@@ -78,7 +79,7 @@ contains
         ! calculations.
         do ispin = 1, nspin
             do i = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
-                s = (nbasis_sym_spin(ispin,i)*(nbasis_sym_spin(ispin,i)+1))/2
+                s = (pg_sym_global%nbasis_sym_spin(ispin,i)*(pg_sym_global%nbasis_sym_spin(ispin,i)+1))/2
                 allocate(store%integrals(ispin,i)%v(s), stat=ierr)
                 call check_allocate('one_body_store_component', s, ierr)
             end do
@@ -127,7 +128,7 @@ contains
         !    store: two-body integral store with components allocated to hold
         !    interals.  Note that the integral store is *not* zeroed.
 
-        use point_group_symmetry, only: nbasis_sym_spin
+        use point_group_symmetry, only: pg_sym_global
 
         use checking, only: check_allocate
 

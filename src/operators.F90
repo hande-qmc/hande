@@ -239,7 +239,7 @@ contains
 
         use determinants, only: decode_det
         use molecular_integrals, only: get_one_body_int_mol_nonzero
-        use point_group_symmetry, only: gamma_sym
+        use point_group_symmetry, only: pg_sym_global
         use system, only: sys_t
 
         use const, only: p, i0
@@ -257,7 +257,7 @@ contains
         ! The integrals can only be non-zero if the operator is totally symmetric.
 
         intgrl = sys%read_in%dipole_core
-        if (sys%read_in%one_body_op_integrals%op_sym == gamma_sym) then
+        if (sys%read_in%one_body_op_integrals%op_sym == pg_sym_global%gamma_sym) then
             do iel = 1, sys%nel
                 iorb = occ_list(iel)
                 intgrl = intgrl + get_one_body_int_mol_nonzero(sys%read_in%one_body_op_integrals, iorb, iorb, sys%basis%basis_fns)

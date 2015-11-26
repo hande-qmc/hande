@@ -164,7 +164,7 @@ contains
         !             connected to D by a double excitation.
 
         use system
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, nbasis_sym_spin
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, pg_sym_global
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(sys%nel)
@@ -184,7 +184,7 @@ contains
         case(read_in)
 
             ! Count number of basis functions in each symmetry.
-            virt_syms = nbasis_sym_spin
+            virt_syms = pg_sym_global%nbasis_sym_spin
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (sys%basis%basis_fns(occ_list(i))%ms+3)/2
