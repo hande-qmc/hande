@@ -38,7 +38,7 @@ contains
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
-        use point_group_symmetry, only: pg_sym_global
+        use point_group_symmetry_data, only: pg_sym_global
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -148,7 +148,7 @@ contains
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
-        use point_group_symmetry, only: pg_sym_global
+        use point_group_symmetry_data, only: pg_sym_global
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -245,7 +245,8 @@ contains
         !        excitations from the determinant which conserve spin and spatial
         !        symmetry.
 
-        use point_group_symmetry, only: pg_sym_global, cross_product_pg_sym, pg_sym_conj
+        use point_group_symmetry_data, only: pg_sym_global
+        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -389,7 +390,8 @@ contains
         !        (i,j).
 
         use system, only: sys_t
-        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_global, pg_sym_conj
+        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
+        use point_group_symmetry_data, only: pg_sym_global 
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -533,7 +535,8 @@ contains
         !        excitations from the determinant which conserve spin and spatial
         !        symmetry or if a is already occupied.
 
-        use point_group_symmetry, only: pg_sym_global, cross_product_pg_sym
+        use point_group_symmetry, only: cross_product_pg_sym
+        use point_group_symmetry_data, only: pg_sym_global 
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -601,7 +604,8 @@ contains
         !        (i,j) or given the choice of (i,j,a).
 
         use basis_types, only: basis_t
-        use point_group_symmetry, only: pg_sym_global, cross_product_pg_sym, pg_sym_conj
+        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
+        use point_group_symmetry_data, only: pg_sym_global 
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -777,7 +781,8 @@ contains
         ! events.
 
         use system, only: sys_t
-        use point_group_symmetry, only: pg_sym_global, cross_product_pg_sym, pg_sym_conj
+        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
+        use point_group_symmetry_data, only: pg_sym_global 
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
@@ -890,7 +895,7 @@ contains
         ! excitations correctly take into account such rejected events.
 
         use system, only: sys_t
-        use point_group_symmetry, only: pg_sym_global
+        use point_group_symmetry_data, only: pg_sym_global
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
@@ -937,7 +942,7 @@ contains
         ! then p(a|ijb) or p(b|ijb) = 0.  We do not handle such cases here.
 
         use system, only: sys_t
-        use point_group_symmetry, only: pg_sym_global
+        use point_group_symmetry_data, only: pg_sym_global
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys

@@ -34,7 +34,7 @@ contains
         !    store: one-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
 
-        use point_group_symmetry, only: pg_sym_global
+        use point_group_symmetry_data, only: pg_sym_global
 
         use checking, only: check_allocate
 
@@ -127,8 +127,6 @@ contains
         ! Out:
         !    store: two-body integral store with components allocated to hold
         !    interals.  Note that the integral store is *not* zeroed.
-
-        use point_group_symmetry, only: pg_sym_global
 
         use checking, only: check_allocate
 

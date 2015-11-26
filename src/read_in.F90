@@ -33,7 +33,8 @@ contains
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
-                                        is_gamma_irrep_pg_sym, pg_sym_conj, pg_sym_global
+                                        is_gamma_irrep_pg_sym, pg_sym_conj
+        use point_group_symmetry_data, only: pg_sym_global 
         use system, only: sys_t
 
         use checking, only: check_allocate, check_deallocate

@@ -343,7 +343,7 @@ contains
         !            spin/symmetry.  The same indexing scheme is used for
         !            nbasis_sym_spin.
 
-        use point_group_symmetry, only: pg_sym_global
+        use point_group_symmetry_data, only: pg_sym_global
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys

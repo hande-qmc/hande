@@ -164,7 +164,8 @@ contains
         !             connected to D by a double excitation.
 
         use system
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, pg_sym_global
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym
+        use point_group_symmetry_data, only: pg_sym_global 
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(sys%nel)

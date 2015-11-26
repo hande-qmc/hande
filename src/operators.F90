@@ -239,7 +239,7 @@ contains
 
         use determinants, only: decode_det
         use molecular_integrals, only: get_one_body_int_mol_nonzero
-        use point_group_symmetry, only: pg_sym_global
+        use point_group_symmetry_data, only: pg_sym_global
         use system, only: sys_t
 
         use const, only: p, i0

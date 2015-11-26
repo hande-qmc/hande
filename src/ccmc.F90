@@ -2467,7 +2467,8 @@ contains
                                  calc_pgen_single_mol, calc_pgen_double_mol
         use excit_gen_ueg, only: calc_pgen_ueg_no_renorm
         use excit_gen_ringium, only: calc_pgen_ringium
-        use point_group_symmetry, only: pg_sym_global, cross_product_pg_basis, pg_sym_conj
+        use point_group_symmetry, only: cross_product_pg_basis, pg_sym_conj
+        use point_group_symmetry_data, only: pg_sym_global 
         use determinants, only: det_info_t
         use qmc_data, only: qmc_state_t, excit_gen_no_renorm
 
