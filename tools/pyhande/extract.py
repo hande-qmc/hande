@@ -169,8 +169,8 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                 for (key, val) in comms_footer.items():
                     if val in line:
                         md_val = line.split()[-1].replace('s','')
-			# Check if fortran has stared out the number
-			if "*" in md_val:
+                        # Check if Fortran has starred out the number
+                        if "*" in md_val:
                             data_pairs[-1][0][key] = float('nan')
                         else:
                             data_pairs[-1][0][key] = float(md_val)
