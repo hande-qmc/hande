@@ -744,7 +744,6 @@ contains
             sys%ueg%kf = dim_factor / sys%ueg%r_s
             ! Fermi energy.
             sys%ueg%ef = 0.5_p * sys%ueg%kf**2
-            if (parent) write (6,'(1X,a13,1X,es17.10,/)') 'Fermi Energy:', sys%ueg%ef
         end select
 
     end subroutine set_fermi_energy
