@@ -20,6 +20,7 @@ use const
 use basis_types, only: basis_t
 use molecular_integral_types
 use ueg_types, only: ueg_basis_t
+use point_group_symmetry_data, only: pg_sym_t
 
 implicit none
 
@@ -285,6 +286,9 @@ type sys_read_in_t
     ! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
     ! functions and 1/r_12 is the Coulomb operator.
     type(two_body_t) :: coulomb_integrals
+
+    ! Data about the orbital symmetries
+    type(pg_sym_t) :: pg_sym
 
 end type sys_read_in_t
 

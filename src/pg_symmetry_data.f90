@@ -55,6 +55,4 @@ type pg_sym_t
     integer :: Lz_divisor
 end type pg_sym_t
 
-type(pg_sym_t) :: pg_sym_global
-
 end module point_group_symmetry_data

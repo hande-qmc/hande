@@ -2468,7 +2468,6 @@ contains
         use excit_gen_ueg, only: calc_pgen_ueg_no_renorm
         use excit_gen_ringium, only: calc_pgen_ringium
         use point_group_symmetry, only: cross_product_pg_basis, pg_sym_conj
-        use point_group_symmetry_data, only: pg_sym_global 
         use determinants, only: det_info_t
         use qmc_data, only: qmc_state_t, excit_gen_no_renorm
 
@@ -2495,11 +2494,12 @@ contains
                     end if
                 else
                     if (connection%nexcit == 1) then
-                        pgen = qmc_state%pattempt_single * calc_pgen_single_mol(sys, pg_sym_global%gamma_sym, parent_det%occ_list, &
-                                                                             parent_det%symunocc, a)
+                        pgen = qmc_state%pattempt_single * calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, &
+                                                                                parent_det%occ_list, parent_det%symunocc, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
-                        ij_sym = pg_sym_conj(cross_product_pg_basis(a, b, sys%basis%basis_fns))
+                        ij_sym = pg_sym_conj(sys%read_in%pg_sym, &
+                                             cross_product_pg_basis(sys%read_in%pg_sym, a, b, sys%basis%basis_fns))
                         pgen = qmc_state%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
                     end if
                 end if

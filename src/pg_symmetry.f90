@@ -53,7 +53,6 @@ module point_group_symmetry
 ! representations are labelled by the set of integers {0,1,...2^n-1}.
 
 use const
-use point_group_symmetry_data, only: pg_sym_global
 
 implicit none
 
@@ -100,10 +99,10 @@ contains
         ! The point group mask is used to extract the point group symmetry from a sym.
         ! Since the point group sym goes from 0..maxsym-1, and maxsym is always a power
         ! of 2, the mask is just maxsym-1
-        pg_sym_global%pg_mask = maxsym-1
+        sys%read_in%pg_sym%pg_mask = maxsym-1
 
         ! We'll put Lz in higher bits, and an encode or decode by multiplying or diviging by:
-        pg_sym_global%Lz_divisor = maxsym
+        sys%read_in%pg_sym%Lz_divisor = maxsym
 
         ! When we use excitation generators, we combine together at most three orbitals'
         ! symmetries. The maximum encountered value of Lz will therefore be maxLz*3 
@@ -113,7 +112,7 @@ contains
         ! so we wish to keep the number of symmetries as low as possible.  We therefore
         ! compromise on allowing Lz values from -3*MaxLz ... 3*MaxLz, which will
         ! be stored in the higher bits of the sym using this mask.
-        pg_sym_global%Lz_mask = (2**ceiling(log(real(6*maxLz+1))/log(2.0))-1)*pg_sym_global%Lz_divisor
+        sys%read_in%pg_sym%Lz_mask = (2**ceiling(log(real(6*maxLz+1))/log(2.0))-1)*sys%read_in%pg_sym%Lz_divisor
         ! However, in order to store these, two's complement is not a good idea as it does
         ! not provide a continuous set of numbers (e.g. in three bits, -1,0,1 would render
         ! as 111,000,001, and if these are stored as the higher bits of symmetry, they would
@@ -126,81 +125,88 @@ contains
         ! 0010 (putting it in the right place in the bit string), giving symmetries:
         ! 0000, 0001, 0010, 0011, 0100, 0101 which are continuous integers.
         ! For reference in Lz world, 0 means Lz=-3*maxLz*maxsym, so Lz_offset means Lz=0
-        pg_sym_global%Lz_offset = 3*maxLz*pg_sym_global%Lz_divisor
-        pg_sym_global%gamma_sym = pg_sym_global%Lz_offset
+        sys%read_in%pg_sym%Lz_offset = 3*maxLz*sys%read_in%pg_sym%Lz_divisor
+        sys%read_in%pg_sym%gamma_sym = sys%read_in%pg_sym%Lz_offset
 
         if(sys%symmetry /= huge(1)) then
             ! If one wished to specify Lz in sys%symmetry, it would be added in here.
             ! Need to modify to include Lz:
-            sys%symmetry = sys%symmetry + pg_sym_global%Lz_offset
+            sys%symmetry = sys%symmetry + sys%read_in%pg_sym%Lz_offset
         endif
 
         ! nsym, sym0 and sym_max allow one to iterate over the symmetries that occur in
         ! the basis fns:
-        sys%sym0 = iand((-maxLz*pg_sym_global%Lz_divisor+pg_sym_global%Lz_offset),pg_sym_global%Lz_mask)
-        sys%sym_max = maxLz*pg_sym_global%Lz_divisor+pg_sym_global%Lz_offset+maxsym-1
+        sys%sym0 = iand((-maxLz*sys%read_in%pg_sym%Lz_divisor+sys%read_in%pg_sym%Lz_offset),sys%read_in%pg_sym%Lz_mask)
+        sys%sym_max = maxLz*sys%read_in%pg_sym%Lz_divisor+sys%read_in%pg_sym%Lz_offset+maxsym-1
         sys%nsym = sys%sym_max - sys%sym0
         ! We can iterate from sys%sym0 .. sys%sym_max, which following the above discussion means
         sys%sym0_tot = 0
-        sys%nsym_tot = (6*maxLz+1)*pg_sym_global%Lz_divisor
+        sys%nsym_tot = (6*maxLz+1)*sys%read_in%pg_sym%Lz_divisor
         sys%sym_max_tot = sys%nsym_tot-1
 
-        allocate(pg_sym_global%nbasis_sym(sys%sym0_tot:sys%sym_max_tot), stat=ierr)
-        call check_allocate('pg_sym_global%nbasis_sym', sys%nsym_tot, ierr)
-        allocate(pg_sym_global%nbasis_sym_spin(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
-        call check_allocate('pg_sym_global%nbasis_sym_spin', 2*sys%nsym_tot, ierr)
+        allocate(sys%read_in%pg_sym%nbasis_sym(sys%sym0_tot:sys%sym_max_tot), stat=ierr)
+        call check_allocate('sys%read_in%pg_sym%nbasis_sym', sys%nsym_tot, ierr)
+        allocate(sys%read_in%pg_sym%nbasis_sym_spin(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
+        call check_allocate('sys%read_in%pg_sym%nbasis_sym_spin', 2*sys%nsym_tot, ierr)
 
-        pg_sym_global%nbasis_sym = 0
-        pg_sym_global%nbasis_sym_spin = 0
+        sys%read_in%pg_sym%nbasis_sym = 0
+        sys%read_in%pg_sym%nbasis_sym_spin = 0
 
         associate(nbasis=>sys%basis%nbasis, basis_fns=>sys%basis%basis_fns)
             do i = 1, nbasis
                 ! Encode the Lz into the symmetry. We shift the lz into higher bits (by *maxsym)  and offset.
                 if (maxLz>0) then
-                    basis_fns(i)%sym = basis_fns(i)%sym + (basis_fns(i)%lz*pg_sym_global%Lz_divisor+pg_sym_global%Lz_offset)
+                    basis_fns(i)%sym = basis_fns(i)%sym + &
+                        (basis_fns(i)%lz*sys%read_in%pg_sym%Lz_divisor+sys%read_in%pg_sym%Lz_offset)
                 endif
-                pg_sym_global%nbasis_sym(basis_fns(i)%sym) = pg_sym_global%nbasis_sym(basis_fns(i)%sym) + 1
-                basis_fns(i)%sym_index = pg_sym_global%nbasis_sym(basis_fns(i)%sym)
+                sys%read_in%pg_sym%nbasis_sym(basis_fns(i)%sym) = sys%read_in%pg_sym%nbasis_sym(basis_fns(i)%sym) + 1
+                basis_fns(i)%sym_index = sys%read_in%pg_sym%nbasis_sym(basis_fns(i)%sym)
 
                 ims = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
 
-                pg_sym_global%nbasis_sym_spin(ims,basis_fns(i)%sym) = pg_sym_global%nbasis_sym_spin(ims,basis_fns(i)%sym) + 1
-                basis_fns(i)%sym_spin_index = pg_sym_global%nbasis_sym_spin(ims,basis_fns(i)%sym)
+                sys%read_in%pg_sym%nbasis_sym_spin(ims,basis_fns(i)%sym) = &
+                            sys%read_in%pg_sym%nbasis_sym_spin(ims,basis_fns(i)%sym) + 1
+                basis_fns(i)%sym_spin_index = sys%read_in%pg_sym%nbasis_sym_spin(ims,basis_fns(i)%sym)
 
             end do
         end associate
 
-        allocate(pg_sym_global%sym_spin_basis_fns(maxval(pg_sym_global%nbasis_sym_spin),2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
-        call check_allocate('pg_sym_global%sym_spin_basis_fns', size(pg_sym_global%sym_spin_basis_fns), ierr)
-        pg_sym_global%sym_spin_basis_fns = 0
+        allocate(sys%read_in%pg_sym%sym_spin_basis_fns(maxval(sys%read_in%pg_sym%nbasis_sym_spin),2,sys%sym0_tot:sys%sym_max_tot), &
+                    stat=ierr)
+        call check_allocate('sys%read_in%pg_sym%sym_spin_basis_fns', size(sys%read_in%pg_sym%sym_spin_basis_fns), ierr)
+        sys%read_in%pg_sym%sym_spin_basis_fns = 0
 
         do i = 1, sys%basis%nbasis
             ims = (sys%basis%basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
-            ind = minloc(pg_sym_global%sym_spin_basis_fns(:,ims,sys%basis%basis_fns(i)%sym), dim=1) ! first non-zero element
-            pg_sym_global%sym_spin_basis_fns(ind, ims, sys%basis%basis_fns(i)%sym) = i
+            ind = minloc(sys%read_in%pg_sym%sym_spin_basis_fns(:,ims,sys%basis%basis_fns(i)%sym), dim=1) ! first non-zero element
+            sys%read_in%pg_sym%sym_spin_basis_fns(ind, ims, sys%basis%basis_fns(i)%sym) = i
         end do
 
     end subroutine init_pg_symmetry
 
-    subroutine end_pg_symmetry()
+    subroutine end_pg_symmetry(sys)
 
         ! Deallocate arrays containing point group symmetry information.
 
         use checking, only: check_deallocate
 
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
+
         integer :: ierr
 
-        if (allocated(pg_sym_global%nbasis_sym)) then
-            deallocate(pg_sym_global%nbasis_sym, stat=ierr)
-            call check_deallocate('pg_sym_global%nbasis_sym', ierr)
+        if (allocated(sys%read_in%pg_sym%nbasis_sym)) then
+            deallocate(sys%read_in%pg_sym%nbasis_sym, stat=ierr)
+            call check_deallocate('sys%read_in%pg_sym%nbasis_sym', ierr)
         end if
-        if (allocated(pg_sym_global%nbasis_sym_spin)) then
-            deallocate(pg_sym_global%nbasis_sym_spin, stat=ierr)
-            call check_deallocate('pg_sym_global%nbasis_sym_spin', ierr)
+        if (allocated(sys%read_in%pg_sym%nbasis_sym_spin)) then
+            deallocate(sys%read_in%pg_sym%nbasis_sym_spin, stat=ierr)
+            call check_deallocate('sys%read_in%pg_sym%nbasis_sym_spin', ierr)
         end if
-        if (allocated(pg_sym_global%sym_spin_basis_fns)) then
-            deallocate(pg_sym_global%sym_spin_basis_fns, stat=ierr)
-            call check_deallocate('pg_sym_global%sym_spin_basis_fns', ierr)
+        if (allocated(sys%read_in%pg_sym%sym_spin_basis_fns)) then
+            deallocate(sys%read_in%pg_sym%sym_spin_basis_fns, stat=ierr)
+            call check_deallocate('sys%read_in%pg_sym%sym_spin_basis_fns', ierr)
         end if
 
     end subroutine end_pg_symmetry
@@ -223,21 +229,23 @@ contains
         if (parent) then
             write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
 
-            write(6,'(1X,"Number of point group symmetries:",'//int_fmt(pg_sym_global%Lz_divisor,1)//')') pg_sym_global%Lz_divisor
+            write(6,'(1X,"Number of point group symmetries:",'//int_fmt(sys%read_in%pg_sym%Lz_divisor,1)//')') &
+                    sys%read_in%pg_sym%Lz_divisor
             if(sys%read_in%useLz) then
                 ! This is the Max Lz value we find in the basis functions.
                 i = maxval(sys%basis%basis_fns(:)%lz)
                 write(6,'(1X,"Maximum Lz found:",'//int_fmt(i,1)//')') i
-                write(6,'(1X,"Lz offset (corresponds to Lz=0):",'//int_fmt(pg_sym_global%Lz_offset,1)//')') pg_sym_global%Lz_offset
+                write(6,'(1X,"Lz offset (corresponds to Lz=0):",'//int_fmt(sys%read_in%pg_sym%Lz_offset,1)//')') &
+                    sys%read_in%pg_sym%Lz_offset
             else
                 write(6,'(1X,"Not using Lz symmetry.")')
             endif
-            write(6,'(1X,"Totally symmetric symmetry:",'//int_fmt(pg_sym_global%gamma_sym,1)//')') pg_sym_global%gamma_sym
+            write(6,'(1X,"Totally symmetric symmetry:",'//int_fmt(sys%read_in%pg_sym%gamma_sym,1)//')') sys%read_in%pg_sym%gamma_sym
             write (6,'(1X,a78,/)') 'The matrix below gives the direct products of the irreducible representations.'
             ! Note that we never actually store this.
             do i = sys%sym0, sys%sym_max
                 do j = sys%sym0, sys%sym_max
-                    sym=cross_product_pg_sym(i,j)
+                    sym=cross_product_pg_sym(sys%read_in%pg_sym,i,j)
                     if (sym>=sys%sym0_tot.and.sym<sys%nsym_tot) then
                         write (6,'(1X,i2)',advance='no') sym
                     else
@@ -251,8 +259,9 @@ contains
 
             write (6,'(1X,"irrep  Lz   sym  nbasis  nbasis_up  nbasis_down")')
             do i = sys%sym0, sys%sym_max
-                write (6,'(1X,i3,3X,i3,3X,i2,2X,i5,3X,i5,6X,i5)') i, pg_sym_getLz(i), iand(i,pg_sym_global%pg_mask), &
-                    pg_sym_global%nbasis_sym(i), pg_sym_global%nbasis_sym_spin(:,i)
+                write (6,'(1X,i3,3X,i3,3X,i2,2X,i5,3X,i5,6X,i5)') i, pg_sym_getLz(sys%read_in%pg_sym, i), &
+                    iand(i,sys%read_in%pg_sym%pg_mask), &
+                    sys%read_in%pg_sym%nbasis_sym(i), sys%read_in%pg_sym%nbasis_sym_spin(:,i)
             end do
 
             write (6,'()')
@@ -261,7 +270,7 @@ contains
 
     end subroutine print_pg_symmetry_info
 
-    pure function cross_product_pg_basis(i, j, basis_fns) result(sym_ij)
+    pure function cross_product_pg_basis(pg_sym, i, j, basis_fns) result(sym_ij)
 
         ! In:
         !    i,j: (indices of) spin-orbitals.
@@ -272,16 +281,18 @@ contains
         !    which can also potentially include an Lz symmetry.
 
         use basis_types, only: basis_fn_t
+        use point_group_symmetry_data, only: pg_sym_t
 
         integer :: sym_ij
+        type(pg_sym_t), intent(in) :: pg_sym
         integer, intent(in) :: i, j
         type(basis_fn_t), intent(in) :: basis_fns(:)
 
-        sym_ij = cross_product_pg_sym(basis_fns(i)%sym, basis_fns(j)%sym)
+        sym_ij = cross_product_pg_sym(pg_sym, basis_fns(i)%sym, basis_fns(j)%sym)
 
     end function cross_product_pg_basis
 
-    elemental function cross_product_pg_sym(sym_i, sym_j) result(sym_ij)
+    elemental function cross_product_pg_sym(pg_sym, sym_i, sym_j) result(sym_ij)
 
         ! In:
         !    sym_i,sym_j: bit string representations of irreducible
@@ -292,18 +303,21 @@ contains
         !    The Lz part of the symmetry is split off and handled separately from the
         !    rest, and then reintegrated.
 
+        use point_group_symmetry_data, only: pg_sym_t
+
         integer :: sym_ij
         integer, intent(in) :: sym_i, sym_j
+        type(pg_sym_t), intent(in) :: pg_sym
 
         ! The pg part can be done with an exclusive or. To save on operations, we mask after that.
         ! The Lz is just additive (though we need to extract it and remember to remove an offset).
-        sym_ij = ior(iand(ieor(sym_i, sym_j),pg_sym_global%pg_mask), &
-                iand(sym_i,pg_sym_global%Lz_mask)+iand(sym_j,pg_sym_global%Lz_mask)-pg_sym_global%Lz_offset)
+        sym_ij = ior(iand(ieor(sym_i, sym_j),pg_sym%pg_mask), &
+                iand(sym_i,pg_sym%Lz_mask)+iand(sym_j,pg_sym%Lz_mask)-pg_sym%Lz_offset)
 
     end function cross_product_pg_sym
 
 
-    elemental function pg_sym_conj(sym) result(rsym)
+    elemental function pg_sym_conj(pg_sym, sym) result(rsym)
 
         ! In:
         !   sym: the bit representation of the irrep of the pg sym including
@@ -312,17 +326,20 @@ contains
         !   The symmetry conjugate of the symmetry. For pg symmetry this is the same as
         !   it's Abelian, but we need to take Lz to -Lz here.
 
+        use point_group_symmetry_data, only: pg_sym_t
+
+        type(pg_sym_t), intent(in) :: pg_sym
         integer, intent(in) :: sym
         integer :: rsym
 
         ! Take the symmetry conjugate.  The point group part is the same.
         ! The Lz needs to become -Lz but also dealing with the offsetting.
-        rsym  = ior(iand(sym,pg_sym_global%pg_mask), &
-                iand(2*pg_sym_global%Lz_offset-iand(sym,pg_sym_global%Lz_mask),pg_sym_global%Lz_mask))
+        rsym  = ior(iand(sym,pg_sym%pg_mask), &
+                iand(2*pg_sym%Lz_offset-iand(sym,pg_sym%Lz_mask),pg_sym%Lz_mask))
 
     end function pg_sym_conj
 
-    elemental function pg_sym_getLz(sym) result(Lz)
+    elemental function pg_sym_getLz(pg_sym, sym) result(Lz)
 
         ! In:
         !    sym: bit string representation of an irreducible representation of
@@ -330,9 +347,12 @@ contains
         ! Returns:
         !    The Lz component of sym (de-offsetted), so Lz=0 is returned as 0
 
+        use point_group_symmetry_data, only: pg_sym_t
+
+        type(pg_sym_t), intent(in) :: pg_sym
         integer, intent(in) :: sym
         integer :: Lz
-        Lz = (iand(sym,pg_sym_global%Lz_mask)-pg_sym_global%Lz_offset)/pg_sym_global%Lz_divisor
+        Lz = (iand(sym,pg_sym%Lz_mask)-pg_sym%Lz_offset)/pg_sym%Lz_divisor
 
     end function pg_sym_getLz
 
@@ -355,7 +375,7 @@ contains
 
     end function is_basis_pg_sym 
 
-    elemental function is_gamma_irrep_pg_sym(sym) result(is_gamma)
+    elemental function is_gamma_irrep_pg_sym(pg_sym, sym) result(is_gamma)
 
         ! In:
         !    sym: bit string representation of an irreducible representation of
@@ -364,14 +384,17 @@ contains
         !    True if sym represents the Gamma_1 (totally symmetric) irreducible
         !    representation.
 
+        use point_group_symmetry_data, only: pg_sym_t
+
         logical :: is_gamma
+        type(pg_sym_t), intent(in) :: pg_sym
         integer, intent(in) :: sym
 
-        is_gamma = pg_sym_global%gamma_sym == sym
+        is_gamma = pg_sym%gamma_sym == sym
 
     end function is_gamma_irrep_pg_sym
 
-    pure function symmetry_orb_list_mol(basis, orb_list) result(isym)
+    pure function symmetry_orb_list_mol(pg_sym, basis, orb_list) result(isym)
 
         ! In:
         !    basis: info about the single particle basis set.
@@ -381,16 +404,18 @@ contains
         !    of all the orbitals in the list).
 
         use basis_types, only: basis_t
+        use point_group_symmetry_data, only: pg_sym_t
 
         integer :: isym
+        type(pg_sym_t), intent(in) :: pg_sym
         type(basis_t), intent(in) :: basis
         integer, intent(in) :: orb_list(:)
 
         integer :: i
 
-        isym = pg_sym_global%gamma_sym
+        isym = pg_sym%gamma_sym
         do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
-            isym = cross_product_pg_sym(isym, basis%basis_fns(orb_list(i))%sym)
+            isym = cross_product_pg_sym(pg_sym, isym, basis%basis_fns(orb_list(i))%sym)
         end do
 
     end function symmetry_orb_list_mol

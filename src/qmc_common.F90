@@ -165,7 +165,6 @@ contains
 
         use system
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym
-        use point_group_symmetry_data, only: pg_sym_global 
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(sys%nel)
@@ -185,7 +184,7 @@ contains
         case(read_in)
 
             ! Count number of basis functions in each symmetry.
-            virt_syms = pg_sym_global%nbasis_sym_spin
+            virt_syms = sys%read_in%pg_sym%nbasis_sym_spin
             do i = 1, sys%nel
                 ! Convert -1->1 and 1->2 for spin index in arrays.
                 ims1 = (sys%basis%basis_fns(occ_list(i))%ms+3)/2
@@ -217,7 +216,8 @@ contains
                     do isyma = sys%sym0, sys%sym_max
                         ! Symmetry of the final orbital is determined (for Abelian
                         ! symmetries) from the symmetry of the first three.
-                        isymb = cross_product_pg_sym(isyma, cross_product_pg_basis(occ_list(i),occ_list(j), sys%basis%basis_fns))
+                        isymb = cross_product_pg_sym(sys%read_in%pg_sym, isyma, &
+                                        cross_product_pg_basis(sys%read_in%pg_sym, occ_list(i),occ_list(j), sys%basis%basis_fns))
                         if (isyma == isymb) then
                             if (ims1 == ims2) then
                                 ! Cannot excit_t 2 electrons into the same spin-orbital.

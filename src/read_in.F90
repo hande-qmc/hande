@@ -34,7 +34,6 @@ contains
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
                                         is_gamma_irrep_pg_sym, pg_sym_conj
-        use point_group_symmetry_data, only: pg_sym_global 
         use system, only: sys_t
 
         use checking, only: check_allocate, check_deallocate
@@ -352,8 +351,9 @@ contains
 
         ! Initialise integral stores.
         if (t_store) then
-            call init_one_body_t(sys%read_in%uhf, pg_sym_global%gamma_sym, sys%read_in%one_e_h_integrals)
-            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, pg_sym_global%gamma_sym, sys%read_in%coulomb_integrals)
+            call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
+                                 sys%read_in%one_e_h_integrals)
+            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%coulomb_integrals)
         end if
 
         if (parent) then
@@ -488,8 +488,9 @@ contains
                                 sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
-                                    x = x + get_one_body_int_mol(sys%read_in%one_e_h_integrals, ii, aa, sys%basis%basis_fns)
-                                    call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, &
+                                    x = x + get_one_body_int_mol(sys%read_in%one_e_h_integrals, ii, aa, &
+                                                                 sys%basis%basis_fns, sys%read_in%pg_sym)
+                                    call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
                                                                 int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
                                     int_err = int_err + ierr
                                     seen_iha(tri_ind_reorder(ii,aa)) = .true.
@@ -570,9 +571,10 @@ contains
                                             ! Update <a|h|b> with contribution <ia|ib>.
                                             x = x*rhf_fac + &
                                                 get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), &
-                                                                     active(2), sys%basis%basis_fns)
+                                                                     active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
                                             call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
+                                                                        sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                                        sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 1
@@ -582,15 +584,17 @@ contains
                                         ! For systems with complex orbitals (but real integrals)
                                         ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
-                                            is_gamma_irrep_pg_sym(                                          &
-                                                cross_product_pg_sym(pg_sym_conj(sys%basis%basis_fns(active(1))%sym), &
-                                                                     sys%basis%basis_fns(active(2))%sym))) then
+                                            is_gamma_irrep_pg_sym(sys%read_in%pg_sym, &
+                                                cross_product_pg_sym(sys%read_in%pg_sym, &
+                                                            pg_sym_conj(sys%read_in%pg_sym, sys%basis%basis_fns(active(1))%sym), &
+                                                            sys%basis%basis_fns(active(2))%sym))) then
 
                                             ! Update <j|h|a> with contribution <ij|ai>.
                                             x = get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), active(2), &
-                                                                     sys%basis%basis_fns) - x
+                                                                     sys%basis%basis_fns, sys%read_in%pg_sym)  - x
                                             call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
+                                                                        sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                                        sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
@@ -599,7 +603,7 @@ contains
                                 end if
                             case(4)
                                 ! Have <ij|ab> involving active orbitals.
-                                call store_two_body_int_mol(ii, jj, aa, bb, x, sys%basis%basis_fns, &
+                                call store_two_body_int_mol(ii, jj, aa, bb, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
                                                             int_err > max_err_msg, sys%read_in%coulomb_integrals, ierr)
                                 int_err = int_err + ierr
                             end select
@@ -658,8 +662,8 @@ contains
         end if
 
         if (t_store .and. sys%read_in%dipole_int_file /= '') then
-            call read_in_one_body(sys%read_in%dipole_int_file, sys%basis%nbasis, sys%basis%basis_fns, sys%read_in%uhf, &
-                                  sp_fcidump_rank, active_basis_offset, sys%read_in%one_body_op_integrals, &
+            call read_in_one_body(sys%read_in%dipole_int_file, sys%basis%nbasis, sys%basis%basis_fns, sys%read_in%pg_sym, &
+                                  sys%read_in%uhf, sp_fcidump_rank, active_basis_offset, sys%read_in%one_body_op_integrals, &
                                   sys%read_in%dipole_core)
         end if
 
@@ -740,7 +744,8 @@ contains
 
     end subroutine init_basis_fns_read_in
 
-    subroutine read_in_one_body(integral_file, nbasis, basis_fns, uhf, sp_fcidump_rank, active_basis_offset, store, core_term)
+    subroutine read_in_one_body(integral_file, nbasis, basis_fns, pg_sym, uhf, sp_fcidump_rank, active_basis_offset, &
+                                store, core_term)
 
         ! Read in an integral file containing the integrals <i|O|a>, where O is
         ! a one-body operator which is not part of the Hamiltonian.
@@ -774,6 +779,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis
+        use point_group_symmetry_data, only: pg_sym_t
         use molecular_integrals, only: one_body_t, init_one_body_t,              &
                                        end_one_body_t, store_one_body_int_mol, &
                                        zero_one_body_int_store, broadcast_one_body_t
@@ -789,6 +795,7 @@ contains
         logical, intent(in) :: uhf
         integer, intent(in) :: nbasis, sp_fcidump_rank(0:), active_basis_offset
         type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(pg_sym_t), intent(in) :: pg_sym
         type(one_body_t), intent(out) :: store
         real(p), intent(out) :: core_term
 
@@ -830,7 +837,7 @@ contains
             end do
             ! We only use Abelian symmetries so all representations are their own
             ! inverse.
-            op_sym = cross_product_pg_basis(ii,aa,basis_fns)
+            op_sym = cross_product_pg_basis(pg_sym, ii,aa,basis_fns)
         else
             ! We'll broadcast the symmetry and the integrals to all other
             ! processors later.
@@ -839,7 +846,7 @@ contains
 
         ! Allocate integral store on *all* processors.
         if (allocated(store%integrals)) call end_one_body_t(store)
-        call init_one_body_t(uhf, op_sym, store)
+        call init_one_body_t(uhf, op_sym, pg_sym%nbasis_sym_spin, store)
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
@@ -887,7 +894,7 @@ contains
                 else if (ii < 1 .and. ii == aa) then
                     core_term = core_term + rhf_fac*x
                 else if (min(ii,aa) >= 1 .and. max(ii,aa) <= nbasis) then
-                    call store_one_body_int_mol(ii, aa, x, basis_fns, int_err > max_err_msg, store, ierr)
+                    call store_one_body_int_mol(ii, aa, x, basis_fns, pg_sym, int_err > max_err_msg, store, ierr)
                     int_err = int_err + ierr
                 end if
             end do
