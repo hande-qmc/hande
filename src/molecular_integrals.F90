@@ -38,7 +38,7 @@ contains
 
         logical, intent(in) :: uhf
         integer, intent(in) :: op_sym
-        integer, intent(in) :: nbasis_sym_spin(:,:)
+        integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
         type(one_body_t), intent(out) :: store
 
         integer :: ierr, i, s, ispin, nspin
