@@ -77,8 +77,7 @@ contains
 
         ! 2. Select orbitals to excite from and into.
         call choose_ij_k(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin)
-        call find_ab_ueg(rng, sys, cdet%f, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin, max_na, &
-                           connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+        call find_ab_ueg(rng, sys, cdet%f, ij_k, ij_spin, max_na, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
         
         if (allowed_excitation) then
 
@@ -87,8 +86,8 @@ contains
             pgen = calc_pgen_ueg_no_renorm(sys, max_na, ij_spin)
 
             call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
-            hmatel = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%from_orb(2), &
-                                              connection%to_orb(1), connection%to_orb(2), connection%perm)
+            hmatel = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%to_orb(2), &
+                connection%perm)
 
 
         else
@@ -187,7 +186,7 @@ contains
 
 !--- Select random orbitals in double excitations ---
 
-    subroutine find_ab_ueg(rng, sys, f, i, j, ij_k, ij_spin, max_na, a, b, allowed_excitation)
+    subroutine find_ab_ueg(rng, sys, f, ij_k, ij_spin, max_na, a, b, allowed_excitation)
 
         ! Select a random a (and hence b) to create an allowed excitation,
         ! (i,j)->(a,b), given a certain (i,j) pair.  Simply choose a random
@@ -201,7 +200,6 @@ contains
         !    sys: system object being studied.
         !    f: bit string representation of the Slater determinant from which
         !       the excitation is.
-        !    i,j: indices of the selected spin-orbitals from which to excite.
         !    ij_k: sum of the wavevectors of the i and j spin-orbitals.
         !    ij_spin: sum of the spins of the i and j spin-orbitals (in units of
         !       1/2).
@@ -229,7 +227,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
-        integer, intent(in) :: i, j, ij_k(sys%lattice%ndim), ij_spin
+        integer, intent(in) :: ij_k(sys%lattice%ndim), ij_spin
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 

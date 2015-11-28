@@ -61,7 +61,7 @@ contains
         ! on the situation.
         if (doing_semi_stoch) then
             if (determ%projection_mode == semi_stoch_separate_annihilation) then
-                call deterministic_annihilation(sys, rng, psip_list, determ)
+                call deterministic_annihilation(rng, psip_list, determ)
                 call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
             else
                 call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, determ%sizes(iproc))
@@ -477,12 +477,11 @@ contains
 
     end subroutine annihilate_main_list_initiator
 
-    subroutine deterministic_annihilation(sys, rng, psip_list, determ)
+    subroutine deterministic_annihilation(rng, psip_list, determ)
 
         ! Add in the deterministic spawnings to the main list.
 
         ! In:
-        !    sys: system being studied.
         !    determ: Derived type containing information on the semi-stochastic
         !       part of the simulation.
         !    psip_list: particle_t object containing psip information.
@@ -497,7 +496,6 @@ contains
         use qmc_data, only: semi_stoch_t, particle_t
 
         type(particle_t), intent(inout) :: psip_list
-        type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(semi_stoch_t), intent(in), optional :: determ
 

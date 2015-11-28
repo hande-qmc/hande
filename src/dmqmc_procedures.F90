@@ -427,8 +427,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, &
-                                                       pop_real_factor, spawn)
+    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, spawn)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly
@@ -445,8 +444,6 @@ contains
         !        element.
         !    particle_type: the label of the replica to which this particle is
         !        to sample.
-        !    pop_real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle is added.
 
@@ -460,7 +457,6 @@ contains
         integer, intent(in) :: string_len, tensor_label_len
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
-        integer(int_p), intent(in) :: pop_real_factor
         type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(tensor_label_len)

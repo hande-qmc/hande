@@ -768,12 +768,11 @@ contains
 
     end subroutine init_mc_cycle
 
-    subroutine load_balancing_wrapper(sys, qmc_in, reference, load_bal_in, annihilation_flags, nb_comm, rng, psip_list, spawn, &
+    subroutine load_balancing_wrapper(sys, reference, load_bal_in, annihilation_flags, nb_comm, rng, psip_list, spawn, &
                                       par_info, determ)
 
         ! In:
         !    sys: system being studied
-        !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
         !    load_bal_in: input options for load balancing.
         !    annihilation_flags: calculation specific annihilation flags.
@@ -798,14 +797,13 @@ contains
         ! to ensure this happens.
 
         use system, only: sys_t
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t, particle_t
+        use qmc_data, only: reference_t, load_bal_in_t, annihilation_flags_t, particle_t
         use qmc_data, only: parallel_t, semi_stoch_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -828,12 +826,11 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,              &
+    subroutine end_report_loop(qmc_in, iteration, update_tau, qs, ntot_particles,              &
                                 nspawn_events, semi_stoch_shift_it, semi_stoch_start_it, soft_exit, &
                                 load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, error)
 
         ! In:
-        !    sys: system being studied.
         !    qmc_in: input optons relating to QMC methods.
         !    iteration: The current iteration of the simulation.
         !    nspawn_events: The total number of spawning events to this process.
@@ -872,7 +869,6 @@ contains
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
 
-        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: iteration
         logical, intent(inout) :: update_tau

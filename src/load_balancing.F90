@@ -193,7 +193,7 @@ contains
             call write_load_balancing_info(psip_list%nparticles_proc, donor_bins%pop)
 
         ! Attempt to modify proc map to get more even population distribution.
-        call redistribute_slots(donor_bins, donors, receivers, up_thresh, low_thresh, proc_map%map, &
+        call redistribute_slots(donor_bins, receivers, up_thresh, low_thresh, proc_map%map, &
                                 psip_list%nparticles_proc(1,:nprocs))
         lb%nattempts = lb%nattempts + 1
 
@@ -320,7 +320,7 @@ contains
 
     end subroutine dealloc_dbin_t
 
-    subroutine redistribute_slots(donor_bins, donors, receivers, up_thresh, low_thresh, proc_map, procs_pop)
+    subroutine redistribute_slots(donor_bins, receivers, up_thresh, low_thresh, proc_map, procs_pop)
 
         ! Attempt to modify entries in proc_map to get a more even population distribution across processors.
 
@@ -333,7 +333,7 @@ contains
         !       walkers we will attempt to distribute such as population and
         !       index in original proc_map array. See defintion of type for more
         !       details.
-        !   donors/receivers: array containing donor/receiver processors
+        !   receivers: array containing receiver processors
         !       (ones with above/below average population).
         !   up_thresh: Upper population threshold for load imbalance.
         !   low_thresh: lower population threshold for load imbalance.
@@ -343,7 +343,7 @@ contains
         !   procs_pop: array containing populations on each processor.
 
         type(dbin_t) :: donor_bins
-        integer, intent(in) :: donors(:), receivers(:)
+        integer, intent(in) :: receivers(:)
         real(p), intent(in) :: up_thresh, low_thresh
         real(p), intent(inout) :: procs_pop(0:)
         integer, intent(inout) :: proc_map(0:)

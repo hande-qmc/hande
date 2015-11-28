@@ -127,7 +127,7 @@ contains
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
                     if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, &
-                                                                       npsips_this_proc, psip_list%pop_real_factor, ireplica, spawn)
+                                                                       npsips_this_proc, spawn)
                 else
                     if (dmqmc_in%all_spin_sectors) then
                         ! Need to set spin variables appropriately.
@@ -285,8 +285,8 @@ contains
                 call create_diagonal_density_matrix_particle_initiator(f, basis%string_len, &
                         basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
             else
-                call create_diagonal_density_matrix_particle(f, basis%string_len, &
-                        basis%tensor_label_len, pop_real_factor, ireplica, pop_real_factor, spawn)
+                call create_diagonal_density_matrix_particle(f, basis%string_len, basis%tensor_label_len, pop_real_factor, &
+                                                             ireplica, spawn)
             end if
 
         end do
@@ -351,8 +351,8 @@ contains
                         call create_diagonal_density_matrix_particle_initiator(f, sys%basis%string_len, &
                                 sys%basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
                     else
-                        call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                sys%basis%tensor_label_len, pop_real_factor, ireplica, pop_real_factor, spawn)
+                        call create_diagonal_density_matrix_particle(f, sys%basis%string_len, sys%basis%tensor_label_len, &
+                                pop_real_factor, ireplica, spawn)
                     end if
                     exit
                 end if
@@ -361,7 +361,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, npsips, pop_real_factor, ireplica, spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, npsips, spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -381,9 +381,6 @@ contains
         !    qmc_state: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
         !    npsips: number of psips to distribute in this sector.
-        !    pop_real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
-        !    ireplica: replica index.
         ! In/Out:
         !    sys: system being studied. Should be left unmodified on output.
         !    rng: random number generator.
@@ -408,8 +405,6 @@ contains
         type(qmc_state_t), intent(in) :: qmc_state
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
-        integer(int_p), intent(in) :: pop_real_factor
-        integer, intent(in) :: ireplica
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
 
@@ -669,8 +664,8 @@ contains
                     call create_diagonal_density_matrix_particle_initiator(f, sys%basis%string_len, &
                             sys%basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
                 else
-                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                            sys%basis%tensor_label_len, nspawn, ireplica, pop_real_factor, spawn)
+                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, sys%basis%tensor_label_len, &
+                            nspawn, ireplica, spawn)
                 end if
                 ipsip = ipsip + 1
             end if

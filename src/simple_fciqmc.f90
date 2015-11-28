@@ -304,7 +304,7 @@ contains
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the FCIQMC cycle than at the end.
-                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs, qs%estimators%proj_energy)
+                    call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
                     if (sparse_hamil .and. allocated(hamil_csr%mat)) then
@@ -321,7 +321,7 @@ contains
                         end do
                     end if
 
-                    call simple_death(rng, qs%tau, qs, Hii, reference%H00, psip_list%pops(1,idet))
+                    call simple_death(rng, qs, Hii, reference%H00, psip_list%pops(1,idet))
 
                 end do
 
@@ -456,12 +456,11 @@ contains
 
     end subroutine attempt_spawn
 
-    subroutine simple_death(rng, tau, qs, Hii, H00, pop)
+    subroutine simple_death(rng, qs, Hii, H00, pop)
 
         ! Simulate cloning/death part of FCIQMC algorithm.
 
         ! In:
-        !    tau: timestep being used.
         !    Hii: diagonal matrix element, <D_i|H|D_i>
         !    H00: energy of the reference.
         ! In/Out:
@@ -472,7 +471,7 @@ contains
         use qmc_data, only: qmc_state_t
 
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(in) :: tau, Hii, H00
+        real(p), intent(in) :: Hii, H00
         type(qmc_state_t), intent(in) :: qs
         integer(int_p), intent(inout) :: pop
 
@@ -542,7 +541,7 @@ contains
 
     end subroutine simple_annihilation
 
-    subroutine simple_update_proj_energy(ref, H0i, pop, qs, proj_energy)
+    subroutine simple_update_proj_energy(ref, H0i, pop, qs)
 
         ! Add the contribution of the current determinant to the projected
         ! energy.
@@ -561,8 +560,8 @@ contains
         !    ref: true if |D_i> is the reference, |D_0>.
         !    pop: population on |D_i>.
         ! In/Out:
-        !    proj_energy: running total of the \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !    This is updated if |D_i> is connected to |D_0> (and isn't |D_0>).
+        !    qs: qmc_state_t with running totals of proj_energy, \sum_{i \neq 0} <D_i|H|D_0> N_i,
+        !    and the reference population updated.
 
         use qmc_data, only: qmc_state_t
 
@@ -570,7 +569,6 @@ contains
         real(p), intent(in) :: H0i
         integer(int_p), intent(in) :: pop
         type(qmc_state_t), intent(inout) :: qs
-        real(p), intent(inout) :: proj_energy
 
         if (ref) then
             ! Have reference determinant.

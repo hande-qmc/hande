@@ -11,7 +11,7 @@ implicit none
 
 contains
 
-    subroutine set_parent_flag(parent_population, initiator_pop, f, determ_flag, parent_flag)
+    subroutine set_parent_flag(parent_population, initiator_pop, determ_flag, parent_flag)
 
         ! Test whether the parent determinant is an initiator.
         !
@@ -19,13 +19,11 @@ contains
         !    parent_population: current population of walkers on the parent
         !                       determinant.
         !    initiator_pop: the population above which a determinant is an initiator.
-        !    f: bit string representation of the parent determinant.
-        !    determ_flag: 0 if f is deterministic and 1 otherwise.
+        !    determ_flag: 0 if determinant is deterministic and 1 otherwise.
         ! Out:
         !    parent_flag: set to 0 if the determinant is an initiator and 1 otherwise.
 
         real(p), intent(in) :: parent_population, initiator_pop
-        integer(i0), intent(in) :: f(:)
         integer, intent(in) :: determ_flag
         integer, intent(out) :: parent_flag
 
