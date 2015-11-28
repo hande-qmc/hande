@@ -90,12 +90,6 @@ contains
         !     VCS_LOCAL_CHANGES := $(shell git diff-index --quiet --cached HEAD
         !                             --ignore-submodules -- && git diff-files --quiet
         !                             --ignore-submodules || echo -n "-D_VCS_LOCAL_CHANGES") # on one line.
-        !
-        ! environment_report has been tested with gfortran, g95, ifort, pgf90, nag and
-        ! pathscale.  Note that hostnm and getcwd are intrinsic functions (at least
-        ! according to gnu documentation), unless you have to use nag.  There should also
-        ! exist the intrinsic subroutines, but pgf90 and ifort gave segmentation faults
-        ! when they were used, so we use intrinsic functions unless using nag.
 
         use, intrinsic :: iso_c_binding, only: c_char, c_ptr, c_size_t, c_int, c_associated
         use utils, only: carray_to_fstring
@@ -112,12 +106,12 @@ contains
                 integer(c_size_t), intent(in), value :: len
                 character(kind=c_char), intent(inout) :: hostname(len)
             end function gethostname
-            function getcwd(cwd, len) result(path) bind(c)
+            function getcwd_c(cwd, len) result(path) bind(c, name='getcwd')
                 use, intrinsic :: iso_c_binding, only: c_ptr, c_size_t, c_char
                 type(c_ptr) :: path
                 integer(c_size_t), intent(in), value :: len
                 character(kind=c_char), intent(inout) :: cwd(len)
-            end function getcwd
+            end function getcwd_c
         end interface
 
         integer, intent(in), optional :: io
@@ -163,7 +157,7 @@ contains
         end if
         write (io_unit,'(5X,a)') trim(carray_to_fstring(str))
 
-        path = getcwd(str, str_len)
+        path = getcwd_c(str, str_len)
         if (c_associated(path)) then
             write (io_unit,'(a20)') 'Working directory: '
         else
