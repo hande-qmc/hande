@@ -994,7 +994,7 @@ module hdf5_helper
                 allocate(arr_dp(arr_shape(1)), stat=ierr)
                 call check_allocate('arr_dp', arr_shape(1), ierr)
                 call hdf5_read(id, dset, kinds, arr_shape, arr_dp)
-                arr = arr_dp
+                arr = real(arr_dp,sp)
                 deallocate(arr_dp, stat=ierr)
                 call check_deallocate('arr_dp', ierr)
             else
@@ -1010,7 +1010,7 @@ module hdf5_helper
                     allocate(arr_64(arr_shape(1)), stat=ierr)
                     call check_allocate('arr_64', size(arr_64), ierr)
                     call hdf5_read(id, dset, kinds, arr_shape, arr_64)
-                    arr = arr_64
+                    arr = real(arr_64,sp)
                     deallocate(arr_64, stat=ierr)
                     call check_deallocate('arr_64', ierr)
                 else
@@ -1060,7 +1060,7 @@ module hdf5_helper
                 allocate(arr_dp(arr_shape(1),arr_shape(2)), stat=ierr)
                 call check_allocate('arr_dp', size(arr_dp), ierr)
                 call hdf5_read(id, dset, kinds, arr_shape, arr_dp)
-                arr = arr_dp
+                arr = real(arr_dp,sp)
                 deallocate(arr_dp, stat=ierr)
                 call check_deallocate('arr_dp', ierr)
             else
@@ -1076,7 +1076,7 @@ module hdf5_helper
                     allocate(arr_64(arr_shape(1),arr_shape(2)), stat=ierr)
                     call check_allocate('arr_64', size(arr_64), ierr)
                     call hdf5_read(id, dset, kinds, arr_shape, arr_64)
-                    arr = arr_64
+                    arr = real(arr_64,sp)
                     deallocate(arr_64, stat=ierr)
                     call check_deallocate('arr_64', ierr)
                 else

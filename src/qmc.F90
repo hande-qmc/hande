@@ -80,7 +80,7 @@ contains
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(restart_info_t) :: ri
 #ifdef PARALLEL
-        integer(int_64) :: tmp_int_64
+        real(p) :: tmp_p
 #endif
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
@@ -397,8 +397,8 @@ contains
 
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
-                tmp_int_64 = calculate_hf_signed_pop(pl)
-                call mpi_allreduce(tmp_int_64, qmc_state%estimators%hf_signed_pop, pl%nspaces, MPI_INTEGER8, MPI_SUM, &
+                tmp_p = calculate_hf_signed_pop(pl)
+                call mpi_allreduce(tmp_p, qmc_state%estimators%hf_signed_pop, pl%nspaces, mpi_preal, MPI_SUM, &
                                    MPI_COMM_WORLD, ierr)
 #else
                 qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl)

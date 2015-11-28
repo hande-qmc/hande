@@ -156,7 +156,8 @@ contains
         tmp = tmp - iand(ishft(tmp,-1), m1)
         tmp = iand(tmp, m2) + iand(ishft(tmp,-2), m2)
         tmp = iand(tmp, m3) + iand(ishft(tmp,-4), m3)
-        nbits = ishft(tmp*m4, -56)
+        ! Note conversion is safe as 0 <= nbits <= 64.
+        nbits = int(ishft(tmp*m4, -56))
 
     end function count_set_bits_int_64
 

@@ -162,7 +162,6 @@ contains
         use aot_table_ops_module, only: aot_table_open, aot_table_close
         use aot_vector_module, only: aot_get_val
 
-        use const, only: p
         use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
@@ -172,7 +171,7 @@ contains
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: opts
 
-        real(p), allocatable :: tmp(:)
+        integer, allocatable :: tmp(:)
         integer, allocatable :: err_arr(:)
         integer :: lattice, i
 

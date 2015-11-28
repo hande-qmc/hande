@@ -223,8 +223,8 @@ contains
 
         qs%spawn_store%rspawn = rep_loop_sum(rspawn_ind)
         error = abs(rep_loop_sum(error_ind)) > depsilon
-        qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
-        qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        qs%estimators%tot_nstates = nint(rep_loop_sum(nocc_states_ind))
+        qs%estimators%tot_nspawn_events = nint(rep_loop_sum(nspawned_ind))
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
         dmqmc_estimates%trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
         dmqmc_estimates%numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))

@@ -343,7 +343,7 @@ contains
         end if
         if (present(bloom_stats)) then
             bloom_stats%tot_bloom_curr = rep_loop_sum(bloom_tot_ind)
-            bloom_stats%nblooms_curr = rep_loop_sum(bloom_num_ind)
+            bloom_stats%nblooms_curr = nint(rep_loop_sum(bloom_num_ind))
             ! Also add to running totals.
             bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr 
             bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
@@ -352,8 +352,8 @@ contains
         qs%estimators%proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
         qs%estimators%proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
         qs%estimators%D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
-        qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
-        qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        qs%estimators%tot_nstates = nint(rep_loop_sum(nocc_states_ind))
+        qs%estimators%tot_nspawn_events = nint(rep_loop_sum(nspawned_ind))
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if

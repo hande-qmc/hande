@@ -1308,7 +1308,7 @@ contains
             call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
             call h5dclose_f(dset_id, ierr)
             ! Number of determinants is the last index...
-            ndeterm = dims(2)
+            ndeterm = int(dims(2))
 
             allocate(determ%dets(sys%basis%tensor_label_len, ndeterm), stat=ierr)
             call check_allocate('determ%dets', ndeterm*sys%basis%tensor_label_len, ierr)

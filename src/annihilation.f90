@@ -500,14 +500,15 @@ contains
         type(semi_stoch_t), intent(in), optional :: determ
 
         integer :: i, ind
-        integer(int_p) :: nspawn, old_pop(psip_list%nspaces)
-        real(p) :: scaled_amp, spawn_sign
+        integer(int_p) :: nspawn, spawn_sign, old_pop(psip_list%nspaces)
+        real(p) :: scaled_amp
 
         do i = 1, size(determ%vector)
             ind = determ%indices(i)
 
             scaled_amp = determ%vector(i)*psip_list%pop_real_factor
-            spawn_sign = sign(1.0_p, scaled_amp)
+            spawn_sign = 1
+            if (scaled_amp < 0.0_p) spawn_sign = -1
             ! Stochastically round the scaled amplitude to the nearest integer
             ! in order to encode it.
             scaled_amp = abs(scaled_amp)

@@ -530,7 +530,7 @@ module restart_hdf5
                 ! qs%psip_list%states has rank 2, so need not look that up!
                 call dset_shape(subgroup_id, ddets, dims)
                 ! Number of determinants is the last index...
-                qs%psip_list%nstates = dims(size(dims))
+                qs%psip_list%nstates = int(dims(size(dims)))
 
                 if (i0_length == i0_length_restart) then
                     call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
@@ -884,15 +884,15 @@ module restart_hdf5
 
                     call dset_shape(orig_subgroup_id, ddets, dims)
                     if (i0_length == i0_length_restart) then
-                        tensor_label_len = dims(1)
+                        tensor_label_len = int(dims(1))
                     else
                         tensor_label_len = string_len
                     end if
-                    max_nstates = dims(2)
+                    max_nstates = int(dims(2))
                     call dset_shape(orig_subgroup_id, dpops, dims)
-                    psip_read%nspaces = dims(1)
+                    psip_read%nspaces = int(dims(1))
                     call dset_shape(orig_subgroup_id, ddata, dims)
-                    psip_read%info_size = dims(1) - psip_read%nspaces
+                    psip_read%info_size = int(dims(1)) - psip_read%nspaces
 
                     psip_new%nspaces = psip_read%nspaces
                     psip_new%info_size = psip_read%info_size
@@ -930,7 +930,7 @@ module restart_hdf5
 
                     ! Distribute.
                     ! [todo] - non-blocking information.
-                    ndets = dims(2)
+                    ndets = int(dims(2))
                     do iproc_min = iproc_target_start, iproc_target_end, nmax_files
                         nmoved = 0
                         iproc_max = min(iproc_min+nmax_files-1,iproc_target_end)

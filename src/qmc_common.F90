@@ -99,7 +99,7 @@ contains
         if (out_data(1) /= 0) then
             real_pop = out_data(1)
             updated = .true.
-            D0_proc = out_data(2)
+            D0_proc = nint(out_data(2))
             qs%ref%f0 = fmax
             qs%ref%H00 = H00_max
             ! Broadcast updated data
