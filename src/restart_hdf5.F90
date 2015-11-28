@@ -204,7 +204,7 @@ module restart_hdf5
             integer, intent(out), optional :: fname_id
 
             character(14) :: proc_suf
-            integer :: id, ierr, ip_loc
+            integer :: id, ip_loc
             logical :: exists, verbose_loc
 
             verbose_loc = parent
@@ -295,10 +295,7 @@ module restart_hdf5
             integer :: date_time(8)
             character(19) :: date_str
             integer :: ierr
-            type(c_ptr) :: ptr
-            ! Shape of data (sub-)array to be written out.
-            integer(HSIZE_T) :: dshape2(2)
-            !Used for array sizes
+            ! Used for array sizes
             integer :: ishape(2)
             ! Temporary variables so for copying data to which we can also call c_ptr on.
             ! This allows us to use the same array functions for writing out (the small
@@ -454,18 +451,17 @@ module restart_hdf5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
-            integer(hid_t) :: file_id, group_id, subgroup_id, dset_id, dspace_id
+            integer(hid_t) :: file_id, group_id, subgroup_id
 
             character(255) :: restart_file
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
             integer :: i0_length_restart
-            type(c_ptr) :: ptr
             integer :: ierr
             real(p), target :: tmp(1)
             logical :: exists, resort
             integer(int_64) :: restart_scale_factor(1)
 
-            integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states))), maxdims(size(shape(qs%psip_list%states)))
+            integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states)))
 
 
             ! Initialise HDF5 and open file.
@@ -679,7 +675,7 @@ module restart_hdf5
             character(255) :: tmp_name
             character(255), allocatable :: orig_names(:), new_names(:)
             type(hdf5_kinds_t) :: kinds
-            integer :: nprocs_read, ierr, i, iproc_min, icurr, iproc_max, idet, ndets, ip, nmoved, calc_type_restart
+            integer :: nprocs_read, ierr, i, iproc_min, iproc_max, idet, ndets, ip, nmoved, calc_type_restart
             integer(hsize_t) :: dims(2)
 
             integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
@@ -1035,7 +1031,6 @@ module restart_hdf5
 
                     integer(hid_t) :: file_id, group_id, subgroup_id
                     integer :: ierr
-                    integer(hsize_t) :: dims(2)
                     logical :: exists
 
                     call h5fopen_f(fname, H5F_ACC_RDWR_F, file_id, ierr)

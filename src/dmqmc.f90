@@ -80,7 +80,6 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(dmqmc_weighted_sampling_t) :: weighted_sampling
         type(restart_info_t) :: ri
-        integer :: ms, occ_list(sys%nel)
         type(sys_t) :: sys_copy
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc

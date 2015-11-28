@@ -63,11 +63,14 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         real(p) :: nparticles_temp(psip_list%nspaces)
-        integer :: nel, ireplica, ierr, ialpha, ms
+        integer :: nel, ireplica, ialpha, ms
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
         real(dp) :: r, prob
         type(sys_t) :: sys_copy
+#ifdef PARALLEL
+        integer :: ierr
+#endif
 
         npsips_this_proc = target_nparticles_tot/nprocs
         ! If the initial number of psips does not split evenly between all
@@ -411,9 +414,9 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer :: occ_list(sys%nel), naccept
-        integer :: idet, iattempt, nsuccess, ms
+        integer :: idet, iattempt, nsuccess
         integer :: thread_id = 0, proc
-        integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
+        integer(i0) :: f_new(sys%basis%string_len)
         real(p), target :: tmp_data(1)
         real(p) :: pgen, hmatel, E_new, E_old, prob
         real(dp) :: r
@@ -508,7 +511,6 @@ contains
         type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
 
-        real(dp) :: species, pflip
         integer :: ielec, iexcit, new_orb
 
         ! Pick electron at random.
@@ -547,8 +549,7 @@ contains
         type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
 
-        real(dp) :: species, pflip
-        integer :: orb, ielec, iexcit, new_orb, unocc_list(sys%nvirt)
+        integer :: orb, ielec, iexcit
 
         ielec = int(get_rand_close_open(rng)*sys%nel) + 1
         orb = cdet%occ_list(ielec)
@@ -608,12 +609,10 @@ contains
         type(dSFMT_t), intent(inout) :: rng
 
         real(dp) :: p_single(sys%basis%nbasis/2)
-        real(dp) :: r
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%string_len)
         integer :: ireplica, iorb, ipsip
         integer(int_p) :: nspawn
-        logical :: gen
         integer :: nalpha_allowed, nbeta_allowed, ngen
 
         ireplica = 1
@@ -715,7 +714,7 @@ contains
                 type(dSFMT_t), intent(inout) :: rng
 
                 integer(int_p) :: nspawn
-                real(p) :: energy_diff, weight, r
+                real(p) :: energy_diff, weight
 
                 ! Any diagonal density matrix can be sampled from the
                 ! non-interacting expression by reweighting, i.e.

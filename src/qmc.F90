@@ -72,15 +72,17 @@ contains
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         integer :: ierr
-        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
-        integer :: step, size_spawned_walker, max_nstates, max_nspawned_states
+        integer :: i, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
+        integer :: size_spawned_walker, max_nspawned_states
         integer :: nhash_bits
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(sys%basis%string_len)
-        integer(int_64) :: tmp_int_64
         real(p) :: spawn_cutoff
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(restart_info_t) :: ri
+#ifdef PARALLEL
+        integer(int_64) :: tmp_int_64
+#endif
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
 

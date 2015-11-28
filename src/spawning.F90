@@ -516,7 +516,7 @@ contains
         integer, intent(in) :: nslots
         integer, intent(out) :: particle_proc, slot_pos
 
-        integer :: hash, i, tmp1, tmp2
+        integer :: hash
         integer(i0) :: offset, mod_label(size(particle_label))
 
         ! (Extra credit for parallel calculations)

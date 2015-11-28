@@ -391,7 +391,7 @@ contains
         integer :: idet, iparticle, nattempts_current_det
         integer(int_p) :: nspawned
         integer(int_p) :: int_pop(spawn_recv%ntypes)
-        real(p) :: real_pop, weighted_pop
+        real(p) :: real_pop
         real(p) :: list_pop
         integer(i0), target :: ftmp(sys%basis%tensor_label_len)
 

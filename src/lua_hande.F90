@@ -79,9 +79,12 @@ contains
         character(1024**2) :: buffer
 #endif
         integer :: lua_err
-        integer :: buf_len, ierr
+        integer :: buf_len
         type(flu_State) :: lua_state
         logical :: t_exists
+#ifdef PARALLEL
+        integer :: ierr
+#endif
 
         if (command_argument_count() > 0) then
 

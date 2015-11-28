@@ -10,9 +10,6 @@ program hande
     real :: start_cpu_time
     integer :: start_wall_time
 
-    type(sys_t) :: sys
-    type(reference_t) :: reference
-
     call init_hande(start_cpu_time, start_wall_time)
 
     call run_lua_hande()

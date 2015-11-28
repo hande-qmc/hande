@@ -55,7 +55,7 @@ contains
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: ierr, i, j, a, ind, N_kx, k_min(sys%lattice%ndim), bit_pos, bit_el, k(3)
+        integer :: ierr, i, a, N_kx, k_min(sys%lattice%ndim), bit_pos, bit_el, k(3)
         integer :: k1, k2, k3, ktest(sys%lattice%ndim), kija(sys%lattice%ndim)
 
         sys%ueg%basis%kmax = ceiling(sqrt(2*sys%ueg%ecutoff))

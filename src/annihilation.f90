@@ -396,7 +396,7 @@ contains
         integer, intent(in) :: tensor_label_len
         integer, intent(in), optional :: lower_bound
 
-        integer :: i, ipart, pos, k, istart, iend, nannihilate, spawn_start
+        integer :: i, ipart, pos, istart, iend, nannihilate, spawn_start
         integer(int_p) :: old_pop(psip_list%nspaces)
         integer(i0) :: f(tensor_label_len)
         logical :: hit, discard
@@ -557,9 +557,8 @@ contains
         logical, intent(in) :: real_amplitudes
         integer, intent(inout), optional :: determ_flags(:)
 
-        integer :: nzero, i, k, itype
+        integer :: nzero, i, k
         integer(int_p) :: old_pop(psip_list%nspaces)
-        real(dp) :: r
         logical :: determ_det
 
         nzero = 0
@@ -626,9 +625,8 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, optional, intent(in) :: lower_bound
 
-        integer :: i, k, itype, nremoved, spawn_start
+        integer :: i, k, nremoved, spawn_start
         integer(int_s) :: real_factor_s
-        real(dp) :: r
         integer, parameter :: thread_id = 0
 
         if (present(lower_bound)) then
@@ -709,13 +707,11 @@ contains
         integer, intent(in), optional :: lower_bound
 
         integer :: i, istart, iend, j, k, pos, spawn_start, disp
-        integer(int_p) :: spawned_population(psip_list%nspaces)
         real(p) :: real_population(psip_list%nspaces)
 
         logical :: hit
         integer, parameter :: thread_id = 0
         real :: fill_fraction
-        character(60) :: err
 
         ! Merge new walkers into the main list.
 

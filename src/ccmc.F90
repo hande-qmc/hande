@@ -351,7 +351,7 @@ contains
 
         logical :: update_tau, error
 
-        integer :: nspawnings_left, nspawnings_total
+        integer :: nspawnings_total
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
@@ -596,7 +596,7 @@ contains
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
                 !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
-                !$omp         nspawnings_left, nspawnings_total, fexcit, i,     &
+                !$omp         nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, &
@@ -977,7 +977,7 @@ contains
         type(cluster_t), intent(inout) :: cluster
 
         real(p) :: rand, psize, cluster_population, excitor_pop
-        integer :: i, pos, prev_pos, excitor_sgn
+        integer :: i, pos, prev_pos
         integer(int_p) :: pop(max_size)
         logical :: hit, allowed, all_allowed
 

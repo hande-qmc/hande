@@ -45,12 +45,12 @@ contains
         type(qmc_state_t), intent(inout) :: qs
 
         integer, parameter :: particle_type = 1
-        integer :: i, D0_proc
+        integer :: i
         integer(i0), allocatable :: fmax(:)
         integer(int_p) :: max_pop
 #ifdef PARALLEL
         real(dp) :: in_data(2), out_data(2)
-        integer :: ierr
+        integer :: D0_proc, ierr
 #endif
         real(p) :: H00_max, H00_old
         real(dp) :: real_pop
@@ -338,7 +338,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: population
-        real(dp) :: r, pextra
+        real(dp) :: pextra
         integer :: nattempts
 
         nattempts = abs(int(population))
@@ -615,7 +615,7 @@ contains
         logical, optional, intent(in) :: nb_comm
         integer, optional, intent(in) :: spawn_elsewhere
 
-        integer :: idet, ispace
+        integer :: idet
         real(p) :: ntot_particles(qs%psip_list%nspaces)
         real(p) :: real_population(qs%psip_list%nspaces), weighted_population
         type(det_info_t) :: cdet
@@ -889,7 +889,6 @@ contains
         logical, optional, intent(in) :: doing_lb, nb_comm
         logical, optional, intent(inout) :: error
 
-        real :: curr_time
         logical :: update, vary_shift_before, nb_comm_local, comms_found
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
@@ -1023,9 +1022,6 @@ contains
 
         real(p), intent(inout) :: tau
         real(p), intent(in), optional :: factor
-
-        integer :: ierr
-        logical :: update_tau_global
 
         if (present(factor)) then
             tau = factor*tau

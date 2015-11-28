@@ -128,8 +128,8 @@ contains
 
         type(nb_rep_t), intent(inout) :: rep_comm
 
-        integer :: i, ierr
 #ifdef PARALLEL
+        integer :: i, ierr
         do i = 0, nprocs-1
            call MPI_ISend(rep_comm%rep_info, size(rep_comm%rep_info), MPI_REAL8, &
                           i, 789, MPI_COMM_WORLD, rep_comm%request(i), ierr)
@@ -185,8 +185,8 @@ contains
 
         real(dp) :: rep_info_sum(nprocs*ntypes+nparticles_start_ind-1)
         real(dp) :: rep_loop_reduce(nprocs*(nprocs*ntypes+nparticles_start_ind-1))
-        integer :: rep_request_r(0:nprocs-1)
 #ifdef PARALLEL
+        integer :: rep_request_r(0:nprocs-1)
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
         integer :: i, j, data_size

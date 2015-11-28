@@ -71,7 +71,6 @@ contains
 
         logical :: allowed_excitation
         integer :: ij_k(sys%lattice%ndim), ij_spin, max_na
-        real(dp) :: r
 
         ! 1. Must have a double excitation.
         connection%nexcit = 2
@@ -234,7 +233,7 @@ contains
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
-        integer :: fac, shift, ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
+        integer :: ibp, ibe, n, ind, kb(sys%lattice%ndim), k3(3)
         integer(i0) :: poss_a(sys%basis%string_len)
 
         ! Let's just check there are possible a,b first!

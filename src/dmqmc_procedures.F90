@@ -205,8 +205,7 @@ contains
         integer, intent(in), optional :: nreplicas
         integer(int_p), intent(in), optional :: real_factor
 
-        integer :: i, ierr, ipos, nrdms
-        integer :: basis_find, bit_position, bit_element
+        integer :: i, ierr, nrdms
         integer :: size_spawned_rdm, total_size_spawned_rdm
         integer :: nbytes_int, spawn_length_loc
         logical :: calc_ground_rdm
@@ -466,7 +465,6 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(tensor_label_len)
-        integer :: nslots2
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -531,7 +529,6 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(tensor_label_len)
-        integer :: nslots2
         integer :: flag
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
@@ -642,7 +639,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
-        integer :: idet, ireplica, excit_level, nspawn, sign_factor
+        integer :: idet, ireplica, excit_level
         real(p) :: new_population_target(psip_list%nspaces)
         integer(int_p) :: old_population(psip_list%nspaces), new_population(psip_list%nspaces)
         real(dp) :: r, pextra
@@ -729,8 +726,9 @@ contains
         real(p), intent(inout) :: excit_dist(0:)
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
-        integer :: i, ierr
+        integer :: i
 #ifdef PARALLEL
+        integer :: ierr
         real(p) :: merged_excit_dist(0:max_number_excitations)
         call mpi_allreduce(excit_dist, merged_excit_dist, max_number_excitations+1, &
             MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)

@@ -192,7 +192,7 @@ contains
         integer, intent(in) :: nslots
         type(parallel_t), intent(inout) :: par_calc
 
-        integer :: i, ierr
+        integer :: ierr
 
         associate(nb=>par_calc%report_comm)
             if (non_blocking_comm) then

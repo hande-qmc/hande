@@ -70,7 +70,6 @@ contains
         real(p) :: occ
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
-        logical :: non_zero
         type(excit_t) :: excitation
 
         excitation = get_excitation(sys%nel, sys%basis, f1,f2)
@@ -211,7 +210,6 @@ contains
         real(p) :: occ
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
-        logical :: non_zero
         type(excit_t) :: excitation
 
         excitation = get_excitation(sys%nel, sys%basis, f1,f2)

@@ -1014,8 +1014,7 @@ contains
         integer, intent(in) :: beta_cycle
         type(dmqmc_rdm_in_t), intent(in) :: rdm_in
 
-        real(p), allocatable :: old_rdm_elements(:)
-        integer :: i, j, k, ierr, new_unit
+        integer :: i, j, new_unit
         character(10) :: rdm_filename
         ! If in parallel then merge the reduced density matrix onto one
         ! processor.
@@ -1023,7 +1022,7 @@ contains
 
         real(dp), allocatable :: dm(:,:)
         real(dp), allocatable :: dm_sum(:,:)
-        integer :: num_eigv
+        integer :: num_eigv, ierr
 
         num_eigv = 2**dmqmc_estimates%subsys_info(1)%A_nsites
 

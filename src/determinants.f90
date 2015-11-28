@@ -62,9 +62,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ex_level
 
-        integer :: i, j, k, bit_pos, bit_element, ierr, site_index
-        character(4) :: fmt1
-        integer(int_64) :: tot_ndets
+        integer :: i, bit_pos, bit_element, ierr
 
         if (all(ras > 0)) then
             allocate(ras1(sys%basis%string_len), stat=ierr)

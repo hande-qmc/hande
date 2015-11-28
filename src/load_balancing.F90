@@ -256,7 +256,6 @@ contains
         real(p), intent(in) :: percent_imbal
         logical, intent(out) :: load_tag
 
-        integer :: i
         real(dp) :: upper_threshold
 
         upper_threshold = average_pop + average_pop*percent_imbal
@@ -450,7 +449,7 @@ contains
         integer, intent(out) :: donor_slots
         integer, allocatable, intent(out) :: rec_dummy(:), don_dummy(:)
 
-        integer ::  i, j, upper, lower
+        integer ::  i, j
         integer :: ierr, nrecv, ndonor
         integer, allocatable ::  tmp_rec(:), tmp_don(:), rec_sort(:)
         integer :: rank_nparticles(nprocs)

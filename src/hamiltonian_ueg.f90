@@ -84,8 +84,6 @@ contains
         integer(i0), intent(in) :: f(sys%basis%string_len)
         integer :: occ_list(sys%nel)
 
-        integer :: i, j
-
         call decode_det(sys%basis, f, occ_list)
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
@@ -116,8 +114,6 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
         integer :: occ_list(sys%nel)
-
-        integer :: i
 
         call decode_det(sys%basis, f, occ_list)
 

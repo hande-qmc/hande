@@ -82,11 +82,9 @@ contains
         integer, intent(in) :: rng_seed
 
         real(dp) :: p_single(sys%basis%nbasis/2)
-        real(dp) :: r
         integer :: occ_list(sys%nel)
-        logical :: gen
-        real(p) :: energy(hf_part_idx), beta_loc, hfx
-        integer :: ierr, ireport, iorb
+        real(p) :: energy(hf_part_idx), beta_loc
+        integer :: ireport, iorb
         integer(int_64) :: iaccept
         real(p) :: local_estimators(last_idx-1), estimators(last_idx-1)
 
@@ -97,6 +95,9 @@ contains
         real(p) :: ref_shift
         integer, allocatable :: occ_list0(:)
         type(json_out_t) :: js
+#ifdef PARALLEL
+        integer :: ierr
+#endif
 
         if (parent) write (6,'(1X,a16,/,1X,16("-"),/)') 'Canonical energy'
 

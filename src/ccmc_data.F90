@@ -66,7 +66,6 @@ contains
 
         type(multispawn_stats_t) :: ms_stats
         type(multispawn_stats_t), intent(in) :: ms_stats_arr(:)
-        integer :: i
 
         ms_stats%nevents = sum(ms_stats_arr%nevents)
         ms_stats%nspawnings = sum(ms_stats_arr%nspawnings)

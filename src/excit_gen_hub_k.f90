@@ -659,7 +659,7 @@ contains
         integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: unocc_alpha(:)
 
-        integer :: forbidden_excitations, a, b, a_pos, a_el, b_pos, b_el, ka, kb
+        integer :: forbidden_excitations, a, b, b_pos, b_el, ka
 
         forbidden_excitations = 0
 
