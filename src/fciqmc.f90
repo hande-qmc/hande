@@ -385,7 +385,6 @@ contains
         integer(int_p), intent(inout) :: ndeath
         integer, intent(in) :: nload_slots
 
-        real(p), target :: tmp_data(1)
         type(excit_t) :: connection
         real(p) :: hmatel
         integer :: idet, iparticle, nattempts_current_det
@@ -393,18 +392,17 @@ contains
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop
         real(p) :: list_pop
-        integer(i0), target :: ftmp(sys%basis%tensor_label_len)
 
-        cdet%f => ftmp
+        allocate(cdet%f(sys%basis%tensor_label_len))
+        allocate(cdet%data(1))
 
         do idet = 1, spawn_recv%head(0,0) ! loop over walkers/dets
 
             int_pop = int(spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet), int_p)
             real_pop = real(int_pop(1),p) / qs%psip_list%pop_real_factor
-            ftmp = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
+            cdet%f = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
-            tmp_data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
-            cdet%data => tmp_data
+            cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
             call decoder_ptr(sys, cdet%f, cdet)
 
@@ -437,11 +435,13 @@ contains
 
             ! Clone or die.
             ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-            call stochastic_death(rng, qs, tmp_data(1), qs%shift(1), int_pop(1), list_pop, ndeath)
+            call stochastic_death(rng, qs, cdet%data(1), qs%shift(1), int_pop(1), list_pop, ndeath)
             ! Update population of walkers on current determinant.
             spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop
 
         end do
+
+        deallocate(cdet%f, cdet%data)
 
     end subroutine evolve_spawned_walkers
 
