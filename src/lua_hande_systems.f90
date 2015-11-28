@@ -471,7 +471,7 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+        character(15), parameter :: keys(10) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
                                                                 'sym', 'ms', 'CAS', 'chem_pot']
 
         lua_state = flu_copyptr(L)
