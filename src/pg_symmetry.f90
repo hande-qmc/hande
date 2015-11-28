@@ -187,6 +187,9 @@ contains
     subroutine end_pg_symmetry(sys)
 
         ! Deallocate arrays containing point group symmetry information.
+        
+        ! In/Out:
+        !    sys: system being studied.  On output the symmetry arrays are deallocated.
 
         use checking, only: check_deallocate
 
@@ -273,6 +276,7 @@ contains
     pure function cross_product_pg_basis(pg_sym, i, j, basis_fns) result(sym_ij)
 
         ! In:
+        !    pg_sym: information on the symmetries of the basis functions.
         !    i,j: (indices of) spin-orbitals.
         ! Returns:
         !    The bit string representation of the irreducible representation
@@ -295,6 +299,7 @@ contains
     elemental function cross_product_pg_sym(pg_sym, sym_i, sym_j) result(sym_ij)
 
         ! In:
+        !    pg_sym: information on the symmetries of the basis functions.
         !    sym_i,sym_j: bit string representations of irreducible
         !    representations of a point group and Lz symmetry
         ! Returns:
@@ -320,6 +325,7 @@ contains
     elemental function pg_sym_conj(pg_sym, sym) result(rsym)
 
         ! In:
+        !    pg_sym: information on the symmetries of the basis functions.
         !   sym: the bit representation of the irrep of the pg sym including
         !        Lz in its higher bits 
         ! Returns:
@@ -342,6 +348,7 @@ contains
     elemental function pg_sym_getLz(pg_sym, sym) result(Lz)
 
         ! In:
+        !    pg_sym: information on the symmetries of the basis functions.
         !    sym: bit string representation of an irreducible representation of
         !    a point group.
         ! Returns:
@@ -378,6 +385,7 @@ contains
     elemental function is_gamma_irrep_pg_sym(pg_sym, sym) result(is_gamma)
 
         ! In:
+        !    pg_sym: information on the symmetries of the basis functions.
         !    sym: bit string representation of an irreducible representation of
         !    a point group.
         ! Returns:
@@ -397,6 +405,7 @@ contains
     pure function symmetry_orb_list_mol(pg_sym, basis, orb_list) result(isym)
 
         ! In:
+        !    pg_sym: information on the symmetries of the basis functions.
         !    basis: info about the single particle basis set.
         !    orb_list: list of orbitals (e.g. determinant).
         ! Returns:

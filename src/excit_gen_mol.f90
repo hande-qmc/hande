@@ -589,6 +589,7 @@ contains
         !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
         !        and j are down, +2 if both are up and 0 otherwise.
         !    basis: set of one-particle basis functions and related information.
+        !    pg_sym: information on the symmetries of the basis functions.
         ! In/Out:
         !    rng: random number generator.
         ! Out:

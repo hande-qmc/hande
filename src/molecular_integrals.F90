@@ -255,6 +255,7 @@ contains
         !    intgrl: <i|o_1|j>, where o_1 is a one-body operator.
         !    suppress_err_msg: if true, don't print out any error messages.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         ! In/out:
         !    store: one-body integral store.  On exit the <i|o_1|j> is also
         !       stored.
@@ -328,6 +329,7 @@ contains
         !    store: one-body integral store.
         !    i,j: (indices of) spin-orbitals.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         ! Returns:
         !    <i|o|j>, the corresponding one-body matrix element, where o is a
         !    one-body operator given by store.
@@ -531,6 +533,7 @@ contains
         !    intgrl: <ij|o_2|ab>, where o_2 is a two-electron operator.  Note
         !       the integral is expressed in *PHYSICIST'S NOTATION*.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         !    suppress_err_msg: if true, don't print out any error messages.
         ! In/out:
         !    store: two-body integral store.  On exit the <ij|o_2|ab> is also
@@ -588,6 +591,7 @@ contains
         !    store: two-body integral store.
         !    i,j,a,b: (indices of) spin-orbitals.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         ! Returns:
         !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
         !    the (j,b) co-density involving a two-body operator o_2 given by

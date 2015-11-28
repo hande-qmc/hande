@@ -762,6 +762,7 @@ contains
         !    integral_file: file containing integrals.
         !    nbasis: number of (spin) basis functions.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         !    uhf: true if integrals generated from a unrestricted (UHF)
         !         calculation.
         !    sp_fcidump_rank: ranking array which converts index in the
