@@ -137,7 +137,7 @@ contains
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
 
-        use const, only: p, dp
+        use const, only: p
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys

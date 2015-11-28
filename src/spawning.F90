@@ -1174,7 +1174,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1242,7 +1242,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1313,7 +1313,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1388,7 +1388,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1470,7 +1470,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1551,7 +1551,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 

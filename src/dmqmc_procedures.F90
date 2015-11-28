@@ -19,8 +19,7 @@ contains
         !    weighted_sampling: type containing information for weighted
         !        sampling.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared
-        use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
+        use calc, only: doing_dmqmc_calc, dmqmc_correlation
         use checking, only: check_allocate
         use system, only: sys_t
 

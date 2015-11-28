@@ -57,7 +57,7 @@ contains
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            reference_t, neel_singlet, no_guiding, single_basis
+                            reference_t, neel_singlet, single_basis
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys

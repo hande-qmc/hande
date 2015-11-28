@@ -193,7 +193,7 @@ contains
 
         use system, only: sys_t, heisenberg
         use dmqmc_data, only: dmqmc_in_t
-        use calc, only: dmqmc_energy, dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
+        use calc, only: dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
 
         use errors, only: stop_all

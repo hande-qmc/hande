@@ -48,7 +48,6 @@ contains
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
 
-        integer, parameter :: thread_id = 0
         logical :: doing_semi_stoch
 
         doing_semi_stoch = .false.
@@ -121,8 +120,6 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn_recv
-
-        integer, parameter :: thread_id = 0
 
         ! Perform annihilation inside received list. This involves annihilating
         ! walkers which were spawned onto this processor from other processors

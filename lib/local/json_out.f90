@@ -256,8 +256,6 @@ contains
 
         ! Write out a key/pair for a character string.
 
-        use const, only: dp
-
         type(json_out_t), intent(in) :: js
         character(*), intent(in) :: key
         character(*), intent(in) :: val
@@ -271,8 +269,6 @@ contains
     subroutine write_bool(js, key, val, terminal)
 
         ! Write out a key/pair for a logical.
-
-        use const, only: dp
 
         type(json_out_t), intent(in) :: js
         character(*), intent(in) :: key

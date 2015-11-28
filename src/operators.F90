@@ -132,7 +132,7 @@ contains
         use hubbard_k, only: get_two_e_int_hub_k
         use system, only: sys_t
 
-        use const, only: p, i0
+        use const, only: p
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys

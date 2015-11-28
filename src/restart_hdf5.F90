@@ -645,7 +645,6 @@ module restart_hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_write, dset_shape, dtype_equal, hdf5_path
             use checking
             use errors, only: warning, stop_all
-            use const, only: i0, int_p, p, int_64
             use parallel
 
             use calc, only: ccmc_calc, init_proc_map_t

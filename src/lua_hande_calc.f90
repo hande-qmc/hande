@@ -622,7 +622,6 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use aot_vector_module, only: aot_get_val
 
-        use const, only: p
         use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args, get_rng_seed

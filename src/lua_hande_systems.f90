@@ -374,7 +374,7 @@ contains
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
         use lua_hande_utils, only: warn_unused_args
-        use system, only: sys_t, hub_real, chung_landau, init_system
+        use system, only: sys_t, chung_landau, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
         use check_input, only: check_sys
