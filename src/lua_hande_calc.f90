@@ -225,7 +225,7 @@ contains
         use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
         use system, only: set_spin_polarisation
 
-        integer :: nresult
+        integer(c_int) :: nresult
         type(c_ptr), value :: L
 
         type(flu_state) :: lua_state
@@ -293,7 +293,7 @@ contains
         use calc, only: calc_type, fciqmc_calc
         use system, only: set_spin_polarisation
 
-        integer :: nresult
+        integer(c_int)  :: nresult
         type(c_ptr), value :: L
 
         type(flu_state) :: lua_state
@@ -366,7 +366,7 @@ contains
         use calc, only: calc_type, ccmc_calc
         use system, only: set_spin_polarisation
 
-        integer :: nresult
+        integer(c_int) :: nresult
         type(c_ptr), value :: L
 
         type(flu_state) :: lua_state
