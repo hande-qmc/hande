@@ -53,7 +53,6 @@ contains
         use spawning, only: assign_particle_processor
         use system
         use symmetry, only: symmetry_orb_list
-        use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t
 

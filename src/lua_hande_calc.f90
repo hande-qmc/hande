@@ -747,7 +747,6 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
-        use calc, only: GLOBAL_META, gen_seed
         use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent

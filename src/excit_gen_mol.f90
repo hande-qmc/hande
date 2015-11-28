@@ -777,7 +777,7 @@ contains
         ! events.
 
         use system, only: sys_t
-        use point_group_symmetry, only: nbasis_sym_spin, cross_product_pg_sym, pg_sym_conj
+        use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys

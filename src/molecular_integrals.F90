@@ -127,8 +127,6 @@ contains
         !    store: two-body integral store with components allocated to hold
         !    interals.  Note that the integral store is *not* zeroed.
 
-        use point_group_symmetry, only: nbasis_sym_spin
-
         use checking, only: check_allocate
 
         logical, intent(in) :: uhf

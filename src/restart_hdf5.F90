@@ -266,11 +266,13 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_write
+#else
+            use parallel, only: parent
 #endif
             use const
             use, intrinsic :: iso_c_binding
             use errors, only: stop_all
-            use parallel, only: nprocs, iproc, parent, nthreads
+            use parallel, only: nprocs
             use utils, only: get_unique_filename, int_fmt
 
             use calc, only: calc_type, GLOBAL_META

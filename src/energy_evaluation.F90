@@ -237,7 +237,7 @@ contains
 
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
-        use parallel, only: nprocs, iproc
+        use parallel, only: iproc
         use qmc_data, only: qmc_state_t
 
         type(qmc_state_t), intent(in) :: qs

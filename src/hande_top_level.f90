@@ -17,7 +17,7 @@ contains
 
         use report, only: environment_report, comm_global_uuid, VCS_VERSION, GLOBAL_UUID
         use calc, only: init_calc_defaults
-        use parallel, only: init_parallel, parallel_report, iproc, nprocs, nthreads, parent
+        use parallel, only: init_parallel, parallel_report, nprocs, nthreads, parent
 
         real, intent(out) :: start_cpu_time
         integer, intent(out) :: start_wall_time

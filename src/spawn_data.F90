@@ -458,7 +458,7 @@ contains
         !        of the received list, but don't compress as it already has
         !        been.
 
-        use parallel, only: nthreads, iproc
+        use parallel, only: nthreads
         use sort, only: qsort
 
         type(spawn_t), intent(inout) :: spawn

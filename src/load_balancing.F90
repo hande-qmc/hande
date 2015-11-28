@@ -342,8 +342,6 @@ contains
         !       proc_map(modulo(hash(d),load_balancing_slots*nprocs)) = processor.
         !   procs_pop: array containing populations on each processor.
 
-        use parallel, only: nprocs
-
         type(dbin_t) :: donor_bins
         integer, intent(in) :: donors(:), receivers(:)
         real(p), intent(in) :: up_thresh, low_thresh
@@ -520,7 +518,7 @@ contains
         ! In/Out:
         !   slot_pop: array containing population of slots in proc_map. Processor dependendent.
 
-        use parallel, only: nprocs, iproc
+        use parallel, only: nprocs
         use qmc_data, only: particle_t
         use spawning, only: assign_particle_processor
         use spawn_data, only: spawn_t

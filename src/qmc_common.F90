@@ -867,7 +867,7 @@ contains
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
         use interact, only: calc_interact, check_interact, check_comms_file
-        use parallel, only: parent, nprocs
+        use parallel, only: nprocs
         use system, only: sys_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t

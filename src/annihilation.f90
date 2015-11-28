@@ -33,7 +33,7 @@ contains
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
 
-        use parallel, only: nthreads, nprocs, iproc
+        use parallel, only: iproc
         use spawn_data, only: spawn_t, annihilate_wrapper_spawn_t, calc_events_spawn_t, memcheck_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -110,7 +110,6 @@ contains
         !    spawn_recv: spawn_t object containing spawned particles received
         !        from other processors.
 
-        use parallel, only: nthreads, nprocs, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -167,7 +166,7 @@ contains
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
 
-        use parallel, only: nthreads, nprocs, iproc
+        use parallel, only: nthreads, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
                               non_blocking_send, memcheck_spawn_t
         use sort, only: qsort

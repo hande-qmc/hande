@@ -209,7 +209,6 @@ contains
         use basis_types, only: init_basis_strings, print_basis_metadata
         use determinants, only: init_determinants
         use excitations, only: init_excitations
-        use parallel, only: parent
 
         use system, only: sys_t, heisenberg
 

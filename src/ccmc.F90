@@ -1435,7 +1435,6 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
-        use parallel, only: iproc
         use const, only: depsilon
         use qmc_data, only: qmc_in_t, qmc_state_t
 
@@ -2200,7 +2199,6 @@ contains
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
-        use parallel, only: iproc
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
         use qmc_data, only: qmc_in_t, qmc_state_t

@@ -23,7 +23,6 @@ contains
         use bit_utils
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
-        use parallel, only: parent
 
         type(sys_t), intent(inout) :: sys
         integer :: i, j, k, ierr, pos, ind, ivec, v, isystem

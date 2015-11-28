@@ -45,7 +45,7 @@ contains
         !       is true, otherwise hamil is used.
 
         use csr, only: csrp_t
-        use parallel, only: nprocs, parent
+        use parallel, only: nprocs
         use checking, only: check_allocate
         use utils, only: int_fmt
 

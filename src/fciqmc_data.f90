@@ -28,8 +28,6 @@ contains
         !    nattempts: The number of attempts to spawn made in order to
         !       generate the current population of walkers in the spawned arrays.
 
-        use parallel, only: nprocs
-
         real(p) :: rate
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath, real_factor

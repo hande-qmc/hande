@@ -589,8 +589,6 @@ contains
         !    particle_proc: processor where determinant resides
         !    slot_pos: position in proc_map for this determinant
 
-        use parallel, only: parent
-
         integer(i0), intent(in) :: particle_label(:)
         integer, intent(in) :: nbits, seed, shift, freq, np
         integer, intent(in) :: proc_map(0:)
@@ -797,7 +795,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -852,7 +850,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -907,7 +905,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -968,7 +966,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -1028,7 +1026,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
@@ -1091,7 +1089,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
@@ -1158,7 +1156,7 @@ contains
 
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use determinants, only: det_info_t
         use spawn_data, only: spawn_t
@@ -1226,7 +1224,7 @@ contains
         use basis_types, only: basis_t
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use determinants, only: det_info_t
         use spawn_data, only: spawn_t
@@ -1298,7 +1296,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
         use determinants, only: det_info_t
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
@@ -1373,7 +1371,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
         use determinants, only: det_info_t
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
@@ -1455,7 +1453,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use determinants, only: det_info_t
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
@@ -1536,7 +1534,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use determinants, only: det_info_t
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
