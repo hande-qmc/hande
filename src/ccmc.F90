@@ -2189,6 +2189,7 @@ contains
         !    fexcit: the bitstring of the determinant to spawn on to (as it is
         !        not necessarily easy to get from the connection)
 
+        use const, only: depsilon
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t

@@ -168,7 +168,7 @@ contains
                             end associate
 
                             occ_list = curr_occ_list
-                            if (eigv_sum == huge(0.0_p)) then
+                            if (.not. eigv_sum < huge(0.0_p)) then
                                 call stop_all('set_reference_det', &
                                     'Could not find determinant of required symmetry.')
                             end if

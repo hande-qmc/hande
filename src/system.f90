@@ -491,7 +491,7 @@ contains
                     ! to be calculated.
                     counter = 0
                     do i = 1,sl%ndim
-                        if ( sum(sl%lattice(:,i)) == sl%box_length(i) .and. &
+                        if ( abs(sum(sl%lattice(:,i)) - sl%box_length(i)) < depsilon.and. &
                              mod(ceiling(sl%box_length(i)), 2) == 0) counter = counter + 1
                     end do
                     if (counter == sl%ndim) sl%bipartite_lattice = .true.

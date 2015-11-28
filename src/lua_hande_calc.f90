@@ -175,7 +175,7 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
-        if (sys%chem_pot == huge(1.0_p) .and. parent) call stop_all('lua_canonical_energy', &
+        if (.not. sys%chem_pot < huge(1.0_p) .and. parent) call stop_all('lua_canonical_energy', &
                                                                         'chem_pot: chemical potential not supplied.')
 
         opts = aot_table_top(lua_state)

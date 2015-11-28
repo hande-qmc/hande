@@ -96,7 +96,7 @@ contains
 
         call mpi_allreduce(in_data, out_data, 1, mpi_2double_precision, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
-        if (out_data(1) /= 0) then
+        if (abs(out_data(1)) > depsilon) then
             real_pop = out_data(1)
             updated = .true.
             D0_proc = nint(out_data(2))
