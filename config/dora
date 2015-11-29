@@ -1,0 +1,21 @@
+# I used  PrgEnv-cray, with cce replaced by hdf5-cray/cce/833, and hdf5-cray/1813.
+[main]
+fc = ftn
+cc = cc
+cxx = CC
+ccd = gcc
+cppflags = -DHAVE_SSE2 -DDISABLE_LANCZOS -DDISABLE_UUID -DDISABLE_HDF5 -DPARALLEL -DDET_SIZE=64 -DPOP_SIZE=64 -I ../local/include
+ld = ftn
+ldflags = -L/usr/lib64
+libs = -ldl ../local/lib/liblua.a
+f90_module_flag = -J
+
+[opt]
+fflags =  -e fm -O3 -hnoomp
+cflags = -O3 -hgnu -hnoomp
+cxxflags = -O3 -dynamic
+
+[dbg]
+fflags = -e fm -g -hnoomp
+cflags = -g -hgnu -hnoomp
+cxxflags = -g -dynamic
