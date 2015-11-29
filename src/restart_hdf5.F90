@@ -806,8 +806,9 @@ module restart_hdf5
             ! Can just copy it from the first old restart file as it is the same on all files...
             do i = iproc_target_start, iproc_target_end
                 call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
-                ! /metadata and /rng
+                ! /metadata, /basis and /rng
                 call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
+                call h5ocopy_f(orig_id, gbasis, new_id, gbasis, ierr)
                 ! Update determinant integer kind if necessary.
                 if (i0_length /= i0_length_restart) then
                     call h5dopen_f(new_id, hdf5_path(gmetadata, di0_length), dset_id, ierr)
@@ -842,6 +843,7 @@ module restart_hdf5
                     end if
 
                     ! ...and create the /qmc/psips group and fill in the constant (new) processor map and total population.
+                    ! (scaling factor updated below)
                     call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
                     call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map), pm_dummy%map)
                     call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, hdf5_path(gpsips, dtot_pop), ierr)
@@ -960,7 +962,8 @@ module restart_hdf5
                                     pl_new%dat(:,istate_proc(ip)) = psip_read%dat(:,idet)
                                     if (istate_proc(ip) == nchunk) then
                                         ! Dump out what we've found so far for target processor ip.
-                                        call write_psip_info(new_names(ip), kinds, pl_new%states, pl_new%pops, pl_new%dat)
+                                        call write_psip_info(new_names(ip), kinds, pl_new%states, pl_new%pops, pl_new%dat, &
+                                            restart_scale_factor)
                                         istate_proc(ip) = 0
                                     end if
                                 end associate
@@ -970,7 +973,7 @@ module restart_hdf5
                         do ip = iproc_min, iproc_max
                             associate(pl_new=>psip_new(ip-iproc_min), istate=>istate_proc(ip))
                                 call write_psip_info(new_names(ip), kinds, pl_new%states(:,:istate), pl_new%pops(:,:istate), &
-                                                     pl_new%dat(:,:istate))
+                                                     pl_new%dat(:,:istate), restart_scale_factor)
                             end associate
                         end do
                         ndets = ndets - nmoved
@@ -1002,7 +1005,7 @@ module restart_hdf5
 
             contains
 
-                subroutine write_psip_info(fname, kinds, psip_dets, psip_pop, psip_data)
+                subroutine write_psip_info(fname, kinds, psip_dets, psip_pop, psip_data, pop_scaling_factor)
 
                     ! Write out particle information (state label, population, associated data) to a restart file.
 
@@ -1012,6 +1015,7 @@ module restart_hdf5
                     !    psip_dets: representation of determinants (or similar) labelling the set of occupied states.
                     !    psip_pop: population (in potentially several spaces) on each determinant/state.
                     !    psip_data: system/calculation-specific data associated with each state.
+                    !    restart_scale_factor: factor used to encode populations in fixed precision.
 
                     ! Note that the second dimension of the psip_* arrays is assumed to be identical and every element of the
                     ! arrays passed in is written out.
@@ -1026,15 +1030,19 @@ module restart_hdf5
                     integer(i0), intent(in) :: psip_dets(:,:)
                     integer(int_p), intent(in) :: psip_pop(:,:)
                     real(p), intent(in) :: psip_data(:,:)
+                    integer(int_64), intent(in) :: pop_scaling_factor(1)
 
                     integer(hid_t) :: file_id, group_id, subgroup_id
                     integer :: ierr
                     integer(hsize_t) :: dims(2)
+                    logical :: exists
 
                     call h5fopen_f(fname, H5F_ACC_RDWR_F, file_id, ierr)
                     call h5gopen_f(file_id, gqmc, group_id, ierr)
                     call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
+                    call h5lexists_f(subgroup_id, dscaling, exists, ierr)
+                    if (.not.exists) call hdf5_write(subgroup_id, dscaling, kinds, shape(pop_scaling_factor), pop_scaling_factor)
                     call hdf5_write(subgroup_id, ddets, kinds, shape(psip_dets), psip_dets, append=.true.)
                     call hdf5_write(subgroup_id, dpops, kinds, shape(psip_pop), psip_pop, append=.true.)
                     call hdf5_write(subgroup_id, ddata, kinds, shape(psip_data), psip_data, append=.true.)
