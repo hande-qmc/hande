@@ -885,10 +885,6 @@ module restart_hdf5
                     if (i0_length == i0_length_restart) then
                         tensor_label_len = dims(1)
                     else
-                        ! [review] - JSS: this is dangerous as tensor_label_len is not correctly set for DMQMC at this point.
-                        ! [review] - JSS: I guess compare dims(1) to the dimension of f0 in the original restart file?
-                        ! [reply] - RSTF: I thought (from an email in April, though it might have changed since) restarting was not supported for DMQMC?
-                        ! [reply] - RSTF: At any rate, there are no tests for it...
                         tensor_label_len = sys%basis%tensor_label_len
                     end if
                     max_nstates = dims(2)
