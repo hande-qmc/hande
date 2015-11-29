@@ -125,6 +125,8 @@ contains
         !   dset: dataset name.
         !   kinds: hdf5_kinds_t object containing the mapping between the non-default
         !       kinds used in HANDE and HDF5 datatypes.
+        ! In/Out:
+        !   scale_factor: unaltered and unused.  For interface compatibility only.
         ! Out:
         !   pops: population list read from restart file converted to 64 bit.
 
@@ -243,6 +245,10 @@ contains
         !   dset: dataset name.
         !   kinds: hdf5_kinds_t object containing the mapping between the non-default
         !       kinds used in HANDE and HDF5 datatypes.
+        ! In/Out:
+        !   scale_factor: On input population scaling factor to store populations.  On output, unaltered
+        !       if integer weights were used or changed to the scaling for 32-bit fixed precision if real
+        !       weights were used.
         ! Out:
         !   pops: population list read from restart file converted to 32 bit.
 
