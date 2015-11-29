@@ -877,7 +877,7 @@ module restart_hdf5
                     ! Check no-one's added to the psips group without (at least) modifying the
                     ! following to handle it.
                     call h5gget_info_f(orig_subgroup_id, storage_type, nlinks, max_corder, ierr)
-                    if (nlinks < 4 .or. nlinks > 7) then
+                    if (nlinks < 4 .or. nlinks > 8) then
                         ! Current datasets in psips group: dtot_pop, dresort, dproc_map, (all handled above), ddets, dpops, ddata (all handled below)
                         ! and dspawn (not currently handled (see above).
                         call stop_all('redistribute_restart_hdf5', &
