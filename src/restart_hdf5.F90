@@ -684,7 +684,7 @@ module restart_hdf5
 
             integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
             integer :: max_nstates, tensor_label_len, i0_length_restart, nbasis
-            integer :: iproc_target_start, iproc_target_end
+            integer :: iproc_target_start, iproc_target_end, string_len
             integer, allocatable :: istate_proc(:)
             type(particle_t) :: psip_read, psip_new(0:nmax_files-1)
             logical :: exists
@@ -793,12 +793,13 @@ module restart_hdf5
                 call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
                 if (exists) then
                     call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
-                    allocate(f0(ceiling(real(nbasis)/i0_length)))
+                    string_len = ceiling(real(nbasis)/i0_length)
                 else if (present(sys)) then
-                    allocate(f0(sys%basis%string_len))
+                    string_len = sys%basis%string_len
                 else
                     call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
                 end if
+                allocate(f0(string_len))
             end if
 
             ! Write out metadata to each new file.
@@ -885,7 +886,7 @@ module restart_hdf5
                     if (i0_length == i0_length_restart) then
                         tensor_label_len = dims(1)
                     else
-                        tensor_label_len = sys%basis%tensor_label_len
+                        tensor_label_len = string_len
                     end if
                     max_nstates = dims(2)
                     call dset_shape(orig_subgroup_id, dpops, dims)
