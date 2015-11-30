@@ -348,16 +348,23 @@ contains
         call choose_ij_hub_k(rng, sys, cdet%occ_list_alpha, cdet%occ_list_beta, &
                              connection%from_orb(1), connection%from_orb(2), ij_sym)
 
-        ! 2. Select a random pair of spin orbitals to excite to.
-        call choose_ab_hub_k(rng, sys, cdet%f, cdet%unocc_list_alpha, ij_sym, &
-                             connection%to_orb(1), connection%to_orb(2))
-
-        ! 3. Calculate the generation probability of the excitation.
-        ! For one-band systems this depends only upon the orbitals excited from.
+        ! 2. Calculate the generation probability of the excitation.
+        ! For one-band systems this depends only upon the orbitals excited from so
+        ! can be done before the complete excitation is chosen.
         pgen = calc_pgen_hub_k(sys, ij_sym, cdet%f, cdet%unocc_list_alpha)
 
-        ! 4. find the connecting matrix element.
-        call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
+        if (1.0_p/pgen > depsilon) then
+            ! 3. Select a random pair of spin orbitals to excite to.
+            call choose_ab_hub_k(rng, sys, cdet%f, cdet%unocc_list_alpha, ij_sym, &
+                                 connection%to_orb(1), connection%to_orb(2))
+
+            ! 4. find the connecting matrix element.
+            call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
+        else
+            ! No allowed excitations from (i,j)
+            hmatel = 0.0_p
+            pgen = 1.0_p
+        end if
 
     end subroutine gen_excit_hub_k
 
