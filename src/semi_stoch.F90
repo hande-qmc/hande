@@ -1240,6 +1240,7 @@ contains
 #ifndef DISABLE_HDF5
         use hdf5
         use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_kinds_init, dtype_equal
+        use restart_utils, only: convert_dets
 #else
         use errors, only: stop_all
 #endif
@@ -1266,7 +1267,6 @@ contains
         integer :: i, id, proc, slot, ndeterm, ndeterm_this_proc, ierr
         integer :: displs(0:nprocs-1)
         integer(HSIZE_T) :: dims(2), maxdims(2)
-        integer(hid_t) :: kind_i0
         logical :: exists
 #endif
 #ifdef DISABLE_HDF5
@@ -1298,12 +1298,6 @@ contains
             call hdf5_kinds_init(kinds)
             call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
 
-            ! [todo] - replace with kinds%i0 once the redistribute_restart series is merged.
-            kind_i0 = kinds%i32
-            if (i0 == int_64) kind_i0 = kinds%i64
-            if (.not.dtype_equal(file_id, 'dets', kind_i0)) &
-                call stop_all('read_determ_from_file', 'Restarting with a different DET_SIZE is not supported.  Please implement.')
-
             ! Find how many determinants are in the file.
             call h5dopen_f(file_id, 'dets', dset_id, ierr)
             call h5dget_space_f(dset_id, dspace_id, ierr)
@@ -1316,7 +1310,11 @@ contains
             call check_allocate('determ%dets', ndeterm*sys%basis%tensor_label_len, ierr)
 
             ! Perform the reading in of determinants to determ%dets.
-            call hdf5_read(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
+            if (dtype_equal(file_id, 'dets', kinds%i0)) then
+                call hdf5_read(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
+            else
+                call convert_dets(file_id, 'dets', kinds, determ%dets)
+            end if
 
             ! Close HDF5 file and HDF5.
             call h5fclose_f(file_id, ierr)

@@ -779,7 +779,7 @@ contains
             t1 = t2
 
             call dump_restart_file_wrapper(qs, dump_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
-                                           qmc_in%ncycles, ri, ri_shift, .false.)
+                                           qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, .false.)
 
             if (soft_exit) exit
 
@@ -801,7 +801,7 @@ contains
         end if
 
         if (restart_in%write_restart) then
-            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, .false.)
+            call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, .false.)
             if (parent) write (6,'()')
         end if
 

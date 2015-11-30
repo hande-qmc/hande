@@ -1,15 +1,17 @@
+sys = ringium {
+    nel = 4,
+    maxlz = 15,
+    radius = 3,
+}
+
 -- Restart file obtained from running the same calculation on 1
 -- core and writing out (rather than reading in) a restart file.
 np1_id = 0
 np2_id = 1
-redistribute { read = np1_id, write = np2_id }
+redistribute { read = np1_id, write = np2_id, sys = sys, }
 
 ccmc {
-    sys = ringium {
-        nel = 4,
-        maxlz = 15,
-        radius = 3,
-    },
+    sys = sys,
     qmc = {
         tau = 0.01,
         rng_seed = 5691,

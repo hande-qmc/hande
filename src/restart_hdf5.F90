@@ -45,6 +45,7 @@ module restart_hdf5
     !            received_list         # list of walkers sent from last iteration of non-blocking calculation.
     !            processor map         # processor map used for load balancing
     !            resort                # if present and true, the psip information must be re-sorted before use.
+    !            scaling factor        # population scaling factor for real amplitudes.
     !      state/
     !            shift                 # shift (energy offset/population control)
     !            ncycles               # number of Monte Carlo cycles performed
@@ -56,6 +57,8 @@ module restart_hdf5
     !                Hilbert space reference determinant # reference determinant
     !                                  # defining Hilbert space (see comments in
     !                                  # fciqmc_data for details).
+    !      basis/
+    !            nbasis                # Number of basis functions
     !
     !  rng/                            # Not used yet.
 
@@ -98,7 +101,8 @@ module restart_hdf5
                                gpsips = 'psips',        &
                                gstate = 'state',        &
                                gref = 'reference',      &
-                               grng = 'rng'
+                               grng = 'rng',            &
+                               gbasis = 'basis'
 
     ! Dataspace names...
     character(*), parameter :: drestart = 'restart version',        &
@@ -122,7 +126,9 @@ module restart_hdf5
                                dmove_freq = 'move_freq',            &
                                dref = 'reference determinant',      &
                                dref_pop = 'reference population @ t-1', &
-                               dhsref = 'Hilbert space reference determinant'
+                               dhsref = 'Hilbert space reference determinant', &
+                               dscaling = 'population scale factor', &
+                               dnbasis = 'nbasis'
 
     contains
 
@@ -243,7 +249,7 @@ module restart_hdf5
         end subroutine init_restart_hdf5
 #endif
 
-        subroutine dump_restart_hdf5(ri, qs, ncycles, total_population, nb_comm)
+        subroutine dump_restart_hdf5(ri, qs, ncycles, total_population, nbasis, nb_comm)
 
             ! Write out a restart file.
 
@@ -252,6 +258,7 @@ module restart_hdf5
             !    qs: QMC state to write to restart file.
             !    ncycles: number of Monte Carlo cycles performed.
             !    total_population: the total population of each particle type.
+            !    nbasis: number of basis functions
             !    nb_comm: true if using non-blocking communications, in which case
             !       information from qs%spawn_store%spawn_recv is also written out
             !       to the restart file.
@@ -274,6 +281,7 @@ module restart_hdf5
             type(qmc_state_t), intent(in) :: qs
             integer, intent(in) :: ncycles
             real(p), intent(in) :: total_population(:)
+            integer, intent(in) :: nbasis
             logical, intent(in) :: nb_comm
 #ifndef DISABLE_HDF5
             character(255) :: restart_file
@@ -362,6 +370,9 @@ module restart_hdf5
                 tmp_pop = total_population
                 call hdf5_write(subgroup_id, dtot_pop, kinds, shape(tmp_pop), tmp_pop)
 
+                ! Always write as int_64 for the sake of conversions
+                call hdf5_write(subgroup_id, dscaling, kinds, [1], [int(qs%psip_list%pop_real_factor,int_64)])
+
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/state group ---
@@ -395,6 +406,11 @@ module restart_hdf5
             call h5gcreate_f(file_id, grng, group_id, ierr)
             call h5gclose_f(group_id, ierr)
 
+            ! --- basis group ---
+            call h5gcreate_f(file_id, gbasis, group_id, ierr)
+            call hdf5_write(group_id, dnbasis, nbasis)
+            call h5gclose_f(group_id, ierr)
+
             ! And terminate HDF5.
             call h5fclose_f(file_id, ierr)
             call h5close_f(ierr)
@@ -419,8 +435,9 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
+            use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling
 #endif
-            use errors, only: stop_all
+            use errors, only: stop_all, warning
             use const
 
             use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
@@ -446,6 +463,7 @@ module restart_hdf5
             integer :: ierr
             real(p), target :: tmp(1)
             logical :: exists, resort
+            integer(int_64) :: restart_scale_factor(1)
 
             integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states))), maxdims(size(shape(qs%psip_list%states)))
 
@@ -502,9 +520,6 @@ module restart_hdf5
                                   'Restarting on a different number of processors not supported.  &
                                   &Use the redistribute function.')
 
-                if (i0_length /= i0_length_restart) &
-                    call stop_all('read_restart_hdf5', &
-                                  'Restarting with a different DET_SIZE is not supported.  Please implement.')
             call h5gclose_f(group_id, ierr)
 
             ! --- qmc group ---
@@ -519,12 +534,34 @@ module restart_hdf5
                 ! Number of determinants is the last index...
                 qs%psip_list%nstates = dims(size(dims))
 
-                call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                if (i0_length == i0_length_restart) then
+                    call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                else
+                    call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
+                end if
 
-                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p)) &
-                    call stop_all('read_restart_hdf5', &
-                                  'Restarting with a different POP_SIZE is not supported.  Please implement.')
-                call hdf5_read(subgroup_id, dpops, kinds, shape(qs%psip_list%pops), qs%psip_list%pops)
+                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32)) &
+                    call warning('read_restart_hdf5', &
+                                  'Converting populations from 64 to 32 bit integers.  Overflow may occur. '// &
+                                  'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
+
+                call h5lexists_f(subgroup_id, dscaling, exists, ierr)
+                if (exists) then
+                    call hdf5_read(subgroup_id, dscaling, kinds, shape(restart_scale_factor), restart_scale_factor)
+                else
+                    ! Assume the scaling factor is unchanged if absent
+                    restart_scale_factor = qs%psip_list%pop_real_factor
+                end if
+
+                if (dtype_equal(subgroup_id, dpops, kinds%int_p)) then
+                    call hdf5_read(subgroup_id, dpops, kinds, shape(qs%psip_list%pops), qs%psip_list%pops)
+                else
+                    call convert_pops(subgroup_id, dpops, kinds, qs%psip_list%pops, restart_scale_factor(1))
+                end if
+
+                if (restart_scale_factor(1) /= qs%psip_list%pop_real_factor) then
+                    call change_pop_scaling(qs%psip_list%pops, restart_scale_factor(1), int(qs%psip_list%pop_real_factor,int_64))
+                end if
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(qs%psip_list%dat), qs%psip_list%dat)
 
@@ -563,9 +600,13 @@ module restart_hdf5
                 ! --- qmc/reference group ---
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    call hdf5_read(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
-
-                    call hdf5_read(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)
+                    if (i0_length == i0_length_restart) then
+                        call hdf5_read(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
+                        call hdf5_read(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)
+                    else
+                        call convert_ref(subgroup_id, dref, kinds, qs%ref%f0)
+                        call convert_ref(subgroup_id, dhsref, kinds, qs%ref%hs_f0)
+                    end if
 
                     call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
                     qs%estimators%D0_population = tmp(1)
@@ -587,7 +628,7 @@ module restart_hdf5
 
         end subroutine read_restart_hdf5
 
-        subroutine redistribute_restart_hdf5(ri, nprocs_target)
+        subroutine redistribute_restart_hdf5(ri, nprocs_target, sys)
 
             ! Create a new set of restart files for a different number of processors than they
             ! were created from.
@@ -598,13 +639,15 @@ module restart_hdf5
             ! In:
             !    number of processors the restart files are to be split over (ie the number of
             !        processors the user wishes to restart the calculation on).
+            !    sys (optional): a sys_t object, used to get the basis size.  Only necessary if
+            !        changing DET_SIZE for an old restart file.
 
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_write, dset_shape, dtype_equal, hdf5_path
             use checking
             use errors, only: warning, stop_all
-            use const, only: i0, int_p, p
+            use const, only: i0, int_p, p, int_64
             use parallel
 
             use calc, only: ccmc_calc, init_proc_map_t
@@ -612,12 +655,15 @@ module restart_hdf5
             use spawn_data, only: proc_map_t
             use particle_t_utils, only: init_particle_t, dealloc_particle_t
             use spawning, only: assign_particle_processor
+            use restart_utils, only: convert_dets, convert_ref, convert_pops
 #else
             use errors, only: stop_all
 #endif
+            use system, only: sys_t
 
             type(restart_info_t), intent(in) :: ri
             integer, intent(in) :: nprocs_target
+            type(sys_t), intent(in), optional :: sys
 
 #ifndef DISABLE_HDF5
 
@@ -637,14 +683,16 @@ module restart_hdf5
             integer(hsize_t) :: dims(2)
 
             integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
-            integer :: max_nstates, tensor_label_len
-            integer :: iproc_target_start, iproc_target_end
+            integer :: max_nstates, tensor_label_len, i0_length_restart, nbasis
+            integer :: iproc_target_start, iproc_target_end, string_len
             integer, allocatable :: istate_proc(:)
             type(particle_t) :: psip_read, psip_new(0:nmax_files-1)
             logical :: exists
             type(ccmc_in_t) :: ccmc_in_defaults
             type(proc_map_t) :: pm_dummy
             type(restart_info_t) :: ri_write
+            integer(i0), allocatable :: f0(:)
+            integer(int_64) :: restart_scale_factor(1)
 
             ! Each processor reads from every restart file but only writes to
             ! a (unique) subset, [iproc_target_start,iproc_target_end].
@@ -736,20 +784,66 @@ module restart_hdf5
 
             call h5gopen_f(orig_id, gqmc, orig_group_id, ierr)
 
+            ! Check whether the integer type used for determinants is the same as the current
+            ! settings.
+            call hdf5_read(orig_id, hdf5_path(gmetadata, di0_length), i0_length_restart)
+            if (i0_length /= i0_length_restart) then
+                ! Try to get determinant string length (needed to convert DET_SIZE) from file,
+                ! otherwise the user must supply a system object.
+                call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
+                if (exists) then
+                    call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
+                    string_len = ceiling(real(nbasis)/i0_length)
+                else if (present(sys)) then
+                    string_len = sys%basis%string_len
+                else
+                    call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
+                end if
+                allocate(f0(string_len))
+            end if
+
             ! Write out metadata to each new file.
             ! Can just copy it from the first old restart file as it is the same on all files...
             do i = iproc_target_start, iproc_target_end
                 call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
-                ! /metadata and /rng
+                ! /metadata, /basis and /rng
                 call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
+                call h5ocopy_f(orig_id, gbasis, new_id, gbasis, ierr)
+                ! Update determinant integer kind if necessary.
+                if (i0_length /= i0_length_restart) then
+                    call h5dopen_f(new_id, hdf5_path(gmetadata, di0_length), dset_id, ierr)
+                    ! Can't use hdf5_write to replace an existing dataset
+                    ! [todo] - can combine this into a single h5dwrite_f?
+                    call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, i0_length, [0_HSIZE_T,0_HSIZE_T], ierr)
+                    call h5dclose_f(dset_id, ierr)
+                end if
                 call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
                 ! ...and non-psip-specific groups in the /qmc group.
                 call h5gcreate_f(new_id, gqmc, group_id, ierr)
                 call h5gopen_f(new_id, gqmc, group_id, ierr)
                     ! /qmc/state and /qmc/reference
                     call h5ocopy_f(orig_group_id, gstate, group_id, gstate, ierr)
-                    call h5ocopy_f(orig_group_id, gref, group_id, gref, ierr)
+                    if (i0_length == i0_length_restart) then
+                        call h5ocopy_f(orig_group_id, gref, group_id, gref, ierr)
+                    else
+                        ! Need to convert to a different datatype
+                        call h5gopen_f(orig_group_id, gref, orig_subgroup_id, ierr)
+                        call h5gcreate_f(group_id, gref, subgroup_id, ierr)
+
+                        call convert_ref(orig_subgroup_id, dref, kinds, f0)
+                        call hdf5_write(subgroup_id, dref, kinds, shape(f0), f0)
+
+                        call convert_ref(orig_subgroup_id, dhsref, kinds, f0)
+                        call hdf5_write(subgroup_id, dhsref, kinds, shape(f0), f0)
+
+                        call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop), group_id, hdf5_path(gref, dref_pop), ierr)
+
+                        call h5gclose_f(subgroup_id, ierr)
+                        call h5gclose_f(orig_subgroup_id, ierr)
+                    end if
+
                     ! ...and create the /qmc/psips group and fill in the constant (new) processor map and total population.
+                    ! (scaling factor updated below)
                     call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
                     call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map), pm_dummy%map)
                     call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, hdf5_path(gpsips, dtot_pop), ierr)
@@ -783,7 +877,7 @@ module restart_hdf5
                     ! Check no-one's added to the psips group without (at least) modifying the
                     ! following to handle it.
                     call h5gget_info_f(orig_subgroup_id, storage_type, nlinks, max_corder, ierr)
-                    if (nlinks < 4 .or. nlinks > 7) then
+                    if (nlinks < 4 .or. nlinks > 8) then
                         ! Current datasets in psips group: dtot_pop, dresort, dproc_map, (all handled above), ddets, dpops, ddata (all handled below)
                         ! and dspawn (not currently handled (see above).
                         call stop_all('redistribute_restart_hdf5', &
@@ -791,7 +885,11 @@ module restart_hdf5
                     end if
 
                     call dset_shape(orig_subgroup_id, ddets, dims)
-                    tensor_label_len = dims(1)
+                    if (i0_length == i0_length_restart) then
+                        tensor_label_len = dims(1)
+                    else
+                        tensor_label_len = string_len
+                    end if
                     max_nstates = dims(2)
                     call dset_shape(orig_subgroup_id, dpops, dims)
                     psip_read%nspaces = dims(1)
@@ -807,15 +905,29 @@ module restart_hdf5
                     end do
 
                     ! Read.
-                    if (.not. dtype_equal(orig_subgroup_id, ddets, kinds%i0)) &
-                        call stop_all('redistribute_restart_hdf5', &
-                                      'Restarting with a different DET_SIZE is not supported.  Please implement.')
-                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p)) &
-                        call stop_all('redistribute_restart_hdf5', &
-                                      'Restarting with a different POP_SIZE is not supported.  Please implement.')
+                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32)) &
+                        call warning('redistribute_restart_hdf5', &
+                                      'Converting populations from 64 to 32 bit integers.  Overflow may occur. '// &
+                                      'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
 
-                    call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states), psip_read%states)
-                    call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops), psip_read%pops)
+                    if (i0_length == i0_length_restart) then
+                        call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states), psip_read%states)
+                    else
+                        call convert_dets(orig_subgroup_id, ddets, kinds, psip_read%states)
+                    end if
+
+                    call h5lexists_f(orig_subgroup_id, dscaling, exists, ierr)
+                    if (exists) then
+                        call hdf5_read(orig_subgroup_id, dscaling, kinds, shape(restart_scale_factor), restart_scale_factor)
+                    else
+                        restart_scale_factor = 1
+                    end if
+
+                    if (dtype_equal(orig_subgroup_id, dpops, kinds%int_p)) then
+                        call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops), psip_read%pops)
+                    else
+                        call convert_pops(orig_subgroup_id, dpops, kinds, psip_read%pops, restart_scale_factor(1))
+                    end if
                     call hdf5_read(orig_subgroup_id, ddata, kinds, shape(psip_read%dat), psip_read%dat)
 
                     ! Distribute.
@@ -850,7 +962,8 @@ module restart_hdf5
                                     pl_new%dat(:,istate_proc(ip)) = psip_read%dat(:,idet)
                                     if (istate_proc(ip) == nchunk) then
                                         ! Dump out what we've found so far for target processor ip.
-                                        call write_psip_info(new_names(ip), kinds, pl_new%states, pl_new%pops, pl_new%dat)
+                                        call write_psip_info(new_names(ip), kinds, pl_new%states, pl_new%pops, pl_new%dat, &
+                                            restart_scale_factor)
                                         istate_proc(ip) = 0
                                     end if
                                 end associate
@@ -860,7 +973,7 @@ module restart_hdf5
                         do ip = iproc_min, iproc_max
                             associate(pl_new=>psip_new(ip-iproc_min), istate=>istate_proc(ip))
                                 call write_psip_info(new_names(ip), kinds, pl_new%states(:,:istate), pl_new%pops(:,:istate), &
-                                                     pl_new%dat(:,:istate))
+                                                     pl_new%dat(:,:istate), restart_scale_factor)
                             end associate
                         end do
                         ndets = ndets - nmoved
@@ -892,7 +1005,7 @@ module restart_hdf5
 
             contains
 
-                subroutine write_psip_info(fname, kinds, psip_dets, psip_pop, psip_data)
+                subroutine write_psip_info(fname, kinds, psip_dets, psip_pop, psip_data, pop_scaling_factor)
 
                     ! Write out particle information (state label, population, associated data) to a restart file.
 
@@ -902,6 +1015,7 @@ module restart_hdf5
                     !    psip_dets: representation of determinants (or similar) labelling the set of occupied states.
                     !    psip_pop: population (in potentially several spaces) on each determinant/state.
                     !    psip_data: system/calculation-specific data associated with each state.
+                    !    restart_scale_factor: factor used to encode populations in fixed precision.
 
                     ! Note that the second dimension of the psip_* arrays is assumed to be identical and every element of the
                     ! arrays passed in is written out.
@@ -916,15 +1030,19 @@ module restart_hdf5
                     integer(i0), intent(in) :: psip_dets(:,:)
                     integer(int_p), intent(in) :: psip_pop(:,:)
                     real(p), intent(in) :: psip_data(:,:)
+                    integer(int_64), intent(in) :: pop_scaling_factor(1)
 
                     integer(hid_t) :: file_id, group_id, subgroup_id
                     integer :: ierr
                     integer(hsize_t) :: dims(2)
+                    logical :: exists
 
                     call h5fopen_f(fname, H5F_ACC_RDWR_F, file_id, ierr)
                     call h5gopen_f(file_id, gqmc, group_id, ierr)
                     call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
+                    call h5lexists_f(subgroup_id, dscaling, exists, ierr)
+                    if (.not.exists) call hdf5_write(subgroup_id, dscaling, kinds, shape(pop_scaling_factor), pop_scaling_factor)
                     call hdf5_write(subgroup_id, ddets, kinds, shape(psip_dets), psip_dets, append=.true.)
                     call hdf5_write(subgroup_id, dpops, kinds, shape(psip_pop), psip_pop, append=.true.)
                     call hdf5_write(subgroup_id, ddata, kinds, shape(psip_data), psip_data, append=.true.)

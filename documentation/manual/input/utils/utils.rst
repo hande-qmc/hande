@@ -51,6 +51,13 @@ Options:
     not yet exist.
 
     Set the index, ``X`` of the set of restart files to be written out.
+``sys``
+    type: system object.
+
+    Optional.
+
+    Only used to determine the number of basis functions, if changing the value of DET_SIZE
+    for the restart files.
 
 .. warning::
 
