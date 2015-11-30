@@ -532,6 +532,9 @@ module restart_hdf5
                 if (nbasis_restart > nbasis) &
                     call stop_all('read_restart_hdf5', &
                                   'Restarting with a smaller basis not supported.  Please implement.')
+            else
+                ! assume not changing basis
+                nbasis_restart = nbasis
             end if
 
             ! --- qmc group ---
