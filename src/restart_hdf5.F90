@@ -808,7 +808,8 @@ module restart_hdf5
                 call h5fopen_f(new_names(i), H5F_ACC_RDWR_F, new_id, ierr)
                 ! /metadata, /basis and /rng
                 call h5ocopy_f(orig_id, gmetadata, new_id, gmetadata, ierr)
-                call h5ocopy_f(orig_id, gbasis, new_id, gbasis, ierr)
+                call h5lexists_f(orig_id, gbasis, exists, ierr)
+                if (exists) call h5ocopy_f(orig_id, gbasis, new_id, gbasis, ierr)
                 ! Update determinant integer kind if necessary.
                 if (i0_length /= i0_length_restart) then
                     call h5dopen_f(new_id, hdf5_path(gmetadata, di0_length), dset_id, ierr)
