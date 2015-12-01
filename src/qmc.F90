@@ -383,7 +383,7 @@ contains
             ! When restarting a non-blocking calculation this sum will not equal
             ! tot_nparticles as some walkers have been communicated around the report
             ! loop. The correct total is in the restart file so get it from there.
-            if (.not. restart_in%read_restart .or. .not. fciqmc_in_loc%non_blocking_comm) &
+            if (.not. (restart_in%read_restart .and. fciqmc_in_loc%non_blocking_comm)) &
                 forall(i=1:pl%nspaces) pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
 #else
             pl%tot_nparticles = pl%nparticles
