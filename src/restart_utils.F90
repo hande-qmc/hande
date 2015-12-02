@@ -79,6 +79,16 @@ contains
     end subroutine convert_dets_32_to_64
 
     subroutine change_nbasis(id, dset, kinds, dets)
+        
+        ! Read determinants in from restart file and change to a larger basis
+
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        ! Out:
+        !   dets: determinant list read from restart file in larger basis.
 
         use const
 
