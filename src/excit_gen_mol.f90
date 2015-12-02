@@ -602,7 +602,7 @@ contains
 
         use basis_types, only: basis_t
         use point_group_symmetry, only: cross_product_pg_sym, pg_sym_conj
-        use point_group_symmetry_data, only: pg_sym_t 
+        use symmetry_types, only: pg_sym_t 
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 

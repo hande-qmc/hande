@@ -285,7 +285,7 @@ contains
         !    which can also potentially include an Lz symmetry.
 
         use basis_types, only: basis_fn_t
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         integer :: sym_ij
         type(pg_sym_t), intent(in) :: pg_sym
@@ -308,7 +308,7 @@ contains
         !    The Lz part of the symmetry is split off and handled separately from the
         !    rest, and then reintegrated.
 
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         integer :: sym_ij
         integer, intent(in) :: sym_i, sym_j
@@ -332,7 +332,7 @@ contains
         !   The symmetry conjugate of the symmetry. For pg symmetry this is the same as
         !   it's Abelian, but we need to take Lz to -Lz here.
 
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         type(pg_sym_t), intent(in) :: pg_sym
         integer, intent(in) :: sym
@@ -354,7 +354,7 @@ contains
         ! Returns:
         !    The Lz component of sym (de-offsetted), so Lz=0 is returned as 0
 
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         type(pg_sym_t), intent(in) :: pg_sym
         integer, intent(in) :: sym
@@ -392,7 +392,7 @@ contains
         !    True if sym represents the Gamma_1 (totally symmetric) irreducible
         !    representation.
 
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         logical :: is_gamma
         type(pg_sym_t), intent(in) :: pg_sym
@@ -413,7 +413,7 @@ contains
         !    of all the orbitals in the list).
 
         use basis_types, only: basis_t
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         integer :: isym
         type(pg_sym_t), intent(in) :: pg_sym

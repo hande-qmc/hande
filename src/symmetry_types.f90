@@ -1,12 +1,14 @@
-module point_group_symmetry_data
+module symmetry_types
 
-! Derived type for handling point group symmetry, as read in from FCIDUMP files.
-
-! See discussion in point_group_symmetry.
+! Derived types for symmetry information
 
 use const
 
 implicit none
+
+! Derived type for handling point group symmetry, as read in from FCIDUMP files.
+
+! See discussion in point_group_symmetry.
 
 type pg_sym_t
     ! Following the above discussion, the totally symmetric representation is given
@@ -55,4 +57,15 @@ type pg_sym_t
     integer :: Lz_divisor
 end type pg_sym_t
 
-end module point_group_symmetry_data
+type mom_sym_t
+    ! Index of the symmetry corresponding to the Gamma-point.
+    integer :: gamma_sym
+
+    ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
+    integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
+
+    ! inv_sym(i) = j means that k_i + k_j = 0 (ie k_j is the inverse of k_i).
+    integer, allocatable :: inv_sym(:) ! nsym
+end type mom_sym_t
+
+end module symmetry_types

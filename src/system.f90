@@ -20,7 +20,7 @@ use const
 use basis_types, only: basis_t
 use molecular_integral_types
 use ueg_types, only: ueg_basis_t
-use point_group_symmetry_data, only: pg_sym_t
+use symmetry_types, only: pg_sym_t, mom_sym_t
 
 implicit none
 
@@ -183,6 +183,8 @@ type sys_hubbard_t
     ! The Coulomb integral in the momentum space formulation of the Hubbard model
     ! is constant, so it's convenient to store it.
     real(p) :: coulomb_k
+    ! Crystal momentum symmetry information
+    type(mom_sym_t) :: mom_sym
 
 end type sys_hubbard_t
 

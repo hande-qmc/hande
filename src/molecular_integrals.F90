@@ -265,7 +265,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         use const, only: depsilon
         use errors, only: warning
@@ -341,7 +341,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: pg_sym_conj, cross_product_pg_sym, is_gamma_irrep_pg_sym
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         real(p) :: intgrl
         type(basis_fn_t), intent(in) :: basis_fns(:)
@@ -544,7 +544,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         use const, only: depsilon
         use errors, only: warning
@@ -604,7 +604,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
 
         real(p) :: intgrl
         type(two_body_t), intent(in) :: store

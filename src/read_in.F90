@@ -780,7 +780,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis
-        use point_group_symmetry_data, only: pg_sym_t
+        use symmetry_types, only: pg_sym_t
         use molecular_integrals, only: one_body_t, init_one_body_t,              &
                                        end_one_body_t, store_one_body_int_mol, &
                                        zero_one_body_int_store, broadcast_one_body_t

@@ -33,7 +33,7 @@ contains
 
         select case(sys%system)
         case(hub_k)
-            isym = symmetry_orb_list_hub_k(orb_list)
+            isym = symmetry_orb_list_hub_k(sys%hubbard%mom_sym, orb_list)
         case(ueg)
             isym = symmetry_orb_list_ueg(sys, orb_list)
         case(read_in)
@@ -63,7 +63,7 @@ contains
 
         select case(sys%system)
         case(hub_k)
-            prod = cross_product_hub_k(s1, s2)
+            prod = cross_product_hub_k(sys%hubbard%mom_sym, s1, s2)
         case(ueg)
             prod = cross_product_ueg(sys, s1, s2)
         case(read_in)
