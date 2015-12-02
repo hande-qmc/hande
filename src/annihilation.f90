@@ -33,7 +33,7 @@ contains
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
 
-        use parallel, only: nthreads, nprocs, iproc
+        use parallel, only: iproc
         use spawn_data, only: spawn_t, annihilate_wrapper_spawn_t, calc_events_spawn_t, memcheck_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -48,7 +48,6 @@ contains
         integer, optional, intent(out) :: nspawn_events
         type(semi_stoch_t), intent(inout), optional :: determ
 
-        integer, parameter :: thread_id = 0
         logical :: doing_semi_stoch
 
         doing_semi_stoch = .false.
@@ -62,7 +61,7 @@ contains
         ! on the situation.
         if (doing_semi_stoch) then
             if (determ%projection_mode == semi_stoch_separate_annihilation) then
-                call deterministic_annihilation(sys, rng, psip_list, determ)
+                call deterministic_annihilation(rng, psip_list, determ)
                 call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx)
             else
                 call annihilate_wrapper_spawn_t(spawn, annihilation_flags%initiator_approx, determ%sizes(iproc))
@@ -110,7 +109,6 @@ contains
         !    spawn_recv: spawn_t object containing spawned particles received
         !        from other processors.
 
-        use parallel, only: nthreads, nprocs, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
@@ -122,8 +120,6 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn_recv
-
-        integer, parameter :: thread_id = 0
 
         ! Perform annihilation inside received list. This involves annihilating
         ! walkers which were spawned onto this processor from other processors
@@ -167,7 +163,7 @@ contains
         !    nspawn_events (optional): number of successful spawning events on
         !       the processor.
 
-        use parallel, only: nthreads, nprocs, iproc
+        use parallel, only: nthreads, iproc
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, calculate_displacements, &
                               non_blocking_send, memcheck_spawn_t
         use sort, only: qsort
@@ -396,7 +392,7 @@ contains
         integer, intent(in) :: tensor_label_len
         integer, intent(in), optional :: lower_bound
 
-        integer :: i, ipart, pos, k, istart, iend, nannihilate, spawn_start
+        integer :: i, ipart, pos, istart, iend, nannihilate, spawn_start
         integer(int_p) :: old_pop(psip_list%nspaces)
         integer(i0) :: f(tensor_label_len)
         logical :: hit, discard
@@ -481,12 +477,11 @@ contains
 
     end subroutine annihilate_main_list_initiator
 
-    subroutine deterministic_annihilation(sys, rng, psip_list, determ)
+    subroutine deterministic_annihilation(rng, psip_list, determ)
 
         ! Add in the deterministic spawnings to the main list.
 
         ! In:
-        !    sys: system being studied.
         !    determ: Derived type containing information on the semi-stochastic
         !       part of the simulation.
         !    psip_list: particle_t object containing psip information.
@@ -501,19 +496,19 @@ contains
         use qmc_data, only: semi_stoch_t, particle_t
 
         type(particle_t), intent(inout) :: psip_list
-        type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
         type(semi_stoch_t), intent(in), optional :: determ
 
         integer :: i, ind
-        integer(int_p) :: nspawn, old_pop(psip_list%nspaces)
-        real(p) :: scaled_amp, spawn_sign
+        integer(int_p) :: nspawn, spawn_sign, old_pop(psip_list%nspaces)
+        real(p) :: scaled_amp
 
         do i = 1, size(determ%vector)
             ind = determ%indices(i)
 
             scaled_amp = determ%vector(i)*psip_list%pop_real_factor
-            spawn_sign = sign(1.0_p, scaled_amp)
+            spawn_sign = 1
+            if (scaled_amp < 0.0_p) spawn_sign = -1
             ! Stochastically round the scaled amplitude to the nearest integer
             ! in order to encode it.
             scaled_amp = abs(scaled_amp)
@@ -557,9 +552,8 @@ contains
         logical, intent(in) :: real_amplitudes
         integer, intent(inout), optional :: determ_flags(:)
 
-        integer :: nzero, i, k, itype
+        integer :: nzero, i, k
         integer(int_p) :: old_pop(psip_list%nspaces)
-        real(dp) :: r
         logical :: determ_det
 
         nzero = 0
@@ -626,9 +620,8 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, optional, intent(in) :: lower_bound
 
-        integer :: i, k, itype, nremoved, spawn_start
+        integer :: i, k, nremoved, spawn_start
         integer(int_s) :: real_factor_s
-        real(dp) :: r
         integer, parameter :: thread_id = 0
 
         if (present(lower_bound)) then
@@ -709,13 +702,11 @@ contains
         integer, intent(in), optional :: lower_bound
 
         integer :: i, istart, iend, j, k, pos, spawn_start, disp
-        integer(int_p) :: spawned_population(psip_list%nspaces)
         real(p) :: real_population(psip_list%nspaces)
 
         logical :: hit
         integer, parameter :: thread_id = 0
         real :: fill_fraction
-        character(60) :: err
 
         ! Merge new walkers into the main list.
 

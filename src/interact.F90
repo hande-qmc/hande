@@ -39,7 +39,7 @@ contains
         type(qmc_state_t), optional, intent(inout) :: qs
 
         real(p), allocatable :: tmpshift(:)
-        logical :: comms_exists, comms_read, eof
+        logical :: comms_exists, comms_read
         integer :: proc, i, j, ierr, lua_err, iunit, shnd
         integer, allocatable :: ierr_arr(:)
 #ifdef PARALLEL
@@ -183,24 +183,24 @@ contains
 
         logical, intent(inout) :: comms_found
 
+#ifdef PARALLEL
         logical :: comms_found_any
         integer :: ierr
 
-#ifdef PARALLEL
         call mpi_allreduce(comms_found, comms_found_any, 1, mpi_logical, mpi_lor, mpi_comm_world, ierr)
         comms_found = comms_found_any
 #endif
 
-        end subroutine check_interact
+    end subroutine check_interact
 
-        function check_comms_file()
+    function check_comms_file()
 
-            ! Test whether HANDE.COMM is present on this processor
+        ! Test whether HANDE.COMM is present on this processor
 
-            logical :: check_comms_file
+        logical :: check_comms_file
 
-            inquire(file=comms_file, exist=check_comms_file)
-            
-        end function check_comms_file
+        inquire(file=comms_file, exist=check_comms_file)
+        
+    end function check_comms_file
 
 end module interact

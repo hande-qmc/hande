@@ -154,7 +154,7 @@ contains
         integer, intent(in) :: i, j, a, b
         logical, intent(in) :: perm
 
-        hmatel = get_two_e_int_ringium_nonzero(sys, i, j, a, b)
+        hmatel = get_two_e_int_ringium_nonzero(sys, i, j, a)
 
         if (perm) hmatel = -hmatel
 

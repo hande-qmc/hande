@@ -70,7 +70,6 @@ contains
         real(p) :: occ
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
-        logical :: non_zero
         type(excit_t) :: excitation
 
         excitation = get_excitation(sys%nel, sys%basis, f1,f2)
@@ -133,7 +132,7 @@ contains
         use hubbard_k, only: get_two_e_int_hub_k
         use system, only: sys_t
 
-        use const, only: p, i0
+        use const, only: p
 
         real(p) :: occ
         type(sys_t), intent(in) :: sys
@@ -211,7 +210,6 @@ contains
         real(p) :: occ
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
-        logical :: non_zero
         type(excit_t) :: excitation
 
         excitation = get_excitation(sys%nel, sys%basis, f1,f2)

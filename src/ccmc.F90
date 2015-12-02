@@ -351,7 +351,7 @@ contains
 
         logical :: update_tau, error
 
-        integer :: nspawnings_left, nspawnings_total
+        integer :: nspawnings_total
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
@@ -596,7 +596,7 @@ contains
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
                 !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
-                !$omp         nspawnings_left, nspawnings_total, fexcit, i,     &
+                !$omp         nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
                 !$omp        max_cluster_size, cdet, cluster, &
@@ -639,8 +639,8 @@ contains
                     else
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, iattempt-nstochastic_clusters-nD0_select, &
-                                                          iexcip_pos, nsingle_excitors, D0_normalisation, qmc_in%initiator_pop, &
-                                                          D0_pos, cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
+                                                          iexcip_pos, nsingle_excitors, qmc_in%initiator_pop, D0_pos, &
+                                                          cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
                     end if
 
                     if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &
@@ -685,7 +685,7 @@ contains
                                           cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total, &
                                           fexcit, ldet(it), rdet(it), left_cluster(it), right_cluster(it))
                             else
-                                call spawner_ccmc(rng(it), sys, qmc_in, qs, qs%spawn_store%spawn%cutoff, &
+                                call spawner_ccmc(rng(it), sys, qs, qs%spawn_store%spawn%cutoff, &
                                           ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, nspawned, connection, &
                                           nspawnings_total)
                             end if
@@ -764,7 +764,7 @@ contains
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
-            call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
+            call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, error=error)
             if (error) exit
@@ -876,12 +876,14 @@ contains
         integer(i0), intent(in) :: f0(:)
         integer, intent(inout) :: D0_pos
 
+        integer :: D0_pos_old
         logical :: hit
 
         if (D0_pos == -1) then
             ! D0 was just moved to this processor.  No idea where it might be...
             call binary_search(psip_list%states, f0, 1, psip_list%nstates, hit, D0_pos)
         else
+            D0_pos_old = D0_pos
             select case(bit_str_cmp(f0, psip_list%states(:,D0_pos)))
             case(0)
                 ! D0 hasn't moved.
@@ -889,11 +891,11 @@ contains
             case(1)
                 ! D0 < psip_list%states(:,D0_pos) -- it has moved to earlier in
                 ! the list and the old D0_pos is an upper bound.
-                call binary_search(psip_list%states, f0, 1, D0_pos, hit, D0_pos)
+                call binary_search(psip_list%states, f0, 1, D0_pos_old, hit, D0_pos)
             case(-1)
                 ! D0 > psip_list%states(:,D0_pos) -- it has moved to later in
                 ! the list and the old D0_pos is a lower bound.
-                call binary_search(psip_list%states, f0, D0_pos, psip_list%nstates, hit, D0_pos)
+                call binary_search(psip_list%states, f0, D0_pos_old, psip_list%nstates, hit, D0_pos)
             end select
         end if
         if (.not.hit) call stop_all('find_D0', 'Cannot find reference!')
@@ -977,7 +979,7 @@ contains
         type(cluster_t), intent(inout) :: cluster
 
         real(p) :: rand, psize, cluster_population, excitor_pop
-        integer :: i, pos, prev_pos, excitor_sgn
+        integer :: i, pos, prev_pos
         integer(int_p) :: pop(max_size)
         logical :: hit, allowed, all_allowed
 
@@ -1226,8 +1228,8 @@ contains
 
     end subroutine create_null_cluster
 
-    subroutine select_cluster_non_composite(sys, psip_list, f0, iexcip, iexcip_pos, nattempts, normalisation, &
-                                            initiator_pop,  D0_pos, cumulative_excip_pop, tot_excip_pop, cdet, cluster)
+    subroutine select_cluster_non_composite(sys, psip_list, f0, iexcip, iexcip_pos, nattempts, initiator_pop,  D0_pos, &
+                                            cumulative_excip_pop, tot_excip_pop, cdet, cluster)
 
         ! Select (deterministically) the non-composite cluster containing only
         ! the single excitor iexcitor and set the same information as select_cluster.
@@ -1240,8 +1242,6 @@ contains
         !    iexcip: the index (in range [1,tot_excip_pop]) of the excip to select.
         !    nattempts: the number of times (on this processor) a random cluster
         !        of excitors is generated in the current timestep.
-        !    normalisation: intermediate normalisation factor, N_0, where we use the
-        !       wavefunction ansatz |\Psi_{CC}> = N_0 e^{T/N_0} | D_0 >.
         !    initiator_pop: the population above which a determinant is an initiator.
         !    D0_pos: position in the excip list of the reference.
         !    cumulative_excip_population: running cumulative excip population on
@@ -1287,7 +1287,7 @@ contains
         integer(int_64), intent(in) :: iexcip, nattempts
         integer, intent(inout) :: iexcip_pos
         integer, intent(in) :: D0_pos
-        real(p), intent(in) :: normalisation, initiator_pop
+        real(p), intent(in) :: initiator_pop
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
@@ -1373,7 +1373,7 @@ contains
 
     end subroutine select_cluster_non_composite
 
-    subroutine spawner_ccmc(rng, sys, qmc_in, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
+    subroutine spawner_ccmc(rng, sys, qs, spawn_cutoff, linked_ccmc, cdet, cluster, &
                             gen_excit_ptr, nspawn, connection, nspawnings_total)
 
         ! Attempt to spawn a new particle on a connected excitor with
@@ -1403,7 +1403,6 @@ contains
 
         ! In:
         !    sys: system being studied.
-        !    qmc_in: input options relating to QMC methods.
         !    qs: qmc_state_t object. The timestep and reference determinant are used.
         !    spawn_cutoff: The size of the minimum spawning event allowed, in
         !        the encoded representation. Events smaller than this will be
@@ -1435,12 +1434,10 @@ contains
         use proc_pointers, only: gen_excit_ptr_t
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
-        use parallel, only: iproc
         use const, only: depsilon
         use qmc_data, only: qmc_in_t, qmc_state_t
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         integer(int_p), intent(in) :: spawn_cutoff
         logical, intent(in) :: linked_ccmc
@@ -1539,7 +1536,6 @@ contains
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
-        use const, only: dp
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -2200,7 +2196,6 @@ contains
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
-        use parallel, only: iproc
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
         use qmc_data, only: qmc_in_t, qmc_state_t

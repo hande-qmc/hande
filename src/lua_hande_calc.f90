@@ -103,11 +103,10 @@ contains
 
         type(flu_State) :: lua_state
 
-        type(c_ptr) :: sys_ptr
         type(sys_t), pointer :: sys
         integer :: truncation_level, nattempts, ncycles, rng_seed
         integer, allocatable :: ref_det(:)
-        integer :: opts, err
+        integer :: opts
         character(12), parameter :: keys(2) = [character(12) :: 'sys', 'hilbert']
 
         lua_state = flu_copyptr(l)
@@ -167,9 +166,8 @@ contains
 
         type(flu_state) :: lua_state
 
-        type(c_ptr) :: sys_ptr
         type(sys_t), pointer :: sys
-        integer :: opts, err, rng_seed, ncycles, nattempts
+        integer :: opts, rng_seed, ncycles, nattempts
         logical :: fermi_temperature, all_spin_sectors
         real(p) :: beta
         character(16), parameter :: keys(2) = [character(16) :: 'sys', 'canonical_energy']
@@ -177,7 +175,7 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
-        if (sys%chem_pot == huge(1.0_p) .and. parent) call stop_all('lua_canonical_energy', &
+        if (.not. sys%chem_pot < huge(1.0_p) .and. parent) call stop_all('lua_canonical_energy', &
                                                                         'chem_pot: chemical potential not supplied.')
 
         opts = aot_table_top(lua_state)
@@ -227,7 +225,7 @@ contains
         use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
         use system, only: set_spin_polarisation
 
-        integer :: nresult
+        integer(c_int) :: nresult
         type(c_ptr), value :: L
 
         type(flu_state) :: lua_state
@@ -295,7 +293,7 @@ contains
         use calc, only: calc_type, fciqmc_calc
         use system, only: set_spin_polarisation
 
-        integer :: nresult
+        integer(c_int)  :: nresult
         type(c_ptr), value :: L
 
         type(flu_state) :: lua_state
@@ -368,7 +366,7 @@ contains
         use calc, only: calc_type, ccmc_calc
         use system, only: set_spin_polarisation
 
-        integer :: nresult
+        integer(c_int) :: nresult
         type(c_ptr), value :: L
 
         type(flu_state) :: lua_state
@@ -624,7 +622,6 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use aot_vector_module, only: aot_get_val
 
-        use const, only: p
         use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
@@ -749,7 +746,6 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
-        use calc, only: GLOBAL_META, gen_seed
         use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
@@ -990,9 +986,9 @@ contains
         type(qmc_in_t), intent(inout) :: qmc_in
         type(semi_stoch_in_t), intent(out) :: semi_stoch_in
 
-        integer :: semi_stoch_table, ref_det, err
+        integer :: semi_stoch_table, err
         character(len=10) :: str
-        logical :: ref_det_flag, separate_annihilation
+        logical :: separate_annihilation
         character(21), parameter :: keys(8) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
                                                                 'shift_start_iteration', 'write_determ_space', 'write', 'read']
 
@@ -1077,9 +1073,7 @@ contains
         integer, intent(in) :: opts
         type(ccmc_in_t), intent(out) :: ccmc_in
 
-        integer :: ccmc_table, ref_det, err
-        character(len=10) :: str
-        logical :: ref_det_flag
+        integer :: ccmc_table, err
         character(28), parameter :: keys(4) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
                                                                 'full_non_composite', 'linked']
 
@@ -1345,9 +1339,7 @@ contains
         integer, intent(in) :: opts
         type(load_bal_in_t), intent(out) :: load_bal_in
 
-        integer :: load_bal_table, ref_det, err
-        character(len=10) :: str
-        logical :: ref_det_flag
+        integer :: load_bal_table, err
         character(12), parameter :: keys(5) = [character(12) :: 'nslots', 'min_pop', 'target', 'max_attempts', 'write']
 
         if (aot_exists(lua_state, opts, 'load_bal')) then

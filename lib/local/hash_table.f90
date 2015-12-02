@@ -239,8 +239,6 @@ module hash_table
 
             type(hash_table_t), intent(inout) :: ht
 
-            integer :: i
-
             ht%table(0,:) = 0
             ht%head = 0
             ht%next_free_entry = 0

@@ -162,7 +162,6 @@ contains
         use aot_table_ops_module, only: aot_table_open, aot_table_close
         use aot_vector_module, only: aot_get_val
 
-        use const, only: p
         use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_utils, only: warn_unused_args
@@ -172,7 +171,7 @@ contains
         type(sys_t), intent(inout) :: sys
         integer, intent(in) :: opts
 
-        real(p), allocatable :: tmp(:)
+        integer, allocatable :: tmp(:)
         integer, allocatable :: err_arr(:)
         integer :: lattice, i
 
@@ -209,7 +208,6 @@ contains
         use basis_types, only: init_basis_strings, print_basis_metadata
         use determinants, only: init_determinants
         use excitations, only: init_excitations
-        use parallel, only: parent
 
         use system, only: sys_t, heisenberg
 
@@ -375,7 +373,7 @@ contains
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
         use lua_hande_utils, only: warn_unused_args
-        use system, only: sys_t, hub_real, chung_landau, init_system
+        use system, only: sys_t, chung_landau, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
         use check_input, only: check_sys
@@ -472,7 +470,7 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+        character(15), parameter :: keys(10) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
                                                                 'sym', 'ms', 'CAS', 'chem_pot']
 
         lua_state = flu_copyptr(L)

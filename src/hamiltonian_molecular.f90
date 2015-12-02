@@ -87,7 +87,6 @@ contains
         integer(i0), intent(in) :: f(sys%basis%string_len)
 
         integer :: occ_list(sys%nel)
-        integer :: iel, jel, i, j
 
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(sys%basis, f, occ_list)

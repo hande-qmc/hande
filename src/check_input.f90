@@ -40,9 +40,9 @@ contains
         end if
 
         if (sys%system == heisenberg) then
-            if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. (.not.sys%lattice%bipartite_lattice)) &
+            if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon .and. (.not.sys%lattice%bipartite_lattice)) &
                 call stop_all(this, 'Cannot set a staggered field for this lattice because it is frustrated.')
-            if (sys%heisenberg%staggered_magnetic_field /= 0.0_p .and. sys%heisenberg%magnetic_field /= 0.0_p) &
+            if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon .and. abs(sys%heisenberg%magnetic_field) > depsilon) &
                 call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
                         else if (sys%system == hub_k .or. sys%system == hub_real) then
             if (sys%nel > 2*sys%lattice%nsites) call stop_all(this, 'More than two electrons per site.')
@@ -193,7 +193,7 @@ contains
 
         use system, only: sys_t, heisenberg
         use dmqmc_data, only: dmqmc_in_t
-        use calc, only: dmqmc_calc_type, dmqmc_energy, dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
+        use calc, only: dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
 
         use errors, only: stop_all
@@ -247,7 +247,7 @@ contains
             call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
 
-        if (dmqmc_in%grand_canonical_initialisation .and. sys%chem_pot == huge(1.0_p)) then
+        if (dmqmc_in%grand_canonical_initialisation .and. .not. sys%chem_pot < huge(1.0_p)) then
             call stop_all(this, 'Chemical potential must be supplied to use grand_canonical_initialisation.')
         end if
 
@@ -257,7 +257,7 @@ contains
                                  & if not using grand_canonical_initialisation.')
         end if
 
-        if (dmqmc_in%init_beta == 0 .and. dmqmc_in%grand_canonical_initialisation) then
+        if (dmqmc_in%init_beta < depsilon .and. dmqmc_in%grand_canonical_initialisation) then
             call stop_all(this, 'init_beta must be greater than zero if grand_canonical_initialisation is to be used.')
         else if (dmqmc_in%init_beta < 0) then
             call stop_all(this, 'init_beta must be non-negative.')

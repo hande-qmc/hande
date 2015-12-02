@@ -37,7 +37,7 @@ contains
         !    Hash of f using the MurmurHash2 algorithm.
 
         use, intrinsic:: iso_c_binding
-        use const, only: i0, i0_length
+        use const, only: i0
 
         integer :: hash
         integer(i0), intent(in), target :: f(N)

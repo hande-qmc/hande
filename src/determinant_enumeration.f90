@@ -74,7 +74,7 @@ contains
         integer :: sym_beta, sym, Ms, excit_level_alpha, excit_level_beta
         integer(i0) :: f(sys%basis%string_len)
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
-        integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim), det_unit
+        integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
         type(det_info_t) :: d0
         logical :: in_space, force_full, truncate_space
 

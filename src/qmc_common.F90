@@ -45,12 +45,12 @@ contains
         type(qmc_state_t), intent(inout) :: qs
 
         integer, parameter :: particle_type = 1
-        integer :: i, D0_proc
+        integer :: i
         integer(i0), allocatable :: fmax(:)
         integer(int_p) :: max_pop
 #ifdef PARALLEL
         real(dp) :: in_data(2), out_data(2)
-        integer :: ierr
+        integer :: D0_proc, ierr
 #endif
         real(p) :: H00_max, H00_old
         real(dp) :: real_pop
@@ -96,10 +96,10 @@ contains
 
         call mpi_allreduce(in_data, out_data, 1, mpi_2double_precision, MPI_MAXLOC, MPI_COMM_WORLD, ierr)
 
-        if (out_data(1) /= 0) then
+        if (abs(out_data(1)) > depsilon) then
             real_pop = out_data(1)
             updated = .true.
-            D0_proc = out_data(2)
+            D0_proc = nint(out_data(2))
             qs%ref%f0 = fmax
             qs%ref%H00 = H00_max
             ! Broadcast updated data
@@ -338,7 +338,7 @@ contains
 
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: population
-        real(dp) :: r, pextra
+        real(dp) :: pextra
         integer :: nattempts
 
         nattempts = abs(int(population))
@@ -615,7 +615,7 @@ contains
         logical, optional, intent(in) :: nb_comm
         integer, optional, intent(in) :: spawn_elsewhere
 
-        integer :: idet, ispace
+        integer :: idet
         real(p) :: ntot_particles(qs%psip_list%nspaces)
         real(p) :: real_population(qs%psip_list%nspaces), weighted_population
         type(det_info_t) :: cdet
@@ -768,12 +768,11 @@ contains
 
     end subroutine init_mc_cycle
 
-    subroutine load_balancing_wrapper(sys, qmc_in, reference, load_bal_in, annihilation_flags, nb_comm, rng, psip_list, spawn, &
+    subroutine load_balancing_wrapper(sys, reference, load_bal_in, annihilation_flags, nb_comm, rng, psip_list, spawn, &
                                       par_info, determ)
 
         ! In:
         !    sys: system being studied
-        !    qmc_in: input options relating to QMC methods.
         !    reference: current reference determinant.
         !    load_bal_in: input options for load balancing.
         !    annihilation_flags: calculation specific annihilation flags.
@@ -798,14 +797,13 @@ contains
         ! to ensure this happens.
 
         use system, only: sys_t
-        use qmc_data, only: qmc_in_t, reference_t, load_bal_in_t, annihilation_flags_t, particle_t
+        use qmc_data, only: reference_t, load_bal_in_t, annihilation_flags_t, particle_t
         use qmc_data, only: parallel_t, semi_stoch_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
 
         type(sys_t), intent(in) :: sys
-        type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: reference
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -828,12 +826,11 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(sys, qmc_in, iteration, update_tau, qs, ntot_particles,              &
+    subroutine end_report_loop(qmc_in, iteration, update_tau, qs, ntot_particles,              &
                                 nspawn_events, semi_stoch_shift_it, semi_stoch_start_it, soft_exit, &
                                 load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, error)
 
         ! In:
-        !    sys: system being studied.
         !    qmc_in: input optons relating to QMC methods.
         !    iteration: The current iteration of the simulation.
         !    nspawn_events: The total number of spawning events to this process.
@@ -867,12 +864,11 @@ contains
                                      update_energy_estimators_recv, update_energy_estimators_send, &
                                      nparticles_start_ind
         use interact, only: calc_interact, check_interact, check_comms_file
-        use parallel, only: parent, nprocs
+        use parallel, only: nprocs
         use system, only: sys_t
         use bloom_handler, only: bloom_stats_t, bloom_stats_warning
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t, nb_rep_t
 
-        type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: iteration
         logical, intent(inout) :: update_tau
@@ -889,7 +885,6 @@ contains
         logical, optional, intent(in) :: doing_lb, nb_comm
         logical, optional, intent(inout) :: error
 
-        real :: curr_time
         logical :: update, vary_shift_before, nb_comm_local, comms_found
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
@@ -1023,9 +1018,6 @@ contains
 
         real(p), intent(inout) :: tau
         real(p), intent(in), optional :: factor
-
-        integer :: ierr
-        logical :: update_tau_global
 
         if (present(factor)) then
             tau = factor*tau

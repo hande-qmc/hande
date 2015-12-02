@@ -53,12 +53,11 @@ contains
         use spawning, only: assign_particle_processor
         use system
         use symmetry, only: symmetry_orb_list
-        use momentum_symmetry, only: gamma_sym, sym_table
         use utils, only: factorial_combination_1
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            reference_t, neel_singlet, no_guiding, single_basis
+                            reference_t, neel_singlet, single_basis
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
@@ -72,15 +71,17 @@ contains
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         integer :: ierr
-        integer :: i, j, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
-        integer :: step, size_spawned_walker, max_nstates, max_nspawned_states
+        integer :: i, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
+        integer :: size_spawned_walker, max_nspawned_states
         integer :: nhash_bits
         integer :: ref_sym ! the symmetry of the reference determinant
         integer(i0) :: f0_inv(sys%basis%string_len)
-        integer(int_64) :: tmp_int_64
         real(p) :: spawn_cutoff
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(restart_info_t) :: ri
+#ifdef PARALLEL
+        real(p) :: tmp_p
+#endif
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
 
@@ -396,8 +397,8 @@ contains
 
             if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
-                tmp_int_64 = calculate_hf_signed_pop(pl)
-                call mpi_allreduce(tmp_int_64, qmc_state%estimators%hf_signed_pop, pl%nspaces, MPI_INTEGER8, MPI_SUM, &
+                tmp_p = calculate_hf_signed_pop(pl)
+                call mpi_allreduce(tmp_p, qmc_state%estimators%hf_signed_pop, pl%nspaces, mpi_preal, MPI_SUM, &
                                    MPI_COMM_WORLD, ierr)
 #else
                 qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl)

@@ -128,8 +128,8 @@ contains
 
         type(nb_rep_t), intent(inout) :: rep_comm
 
-        integer :: i, ierr
 #ifdef PARALLEL
+        integer :: i, ierr
         do i = 0, nprocs-1
            call MPI_ISend(rep_comm%rep_info, size(rep_comm%rep_info), MPI_REAL8, &
                           i, 789, MPI_COMM_WORLD, rep_comm%request(i), ierr)
@@ -185,8 +185,8 @@ contains
 
         real(dp) :: rep_info_sum(nprocs*ntypes+nparticles_start_ind-1)
         real(dp) :: rep_loop_reduce(nprocs*(nprocs*ntypes+nparticles_start_ind-1))
-        integer :: rep_request_r(0:nprocs-1)
 #ifdef PARALLEL
+        integer :: rep_request_r(0:nprocs-1)
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
         integer :: i, j, data_size
@@ -237,7 +237,7 @@ contains
 
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
-        use parallel, only: nprocs, iproc
+        use parallel, only: iproc
         use qmc_data, only: qmc_state_t
 
         type(qmc_state_t), intent(in) :: qs
@@ -343,7 +343,7 @@ contains
         end if
         if (present(bloom_stats)) then
             bloom_stats%tot_bloom_curr = rep_loop_sum(bloom_tot_ind)
-            bloom_stats%nblooms_curr = rep_loop_sum(bloom_num_ind)
+            bloom_stats%nblooms_curr = nint(rep_loop_sum(bloom_num_ind))
             ! Also add to running totals.
             bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr 
             bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
@@ -352,8 +352,8 @@ contains
         qs%estimators%proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
         qs%estimators%proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
         qs%estimators%D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
-        qs%estimators%tot_nstates = rep_loop_sum(nocc_states_ind)
-        qs%estimators%tot_nspawn_events = rep_loop_sum(nspawned_ind)
+        qs%estimators%tot_nstates = nint(rep_loop_sum(nocc_states_ind))
+        qs%estimators%tot_nspawn_events = nint(rep_loop_sum(nspawned_ind))
         if (present(comms_found)) then
             comms_found = abs(rep_loop_sum(comms_found_ind)) > depsilon
         end if

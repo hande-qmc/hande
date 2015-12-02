@@ -515,7 +515,7 @@ contains
         !    list: list of integers.  List is sorted on output.
 
         integer(int_32), intent(inout) :: list(:)
-        real :: tmp
+        integer(int_32) :: tmp
         integer :: i, j
 
         ! Based on http://rosettacode.org/wiki/Sorting_algorithms/Insertion_sort#Fortran.
@@ -542,7 +542,7 @@ contains
         !    list: list of integers.  List is sorted on output.
 
         integer(int_64), intent(inout) :: list(:)
-        real :: tmp
+        integer(int_64) :: tmp
         integer :: i, j
 
         ! Based on http://rosettacode.org/wiki/Sorting_algorithms/Insertion_sort#Fortran.

@@ -70,14 +70,13 @@ contains
 
     end function get_two_e_int_ringium
 
-    pure function get_two_e_int_ringium_nonzero(sys, i, j, a, b) result(intgrl)
+    pure function get_two_e_int_ringium_nonzero(sys, i, j, a) result(intgrl)
 
         ! In:
         !    sys: system being studied.
         !    i: index of basis function.
         !    j: index of basis function.
         !    a: index of basis function.
-        !    b: index of basis function.
 
         ! Returns:
         !   The anti-symmetrized integral <ij||ab>
@@ -85,13 +84,14 @@ contains
         ! NOTE:
         !   This assumes <ij||ab> is known to be non-zero by symmetry, otherwise an
         !   incorrect value will be returned.  If it might be zero, get_two_e_int_ringium
-        !   must be used instead.
+        !   must be used instead.  The index b is assumed to be such that angular momentum
+        !   is conserved.
 
         use system, only: sys_t
 
         real(p) :: intgrl
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, j, a, b
+        integer, intent(in) :: i, j, a
         real(p) :: x1, x2
 
         ! According to J Chem Phys 138, 164124 (2103)

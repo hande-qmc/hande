@@ -226,7 +226,7 @@ contains
         type(csrp_t), intent(out), optional :: hamil_csr
         type(blacs_info), intent(in), optional :: proc_blacs_info
         logical, intent(in), optional :: full_mat
-        integer :: ierr, iunit, n1, n2
+        integer :: ierr
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
         logical :: sparse_mode
         real(p) :: hmatel

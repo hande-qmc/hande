@@ -516,7 +516,7 @@ contains
         integer, intent(in) :: nslots
         integer, intent(out) :: particle_proc, slot_pos
 
-        integer :: hash, i, tmp1, tmp2
+        integer :: hash
         integer(i0) :: offset, mod_label(size(particle_label))
 
         ! (Extra credit for parallel calculations)
@@ -588,8 +588,6 @@ contains
         ! Out:
         !    particle_proc: processor where determinant resides
         !    slot_pos: position in proc_map for this determinant
-
-        use parallel, only: parent
 
         integer(i0), intent(in) :: particle_label(:)
         integer, intent(in) :: nbits, seed, shift, freq, np
@@ -797,7 +795,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -852,7 +850,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -907,7 +905,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -968,7 +966,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use determinants, only: det_info_t
@@ -1028,7 +1026,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
@@ -1091,7 +1089,7 @@ contains
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle will be added.
 
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
 
         use basis_types, only: basis_t
         use bit_utils, only: count_set_bits
@@ -1158,7 +1156,7 @@ contains
 
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use determinants, only: det_info_t
         use spawn_data, only: spawn_t
@@ -1176,7 +1174,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1226,7 +1224,7 @@ contains
         use basis_types, only: basis_t
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use determinants, only: det_info_t
         use spawn_data, only: spawn_t
@@ -1244,7 +1242,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1298,7 +1296,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
         use determinants, only: det_info_t
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
@@ -1315,7 +1313,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1373,7 +1371,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
         use determinants, only: det_info_t
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
@@ -1390,7 +1388,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1455,7 +1453,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use determinants, only: det_info_t
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
@@ -1472,7 +1470,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 
@@ -1536,7 +1534,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use determinants, only: det_info_t
-        use parallel, only: nprocs, nthreads
+        use parallel, only: nprocs
         use qmc_data, only: reference_t
         use spawn_data, only: spawn_t
 
@@ -1553,7 +1551,7 @@ contains
         integer(i0) :: f_new_tot(basis%tensor_label_len)
 
         ! DMQMC is not yet OpenMP parallelised.
-        integer, parameter :: thread_id = 0
+        !integer, parameter :: thread_id = 0
 
         integer :: iproc_spawn, slot
 

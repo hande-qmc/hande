@@ -84,8 +84,6 @@ contains
         integer(i0), intent(in) :: f(sys%basis%string_len)
         integer :: occ_list(sys%nel)
 
-        integer :: i, j
-
         call decode_det(sys%basis, f, occ_list)
 
         ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
@@ -116,8 +114,6 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
         integer :: occ_list(sys%nel)
-
-        integer :: i
 
         call decode_det(sys%basis, f, occ_list)
 
@@ -186,11 +182,11 @@ contains
 
     end function slater_condon2_ueg
 
-    pure function slater_condon2_ueg_excit(sys, i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_ueg_excit(sys, i, a, b, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
-        !    i,j:  index of the spin-orbital from which an electron is excited in
+        !    i:  index of the spin-orbital from which an electron is excited in
         !          the reference determinant.
         !    a,b:  index of the spin-orbital into which an electron is excited in
         !          the excited determinant.
@@ -198,7 +194,8 @@ contains
         !          permutations.
         ! Returns:
         !    < D | H | D_ij^ab >, the Hamiltonian matrix element between a
-        !    determinant and a double excitation of it in the UEG.
+        !    determinant and a double excitation of it in the UEG, where
+        !    j is defined such that momentum is conserved.
 
         ! WARNING: This function assumes that the D_{ij}^{ab} is a symmetry allowed
         ! excitation from D (and so the matrix element is *not* zero by
@@ -210,7 +207,7 @@ contains
 
         real(p) :: hmatel
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, j, a, b
+        integer, intent(in) :: i, a, b
         logical, intent(in) :: perm
 
         hmatel = 0.0_p

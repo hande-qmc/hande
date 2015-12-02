@@ -63,11 +63,14 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         real(p) :: nparticles_temp(psip_list%nspaces)
-        integer :: nel, ireplica, ierr, ialpha, ms
+        integer :: nel, ireplica, ialpha, ms
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
         real(dp) :: r, prob
         type(sys_t) :: sys_copy
+#ifdef PARALLEL
+        integer :: ierr
+#endif
 
         npsips_this_proc = target_nparticles_tot/nprocs
         ! If the initial number of psips does not split evenly between all
@@ -124,7 +127,7 @@ contains
                     ! Perform metropolis algorithm on initial distribution so
                     ! that we are sampling the trial density matrix.
                     if (dmqmc_in%metropolis_attempts > 0) call initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, &
-                                                                       npsips_this_proc, psip_list%pop_real_factor, ireplica, spawn)
+                                                                       npsips_this_proc, spawn)
                 else
                     if (dmqmc_in%all_spin_sectors) then
                         ! Need to set spin variables appropriately.
@@ -282,8 +285,8 @@ contains
                 call create_diagonal_density_matrix_particle_initiator(f, basis%string_len, &
                         basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
             else
-                call create_diagonal_density_matrix_particle(f, basis%string_len, &
-                        basis%tensor_label_len, pop_real_factor, ireplica, pop_real_factor, spawn)
+                call create_diagonal_density_matrix_particle(f, basis%string_len, basis%tensor_label_len, pop_real_factor, &
+                                                             ireplica, spawn)
             end if
 
         end do
@@ -348,8 +351,8 @@ contains
                         call create_diagonal_density_matrix_particle_initiator(f, sys%basis%string_len, &
                                 sys%basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
                     else
-                        call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                                sys%basis%tensor_label_len, pop_real_factor, ireplica, pop_real_factor, spawn)
+                        call create_diagonal_density_matrix_particle(f, sys%basis%string_len, sys%basis%tensor_label_len, &
+                                pop_real_factor, ireplica, spawn)
                     end if
                     exit
                 end if
@@ -358,7 +361,7 @@ contains
 
     end subroutine random_distribution_electronic
 
-    subroutine initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, npsips, pop_real_factor, ireplica, spawn)
+    subroutine initialise_dm_metropolis(sys, rng, qmc_state, dmqmc_in, npsips, spawn)
 
         ! Attempt to initialise the temperature dependent trial density matrix
         ! using the metropolis algorithm. We either uniformly distribute psips
@@ -378,9 +381,6 @@ contains
         !    qmc_state: input options relating to QMC methods.
         !    dmqmc_in: input options relating to DMQMC.
         !    npsips: number of psips to distribute in this sector.
-        !    pop_real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
-        !    ireplica: replica index.
         ! In/Out:
         !    sys: system being studied. Should be left unmodified on output.
         !    rng: random number generator.
@@ -405,15 +405,13 @@ contains
         type(qmc_state_t), intent(in) :: qmc_state
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
-        integer(int_p), intent(in) :: pop_real_factor
-        integer, intent(in) :: ireplica
         type(dSFMT_t), intent(inout) :: rng
         type(spawn_t), intent(inout) :: spawn
 
         integer :: occ_list(sys%nel), naccept
-        integer :: idet, iattempt, nsuccess, ms
+        integer :: idet, iattempt, nsuccess
         integer :: thread_id = 0, proc
-        integer(i0) :: f_old(sys%basis%string_len), f_new(sys%basis%string_len)
+        integer(i0) :: f_new(sys%basis%string_len)
         real(p), target :: tmp_data(1)
         real(p) :: pgen, hmatel, E_new, E_old, prob
         real(dp) :: r
@@ -477,7 +475,7 @@ contains
         end do
 
         if (parent) write (6,'(1X,"#",1X, "Average acceptance ratio: ",f8.7,1X," Average number of null excitations: ", f8.7)') &
-                           real(naccept)/nsuccess, real(dmqmc_in%metropolis_attempts*npsips-nsuccess)/&
+                           real(naccept)/nsuccess, real(dmqmc_in%metropolis_attempts*npsips-nsuccess,dp)/&
                                                    &(dmqmc_in%metropolis_attempts*npsips)
 
         call dealloc_det_info_t(cdet)
@@ -508,7 +506,6 @@ contains
         type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
 
-        real(dp) :: species, pflip
         integer :: ielec, iexcit, new_orb
 
         ! Pick electron at random.
@@ -547,8 +544,7 @@ contains
         type(det_info_t), intent(inout) :: cdet
         type(dSFMT_t), intent(inout) :: rng
 
-        real(dp) :: species, pflip
-        integer :: orb, ielec, iexcit, new_orb, unocc_list(sys%nvirt)
+        integer :: orb, ielec, iexcit
 
         ielec = int(get_rand_close_open(rng)*sys%nel) + 1
         orb = cdet%occ_list(ielec)
@@ -608,12 +604,10 @@ contains
         type(dSFMT_t), intent(inout) :: rng
 
         real(dp) :: p_single(sys%basis%nbasis/2)
-        real(dp) :: r
         integer :: occ_list(sys%nel)
         integer(i0) :: f(sys%basis%string_len)
         integer :: ireplica, iorb, ipsip
         integer(int_p) :: nspawn
-        logical :: gen
         integer :: nalpha_allowed, nbeta_allowed, ngen
 
         ireplica = 1
@@ -670,8 +664,8 @@ contains
                     call create_diagonal_density_matrix_particle_initiator(f, sys%basis%string_len, &
                             sys%basis%tensor_label_len, pop_real_factor, ireplica, initiator_pop, pop_real_factor, spawn)
                 else
-                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, &
-                            sys%basis%tensor_label_len, nspawn, ireplica, pop_real_factor, spawn)
+                    call create_diagonal_density_matrix_particle(f, sys%basis%string_len, sys%basis%tensor_label_len, &
+                            nspawn, ireplica, spawn)
                 end if
                 ipsip = ipsip + 1
             end if
@@ -715,7 +709,7 @@ contains
                 type(dSFMT_t), intent(inout) :: rng
 
                 integer(int_p) :: nspawn
-                real(p) :: energy_diff, weight, r
+                real(p) :: energy_diff, weight
 
                 ! Any diagonal density matrix can be sampled from the
                 ! non-interacting expression by reweighting, i.e.

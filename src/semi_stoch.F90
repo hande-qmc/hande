@@ -501,11 +501,14 @@ contains
         integer(i0), intent(in) :: dets_this_proc(:,:)
         logical, intent(in) :: print_info
 
-        integer :: i, j, nnz, imode, ierr
+        integer :: i, j, nnz, imode
         integer :: mem_reqd, max_mem_reqd
         real(p) :: hmatel
         real :: t1, t2
         logical :: diag_elem
+#ifdef PARALLEL
+        integer :: ierr
+#endif
 
         if (print_info) write(6,'(1X,a74)') '# Counting number of non-zero deterministic Hamiltonian elements to store.'
 
@@ -824,9 +827,8 @@ contains
         type(semi_stoch_t), intent(inout) :: determ
         type(qmc_state_t), intent(in) :: qs
 
-        integer :: i, ierr
-        integer :: send_counts(0:nprocs-1), receive_counts(0:nprocs-1)
 #ifdef PARALLEL
+        integer :: i, ierr
         integer :: disps(0:nprocs-1)
         real(p) :: t1
 
@@ -1264,10 +1266,12 @@ contains
         type(hdf5_kinds_t) :: kinds
         integer(hid_t) :: file_id, dset_id, dspace_id
         character(255) :: filename
-        integer :: i, id, proc, slot, ndeterm, ndeterm_this_proc, ierr
-        integer :: displs(0:nprocs-1)
+        integer :: id, ierr, ndeterm
         integer(HSIZE_T) :: dims(2), maxdims(2)
         logical :: exists
+#ifdef PARALLEL
+        integer :: i, proc, slot, ndeterm_this_proc, displs(0:nprocs-1)
+#endif
 #endif
 #ifdef DISABLE_HDF5
         call stop_all('read_determ_from_file', '# Not compiled with HDF5 support.  Cannot read semi-stochastic file.')
@@ -1304,7 +1308,7 @@ contains
             call h5sget_simple_extent_dims_f(dspace_id, dims, maxdims, ierr)
             call h5dclose_f(dset_id, ierr)
             ! Number of determinants is the last index...
-            ndeterm = dims(2)
+            ndeterm = int(dims(2))
 
             allocate(determ%dets(sys%basis%tensor_label_len, ndeterm), stat=ierr)
             call check_allocate('determ%dets', ndeterm*sys%basis%tensor_label_len, ierr)

@@ -189,7 +189,7 @@ contains
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
-                call load_balancing_wrapper(sys, qmc_in, qs%ref, load_bal_in, annihilation_flags, fciqmc_in%non_blocking_comm, &
+                call load_balancing_wrapper(sys, qs%ref, load_bal_in, annihilation_flags, fciqmc_in%non_blocking_comm, &
                                             rng, qs%psip_list, qs%spawn_store%spawn, qs%par_info, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
                 ideterm = 0
@@ -217,7 +217,7 @@ contains
                                                 qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
-                    call set_parent_flag(real_population, qmc_in%initiator_pop, cdet%f, determ%flags(idet), cdet%initiator_flag)
+                    call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), cdet%initiator_flag)
 
                     nattempts_current_det = decide_nattempts(rng, real_population)
 
@@ -259,8 +259,7 @@ contains
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
-                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath, &
-                                                    load_bal_in%nslots)
+                        call evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn, cdet, rng, ndeath)
                         call direct_annihilation_received_list(sys, rng, qs%ref, annihilation_flags, pl, spawn_recv)
                         ! Need to add walkers which have potentially moved processor to the spawned walker list.
                         if (qs%par_info%load%needed) then
@@ -287,7 +286,7 @@ contains
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
 
-            call end_report_loop(sys, qmc_in, iter, update_tau, qs, nparticles_old, &
+            call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
                                  nb_comm=fciqmc_in%non_blocking_comm, error=error)
@@ -349,7 +348,7 @@ contains
 
     end subroutine do_fciqmc
 
-    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath, nload_slots)
+    subroutine evolve_spawned_walkers(sys, qmc_in, qs, spawn_recv, spawn_to_send, cdet, rng, ndeath)
 
         ! Evolve spawned list of walkers one time step.
         ! Used for non-blocking communications.
@@ -357,7 +356,6 @@ contains
         ! In:
         !   sys: system being studied.
         !   qmc_in: input options relating to QMC methods.
-        !   nload_slots: number of load balancing slots (per processor).
         ! In/Out:
         !   qs: qmc_state_t containing information about the reference det and estimators.
         !   spawn: spawn_t object containing walkers spawned onto this processor during previous time step.
@@ -383,28 +381,25 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(det_info_t), intent(inout) :: cdet
         integer(int_p), intent(inout) :: ndeath
-        integer, intent(in) :: nload_slots
 
-        real(p), target :: tmp_data(1)
         type(excit_t) :: connection
         real(p) :: hmatel
         integer :: idet, iparticle, nattempts_current_det
         integer(int_p) :: nspawned
         integer(int_p) :: int_pop(spawn_recv%ntypes)
-        real(p) :: real_pop, weighted_pop
+        real(p) :: real_pop
         real(p) :: list_pop
-        integer(i0), target :: ftmp(sys%basis%tensor_label_len)
 
-        cdet%f => ftmp
+        allocate(cdet%f(sys%basis%tensor_label_len))
+        allocate(cdet%data(1))
 
         do idet = 1, spawn_recv%head(0,0) ! loop over walkers/dets
 
             int_pop = int(spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet), int_p)
             real_pop = real(int_pop(1),p) / qs%psip_list%pop_real_factor
-            ftmp = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
+            cdet%f = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
-            tmp_data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
-            cdet%data => tmp_data
+            cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
             call decoder_ptr(sys, cdet%f, cdet)
 
@@ -417,7 +412,7 @@ contains
 
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
-            call set_parent_flag(real_pop, qmc_in%initiator_pop, cdet%f, 1, cdet%initiator_flag)
+            call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, cdet%initiator_flag)
 
             nattempts_current_det = decide_nattempts(rng, real_pop)
 
@@ -437,11 +432,13 @@ contains
 
             ! Clone or die.
             ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-            call stochastic_death(rng, qs, tmp_data(1), qs%shift(1), int_pop(1), list_pop, ndeath)
+            call stochastic_death(rng, qs, cdet%data(1), qs%shift(1), int_pop(1), list_pop, ndeath)
             ! Update population of walkers on current determinant.
             spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop
 
         end do
+
+        deallocate(cdet%f, cdet%data)
 
     end subroutine evolve_spawned_walkers
 

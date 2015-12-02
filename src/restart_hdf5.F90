@@ -204,7 +204,7 @@ module restart_hdf5
             integer, intent(out), optional :: fname_id
 
             character(14) :: proc_suf
-            integer :: id, ierr, ip_loc
+            integer :: id, ip_loc
             logical :: exists, verbose_loc
 
             verbose_loc = parent
@@ -266,11 +266,13 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_write
+#else
+            use parallel, only: parent
 #endif
             use const
             use, intrinsic :: iso_c_binding
             use errors, only: stop_all
-            use parallel, only: nprocs, iproc, parent, nthreads
+            use parallel, only: nprocs
             use utils, only: get_unique_filename, int_fmt
 
             use calc, only: calc_type, GLOBAL_META
@@ -295,10 +297,7 @@ module restart_hdf5
             integer :: date_time(8)
             character(19) :: date_str
             integer :: ierr
-            type(c_ptr) :: ptr
-            ! Shape of data (sub-)array to be written out.
-            integer(HSIZE_T) :: dshape2(2)
-            !Used for array sizes
+            ! Used for array sizes
             integer :: ishape(2)
             ! Temporary variables so for copying data to which we can also call c_ptr on.
             ! This allows us to use the same array functions for writing out (the small
@@ -454,18 +453,17 @@ module restart_hdf5
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
             ! HDF5 handles
-            integer(hid_t) :: file_id, group_id, subgroup_id, dset_id, dspace_id
+            integer(hid_t) :: file_id, group_id, subgroup_id
 
             character(255) :: restart_file
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
             integer :: i0_length_restart
-            type(c_ptr) :: ptr
             integer :: ierr
             real(p), target :: tmp(1)
             logical :: exists, resort
             integer(int_64) :: restart_scale_factor(1)
 
-            integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states))), maxdims(size(shape(qs%psip_list%states)))
+            integer(HSIZE_T) :: dims(size(shape(qs%psip_list%states)))
 
 
             ! Initialise HDF5 and open file.
@@ -532,7 +530,7 @@ module restart_hdf5
                 ! qs%psip_list%states has rank 2, so need not look that up!
                 call dset_shape(subgroup_id, ddets, dims)
                 ! Number of determinants is the last index...
-                qs%psip_list%nstates = dims(size(dims))
+                qs%psip_list%nstates = int(dims(size(dims)))
 
                 if (i0_length == i0_length_restart) then
                     call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
@@ -647,7 +645,6 @@ module restart_hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_write, dset_shape, dtype_equal, hdf5_path
             use checking
             use errors, only: warning, stop_all
-            use const, only: i0, int_p, p, int_64
             use parallel
 
             use calc, only: ccmc_calc, init_proc_map_t
@@ -679,7 +676,7 @@ module restart_hdf5
             character(255) :: tmp_name
             character(255), allocatable :: orig_names(:), new_names(:)
             type(hdf5_kinds_t) :: kinds
-            integer :: nprocs_read, ierr, i, iproc_min, icurr, iproc_max, idet, ndets, ip, nmoved, calc_type_restart
+            integer :: nprocs_read, ierr, i, iproc_min, iproc_max, idet, ndets, ip, nmoved, calc_type_restart
             integer(hsize_t) :: dims(2)
 
             integer :: hash_shift, hash_seed, move_freq, slot_pos, storage_type, nlinks, max_corder, write_id
@@ -887,15 +884,15 @@ module restart_hdf5
 
                     call dset_shape(orig_subgroup_id, ddets, dims)
                     if (i0_length == i0_length_restart) then
-                        tensor_label_len = dims(1)
+                        tensor_label_len = int(dims(1))
                     else
                         tensor_label_len = string_len
                     end if
-                    max_nstates = dims(2)
+                    max_nstates = int(dims(2))
                     call dset_shape(orig_subgroup_id, dpops, dims)
-                    psip_read%nspaces = dims(1)
+                    psip_read%nspaces = int(dims(1))
                     call dset_shape(orig_subgroup_id, ddata, dims)
-                    psip_read%info_size = dims(1) - psip_read%nspaces
+                    psip_read%info_size = int(dims(1)) - psip_read%nspaces
 
                     psip_new%nspaces = psip_read%nspaces
                     psip_new%info_size = psip_read%info_size
@@ -933,7 +930,7 @@ module restart_hdf5
 
                     ! Distribute.
                     ! [todo] - non-blocking information.
-                    ndets = dims(2)
+                    ndets = int(dims(2))
                     do iproc_min = iproc_target_start, iproc_target_end, nmax_files
                         nmoved = 0
                         iproc_max = min(iproc_min+nmax_files-1,iproc_target_end)
@@ -1035,7 +1032,6 @@ module restart_hdf5
 
                     integer(hid_t) :: file_id, group_id, subgroup_id
                     integer :: ierr
-                    integer(hsize_t) :: dims(2)
                     logical :: exists
 
                     call h5fopen_f(fname, H5F_ACC_RDWR_F, file_id, ierr)

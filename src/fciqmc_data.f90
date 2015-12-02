@@ -28,8 +28,6 @@ contains
         !    nattempts: The number of attempts to spawn made in order to
         !       generate the current population of walkers in the spawned arrays.
 
-        use parallel, only: nprocs
-
         real(p) :: rate
         integer, intent(in) :: nspawn_events
         integer(int_p), intent(in) :: ndeath, real_factor
@@ -360,12 +358,10 @@ contains
 
     end subroutine write_fciqmc_report
 
-    subroutine end_fciqmc(nb_comm, reference, psip_list, spawn)
+    subroutine end_fciqmc(reference, psip_list, spawn)
 
         ! Deallocate fciqmc data arrays.
 
-        ! In:
-        !    nb_comm: true if using non-blocking communications.
         ! In/Out (optional):
         !   reference: reference state. On exit, allocatable components are deallocated.
         !   psip_list: main particle_t object.  On exit, allocatable components are deallocated.
@@ -377,7 +373,6 @@ contains
         use qmc_data, only: reference_t, particle_t
         use reference_determinant, only: dealloc_reference_t
 
-        logical, intent(in) :: nb_comm
         type(reference_t), intent(inout), optional :: reference
         type(particle_t), intent(inout), optional :: psip_list
         type(spawn_t), intent(inout), optional :: spawn

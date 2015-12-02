@@ -107,7 +107,6 @@ contains
         type(json_out_t), intent(in) :: js
         character(*), intent(in) :: key
         character(3) :: xc
-        integer :: io
 
         xc = indent_level(js%level)
         write (js%io,'('//xc//'a)', advance='no') '"'//trim(key)//'": '
@@ -131,7 +130,6 @@ contains
         type(json_out_t), intent(inout) :: js
         character(*), intent(in), optional :: key
         logical, intent(in), optional :: tag
-        integer :: io, l
         character(3) :: xc
 
         if (present(tag)) then
@@ -164,7 +162,6 @@ contains
 
         type(json_out_t), intent(inout) :: js
         logical, intent(in), optional :: terminal, tag
-        integer :: io
         character(3) :: xc
         character(4) :: term
 
@@ -259,8 +256,6 @@ contains
 
         ! Write out a key/pair for a character string.
 
-        use const, only: dp
-
         type(json_out_t), intent(in) :: js
         character(*), intent(in) :: key
         character(*), intent(in) :: val
@@ -274,8 +269,6 @@ contains
     subroutine write_bool(js, key, val, terminal)
 
         ! Write out a key/pair for a logical.
-
-        use const, only: dp
 
         type(json_out_t), intent(in) :: js
         character(*), intent(in) :: key

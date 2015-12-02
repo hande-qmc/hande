@@ -19,8 +19,7 @@ contains
         !    weighted_sampling: type containing information for weighted
         !        sampling.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_calc_type, dmqmc_energy, dmqmc_energy_squared
-        use calc, only: dmqmc_staggered_magnetisation, dmqmc_correlation, dmqmc_full_r2
+        use calc, only: doing_dmqmc_calc, dmqmc_correlation
         use checking, only: check_allocate
         use system, only: sys_t
 
@@ -205,8 +204,7 @@ contains
         integer, intent(in), optional :: nreplicas
         integer(int_p), intent(in), optional :: real_factor
 
-        integer :: i, ierr, ipos, nrdms
-        integer :: basis_find, bit_position, bit_element
+        integer :: i, ierr, nrdms
         integer :: size_spawned_rdm, total_size_spawned_rdm
         integer :: nbytes_int, spawn_length_loc
         logical :: calc_ground_rdm
@@ -429,8 +427,7 @@ contains
 
     end subroutine find_rdm_masks
 
-    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, &
-                                                       pop_real_factor, spawn)
+    subroutine create_diagonal_density_matrix_particle(f, string_len, tensor_label_len, nspawn, particle_type, spawn)
 
         ! Create a psip on a diagonal element of the density matrix by adding
         ! it to the spawned walkers list. This list can then be sorted correctly
@@ -447,8 +444,6 @@ contains
         !        element.
         !    particle_type: the label of the replica to which this particle is
         !        to sample.
-        !    pop_real_factor: The factor by which populations are multiplied to
-        !        enable non-integer populations.
         ! In/Out:
         !    spawn: spawn_t object to which the spawned particle is added.
 
@@ -462,11 +457,9 @@ contains
         integer, intent(in) :: string_len, tensor_label_len
         integer(int_p), intent(in) :: nspawn
         integer, intent(in) :: particle_type
-        integer(int_p), intent(in) :: pop_real_factor
         type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(tensor_label_len)
-        integer :: nslots2
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
 #else
@@ -531,7 +524,6 @@ contains
         type(spawn_t), intent(inout) :: spawn
 
         integer(i0) :: f_new(tensor_label_len)
-        integer :: nslots2
         integer :: flag
 #ifndef PARALLEL
         integer, parameter :: iproc_spawn = 0
@@ -642,7 +634,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
-        integer :: idet, ireplica, excit_level, nspawn, sign_factor
+        integer :: idet, ireplica, excit_level
         real(p) :: new_population_target(psip_list%nspaces)
         integer(int_p) :: old_population(psip_list%nspaces), new_population(psip_list%nspaces)
         real(dp) :: r, pextra
@@ -729,8 +721,9 @@ contains
         real(p), intent(inout) :: excit_dist(0:)
         type(dmqmc_weighted_sampling_t), intent(inout) :: weighted_sampling
 
-        integer :: i, ierr
+        integer :: i
 #ifdef PARALLEL
+        integer :: ierr
         real(p) :: merged_excit_dist(0:max_number_excitations)
         call mpi_allreduce(excit_dist, merged_excit_dist, max_number_excitations+1, &
             MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)

@@ -187,7 +187,7 @@ contains
         type(proc_map_t), intent(in) :: proc_map
         type(spawn_t), intent(out) :: spawn
 
-        integer :: ierr, block_size, i, j
+        integer :: ierr, i, j
 
         spawn%bit_str_len = bit_str_len
         spawn%bit_str_nbits = bit_str_nbits
@@ -458,7 +458,7 @@ contains
         !        of the received list, but don't compress as it already has
         !        been.
 
-        use parallel, only: nthreads, iproc
+        use parallel, only: nthreads
         use sort, only: qsort
 
         type(spawn_t), intent(inout) :: spawn
@@ -931,7 +931,7 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, intent(in), optional :: start, endp
 
-        integer :: islot, ipart, k, pop_sign, upper_bound
+        integer :: islot, ipart, k, upper_bound
         integer, allocatable :: events(:)
         integer(int_s), allocatable :: initiator_pop(:)
         ! thread_id is a convention from when OpenMP threading support was added to spawn_t.
@@ -1092,7 +1092,7 @@ contains
         integer, intent(in) :: nstates_received(0:nprocs-1)
         integer, intent(in) :: determ_size
 
-        integer :: i, j, displacement, ierr
+        integer :: i, displacement
         integer :: min_ind_0, max_ind_0, min_ind_i, max_ind_i
         integer :: nstates_left(0:nprocs-1)
         integer, parameter :: thread_id = 0
@@ -1158,9 +1158,10 @@ contains
 
         type(spawn_t), intent(in) :: spawn
 
-        integer :: warnings, ierr
-
+        integer :: warnings
 #ifdef PARALLEL
+        integer :: ierr
+
         call mpi_reduce(spawn%warning_count, warnings, 1, mpi_integer, mpi_sum, root, mpi_comm_world, ierr)
 #else
         warnings = spawn%warning_count

@@ -362,7 +362,7 @@ contains
         ! lists are ordered by orbital index, so occ_list must be sorted before use in
         ! such routines.
 
-        use const, only: i0, dp
+        use const, only: dp
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use system, only: sys_t

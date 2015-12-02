@@ -23,7 +23,6 @@ contains
         use bit_utils
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
-        use parallel, only: parent
 
         type(sys_t), intent(inout) :: sys
         integer :: i, j, k, ierr, pos, ind, ivec, v, isystem
@@ -387,7 +386,7 @@ contains
         type(sys_t), intent(in) :: sys
         real(p), allocatable, intent(inout) :: sym_vecs(:,:)
         integer, intent(out) :: nsym
-        integer :: i, j, k, l, ierr
+        integer :: i, j, k, ierr
         integer :: nvecs(3)
         real(p) :: v(sys%lattice%ndim), test_vec(sys%lattice%ndim)
         integer :: scale_fac
