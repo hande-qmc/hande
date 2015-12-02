@@ -292,11 +292,7 @@ contains
 
             ! Integral is (should be!) non-zero by symmetry.
             if (store%uhf) then
-                if (basis_fns(i)%ms > 0) then
-                    spin = 1
-                else
-                    spin = 2
-                end if
+                spin = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> spin=1,2
             else
                 spin = 1
             end if
@@ -388,11 +384,7 @@ contains
         integer :: ii, jj, spin
 
         if (store%uhf) then
-            if (basis_fns(i)%ms > 0) then
-                spin = 1
-            else
-                spin = 2
-            end if
+            spin = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> spin=1,2
         else
             spin = 1
         end if
