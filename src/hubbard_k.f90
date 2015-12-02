@@ -73,8 +73,8 @@ contains
         integer, intent(in) :: i, j, k, l
         integer :: delta_k
 
-        delta_k = sym_table((i+1)/2,(j+1)/2)
-        delta_k = sym_table(delta_k,inv_sym((k+1)/2))
+        delta_k = mom_sym_global%sym_table((i+1)/2,(j+1)/2)
+        delta_k = mom_sym_global%sym_table(delta_k,mom_sym_global%inv_sym((k+1)/2))
 
         conserved = delta_k == (l+1)/2
 

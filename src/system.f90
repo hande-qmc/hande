@@ -256,6 +256,9 @@ type sys_ueg_t
     procedure(i_int_ueg), pointer, nopass :: coulomb_int
     procedure(i_int_ueg), pointer, nopass :: exchange_int
 
+    ! Symmetry information: we only store the gamma point
+    integer :: gamma_sym
+
 end type sys_ueg_t
 
 type sys_read_in_t

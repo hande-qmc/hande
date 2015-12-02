@@ -14,14 +14,18 @@ use system
 
 implicit none
 
-! Index of the symmetry corresponding to the Gamma-point.
-integer :: gamma_sym
+type mom_sym_t
+    ! Index of the symmetry corresponding to the Gamma-point.
+    integer :: gamma_sym
 
-! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
-integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
+    ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
+    integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
 
-! inv_sym(i) = j means that k_i + k_j = 0 (ie k_j is the inverse of k_i).
-integer, allocatable :: inv_sym(:) ! nsym
+    ! inv_sym(i) = j means that k_i + k_j = 0 (ie k_j is the inverse of k_i).
+    integer, allocatable :: inv_sym(:) ! nsym
+end type mom_sym_t
+
+type(mom_sym_t) :: mom_sym_global
 
 contains
 
@@ -63,29 +67,29 @@ contains
             ! and the sum of any two wavevectors is another wavevector in the
             ! basis (up to a primitive reciprocal lattice vector).
             ! It is thus feasible to store the nsym^2 product table.
-            allocate(sym_table(sys%nsym, sys%nsym), stat=ierr)
-            call check_allocate('sym_table',sys%nsym*sys%nsym,ierr)
-            allocate(inv_sym(sys%nsym), stat=ierr)
-            call check_allocate('inv_sym',sys%nsym,ierr)
+            allocate(mom_sym_global%sym_table(sys%nsym, sys%nsym), stat=ierr)
+            call check_allocate('mom_sym_global%sym_table',sys%nsym*sys%nsym,ierr)
+            allocate(mom_sym_global%inv_sym(sys%nsym), stat=ierr)
+            call check_allocate('mom_sym_global%inv_sym',sys%nsym,ierr)
 
             fmt1 = int_fmt(sys%nsym)
 
-            gamma_sym = 0
+            mom_sym_global%gamma_sym = 0
             do i = 1, sys%nsym
-                if (all(sys%basis%basis_fns(i*2)%l == 0)) gamma_sym = i
+                if (all(sys%basis%basis_fns(i*2)%l == 0)) mom_sym_global%gamma_sym = i
             end do
-            if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+            if (mom_sym_global%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
             do i = 1, sys%nsym
                 do j = i, sys%nsym
                     ksum = sys%basis%basis_fns(i*2)%l + sys%basis%basis_fns(j*2)%l
                     do k = 1, sys%nsym
                         if (is_reciprocal_lattice_vector(sys, ksum - sys%basis%basis_fns(k*2)%l)) then
-                            sym_table(i,j) = k
-                            sym_table(j,i) = k
-                            if (k == gamma_sym) then
-                                inv_sym(i) = j
-                                inv_sym(j) = i
+                            mom_sym_global%sym_table(i,j) = k
+                            mom_sym_global%sym_table(j,i) = k
+                            if (k == mom_sym_global%gamma_sym) then
+                                mom_sym_global%inv_sym(i) = j
+                                mom_sym_global%inv_sym(j) = i
                             end if
                             exit
                         end if
@@ -104,14 +108,14 @@ contains
                 do i = 1, sys%nsym
                     write (6,'(i4,5X)', advance='no') i
                     call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
-                    write (6,'(5X,i4)') inv_sym(i)
+                    write (6,'(5X,i4)') mom_sym_global%inv_sym(i)
                 end do
                 write (6,'()')
                 write (6,'(1X,a83,/)') &
                     "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
                 do i = 1, sys%nsym
                     do j = 1, sys%nsym
-                        write (6,'('//fmt1//')', advance='no') sym_table(j,i)
+                        write (6,'('//fmt1//')', advance='no') mom_sym_global%sym_table(j,i)
                     end do
                     write (6,'()')
                 end do
@@ -136,11 +140,11 @@ contains
             ! a basis function though.
             sys%nsym = sys%basis%nbasis/2
 
-            gamma_sym = 0
+            sys%ueg%gamma_sym = 0
             do i = 1, sys%nsym
-                if (all(sys%basis%basis_fns(i*2)%l == 0)) gamma_sym = i
+                if (all(sys%basis%basis_fns(i*2)%l == 0)) sys%ueg%gamma_sym = i
             end do
-            if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+            if (sys%ueg%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
             call init_ueg_indexing(sys)
 
@@ -156,12 +160,12 @@ contains
 
         integer :: ierr
 
-        if (allocated(sym_table)) then
-            deallocate(sym_table, stat=ierr)
+        if (allocated(mom_sym_global%sym_table)) then
+            deallocate(mom_sym_global%sym_table, stat=ierr)
             call check_deallocate('sym_table',ierr)
         end if
-        if (allocated(inv_sym)) then
-            deallocate(inv_sym, stat=ierr)
+        if (allocated(mom_sym_global%inv_sym)) then
+            deallocate(mom_sym_global%inv_sym, stat=ierr)
             call check_deallocate('inv_sym',ierr)
         end if
 
@@ -206,7 +210,7 @@ contains
         integer :: prod
         integer, intent(in) :: s1, s2
 
-        prod = sym_table(s1, s2)
+        prod = mom_sym_global%sym_table(s1, s2)
 
     end function cross_product_hub_k
 
@@ -258,7 +262,7 @@ contains
 
         integer :: i
 
-        isym = gamma_sym
+        isym = mom_sym_global%gamma_sym
         do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
             isym = cross_product_hub_k((orb_list(i)+1)/2, isym)
         end do

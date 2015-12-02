@@ -123,7 +123,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use hamiltonian_hub_k, only: slater_condon2_hub_k_excit
-        use momentum_symmetry, only: sym_table
+        use momentum_symmetry, only: mom_sym_global
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
 
@@ -138,7 +138,7 @@ contains
         ! Continuing from gen_excit_init_hub_k...
 
         ! Recalculate symmetry of (i,j) pair quickly to save passing it round...
-        ij_sym = sym_table((connection%from_orb(1)+1)/2,(connection%from_orb(2)+1)/2)
+        ij_sym = mom_sym_global%sym_table((connection%from_orb(1)+1)/2,(connection%from_orb(2)+1)/2)
 
         ! 4. Well, I suppose we should find out which determinant we're spawning
         ! on...
@@ -462,7 +462,7 @@ contains
         !    i, j: randomly selected spin-orbitals.
         !    ij_sym: symmetry label of the (i,j) combination.
 
-        use momentum_symmetry, only: sym_table
+        use momentum_symmetry, only: mom_sym_global
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
@@ -503,7 +503,7 @@ contains
         j = occ_list_beta(j)
 
         ! Symmetry info is a simple lookup...
-        ij_sym = sym_table((i+1)/2,(j+1)/2)
+        ij_sym = mom_sym_global%sym_table((i+1)/2,(j+1)/2)
 
     end subroutine choose_ij_hub_k
 
@@ -576,7 +576,7 @@ contains
 
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
         use system, only: sys_t
-        use momentum_symmetry, only: sym_table, inv_sym
+        use momentum_symmetry, only: mom_sym_global
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
@@ -613,7 +613,7 @@ contains
         ! Find corresponding beta orbital which satisfies conservation
         ! of crystal momentum.
         ka = (a+1)/2
-        b = 2*sym_table(ij_sym, inv_sym(ka))
+        b = 2*mom_sym_global%sym_table(ij_sym, mom_sym_global%inv_sym(ka))
 
         b_pos = sys%basis%bit_lookup(1,b)
         b_el = sys%basis%bit_lookup(2,b)
@@ -651,7 +651,7 @@ contains
         !        spawning.
 
         use system, only: sys_t
-        use momentum_symmetry, only: sym_table, inv_sym
+        use momentum_symmetry, only: mom_sym_global
 
         real(p) :: pgen
         type(sys_t), intent(in) :: sys
@@ -736,7 +736,7 @@ contains
         ! b is a beta orbital.
         do a = 1, sys%nvirt_alpha
             ka = (unocc_alpha(a)+1)/2
-            b = 2*sym_table(ab_sym, inv_sym(ka))
+            b = 2*mom_sym_global%sym_table(ab_sym, mom_sym_global%inv_sym(ka))
             b_pos = sys%basis%bit_lookup(1,b)
             b_el = sys%basis%bit_lookup(2,b)
             ! Are (a,b) both unoccupied?
