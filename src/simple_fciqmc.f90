@@ -210,10 +210,9 @@ contains
         use fciqmc_data, only: write_fciqmc_report_header, write_fciqmc_report
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t, qmc_state_t, &
                             qmc_in_t_json, restart_in_t_json, reference_t_json
-        use qmc_common, only: dump_restart_file_wrapper
         use spawn_data, only: spawn_t
         use system, only: sys_t, sys_t_json
-        use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
         use check_input, only: check_qmc_opts
 
         type(sys_t), intent(inout) :: sys

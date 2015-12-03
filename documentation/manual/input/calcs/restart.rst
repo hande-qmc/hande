@@ -16,6 +16,12 @@ HANDE currently uses one restart file per MPI rank with a filename of the form
     Start a QMC calculation from a previous calculation if ``true`` or an integer.  If
     ``true``, then the highest value of ``X`` is used for which a set of restart files
     exists, otherwise specifies the value of ``X`` to use.
+
+    .. note::
+
+        The calculation should be the same as the one that produced the ouput file, but it
+        is possible to restart a calculation using an enlarged basis.  The orbitals of the
+        old (small) basis must correspond to the first orbitals of the new (larger) basis.
 ``write``
     type: boolean or integer.
 

@@ -74,7 +74,8 @@ module restart_hdf5
     implicit none
 
     private
-    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_t, init_restart_info_t, redistribute_restart_hdf5
+    public :: dump_restart_hdf5, read_restart_hdf5, restart_info_t, init_restart_info_t, redistribute_restart_hdf5, &
+              dump_restart_file_wrapper
 
     type restart_info_t
         ! If write_id is negative, then set Y=-ID-1 in parse_input, where Y is in the restart
@@ -419,7 +420,7 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nb_comm, qs)
+        subroutine read_restart_hdf5(ri, nbasis, nb_comm, qs)
 
             ! Read QMC data from restart file.
 
@@ -433,8 +434,8 @@ module restart_hdf5
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape
-            use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path
+            use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
 #endif
             use errors, only: stop_all, warning
             use const
@@ -444,9 +445,11 @@ module restart_hdf5
             use spawn_data, only: spawn_t
             use qmc_data, only: qmc_state_t
             use sort, only: qsort
+            use qmc_common, only: redistribute_particles
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
+            integer, intent(in) :: nbasis
             type(qmc_state_t), intent(inout) :: qs
 
 #ifndef DISABLE_HDF5
@@ -457,7 +460,7 @@ module restart_hdf5
 
             character(255) :: restart_file
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
-            integer :: i0_length_restart
+            integer :: i0_length_restart, nbasis_restart
             integer :: ierr
             real(p), target :: tmp(1)
             logical :: exists, resort
@@ -520,9 +523,20 @@ module restart_hdf5
 
             call h5gclose_f(group_id, ierr)
 
-            ! --- qmc group ---
-            call h5gopen_f(file_id, gqmc, group_id, ierr)
+            ! --- basis group ---
+            call h5lexists_f(file_id, gbasis, exists, ierr)
+            if (exists) then
+                call hdf5_read(file_id, hdf5_path(gbasis, dnbasis), nbasis_restart)
+                if (nbasis_restart > nbasis) &
+                    call stop_all('read_restart_hdf5', &
+                                  'Restarting with a smaller basis not supported.  Please implement.')
+            else
+                ! assume not changing basis
+                nbasis_restart = nbasis
+            end if
 
+            ! --- qmc group ---
+                call h5gopen_f(file_id, gqmc, group_id, ierr)
                 ! --- qmc/psips group ---
                 call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
@@ -533,8 +547,17 @@ module restart_hdf5
                 qs%psip_list%nstates = int(dims(size(dims)))
 
                 if (i0_length == i0_length_restart) then
-                    call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                    if (nbasis == nbasis_restart) then
+                        call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                    else
+                        ! Change array bounds to restart with a larger basis
+                        ! Assume that basis functions 1..nbasis_restart correspond to the original basis
+                        call change_nbasis(subgroup_id, ddets, kinds, qs%psip_list%states)
+                    end if
                 else
+                    if (nbasis /= nbasis_restart) &
+                        call stop_all('read_restart_hdf5', &
+                                      'Changing DET_SIZE and basis size simultaneously not supported.  Please implement.')
                     call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
                 end if
 
@@ -560,6 +583,12 @@ module restart_hdf5
                 if (restart_scale_factor(1) /= qs%psip_list%pop_real_factor) then
                     call change_pop_scaling(qs%psip_list%pops, restart_scale_factor(1), int(qs%psip_list%pop_real_factor,int_64))
                 end if
+
+                ! Need to redistribute across processors if int(nbasis/32) changed
+                associate(spawn=>qs%spawn_store%spawn, pm=>qs%spawn_store%spawn%proc_map, pl=>qs%psip_list)
+                    if (nbasis /= nbasis_restart .and. nprocs > 1) call redistribute_particles(pl%states, pl%pop_real_factor, &
+                                                                            pl%pops, pl%nstates, pl%nparticles, spawn)
+                end associate
 
                 call hdf5_read(subgroup_id, ddata, kinds, shape(qs%psip_list%dat), qs%psip_list%dat)
 
@@ -598,6 +627,8 @@ module restart_hdf5
                 ! --- qmc/reference group ---
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
+                    qs%ref%f0 = 0
+                    qs%ref%hs_f0 = 0
                     if (i0_length == i0_length_restart) then
                         call hdf5_read(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
                         call hdf5_read(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)
@@ -1055,5 +1086,48 @@ module restart_hdf5
 #endif
 
         end subroutine redistribute_restart_hdf5
+
+        subroutine dump_restart_file_wrapper(qs, dump_restart_shift, dump_freq, ntot_particles, ireport, ncycles, &
+                                             nbasis, ri_freq, ri_shift, nb_comm)
+
+            ! Check if a restart file needs to be written, and if so then do so.
+
+            ! In:
+            !     qs: qmc_state_t object.  Particle and related info written out (if desired).
+            !     dump_freq: How often (in iterations) to write out a restart file.  Pass in
+            !         huge(0) to (effectively) disable.
+            !     ntot_particles: total number of particles in each space.
+            !     ireport: index of current report loop.
+            !     ncycles: the number of iterations per report loop.
+            !     nbasis: the number of basis functions
+            !     ri_freq: restart_info_t object for periodically writing out the restart file.
+            !     ri_freq: restart_info_t object for writing out the restart file once the shift
+            !         is turned on.
+            !     nb_comm: true if using non-blocking communications.
+            ! In/Out:
+            !     dump_restart_shift: should we dump a restart file just before
+            !         the shift turns on?  If true and a restart file is written out, then
+            !         returned as false.
+
+            use const, only: p
+            use qmc_data, only: qmc_state_t
+
+            type(qmc_state_t), intent(in) :: qs
+            logical, intent(inout) :: dump_restart_shift
+            real(p), intent(in) :: ntot_particles(qs%psip_list%nspaces)
+            integer, intent(in) :: ireport, ncycles, dump_freq, nbasis
+            type(restart_info_t), intent(in) :: ri_freq, ri_shift
+            logical, intent(in) :: nb_comm
+
+            if (dump_restart_shift .and. any(qs%vary_shift)) then
+                dump_restart_shift = .false.
+                call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
+                                       ntot_particles, nbasis, nb_comm)
+            else if (mod(ireport*ncycles,dump_freq) == 0) then
+                call dump_restart_hdf5(ri_freq, qs, qs%mc_cycles_done+ncycles*ireport, &
+                                       ntot_particles, nbasis, nb_comm)
+            end if
+
+        end subroutine dump_restart_file_wrapper
 
 end module restart_hdf5

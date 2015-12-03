@@ -285,7 +285,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
         use errors, only: stop_all
         use parallel
-        use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
+        use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
 
         use annihilation, only: direct_annihilation
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
@@ -298,7 +298,7 @@ contains
         use qmc, only: init_qmc
         use qmc_common, only: initial_fciqmc_status, cumulative_population, load_balancing_report, &
                               init_report_loop, init_mc_cycle, end_report_loop, end_mc_cycle,      &
-                              redistribute_particles, rescale_tau, dump_restart_file_wrapper
+                              redistribute_particles, rescale_tau
         use proc_pointers
         use spawning, only: assign_particle_processor
         use system, only: sys_t, sys_t_json

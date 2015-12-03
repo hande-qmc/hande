@@ -51,7 +51,7 @@ contains
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
         use system, only: sys_t, sys_t_json
-        use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5
+        use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5, dump_restart_file_wrapper
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn, &
                               write_memcheck_report
 

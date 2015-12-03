@@ -1,0 +1,31 @@
+-- Test restarting with a larger basis
+
+cutoff = { write = 2, read = 2.5 }
+
+for _, act in ipairs { "write", "read" } do
+    restart = {}; restart[act] = 0
+    ccmc {
+        sys = ueg {
+            electrons = 6,
+            ms = 0,
+            dim = 2,
+            cutoff = cutoff[act],
+            rs = 2,
+            sym = 1,
+        },
+        qmc = {
+            tau = 0.001,
+            init_pop = 10,
+            mc_cycles = 15,
+            nreports = 1000,
+            state_size = 20000,
+            spawned_state_size = 1000,
+            target_population = 2500,
+            rng_seed = 4018227,
+        },
+        reference = {
+            ex_level = 3,
+        },
+        restart = restart,
+    }
+end

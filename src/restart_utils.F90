@@ -11,7 +11,7 @@ module restart_utils
 implicit none
 
 private
-public :: convert_dets, convert_ref, convert_pops, change_pop_scaling
+public :: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
 
 interface convert_dets
     module procedure convert_dets_32_to_64
@@ -77,6 +77,43 @@ contains
         deallocate(dets_tmp)
 
     end subroutine convert_dets_32_to_64
+
+    subroutine change_nbasis(id, dset, kinds, dets)
+        
+        ! Read determinants in from restart file and change to a larger basis
+
+        ! In:
+        !   id: file or group HD5 identifier,
+        !   dset: dataset name.
+        !   kinds: hdf5_kinds_t object containing the mapping between the non-default
+        !       kinds used in HANDE and HDF5 datatypes.
+        ! Out:
+        !   dets: determinant list read from restart file in larger basis.
+
+        use const
+
+        use hdf5
+        use hdf5_helper
+
+        integer(hid_t), intent(in) :: id
+        character(*), intent(in) :: dset
+        type(hdf5_kinds_t), intent(in) :: kinds
+        integer(i0), intent(out) :: dets(:,:)
+
+        integer(i0), allocatable :: dets_tmp(:,:)
+        integer(hsize_t) :: dims(2)
+
+        call dset_shape(id, dset, dims)
+        allocate(dets_tmp(dims(1),dims(2)))
+        call hdf5_read(id, dset, kinds, shape(dets_tmp), dets_tmp)
+
+        ! Assume the old (small) basis corresponds to the first orbitals in the new basis
+        dets = 0
+        dets(:dims(1),:dims(2)) = dets_tmp
+
+        deallocate(dets_tmp)
+
+    end subroutine change_nbasis
 
     subroutine convert_ref_32_to_64(id, dset, kinds, f0)
  
