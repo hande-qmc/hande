@@ -50,6 +50,7 @@ None.
         ('Tr[Tp]/Tr[p]','\\sum\\rho_{ij}T_{ji}'),
         ('Tr[Up]/Tr[p]','\\sum\\rho_{ij}U_{ji}'),
         ('Tr[H0p]/Tr[p]','\\sum\\rho_{ij}H0{ji}'),
+        ('Tr[HIp]/Tr[p]','\\sum\\rho_{ij}HI{ji}'),
     ])
 
     # DataFrame to hold the final mean and error estimates.

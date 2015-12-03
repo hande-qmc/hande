@@ -16,12 +16,10 @@ dmqmc {
         target_population = 1e10,
         state_size = -200,
         spawned_state_size = -100,
-        real_amplitudes = true,
-        real_amplitude_force_32 = true,
     },
     dmqmc = {
         all_sym_sectors = true,
-        all_spin_sectors = true,
+        all_spin_sectors = false,
         beta_loops = 10,
     },
     ipdmqmc = {

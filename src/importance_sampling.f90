@@ -171,4 +171,148 @@ contains
 
     end subroutine dmqmc_weighting_fn
 
+    subroutine interaction_picture_reweighting_free(sys, cdet, connection, trial_func, hmatel)
+
+        ! Apply transformation to the Hamiltonian matrix element so that
+        ! excitation generations are performed with the weighting factors
+        ! e^{-0.5*(beta-tau)(E_i-E_k)} H_{ik} = H_I(beta-tau) = e{-0.5(beta-tau) H^0} H e^{0.5(beta-tau) H^0}.
+        ! The trial function is essentially meaningless, but we abuse its
+        ! meaning to pass in beta-tau. Here E_i = \sum_{occ} \varepsilon_i,
+        ! where \varepsilon_i are the single-particle eigenvalues.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        !    trial_func: importance sampling weights, used to pass 0.5*(beta-tau)
+        !        in the last element (sys%max_number_excitations+1).
+        ! In/Out:
+        !    hmatel: on input, untransformed matrix element connecting two spin
+        !        functions (kets).  On output, transformed matrix element,
+        !        is e^{-0.5*(beta-tau)(E_i-E_k)} H_{ik}.
+        !        The factors which the Hamiltonian are multiplied by depend
+        !        on the level which we come from, and go to, and so depend on
+        !        the two ends of the bitstring we spawn from, and the new
+        !        bitstring we spawn onto. Note this is not really importance sampling
+        !        in the usual sense.
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t, get_excitation_level, create_excited_det
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: connection
+        real(p), allocatable, intent(in) :: trial_func(:)
+        real(p), intent(inout) :: hmatel
+
+        integer :: iorb
+        integer(i0) :: f_new(sys%basis%string_len)
+        real(p) :: diff_ijab
+
+        diff_ijab = 0.0_p
+
+        call create_excited_det(sys%basis, cdet%f, connection, f_new)
+
+        ! For the case when H^0 = \sum_i \varepsilon_i n_i, then the energy differences are simple to
+        ! evaluate : E_i - E_k = (\varepsilon_a+\varepsilon_b) - (\varepsilon_i+\varepsilon_j).
+        do iorb = 1, connection%nexcit
+            diff_ijab = diff_ijab + sys%basis%basis_fns(connection%to_orb(iorb))%sp_eigv - &
+                                    sys%basis%basis_fns(connection%from_orb(iorb))%sp_eigv
+        end do
+        hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
+
+    end subroutine interaction_picture_reweighting_free
+
+    subroutine interaction_picture_reweighting_hartree_fock(sys, cdet, connection, trial_func, hmatel)
+
+        ! Apply transformation to the Hamiltonian matrix element so that
+        ! excitation generations are performed with the weighting factors
+        ! e^{-0.5*(beta-tau)(E_i-E_k)} H_{ik}. The trial function is essentially
+        ! meaningless, but we abuse its meaning to pass in beta-tau. Here E_i = <D_i| H |D_i>.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        !    trial_func: importance sampling weights, used to pass 0.5*(beta-tau)
+        !        in the last element (sys%max_number_excitations+1).
+        ! In/Out:
+        !    hmatel: on input, untransformed matrix element connecting two spin
+        !        functions (kets).  On output, transformed matrix element,
+        !        is e^{-0.5*(beta-tau)(E_i-E_k)} H_{ik}.
+        !        The factors which the Hamiltonian are multiplied by depend
+        !        on the level which we come from, and go to, and so depend on
+        !        the two ends of the bitstring we spawn from, and the new
+        !        bitstring we spawn onto. Note this is not really importance sampling
+        !        in the usual sense.
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t, get_excitation_level, create_excited_det
+        use system, only: sys_t
+        use proc_pointers, only: trial_dm_ptr
+        use hamiltonian_ueg, only: exchange_energy_orb
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: connection
+        real(p), allocatable, intent(in) :: trial_func(:)
+        real(p), intent(inout) :: hmatel
+
+        integer :: iorb, new, occ_list(sys%nel+2), a, b, i, j
+        integer(i0) :: f_new(sys%basis%string_len)
+        real(p) :: E_i, E_k, diff_ijab
+
+        if (abs(hmatel) > depsilon) then
+            call create_excited_det(sys%basis, cdet%f, connection, f_new)
+            a = connection%to_orb(1)
+            b = connection%to_orb(2)
+            i = connection%from_orb(1)
+            j = connection%from_orb(2)
+            ! Order occ_list so that a and b orbitals appear first for convenience later.
+            occ_list(1) = i
+            occ_list(2) =  j
+            new = 2
+            do iorb = 1, sys%nel
+                if (cdet%occ_list(iorb) /= i .and. cdet%occ_list(iorb) /= j) then
+                    new = new + 1
+                    occ_list(new) = cdet%occ_list(iorb)
+                end if
+            end do
+            ! Set last two entries to be new orbitals.
+            occ_list(sys%nel+1) = a
+            occ_list(sys%nel+2) = b
+
+            diff_ijab = 0.0_p
+
+            ! Work out <D|H|D> - <D_{ij}^{ab}|H|D_{ij}^{ab}> as
+            ! E_i - E_k = (\varepsilon_a+ex_a+\varepsilon_b+ex_b) -
+            ! (\varepsilon_i+ex_i+\varepsilon_j+ex_j) - double counting.
+            ! Where ex_i is the Hartree-Fock exchange potential of orbital i
+            ! .i.e. ex_i ~ -\sum_{occ != i} 1/|k_occ-k_i|^2 (for the UEG).
+            do iorb = 1, 2
+                diff_ijab = diff_ijab - &
+                    & (sys%basis%basis_fns(connection%from_orb(iorb))%sp_eigv + &
+                    & exchange_energy_orb(sys, occ_list(:sys%nel), connection%from_orb(iorb))) + &
+                    & (sys%basis%basis_fns(connection%to_orb(iorb))%sp_eigv + &
+                    & exchange_energy_orb(sys, occ_list(3:), connection%to_orb(iorb)))
+            end do
+            ! Double counted the ab, and ij exchange terms so remove these explicitly.
+            if (mod(a,2) == mod(b,2)) then
+            diff_ijab = diff_ijab + &
+                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%to_orb(1), connection%to_orb(2))
+            end if
+            if (mod(i,2) == mod(j,2)) then
+                diff_ijab = diff_ijab - &
+                        & sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, connection%from_orb(1), connection%from_orb(2))
+            end if
+            hmatel = exp(-trial_func(sys%max_number_excitations+1)*diff_ijab) * hmatel
+        end if
+
+    end subroutine interaction_picture_reweighting_hartree_fock
+
 end module importance_sampling

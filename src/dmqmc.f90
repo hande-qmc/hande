@@ -1,6 +1,7 @@
 module dmqmc
 
 ! Main loop for performing DMQMC calculations.
+! [todo] - Top level comments explaining various dmqmc algorithms.
 
 use fciqmc_data
 use proc_pointers
@@ -191,6 +192,11 @@ contains
 
                     iteration = (ireport-1)*qmc_in%ncycles + icycle
 
+                    ! Store (beta-tau)/2 for use in symmetric ip-dmqmc spawning probabilities.
+                    if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) &
+                            & weighted_sampling%probs(sys%max_number_excitations+1) = &
+                            & 0.5*(qs%init_beta-(iteration-1)*qs%dmqmc_factor*qs%tau)
+
                     do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
 
                         ! f points to the bitstring that is spawning, f2 to the
@@ -257,7 +263,7 @@ contains
                                     end if
 
                                     ! Now attempt to spawn from the second end.
-                                    if (.not. dmqmc_in%propagate_to_beta) then
+                                    if (dmqmc_in%symmetric) then
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                                                          qs%psip_list%pop_real_factor, cdet2, qs%psip_list%pops(ireplica,idet), &
@@ -297,7 +303,8 @@ contains
                     ! and alter the number of psips on each excitation level
                     ! accordingly.
                     if (dmqmc_in%vary_weights .and. iteration <= dmqmc_in%finish_varying_weights) &
-                        call update_sampling_weights(rng, sys%basis, qmc_in, qs%psip_list, weighted_sampling)
+                        call update_sampling_weights(rng, sys%basis, qmc_in, qs%psip_list, &
+                                                     sys%max_number_excitations, weighted_sampling)
 
                 end do
 

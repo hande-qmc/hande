@@ -278,6 +278,19 @@ ipdmqmc options
     It is up to the user to determine if the desired distribution has been reached,
     i.e. by checking if results are independent of metropolis_attempts.
 
+``symmetric``
+    type: boolean.
+
+    Optional. Default: false.
+
+    Use symmetric version of ip-dmqmc where now :math:`\hat{f}(\tau) =
+    e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}e^{-\tau\hat{H}}e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}`.
+
+    .. warning::
+
+    This feature is experimental and only tested for the 3D uniform electron
+    gas.
+
 .. _operators_table:
 
 operators options
@@ -335,6 +348,35 @@ operators options
     	\hat{C}_{ij} = \hat{S}_{xi}\hat{S}_{xj} + \hat{S}_{yi}\hat{S}_{yj} + \hat{S}_{zi}\hat{S}_{zj}.
 
     Only available for the Heisenberg model.
+``potential_energy``
+    type: boolean
+
+    Optional. Default: false
+
+    Evaluate the bare Coulomb energy. Only available for the UEG.
+``kinetic_energy``
+    type: boolean
+
+    Optional. Default: false
+
+    Evaluate the kinetic energy. Only available for the UEG.
+``H0_energy``
+    type: boolean
+
+    Optional. Default: false
+
+    Evaluate the thermal expectation value of the zeroth order Hamiltonian
+    where :math:`\hat{H} = \hat{H}^0 + \hat{V}`. See **initial_matrix**
+    option. Only available when using the ip-dmqmc algorithm.
+``HI_energy``
+    Evaluate the expectation value of the interaction picture Hamiltonian where
+
+    .. math::
+
+        \hat{H}_I(\frac{1}{2}(\beta-\tau)) =
+            e^{\frac{1}{2}(\beta-\tau)\hat{H}^0}\hat{H}e^{-\frac{1}{2}(\beta-\tau)\hat{H}^0}.
+
+
 
 .. _rdm_table:
 

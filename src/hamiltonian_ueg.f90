@@ -259,4 +259,33 @@ contains
 
     end function potential_energy_ueg
 
+    function exchange_energy_orb(sys, occ_list, i) result (ex)
+
+        ! Work out exchange energy for one orbital in particular.
+
+        ! In:
+        !    sys: system being studied.
+        !    occ_list: list of occupied orbitals.
+        !    i: orbital under consideration.
+        ! Returns: Coulomb exchange integral ~ \sum_{iorb!=i} 1/|k_iorb - k_i|^2.
+
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: occ_list(:)
+        integer, intent(in) :: i
+
+        real(p) :: ex
+        integer :: iorb
+
+        ex = 0.0_p
+        do iorb = 1, sys%nel
+            if (mod(occ_list(iorb),2) == mod(i,2) .and. occ_list(iorb) /= i) then
+                ex = ex - sys%ueg%exchange_int(sys%lattice%box_length(1), sys%basis, occ_list(iorb), i)
+            end if
+        end do
+
+    end function exchange_energy_orb
+
 end module hamiltonian_ueg

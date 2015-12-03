@@ -191,10 +191,11 @@ contains
         !   sys: system being studied.
         !   dmqmc_in: DMQMC options.
 
-        use system, only: sys_t, heisenberg
+        use system, only: sys_t, heisenberg, ueg
         use dmqmc_data, only: dmqmc_in_t
         use calc, only: dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
+        use calc, only: dmqmc_potential_energy, dmqmc_kinetic_energy, dmqmc_HI_energy
 
         use errors, only: stop_all
         use const, only: depsilon, p
@@ -219,6 +220,12 @@ contains
             if (dmqmc_in%rdm%calc_ground_rdm .or. dmqmc_in%rdm%calc_inst_rdm) &
                 call stop_all(this,'The calculation of reduced density matrices is not supported for this system.')
         end if
+        if (.not. sys%system == ueg) then
+            if (doing_dmqmc_calc(dmqmc_kinetic_energy)) &
+                call stop_all(this,'The kinetic energy operator is not supported for this system.')
+            if (doing_dmqmc_calc(dmqmc_potential_energy)) &
+                call stop_all(this,'The potential energy operator is not supported for this system.')
+        end if
 
         if (allocated(dmqmc_in%correlation_sites)) then
             if (size(dmqmc_in%correlation_sites) /= 2) &
@@ -234,6 +241,8 @@ contains
             call stop_all(this, 'The instantaneous_rdm option must be used in order to calculate the Renyi-2 entropy.')
         if (doing_dmqmc_calc(dmqmc_full_r2) .and. (.not. dmqmc_in%replica_tricks)) &
             call stop_all(this, 'The replica_tricks option must be used in order to calculate the Renyi-2 entropy.')
+        if (doing_dmqmc_calc(dmqmc_HI_energy) .and. (.not. dmqmc_in%symmetric)) &
+            call stop_all(this, 'Evaluation of interaction picture Hamiltonian only possible when using symmetric algorithm.')
 
         if (dmqmc_in%all_spin_sectors) then
             if (abs(sys%heisenberg%magnetic_field) > depsilon .or. &
@@ -255,6 +264,9 @@ contains
             & .and.  dmqmc_in%metropolis_attempts == 0) then
             call stop_all(this, 'metropolis_attempts must be non-zero to sample the correct initial density matrix&
                                  & if not using grand_canonical_initialisation.')
+        end if
+        if (dmqmc_in%symmetric .and. dmqmc_in%propagate_to_beta .and. sys%system /= ueg) then
+            call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
         end if
 
         if (dmqmc_in%init_beta < depsilon .and. dmqmc_in%grand_canonical_initialisation) then

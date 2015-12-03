@@ -16,6 +16,7 @@ enum, bind(c)
     enumerator :: kinetic_ind
     enumerator :: H0_ind
     enumerator :: potential_ind
+    enumerator :: HI_ind
     enumerator :: terminator ! unused except in num_dmqmc_operators
    ! NOTE: if you add a new estimator then you must insert it before terminator.
 end enum
@@ -184,6 +185,9 @@ type dmqmc_in_t
     ! Number of metropolis attempts (per psip) we use when generating
     ! the trial density matrix.
     integer :: metropolis_attempts = 0
+    ! Do a symmetric version of DMQMC, default true and only changeable for the ip-dmqmc algorithm.
+    ! This considerably changes the IP-DMQMC algorithm.
+    logical :: symmetric = .true.
 
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
@@ -285,9 +289,9 @@ type dmqmc_weighted_sampling_t
     ! This holds the factors by which the populations on each excitation level
     ! (from 0 to max_number_excitations) are reduced, relative to DMQMC
     ! without any importance sampling.
-    real(p), allocatable :: probs(:) ! (max_number_excitations + 1)
+    real(p), allocatable :: probs(:) ! (max_number_excitations + 1 (or 2 if using symmetric ip-dmqmc))
     ! The value of accumulated_probs on the last report cycle.
-    real(p), allocatable :: probs_old(:) ! (max_number_excitations + 1)
+    real(p), allocatable :: probs_old(:) ! (max_number_excitations + 1 (or 2 if using symmetric ip-dmqmc))
     ! When using the old weighted importance sampling, sampling_probs
     ! stores the factors by which probabilities are to be reduced when spawning
     ! away from the diagonal.
@@ -328,6 +332,7 @@ contains
         call json_write_key(js, 'calc_excit_dist', dmqmc%calc_excit_dist)
         call json_write_key(js, 'all_sym_sectors', dmqmc%all_sym_sectors)
         call json_write_key(js, 'all_spin_sectors', dmqmc%all_spin_sectors)
+        call json_write_key(js, 'initiator_level', dmqmc%initiator_level)
         if (allocated(dmqmc%sampling_probs)) then
             call json_write_key(js, 'sampling_probs', dmqmc%sampling_probs)
         else
@@ -361,6 +366,7 @@ contains
         call json_write_key(js, 'propagate_to_beta', dmqmc%propagate_to_beta)
         call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
         call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
+        call json_write_key(js, 'symmetric', dmqmc%symmetric)
         call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts, terminal=.true.)
         call json_object_end(js, terminal)
 
@@ -408,7 +414,8 @@ contains
 
         use json_out
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_energy_squared, dmqmc_correlation, &
-                        dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2
+                        dmqmc_staggered_magnetisation, dmqmc_rdm_r2, dmqmc_full_r2, dmqmc_kinetic_energy, &
+                        dmqmc_potential_energy, dmqmc_H0_energy, dmqmc_HI_energy
 
         type(json_out_t), intent(inout) :: js
         logical, intent(in), optional :: terminal
@@ -416,6 +423,10 @@ contains
         call json_object_init(js, 'operators')
         call json_write_key(js, 'energy', doing_dmqmc_calc(dmqmc_energy))
         call json_write_key(js, 'energy_squared', doing_dmqmc_calc(dmqmc_energy_squared))
+        call json_write_key(js, 'kinetic_energy', doing_dmqmc_calc(dmqmc_kinetic_energy))
+        call json_write_key(js, 'potential_energy', doing_dmqmc_calc(dmqmc_potential_energy))
+        call json_write_key(js, 'H0_energy', doing_dmqmc_calc(dmqmc_H0_energy))
+        call json_write_key(js, 'HI_energy', doing_dmqmc_calc(dmqmc_HI_energy))
         call json_write_key(js, 'correlation_fn', doing_dmqmc_calc(dmqmc_correlation))
         call json_write_key(js, 'staggered_mad_ind', doing_dmqmc_calc(dmqmc_staggered_magnetisation))
         call json_write_key(js, 'rdm_r2', doing_dmqmc_calc(dmqmc_rdm_r2))

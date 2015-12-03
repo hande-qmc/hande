@@ -1,8 +1,11 @@
-sys = read_in {
-    int_file = "FCIDUMP",
-    nel = 10,
-    ms = 0,
-    sym = 0,
+sys = ueg {
+    nel = 7,
+    ms = 7,
+    sym = 1,
+    dim = 3,
+    cutoff = 1,
+    rs = 1,
+    chem_pot = 1.65142241072,
 }
 
 dmqmc {
@@ -18,15 +21,21 @@ dmqmc {
         spawned_state_size = -100,
     },
     dmqmc = {
+        fermi_temperature = true,
         all_sym_sectors = true,
-        all_spin_sectors = false,
         beta_loops = 10,
     },
     ipdmqmc = {
         initial_beta = 1.0,
-        metropolis_attempts = 100,
+        initial_matrix = 'free_electron',
+        grand_canonical_initialisation = true,
+        symmetric = true,
     },
     operators = {
         energy = true,
+        kinetic_energy = true,
+        potential_energy = true,
+        H0_energy = true,
+        HI_energy = true,
     },
 }

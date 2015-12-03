@@ -366,7 +366,7 @@ contains
 
         use calc, only: doing_dmqmc_calc, dmqmc_energy, dmqmc_staggered_magnetisation
         use calc, only: dmqmc_energy_squared, dmqmc_correlation, dmqmc_full_r2, dmqmc_kinetic_energy
-        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy
+        use calc, only: dmqmc_H0_energy, dmqmc_potential_energy, dmqmc_HI_energy
         use excitations, only: get_excitation, excit_t
         use proc_pointers, only:  update_dmqmc_energy_and_trace_ptr, update_dmqmc_stag_mag_ptr
         use proc_pointers, only: update_dmqmc_energy_squared_ptr, update_dmqmc_correlation_ptr
@@ -376,7 +376,7 @@ contains
         use qmc_data, only: reference_t, particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind, &
                               correlation_fn_ind, staggered_mag_ind, full_r2_ind, dmqmc_weighted_sampling_t, &
-                              kinetic_ind, H0_ind, potential_ind
+                              kinetic_ind, H0_ind, potential_ind, HI_ind
 
         type(sys_t), intent(in) :: sys
         type(dmqmc_in_t), intent(in) :: dmqmc_in
@@ -434,6 +434,10 @@ contains
                 ! comments for description.
                 if (doing_dmqmc_calc(dmqmc_H0_energy)) call update_dmqmc_H0_energy&
                     &(sys, cdet, excitation, unweighted_walker_pop(1), est%numerators(H0_ind))
+                ! HI energy, HI(tau-beta) = e^{-0.5(beta-tau)H^0} H e^{0.5(beta-tau)H^0}
+                if (doing_dmqmc_calc(dmqmc_HI_energy)) call update_dmqmc_HI_energy&
+                    &(sys, cdet, excitation, unweighted_walker_pop(1), weighted_sampling%probs(sys%max_number_excitations+1), &
+                    & est%numerators(HI_ind))
                 ! Excitation distribution.
                 if (dmqmc_in%calc_excit_dist) est%excit_dist(excitation%nexcit) = &
                     est%excit_dist(excitation%nexcit) + real(abs(psip_list%pops(1,idet)),p)/psip_list%pop_real_factor
@@ -1409,6 +1413,68 @@ contains
         if (excitation%nexcit == 0) H0_energy = H0_energy + pop*trial_dm_ptr(sys, cdet%f)
 
     end subroutine update_dmqmc_H0_energy
+
+    subroutine update_dmqmc_HI_energy(sys, cdet, excitation, pop, tdiff, HI_energy)
+
+        ! Add the contribution for the current density matrix element to the thermal
+        ! interaction picture Hamiltonian (H^I) energy estimate used.
+
+        ! H^I(tau-beta) = e^{-(beta-tau)/2 H^0} H e^{(beta-tau)/2 H^0}.
+
+        ! Usually one writes H = T + U, where T is the kinetic energy and U is the potential
+        ! energy. However we can in principle partition H in many different
+        ! ways. When working in the interaction picture using DMQMC it is
+        ! useful to split H = H^0 + V where H^0 is the zeroth order Hamiltonian
+        ! and V is some perturbation. Currently two partitions are implemented
+        ! so that if dmqmc_in%initial_matrix = 'free_electron' then the
+        ! partitioning H^0 = T, V = U is used, and if dmqmc_in%initial_matrix =
+        ! 'hartree_fock' H^0 = \sum_i |D_i> <D_i|H|D_i> <D_i| and V = H - H^0.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !       element under consideration.
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    pop: number of particles on the current density matrix
+        !        element.
+        !    tdiff: 0.5*(beta-tau).
+        ! In/Out:
+        !    HI_energy: current thermal interaction picture Hamiltonian energy estimate.
+
+        use determinants, only: det_info_t
+        use system, only: sys_t
+        use excitations, only: excit_t
+        use proc_pointers, only: sc0_ptr, update_proj_energy_ptr, trial_dm_ptr
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(inout) :: excitation
+        real(p), intent(in) :: pop
+        real(p), intent(in) :: tdiff
+        real(p), intent(inout) :: HI_energy
+
+        integer :: iorb
+        real(p) :: diff_ijab, hmatel, trace(2), energy
+        ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
+        real(p) :: trial_wfn_dat(0)
+
+        diff_ijab = 0.0_p
+        trace = 0.0_p
+        energy = 0.0_p
+
+        ! Hamiltonian matrix element.
+        call update_proj_energy_ptr(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
+        if (excitation%nexcit == 0) then
+            hmatel = sc0_ptr(sys, cdet%f)
+        else
+            diff_ijab = trial_dm_ptr(sys, cdet%f) - trial_dm_ptr(sys, cdet%f2)
+        end if
+
+        HI_energy = HI_energy + exp(-tdiff*diff_ijab)*hmatel*pop
+
+    end subroutine update_dmqmc_HI_energy
 
     subroutine update_dmqmc_potential_energy(sys, cdet, excitation, pop, potential_energy)
 
