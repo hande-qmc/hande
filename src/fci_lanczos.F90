@@ -135,7 +135,7 @@ contains
         use trl_info
         use trl_interface
         use checking, only: check_allocate, check_deallocate
-        use parallel, only: parent, nprocs
+        use parallel, only: parent
 
         use operators
 #endif

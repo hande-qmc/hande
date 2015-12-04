@@ -1455,7 +1455,6 @@ contains
         real(p), intent(in) :: tdiff
         real(p), intent(inout) :: HI_energy
 
-        integer :: iorb
         real(p) :: diff_ijab, hmatel, trace(2), energy
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)

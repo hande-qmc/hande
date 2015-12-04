@@ -217,7 +217,7 @@ contains
         !    allowed_excitation: if true, then the excitation is allowed.
 
 
-        use const, only: i0_end, i0_length
+        use const, only: i0_length
         use bit_utils, only: count_set_bits, decode_bit_string
         use system, only: sys_t
         use ueg_system, only: ueg_basis_index
