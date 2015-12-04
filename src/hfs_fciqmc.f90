@@ -95,9 +95,9 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('nparticles_old', size(nparticles_old), ierr)
+        call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('real_population', size(real_population), ierr)
+        call check_allocate('real_population', qs%psip_list%nspaces, ierr)
 
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 

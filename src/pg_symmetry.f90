@@ -215,7 +215,7 @@ contains
         end associate
 
         allocate(sym_spin_basis_fns(maxval(nbasis_sym_spin),2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
-        call check_allocate('sym_spin_basis_fns', size(sym_spin_basis_fns), ierr)
+        call check_allocate('sym_spin_basis_fns', maxval(nbasis_sym_spin)*2*sys%nsym_tot, ierr)
         sym_spin_basis_fns = 0
 
         do i = 1, sys%basis%nbasis

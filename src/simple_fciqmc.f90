@@ -123,11 +123,11 @@ contains
         spawn%sdata = 0_int_s
 
         allocate(qs%shift(1), stat=ierr)
-        call check_allocate('qs%shift', size(qs%shift), ierr)
+        call check_allocate('qs%shift', 1, ierr)
         qs%shift = qmc_in%initial_shift
 
         allocate(qs%vary_shift(1), stat=ierr)
-        call check_allocate('qs%vary_shift', size(qs%vary_shift), ierr)
+        call check_allocate('qs%vary_shift', 1, ierr)
         qs%vary_shift = .false.
 
         qs%target_particles = qmc_in%target_particles

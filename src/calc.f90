@@ -198,9 +198,9 @@ contains
         associate(nb=>par_calc%report_comm)
             if (non_blocking_comm) then
                 allocate(nb%rep_info(ntypes*nprocs+ndata), stat=ierr)
-                call check_allocate('nb%rep_info', size(nb%rep_info), ierr)
+                call check_allocate('nb%rep_info', ntypes*nprocs+ndata, ierr)
                 allocate(nb%request(0:nprocs-1), stat=ierr)
-                call check_allocate('nb%request', size(nb%request), ierr)
+                call check_allocate('nb%request', nprocs, ierr)
             end if
         end associate
 
@@ -236,7 +236,7 @@ contains
 
         pm%nslots = nslots
         allocate(pm%map(0:nslots*pm_np-1), stat=ierr)
-        call check_allocate('pm%map', size(pm%map), ierr)
+        call check_allocate('pm%map', nslots*pm_np, ierr)
         forall (i=0:nslots*pm_np-1) pm%map(i) = modulo(i,pm_np)
 
     end subroutine init_proc_map_t

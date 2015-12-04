@@ -37,12 +37,12 @@ contains
         integer :: ierr, i, bit_position, bit_element
 
         allocate(dmqmc_estimates%trace(nreplicas), stat=ierr)
-        call check_allocate('dmqmc_estimates%trace',size(dmqmc_estimates%trace),ierr)
+        call check_allocate('dmqmc_estimates%trace', nreplicas, ierr)
         dmqmc_estimates%trace = 0.0_p
 
         dmqmc_estimates%inst_rdm%nrdms = dmqmc_in%rdm%nrdms
         allocate(dmqmc_estimates%inst_rdm%traces(nreplicas, dmqmc_in%rdm%nrdms), stat=ierr)
-        call check_allocate('dmqmc_estimates%inst_rdm%traces', size(dmqmc_estimates%inst_rdm%traces),ierr)
+        call check_allocate('dmqmc_estimates%inst_rdm%traces', nreplicas*dmqmc_in%rdm%nrdms, ierr)
         dmqmc_estimates%inst_rdm%traces = 0.0_p
 
         ! If calculating a correlation function then set up the necessary bit
@@ -393,7 +393,7 @@ contains
         ! Run through every site on every subsystem and add every translational
         ! symmetry vector.
         allocate(lvecs(sys%lattice%ndim,3**sys%lattice%ndim), stat=ierr)
-        call check_allocate('lvecs', size(lvecs), ierr)
+        call check_allocate('lvecs', sys%lattice%ndim*3**sys%lattice%ndim, ierr)
         call enumerate_lattice_vectors(sys%lattice, lvecs)
         do i = 1, nrdms ! Over every subsystem.
             do j = 1, nsym_vecs ! Over every symmetry vector.

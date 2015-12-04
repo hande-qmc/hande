@@ -101,7 +101,7 @@ contains
             ndets = sym_space_size(ref_sym)
 
             allocate(dets_list(sys%basis%string_len, ndets), stat=ierr)
-            call check_allocate('dets_list', size(dets_list), ierr)
+            call check_allocate('dets_list', sys%basis%string_len, ierr)
         end if
 
         call alloc_det_info_t(sys, d0)
@@ -125,6 +125,7 @@ contains
                 call stop_all('enumerate_determinants', 'Require reference for truncated CI spaces.')
             end if
             allocate(nalpha_combinations(0:sys%nbeta), stat=ierr)
+            call check_allocate('nalpha_combinations',sys%nbeta+1,ierr)
             nalpha_combinations = 0
             nbeta_combinations = 0
             ! Identical to the settings in the else statements if ex_level == nel.
@@ -149,12 +150,12 @@ contains
             ! No matter what the excitation level of the beta string, all alpha
             ! combinations are allowed.
             allocate(nalpha_combinations(0:0), stat=ierr)
+            call check_allocate('nalpha_combinations',1,ierr)
             nbeta_combinations = binom_i(sys%basis%nbasis/2, sys%nbeta)
             nalpha_combinations = binom_i(sys%basis%nbasis/2, sys%nalpha)
         end if
-        call check_allocate('nalpha_combinations',size(nalpha_combinations),ierr)
         allocate(comb(2*ex_level, 2), stat=ierr)
-        call check_allocate('comb', size(comb), ierr)
+        call check_allocate('comb', 4*ex_level, ierr)
 
         allocate(occ(sys%nel), stat=ierr)
         call check_allocate('occ', sys%nel, ierr)
@@ -187,7 +188,7 @@ contains
                 if (truncate_space) then
                     ! Need list of spin-down sites (ie 'unoccupied' bits).
                     allocate(unocc(sys%basis%nbasis-sys%nel), stat=ierr)
-                    call check_allocate('unocc', size(unocc), ierr)
+                    call check_allocate('unocc', sys%basis%nbasis-sys%nel, ierr)
                     call decode_bit_string(d0%f(1), unocc)
                     do i = 1, ndets
                         call next_string(i==1, .false., sys%basis%nbasis, sys%nel, d0%occ_list, &

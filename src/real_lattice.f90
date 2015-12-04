@@ -48,13 +48,13 @@ contains
             allocate(sr%connected_orbs(sys%basis%string_len,sys%basis%nbasis), stat=ierr)
             call check_allocate('sr%connected_orbs',sys%basis%string_len*sys%basis%nbasis,ierr)
             allocate(lvecs(sl%ndim,3**sl%ndim), stat=ierr)
-            call check_allocate('lvecs', size(lvecs), ierr)
+            call check_allocate('lvecs', sl%ndim*3**sl%ndim, ierr)
             if (sl%triangular_lattice) then
                 allocate(sr%connected_sites(0:3*sl%ndim,sys%basis%nbasis), stat=ierr)
-                call check_allocate('sr%connected_sites', size(sr%connected_sites), ierr)
+                call check_allocate('sr%connected_sites', (3*sl%ndim+1)*sys%basis%nbasis, ierr)
             else
                 allocate(sr%connected_sites(0:2*sl%ndim,sys%basis%nbasis), stat=ierr)
-                call check_allocate('sr%connected_sites', size(sr%connected_sites), ierr)
+                call check_allocate('sr%connected_sites', (2*sl%ndim+1)*sys%basis%nbasis, ierr)
             end if
             if (doing_dmqmc_calc(dmqmc_energy_squared)) then
                 allocate(sr%next_nearest_orbs(sys%basis%nbasis,sys%basis%nbasis), stat=ierr)
