@@ -754,15 +754,18 @@ contains
             ! ct algorithm: kinda poorly defined.
             ! ccmc: number of excitor clusters we'll randomly generate and
             ! attempt to spawn from.
-            nattempts = psip_list%nparticles(1)
+            ! (Note int is used rather than nint due to a minor error in implementing
+            ! reals for CCMC so we are just maintaining behaviour.  The difference is
+            ! really minimal...)
+            nattempts = int(psip_list%nparticles(1), int_64)
         else if (doing_calc(dmqmc_calc)) then
             ! Each particle and each end gets to attempt to spawn onto a
             ! connected determinant and a chance to die/clone.
-            nattempts = nint(4*psip_list%nparticles(1)*psip_list%nspaces)
+            nattempts = nint(4*psip_list%nparticles(1)*psip_list%nspaces, int_64)
         else
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
-            nattempts = nint(2*psip_list%nparticles(1))
+            nattempts = nint(2*psip_list%nparticles(1), int_64)
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
