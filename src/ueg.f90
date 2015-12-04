@@ -92,7 +92,7 @@ contains
         k = 0
         k(1:sys%lattice%ndim) = 2*sys%ueg%basis%kmax
         allocate(sys%ueg%ternary_conserve(0:sys%basis%string_len, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
-        call check_allocate('sys%ueg%ternary_conserve', size(sys%ueg%ternary_conserve), ierr)
+        call check_allocate('sys%ueg%ternary_conserve', (sys%basis%string_len+1)*(2*k(1)+1)*(2*k(2)+1)*(2*k(3)+1), ierr)
         sys%ueg%ternary_conserve = 0_i0
         !$omp parallel do default(none) shared(k,sys) &
         !$omp private(k1,k2,k3,a,kija,ktest,bit_pos,bit_el)

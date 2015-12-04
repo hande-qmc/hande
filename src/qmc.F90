@@ -144,8 +144,6 @@ contains
             call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, qmc_state%par_info, &
                                  load_bal_in%nslots)
 
-            allocate(reference%f0(sys%basis%string_len), stat=ierr)
-
             ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
             ! calculation of memory occupied by the main particle lists.
             call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
@@ -153,9 +151,9 @@ contains
 
             ! Allocate the shift.
             allocate(qmc_state%shift(pl%nspaces), stat=ierr)
-            call check_allocate('qmc_state%shift', size(qmc_state%shift), ierr)
+            call check_allocate('qmc_state%shift', pl%nspaces, ierr)
             allocate(qmc_state%vary_shift(pl%nspaces), stat=ierr)
-            call check_allocate('qmc_state%vary_shift', size(qmc_state%vary_shift), ierr)
+            call check_allocate('qmc_state%vary_shift', pl%nspaces, ierr)
             qmc_state%shift = qmc_in%initial_shift
 
             ! Allocate spawned particle lists.
@@ -187,9 +185,10 @@ contains
                                    .false., spawn_recv)
             end if
 
+            allocate(reference%f0(sys%basis%string_len), stat=ierr)
             call check_allocate('reference%f0',sys%basis%string_len,ierr)
             allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%hs_f0', size(reference%hs_f0), ierr)
+            call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
 
             ! --- Importance sampling ---
 
@@ -246,7 +245,7 @@ contains
                     call encode_det(sys%basis, reference%hs_occ_list0, reference%hs_f0)
                 else
                     allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
-                    call check_allocate('reference%hs_occ_list0', size(reference%hs_occ_list0), ierr)
+                    call check_allocate('reference%hs_occ_list0', sys%nel, ierr)
                     reference%hs_occ_list0 = reference%occ_list0
                     reference%hs_f0 = reference%f0
                 end if

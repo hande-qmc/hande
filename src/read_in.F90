@@ -419,11 +419,11 @@ contains
         if (parent) then
 
             allocate(seen_iha((sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
-            call check_allocate('seen_iha', size(seen_ijij), ierr)
+            call check_allocate('seen_iha', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
             allocate(seen_ijij((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
-            call check_allocate('seen_ijij', size(seen_ijij), ierr)
+            call check_allocate('seen_ijij', active_basis_offset*(active_basis_offset+1)/2, ierr)
             allocate(seen_iaib(-active_basis_offset+1:0,(sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
-            call check_allocate('seen_iaib', size(seen_iaib), ierr)
+            call check_allocate('seen_iaib', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
             seen_iha = .false.
             seen_ijij = 0
             seen_iaib = 0

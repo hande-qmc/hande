@@ -99,9 +99,9 @@ contains
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in)
 
         allocate(tot_nparticles_old(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('tot_nparticles_old', size(tot_nparticles_old), ierr)
+        call check_allocate('tot_nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(real_population(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('real_population', size(real_population), ierr)
+        call check_allocate('real_population', qs%psip_list%nspaces, ierr)
 
         nreport = qmc_in%nreport
         ! When using the propagate_to_beta option the number of iterations in imaginary

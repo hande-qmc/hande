@@ -163,7 +163,7 @@ contains
 
         ! Components for symmetry summary of unoccupied basis functions...
         allocate(det_info%symunocc(2,sys%sym0_tot:sys%sym_max_tot), stat=ierr)
-        call check_allocate('det_info%symunocc',size(det_info%symunocc),ierr)
+        call check_allocate('det_info%symunocc', 2*sys%nsym_tot, ierr)
 
     end subroutine alloc_det_info_t
 

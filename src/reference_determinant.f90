@@ -310,19 +310,19 @@ contains
 
         if (allocated(ref1%f0)) then
             allocate(ref2%f0(size(ref1%f0)), stat=ierr)
-            call check_allocate('ref2%f0', size(ref2%f0), ierr)
+            call check_allocate('ref2%f0', size(ref1%f0), ierr)
         end if
         if (allocated(ref1%occ_list0)) then
             allocate(ref2%occ_list0(size(ref1%occ_list0)), stat=ierr)
-            call check_allocate('ref2%occ_list0', size(ref2%occ_list0), ierr)
+            call check_allocate('ref2%occ_list0', size(ref1%occ_list0), ierr)
         end if
         if (allocated(ref1%hs_f0)) then
             allocate(ref2%hs_f0(size(ref1%hs_f0)), stat=ierr)
-            call check_allocate('ref2%hs_f0', size(ref2%hs_f0), ierr)
+            call check_allocate('ref2%hs_f0', size(ref1%hs_f0), ierr)
         end if
         if (allocated(ref1%hs_occ_list0)) then
             allocate(ref2%hs_occ_list0(size(ref1%hs_occ_list0)), stat=ierr)
-            call check_allocate('ref2%hs_occ_list0', size(ref2%hs_occ_list0), ierr)
+            call check_allocate('ref2%hs_occ_list0', size(ref1%hs_occ_list0), ierr)
         end if
 
         ref2 = ref1

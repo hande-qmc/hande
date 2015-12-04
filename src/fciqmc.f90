@@ -132,7 +132,7 @@ contains
         end if
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('nparticles_old', size(nparticles_old), ierr)
+        call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
 
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 

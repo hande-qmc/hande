@@ -408,9 +408,9 @@ contains
             if (.not. sys%system == read_in) then
 
                 allocate(sl%box_length(sl%ndim), stat=ierr)
-                call check_allocate('sys%lattice%box_length',size(sl%box_length),ierr)
+                call check_allocate('sys%lattice%box_length', sl%ndim, ierr)
                 allocate(sl%rlattice(sl%ndim,sl%ndim), stat=ierr)
-                call check_allocate('sys%lattice%rlattice',size(sl%rlattice),ierr)
+                call check_allocate('sys%lattice%rlattice', sl%ndim**2, ierr)
 
                 select case(sys%system)
                 case(ueg)

@@ -244,10 +244,11 @@ contains
         if (present(hamil)) then
             if (present(proc_blacs_info)) then
                 allocate(hamil(proc_blacs_info%nrows,proc_blacs_info%ncols), stat=ierr)
+                call check_allocate('hamil', proc_blacs_info%nrows*proc_blacs_info%ncols, ierr)
             else
                 allocate(hamil(ndets, ndets), stat=ierr)
+                call check_allocate('hamil', ndets**2, ierr)
             end if
-            call check_allocate('hamil', size(hamil), ierr)
         end if
 
         ! Form the Hamiltonian matrix < D_i | H | D_j >.

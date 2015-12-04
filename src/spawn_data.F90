@@ -216,18 +216,18 @@ contains
 
         ! Dare not risk allocate(A, mold=B) from F2008 yet...
         allocate(spawn%proc_map%map(lbound(proc_map%map,dim=1):ubound(proc_map%map,dim=1)), stat=ierr)
-        call check_allocate('spawn%proc_map%map', size(spawn%proc_map%map), ierr)
+        call check_allocate('spawn%proc_map%map', size(proc_map%map, dim=1), ierr)
         spawn%proc_map = proc_map
 
         allocate(spawn%store1(spawn%element_len, spawn%array_len), stat=ierr)
-        call check_allocate('spawn%store1', size(spawn%store1), ierr)
+        call check_allocate('spawn%store1', spawn%array_len, ierr)
         allocate(spawn%store2(spawn%element_len, spawn%array_len), stat=ierr)
-        call check_allocate('spawn%store2', size(spawn%store2), ierr)
+        call check_allocate('spawn%store2', spawn%array_len, ierr)
 
         allocate(spawn%head(0:nthreads-1,0:nprocs-1), stat=ierr)
-        call check_allocate('spawn%head', size(spawn%head), ierr)
+        call check_allocate('spawn%head', nthreads*nprocs, ierr)
         allocate(spawn%head_start(0:nthreads-1,0:nprocs-1), stat=ierr)
-        call check_allocate('spawn%head_start', size(spawn%head_start), ierr)
+        call check_allocate('spawn%head_start', nthreads*nprocs, ierr)
 
         spawn%sdata => spawn%store1
         spawn%sdata_recvd => spawn%store2

@@ -121,7 +121,7 @@ contains
 
         ! Allocate array of flags to specify if a state is deterministic or not.
         allocate(determ%flags(max_nstates), stat=ierr)
-        call check_allocate('determ%flags', size(determ%flags), ierr)
+        call check_allocate('determ%flags', max_nstates, ierr)
         ! To begin with there are no deterministic states.
         determ%flags = 1
 
@@ -209,7 +209,7 @@ contains
         ! belonging to this processor only.
         max_nstates = size(psip_list%states, dim=2)
         allocate(dets_this_proc(sys%basis%tensor_label_len, max_nstates), stat=ierr)
-        call check_allocate('dets_this_proc', size(dets_this_proc), ierr)
+        call check_allocate('dets_this_proc', sys%basis%tensor_label_len*max_nstates, ierr)
         dets_this_proc = 0_i0
 
         if (print_info) then
@@ -284,7 +284,7 @@ contains
             if (print_info) write(6,'(1X,a60,'//int_fmt(determ_dets_mem,1)//')') &
                 '# Memory required per core to store deterministic dets (MB):', determ_dets_mem
             allocate(determ%dets(sys%basis%tensor_label_len, determ%tot_size), stat=ierr)
-            call check_allocate('determ%dets', size(determ%dets), ierr)
+            call check_allocate('determ%dets', sys%basis%tensor_label_len*determ%tot_size, ierr)
         end if
 
         ! Join and store all deterministic states from all processes.
@@ -1029,7 +1029,7 @@ contains
         if (target_size > ndets_tot) determ_size = ndets_tot
 
         allocate(determ_dets(size(dets_this_proc, dim=1), ndets), stat=ierr)
-        call check_allocate('determ_dets', size(determ_dets), ierr)
+        call check_allocate('determ_dets', size(dets_this_proc, dim=1)*ndets, ierr)
         allocate(determ_pops(ndets), stat=ierr)
         call check_allocate('determ_pops', ndets, ierr)
         allocate(all_determ_pops(ndets_tot), stat=ierr)

@@ -155,7 +155,7 @@ contains
                     ! to the size of the truncated Hilbert space (excluding the
                     ! reference).
                     allocate(ptrunc_level(0:min(sys%nalpha, truncation_level), truncation_level), stat=ierr)
-                    call check_allocate('ptrunc_level', size(ptrunc_level), ierr)
+                    call check_allocate('ptrunc_level', truncation_level*(min(sys%nalpha, truncation_level)+1), ierr)
                     ptrunc_level = 0.0_dp
                     full_space_size = 0.0_dp
                     do i = 1, truncation_level

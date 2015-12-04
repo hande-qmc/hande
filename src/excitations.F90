@@ -37,7 +37,7 @@ contains
         integer :: ibasis, jbasis, ipos, iel, jpos, jel, ierr
 
         allocate(basis%excit_mask(basis%string_len, basis%nbasis), stat=ierr)
-        call check_allocate('basis%excit_mask', size(basis%excit_mask), ierr)
+        call check_allocate('basis%excit_mask', basis%string_len*basis%nbasis, ierr)
 
         basis%excit_mask = 0_i0
 

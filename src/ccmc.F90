@@ -388,9 +388,9 @@ contains
         end if
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('nparticles_old', size(nparticles_old), ierr)
+        call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
         allocate(nparticles_change(qs%psip_list%nspaces), stat=ierr)
-        call check_allocate('nparticles_change', size(nparticles_change), ierr)
+        call check_allocate('nparticles_change', qs%psip_list%nspaces, ierr)
 
         ! Initialise bloom_stats components to the following parameters.
         call init_bloom_stats_t(bloom_stats, mode=bloom_mode_fractionn, encoding_factor=qs%psip_list%pop_real_factor)
@@ -403,9 +403,9 @@ contains
 
         ! Allocate and initialise per thread...
         allocate(rng(0:nthreads-1), stat=ierr)
-        call check_allocate('rng', size(rng), ierr)
+        call check_allocate('rng', nthreads, ierr)
         allocate(ms_stats(0:nthreads-1), stat=ierr)
-        call check_allocate('ms_stats', size(ms_stats), ierr)
+        call check_allocate('ms_stats', nthreads, ierr)
 
         if (ccmc_in%linked) then
             call init_cluster(sys, 4, cdet, cluster)
@@ -431,7 +431,7 @@ contains
 
         ! ...and scratch space for calculative cumulative probabilities.
         allocate(cumulative_abs_nint_pops(size(qs%psip_list%states,dim=2)), stat=ierr)
-        call check_allocate('cumulative_abs_nint_pops', size(cumulative_abs_nint_pops), ierr)
+        call check_allocate('cumulative_abs_nint_pops', size(qs%psip_list%states, dim=2), ierr)
 
         nparticles_old = qs%psip_list%tot_nparticles
 
@@ -841,9 +841,9 @@ contains
 
         ! Allocate arrays
         allocate(cdet(0:nthreads-1), stat=ierr)
-        call check_allocate('cdet', size(cdet), ierr)
+        call check_allocate('cdet', nthreads, ierr)
         allocate(cluster(0:nthreads-1), stat=ierr)
-        call check_allocate('cluster', size(cluster), ierr)
+        call check_allocate('cluster', nthreads, ierr)
 
         do i = 0, nthreads-1
             ! Allocate det_info_t and cluster_t components

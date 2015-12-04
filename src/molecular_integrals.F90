@@ -57,7 +57,7 @@ contains
 
         ! Allocate general store for the one-electron integrals.
         allocate(store%integrals(nspin,lbound(nbasis_sym_spin, dim=2):ubound(nbasis_sym_spin, dim=2)), stat=ierr)
-        call check_allocate('one_body_store', size(store%integrals), ierr)
+        call check_allocate('one_body_store', nspin*size(nbasis_sym_spin, dim=2), ierr)
 
         ! <i|o|j> is only non-zero if the integrand is totally symmetric, ie
         ! \Gamma_i \cross \Gamma_o \cross \Gamma_j = \Gamma_1.
