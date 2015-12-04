@@ -975,7 +975,7 @@ contains
                         events(ipart) = 0
                     else
                         initiator_pop(ipart) = 0
-                        events(ipart) = sign(1_int_s,spawn_parts(ipart,k))
+                        events(ipart) = sign(1,int(spawn_parts(ipart,k)))
                     end if
                 end do
                 compress: do

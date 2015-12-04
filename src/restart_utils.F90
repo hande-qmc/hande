@@ -60,7 +60,7 @@ contains
         integer(int_32), allocatable :: dets_tmp(:,:)
         integer(hsize_t) :: dims(2)
 
-        integer :: i
+        integer(hsize_t) :: i
 
         call dset_shape(id, dset, dims)
         allocate(dets_tmp(dims(1), dims(2)))
@@ -217,7 +217,7 @@ contains
         integer(int_64), allocatable :: dets_tmp(:,:)
         integer(hsize_t) :: dims(2)
 
-        integer :: i
+        integer(hsize_t) :: i
 
         call dset_shape(id, dset, dims)
         allocate(dets_tmp(dims(1), dims(2)))
@@ -312,7 +312,8 @@ contains
             call change_pop_scaling(pops_tmp, scale_factor, 2_int_64**11)
             scale_factor = 2_int_64**11
         end if
-        pops(:,:dims(2)) = pops_tmp
+        ! Assume populations now fit in a 32-bit integer.
+        pops(:,:dims(2)) = int(pops_tmp, int_32)
 
         deallocate(pops_tmp)
 
@@ -335,12 +336,13 @@ contains
 
         integer(int_64) :: scaling_change
 
+        ! Note currently scaling values are 2^31 and 2^11, so scaling_change fits in a 32-bit integer comfortably.
         if (old_scaling < new_scaling) then
             scaling_change = new_scaling/old_scaling
-            pops = pops * scaling_change
+            pops = pops * int(scaling_change,int_32)
         else if (old_scaling > new_scaling) then
             scaling_change = old_scaling/new_scaling
-            pops = pops/scaling_change
+            pops = pops/int(scaling_change,int_32)
         end if
     end subroutine change_pop_scaling_32
 

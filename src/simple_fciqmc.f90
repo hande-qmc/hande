@@ -221,7 +221,8 @@ contains
         type(reference_t), intent(inout) :: reference
         logical, intent(in) :: sparse_hamil
 
-        integer :: ireport, icycle, idet, ipart, j
+        integer :: ireport, icycle, idet, j
+        integer(int_p) :: ipart
         real(p) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
