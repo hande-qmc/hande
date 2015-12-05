@@ -2196,6 +2196,7 @@ contains
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
         use spawning, only: attempt_to_spawn
         use system, only: sys_t
+        use const, only: depsilon
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
         use qmc_data, only: qmc_in_t, qmc_state_t
@@ -2242,8 +2243,8 @@ contains
         if (allowed) then
             call decoder_ptr(sys, rdet%f, rdet)
             call gen_excit_ptr%full(rng, sys, qs%pattempt_single, rdet, pgen, connection, hmatel)
-            ! If hmatel is 0 then the excitation generator returned an invalid excitor
-            if (hmatel /= 0.0_p) then
+            ! If hmatel is 0 and pgen 1, then the excitation generator returned an invalid excitor
+            if (abs(hmatel) > 0.0_p .and. (1.0_p-pgen) > depsilon) then
                 ! check that left_cluster can be applied to the resulting excitor to
                 ! give a cluster to spawn on to
                 call create_excited_det(sys%basis, rdet%f, connection, fexcit)

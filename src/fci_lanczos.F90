@@ -135,7 +135,7 @@ contains
         use trl_info
         use trl_interface
         use checking, only: check_allocate, check_deallocate
-        use parallel, only: parent, nprocs
+        use parallel, only: parent
 
         use operators
 #endif
@@ -276,7 +276,8 @@ contains
         deallocate(evec_copy, stat=ierr)
         call check_deallocate('evec_copy',ierr)
 #endif
-#endif // ndef DISABLE_LANCZOS
+! end ifdef DISABLE_LANCZOS
+#endif
 
     contains
 

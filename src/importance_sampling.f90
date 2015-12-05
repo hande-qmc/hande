@@ -265,7 +265,7 @@ contains
 
         integer :: iorb, new, occ_list(sys%nel+2), a, b, i, j
         integer(i0) :: f_new(sys%basis%string_len)
-        real(p) :: E_i, E_k, diff_ijab
+        real(p) :: diff_ijab
 
         if (abs(hmatel) > depsilon) then
             call create_excited_det(sys%basis, cdet%f, connection, f_new)
