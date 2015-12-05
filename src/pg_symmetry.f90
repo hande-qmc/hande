@@ -10,6 +10,9 @@ module point_group_symmetry
 ! relevant sections of the classic book 'Group Theory and Quantum Mechanics' by
 ! Tinkham.
 
+! It is best to avoid directly handling the symmetry yourself and instead use the
+! functions in this module, in case L_z symmetry is being used.
+
 ! Point group symmetry
 ! --------------------
 !
@@ -45,12 +48,27 @@ module point_group_symmetry
 ! taking XOR of the representations involved.
 !
 ! As we consider (at most) D2h (3 generators) we can just use a standard integer
-! to represent the irreducible representations.  The higher bits are wasted, but
-! the memory used is minimal.
+! to represent the irreducible representations.  The higher bits are wasted unless
+! used for Lz symmetry information, but the memory used is minimal.
 !
 ! For a point group containing n generators, there are 2^n irreducible
 ! representations.  Due to the bit representation described above, these
 ! representations are labelled by the set of integers {0,1,...2^n-1}.
+
+! L_z symmetry
+! ------------
+
+! If L_z is also conserved (note: requires orbital transformation; see user manual), then
+! the higher bits of the symmetry label are used for this information.
+
+! However, L_z does not form a closed group.  We take a pragmatic view and store the minimum
+! number of symmetries which we can encounter during a calculation.  This occurs when requiring
+! L_z to be conserved in a four-index integral, which fixes the value of L_z for the 4th index
+! given the values for the first three indices.  Hence we need to consider 3 maxLz, where maxLz
+! is the maximum value of L_z in the basis.
+
+! NOTE: L_z information is stored with an offset for ease of storage and extraction.  See below
+! for details.
 
 use const
 
