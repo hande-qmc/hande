@@ -33,11 +33,11 @@ contains
 
         select case(sys%system)
         case(hub_k)
-            isym = symmetry_orb_list_hub_k(orb_list)
+            isym = symmetry_orb_list_hub_k(sys%hubbard%mom_sym, orb_list)
         case(ueg)
             isym = symmetry_orb_list_ueg(sys, orb_list)
         case(read_in)
-            isym = symmetry_orb_list_mol(sys%basis, orb_list)
+            isym = symmetry_orb_list_mol(sys%read_in%pg_sym, sys%basis, orb_list)
         case default
             ! symmetry not implemented
             isym = sys%sym0
@@ -63,11 +63,11 @@ contains
 
         select case(sys%system)
         case(hub_k)
-            prod = cross_product_hub_k(s1, s2)
+            prod = cross_product_hub_k(sys%hubbard%mom_sym, s1, s2)
         case(ueg)
             prod = cross_product_ueg(sys, s1, s2)
         case(read_in)
-            prod = cross_product_pg_sym(s1, s2)
+            prod = cross_product_pg_sym(sys%read_in%pg_sym, s1, s2)
         case default
             ! symmetry not implemented
             prod = sys%sym0

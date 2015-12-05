@@ -38,7 +38,7 @@ contains
         ! If phi1, phi2, phi3, phi4 all of the same spin, then < phi1 phi2 || phi3 phi4 > is zero
         ! as the Coulomb and exchange integrals will exactly cancel.
 
-        if (.not.s12 .and. (s12.eqv.s34) .and.  momentum_conserved(phi1, phi2, phi3, phi4)) then
+        if (.not.s12 .and. (s12.eqv.s34) .and.  momentum_conserved(sys%hubbard%mom_sym, phi1, phi2, phi3, phi4)) then
             ! phi1, phi2 are of opposite spins and so are phi3 and phi4 and
             ! crystal momentum is conserved.
             ! Either the Coulomb integral or the exchange integral is
@@ -54,11 +54,10 @@ contains
 
     end function get_two_e_int_hub_k
 
-    elemental function momentum_conserved(i, j, k, l) result(conserved)
-
-        use basis
+    elemental function momentum_conserved(mom_sym, i, j, k, l) result(conserved)
 
         ! In:
+        !    mom_sym: basis function symmetry information.
         !    i: index of a momentum-space basis function.
         !    j: index of a momentum-space basis function.
         !    k: index of a momentum-space basis function.
@@ -67,14 +66,16 @@ contains
         !    True if crystal momentum is conserved in the integral <k_i k_j | U | k_k k_l>
         !    i.e. if k_i + k_j - k_k -k_l = 0 up to a reciprocal lattice vector.
 
-        use momentum_symmetry
+        use basis
+        use momentum_symmetry, only: mom_sym_t
 
         logical :: conserved
+        type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: i, j, k, l
         integer :: delta_k
 
-        delta_k = sym_table((i+1)/2,(j+1)/2)
-        delta_k = sym_table(delta_k,inv_sym((k+1)/2))
+        delta_k = mom_sym%sym_table((i+1)/2,(j+1)/2)
+        delta_k = mom_sym%sym_table(delta_k,mom_sym%inv_sym((k+1)/2))
 
         conserved = delta_k == (l+1)/2
 

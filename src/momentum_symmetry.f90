@@ -14,15 +14,6 @@ use system
 
 implicit none
 
-! Index of the symmetry corresponding to the Gamma-point.
-integer :: gamma_sym
-
-! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
-integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
-
-! inv_sym(i) = j means that k_i + k_j = 0 (ie k_j is the inverse of k_i).
-integer, allocatable :: inv_sym(:) ! nsym
-
 contains
 
     subroutine init_momentum_symmetry(sys)
@@ -63,29 +54,29 @@ contains
             ! and the sum of any two wavevectors is another wavevector in the
             ! basis (up to a primitive reciprocal lattice vector).
             ! It is thus feasible to store the nsym^2 product table.
-            allocate(sym_table(sys%nsym, sys%nsym), stat=ierr)
+            allocate(sys%hubbard%mom_sym%sym_table(sys%nsym, sys%nsym), stat=ierr)
             call check_allocate('sym_table',sys%nsym*sys%nsym,ierr)
-            allocate(inv_sym(sys%nsym), stat=ierr)
+            allocate(sys%hubbard%mom_sym%inv_sym(sys%nsym), stat=ierr)
             call check_allocate('inv_sym',sys%nsym,ierr)
 
             fmt1 = int_fmt(sys%nsym)
 
-            gamma_sym = 0
+            sys%hubbard%mom_sym%gamma_sym = 0
             do i = 1, sys%nsym
-                if (all(sys%basis%basis_fns(i*2)%l == 0)) gamma_sym = i
+                if (all(sys%basis%basis_fns(i*2)%l == 0)) sys%hubbard%mom_sym%gamma_sym = i
             end do
-            if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+            if (sys%hubbard%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
             do i = 1, sys%nsym
                 do j = i, sys%nsym
                     ksum = sys%basis%basis_fns(i*2)%l + sys%basis%basis_fns(j*2)%l
                     do k = 1, sys%nsym
                         if (is_reciprocal_lattice_vector(sys, ksum - sys%basis%basis_fns(k*2)%l)) then
-                            sym_table(i,j) = k
-                            sym_table(j,i) = k
-                            if (k == gamma_sym) then
-                                inv_sym(i) = j
-                                inv_sym(j) = i
+                            sys%hubbard%mom_sym%sym_table(i,j) = k
+                            sys%hubbard%mom_sym%sym_table(j,i) = k
+                            if (k == sys%hubbard%mom_sym%gamma_sym) then
+                                sys%hubbard%mom_sym%inv_sym(i) = j
+                                sys%hubbard%mom_sym%inv_sym(j) = i
                             end if
                             exit
                         end if
@@ -104,14 +95,14 @@ contains
                 do i = 1, sys%nsym
                     write (6,'(i4,5X)', advance='no') i
                     call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
-                    write (6,'(5X,i4)') inv_sym(i)
+                    write (6,'(5X,i4)') sys%hubbard%mom_sym%inv_sym(i)
                 end do
                 write (6,'()')
                 write (6,'(1X,a83,/)') &
                     "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
                 do i = 1, sys%nsym
                     do j = 1, sys%nsym
-                        write (6,'('//fmt1//')', advance='no') sym_table(j,i)
+                        write (6,'('//fmt1//')', advance='no') sys%hubbard%mom_sym%sym_table(j,i)
                     end do
                     write (6,'()')
                 end do
@@ -136,11 +127,11 @@ contains
             ! a basis function though.
             sys%nsym = sys%basis%nbasis/2
 
-            gamma_sym = 0
+            sys%ueg%gamma_sym = 0
             do i = 1, sys%nsym
-                if (all(sys%basis%basis_fns(i*2)%l == 0)) gamma_sym = i
+                if (all(sys%basis%basis_fns(i*2)%l == 0)) sys%ueg%gamma_sym = i
             end do
-            if (gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+            if (sys%ueg%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
             call init_ueg_indexing(sys)
 
@@ -148,20 +139,26 @@ contains
 
     end subroutine init_momentum_symmetry
 
-    subroutine end_momentum_symmetry
+    subroutine end_momentum_symmetry(sys)
 
         ! Clean up after symmetry.
 
+        ! In/Out:
+        !   sys: system being studied.  Symmetry information deallocated on exit
+
         use checking, only: check_deallocate
+        use system, only: sys_t
+
+        type(sys_t), intent(inout) :: sys
 
         integer :: ierr
 
-        if (allocated(sym_table)) then
-            deallocate(sym_table, stat=ierr)
+        if (allocated(sys%hubbard%mom_sym%sym_table)) then
+            deallocate(sys%hubbard%mom_sym%sym_table, stat=ierr)
             call check_deallocate('sym_table',ierr)
         end if
-        if (allocated(inv_sym)) then
-            deallocate(inv_sym, stat=ierr)
+        if (allocated(sys%hubbard%mom_sym%inv_sym)) then
+            deallocate(sys%hubbard%mom_sym%inv_sym, stat=ierr)
             call check_deallocate('inv_sym',ierr)
         end if
 
@@ -186,16 +183,17 @@ contains
 
         select case(sys%system)
         case(hub_k)
-            prod = cross_product_hub_k(s1, s2)
+            prod = cross_product_hub_k(sys%hubbard%mom_sym, s1, s2)
         case(ueg)
             prod = cross_product_ueg(sys, s1, s2)
         end select
 
     end function cross_product_k
 
-    elemental function cross_product_hub_k(s1, s2) result(prod)
+    elemental function cross_product_hub_k(mom_sym, s1, s2) result(prod)
 
         ! In:
+        !    mom_sym: basis function symmetry information.
         !    s1, s2: irreducible representation labels/momentum labels.
         ! Returns:
         !    s1 \cross s2, the direct product of the two symmetries.
@@ -205,8 +203,9 @@ contains
 
         integer :: prod
         integer, intent(in) :: s1, s2
+        type(mom_sym_t), intent(in) :: mom_sym
 
-        prod = sym_table(s1, s2)
+        prod = mom_sym%sym_table(s1, s2)
 
     end function cross_product_hub_k
 
@@ -243,9 +242,10 @@ contains
 
     end function cross_product_ueg
 
-    pure function symmetry_orb_list_hub_k(orb_list) result(isym)
+    pure function symmetry_orb_list_hub_k(mom_sym, orb_list) result(isym)
 
         ! In:
+        !    mom_sym: basis function symmetry information.
         !    orb_list: list of orbitals (e.g. determinant).
         ! Returns:
         !    symmetry index of list (i.e. direct product of the representations
@@ -253,14 +253,17 @@ contains
 
         ! For momentum symmetry in the Hubbard model.
 
+        use symmetry_types, only: mom_sym_t
+
         integer :: isym
+        type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: orb_list(:)
 
         integer :: i
 
-        isym = gamma_sym
+        isym = mom_sym%gamma_sym
         do i = lbound(orb_list, dim=1), ubound(orb_list, dim=1)
-            isym = cross_product_hub_k((orb_list(i)+1)/2, isym)
+            isym = cross_product_hub_k(mom_sym, (orb_list(i)+1)/2, isym)
         end do
 
     end function symmetry_orb_list_hub_k

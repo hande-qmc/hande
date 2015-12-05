@@ -718,8 +718,9 @@ contains
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms+sys%basis%basis_fns(excitation%from_orb(2))%Ms == &
                     sys%basis%basis_fns(excitation%to_orb(1))%Ms+sys%basis%basis_fns(excitation%to_orb(2))%Ms) then
-                ij_sym = cross_product_pg_basis(excitation%from_orb(1), excitation%from_orb(2), sys%basis%basis_fns)
-                ab_sym = cross_product_pg_basis(excitation%to_orb(1), excitation%to_orb(2), sys%basis%basis_fns)
+                ij_sym = cross_product_pg_basis(sys%read_in%pg_sym, excitation%from_orb(1), excitation%from_orb(2), &
+                                                sys%basis%basis_fns)
+                ab_sym = cross_product_pg_basis(sys%read_in%pg_sym, excitation%to_orb(1), excitation%to_orb(2), sys%basis%basis_fns)
                 if (ij_sym == ab_sym) then
                     hmatel = slater_condon2_mol_excit(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &

@@ -20,6 +20,7 @@ use const
 use basis_types, only: basis_t
 use molecular_integral_types
 use ueg_types, only: ueg_basis_t
+use symmetry_types, only: pg_sym_t, mom_sym_t
 
 implicit none
 
@@ -182,6 +183,8 @@ type sys_hubbard_t
     ! The Coulomb integral in the momentum space formulation of the Hubbard model
     ! is constant, so it's convenient to store it.
     real(p) :: coulomb_k
+    ! Crystal momentum symmetry information
+    type(mom_sym_t) :: mom_sym
 
 end type sys_hubbard_t
 
@@ -255,6 +258,9 @@ type sys_ueg_t
     procedure(i_int_ueg), pointer, nopass :: coulomb_int
     procedure(i_int_ueg), pointer, nopass :: exchange_int
 
+    ! Symmetry information: we only store the gamma point
+    integer :: gamma_sym
+
 end type sys_ueg_t
 
 type sys_read_in_t
@@ -285,6 +291,9 @@ type sys_read_in_t
     ! Store for the two-body integrals, <ij|1/r_12|ab>, where i,j,a,b are spin basis
     ! functions and 1/r_12 is the Coulomb operator.
     type(two_body_t) :: coulomb_integrals
+
+    ! Data about the orbital symmetries
+    type(pg_sym_t) :: pg_sym
 
 end type sys_read_in_t
 

@@ -162,13 +162,15 @@ contains
             ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
             associate(one_e_ints=>sys%read_in%one_e_h_integrals, coulomb_ints=>sys%read_in%coulomb_integrals)
-                hmatel = get_one_body_int_mol(one_e_ints, i, a, sys%basis%basis_fns)
+                hmatel = get_one_body_int_mol(one_e_ints, i, a, sys%basis%basis_fns, sys%read_in%pg_sym)
 
                 do iel = 1, sys%nel
                     if (occ_list(iel) /= i) &
                         hmatel = hmatel &
-                            + get_two_body_int_mol(coulomb_ints, i, occ_list(iel), a, occ_list(iel), sys%basis%basis_fns) &
-                            - get_two_body_int_mol(coulomb_ints, i, occ_list(iel), occ_list(iel), a, sys%basis%basis_fns)
+                            + get_two_body_int_mol(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
+                                                    sys%basis%basis_fns, sys%read_in%pg_sym) &
+                            - get_two_body_int_mol(coulomb_ints, i, occ_list(iel), occ_list(iel), a, &
+                                                    sys%basis%basis_fns, sys%read_in%pg_sym)
                 end do
             end associate
 
@@ -262,8 +264,8 @@ contains
 
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns) &
-                 - get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
+        hmatel = get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns, sys%read_in%pg_sym) &
+                 - get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns, sys%read_in%pg_sym)
 
         if (perm) hmatel = -hmatel
 

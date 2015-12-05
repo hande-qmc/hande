@@ -20,7 +20,7 @@ contains
 
 !--- Memory allocation and deallocation ---
 
-    subroutine init_one_body_t(uhf, op_sym, store)
+    subroutine init_one_body_t(uhf, op_sym, nbasis_sym_spin, store)
 
         ! Allocate memory required for the integrals involving a one-body
         ! operator.
@@ -34,12 +34,11 @@ contains
         !    store: one-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
 
-        use point_group_symmetry, only: nbasis_sym_spin
-
         use checking, only: check_allocate
 
         logical, intent(in) :: uhf
         integer, intent(in) :: op_sym
+        integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
         type(one_body_t), intent(out) :: store
 
         integer :: ierr, i, s, ispin, nspin
@@ -245,7 +244,7 @@ contains
 
 ! 1. < i | o_1 | j >
 
-    subroutine store_one_body_int_mol(i, j, intgrl, basis_fns, suppress_err_msg, store, ierr)
+    subroutine store_one_body_int_mol(i, j, intgrl, basis_fns, pg_sym, suppress_err_msg, store, ierr)
 
         ! Store <i|o_1|j> in the appropriate slot in the one-body integral
         ! store.  The store does not have room for non-zero integrals, so it is
@@ -256,6 +255,7 @@ contains
         !    intgrl: <i|o_1|j>, where o_1 is a one-body operator.
         !    suppress_err_msg: if true, don't print out any error messages.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         ! In/out:
         !    store: one-body integral store.  On exit the <i|o_1|j> is also
         !       stored.
@@ -265,12 +265,14 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
+        use symmetry_types, only: pg_sym_t
 
         use const, only: depsilon
         use errors, only: warning
         use utils, only: tri_ind
 
         type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(pg_sym_t), intent(in) :: pg_sym
         integer, intent(in) :: i, j
         real(p), intent(in) :: intgrl
         logical, intent(in) :: suppress_err_msg
@@ -283,10 +285,10 @@ contains
 
         ierr = 0
 
-        sym = cross_product_pg_sym(pg_sym_conj(basis_fns(i)%sym), basis_fns(j)%sym)
-        sym = cross_product_pg_sym(sym, store%op_sym)
+        sym = cross_product_pg_sym(pg_sym, pg_sym_conj(pg_sym, basis_fns(i)%sym), basis_fns(j)%sym)
+        sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
 
-        if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+        if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
 
             ! Integral is (should be!) non-zero by symmetry.
             if (store%uhf) then
@@ -317,12 +319,13 @@ contains
 
     end subroutine store_one_body_int_mol
 
-    pure function get_one_body_int_mol(store, i, j, basis_fns) result(intgrl)
+    pure function get_one_body_int_mol(store, i, j, basis_fns, pg_sym) result(intgrl)
 
         ! In:
         !    store: one-body integral store.
         !    i,j: (indices of) spin-orbitals.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         ! Returns:
         !    <i|o|j>, the corresponding one-body matrix element, where o is a
         !    one-body operator given by store.
@@ -334,18 +337,20 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: pg_sym_conj, cross_product_pg_sym, is_gamma_irrep_pg_sym
+        use symmetry_types, only: pg_sym_t
 
         real(p) :: intgrl
         type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(pg_sym_t), intent(in) :: pg_sym
         type(one_body_t), intent(in) :: store
         integer, intent(in) :: i, j
 
         integer :: sym
 
-        sym = cross_product_pg_sym(pg_sym_conj(basis_fns(i)%sym),basis_fns(j)%sym)
-        sym = cross_product_pg_sym(sym, store%op_sym)
+        sym = cross_product_pg_sym(pg_sym, pg_sym_conj(pg_sym, basis_fns(i)%sym),basis_fns(j)%sym)
+        sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
 
-        if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+        if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
             intgrl = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
         else
             intgrl = 0.0_p
@@ -506,7 +511,7 @@ contains
 
     end function two_body_int_indx
 
-    subroutine store_two_body_int_mol(i, j, a, b, intgrl, basis_fns, suppress_err_msg, store, ierr)
+    subroutine store_two_body_int_mol(i, j, a, b, intgrl, basis_fns, pg_sym, suppress_err_msg, store, ierr)
 
         ! Store <ij|o_2|ab> in the appropriate slot in the two-body integral store.
         ! The store does not have room for non-zero integrals, so it is assumed
@@ -520,6 +525,7 @@ contains
         !    intgrl: <ij|o_2|ab>, where o_2 is a two-electron operator.  Note
         !       the integral is expressed in *PHYSICIST'S NOTATION*.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         !    suppress_err_msg: if true, don't print out any error messages.
         ! In/out:
         !    store: two-body integral store.  On exit the <ij|o_2|ab> is also
@@ -530,6 +536,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
+        use symmetry_types, only: pg_sym_t
 
         use const, only: depsilon
         use errors, only: warning
@@ -537,6 +544,7 @@ contains
         integer, intent(in) :: i, j, a, b
         real(p), intent(in) :: intgrl
         type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(pg_sym_t), intent(in) :: pg_sym
         logical, intent(in) :: suppress_err_msg
         type(two_body_t), intent(inout) :: store
         integer, intent(out) :: ierr
@@ -548,12 +556,12 @@ contains
         ierr = 0
 
         ! Should integral be non-zero by symmetry?
-        sym_ij = cross_product_pg_basis(i, j, basis_fns)
-        sym_ab = cross_product_pg_basis(a, b, basis_fns)
-        sym = cross_product_pg_sym(pg_sym_conj(sym_ij), sym_ab)
-        sym = cross_product_pg_sym(sym, store%op_sym)
+        sym_ij = cross_product_pg_basis(pg_sym, i, j, basis_fns)
+        sym_ab = cross_product_pg_basis(pg_sym, a, b, basis_fns)
+        sym = cross_product_pg_sym(pg_sym, pg_sym_conj(pg_sym, sym_ij), sym_ab)
+        sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
 
-        if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
+        if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
                                        .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             ! Store integral
             indx = two_body_int_indx(store%uhf, i, j, a, b, basis_fns)
@@ -569,12 +577,13 @@ contains
 
     end subroutine store_two_body_int_mol
 
-    pure function get_two_body_int_mol(store, i, j, a, b, basis_fns) result(intgrl)
+    pure function get_two_body_int_mol(store, i, j, a, b, basis_fns, pg_sym) result(intgrl)
 
         ! In:
         !    store: two-body integral store.
         !    i,j,a,b: (indices of) spin-orbitals.
         !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
         ! Returns:
         !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
         !    the (j,b) co-density involving a two-body operator o_2 given by
@@ -587,19 +596,21 @@ contains
 
         use basis_types, only: basis_fn_t
         use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
+        use symmetry_types, only: pg_sym_t
 
         real(p) :: intgrl
         type(two_body_t), intent(in) :: store
         type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(pg_sym_t), intent(in) :: pg_sym
         integer, intent(in) :: i, j, a, b
 
         integer :: sym_ij, sym_ab, sym
 
-        sym_ij = pg_sym_conj(cross_product_pg_basis(i, j, basis_fns))
-        sym_ab = cross_product_pg_basis(a, b, basis_fns)
-        sym = cross_product_pg_sym(sym_ij, sym_ab)
-        sym = cross_product_pg_sym(sym, store%op_sym)
-        if (is_gamma_irrep_pg_sym(sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
+        sym_ij = pg_sym_conj(pg_sym, cross_product_pg_basis(pg_sym, i, j, basis_fns))
+        sym_ab = cross_product_pg_basis(pg_sym, a, b, basis_fns)
+        sym = cross_product_pg_sym(pg_sym, sym_ij, sym_ab)
+        sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
+        if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
                                        .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             intgrl = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
         else
