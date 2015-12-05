@@ -276,7 +276,8 @@ contains
         deallocate(evec_copy, stat=ierr)
         call check_deallocate('evec_copy',ierr)
 #endif
-#endif // ndef DISABLE_LANCZOS
+! end ifdef DISABLE_LANCZOS
+#endif
 
     contains
 
