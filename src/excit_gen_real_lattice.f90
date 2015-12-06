@@ -18,7 +18,7 @@ contains
 
 !--- Excitation generators: Hubbard model ---
 
-    subroutine gen_excit_hub_real(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_real(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -36,8 +36,9 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
         !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a
-        !    determinant and a single excitation of it in the real space
-        !    formulation of the Hubbard model.
+        !       determinant and a single excitation of it in the real space
+        !       formulation of the Hubbard model.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -51,6 +52,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
 
         integer :: nvirt_avail
 
@@ -63,13 +65,14 @@ contains
 
         ! 2. Find probability of generating this excited determinant.
         pgen = calc_pgen_real(sys, cdet%occ_list, cdet%f, nvirt_avail)
+        allowed_excitation = .true.
 
         ! 3. find the connecting matrix element.
         call slater_condon1_hub_real_excit(sys, cdet%f, connection, hmatel)
 
     end subroutine gen_excit_hub_real
 
-    subroutine gen_excit_hub_real_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_real_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -97,8 +100,9 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
         !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a
-        !    determinant and a single excitation of it in the real space
-        !    formulation of the Hubbard model.
+        !       determinant and a single excitation of it in the real space
+        !       formulation of the Hubbard model.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -113,6 +117,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
         real(p), intent(out) :: pgen, hmatel
+        logical, intent(out) :: allowed_excitation
 
         integer :: i, iel, ipos
 
@@ -134,6 +139,8 @@ contains
             pgen = 1.0_p
             hmatel = 0.0_p
 
+            allowed_excitation = .false.
+
         else
 
             connection%nexcit=1
@@ -147,13 +154,15 @@ contains
             !        = 1/(nel*nconnected_sites)
             pgen = 1.0_p/(sys%nel*sys%real_lattice%connected_sites(0,i))
 
+            allowed_excitation = .true.
+
         end if
 
     end subroutine gen_excit_hub_real_no_renorm
 
 !--- Excitation generators: Heisenberg model ---
 
-    subroutine gen_excit_heisenberg(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_heisenberg(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -173,6 +182,7 @@ contains
         !    hmatel: < D | H | D_i^a >, the Hamiltonian matrix element between a
         !    determinant and a single excitation of it in the real space
         !    formulation of the Hubbard model.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -185,6 +195,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
 
         integer :: nvirt_avail
 
@@ -199,6 +210,7 @@ contains
         ! 2. Find probability of generating this excited determinant.
         ! Again, same procedure for Heisenberg as for real space Hubbard
         pgen = calc_pgen_real(sys, cdet%occ_list, cdet%f, nvirt_avail)
+        allowed_excitation = .true.
 
         ! 3. find the connecting matrix element.
         ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
@@ -206,7 +218,7 @@ contains
 
     end subroutine gen_excit_heisenberg
 
-    subroutine gen_excit_heisenberg_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_heisenberg_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -249,6 +261,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
 
         integer :: i, ipos, iel
 
@@ -274,6 +287,8 @@ contains
             hmatel = 0.0_p
             pgen = 1.0_p
 
+            allowed_excitation = .false.
+
         else
 
             connection%nexcit = 1
@@ -287,6 +302,8 @@ contains
             ! 3. find the connecting matrix element.
             ! Non-zero off-diagonal elements are always -J/2 for Heisenebrg model
             hmatel = -sys%heisenberg%J/2
+
+            allowed_excitation = .true.
 
         end if
 

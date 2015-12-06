@@ -11,7 +11,7 @@ implicit none
 
 contains
 
-    subroutine gen_excit_ringium_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_ringium_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -30,6 +30,7 @@ contains
         !        and the child determinant, on which progeny are spawned.
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !        determinant and a connected determinant 
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation2
@@ -44,8 +45,8 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
 
-        logical :: allowed
         integer :: ij_lz(1)
         integer :: ij_spin
 
@@ -54,9 +55,9 @@ contains
         call choose_ij_k(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_lz, ij_spin)
 
         ! 2. Select a random pair of spin orbitals to excite to.
-        call choose_ab_ringium(rng, sys, cdet%f, ij_lz(1), connection%to_orb(1), connection%to_orb(2), allowed)
+        call choose_ab_ringium(rng, sys, cdet%f, ij_lz(1), connection%to_orb(1), connection%to_orb(2), allowed_excitation)
 
-        if (allowed) then
+        if (allowed_excitation) then
             ! 3. Calculate the generation probability of the excitation.
             ! For one-band systems this depends only upon the orbitals excited from.
             pgen = calc_pgen_ringium(sys)

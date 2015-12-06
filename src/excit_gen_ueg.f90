@@ -24,7 +24,7 @@ contains
 
 !--- Excitation generators ---
 
-    subroutine gen_excit_ueg_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_ueg_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -51,7 +51,8 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
-        !    determinant and a connected determinant in molecular systems.
+        !       determinant and a connected determinant in the UEG.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -68,8 +69,8 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
 
-        logical :: allowed_excitation
         integer :: ij_k(sys%lattice%ndim), ij_spin, max_na
 
         ! 1. Must have a double excitation.

@@ -83,9 +83,10 @@ contains
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
+        logical :: allowed
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
@@ -148,9 +149,10 @@ contains
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
+        logical :: allowed
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel)
@@ -227,10 +229,11 @@ contains
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, abs_hmatel, hmatel
+        logical :: allowed
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, abs_hmatel)
+        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, abs_hmatel, allowed)
 
         ! 2. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel/pgen, rng)
@@ -311,10 +314,11 @@ contains
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, tilde_hmatel, hmatel
+        logical :: allowed
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, tilde_hmatel)
+        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, tilde_hmatel, allowed)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel)
