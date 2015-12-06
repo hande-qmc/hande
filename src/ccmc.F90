@@ -1464,7 +1464,7 @@ contains
         ! least for now) is left as an exercise to the interested reader.
         call gen_excit_ptr%full(rng, sys, qs%pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
-        if (linked_ccmc .and. abs(hmatel) > depsilon) then
+        if (linked_ccmc .and. allowed_excitation) then
             ! For Linked Coupled Cluster we reject any spawning where the
             ! Hamiltonian is not linked to every cluster operator
             ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
@@ -2243,15 +2243,13 @@ contains
         if (allowed) then
             call decoder_ptr(sys, rdet%f, rdet)
             call gen_excit_ptr%full(rng, sys, qs%pattempt_single, rdet, pgen, connection, hmatel, allowed)
-            ! If hmatel is 0 and pgen 1, then the excitation generator returned an invalid excitor
-            if (abs(hmatel) > 0.0_p .and. (1.0_p-pgen) > depsilon) then
-                ! check that left_cluster can be applied to the resulting excitor to
-                ! give a cluster to spawn on to
-                call create_excited_det(sys%basis, rdet%f, connection, fexcit)
-                call collapse_cluster(sys%basis, qs%ref%f0, ldet%f, 1.0_p, fexcit, pop, allowed)
-            else
-                allowed = .false.
-            end if
+        end if
+
+        if (allowed) then
+            ! check that left_cluster can be applied to the resulting excitor to
+            ! give a cluster to spawn on to
+            call create_excited_det(sys%basis, rdet%f, connection, fexcit)
+            call collapse_cluster(sys%basis, qs%ref%f0, ldet%f, 1.0_p, fexcit, pop, allowed)
         end if
 
         if (allowed) then
