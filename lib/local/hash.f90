@@ -40,8 +40,8 @@ contains
         use const, only: i0
 
         integer :: hash
-        integer(i0), intent(in), target :: f(N)
         integer, intent(in) :: N
+        integer(i0), intent(in), target :: f(N)
         integer(c_int32_t), intent(in) :: seed
         type(c_ptr) :: key
         integer(c_int) :: nbytes
