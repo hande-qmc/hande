@@ -280,12 +280,12 @@ contains
         integer(i0), intent(in) :: b
         integer, intent(out) :: d(:)
 
-        integer :: nbits_seen, offset, ifield, nfound
-        integer(i0) :: field
+        integer :: nbits_seen, ifield, nfound
+        integer(i0) :: offset, field
 
         integer, parameter :: field_size = ubound(bit_table_256, dim=1)
         integer, parameter :: nfields = i0_length/field_size
-        integer, parameter :: mask = 2**field_size - 1
+        integer(i0), parameter :: mask = 2**field_size - 1
 
         nfound = 0
         offset = 0
