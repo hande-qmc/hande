@@ -134,7 +134,7 @@ contains
             write (6,'()')
             write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
         case(read_in)
-            write (6,'(/,1X,a5,2X,a7,X,a8,X,a9,X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
+            write (6,'(/,1X,a5,2X,a7,1X,a8,1X,a9,1X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
         case(ringium)
             write (6,'(1X,a25,/)') 'Lz given in units of 1/2.'
             write (6,'(1X,a5,4x,a2,4x)', advance='no') 'index', 'lz'
@@ -212,7 +212,7 @@ contains
         end if
 
         if (sys%system == read_in) then
-            write (io, '(i5,3(3X,i5),X)',advance='no') b%spatial_index, b%sym, b%sym_index,b%lz
+            write (io, '(i5,3(3X,i5),1X)',advance='no') b%spatial_index, b%sym, b%sym_index,b%lz
         else
             write (io,'(1X,"(")', advance='no')
             write (io,'(i3)',advance='no') b%l(1)

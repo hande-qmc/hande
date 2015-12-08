@@ -267,16 +267,16 @@ module restart_hdf5
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_write
+            use parallel, only: nprocs
+            use calc, only: calc_type, GLOBAL_META
 #else
             use parallel, only: parent
 #endif
             use const
             use, intrinsic :: iso_c_binding
             use errors, only: stop_all
-            use parallel, only: nprocs
             use utils, only: get_unique_filename, int_fmt
 
-            use calc, only: calc_type, GLOBAL_META
             use errors, only: warning
             use qmc_data, only: qmc_state_t
 
@@ -436,12 +436,12 @@ module restart_hdf5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, dtype_equal, dset_shape, hdf5_path
             use restart_utils, only: convert_dets, convert_ref, convert_pops, change_pop_scaling, change_nbasis
+            use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
+            use parallel, only: nprocs
 #endif
             use errors, only: stop_all, warning
             use const
 
-            use calc, only: calc_type, exact_diag, lanczos_diag, mc_hilbert_space
-            use parallel, only: nprocs
             use spawn_data, only: spawn_t
             use qmc_data, only: qmc_state_t
             use sort, only: qsort

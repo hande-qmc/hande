@@ -349,7 +349,7 @@ contains
             write (6, '(2X,es17.10)', advance='no') ntot_particles(1)
 
         else if (doing_calc(hfs_fciqmc_calc)) then
-            write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,X,es17.10)', advance = 'no') &
+            write (6,'(i10,2X,6(es17.10,2X),es17.10,4X,es17.10,1X,es17.10)', advance = 'no') &
                                              qs%mc_cycles_done+mc_cycles, qs%shift(1),   &
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &
                                              qs%shift(2), qs%estimators%proj_hf_O_hpsip, qs%estimators%proj_hf_H_hfpsip, &

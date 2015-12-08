@@ -274,10 +274,10 @@ contains
         ! Number of such bit chunks in integers of kind i0.
         integer, parameter :: nfields = i0_length/field_size
         ! Bit mask to extract a chunk containing field_size bits.
-        integer, parameter :: mask = 2**field_size - 1
+        integer(i0), parameter :: mask = 2**field_size - 1
 
-        integer :: iel, ifield, nfound, offset, nbits_seen
-        integer(i0) :: field
+        integer :: iel, ifield, nfound, nbits_seen
+        integer(i0) :: offset, field
 
         ! WARNING: we assume that the basis functions 1,2,..., correspond to bits 0,1,...
         ! in the first integer of f and so on (i.e. basis_set%separate_strings is false).

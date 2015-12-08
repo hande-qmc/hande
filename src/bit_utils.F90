@@ -85,10 +85,10 @@ contains
         integer(int_32) :: tmp
 
         ! For 32 bit integers:
-        integer(int_32), parameter :: m1 = Z'55555555'
-        integer(int_32), parameter :: m2 = Z'33333333'
-        integer(int_32), parameter :: m3 = Z'0F0F0F0F'
-        integer(int_32), parameter :: m4 = Z'01010101'
+        integer(int_32), parameter :: m1 = int(Z'55555555',int_32)
+        integer(int_32), parameter :: m2 = int(Z'33333333',int_32)
+        integer(int_32), parameter :: m3 = int(Z'0F0F0F0F',int_32)
+        integer(int_32), parameter :: m4 = int(Z'01010101',int_32)
 
         ! This is quite cool.
 
@@ -147,10 +147,10 @@ contains
         integer(int_64) :: tmp
 
         ! For 64 bit integers:
-        integer(int_64), parameter :: m1 = Z'5555555555555555'
-        integer(int_64), parameter :: m2 = Z'3333333333333333'
-        integer(int_64), parameter :: m3 = Z'0f0f0f0f0f0f0f0f'
-        integer(int_64), parameter :: m4 = Z'0101010101010101'
+        integer(int_64), parameter :: m1 = int(Z'5555555555555555',int_64)
+        integer(int_64), parameter :: m2 = int(Z'3333333333333333',int_64)
+        integer(int_64), parameter :: m3 = int(Z'0f0f0f0f0f0f0f0f',int_64)
+        integer(int_64), parameter :: m4 = int(Z'0101010101010101',int_64)
 
         tmp = b
         tmp = tmp - iand(ishft(tmp,-1), m1)
@@ -170,7 +170,7 @@ contains
 
         integer :: neven
         integer(int_32), intent(in) :: b
-        integer(int_32), parameter :: m = Z'55555555'
+        integer(int_32), parameter :: m = int(Z'55555555',int_32)
 
         neven = count_set_bits(iand(b,m))
 
@@ -185,7 +185,7 @@ contains
 
         integer :: neven
         integer(int_64), intent(in) :: b
-        integer(int_64), parameter :: m = Z'5555555555555555'
+        integer(int_64), parameter :: m = int(Z'5555555555555555',int_64)
 
         neven = count_set_bits(iand(b,m))
 
@@ -280,12 +280,12 @@ contains
         integer(i0), intent(in) :: b
         integer, intent(out) :: d(:)
 
-        integer :: nbits_seen, offset, ifield, nfound
-        integer(i0) :: field
+        integer :: nbits_seen, ifield, nfound
+        integer(i0) :: offset, field
 
         integer, parameter :: field_size = ubound(bit_table_256, dim=1)
         integer, parameter :: nfields = i0_length/field_size
-        integer, parameter :: mask = 2**field_size - 1
+        integer(i0), parameter :: mask = 2**field_size - 1
 
         nfound = 0
         offset = 0
