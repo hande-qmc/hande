@@ -60,7 +60,7 @@ pop64_mpi = pop64 mc_hilbert_space/ mc_canonical_energy *mc/ *mc_real_64
 # under 10s to run.  The goal is to provide test categories for POP_SIZE=32 and
 # POP_SIZE=64 configurations which take under 5 minutes to run on 4 cores of a decent
 # workstation.
-_quick_ = fci/heisenberg_1d_fci_rdm/
+quick =   fci/heisenberg_1d_fci_rdm/
           fci/heisenberg_1d_finite_cluster_fci/
           fci/hubbard_k_1d/
           fci/hubbard_k_nontilted_2d_fci/
@@ -114,8 +114,6 @@ _quick_ = fci/heisenberg_1d_fci_rdm/
           ccmc/np1/Ne-RHF-cc-pVDZ_ccmc_linked/
           fci/Ne-RHF-cc-pVDZ/
           ccmc/np2/Ne-aug-cc-pVDZ-ccsdtq_nc/
-
-quick   = _quick_
           ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32/
           ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS/
           ifciqmc_real_32/np4/H2O-RHF-cc-pVTZ-non-block/
@@ -125,14 +123,14 @@ quick   = _quick_
           fciqmc_real_32/np4/heisenberg_4x4_real_32_SS/
           dmqmc_real_32/np4/ueg_n4_rs2_e4/
 
-quick64 = _quick_
+quick64 = quick
           fciqmc_real_64/np4/He2-aug-cc-pVDZ_real_64_SS/
           dmqmc_real_64/np4/heisenberg_4x4_replica/
           fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64/
           dmqmc_real_64/np4/n2_sto3g/
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
 
-_vquick_ = fci/heisenberg_1d_fci_rdm
+vquick =   fci/heisenberg_1d_fci_rdm
            fci/heisenberg_1d_finite_cluster_fci
            fci/hubbard_k_1d
            fci/hubbard_k_nontilted_2d_fci
@@ -168,13 +166,11 @@ _vquick_ = fci/heisenberg_1d_fci_rdm
            mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
            dmqmc/np1/heisenberg_1d
            fciqmc/np2/ueg_n10_rs2_e4_tau_search
-
-vquick   = _vquick_
            ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32
            ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
            dmqmc_real_32/np2/heisenberg_4_gs_entropy
 
-vquick64 = _vquick_
+vquick64 = vquick
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64
