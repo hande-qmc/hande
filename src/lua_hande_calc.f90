@@ -1002,6 +1002,7 @@ contains
         !        update_every = mc_cycles,
         !        pop_factor = factor,
         !     }
+        !     replica_tricks = true/false,
         ! }
 
         ! In/Out:
