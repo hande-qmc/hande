@@ -92,7 +92,7 @@ results : :class:`pandas.DataFrame`
     results['<V>_0_error'] = [np.sqrt(covariances['<V>_0']['<V>_0']/nsamples)]
     results['N_acc/N_att'] = [means['N_ACC/N_ATT']]
     results['N_acc/N_att_error'] = (
-                  [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT'])/nsamples])
+                  [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/nsamples)])
 
     # Take care of the correlation between numerator and denominator
     # in Hartree-Fock estimates.
