@@ -209,12 +209,9 @@ contains
         real(p), intent(inout) :: hmatel
 
         integer :: iorb
-        integer(i0) :: f_new(sys%basis%string_len)
         real(p) :: diff_ijab
 
         diff_ijab = 0.0_p
-
-        call create_excited_det(sys%basis, cdet%f, connection, f_new)
 
         ! For the case when H^0 = \sum_i \varepsilon_i n_i, then the energy differences are simple to
         ! evaluate : E_i - E_k = (\varepsilon_a+\varepsilon_b) - (\varepsilon_i+\varepsilon_j).
@@ -264,11 +261,9 @@ contains
         real(p), intent(inout) :: hmatel
 
         integer :: iorb, new, occ_list(sys%nel+2), a, b, i, j
-        integer(i0) :: f_new(sys%basis%string_len)
         real(p) :: diff_ijab
 
         if (abs(hmatel) > depsilon) then
-            call create_excited_det(sys%basis, cdet%f, connection, f_new)
             a = connection%to_orb(1)
             b = connection%to_orb(2)
             i = connection%from_orb(1)
