@@ -1,5 +1,5 @@
 [DEFAULT]
-include_f = -I $${HDF5_ROOT-/usr}/include -Wall -Wextra -Wno-unused-dummy-argument -Wno-unused-parameter -Werror
+include_f = -I $${HDF5_ROOT-/usr}/include -std=f2008ts
 
 [main]
 fc = mpif90
@@ -15,5 +15,5 @@ fflags = %(include_f)s -O3
 cxxflags = -O3
 
 [dbg]
-fflags = %(include_f)s -std=f2008ts -g -fbacktrace -fbounds-check
+fflags = %(include_f)s -g -fbacktrace -fbounds-check -Wall -Wextra -Wno-unused-dummy-argument -Wno-unused-parameter -Werror
 cxxflags = -g -fbacktrace
