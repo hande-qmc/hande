@@ -60,117 +60,75 @@ pop64_mpi = pop64 mc_hilbert_space/ mc_canonical_energy *mc/ *mc_real_64
 # under 10s to run.  The goal is to provide test categories for POP_SIZE=32 and
 # POP_SIZE=64 configurations which take under 5 minutes to run on 4 cores of a decent
 # workstation.
-quick =   fci/heisenberg_1d_fci_rdm/
-          fci/heisenberg_1d_finite_cluster_fci/
-          fci/hubbard_k_1d/
-          fci/hubbard_k_nontilted_2d_fci/
-          fciqmc/np4/Ne-RHF-cc-pVDZ_softexit/
-          fci/ringium/
-          fci/H2O-RHF-sto-2g/
-          fci/heisenberg_1d_fci/
-          fciqmc/np1/Ne-RHF-cc-pVDZ_softexit/
-          lanczos/hubbard_real_nontilted_2d_direct/
-          fci/hubbard_k_tilted_2d_fci/
-          mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert/
-          fci/H2-RHF-cc-pVTZ-Lz/
-          fciqmc/np1/hubbard_real_1d_fciqmc/
-          ifciqmc/np1/hubbard_k_1d_ifciqmc/
-          ifciqmc/np1/hubbard_k_1d_ifciqmc_cas/
-          fci/ueg_n4_rs2_e1_fci/
-          lanczos/hubbard_k_nontilted_2d_lanczos/
-          ifciqmc/np1/hubbard_k_1d_ifciqmc/
-          ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block/
-          ifciqmc/np1/hubbard_k_nontilted_2d_ifciqmc/
-          lanczos/hubbard_k_tilted_2d_sparse/
-          fciqmc/np1/hubbard_k_nontilted_2d_fciqmc/
-          fciqmc/np1/hubbard_k_1d_n4/
-          mc_hilbert_space/np1/hf_hilbert_space/
-          fciqmc/np1/hubbard_real_1d_fciqmc/
-          fciqmc/np1/heisenberg_1d_neel_ref_fciqmc/
-          simple_fciqmc/hubbard_k_nontilted_2d_sfciqmc/
-          dmqmc/np4/ueg_n7_rs1_e1_dmqmc/
-          lanczos/hubbard_real_rectangle_2d_lanczos/
-          fci/chung_landau_1d_fci/
-          fciqmc/np4/Ne-RHF-cc-pVDZ_calc_interact/
-          ccmc/np2/H2O-cc-pVDZ_tau_search/
-          mc_canonical_energy/np1/H2O_ccpvdz_RHF/
-          mc_canonical_energy/np2/H2O_ccpvdz_RHF/
-          dmqmc/np1/ueg_n7_rs1_e1_dmqmc/
-          mc_canonical_energy/np4/H2O_ccpvdz_RHF/
-          fciqmc/np1/heisenberg_1d_ferro_field_fciqmc/
-          mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space/
-          dmqmc/np1/heisenberg_1d/
-          dmqmc/np2/n2_sto3g/
-          fciqmc/np2/ueg_n10_rs2_e4_tau_search/
-          mc_hilbert_space/np1/ueg_n14_rs1_e3_hilbert_space/
-          fciqmc/np1/heisenberg_1d_no_renorm/
-          fciqmc/np1/H2-RHF-cc-pVTZ-Lz/
-          ccmc/np2/Ne-RHF-cc-pVDZ_ccmc_linked/
-          ifciqmc/np4/hubbard_k_1d_ifciqmc_load/
+quick =   vquick
           ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CAS8_12-CCSDT/
-          dmqmc/np2/hubbard_k_1d/
-          fciqmc/np1/heisenberg_2d_field_fciqmc/
-          ccmc/np2/ringium_ccsd_restart/
           ccmc/np1/Ne-RHF-cc-pVDZ_ccmc_linked/
-          fci/Ne-RHF-cc-pVDZ/
+          ccmc/np2/Ne-RHF-cc-pVDZ_ccmc_linked/
           ccmc/np2/Ne-aug-cc-pVDZ-ccsdtq_nc/
-          ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32/
-          ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS/
-          ifciqmc_real_32/np4/H2O-RHF-cc-pVTZ-non-block/
-          fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS/
-          fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI/
-          dmqmc_real_32/np2/heisenberg_4_gs_entropy/
-          fciqmc_real_32/np4/heisenberg_4x4_real_32_SS/
+          ccmc/np2/ringium_ccsd_restart/
+          dmqmc/np1/ueg_n7_rs1_e1_dmqmc/
+          dmqmc/np2/hubbard_k_1d/
+          dmqmc/np2/n2_sto3g/
+          dmqmc/np4/ueg_n7_rs1_e1_dmqmc/
           dmqmc_real_32/np4/ueg_n4_rs2_e4/
+          fci/Ne-RHF-cc-pVDZ/
+          fciqmc/np1/H2-RHF-cc-pVTZ-Lz/
+          fciqmc/np1/heisenberg_1d_no_renorm/
+          fciqmc/np1/heisenberg_2d_field_fciqmc/
+          fciqmc/np1/hubbard_real_1d_fciqmc/
+          fciqmc/np4/Ne-RHF-cc-pVDZ_calc_interact/
+          fciqmc/np4/Ne-RHF-cc-pVDZ_softexit/
+          fciqmc_real_32/np4/heisenberg_4x4_real_32_SS/
+          ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block/
+          ifciqmc/np4/hubbard_k_1d_ifciqmc_load/
+          ifciqmc_real_32/np4/H2O-RHF-cc-pVTZ-non-block/
+          mc_canonical_energy/np4/H2O_ccpvdz_RHF/
+          mc_hilbert_space/np1/ueg_n14_rs1_e3_hilbert_space/
 
 quick64 = quick
-          fciqmc_real_64/np4/He2-aug-cc-pVDZ_real_64_SS/
           dmqmc_real_64/np4/heisenberg_4x4_replica/
-          fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64/
           dmqmc_real_64/np4/n2_sto3g/
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
+          fciqmc_real_64/np4/He2-aug-cc-pVDZ_real_64_SS/
 
-vquick =   fci/heisenberg_1d_fci_rdm
+vquick =   ccmc/np2/H2O-cc-pVDZ_tau_search
+           dmqmc/np1/heisenberg_1d
+           dmqmc_real_32/np2/heisenberg_4_gs_entropy
+           fci/H2-RHF-cc-pVTZ-Lz/
+           fci/H2O-RHF-sto-2g
+           fci/chung_landau_1d_fci
+           fci/heisenberg_1d_fci
+           fci/heisenberg_1d_fci_rdm
            fci/heisenberg_1d_finite_cluster_fci
            fci/hubbard_k_1d
            fci/hubbard_k_nontilted_2d_fci
-           fci/ringium
-           fci/H2O-RHF-sto-2g
-           fci/heisenberg_1d_fci
-           fciqmc/np1/Ne-RHF-cc-pVDZ_softexit
-           lanczos/hubbard_real_nontilted_2d_direct
            fci/hubbard_k_tilted_2d_fci
-           mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
-           fci/H2-RHF-cc-pVTZ-Lz/
-           fciqmc/np1/hubbard_real_1d_fciqmc
-           ifciqmc/np1/hubbard_k_1d_ifciqmc
-           ifciqmc/np1/hubbard_k_1d_ifciqmc_cas
+           fci/ringium
            fci/ueg_n4_rs2_e1_fci
-           lanczos/hubbard_k_nontilted_2d_lanczos
-           ifciqmc/np1/hubbard_k_1d_ifciqmc
-           ifciqmc/np1/hubbard_k_nontilted_2d_ifciqmc
-           lanczos/hubbard_k_tilted_2d_sparse
-           fciqmc/np1/hubbard_k_nontilted_2d_fciqmc
-           fciqmc/np1/hubbard_k_1d_n4
-           mc_hilbert_space/np1/hf_hilbert_space
-           mc_hilbert_space/np1/hf_hilbert_space
-           fciqmc/np1/hubbard_real_1d_fciqmc
-           fciqmc/np1/heisenberg_1d_neel_ref_fciqmc
-           simple_fciqmc/hubbard_k_nontilted_2d_sfciqmc
-           lanczos/hubbard_real_rectangle_2d_lanczos
-           fci/chung_landau_1d_fci
-           ccmc/np2/H2O-cc-pVDZ_tau_search
-           mc_canonical_energy/np1/H2O_ccpvdz_RHF
-           mc_canonical_energy/np2/H2O_ccpvdz_RHF
+           fciqmc/np1/Ne-RHF-cc-pVDZ_softexit
            fciqmc/np1/heisenberg_1d_ferro_field_fciqmc
-           mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
-           dmqmc/np1/heisenberg_1d
+           fciqmc/np1/heisenberg_1d_neel_ref_fciqmc
+           fciqmc/np1/hubbard_k_1d_n4
+           fciqmc/np1/hubbard_k_nontilted_2d_fciqmc
+           fciqmc/np1/hubbard_real_1d_fciqmc
            fciqmc/np2/ueg_n10_rs2_e4_tau_search
-           ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32
-           ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
-           dmqmc_real_32/np2/heisenberg_4_gs_entropy
+           ifciqmc/np1/hubbard_k_1d_ifciqmc
+           ifciqmc/np1/hubbard_k_1d_ifciqmc_cas
+           ifciqmc/np1/hubbard_k_nontilted_2d_ifciqmc
+           ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32
+           ifciqmc_real_32/np1/hubbard_k_1d_ifciqmc_real_32_SS
+           lanczos/hubbard_k_nontilted_2d_lanczos
+           lanczos/hubbard_k_tilted_2d_sparse
+           lanczos/hubbard_real_nontilted_2d_direct
+           lanczos/hubbard_real_rectangle_2d_lanczos
+           mc_canonical_energy/np1/H2O_ccpvdz_RHF
+           mc_canonical_energy/np2/H2O_ccpvdz_RHF
+           mc_hilbert_space/np1/hf_hilbert_space
+           mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
+           mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
+           simple_fciqmc/hubbard_k_nontilted_2d_sfciqmc
 
 vquick64 = vquick
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64
