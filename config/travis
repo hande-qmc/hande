@@ -1,0 +1,21 @@
+[DEFAULT]
+include_f = -I $${HDF5_ROOT}/include -I/usr/include/lua5.2
+include_c = -I/usr/include/lua5.2
+
+[main]
+fc = mpif90
+cc = mpicc
+cxx = mpiCC
+ld = mpif90
+cppflags = -DHAVE_SSE2 -DPARALLEL -DDET_SIZE=32 -DDISABLE_LANCZOS
+ldflags = -L$${HOME}/scalapack-2.0.2 -L$${HDF5_ROOT}/lib -L$${HOME}/trlan-201009
+libs = -lscalapack -llapack -lblas -lstdc++ -lhdf5_fortran -lhdf5 -luuid -llua5.2 -ldl -ltrlan
+f90_module_flag = -J
+
+[opt]
+fflags = %(include_f)s -O3
+cflags = %(include_c)s -O3
+
+[dbg]
+fflags = %(include_f)s -g -fbacktrace -fbounds-check
+cflags = %(include_c)s -g
