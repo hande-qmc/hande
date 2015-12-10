@@ -91,7 +91,9 @@ quick64 = quick
           dmqmc_real_64/np4/ueg_n4_rs2_e4/
           fciqmc_real_64/np4/He2-aug-cc-pVDZ_real_64_SS/
 
-vquick =   ccmc/np2/H2O-cc-pVDZ_tau_search
+vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
+           ccmc/np2/H2O-cc-pVDZ_tau_search
+           ccmc_real_32/np1/HOCl-6-31g_ccsd_short
            dmqmc/np1/heisenberg_1d
            dmqmc_real_32/np2/heisenberg_4_gs_entropy
            fci/H2-RHF-cc-pVTZ-Lz/
@@ -131,4 +133,6 @@ vquick =   ccmc/np2/H2O-cc-pVDZ_tau_search
            simple_fciqmc/hubbard_k_nontilted_2d_sfciqmc
 
 vquick64 = vquick
+           ccmc_real_64/np2/NH3-6-31g_ccsdt_linked_short
+           dmqmc_real_64/np4/n2_sto3g_short
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64

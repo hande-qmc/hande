@@ -1,0 +1,37 @@
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 14,
+    ms = 0,
+    sym = 0,
+}
+
+ccmc {
+    sys = sys,
+    qmc = {
+        tau = 0.001,
+        rng_seed = 13086,
+        init_pop = 200,
+        mc_cycles = 10,
+        nreports = 100,
+        target_population = 12000,
+        real_amplitudes = true,
+        real_amplitude_force_32 = true,
+        state_size = -500,
+        spawned_state_size = -200,
+    },
+    reference = {
+        ex_level = 2,
+    },
+}
+-- Exact CCSD energy: -0.183629 
+-- Integrals obtained using the following settings in PSI4: 
+-- molecule HOCl { 
+--   H 
+--   O 1 1.0 
+--   Cl 2 1.7 1 110.0 
+-- } 
+-- set globals { 
+--   basis 6-31g 
+--   freeze_core true 
+-- } 
+-- energy('ccsd') 
