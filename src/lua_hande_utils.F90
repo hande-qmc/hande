@@ -40,7 +40,11 @@ contains
         do while (flu_next(lua_state, pos_loc))
             ! key is at index -2 and value at index -1
             str => flu_tolstring(lua_state, -2, strlen)
+#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
             allocate(character(strlen) :: key)
+#else
+            allocate(character(size(str)) :: key)
+#endif
             do j = 1, strlen
                 key(j:j) = str(j)
             end do
