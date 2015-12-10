@@ -114,6 +114,7 @@ contains
         use iso_c_binding, only: c_loc, c_ptr, c_char, c_int
         use hashing, only: MurmurHash2
         use utils, only: fstring_to_carray
+        use parallel
 
         integer :: randish_seed
         character(36), intent(in) :: uuid
@@ -122,15 +123,24 @@ contains
         character(kind=c_char), target :: cseed_data(len(seed_data)+1)
         type(c_ptr) :: cseed_data_ptr
         integer(c_int) :: n
+#ifdef PARALLEL
+        integer :: ierr
+#endif
 
-        call date_and_time(time=seed_data(:10))
-        seed_data(11:) = uuid
+        if (parent) then
+            call date_and_time(time=seed_data(:10))
+            seed_data(11:) = uuid
 
-        cseed_data = fstring_to_carray(seed_data)
-        cseed_data_ptr = c_loc(cseed_data)
-        n = size(cseed_data)-1 ! Don't hash terminating null character.
+            cseed_data = fstring_to_carray(seed_data)
+            cseed_data_ptr = c_loc(cseed_data)
+            n = size(cseed_data)-1 ! Don't hash terminating null character.
 
-        randish_seed = int(MurmurHash2(cseed_data_ptr, n, 12345_c_int))
+            randish_seed = int(MurmurHash2(cseed_data_ptr, n, 12345_c_int))
+        end if
+
+#ifdef PARALLEL
+        call mpi_bcast(randish_seed, 1, mpi_integer, root, MPI_COMM_WORLD, ierr)
+#endif
 
     end function gen_seed
 
