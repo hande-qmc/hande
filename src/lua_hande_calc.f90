@@ -1108,6 +1108,7 @@ contains
         !     sampling_weights = { ... },
         !     vary_weights = N,
         !     find_weights = true/false,
+        !     find_weights_start = iteration,
         !     symmetrize = true/false,
         !     initiator_level = ilevel,
         ! }
@@ -1187,7 +1188,7 @@ contains
                                                                        'correlation', 'excit_dist', 'kinetic_energy',             &
                                                                        'H0_energy', 'potential_energy', 'HI_energy']
         character(30), parameter :: rdm_keys(9)   = [character(30) :: 'spawned_state_size', 'rdms', 'ground_state',              &
-                                                                      'ground_rdm_start', 'instantaneous', 'write',              &
+                                                                      'ground_state_start', 'instantaneous', 'write',              &
                                                                       'concurrence', 'von_neumann', 'renyi2']
 
         dmqmc_calc_type = 0
@@ -1299,7 +1300,7 @@ contains
 
             ! Optional arguments.
             call aot_get_val(dmqmc_in%rdm%calc_ground_rdm, err, lua_state, table, 'ground_state')
-            call aot_get_val(dmqmc_in%start_av_rdm, err, lua_state, table, 'ground_rdm_start')
+            call aot_get_val(dmqmc_in%start_av_rdm, err, lua_state, table, 'ground_state_start')
             call aot_get_val(dmqmc_in%rdm%output_rdm, err, lua_state, table, 'write')
             call aot_get_val(dmqmc_in%rdm%doing_concurrence, err, lua_state, table, 'concurrence')
             call aot_get_val(dmqmc_in%rdm%doing_vn_entropy, err, lua_state, table, 'von_neumann')
