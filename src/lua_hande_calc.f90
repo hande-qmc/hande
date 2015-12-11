@@ -1108,6 +1108,7 @@ contains
         !     sampling_weights = { ... },
         !     vary_weights = N,
         !     find_weights = true/false,
+        !     find_weights_start = iteration,
         !     symmetrize = true/false,
         !     initiator_level = ilevel,
         ! }
