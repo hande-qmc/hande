@@ -1,0 +1,55 @@
+language: python
+
+addons:
+    apt:
+        packages:
+            - gfortran
+            - libopenmpi-dev
+            - openmpi-bin
+            - liblua5.2-dev
+            - uuid-dev
+            - libblas-dev
+            - liblapack-dev
+
+before_install:
+    # For some reason, the test suite requires matplotlib...
+    - pip install matplotlib
+    - pip install pandas
+    - cd
+    # HDF5 (from source as the Ubuntu package doesn't have Fortran 2003 bindings)
+    - export HDF5_ROOT=$HOME/hdf5-1.8.16
+    - if [ ! -f $HDF5_ROOT/lib/libhdf5_fortran.so ] ; then ( wget -O - http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.16.tar.gz | tar xvzf - && cd hdf5-1.8.16 && ./configure --prefix=$HDF5_ROOT --enable-fortran --enable-fortran2003 && make && make install ) ; fi
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HDF5_ROOT/lib
+    # paths for blas and lapack
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/libblas:/usr/lib/lapack
+    # scalapack (from source as it is only packaged for MPICH)
+    - if [ ! -f scalapack-2.0.2/libscalapack.a ] ; then ( wget -O - http://www.netlib.org/scalapack/scalapack-2.0.2.tgz | tar xvzf - && cd scalapack-2.0.2 && ln -sf SLmake.inc.example SLmake.inc && make lib ) ; fi
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/scalapack-2.0.2
+    # TRLan
+    - if [ ! -f trlan-201009/libtrlan.a ] ; then ( wget -O - https://codeforge.lbl.gov/frs/download.php/210/trlan-201009.tar.gz | tar xvzf - && cd trlan-201009 && make lib ) ; fi
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/trlan-201009
+    # testcode
+    - git clone git://github.com/jsspencer/testcode
+    # lua + UUID (from packages - need to set paths)
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu
+
+install:
+    - cd -
+    - tools/mkconfig.py travis
+    - make
+
+cache:
+    directories:
+        - $HOME/.cache/pip
+        - $HOME/hdf5-1.8.16
+        - $HOME/scalapack-2.0.2
+        - $HOME/trlan-201009
+
+script:
+    - cd test_suite 
+    # Only run a short subset of the tests
+    - $HOME/testcode/bin/testcode.py -c vquick -v
+
+notifications:
+    email:
+        - hande-dev@imperial.ac.uk
