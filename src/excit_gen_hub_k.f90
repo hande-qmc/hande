@@ -26,7 +26,7 @@ contains
 ! gen_excit_finalise_hub_k*: provides rest of excitation required to determine
 !                            the sign of the child walkers.
 
-    subroutine gen_excit_init_hub_k(rng, sys, pattempt_single, cdet, pgen, connection, abs_hmatel)
+    subroutine gen_excit_init_hub_k(rng, sys, pattempt_single, cdet, pgen, connection, abs_hmatel, allowed_excitation)
 
         ! Select orbitals from which to excite electrons and hence the
         ! generation probability (which is independent of the virtual orbitals
@@ -48,6 +48,7 @@ contains
         !    abs_hmatel: |< D | H | D' >|, the absolute value of the Hamiltonian
         !        matrix element between a determinant and a connected determinant in
         !        the Hubbard model in a Bloch basis.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -60,6 +61,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
         real(p), intent(out) :: pgen, abs_hmatel
+        logical, intent(out) :: allowed_excitation
 
         integer :: ij_sym
 
@@ -73,6 +75,7 @@ contains
         ! 2. Calculate the generation probability of the excitation.
         ! For one-band systems this depends only upon the orbitals excited from.
         pgen = calc_pgen_hub_k(sys, ij_sym, cdet%f, cdet%unocc_list_alpha)
+        allowed_excitation = 1.0_p/pgen > depsilon
 
         ! The hubbard model in momentum space is a special case. Connected
         ! non-identical determinants have the following properties:
@@ -152,7 +155,7 @@ contains
 
     end subroutine gen_excit_finalise_hub_k
 
-    subroutine gen_excit_init_hub_k_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, abs_hmatel)
+    subroutine gen_excit_init_hub_k_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, abs_hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -180,6 +183,7 @@ contains
         !    abs_hmatel: |< D | H | D' >|, the absolute value of the Hamiltonian
         !        matrix element between a determinant and a connected determinant in
         !        the Hubbard model in a Bloch basis.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -194,9 +198,9 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         type(excit_t), intent(out) :: connection
         real(p), intent(out) :: pgen, abs_hmatel
+        logical, intent(out) :: allowed_excitation
 
         integer :: ij_sym
-        logical :: allowed_excitation
 
         ! Single excitations are not connected determinants within the
         ! momentum space formulation of the Hubbard model.
@@ -298,7 +302,7 @@ contains
 
 !--- Excitation generation (see also split excitation generators) ---
 
-    subroutine gen_excit_hub_k(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_k(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -318,6 +322,7 @@ contains
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !        determinant and a connected determinant in the Hubbard model in
         !        a Bloch basis.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -331,6 +336,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
 
         integer :: ij_sym
 
@@ -359,15 +365,17 @@ contains
 
             ! 4. find the connecting matrix element.
             call slater_condon2_hub_k_excit(sys, cdet%f, connection, hmatel)
+            allowed_excitation = .true.
         else
             ! No allowed excitations from (i,j)
             hmatel = 0.0_p
             pgen = 1.0_p
+            allowed_excitation = .false.
         end if
 
     end subroutine gen_excit_hub_k
 
-    subroutine gen_excit_hub_k_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel)
+    subroutine gen_excit_hub_k_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
@@ -395,6 +403,7 @@ contains
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !        determinant and a connected determinant in the Hubbard model in
         !        a Bloch basis.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -408,9 +417,9 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
 
         integer :: ij_sym
-        logical :: allowed_excitation
 
         ! See notes in gen_excit_init_hub_k and gen_excit_hub_k for more details regarding this algorithm.
 

@@ -22,7 +22,7 @@ contains
 ! This is a hack until the excitation generators support generating excitations
 ! for operators of arbitrary symmetries.
 
-    subroutine gen_excit_one_body_mol(rng, sys, pattempt_single, cdet, pgen, connection, matel)
+    subroutine gen_excit_one_body_mol(rng, sys, pattempt_single, cdet, pgen, connection, matel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the corresponding matrix element of
@@ -45,6 +45,7 @@ contains
         !    matel: < D | O_1 | D' >, the matrix element of a one-body operator
         !        between a determinant and a connected determinant in molecular
         !        systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation1
@@ -61,9 +62,9 @@ contains
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection
         real(p), intent(out) :: matel
+        logical, intent(out) :: allowed_excitation
 
         integer :: op_sym
-        logical :: allowed_excitation
 
         op_sym = sys%read_in%one_body_op_integrals%op_sym
 
@@ -92,7 +93,7 @@ contains
 
     end subroutine gen_excit_one_body_mol
 
-    subroutine gen_excit_one_body_mol_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, matel)
+    subroutine gen_excit_one_body_mol_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, matel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the corresponding matrix element of
@@ -122,6 +123,7 @@ contains
         !    matel: < D | O_1 | D' >, the matrix element of a one-body operator
         !        between a determinant and a connected determinant in molecular
         !        systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation1
@@ -137,9 +139,9 @@ contains
         real(p), intent(out) :: pgen
         type(excit_t), intent(out) :: connection
         real(p), intent(out) :: matel
+        logical, intent(out) :: allowed_excitation
 
         integer :: op_sym
-        logical :: allowed_excitation
 
         op_sym = sys%read_in%one_body_op_integrals%op_sym
 

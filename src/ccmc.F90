@@ -1456,15 +1456,15 @@ contains
         real(p) :: hmatel, pgen
         integer(i0) :: fexcit(sys%basis%string_len), funlinked(sys%basis%string_len)
         integer :: excitor_sign, excitor_level
-        logical :: linked, single_unlinked
+        logical :: linked, single_unlinked, allowed_excitation
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, sys, qs%pattempt_single, cdet, pgen, connection, hmatel)
+        call gen_excit_ptr%full(rng, sys, qs%pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
-        if (linked_ccmc .and. abs(hmatel) > depsilon) then
+        if (linked_ccmc .and. allowed_excitation) then
             ! For Linked Coupled Cluster we reject any spawning where the
             ! Hamiltonian is not linked to every cluster operator
             ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
@@ -2242,16 +2242,14 @@ contains
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then
             call decoder_ptr(sys, rdet%f, rdet)
-            call gen_excit_ptr%full(rng, sys, qs%pattempt_single, rdet, pgen, connection, hmatel)
-            ! If hmatel is 0 and pgen 1, then the excitation generator returned an invalid excitor
-            if (abs(hmatel) > 0.0_p .and. (1.0_p-pgen) > depsilon) then
-                ! check that left_cluster can be applied to the resulting excitor to
-                ! give a cluster to spawn on to
-                call create_excited_det(sys%basis, rdet%f, connection, fexcit)
-                call collapse_cluster(sys%basis, qs%ref%f0, ldet%f, 1.0_p, fexcit, pop, allowed)
-            else
-                allowed = .false.
-            end if
+            call gen_excit_ptr%full(rng, sys, qs%pattempt_single, rdet, pgen, connection, hmatel, allowed)
+        end if
+
+        if (allowed) then
+            ! check that left_cluster can be applied to the resulting excitor to
+            ! give a cluster to spawn on to
+            call create_excited_det(sys%basis, rdet%f, connection, fexcit)
+            call collapse_cluster(sys%basis, qs%ref%f0, ldet%f, 1.0_p, fexcit, pop, allowed)
         end if
 
         if (allowed) then

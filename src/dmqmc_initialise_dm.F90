@@ -418,6 +418,7 @@ contains
         type(det_info_t) :: cdet
         type(excit_t) :: connection
         type(sys_t) :: sys_copy
+        logical :: allowed
 
         naccept = 0 ! Number of metropolis moves which are accepted.
         nsuccess = 0 ! Number of successful proposal steps i.e. excluding null excitations.
@@ -451,7 +452,7 @@ contains
                         call encode_det(sys%basis, cdet%occ_list, f_new)
                     else
                         call decoder_ptr(sys, cdet%f, cdet)
-                        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel)
+                        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel, allowed)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
                         if (abs(hmatel) < depsilon) cycle

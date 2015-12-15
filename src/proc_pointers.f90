@@ -78,7 +78,7 @@ abstract interface
         integer(i0), allocatable, intent(in) :: mask(:)
         real(p), intent(inout) :: cfunc
     end subroutine i_update_dmqmc_correlation_function
-    subroutine i_gen_excit(rng, sys, pattempt_single, d, pgen, connection, hmatel)
+    subroutine i_gen_excit(rng, sys, pattempt_single, d, pgen, connection, hmatel, allowed)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
         import :: det_info_t, excit_t, p
@@ -89,6 +89,7 @@ abstract interface
         type(det_info_t), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed
     end subroutine i_gen_excit
     subroutine i_gen_excit_finalise(rng, sys, d, connection, hmatel)
         use dSFMT_interface, only: dSFMT_t
