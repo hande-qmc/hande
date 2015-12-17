@@ -82,8 +82,8 @@ Umrigar93
                     # legacy...
                     mc_cycles =  md['mc_cycles']
                     tau = md['tau']
-                df = pyhande.weight.reweight(df, metadata['mc_cycles'],
-                    metadata['tau'], reweight_history, mean_shift,
+                df = pyhande.weight.reweight(df, md['mc_cycles'],
+                    md['tau'], reweight_history, mean_shift,
                     arith_mean=arith_mean)
                 df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
                 df['W * N_0'] = df['N_0'] * df['Weight']
