@@ -74,14 +74,6 @@ Umrigar93
     for (md, df) in hande_out:
         if any(calc in md['calc_type'] for calc in ('FCIQMC', 'CCMC')):
             if reweight_history > 0:
-                if 'qmc' in md:
-                    # New JSON-based metadata
-                    mc_cycles = md['qmc']['ncycles']
-                    tau = md['qmc']['tau']
-                else:
-                    # legacy...
-                    mc_cycles =  md['mc_cycles']
-                    tau = md['tau']
                 df = pyhande.weight.reweight(df, md['mc_cycles'],
                     md['tau'], reweight_history, mean_shift,
                     arith_mean=arith_mean)
