@@ -284,6 +284,9 @@ type sys_read_in_t
 
     ! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
     type(one_body_t) :: one_e_h_integrals
+    
+    ! Store for imaginary component of <i|h|j>, if using complex.
+    type(one_body_t) :: one_e_h_integrals_imag
 
     ! Store for <i|o|j>, where o is a one-electron operator.
     type(one_body_t) :: one_body_op_integrals
@@ -292,6 +295,8 @@ type sys_read_in_t
     ! functions and 1/r_12 is the Coulomb operator.
     type(two_body_t) :: coulomb_integrals
 
+    ! Store for imaginary component of two-body integrals, 
+    type(two_body_t) :: coulomb_integrals_imag
     ! Data about the orbital symmetries
     type(pg_sym_t) :: pg_sym
 
@@ -377,6 +382,9 @@ type sys_t
     integer :: max_number_excitations
     ! Chemical potential.
     real(p) :: chem_pot = huge(1.0_p)
+
+    ! Is system complex?
+    logical :: comp = .false.
 
     ! Basis set information
     ! ^^^^^^^^^^^^^^^^^^^^^
@@ -797,6 +805,7 @@ contains
         call json_write_key(js, 'sym_max_tot', sys%sym_max_tot)
         call json_write_key(js, 'symmetry', sys%symmetry)
         call json_write_key(js, 'max_number_excitations', sys%max_number_excitations)
+        call json_write_key(js, 'complex', sys%comp)
         if (abs(sys%chem_pot - huge(1.0_p)) < 1.0_p) then
             call json_write_key(js, 'chem_pot', 'nan')
         else

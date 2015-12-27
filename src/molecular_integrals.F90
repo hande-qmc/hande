@@ -14,6 +14,7 @@ implicit none
 ! Indexing type for two_body_t integral stores.
 type, private :: int_indx
     integer :: spin_channel, indx
+    logical :: conjugate 
 end type int_indx
 
 contains
@@ -111,7 +112,7 @@ contains
 
     end subroutine end_one_body_t
 
-    subroutine init_two_body_t(uhf, nbasis, op_sym, store)
+    subroutine init_two_body_t(uhf, nbasis, op_sym, comp, store)
 
         ! Allocate memory required for the integrals involving a two-body
         ! operator.
@@ -122,13 +123,15 @@ contains
         !    nbasis: number of single-particle spin functions.
         !    op_sym: bit string representations of irreducible representations
         !    of a point group.  See point_group_symmetry.
+        !    comp: whether integral store is from calculation using complex
+        !       orbitals and integrals.
         ! Out:
         !    store: two-body integral store with components allocated to hold
         !    interals.  Note that the integral store is *not* zeroed.
 
         use checking, only: check_allocate
 
-        logical, intent(in) :: uhf
+        logical, intent(in) :: uhf, comp
         integer, intent(in) :: nbasis, op_sym
         type(two_body_t), intent(out) :: store
 
@@ -162,7 +165,12 @@ contains
         ! NOTE:
         ! Compression due to spatial symmetry not yet implemented.
         npairs = ((nbasis/2)*(nbasis/2 + 1))/2
-        nintgrls = (npairs*(npairs+1))/2
+        ! If complex twice as many integrals so need twice the size of array.
+        if (comp) then
+            nintgrls = (npairs*(npairs+1))
+        else
+            nintgrls = (npairs*(npairs+1))/2
+        end if
         do ispin = 1, nspin
             allocate(store%integrals(ispin)%v(nintgrls), stat=ierr)
             call check_allocate('two_body_store_component', nintgrls, ierr)
@@ -305,6 +313,8 @@ contains
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
             else if (ii > jj) then
                 store%integrals(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
+            else if (store%imag) then
+                store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = - intgrl
             else
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
             end if
@@ -396,6 +406,8 @@ contains
 
         if (ii >= jj) then
             intgrl = store%integrals(spin, basis_fns(i)%sym)%v(tri_ind(ii,jj))
+        else if (store%imag) then
+            intgrl = - store%integrals(spin, basis_fns(j)%sym)%v(tri_ind(jj,ii))
         else
             intgrl = store%integrals(spin, basis_fns(j)%sym)%v(tri_ind(jj,ii))
         end if
@@ -511,6 +523,133 @@ contains
 
     end function two_body_int_indx
 
+    pure function two_body_int_indx_complex(uhf, i, j, a, b, basis_fns) result(indx)
+
+        ! In:
+        !    uhf: whether integral store is from a UHF calculation (and hence is
+        !        stored using spin orbital labels rather than spatial orbitals).
+        !    i,j,a,b: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
+        ! Returns:
+        !    indx: spin-channel and index of a two_body_t integral store which contains the
+        !        <ij|o_2|ab> integral, assuming the integral is non-zero by spin
+        !        and spatial symmetry.
+
+        ! NOTE:
+        !     This is not optimised for RHF systems, where the spin-channel is
+        !     always 1.
+
+        use basis_types, only: basis_fn_t
+        use utils, only: tri_ind, tri_ind_reorder
+
+        type(int_indx) :: indx
+        type(basis_fn_t), intent(in) :: basis_fns(:)
+        logical, intent(in) :: uhf
+        integer, intent(in) :: i, j, a, b
+
+        integer :: ia, jb, ii, jj, aa, bb
+        logical :: conj
+
+
+        ! Use permutation symmetry to find unique indices corresponding to the
+        ! desired integral.
+        ! As orbitals and integrals are complex, 
+        !       <ij|o_2|ab> = <ji|o_2|ba> = <ab|o_2|ij>* = <ba|o_2|ji>*
+        !       =/= <ib|o_2|aj> = <bi|o_2|ja> = <aj|o_2|ib>* = <ja|o_2|bi>*
+        ! Obviously we wish to use this permutation symmetry to reduce the
+        ! storage space required by a factor of 4.
+
+        ! For UHF systems we must also keep track of the spin of the orbitals
+        ! during the permutations so we know which spin channel the integral is
+        ! in.
+
+        ! Require i>=a, but cannot always also guarantee j>=b. Instead can only specify i>=j,a,b.
+
+        if (max(i,j,a,b) == i) then
+            ii = i
+            jj = j
+            aa = a
+            bb = b
+            conj = .false.
+        else if (max(i,j,a,b) == j) then
+            ii = j
+            jj = i
+            aa = b
+            bb = a
+            conj = .false.
+        else if (max(i,j,a,b) == a) then
+            ii = a
+            jj = b
+            aa = i
+            bb = j
+            conj = .true.
+        else
+            ii = b
+            jj = a
+            aa = j
+            bb = i
+            conj = .true.
+        end if
+
+        ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
+        jb = tri_ind_reorder(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
+
+        ! Combine ia and jb in a unique way.
+        ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
+        ! for example.
+        ! Hence find overall index after applying 3-fold permutation symmetry.
+        ! NOTE: this test *only* looks at the spatial indices so it is not
+        ! sufficient for detecting the case where (e.g.) i and j are different
+        ! spin-orbitals with the same spatial index (see below).
+        ! As two possible permutations give same ia and jb values, need to 
+        ! ensure give different values.
+        if (j >= b) then
+            indx%indx = 2 * tri_ind(ia, jb) - 1
+        else
+            indx%indx = 2 * tri_ind(ia, jb)
+        end if
+
+        indx%conjugate = conj
+
+        ! Find spin channel.
+        if (uhf) then
+
+            ! Due to overall index depending on spatial indices, we must check
+            ! the spin indices to determine whether there's another flip in
+            ! order to obtain the unique set of indices for this integral.
+            ! If ia and jb are different, then the choice of ordering is trivial.
+            ! If ia = jb (ie i,a and j,b both have one spin orbital from each of a pair
+            ! of spatial orbitals) then we need to make an arbitrary choice as to which
+            ! permutation to look up.
+            if ( ia < jb .or. ( ia == jb .and. ii < jj) ) then
+                aa = ii ! don't need aa and bb any more; use as scratch space
+                ii = jj
+                jj = aa
+            end if
+
+            if (basis_fns(ii)%ms == -1) then
+                if (basis_fns(jj)%ms == -1) then
+                    ! down down down down
+                    indx%spin_channel = 1
+                else
+                    ! down up down up
+                    indx%spin_channel = 3
+                end if
+            else
+                if (basis_fns(jj)%ms == 1) then
+                    ! up up up up
+                    indx%spin_channel = 2
+                else
+                    ! up down up down
+                    indx%spin_channel = 4
+                end if
+            end if
+        else
+            indx%spin_channel = 1
+        end if
+
+    end function two_body_int_indx_complex
+
     subroutine store_two_body_int_mol(i, j, a, b, intgrl, basis_fns, pg_sym, suppress_err_msg, store, ierr)
 
         ! Store <ij|o_2|ab> in the appropriate slot in the two-body integral store.
@@ -564,8 +703,17 @@ contains
         if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
                                        .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             ! Store integral
-            indx = two_body_int_indx(store%uhf, i, j, a, b, basis_fns)
-            store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
+            if (store%comp) then
+                indx = two_body_int_indx_complex(store%uhf, i, j, a, b, basis_fns)
+                if (indx%conjugate) then
+                    store%integrals(indx%spin_channel)%v(indx%indx) = - intgrl
+                else
+                    store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
+                end if
+            else
+                indx = two_body_int_indx(store%uhf, i, j, a, b, basis_fns)
+                store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
+            end if
         else if (abs(intgrl) > depsilon) then
             if (.not.suppress_err_msg) then
                 write (error, '("<ij|o|ab> should be zero by symmetry: &
@@ -647,8 +795,17 @@ contains
 
         type(int_indx) :: indx
 
-        indx = two_body_int_indx(store%uhf, i, j, a, b, basis_fns)
-        intgrl = store%integrals(indx%spin_channel)%v(indx%indx)
+        if (store%comp) then
+            indx = two_body_int_indx_complex(store%uhf, i, j, a, b, basis_fns)
+            if (indx%conjugate) then
+                intgrl = - store%integrals(indx%spin_channel)%v(indx%indx)
+            else
+                intgrl = store%integrals(indx%spin_channel)%v(indx%indx)
+            end if
+        else
+            indx = two_body_int_indx(store%uhf, i, j, a, b, basis_fns)
+            intgrl = store%integrals(indx%spin_channel)%v(indx%indx)
+        end if
 
     end function get_two_body_int_mol_nonzero
 
