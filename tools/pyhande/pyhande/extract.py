@@ -48,7 +48,7 @@ data : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
 
 See Also
 --------
-:func:``extract_data`` : underlying data extraction implementation.
+:func:`extract_data` : underlying data extraction implementation.
 '''
 
     data = []
