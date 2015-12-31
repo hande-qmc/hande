@@ -18,6 +18,7 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
 
+MOCK_MODULES = []
 if os.environ.get('READTHEDOCS', None) == 'True':
     print('READTHEDOCS')
     import mock
