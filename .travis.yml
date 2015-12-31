@@ -25,4 +25,4 @@ install:
   - python setup.py install
 
 script:
-  - nosetests --with-coverage --cover-package=pyblock --cover-min-percentage=87 pyblock
+  - nosetests --with-coverage --cover-package=pyblock --cover-min-percentage=85 pyblock
