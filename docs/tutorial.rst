@@ -452,7 +452,7 @@ obtain a summary of the suggested data to quote:
 
 .. code:: python
 
-    pyblock.pd_utils.plot_reblocking(reblock_data);
+    pyblock.plot.plot_reblocking(reblock_data);
 
 
 .. image:: tutorial_files/tutorial_20_0.png
