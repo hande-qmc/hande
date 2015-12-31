@@ -17,7 +17,7 @@ import sys, os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('../../tools/pyhande'))
+sys.path.insert(0, os.path.abspath('../tools/pyhande'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -26,7 +26,13 @@ sys.path.insert(0, os.path.abspath('../../tools/pyhande'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.autodoc', 'sphinx.ext.intersphinx']
+extensions = ['sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.autodoc',
+              'sphinx.ext.intersphinx', 'matplotlib.sphinxext.plot_directive']
+
+# matplotlib plot configuration
+plot_pre_code = '''import matplotlib.style
+matplotlib.style.use('ggplot')
+'''
 
 # Use napoleon to aprse docstrings.  From sphinx 1.3 onwards, this is packaged
 # with sphinx.  Earlier versions: require user to install it.
@@ -109,8 +115,8 @@ pygments_style = 'sphinx'
 # Use a local copy of mathjax if we can find one...
 if 'MATHJAX_PATH' in os.environ:
     mathjax_path = os.environ['MATHJAX_PATH']
-elif os.path.exists('../MathJax'):
-    mathjax_path = os.path.join(os.path.abspath('..'), 'MathJax')
+elif os.path.exists('MathJax'):
+    mathjax_path = os.path.join(os.getcwd(), 'MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML')
 
 # -- Options for HTML output ---------------------------------------------------
 
@@ -148,7 +154,7 @@ html_title = '%s documentation' % (project)
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['static']
+html_static_path = ['.static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
