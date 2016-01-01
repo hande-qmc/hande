@@ -592,8 +592,10 @@ contains
 
                                         sys%read_in%Ecore = sys%read_in%Ecore + x
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
-                                        seen_ijji(tri_ind_reorder(i,j)) = seen_ijji(tri_ind_reorder(i,j)) + 1
-                                        seen_iijj(tri_ind_reorder(i,j)) = seen_iijj(tri_ind_reorder(i,j)) + 1
+                                        if (sys%comp) then
+                                            seen_ijji(tri_ind_reorder(i,j)) = seen_ijji(tri_ind_reorder(i,j)) + 1
+                                            seen_iijj(tri_ind_reorder(i,j)) = seen_iijj(tri_ind_reorder(i,j)) + 1
+                                        end if
                                     end if
                                 else if (ii == aa .and. jj == bb .and. ii /= jj) then
                                     ! <ij|ij>, i/=j
