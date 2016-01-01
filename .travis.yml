@@ -12,8 +12,6 @@ addons:
             - liblapack-dev
 
 before_install:
-    # For some reason, the test suite requires matplotlib...
-    - pip install matplotlib
     - pip install pandas
     - cd
     # HDF5 (from source as the Ubuntu package doesn't have Fortran 2003 bindings)
@@ -39,8 +37,8 @@ install:
     - make
 
 cache:
+    pip: true
     directories:
-        - $HOME/.cache/pip
         - $HOME/hdf5-1.8.16
         - $HOME/scalapack-2.0.2
         - $HOME/trlan-201009
