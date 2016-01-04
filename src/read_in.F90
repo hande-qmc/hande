@@ -119,7 +119,7 @@ contains
         !    Set to -1 if L is not a good quantum number.
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
-
+! [review] - AJWT: Definitely need a comment on NPROP and NPROPBITLEN
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
         !    nuclear-nuclear and other non-electron contributions to the
@@ -380,6 +380,8 @@ contains
                     sys%read_in%pg_sym%nbasis_sym_spin, sys%read_in%one_e_h_integrals_imag)
                 call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
                                  sys%comp, sys%read_in%coulomb_integrals_imag)
+! [review] - AJWT: The following lines seem to break the cleanness of the interface to me
+! [review] - AJWT: I think they should be done in the inits of the integral stores, not here.
                 sys%read_in%one_e_h_integrals_imag%imag = .true.
                 sys%read_in%coulomb_integrals_imag%imag = .true.
                 sys%read_in%coulomb_integrals%comp = .true.
@@ -703,6 +705,7 @@ contains
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
                                         end if
+! [review] - AJWT: This will need some good checking to be sure it's right.
                                     else if ((ii == core(1) .and. bb == core(2)) .or. (jj == core(1) .and. aa == core(2))) then
                                         ! < i a | b i > or permutation, complex.
                                         if (seen_iabi(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &

@@ -29,6 +29,10 @@ type one_body_t
     integer :: op_sym
     ! From a UHF calculation?
     logical :: uhf
+! [review] - AJWT: I presume we don't need to know that the integrals are from a complex calculation
+! [review] - AJWT: (as in the 2-e ints) because the real part is unchanged by the only symmetry we
+! [review] - AJWT: care about i.e. <a|o|b> <-> <b|o|a>
+! [review] - AJWT: Also I presume this is only used to apply the complex conjugate to the above.
     ! Imaginary component of integrals?
     logical :: imag = .false.
 end type one_body_t

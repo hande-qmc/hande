@@ -12,9 +12,14 @@ use molecular_integral_types
 implicit none
 
 ! Indexing type for two_body_t integral stores.
+! [review] - AJWT: Worth checking my commentary additions below.
+! i.e. an encoding of the 4-index quartet a,b,c,d into an index for the integral store
 type, private :: int_indx
-    integer :: spin_channel, indx
-    logical :: conjugate 
+    integer :: spin_channel     !If alpha and beta spin-orbitals differ, we store
+                                ! different combinations of these in different spin channels
+                                ! 1=bbbb, 2=aaaa, 3=baba, 4=ababa
+    integer :: indx             ! The index within the spin channel
+    logical :: conjugate        ! Indicates if we need to take the complex conjugate of the integral
 end type int_indx
 
 contains
@@ -123,8 +128,10 @@ contains
         !    nbasis: number of single-particle spin functions.
         !    op_sym: bit string representations of irreducible representations
         !    of a point group.  See point_group_symmetry.
-        !    comp: whether integral store is from calculation using complex
+        !    comp: whether integral store is from a calculation using complex
         !       orbitals and integrals.
+! [review] - AJWT: Might be worth a note saying this still only stores a  single double
+! [review] - AJWT: for each integral, and that the imaginary part needs an additional store
         ! Out:
         !    store: two-body integral store with components allocated to hold
         !    interals.  Note that the integral store is *not* zeroed.
@@ -166,6 +173,7 @@ contains
         ! Compression due to spatial symmetry not yet implemented.
         npairs = ((nbasis/2)*(nbasis/2 + 1))/2
         ! If complex twice as many integrals so need twice the size of array.
+! [review] - AJWT: i.e. <ia|jb> != <ib|ja> nor simply related
         if (comp) then
             nintgrls = (npairs*(npairs+1))
         else
@@ -314,6 +322,10 @@ contains
             else if (ii > jj) then
                 store%integrals(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
             else if (store%imag) then
+! [review] - AJWT: Check comments
+                ! j>i.  We store <i|o|j> with (i>j) so store the complex conjugate of
+                ! <j|o|i> which requires a sign change only if this is the imaginary part
+                ! of an integral
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = - intgrl
             else
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
@@ -407,6 +419,10 @@ contains
         if (ii >= jj) then
             intgrl = store%integrals(spin, basis_fns(i)%sym)%v(tri_ind(ii,jj))
         else if (store%imag) then
+! [review] - AJWT: Check comments
+                ! j>i.  We store <i|o|j> with (i>j) so return its complex conjugate
+                ! <j|o|i> which requires a sign change only if this is the imaginary part
+                ! of an integral
             intgrl = - store%integrals(spin, basis_fns(j)%sym)%v(tri_ind(jj,ii))
         else
             intgrl = store%integrals(spin, basis_fns(j)%sym)%v(tri_ind(jj,ii))
@@ -431,6 +447,7 @@ contains
         ! NOTE:
         !     This is not optimised for RHF systems, where the spin-channel is
         !     always 1.
+! [review] - AJWT: This should NOT be used for complex systems.
 
         use basis_types, only: basis_fn_t
         use utils, only: tri_ind
@@ -538,6 +555,7 @@ contains
         ! NOTE:
         !     This is not optimised for RHF systems, where the spin-channel is
         !     always 1.
+! [review] - AJWT: This MUST be used for complex integral stores.
 
         use basis_types, only: basis_fn_t
         use utils, only: tri_ind, tri_ind_reorder
@@ -550,6 +568,7 @@ contains
         integer :: ia, jb, ii, jj, aa, bb
         logical :: conj
 
+        integer :: maxv
 
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
@@ -563,21 +582,23 @@ contains
         ! during the permutations so we know which spin channel the integral is
         ! in.
 
+        ! We're given integral <ij|o_2|ab>
         ! Require i>=a, but cannot always also guarantee j>=b. Instead can only specify i>=j,a,b.
 
-        if (max(i,j,a,b) == i) then
+        maxv = max(i,j,a,b)
+        if (maxv == i) then
             ii = i
             jj = j
             aa = a
             bb = b
             conj = .false.
-        else if (max(i,j,a,b) == j) then
+        else if (maxv == j) then
             ii = j
             jj = i
             aa = b
             bb = a
             conj = .false.
-        else if (max(i,j,a,b) == a) then
+        else if (maxv == a) then
             ii = a
             jj = b
             aa = i
@@ -594,7 +615,10 @@ contains
         ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
         jb = tri_ind_reorder(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
 
+! [review] - AJWT: I think you should  be using ii jj aa bb here.
+! [review] - AJWT: Might be simpler to use p q r s as your relabelled labels.
         ! Combine ia and jb in a unique way.
+! [review] - AJWT: Should this be (i,a) >= (j,b) ?
         ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
         ! for example.
         ! Hence find overall index after applying 3-fold permutation symmetry.
@@ -603,6 +627,15 @@ contains
         ! spin-orbitals with the same spatial index (see below).
         ! As two possible permutations give same ia and jb values, need to 
         ! ensure give different values.
+
+
+! [review] - AJWT: I'm a little confused by this indexing system - a little help would be good
+! [review] - AJWT: We've made a tri_index of jj & bb, but we cannot guarantee jj>bb so we
+! [review] - AJWT: store two slots per tri-index: jj>=bb then bb>jj.
+! [review] - AJWT: This is potentially a little wasteful, but avoids needing to know the max index
+! [review] - AJWT: which is I suppose a benfit.
+
+! [review] - AJWT: Should this be jj >= bb ?
         if (j >= b) then
             indx%indx = 2 * tri_ind(ia, jb) - 1
         else
@@ -618,9 +651,28 @@ contains
             ! the spin indices to determine whether there's another flip in
             ! order to obtain the unique set of indices for this integral.
             ! If ia and jb are different, then the choice of ordering is trivial.
-            ! If ia = jb (ie i,a and j,b both have one spin orbital from each of a pair
+            ! If ia == jb (ie i,a and j,b both have one spin orbital from each of a pair
             ! of spatial orbitals) then we need to make an arbitrary choice as to which
             ! permutation to look up.
+
+! [review] - AJWT: Bear of little brain somewhat confused on reading this, so I'll try an example
+
+!  e.g. <ij|ab> = <13|24> so <ii jj|aa bb> = <42|31> (with conjugate=true)
+! these have spatial indices  2  1  2  1.  ia=2*1/2+2 = 3. jb =1*0/2+1 = 1
+! That wasn't what I expected.  Try next
+!  e.g. <ij|ab> = <12|34> so <ii jj|aa bb> = <43|21> (with conjugate=true)
+! these have spatial indices  2  2  1  1.  ia=2*1/2+1 = 2. jb =2*1/2+1 = 2
+! Aha - this has ia=jb. 
+
+! The latter <43|21> example has ia==jb, but ii>jj, so we switch
+! Isn't it the case that ii>=jj because of the max() above?
+
+! The former, <42|31> has ia>jb.  Also, doesn't ii>=jj ensure this?
+!  Perhaps the case where ia>jb because i=j but b>a. i.e. <66|24> which isn't covered above.
+
+! A little more explanation warranted I think.
+
+! [review] - AJWT: We swap around ii and jj if ii<jj
             if ( ia < jb .or. ( ia == jb .and. ii < jj) ) then
                 aa = ii ! don't need aa and bb any more; use as scratch space
                 ii = jj
