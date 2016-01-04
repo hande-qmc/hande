@@ -52,7 +52,7 @@ python 2.7+ or python 3.2+
         and 3.2 onwards) is required and installing (especially recent versions of )
         pandas  may be problematic.  Using a recent version of python is highly
         recommended.
-pandas
+pandas 0.14.1+
     The HANDE data analysis tools build heavily upon the python scientific
     stack.  In particular, pandas (available from http://pandas.pydata.org) is required
     for the ``pyhande`` module and analysis scripts, almost all of which build upon
