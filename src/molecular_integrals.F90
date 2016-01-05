@@ -26,7 +26,7 @@ contains
 
 !--- Memory allocation and deallocation ---
 
-    subroutine init_one_body_t(uhf, op_sym, nbasis_sym_spin, store)
+    subroutine init_one_body_t(uhf, op_sym, nbasis_sym_spin, imag, store)
 
         ! Allocate memory required for the integrals involving a one-body
         ! operator.
@@ -36,6 +36,8 @@ contains
         !       calculation.
         !    op_sym: bit string representations of irreducible representations
         !       of a point group.  See point_group_symmetry.
+        !    imag: whether integral store contains the imaginary component of
+        !       complex integrals.
         ! Out:
         !    store: one-body integral store with components allocated to hold
         !       interals.  Note that the integral store is *not* zeroed.
@@ -45,13 +47,14 @@ contains
         logical, intent(in) :: uhf
         integer, intent(in) :: op_sym
         integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
+        logical, intent(in) :: imag
         type(one_body_t), intent(out) :: store
 
         integer :: ierr, i, s, ispin, nspin
 
         store%op_sym = op_sym
         store%uhf = uhf
-
+        store%imag = imag
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
         if (uhf) then
@@ -117,7 +120,7 @@ contains
 
     end subroutine end_one_body_t
 
-    subroutine init_two_body_t(uhf, nbasis, op_sym, comp, store)
+    subroutine init_two_body_t(uhf, nbasis, op_sym, comp, imag, store)
 
         ! Allocate memory required for the integrals involving a two-body
         ! operator.
@@ -129,16 +132,20 @@ contains
         !    op_sym: bit string representations of irreducible representations
         !    of a point group.  See point_group_symmetry.
         !    comp: whether integral store is from a calculation using complex
-        !       orbitals and integrals.
+        !       orbitals and integrals. If true, the store will contain either 
+        !       the real or imaginary components of the complex two body integrals.
+        !    imag: whether integral store contains imaginary component of complex
+        !       integrals.
 ! [review] - AJWT: Might be worth a note saying this still only stores a  single double
 ! [review] - AJWT: for each integral, and that the imaginary part needs an additional store
+! [reply] - CJCS: Added to description of comp input parameter.
         ! Out:
         !    store: two-body integral store with components allocated to hold
         !    interals.  Note that the integral store is *not* zeroed.
 
         use checking, only: check_allocate
 
-        logical, intent(in) :: uhf, comp
+        logical, intent(in) :: uhf, comp, imag
         integer, intent(in) :: nbasis, op_sym
         type(two_body_t), intent(out) :: store
 
@@ -147,7 +154,8 @@ contains
 
         store%op_sym = op_sym
         store%uhf = uhf
-
+        store%imag = imag
+        store%comp = comp
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
         if (uhf) then
@@ -172,8 +180,10 @@ contains
         ! NOTE:
         ! Compression due to spatial symmetry not yet implemented.
         npairs = ((nbasis/2)*(nbasis/2 + 1))/2
-        ! If complex twice as many integrals so need twice the size of array.
+        ! If complex twice as many integrals so need twice the size of array
+        ! as <ia|jb> != <ib|ja>
 ! [review] - AJWT: i.e. <ia|jb> != <ib|ja> nor simply related
+! [reply] - CJCS: Exactly- added in comment.
         if (comp) then
             nintgrls = (npairs*(npairs+1))
         else
@@ -304,6 +314,9 @@ contains
         sym = cross_product_pg_sym(pg_sym, pg_sym_conj(pg_sym, basis_fns(i)%sym), basis_fns(j)%sym)
         sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
 
+        ! Currently inefficient for complex as will check symmetry when storing real and 
+        ! imaginary components of same integral.
+
         if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
 
             ! Integral is (should be!) non-zero by symmetry.
@@ -323,9 +336,10 @@ contains
                 store%integrals(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
             else if (store%imag) then
 ! [review] - AJWT: Check comments
+! [reply] - CJCS: Look good.
                 ! j>i.  We store <i|o|j> with (i>j) so store the complex conjugate of
                 ! <j|o|i> which requires a sign change only if this is the imaginary part
-                ! of an integral
+                ! of an integral.
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = - intgrl
             else
                 store%integrals(spin,basis_fns(j)%sym)%v(tri_ind(jj,ii)) = intgrl
@@ -619,7 +633,8 @@ contains
 ! [review] - AJWT: Might be simpler to use p q r s as your relabelled labels.
         ! Combine ia and jb in a unique way.
 ! [review] - AJWT: Should this be (i,a) >= (j,b) ?
-        ! This amounts to requiring (i,a) > (j,b), i.e. i>j || (i==j && a>b),
+! [reply] - CJCS: That would make more sense I think, will amend as such.
+        ! This amounts to requiring (i,a) >= (j,b), i.e. i>=j || (i==j && a>=b),
         ! for example.
         ! Hence find overall index after applying 3-fold permutation symmetry.
         ! NOTE: this test *only* looks at the spatial indices so it is not
@@ -628,18 +643,32 @@ contains
         ! As two possible permutations give same ia and jb values, need to 
         ! ensure give different values.
 
+        ! We observe that each unique index for a real integral store has a pair
+        ! of values associated with it in the complex case, <ij|ab> and <ib|aj>
+        ! for i >= j,a,b, j >= b. 
+        ! If we then double our inital index we can store the <ij|ab> value at the 
+        ! associated odd-value index and the <ib|aj> value at the even-value index.
+        ! This gives a unique index for each integral in the complex system. 
+
+        ! In various cases of equality the assumed pair of integrals will be identical
+        ! and so one of the indexes will be unused. Depending on system size this will
+        ! contribute a degree of inefficiency.
 
 ! [review] - AJWT: I'm a little confused by this indexing system - a little help would be good
 ! [review] - AJWT: We've made a tri_index of jj & bb, but we cannot guarantee jj>bb so we
 ! [review] - AJWT: store two slots per tri-index: jj>=bb then bb>jj.
 ! [review] - AJWT: This is potentially a little wasteful, but avoids needing to know the max index
 ! [review] - AJWT: which is I suppose a benfit.
+! [reply] - CJCS: Apologies, have added explanation but that's the idea. Was toying with the idea
+! [reply] - CJCS: of implementing a 3D tri_index function to improve efficiency and , but decided to 
+! [reply] - CJCS: leave it simpler for now.
 
 ! [review] - AJWT: Should this be jj >= bb ?
-        if (j >= b) then
-            indx%indx = 2 * tri_ind(ia, jb) - 1
-        else
+! [reply] - CJCS: Yes, changed.
+        if (jj < bb) then
             indx%indx = 2 * tri_ind(ia, jb)
+        else
+            indx%indx = 2 * tri_ind(ia, jb) - 1
         end if
 
         indx%conjugate = conj

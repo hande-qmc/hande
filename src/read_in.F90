@@ -71,7 +71,6 @@ contains
         logical :: t_exists
         integer :: active_basis_offset, rhf_fac
         integer, allocatable :: seen_ijij(:), seen_iaib(:,:), sp_eigv_rank(:), sp_fcidump_rank(:)
-        integer, allocatable :: seen_ijji(:), seen_iijj(:), seen_iabi(:,:), seen_iiab(:,:)
         logical, allocatable :: seen_iha(:)
         real(p), allocatable :: sp_eigv(:)
         logical :: not_found_sp_eigv, uhf
@@ -120,6 +119,12 @@ contains
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
 ! [review] - AJWT: Definitely need a comment on NPROP and NPROPBITLEN
+! [reply] - CJCS: Added mainly for INTDUMP compatibility, but gleaned some 
+! [reply] - CJCS: understanding from NECI. Will email GB to find out more if/when implement
+! [reply] - CJCS: translational symmetry.
+        !  * NPROP: Dimensions of supercell used in translationally symmetric systems.
+        !  * PROPBITLEN: Length in bits of each property (?) in translationally symmetric 
+        !    systems.
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
         !    nuclear-nuclear and other non-electron contributions to the
@@ -372,20 +377,20 @@ contains
         ! Initialise integral stores.
         if (t_store) then
             call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
-                                 sys%read_in%one_e_h_integrals)
+                                 .false., sys%read_in%one_e_h_integrals)
             call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%comp, &
-                                 sys%read_in%coulomb_integrals)
+                                 .false., sys%read_in%coulomb_integrals)
             if (sys%comp) then
                 call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                    sys%read_in%pg_sym%nbasis_sym_spin, sys%read_in%one_e_h_integrals_imag)
+                    sys%read_in%pg_sym%nbasis_sym_spin, .false., &
+                    sys%read_in%one_e_h_integrals_imag)
                 call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
-                                 sys%comp, sys%read_in%coulomb_integrals_imag)
+                                 sys%comp, .true., sys%read_in%coulomb_integrals_imag)
 ! [review] - AJWT: The following lines seem to break the cleanness of the interface to me
 ! [review] - AJWT: I think they should be done in the inits of the integral stores, not here.
-                sys%read_in%one_e_h_integrals_imag%imag = .true.
-                sys%read_in%coulomb_integrals_imag%imag = .true.
-                sys%read_in%coulomb_integrals%comp = .true.
-                sys%read_in%coulomb_integrals_imag%comp = .true.
+! [reply] - CJCS: I was trying to avoid adding too many extra parameters to the init functions
+! [reply] - CJCS: that would be unused in real systems, but it is a bit ugly- will add parameters
+! [reply] - CJCS: to set in init.
             end if
         end if
 
@@ -466,20 +471,6 @@ contains
             call check_allocate('seen_ijij', active_basis_offset*(active_basis_offset+1)/2, ierr)
             allocate(seen_iaib(-active_basis_offset+1:0,(sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
             call check_allocate('seen_iaib', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
-            if (sys%comp) then
-                allocate(seen_ijji((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
-                call check_allocate('seen_ijji', active_basis_offset*(active_basis_offset+1)/2, ierr)
-                allocate(seen_iijj((active_basis_offset*(active_basis_offset+1))/2), stat=ierr)
-                call check_allocate('seen_iijj', active_basis_offset*(active_basis_offset+1)/2, ierr)
-                allocate(seen_iabi(-active_basis_offset+1:0,(sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
-                call check_allocate('seen_iabi', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
-                allocate(seen_iiab(-active_basis_offset+1:0,(sys%basis%nbasis*(sys%basis%nbasis+1))/2), stat=ierr)
-                call check_allocate('seen_iiab', sys%basis%nbasis*(sys%basis%nbasis+1)/2, ierr)
-                seen_ijji = 0
-                seen_iijj = 0
-                seen_iabi = 0
-                seen_iiab = 0
-            end if
             seen_iha = .false.
             seen_ijij = 0
             seen_iaib = 0
@@ -587,17 +578,14 @@ contains
                                 ! which permutation(s) occur in the FCIDUMP
                                 ! file.
                                 ! As all core orbitals, ignore any imaginary components
-                                ! since assume Ecore is real.
+                                ! since assume Ecore is real and so will only cancel 
+                                ! anyway. Could calculate and check this if results dubious.
                                 if (ii == aa .and. jj == bb .and. ii == jj) then
                                     if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                         ! RHF calculations: need to include <i,up i,down|i,up i,down>.
 
                                         sys%read_in%Ecore = sys%read_in%Ecore + x
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
-                                        if (sys%comp) then
-                                            seen_ijji(tri_ind_reorder(i,j)) = seen_ijji(tri_ind_reorder(i,j)) + 1
-                                            seen_iijj(tri_ind_reorder(i,j)) = seen_iijj(tri_ind_reorder(i,j)) + 1
-                                        end if
                                     end if
                                 else if (ii == aa .and. jj == bb .and. ii /= jj) then
                                     ! <ij|ij>, i/=j
@@ -611,8 +599,10 @@ contains
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
                                 else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
-                                         ii == jj .and. aa == bb .and. ii /= aa .and. .not. sys%comp) then
-                                    ! <ij|ji>, i/=j (or <ii|jj> version)
+                                         (ii == jj .and. aa == bb .and. ii /= aa .and. .not. sys%comp)) then
+                                    ! <ij|ji>, i/=j (or <ii|jj> version) can be treated together if real orbitals
+                                    ! but not if complex orbitals.
+                                    ! Only accept complex if is <ij|ji>
                                     if (ii == jj) then
                                         ti = tri_ind_reorder(i, a)
                                     else
@@ -624,18 +614,6 @@ contains
                                         !   <i,down j,down|j,down, i,down>
                                         sys%read_in%Ecore = sys%read_in%Ecore - rhf_fac*x
                                         seen_ijij(ti) = seen_ijij(ti) + 2
-                                    end if
-                                else if (ii == bb .and. jj == aa .and. ii /= jj) then
-                                    ! <ij|ji> & complex
-                                    ti = tri_ind_reorder(i, j)
-                                    if (seen_ijji(ti) < 2) then
-                                        seen_ijji(ti) = seen_ijji(ti) + 2
-                                    end if
-                                else if (ii == jj .and. aa == bb .and. ii /= aa) then
-                                    ! <ii|jj> and complex
-                                    ti = tri_ind_reorder(i, a)
-                                    if (seen_iijj(ti) < 2) then
-                                        seen_iijj(ti) = seen_iijj(ti) + 2
                                     end if
                                 end if
                             case(2)
@@ -678,8 +656,9 @@ contains
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 1
                                         end if
-                                    else if (.not. sys%comp) then
-                                        ! < i a | b i > (or a permutation thereof)
+                                    else if ((.not. sys%comp) .or. ((ii == core(1) .and. bb == core(2)) &
+                                                .or. (jj == core(1) .and. aa == core(2)))) then
+                                        ! < i a | b i > (or allowed permutation thereof)
                                         ! For systems with complex orbitals (but real integrals)
                                         ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
@@ -695,6 +674,8 @@ contains
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             if (sys%comp) then
+                                                ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
+                                                ! and store_one_body... function ordering adjustments.
                                                 y = get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), active(2), &
                                                                          sys%basis%basis_fns, sys%read_in%pg_sym)  - y
                                                 call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
@@ -706,56 +687,14 @@ contains
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
                                         end if
 ! [review] - AJWT: This will need some good checking to be sure it's right.
-                                    else if ((ii == core(1) .and. bb == core(2)) .or. (jj == core(1) .and. aa == core(2))) then
-                                        ! < i a | b i > or permutation, complex.
-                                        if (seen_iabi(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
-                                            is_gamma_irrep_pg_sym(sys%read_in%pg_sym, &
-                                                cross_product_pg_sym(sys%read_in%pg_sym, &
-                                                            pg_sym_conj(sys%read_in%pg_sym, sys%basis%basis_fns(active(1))%sym), &
-                                                            sys%basis%basis_fns(active(2))%sym))) then
-                                            ! Update <j|h|a> with contribution <ij|ai>.
-                                            x = get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), active(2), &
-                                                                     sys%basis%basis_fns, sys%read_in%pg_sym)  - x
-                                            call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        sys%read_in%pg_sym, int_err > max_err_msg, &
-                                                                        sys%read_in%one_e_h_integrals, ierr)
-                                            int_err = int_err + ierr
-                                            if (sys%comp) then
-                                                y = get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), active(2), &
-                                                                         sys%basis%basis_fns, sys%read_in%pg_sym)  - y
-                                                call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
-                                                                            sys%read_in%pg_sym, int_err > max_err_msg, &
-                                                                            sys%read_in%one_e_h_integrals_imag, ierr)
-                                                int_err = int_err + ierr
-                                            end if
-                                            seen_iabi(core(1), tri_ind_reorder(active(1),active(2))) = &
-                                                seen_iabi(core(1), tri_ind_reorder(active(1),active(2))) + 2
-                                        end if
-                                    else
-                                        ! < i i | a b > or permutation, complex.
-                                        if (seen_iiab(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
-                                            is_gamma_irrep_pg_sym(sys%read_in%pg_sym, &
-                                                cross_product_pg_sym(sys%read_in%pg_sym, &
-                                                            pg_sym_conj(sys%read_in%pg_sym, sys%basis%basis_fns(active(1))%sym), &
-                                                            sys%basis%basis_fns(active(2))%sym))) then
-                                            ! Update <j|h|a> with contribution <ij|ai>.
-                                            x = get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), active(2), &
-                                                                     sys%basis%basis_fns, sys%read_in%pg_sym)  - x
-                                            call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        sys%read_in%pg_sym, int_err > max_err_msg, &
-                                                                        sys%read_in%one_e_h_integrals, ierr)
-                                            int_err = int_err + ierr
-                                            if (sys%comp) then
-                                                y = get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), active(2), &
-                                                                         sys%basis%basis_fns, sys%read_in%pg_sym)  - y
-                                                call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
-                                                                            sys%read_in%pg_sym, int_err > max_err_msg, &
-                                                                            sys%read_in%one_e_h_integrals_imag, ierr)
-                                                int_err = int_err + ierr
-                                            end if
-                                            seen_iiab(core(1), tri_ind_reorder(active(1),active(2))) = &
-                                                seen_iiab(core(1), tri_ind_reorder(active(1),active(2))) + 2
-                                        end if
+! [reply] - CJCS: Definitely, though as you say the proof is in the pudding. I don't think I'll trust it fully until final energies make 
+! [reply] - CJCS: sense with CAS.
+! [reply] - CJCS: Slightly worried that we've gone from 1 to 3 seen arrays of types iaib and iijj but I've kept same factors- feel 
+! [reply] - CJCS: like we'll have overcounting somewhere.
+! [reply] - CJCS: Think I've got it, I was overzealous in my extension to complex- the <ii|jj> and <ii|ab> integrals don't contribute anything to Ecore
+! [reply] - CJCS: in the prescription from Sherrill so those arrays are excess, then we can stick to the original array structure. Provided we don't 
+! [reply] - CJCS: assume <ij|ji> = <ii|jj> and such for complex should still work. This assumes the original derivation didn't assume real orbitals,
+! [reply] - CJCS: so if this isn't the case this'll have to be changed.
                                     end if
                                 end if
                             case(4)
@@ -791,16 +730,6 @@ contains
             call check_deallocate('seen_ijij', ierr)
             deallocate(seen_iaib, stat=ierr)
             call check_deallocate('seen_iaib', ierr)
-            if (sys%comp) then
-                deallocate(seen_ijji, stat=ierr)
-                call check_deallocate('seen_ijji', ierr)
-                deallocate(seen_iijj, stat=ierr)
-                call check_deallocate('seen_iijj', ierr)
-                deallocate(seen_iabi, stat=ierr)
-                call check_deallocate('seen_iabi', ierr)
-                deallocate(seen_iiab, stat=ierr)
-                call check_deallocate('seen_iiab', ierr)
-            end if 
             close(ir, status='keep')
 
         end if
@@ -1018,7 +947,7 @@ contains
 
         ! Allocate integral store on *all* processors.
         if (allocated(store%integrals)) call end_one_body_t(store)
-        call init_one_body_t(uhf, op_sym, pg_sym%nbasis_sym_spin, store)
+        call init_one_body_t(uhf, op_sym, pg_sym%nbasis_sym_spin, .false., store)
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
