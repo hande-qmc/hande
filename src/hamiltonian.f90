@@ -4,6 +4,13 @@ use const
 
 implicit none
 
+! Would be cleaner to have a single interface to call for get_hmatel whether
+! real or complex, but as resulting elements either differ in type or in 
+! number of arguments will never be able to call this without implicitly 
+! specifying which function we require beforehand.
+! As such, use two separate functions, taking slightly more effort but 
+! avoiding needless ambiguity.
+
 contains
 
     pure function get_hmatel(sys, f1, f2) result(hmatel)
@@ -56,4 +63,47 @@ contains
 
     end function get_hmatel
 
+    pure function get_hmatel_complex(sys, f1, f2) result(hmatel)
+
+        ! In:
+        !    sys: system being studied.
+        !    f1, f2: bit string representation of the Slater
+        !        determinants D1 and D2 respectively.
+        ! Returns:
+        !    Hamiltonian matrix element between the two determinants,
+        !    < D1 | H | D2 >.
+
+        ! This is just a wrapper function around the system specific get_hmatel
+        ! functions.
+
+        ! Having separate functions for the different systems might seem
+        ! somewhat redundant (a lot of the code in the functions is similar)
+        ! but enables us to use only one test for the system type.  A small
+        ! efficiency for not much effort. :-)
+
+        ! Use separate function for obtaining complex hmatel as:
+        !  -Avoids having either dummy argument for imaginary component
+        !   to real function (in form of extra result or complex component 
+        !   of existing. This would break all existing references to function
+        !   in existing real codes due to either number of results or complex
+        !   vs real types.
+        !  -Limits number of bool checks to get hmatel.
+        !  -Could make it easier to use pointers later.
+        !  -Alternatively have to define second hmatel factor in all real 
+        !   routines to allow return of two values from all pure values.
+
+        use hamiltonian_molecular_complex, only: get_hmatel_mol_comp
+        use system
+
+        complex(p) :: hmatel
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f1(:), f2(:)
+
+
+        select case(sys%system)
+        case(read_in)
+            hmatel = get_hmatel_mol_comp(sys, f1, f2)
+        end select
+
+    end function get_hmatel_complex
 end module hamiltonian

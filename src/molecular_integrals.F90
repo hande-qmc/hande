@@ -21,6 +21,16 @@ type, private :: int_indx
     logical :: conjugate        ! Indicates if we need to take the complex conjugate of the integral
 end type int_indx
 
+interface get_one_body_int_mol
+    module procedure get_one_body_int_mol_real
+    module procedure get_one_body_int_mol_complex
+end interface
+
+interface get_two_body_int_mol
+    module procedure get_two_body_int_mol_real
+    module procedure get_two_body_int_mol_complex
+end interface
+
 contains
 
 !--- Memory allocation and deallocation ---
@@ -347,7 +357,7 @@ contains
 
     end subroutine store_one_body_int_mol
 
-    pure function get_one_body_int_mol(store, i, j, basis_fns, pg_sym) result(intgrl)
+    pure function get_one_body_int_mol_real(store, i, j, basis_fns, pg_sym) result(intgrl)
 
         ! In:
         !    store: one-body integral store.
@@ -384,7 +394,49 @@ contains
             intgrl = 0.0_p
         end if
 
-    end function get_one_body_int_mol
+    end function get_one_body_int_mol_real
+
+    pure function get_one_body_int_mol_complex(store, i, j, basis_fns, pg_sym, im_store) result(intgrl)
+
+        ! In:
+        !    store: one-body integral real component store.
+        !    i,j: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
+        !    im_store (optional): one-body integral imaginary component store.
+        ! Returns:
+        !    <i|o|j>, the corresponding one-body matrix element, where o is a
+        !    one-body operator given by store.
+        !
+        ! NOTE:
+        !    If <i|o|j> is known the be non-zero by spin and spatial symmetry,
+        !    then it is faster to call get_one_body_int_mol_nonzero.
+        !    It is also faster to call RHF- or UHF-specific routines.
+
+        use basis_types, only: basis_fn_t
+        use point_group_symmetry, only: pg_sym_conj, cross_product_pg_sym, is_gamma_irrep_pg_sym
+        use symmetry_types, only: pg_sym_t
+
+        complex(p) :: intgrl
+        real(p) :: re, im
+        type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(pg_sym_t), intent(in) :: pg_sym
+        type(one_body_t), intent(in) :: store, im_store
+        integer, intent(in) :: i, j
+
+        integer :: sym
+
+        sym = cross_product_pg_sym(pg_sym, pg_sym_conj(pg_sym, basis_fns(i)%sym),basis_fns(j)%sym)
+        sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
+
+        if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+            re = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
+            im = get_one_body_int_mol_nonzero(im_store, i, j, basis_fns)
+        else
+            intgrl = cmplx(0.0_p, 0.0_p)
+        end if
+
+    end function get_one_body_int_mol_complex
 
     pure function get_one_body_int_mol_nonzero(store, i, j, basis_fns) result(intgrl)
 
@@ -783,7 +835,7 @@ contains
 
     end subroutine store_two_body_int_mol
 
-    pure function get_two_body_int_mol(store, i, j, a, b, basis_fns, pg_sym) result(intgrl)
+    pure function get_two_body_int_mol_real(store, i, j, a, b, basis_fns, pg_sym) result(intgrl)
 
         ! In:
         !    store: two-body integral store.
@@ -823,7 +875,53 @@ contains
             intgrl = 0.0_p
         end if
 
-    end function get_two_body_int_mol
+    end function get_two_body_int_mol_real
+
+    pure function get_two_body_int_mol_complex(store, i, j, a, b, basis_fns, pg_sym, im_store) result(intgrl)
+
+        ! In:
+        !    store: store for two-body integral real component.
+        !    i,j,a,b: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
+        !    im_store: store for two-body integral imaginary component.
+        ! Returns:
+        !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
+        !    the (j,b) co-density involving a two-body operator o_2 given by
+        !    store.
+        !
+        ! NOTE:
+        !    If <ij|ab> is known the be non-zero by spin and spatial symmetry,
+        !    then it is faster to call get_two_body_int_mol_nonzero.
+        !    It is also faster to call RHF- or UHF-specific routines.
+
+        use basis_types, only: basis_fn_t
+        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
+        use symmetry_types, only: pg_sym_t
+
+        complex(p) :: intgrl
+        real(p) :: re, im
+        type(two_body_t), intent(in) :: store, im_store
+        type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(pg_sym_t), intent(in) :: pg_sym
+        integer, intent(in) :: i, j, a, b
+
+        integer :: sym_ij, sym_ab, sym
+
+        sym_ij = pg_sym_conj(pg_sym, cross_product_pg_basis(pg_sym, i, j, basis_fns))
+        sym_ab = cross_product_pg_basis(pg_sym, a, b, basis_fns)
+        sym = cross_product_pg_sym(pg_sym, sym_ij, sym_ab)
+        sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
+        if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
+                                       .and. basis_fns(j)%ms == basis_fns(b)%ms) then
+            re = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
+            im = get_two_body_int_mol_nonzero(im_store, i, j, a, b, basis_fns)
+            intgrl = cmplx(re, im)
+        else
+            intgrl = cmplx(0.0_p,0.0_p)
+        end if
+
+    end function get_two_body_int_mol_complex
 
     pure function get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns) result(intgrl)
 
