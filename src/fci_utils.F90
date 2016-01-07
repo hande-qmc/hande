@@ -188,7 +188,7 @@ contains
 
     end subroutine fci_json
 
-    subroutine generate_hamil(sys, ndets, dets, hamil, hamil_csr, proc_blacs_info, full_mat)
+    subroutine generate_hamil(sys, ndets, dets, hamil, hamil_csr, hamil_comp, proc_blacs_info, full_mat)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
@@ -205,6 +205,7 @@ contains
         !    hamil (optional): Hamiltonian matrix in a square array.
         !    hamil_csr (optional): Hamiltonian matrix in a sparse (compressed sparse row)
         !        format.
+        !    hamil_comp (optional): Complex Hamiltonian matrix in a square array.
 
         ! Note: either hamil or hamil_csr must be supplied.  If both are supplied then only
         ! hamil is used.
@@ -215,7 +216,7 @@ contains
         use errors, only: stop_all
         use parallel
 
-        use hamiltonian, only: get_hmatel
+        use hamiltonian, only: get_hmatel, get_hmatel_complex
         use real_lattice
         use system, only: sys_t
 
@@ -223,6 +224,7 @@ contains
         integer, intent(in) :: ndets
         integer(i0), intent(in) :: dets(:,:)
         real(p), intent(out), allocatable, optional :: hamil(:,:)
+        complex(p), intent(out), allocatable, optional :: hamil_comp(:,:)
         type(csrp_t), intent(out), optional :: hamil_csr
         type(blacs_info), intent(in), optional :: proc_blacs_info
         logical, intent(in), optional :: full_mat
@@ -232,7 +234,7 @@ contains
         real(p) :: hmatel
 
         sparse_mode = present(hamil_csr) .and. .not.present(hamil)
-        if (.not.present(hamil) .and. .not.present(hamil_csr)) &
+        if (.not.present(hamil) .and. .not.present(hamil_csr) .and. .not.present(hamil_comp)) &
             call stop_all('generate_hamil', 'Must supply either hamil or hamil_csr in argument list.')
 
         if (sparse_mode .and. present(proc_blacs_info)) then
@@ -334,9 +336,15 @@ contains
                     if (full_mat) ii = 1
                 end if
                 !$omp do private(j) schedule(dynamic, 200)
-                do j = ii, ndets
-                    hamil(i,j) = get_hmatel(sys,dets(:,i),dets(:,j))
-                end do
+                if (present(hamil)) then
+                    do j = ii, ndets
+                        hamil(i,j) = get_hmatel(sys,dets(:,i),dets(:,j))
+                    end do
+                else if (present(hamil_comp)) then
+                    do j = ii, ndets
+                        hamil_comp(i,j) = get_hmatel_complex(sys,dets(:,i),dets(:,j))
+                    end do
+                end if
                 !$omp end do
             end do
             !$omp end parallel
@@ -344,7 +352,7 @@ contains
 
     end subroutine generate_hamil
 
-    subroutine write_hamil(hamiltonian_file, ndets, proc_blacs_info, hamil, hamil_csr)
+    subroutine write_hamil(hamiltonian_file, ndets, proc_blacs_info, hamil, hamil_csr, hamil_comp)
 
         ! Write out the Hamiltonian matrix to file.
 
@@ -355,6 +363,7 @@ contains
         !        (and related info) of the Hamiltonian matrix.
         !    hamil (optional): Hamiltonian matrix in dense matrix format.
         !    hamil_csr (optional): Hamiltonian matrix in sparse (CSR) matrix format.
+        !    hamil_comp (optional): Complex Hamiltonian matrix in dense matrix format
 
         use checking, only: check_allocate, check_deallocate
         use const, only: p, depsilon
@@ -369,6 +378,7 @@ contains
         type(blacs_info), intent(in), optional :: proc_blacs_info
         real(p), intent(in), optional :: hamil(:,:)
         type(csrp_t), intent(in), optional :: hamil_csr
+        complex(p), intent(in), optional :: hamil_comp(:,:)
 
         integer :: iunit, i, j, ierr
         real(p), allocatable :: work_print(:)
@@ -404,6 +414,13 @@ contains
                         if (hamil_csr%row_ptr(j+1) <= i) j = j+1
                         write (iunit,*) j, hamil_csr%col_ind(i), hamil_csr%mat(i)
                     end if
+                end do
+            else if (present(hamil_comp)) then
+                do i=1, ndets
+                    write (iunit,*) i,i,hamil_comp(i,i)
+                    do j=i+1, ndets
+                        if (abs(hamil_comp(i,j)) > depsilon) write (iunit,*) i,j,hamil_comp(i,j)
+                    end do
                 end do
             end if
         end if

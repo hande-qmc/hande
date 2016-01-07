@@ -443,14 +443,104 @@ contains
 
     end subroutine analyse_wavefunction
 
-    subroutine print_wavefunction(filename, wfn, dets, proc_blacs_info)
+    subroutine analyse_wavefunction_complex(sys, wfn, dets, proc_blacs_info)
+
+        ! Analyse an exact wavefunction using the desired operator(s).
+
+        ! In:
+        !    sys: system being studied.
+        !    wfn: exact wavefunction to be analysed.  wfn(i) = c_i, where
+        !         |\Psi> = \sum_i c_i|D_i>.
+        !    dets: list of determinants in the Hilbert space (bit string representation).
+        !    proc_blacs_info: BLACS information describing distribution of wfn.
+
+        use const, only: i0, p
+        use parallel
+        use system
+
+        type(sys_t), intent(in) :: sys
+        type(blacs_info), intent(in) :: proc_blacs_info
+        complex(p), intent(in) :: wfn(:)
+        integer(i0), intent(in) :: dets(:,:)
+
+        real(p) :: expectation_val(2), cicj
+        integer :: idet, i, ii, ilocal, jdet, j, jj, jlocal, ndets
+
+#ifdef PARALLEL
+        integer :: ierr
+        real(p) :: esum(2)
+#endif
+
+        expectation_val = cmplx(0.0_p, 0.0_p)
+        ndets = ubound(dets, dim=2)
+
+        ! NOTE: we don't pretend to be efficient here but rather just get the
+        ! job done...
+
+        if (nprocs == 1) then
+            do idet = 1, ndets
+                select case(sys%system)
+                case(read_in)
+                    expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(sys, dets(:,idet))
+                end select
+                do jdet = idet+1, ndets
+                    cicj = wfn(idet) * wfn(jdet)
+                    select case(sys%system)
+                    case (read_in)
+                        expectation_val(1) = expectation_val(1) + &
+                                             2*cicj*one_body_mol(sys, dets(:,jdet), dets(:,idet))
+                    end select
+                end do
+            end do
+        else
+            do i = 1, proc_blacs_info%nrows, proc_blacs_info%block_size
+                do ii = 1, min(proc_blacs_info%block_size, proc_blacs_info%nrows - i + 1)
+                    ilocal = i - 1 + ii
+                    idet =  (i-1)*proc_blacs_info%nproc_rows + proc_blacs_info%procx* proc_blacs_info%block_size + ii
+                    select case(sys%system)
+                    case(read_in)
+                        expectation_val(1) = expectation_val(1) + wfn(idet)**2*one_body0_mol(sys, dets(:,idet))
+                    end select
+                    do j = 1, proc_blacs_info%ncols, proc_blacs_info%block_size
+                        do jj = 1, min(proc_blacs_info%block_size, proc_blacs_info%nrows - j + 1)
+                            jlocal = j - 1 + jj
+                            jdet = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*proc_blacs_info%block_size + jj
+                            cicj = wfn(ilocal) * wfn(jlocal)
+                            select case(sys%system)
+                            case (read_in)
+                                expectation_val(1) = expectation_val(1) + &
+                                                     2*cicj*one_body_mol(sys, dets(:,idet), dets(:,jdet))
+                            end select
+                        end do
+                    end do
+                end do
+            end do
+        end if
+
+#ifdef PARALLEL
+        call mpi_allreduce(expectation_val, esum, size(esum), mpi_preal, MPI_SUM, mpi_comm_world, ierr)
+        expectation_val = esum
+#endif
+
+        if (parent) then
+            select case(sys%system)
+            case(read_in)
+                write (6,'(1X,a18,f12.8)') '<\Psi|O_1|\Psi> = ', expectation_val(1)
+                write (6,'()')
+            end select
+        end if
+
+    end subroutine analyse_wavefunction_complex
+
+    subroutine print_wavefunction(filename, dets, proc_blacs_info, wfn, wfn_complex)
 
         ! Print out an exact wavefunction.
 
         ! In:
         !    filename: file to be printed to.
-        !    wfn: exact wavefunction to be printed out.  wfn(i) = c_i, where
+        !    wfn (optional): exact wavefunction to be printed out.  wfn(i) = c_i, where
         !    |\Psi> = \sum_i c_i|D_i>.
+        !    wfn_complex (optional): exact complex wavefunction to be printed out.
         !    dets: list of determinants in the Hilbert space (bit string representation).
         !    proc_blacs_info: BLACS information describing distribution of wfn.
 
@@ -462,7 +552,8 @@ contains
 
         character(*), intent(in) :: filename
         type(blacs_info), intent(in) :: proc_blacs_info
-        real(p), intent(in) :: wfn(:)
+        real(p), intent(in), optional :: wfn(:)
+        complex(p), intent(in), optional :: wfn_complex(:)
         integer(i0), intent(in) :: dets(:,:)
 
         integer :: idet, i, ii, ilocal, iunit

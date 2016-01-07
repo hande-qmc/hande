@@ -262,9 +262,9 @@ contains
         if (nwfn < 0 .or. nwfn > nfound) nwfn = nfound
         do i = 1, nwfn
 #ifdef SINGLE_PRECISION
-            call print_wavefunction(fci_in%print_fci_wfn_file, evec_copy(:,i), dets, proc_blacs_info)
+            call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, evec_copy(:,i))
 #else
-            call print_wavefunction(fci_in%print_fci_wfn_file, evec(:,i), dets, proc_blacs_info)
+            call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, evec(:,i))
 #endif
         end do
 

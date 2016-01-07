@@ -231,9 +231,9 @@ contains
         if (nwfn < 0) nwfn = ndets
         do i = 1, nwfn
             if (nprocs == 1) then
-                call print_wavefunction(fci_in%print_fci_wfn_file, hamil(:,i), dets, proc_blacs_info)
+                call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, hamil(:,i))
             else
-                call print_wavefunction(fci_in%print_fci_wfn_file, eigvec(:,i), dets, proc_blacs_info)
+                call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, eigvec(:,i))
             end if
         end do
 
