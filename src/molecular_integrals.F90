@@ -12,7 +12,6 @@ use molecular_integral_types
 implicit none
 
 ! Indexing type for two_body_t integral stores.
-! [review] - AJWT: Worth checking my commentary additions below.
 ! i.e. an encoding of the 4-index quartet a,b,c,d into an index for the integral store
 type, private :: int_indx
     integer :: spin_channel     !If alpha and beta spin-orbitals differ, we store
@@ -136,9 +135,6 @@ contains
         !       the real or imaginary components of the complex two body integrals.
         !    imag: whether integral store contains imaginary component of complex
         !       integrals.
-! [review] - AJWT: Might be worth a note saying this still only stores a  single double
-! [review] - AJWT: for each integral, and that the imaginary part needs an additional store
-! [reply] - CJCS: Added to description of comp input parameter.
         ! Out:
         !    store: two-body integral store with components allocated to hold
         !    interals.  Note that the integral store is *not* zeroed.
@@ -182,8 +178,6 @@ contains
         npairs = ((nbasis/2)*(nbasis/2 + 1))/2
         ! If complex twice as many integrals so need twice the size of array
         ! as <ia|jb> != <ib|ja>
-! [review] - AJWT: i.e. <ia|jb> != <ib|ja> nor simply related
-! [reply] - CJCS: Exactly- added in comment.
         if (comp) then
             nintgrls = (npairs*(npairs+1))
         else
@@ -335,8 +329,6 @@ contains
             else if (ii > jj) then
                 store%integrals(spin,basis_fns(i)%sym)%v(tri_ind(ii,jj)) = intgrl
             else if (store%imag) then
-! [review] - AJWT: Check comments
-! [reply] - CJCS: Look good.
                 ! j>i.  We store <i|o|j> with (i>j) so store the complex conjugate of
                 ! <j|o|i> which requires a sign change only if this is the imaginary part
                 ! of an integral.
@@ -433,7 +425,6 @@ contains
         if (ii >= jj) then
             intgrl = store%integrals(spin, basis_fns(i)%sym)%v(tri_ind(ii,jj))
         else if (store%imag) then
-! [review] - AJWT: Check comments
                 ! j>i.  We store <i|o|j> with (i>j) so return its complex conjugate
                 ! <j|o|i> which requires a sign change only if this is the imaginary part
                 ! of an integral
@@ -461,7 +452,8 @@ contains
         ! NOTE:
         !     This is not optimised for RHF systems, where the spin-channel is
         !     always 1.
-! [review] - AJWT: This should NOT be used for complex systems.
+
+        !   This should NOT be used for complex systems.
 
         use basis_types, only: basis_fn_t
         use utils, only: tri_ind
@@ -569,7 +561,8 @@ contains
         ! NOTE:
         !     This is not optimised for RHF systems, where the spin-channel is
         !     always 1.
-! [review] - AJWT: This MUST be used for complex integral stores.
+
+        !   This MUST be used for complex integral stores.
 
         use basis_types, only: basis_fn_t
         use utils, only: tri_ind, tri_ind_reorder
@@ -629,11 +622,7 @@ contains
         ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
         jb = tri_ind_reorder(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
 
-! [review] - AJWT: I think you should  be using ii jj aa bb here.
-! [review] - AJWT: Might be simpler to use p q r s as your relabelled labels.
         ! Combine ia and jb in a unique way.
-! [review] - AJWT: Should this be (i,a) >= (j,b) ?
-! [reply] - CJCS: That would make more sense I think, will amend as such.
         ! This amounts to requiring (i,a) >= (j,b), i.e. i>=j || (i==j && a>=b),
         ! for example.
         ! Hence find overall index after applying 3-fold permutation symmetry.
@@ -643,9 +632,9 @@ contains
         ! As two possible permutations give same ia and jb values, need to 
         ! ensure give different values.
 
-        ! We observe that each unique index for a real integral store has a pair
-        ! of values associated with it in the complex case, <ij|ab> and <ib|aj>
-        ! for i >= j,a,b, j >= b. 
+        ! We observe that each previously unique index for a real integral store 
+        ! has a pair of values associated with it in the complex case, <ij|ab> and 
+        ! <ib|aj> for i >= j,a,b, j > b (see note on j == b case below). 
         ! If we then double our inital index we can store the <ij|ab> value at the 
         ! associated odd-value index and the <ib|aj> value at the even-value index.
         ! This gives a unique index for each integral in the complex system. 
@@ -654,17 +643,6 @@ contains
         ! and so one of the indexes will be unused. Depending on system size this will
         ! contribute a degree of inefficiency.
 
-! [review] - AJWT: I'm a little confused by this indexing system - a little help would be good
-! [review] - AJWT: We've made a tri_index of jj & bb, but we cannot guarantee jj>bb so we
-! [review] - AJWT: store two slots per tri-index: jj>=bb then bb>jj.
-! [review] - AJWT: This is potentially a little wasteful, but avoids needing to know the max index
-! [review] - AJWT: which is I suppose a benfit.
-! [reply] - CJCS: Apologies, have added explanation but that's the idea. Was toying with the idea
-! [reply] - CJCS: of implementing a 3D tri_index function to improve efficiency and , but decided to 
-! [reply] - CJCS: leave it simpler for now.
-
-! [review] - AJWT: Should this be jj >= bb ?
-! [reply] - CJCS: Yes, changed.
         if (jj < bb) then
             indx%indx = 2 * tri_ind(ia, jb)
         else
@@ -684,7 +662,6 @@ contains
             ! of spatial orbitals) then we need to make an arbitrary choice as to which
             ! permutation to look up.
 
-! [review] - AJWT: Bear of little brain somewhat confused on reading this, so I'll try an example
 
 !  e.g. <ij|ab> = <13|24> so <ii jj|aa bb> = <42|31> (with conjugate=true)
 ! these have spatial indices  2  1  2  1.  ia=2*1/2+2 = 3. jb =1*0/2+1 = 1
@@ -701,7 +678,7 @@ contains
 
 ! A little more explanation warranted I think.
 
-! [review] - AJWT: We swap around ii and jj if ii<jj
+! We swap around ii and jj if ii<jj
             if ( ia < jb .or. ( ia == jb .and. ii < jj) ) then
                 aa = ii ! don't need aa and bb any more; use as scratch space
                 ii = jj

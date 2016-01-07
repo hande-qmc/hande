@@ -118,13 +118,9 @@ contains
         !    Set to -1 if L is not a good quantum number.
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
-! [review] - AJWT: Definitely need a comment on NPROP and NPROPBITLEN
-! [reply] - CJCS: Added mainly for INTDUMP compatibility, but gleaned some 
-! [reply] - CJCS: understanding from NECI. Will email GB to find out more if/when implement
-! [reply] - CJCS: translational symmetry.
         !  * NPROP: Dimensions of supercell used in translationally symmetric systems.
         !  * PROPBITLEN: Length in bits of each property (?) in translationally symmetric 
-        !    systems.
+        !    systems. Translational symmetry not yet implemented.
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
         !    nuclear-nuclear and other non-electron contributions to the
@@ -382,15 +378,10 @@ contains
                                  .false., sys%read_in%coulomb_integrals)
             if (sys%comp) then
                 call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                    sys%read_in%pg_sym%nbasis_sym_spin, .false., &
+                    sys%read_in%pg_sym%nbasis_sym_spin, .true., &
                     sys%read_in%one_e_h_integrals_imag)
                 call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
                                  sys%comp, .true., sys%read_in%coulomb_integrals_imag)
-! [review] - AJWT: The following lines seem to break the cleanness of the interface to me
-! [review] - AJWT: I think they should be done in the inits of the integral stores, not here.
-! [reply] - CJCS: I was trying to avoid adding too many extra parameters to the init functions
-! [reply] - CJCS: that would be unused in real systems, but it is a bit ugly- will add parameters
-! [reply] - CJCS: to set in init.
             end if
         end if
 
@@ -455,8 +446,10 @@ contains
         ! We similarly need to remember if we've seen <i|h|a> or <a|h|i> as we
         ! only store one of the pair.
 
-        ! If using complex orbitals, <ij|ij> =/= <ij|ji>, etc, so no longer 
-        ! implement this in seen arrays.
+        ! If using complex orbitals, <ii|jj> =/= <ij|ji>, etc, so no longer 
+        ! accept some permutations.
+        ! For complex have also assumed expressions above for E_core and <a|h'|b>
+        ! hold; if not the case then likely incorrect values obtained.
 
 
         ! Accumulate errors so we can print out (at most) max_err_msg errors from this file.
@@ -686,15 +679,6 @@ contains
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
                                         end if
-! [review] - AJWT: This will need some good checking to be sure it's right.
-! [reply] - CJCS: Definitely, though as you say the proof is in the pudding. I don't think I'll trust it fully until final energies make 
-! [reply] - CJCS: sense with CAS.
-! [reply] - CJCS: Slightly worried that we've gone from 1 to 3 seen arrays of types iaib and iijj but I've kept same factors- feel 
-! [reply] - CJCS: like we'll have overcounting somewhere.
-! [reply] - CJCS: Think I've got it, I was overzealous in my extension to complex- the <ii|jj> and <ii|ab> integrals don't contribute anything to Ecore
-! [reply] - CJCS: in the prescription from Sherrill so those arrays are excess, then we can stick to the original array structure. Provided we don't 
-! [reply] - CJCS: assume <ij|ji> = <ii|jj> and such for complex should still work. This assumes the original derivation didn't assume real orbitals,
-! [reply] - CJCS: so if this isn't the case this'll have to be changed.
                                     end if
                                 end if
                             case(4)
