@@ -816,6 +816,7 @@ contains
             if (store%comp) then
                 indx = two_body_int_indx_complex(store%uhf, i, j, a, b, basis_fns)
                 if (indx%conjugate) then
+                    ! [review] - RSTF: Don't you only want the minus if store%imag is true?
                     store%integrals(indx%spin_channel)%v(indx%indx) = - intgrl
                 else
                     store%integrals(indx%spin_channel)%v(indx%indx) = intgrl
@@ -954,6 +955,7 @@ contains
         if (store%comp) then
             indx = two_body_int_indx_complex(store%uhf, i, j, a, b, basis_fns)
             if (indx%conjugate) then
+                ! [review] - RSTF: Shouldn't the negative only be for the imaginary part?
                 intgrl = - store%integrals(indx%spin_channel)%v(indx%indx)
             else
                 intgrl = store%integrals(indx%spin_channel)%v(indx%indx)

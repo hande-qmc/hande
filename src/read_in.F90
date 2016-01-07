@@ -242,6 +242,7 @@ contains
         call check_allocate('sp_eigv', norb, ierr)
         ios = 0
         if (parent) then
+            ! [review] - RSTF: I think this would be clearer if you only had the read statement inside the if, instead of the whole do block
             if (sys%comp) then
                 do
                     ! loop over lines.
@@ -666,6 +667,7 @@ contains
                                                                         sys%read_in%pg_sym, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
+                                            ! [review] - RSTF: This seems redundant as it's inside an if (.not. sys%comp) block
                                             if (sys%comp) then
                                                 ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
                                                 ! and store_one_body... function ordering adjustments.
@@ -723,6 +725,7 @@ contains
 #endif
         call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
         call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
+        ! [review] - RSTF: Need to broadcast *_imag integral stores if using complex
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent) then
             ! We froze some orbitals...
