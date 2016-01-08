@@ -242,8 +242,6 @@ contains
         call check_allocate('sp_eigv', norb, ierr)
         ios = 0
         if (parent) then
-            ! [review] - RSTF: I think this would be clearer if you only had the read statement inside the if, instead of the whole do block
-            ! [reply] - CJCS: Definitely, will change to that.
             do
                 ! loop over lines.
                 if (sys%comp) then
@@ -662,14 +660,6 @@ contains
                                                                         sys%read_in%pg_sym, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
-                                            ! [review] - RSTF: This seems redundant as it's inside an if (.not. sys%comp) block
-                                            ! [reply] - CJCS: If (.not.sys%comp) then automatically accepted, but if othe conditions
-                                            ! [reply] - CJCS: met complex results are also accepted.
-                                            ! [reply] - CJCS: For complex we can only accept <ia|bi> or <ai|ib>, which is the .or. 
-                                            ! [reply] - CJCS: components above. The (.not.sys%comp) component is because for real we
-                                            ! [reply] - CJCS: can also accept <ii|ab>/<ii|ba> etc, which is all remaining cases 
-                                            ! [reply] - CJCS: after the inital if statement, so this is simpler than doing those checks.
-                                            ! [reply] - CJCS: Will add comment to this effect.
                                             if (sys%comp) then
                                                 ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
                                                 ! and store_one_body... function ordering adjustments.
@@ -727,8 +717,6 @@ contains
 #endif
         call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
         call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
-        ! [review] - RSTF: Need to broadcast *_imag integral stores if using complex
-        ! [reply] - CJCS: Oversight on my part; implemented.
         if (sys%comp) then
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
