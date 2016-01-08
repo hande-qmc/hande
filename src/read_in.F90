@@ -243,37 +243,26 @@ contains
         ios = 0
         if (parent) then
             ! [review] - RSTF: I think this would be clearer if you only had the read statement inside the if, instead of the whole do block
-            if (sys%comp) then
-                do
-                    ! loop over lines.
-                    read (ir,*, iostat=ios) compint, i, a, j, b
-                    ! if complex will have complex formatting but sp_eigv should still be real.
-                    x=real(compint,p)
-                    if (ios == iostat_end) exit ! reached end of file
-                    if (ios /= 0) call stop_all('read_in_integrals','&
-                                                 &Problem reading integrals file: '//trim(sys%read_in%fcidump))
-                    if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
-                        ! \epsilon_i --- temporarily store for all basis functions,
-                        ! including inactive (frozen) orbitals.
-                        not_found_sp_eigv = .false.
-                        sp_eigv(i) = x
-                    end if
-                end do
-            else
-                do
-                    ! loop over lines.
+            ! [reply] - CJCS: Definitely, will change to that.
+            do
+                ! loop over lines.
+                if (sys%comp) then
+                        read (ir,*, iostat=ios) compint, i, a, j, b
+                        ! if complex will have complex formatting but sp_eigv should still be real.
+                        x=real(compint,p)
+                else
                     read (ir,*, iostat=ios) x, i, a, j, b
-                    if (ios == iostat_end) exit ! reached end of file
-                    if (ios /= 0) call stop_all('read_in_integrals','&
-                                                 &Problem reading integrals file: '//trim(sys%read_in%fcidump))
-                    if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
-                        ! \epsilon_i --- temporarily store for all basis functions,
-                        ! including inactive (frozen) orbitals.
-                        not_found_sp_eigv = .false.
-                        sp_eigv(i) = x
-                    end if
-                end do
-            end if
+                end if
+                if (ios == iostat_end) exit ! reached end of file
+                if (ios /= 0) call stop_all('read_in_integrals','&
+                                             &Problem reading integrals file: '//trim(sys%read_in%fcidump))
+                if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
+                    ! \epsilon_i --- temporarily store for all basis functions,
+                    ! including inactive (frozen) orbitals.
+                    not_found_sp_eigv = .false.
+                    sp_eigv(i) = x
+                end if
+            end do
             if (not_found_sp_eigv) &
                 call stop_all('read_in_integrals',sys%read_in%fcidump//' file does not contain &
                               &single-particle eigenvalues.  Please implement &
@@ -655,6 +644,12 @@ contains
                                         ! < i a | b i > (or allowed permutation thereof)
                                         ! For systems with complex orbitals (but real integrals)
                                         ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
+
+                                        ! For complex we can only accept <ia|bi> or <ai|ib>, which gives the second two 
+                                        ! conditions above. 
+                                        ! For real we can also accept <ii|ab>/<ii|ba> etc, which are all remaining cases 
+                                        ! of core(1) == core(2) after the inital if statement. As such if real automatically 
+                                        ! accept.
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
                                             is_gamma_irrep_pg_sym(sys%read_in%pg_sym, &
                                                 cross_product_pg_sym(sys%read_in%pg_sym, &
@@ -668,6 +663,13 @@ contains
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             ! [review] - RSTF: This seems redundant as it's inside an if (.not. sys%comp) block
+                                            ! [reply] - CJCS: If (.not.sys%comp) then automatically accepted, but if othe conditions
+                                            ! [reply] - CJCS: met complex results are also accepted.
+                                            ! [reply] - CJCS: For complex we can only accept <ia|bi> or <ai|ib>, which is the .or. 
+                                            ! [reply] - CJCS: components above. The (.not.sys%comp) component is because for real we
+                                            ! [reply] - CJCS: can also accept <ii|ab>/<ii|ba> etc, which is all remaining cases 
+                                            ! [reply] - CJCS: after the inital if statement, so this is simpler than doing those checks.
+                                            ! [reply] - CJCS: Will add comment to this effect.
                                             if (sys%comp) then
                                                 ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
                                                 ! and store_one_body... function ordering adjustments.
@@ -726,6 +728,11 @@ contains
         call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
         call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
         ! [review] - RSTF: Need to broadcast *_imag integral stores if using complex
+        ! [reply] - CJCS: Oversight on my part; implemented.
+        if (sys%comp) then
+            call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
+            call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
+        end if
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent) then
             ! We froze some orbitals...
