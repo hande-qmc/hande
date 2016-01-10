@@ -10,7 +10,7 @@ implicit none
 contains
 
     subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, &
-        reference_in, qmc_state_restart)
+                         reference_in, qs, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -29,6 +29,8 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    load_bal_in: input options for load balancing.
         !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
+        ! Out:
+        !    qs: qmc_state for use if restarting the calculation
 
         use parallel
         use checking, only: check_allocate
@@ -70,6 +72,7 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), intent(in), optional :: qmc_state_restart
+        type(qmc_state_t), intent(out), target :: qs
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -90,7 +93,6 @@ contains
         real(p) :: hmatel
         real(p) :: real_population, weighted_population
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
-        type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
 

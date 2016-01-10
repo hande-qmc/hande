@@ -278,8 +278,8 @@ contains
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
-        use flu_binding, only: flu_State, flu_copyptr
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
         use aot_table_module, only: aot_table_top, aot_table_close, aot_exists, aot_get_val
 
         use dmqmc_data, only: dmqmc_in_t
@@ -305,6 +305,7 @@ contains
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart
+        type(qmc_state_t), target :: qmc_state_out
 
         type(c_ptr) :: qs_ptr
         logical :: have_restart_state
@@ -341,14 +342,16 @@ contains
         calc_type = fciqmc_calc
         call init_proc_pointers(sys, qmc_in, reference, fciqmc_in=fciqmc_in)
         if (have_restart_state) then
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_restart)
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, &
+                           qmc_state_restart)
         else
-            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out)
         end if
 
-        ! Want to return qmc_state to the user.
-
-        nresult = 0
+        ! Return qmc_state to the user.
+        qmc_state_restart => qmc_state_out
+        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_restart))
+        nresult = 1
 
     end function lua_fciqmc
 
