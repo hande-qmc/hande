@@ -9,7 +9,8 @@ implicit none
 
 contains
 
-    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in)
+    subroutine do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, &
+        reference_in, qmc_state_restart)
 
         ! Run the FCIQMC or initiator-FCIQMC algorithm starting from the initial walker
         ! distribution using the timestep algorithm.
@@ -25,9 +26,9 @@ contains
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
-        ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    load_bal_in: input options for load balancing.
+        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
 
         use parallel
         use checking, only: check_allocate
@@ -68,6 +69,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
+        type(qmc_state_t), intent(in), optional :: qmc_state_restart
 
         type(det_info_t) :: cdet
         type(dSFMT_t) :: rng
@@ -113,6 +115,9 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, fciqmc_in=fciqmc_in)
+
+        ! Copy over data from restart
+        if (present(qmc_state_restart)) qs = qmc_state_restart
 
         if (parent) then
             call json_object_init(js, tag=.true.)

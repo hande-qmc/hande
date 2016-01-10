@@ -280,13 +280,13 @@ contains
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_table_module, only: aot_table_top, aot_table_close
+        use aot_table_module, only: aot_table_top, aot_table_close, aot_exists, aot_get_val
 
         use dmqmc_data, only: dmqmc_in_t
         use fciqmc, only: do_fciqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, reference_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
         use qmc, only: init_proc_pointers
         use system, only: sys_t
 
@@ -304,10 +304,14 @@ contains
         type(restart_in_t) :: restart_in
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
+        type(qmc_state_t), pointer :: qmc_state_restart
 
-        integer :: opts
-        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
-                                                                'load_bal', 'reference']
+        type(c_ptr) :: qs_ptr
+        logical :: have_restart_state
+
+        integer :: opts, err
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
+                                                                'load_bal', 'reference', 'qmc_state']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -323,12 +327,26 @@ contains
         call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, sys, reference)
+
+        have_restart_state = aot_exists(lua_state, opts, 'qmc_state')
+        if (have_restart_state) then
+            ! Get qmc_state object
+            call aot_get_val(qs_ptr, err, lua_state, opts, key='qmc_state')
+            call c_f_pointer(qs_ptr, qmc_state_restart)
+        end if
+
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         calc_type = fciqmc_calc
         call init_proc_pointers(sys, qmc_in, reference, fciqmc_in=fciqmc_in)
-        call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
+        if (have_restart_state) then
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_restart)
+        else
+            call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
+        end if
+
+        ! Want to return qmc_state to the user.
 
         nresult = 0
 
