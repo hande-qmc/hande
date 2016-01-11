@@ -785,6 +785,8 @@ contains
             call dump_restart_file_wrapper(qs, dump_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
                                            qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, .false.)
 
+            qs%psip_list%tot_nparticles = nparticles_old
+
             if (soft_exit) exit
 
             if (update_tau) call rescale_tau(qs%tau)

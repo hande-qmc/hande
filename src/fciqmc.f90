@@ -314,6 +314,8 @@ contains
             call dump_restart_file_wrapper(qs, write_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
                                            qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, fciqmc_in%non_blocking_comm)
 
+            qs%psip_list%tot_nparticles = nparticles_old
+
             if (soft_exit) exit
 
             ! Should we try and update the reference determinant now?
