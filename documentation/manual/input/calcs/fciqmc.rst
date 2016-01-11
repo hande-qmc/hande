@@ -13,7 +13,11 @@ Full Configuration Interaction Quantum Monte Carlo
         restart = { ... },
         reference = { ... },
         load_bal = { ... },
+        qmc_state = qmc_state,
     }
+
+Returns:
+    a qmc_state object.
 
 ``fciqmc`` performs a full configuration interaction quantum Monte Carlo (FCIQMC)
 calculation [Booth09]_ on a system.
@@ -70,6 +74,12 @@ Options
 
     Further options to improve the parallel load balancing of an FCIQMC simulation.  See
     :ref:`load_bal_table`.
+``qmc_state``
+    type: qmc_state object.
+
+    Optional.
+
+    Output of a previous calculation to resume.
 
 .. _fciqmc_table:
 

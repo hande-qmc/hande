@@ -13,6 +13,7 @@ Find the ground state of a system via FCIQMC [Booth09]_.
         qmc = { ... },
         restart = { ... },
         reference = { ... },
+        qmc_state = qmc_state,
     }
 
 ``simple_fciqmc`` performs a full configuration interaction quantum Monte Carlo (FCIQMC)
@@ -63,3 +64,9 @@ Options
     Optional.
 
     Further options to select the reference state used.  See :ref:`reference_table`.
+``qmc_state``
+    type: qmc_state object.
+
+    Optional.
+
+    Output of a previous calculation to resume.
