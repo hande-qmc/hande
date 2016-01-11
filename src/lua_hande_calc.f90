@@ -304,8 +304,7 @@ contains
         type(restart_in_t) :: restart_in
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
-        type(qmc_state_t), pointer :: qmc_state_restart
-        type(qmc_state_t), target :: qmc_state_out
+        type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
 
         type(c_ptr) :: qs_ptr
         logical :: have_restart_state
@@ -341,6 +340,7 @@ contains
 
         calc_type = fciqmc_calc
         call init_proc_pointers(sys, qmc_in, reference, fciqmc_in=fciqmc_in)
+        allocate(qmc_state_out)
         if (have_restart_state) then
             call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, &
                            qmc_state_restart)
@@ -349,8 +349,7 @@ contains
         end if
 
         ! Return qmc_state to the user.
-        qmc_state_restart => qmc_state_out
-        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_restart))
+        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_out))
         nresult = 1
 
     end function lua_fciqmc
