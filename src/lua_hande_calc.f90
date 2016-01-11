@@ -278,9 +278,9 @@ contains
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_loc
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
         use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
-        use aot_table_module, only: aot_table_top, aot_table_close, aot_exists, aot_get_val
+        use aot_table_module, only: aot_table_top, aot_table_close
 
         use dmqmc_data, only: dmqmc_in_t
         use fciqmc, only: do_fciqmc
@@ -306,7 +306,6 @@ contains
         type(reference_t) :: reference
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
 
-        type(c_ptr) :: qs_ptr
         logical :: have_restart_state
 
         integer :: opts, err
@@ -328,12 +327,7 @@ contains
         call read_load_bal_in(lua_state, opts, load_bal_in)
         call read_reference_t(lua_state, opts, sys, reference)
 
-        have_restart_state = aot_exists(lua_state, opts, 'qmc_state')
-        if (have_restart_state) then
-            ! Get qmc_state object
-            call aot_get_val(qs_ptr, err, lua_state, opts, key='qmc_state')
-            call c_f_pointer(qs_ptr, qmc_state_restart)
-        end if
+        call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
 
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
@@ -1507,5 +1501,40 @@ contains
         end if
 
     end subroutine read_restart_in
+
+    subroutine get_qmc_state(lua_state, have_qmc_state, qmc_state)
+
+        ! Get (if present) a qmc_state_t object passed in to resume a calculation.
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! Out:
+        !   have_qmc_state: true if qmc_state was passed in from lua.
+        !   qmc_state: the qmc_state_t object passed in if have_qmc_state.
+
+        use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr
+
+        use flu_binding, only: flu_State
+        use aot_table_module, only: aot_table_top, aot_exists, aot_get_val
+
+        use qmc_data, only: qmc_state_t
+
+        type(flu_State), intent(inout) :: lua_state
+        logical, intent(out) :: have_qmc_state
+        type(qmc_state_t), pointer, intent(out) :: qmc_state
+
+        integer :: err, opts
+        type(c_ptr) :: qs_ptr
+
+        opts = aot_table_top(lua_state)
+
+        have_qmc_state = aot_exists(lua_state, opts, 'qmc_state')
+        if (have_qmc_state) then
+            ! Get qmc_state object
+            call aot_get_val(qs_ptr, err, lua_state, opts, key='qmc_state')
+            call c_f_pointer(qs_ptr, qmc_state)
+        end if
+
+    end subroutine get_qmc_state
 
 end module lua_hande_calc
