@@ -206,19 +206,22 @@ contains
         !       restart = { ... },
         !       reference = { ... },
         !       sparse = true/false,
+        !       qmc_state = qmc_state,
         !    }
+
+        ! Returns a qmc_state.
 
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
-        use flu_binding, only: flu_State, flu_copyptr
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
         use aot_table_module, only: aot_table_top, aot_table_close, aot_get_val
 
         use simple_fciqmc, only: do_simple_fciqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t
+        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, qmc_state_t
         use qmc, only: init_proc_pointers
         use system, only: sys_t
 
@@ -233,10 +236,11 @@ contains
         type(qmc_in_t) :: qmc_in
         type(restart_in_t) :: restart_in
         type(reference_t) :: reference
-        logical :: use_sparse_hamil
+        type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
+        logical :: use_sparse_hamil, have_qmc_state
 
         integer :: opts, err
-        character(12), parameter :: keys(5) = [character(12) :: 'sys', 'qmc', 'restart', 'reference', 'sparse']
+        character(12), parameter :: keys(6) = [character(12) :: 'sys', 'qmc', 'restart', 'reference', 'sparse', 'qmc_state']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -250,12 +254,19 @@ contains
         call read_reference_t(lua_state, opts, sys, reference)
         call aot_get_val(use_sparse_hamil, err, lua_state, opts, 'sparse', default=.true.)
         call warn_unused_args(lua_state, keys, opts)
+        call get_qmc_state(lua_state, have_qmc_state, qmc_state_restart)
         call aot_table_close(lua_state, opts)
 
         calc_type = simple_fciqmc_calc + fciqmc_calc
-        call do_simple_fciqmc(sys, qmc_in, restart_in, reference, use_sparse_hamil)
+        allocate(qmc_state_out)
+        if (have_qmc_state) then
+            call do_simple_fciqmc(sys, qmc_in, restart_in, reference, use_sparse_hamil, qmc_state_out, qmc_state_restart)
+        else
+            call do_simple_fciqmc(sys, qmc_in, restart_in, reference, use_sparse_hamil, qmc_state_out)
+        end if
 
-        nresult = 0
+        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_out))
+        nresult = 1
 
     end function lua_simple_fciqmc
 
@@ -273,7 +284,10 @@ contains
         !       restart = { ... },
         !       load_bal = { ... },
         !       reference = { ... },
+        !       qmc_state = qmc_state,
         !    }
+
+        ! Returns a qmc_state.
 
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
@@ -308,7 +322,7 @@ contains
 
         logical :: have_restart_state
 
-        integer :: opts, err
+        integer :: opts
         character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
                                                                 'load_bal', 'reference', 'qmc_state']
 
@@ -360,20 +374,23 @@ contains
         !       ccmc = { ... }
         !       restart = { ... },
         !       reference = { ... },
+        !       qmc_state = qmc_state,
         !    }
+
+        ! Returns a qmc_state.
 
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
-        use flu_binding, only: flu_State, flu_copyptr
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
         use aot_table_module, only: aot_table_top, aot_table_close
 
         use dmqmc_data, only: dmqmc_in_t
         use ccmc, only: do_ccmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, reference_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
         use qmc, only: init_proc_pointers
         use system, only: sys_t
 
@@ -391,9 +408,11 @@ contains
         type(restart_in_t) :: restart_in
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
+        type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
 
+        logical :: have_restart_state
         integer :: opts
-        character(10), parameter :: keys(5) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference']
+        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -409,14 +428,21 @@ contains
         call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
         call read_reference_t(lua_state, opts, sys, reference)
+        call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         calc_type = ccmc_calc
         call init_proc_pointers(sys, qmc_in, reference)
-        call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference)
+        allocate(qmc_state_out)
+        if (have_restart_state) then
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, qmc_state_restart)
+        else
+            call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out)
+        end if
 
-        nresult = 0
+        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_out))
+        nresult = 1
 
     end function lua_ccmc
 
@@ -435,20 +461,23 @@ contains
         !       rdm = { ... },
         !       restart = { ... },
         !       reference = { ... },
+        !       qmc_state = qmc_state,
         !    }
+
+        ! Returns a qmc_state.
 
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
-        use flu_binding, only: flu_State, flu_copyptr
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
         use aot_table_module, only: aot_table_top, aot_table_close
 
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use dmqmc, only: do_dmqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, reference_t
+        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
         use qmc, only: init_proc_pointers
         use system, only: sys_t, heisenberg, read_in, ueg
 
@@ -468,10 +497,12 @@ contains
         type(restart_in_t) :: restart_in
         type(load_bal_in_t) :: load_bal_in
         type(reference_t) :: reference
+        type(qmc_state_t), pointer :: qmc_state_out, qmc_state_restart
 
+        logical :: have_restart_state
         integer :: opts, ierr
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
-                                                                'restart', 'reference']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
+                                                                'restart', 'reference', 'qmc_state']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -503,17 +534,25 @@ contains
         ! Now system initialisation is complete (boo), act on the other options.
         call read_restart_in(lua_state, opts, restart_in)
         call read_reference_t(lua_state, opts, sys, reference)
+        call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         ! load balancing not implemented in DMQMC--just use defaults.
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         calc_type = dmqmc_calc
         call init_proc_pointers(sys, qmc_in, reference, dmqmc_in)
-        call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference)
+        allocate(qmc_state_out)
+        if (have_restart_state) then
+            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, &
+                          qmc_state_restart)
+        else
+            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out)
+        end if
 
         sys%basis%tensor_label_len = sys%basis%string_len
 
-        nresult = 0
+        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_out))
+        nresult = 1
 
     end function lua_dmqmc
 
