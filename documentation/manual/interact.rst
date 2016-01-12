@@ -27,7 +27,7 @@ tau
     type: float.
 
     Change the timestep to be used.
-varyshift_target
+target_population
     type: integer.
 
     Change the number of particles to be reached before the calculation starts varying the
