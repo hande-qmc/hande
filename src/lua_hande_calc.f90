@@ -555,7 +555,7 @@ contains
         integer, allocatable :: err_arr(:)
 
         character(18), parameter :: fci_keys(9) = [character(18) :: 'write_hamiltonian', 'hamiltonian_file', &
-                                                                    'write_determinants', 'determinant_file', 'write_wfns', &
+                                                                    'write_determinants', 'determinant_file', 'write_nwfns', &
                                                                     'wfn_file', 'nanalyse', 'blacs_block_size', 'rdm']
         character(6), parameter :: lanczos_keys(4) = [character(6) :: 'neigv', 'nbasis', 'direct', 'sparse']
 
