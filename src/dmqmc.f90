@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference_in)
+    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference_in, qs, qmc_state_restart)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -24,8 +24,11 @@ contains
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
+        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
         ! In/Out:
         !    dmqmc_estimates: type containing all DMQMC estimates.
+        ! Out:
+        !    qs: qmc_state for use if restarting the calculation
 
         use parallel
         use json_out
@@ -60,6 +63,8 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
+        type(qmc_state_t), intent(out), target :: qs
+        type(qmc_state_t), intent(in), optional :: qmc_state_restart
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport
@@ -77,7 +82,6 @@ contains
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
-        type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
         type(dmqmc_weighted_sampling_t) :: weighted_sampling
         type(restart_info_t) :: ri
@@ -119,6 +123,9 @@ contains
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
+
+        if (present(qmc_state_restart)) qs = qmc_state_restart
+
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)

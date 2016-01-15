@@ -190,7 +190,7 @@ contains
 
     end subroutine init_simple_fciqmc
 
-    subroutine do_simple_fciqmc(sys, qmc_in, restart_in, reference, sparse_hamil)
+    subroutine do_simple_fciqmc(sys, qmc_in, restart_in, reference, sparse_hamil, qs, qmc_state_restart)
 
         ! Run the FCIQMC algorithm on the stored Hamiltonian matrix.
 
@@ -201,6 +201,9 @@ contains
         !    qmc_in: input options relating to QMC methods.
         !    restart_in: input options for HDF5 restart files.
         !    sparse_hamil: true if using a sparse matrix for the Hamiltonian.
+        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
+        ! Out:
+        !    qs: qmc_state for use if restarting the calculation
 
         use csr, only: csrp_t
         use json_out
@@ -220,6 +223,8 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(reference_t), intent(inout) :: reference
         logical, intent(in) :: sparse_hamil
+        type(qmc_state_t), intent(out) :: qs
+        type(qmc_state_t), intent(in), optional :: qmc_state_restart
 
         integer :: ireport, icycle, idet, j
         integer(int_p) :: ipart
@@ -232,7 +237,6 @@ contains
         real(p) :: H0i, Hii
         type(particle_t) :: psip_list
         type(spawn_t) :: spawn
-        type(qmc_state_t) :: qs
         logical :: write_restart_shift
         type(restart_info_t) :: ri, ri_shift
         real(p), allocatable :: hamil(:,:)
@@ -245,6 +249,8 @@ contains
 
         call init_simple_fciqmc(sys, qmc_in, reference, qs, sparse_hamil, restart_in%read_restart, ndets, dets, ref_det, &
                                 psip_list, spawn, hamil, hamil_csr)
+
+        if (present(qmc_state_restart)) qs = qmc_state_restart
 
         if (parent) then
             call json_object_init(js, tag=.true.)

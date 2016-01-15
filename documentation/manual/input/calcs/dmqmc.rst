@@ -14,6 +14,7 @@ Density Matrix Quantum Monte Carlo
         rdm = { ... },
         restart = { ... },
         reference = { ... },
+        qmc_state = qmc_state,
     }
 
 ``dmqmc`` performs a density matrix quantum Monte Carlo (DMQMC) calculation on a system.
@@ -93,6 +94,12 @@ Options
     Optional.
 
     Further options to select the reference state used.  See :ref:`reference_table`.
+``qmc_state``
+    type: qmc_state object.
+
+    Optional.
+
+    Output of a previous calculation to resume.
 
 .. _dmqmc_table:
 
@@ -288,8 +295,8 @@ ipdmqmc options
 
     .. warning::
 
-    This feature is experimental and only tested for the 3D uniform electron
-    gas.
+        This feature is experimental and only tested for the 3D uniform electron
+        gas.
 
 .. _operators_table:
 

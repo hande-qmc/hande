@@ -66,6 +66,7 @@ quick =   vquick
           ccmc/np2/Ne-RHF-cc-pVDZ_ccmc_linked/
           ccmc/np2/Ne-aug-cc-pVDZ-ccsdtq_nc/
           ccmc/np2/ringium_ccsd_restart/
+          ccmc/np4/H2O-cc-pVDZ_ccsdmc_continue
           dmqmc/np1/ueg_n7_rs1_e1_dmqmc/
           dmqmc/np2/hubbard_k_1d/
           dmqmc/np2/n2_sto3g/
@@ -112,6 +113,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fciqmc/np1/heisenberg_1d_neel_ref_fciqmc
            fciqmc/np1/hubbard_k_1d_n4
            fciqmc/np1/hubbard_k_nontilted_2d_fciqmc
+           fciqmc/np1/hubbard_real_1d_continue
            fciqmc/np1/hubbard_real_1d_fciqmc
            fciqmc/np2/ueg_n10_rs2_e4_tau_search
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS

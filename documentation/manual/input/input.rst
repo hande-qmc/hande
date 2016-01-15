@@ -33,6 +33,11 @@ variable as an argument.
 Calculations
 ^^^^^^^^^^^^
 
+All QMC methods (FCIQMC, CCMC, DMQMC and the simple FCIQMC implementation)
+return a pointer to a qmc_state object (which cannot be directly manipulated or
+inspected from lua).  They also accept such an object as an optional argument to
+resume a previous QMC calculation.
+
 .. toctree::
    :maxdepth: 1
 

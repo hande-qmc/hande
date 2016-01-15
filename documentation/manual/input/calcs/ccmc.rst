@@ -11,6 +11,7 @@ Coupled Cluster Monte Carlo
         ccmc = { ... },
         restart = { ... },
         reference = { ... },
+        qmc_state = qmc_state,
     }
 
 ``ccmc`` performs a coupled cluster Monte Carlo (CCMC) calculation [Thom10]_ on a system.
@@ -51,6 +52,12 @@ Options
     Optional.
 
     Further options to select the reference state used.  See :ref:`reference_table`.
+``qmc_state``
+    type: qmc_state object.
+
+    Optional.
+
+    Output of a previous calculation to resume.
 
 .. _ccmc_table:
 

@@ -1,0 +1,33 @@
+sys = hubbard_real {
+    electrons = 3,
+    lattice = { {3} },
+    ms = 1,
+    sym = 1,
+    U = 50,
+    t = 1,
+}
+
+qmc_opts = {
+    tau = 0.01,
+    rng_seed = 7,
+    init_pop = 10,
+    mc_cycles = 25,
+    nreports = 100,
+    target_population = 550,
+    shift_damping = 0.06,
+    state_size = 10,
+    spawned_state_size = 500,
+}
+
+qmc_state = fciqmc {
+    sys = sys,
+    qmc = qmc_opts,
+    reference = { det = {2, 3, 5}, },
+}
+
+fciqmc {
+    sys = sys,
+    qmc = qmc_opts,
+    reference = { det = {2, 3, 5}, },
+    qmc_state = qmc_state,
+}

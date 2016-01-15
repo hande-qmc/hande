@@ -261,7 +261,7 @@ implicit none
 
 contains
 
-    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in)
+    subroutine do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference_in, qs, qmc_state_restart)
 
         ! Run the CCMC algorithm starting from the initial walker distribution
         ! using the timestep algorithm.
@@ -278,8 +278,10 @@ contains
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
         !    load_bal_in: input options for load balancing.
-        ! In/Out:
         !    qmc_in: input options relating to QMC methods.
+        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
+        ! Out:
+        !    qs: qmc_state for use if restarting the calculation
 
         use checking, only: check_allocate, check_deallocate
         use dSFMT_interface, only: dSFMT_t, dSFMT_init
@@ -317,6 +319,8 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
+        type(qmc_state_t), target, intent(out) :: qs
+        type(qmc_state_t), intent(in), optional :: qmc_state_restart
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
@@ -343,7 +347,6 @@ contains
         integer(int_p) :: tot_abs_nint_pop
         real(p) :: D0_normalisation
         type(bloom_stats_t) :: bloom_stats
-        type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
 
@@ -370,6 +373,7 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
+        if (present(qmc_state_restart)) qs = qmc_state_restart
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -780,6 +784,8 @@ contains
 
             call dump_restart_file_wrapper(qs, dump_restart_shift, restart_in%write_freq, nparticles_old, ireport, &
                                            qmc_in%ncycles, sys%basis%nbasis, ri, ri_shift, .false.)
+
+            qs%psip_list%tot_nparticles = nparticles_old
 
             if (soft_exit) exit
 
