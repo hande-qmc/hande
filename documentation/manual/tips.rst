@@ -39,8 +39,8 @@ Plotting calculation output using gnuplot
 
 The first section of the output file contains information about the basis functions
 used in the calculations. This gives spurious data points when the contents of the file
-is plotted using gnuplot. They can be removed by creating an executable file gphande
-in the path, containing:
+is plotted using gnuplot. They can be removed by creating an executable file called
+``gphande`` in the user's $PATH, containing:
 
 .. code-block:: bash
 
@@ -50,9 +50,13 @@ in the path, containing:
 
 When plotting in gnuplot, using the command
 
+.. code-block:: gnuplot
+
     plot '<gphande file'
 
 instead of
+
+.. code-block:: gnuplot
 
     plot 'file'
 

@@ -6,7 +6,7 @@ After ensuring HANDE's dependencies are installed, produce a makefile by running
 
 .. code-block:: bash
 
-    tools/mkconfig.py config/conf
+    $ tools/mkconfig.py config/conf
 
 where ``conf`` is one of the platforms available and is simply the name of the relevant
 file residing in the ``config/`` directory.  Various configurations are provided and it is
@@ -16,7 +16,7 @@ Run
 
 .. code-block:: bash
 
-    tools/mkconfig.py --help
+    $ tools/mkconfig.py --help
 
 to see the options available, including inspecting available configurations.
 
@@ -93,7 +93,7 @@ To compile the code run
 
 .. code-block:: bash
 
-    make
+    $ make
     
 HANDE's build system uses the ``sfmakedepend`` script (http://people.arsc.edu/~kate/Perl/,
 supplied in ``tools/``) by Kate Hedstrom to generate the list of dependencies for each
@@ -109,7 +109,7 @@ There are various goals in the makefile.  Run
 
 .. code-block:: bash
 
-    make help
+    $ make help
 
 to see the available goals.
 

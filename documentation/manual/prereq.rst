@@ -152,13 +152,13 @@ Pandas can be installed by
 
 .. code-block:: bash
 
-    pip install pandas
+    $ pip install pandas
 
 If you do not have root access, you can install the library locally with:
 
 .. code-block:: bash
 
-    pip install pandas --user
+    $ pip install pandas --user
 
 Alternatively, where pip is not available, one can install it locally:
 
