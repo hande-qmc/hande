@@ -37,11 +37,6 @@ help:
 clean:
 	-rm -rf $(BUILDDIR)/*
 
-EXTS = .f90 .F90
-SRCDIRS = ../src ../lib/local
-find_files = $(foreach ext,$(EXTS), $(wildcard $(dir)/*$(ext)))
-SRCFILES := $(foreach dir,$(SRCDIRS),$(find_files))
-
 html: 
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
