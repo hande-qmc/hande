@@ -247,12 +247,15 @@ Returns
         # If the number of iterations counter goes over 8 digits then the hande
         # output file prints stars.  This has now been fixed, however for legacy
         # reasons:
-        for (i,iteration) in enumerate(data['iterations']):
-            if numpy.isnan(iteration):
-               data['iterations'][i] = \
-                   i*metadata['qmc']['ncycles'] + data['iterations'][0]
-
-        data = data.convert_objects(convert_numeric=True, copy=False)
+        data['iterations'].replace('\*+', -1, regex=True, inplace=True)
+        try:
+            data['iterations'] = pd.to_numeric(data['iterations'])
+        except AttributeError:
+            data = data.convert_objects(convert_numeric=True, copy=False)
+        for (i,iteration) in data['iterations'].iteritems():
+            if iteration < 0:
+                data.loc[i,'iterations'] = \
+                   i*metadata['qmc']['ncycles'] + data.loc[0,'iterations']
 
         # Do we have an old table?  If so, rename the headings to the new
         # ones for convenience...
