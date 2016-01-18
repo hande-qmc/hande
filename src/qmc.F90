@@ -44,8 +44,7 @@ contains
         use calc
         use dmqmc_procedures, only: init_dmqmc
         use determinants, only: decode_det, encode_det, write_det
-        use energy_evaluation, only: nparticles_start_ind, calculate_hf_signed_pop
-        use qmc_common, only: find_single_double_prob
+        use energy_evaluation, only: nparticles_start_ind
         use reference_determinant, only: set_reference_det, copy_reference_t
         use particle_t_utils
         use proc_pointers, only: sc0_ptr, op0_ptr, energy_diff_ptr
@@ -53,7 +52,6 @@ contains
         use spawning, only: assign_particle_processor
         use system
         use symmetry, only: symmetry_orb_list
-        use utils, only: factorial_combination_1
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
@@ -80,9 +78,6 @@ contains
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
-#ifdef PARALLEL
-        real(p) :: tmp_p
-#endif
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
@@ -366,38 +361,8 @@ contains
             pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
 #endif
 
-            ! Decide whether the shift should be turned on from the start.
-            qmc_state%target_particles = qmc_in%target_particles
-            qmc_state%vary_shift = pl%tot_nparticles >= qmc_state%target_particles
-
-            if (doing_calc(hfs_fciqmc_calc)) then
-#ifdef PARALLEL
-                tmp_p = calculate_hf_signed_pop(pl)
-                call mpi_allreduce(tmp_p, qmc_state%estimators%hf_signed_pop, pl%nspaces, mpi_preal, MPI_SUM, &
-                                   MPI_COMM_WORLD, ierr)
-#else
-                qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl)
-#endif
-            end if
-
             ! calculate the reference determinant symmetry
             ref_sym = symmetry_orb_list(sys, reference%occ_list0)
-
-            ! If not set at input, set probability of selecting single or double
-            ! excitations based upon the reference determinant and assume other
-            ! determinants have a roughly similar ratio of single:double
-            ! excitations.
-            if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-                call find_single_double_prob(sys, reference%occ_list0, qmc_state%pattempt_single, qmc_state%pattempt_double)
-            else
-                ! renormalise just in case input wasn't
-                qmc_state%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
-                qmc_state%pattempt_double = 1.0_p - qmc_in%pattempt_single
-            end if
-
-            ! Set initial values from input
-            qmc_state%tau = qmc_in%tau
-            qmc_state%estimators%D0_population = qmc_in%D0_population
 
         end associate
 
@@ -426,6 +391,7 @@ contains
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
+        call init_estimators(sys, qmc_in, qmc_state)
 
     end subroutine init_qmc
 
@@ -876,5 +842,64 @@ contains
         annihilation_flags%symmetric = dmqmc_in%symmetric
 
     end subroutine init_annihilation_flags
+
+    subroutine init_estimators(sys, qmc_in, qmc_state)
+
+        ! Initialise estimators and related components of qmc_state
+
+        ! In:
+        !   sys: system being studied
+        !   qmc_in: input options relating to qmc methods
+        ! In/Out:
+        !   qmc_state: current state of qmc calculation
+
+        use system, only: sys_t
+        use qmc_data, only: qmc_in_t, qmc_state_t
+        use calc, only: doing_calc, hfs_fciqmc_calc
+        use parallel
+        use energy_evaluation, only: calculate_hf_signed_pop
+        use checking, only: check_allocate
+        use qmc_common, only: find_single_double_prob
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(qmc_state_t), intent(inout) :: qmc_state
+
+        integer :: ierr
+#ifdef PARALLEL
+        real(p) :: tmp_p
+#endif
+
+        ! Decide whether the shift should be turned on from the start.
+        qmc_state%target_particles = qmc_in%target_particles
+        qmc_state%vary_shift = qmc_state%psip_list%tot_nparticles >= qmc_state%target_particles
+
+        if (doing_calc(hfs_fciqmc_calc)) then
+#ifdef PARALLEL
+            tmp_p = calculate_hf_signed_pop(qmc_state%psip_list)
+            call mpi_allreduce(tmp_p, qmc_state%estimators%hf_signed_pop, qmc_state%psip_list%nspaces, mpi_preal, MPI_SUM, &
+                               MPI_COMM_WORLD, ierr)
+#else
+            qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl)
+#endif
+        end if
+
+        ! If not set at input, set probability of selecting single or double
+        ! excitations based upon the reference determinant and assume other
+        ! determinants have a roughly similar ratio of single:double
+        ! excitations.
+        if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
+            call find_single_double_prob(sys, qmc_state%ref%occ_list0, qmc_state%pattempt_single, qmc_state%pattempt_double)
+        else
+            ! renormalise just in case input wasn't
+            qmc_state%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
+            qmc_state%pattempt_double = 1.0_p - qmc_in%pattempt_single
+        end if
+
+        ! Set initial values from input
+        qmc_state%tau = qmc_in%tau
+        qmc_state%estimators%D0_population = qmc_in%D0_population
+
+    end subroutine init_estimators
 
 end module qmc
