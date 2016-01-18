@@ -65,8 +65,8 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
-        type(annihilation_flags_t), intent(inout) :: annihilation_flags
-        type(qmc_state_t), intent(inout) :: qmc_state
+        type(annihilation_flags_t), intent(out) :: annihilation_flags
+        type(qmc_state_t), intent(out) :: qmc_state
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
@@ -78,12 +78,14 @@ contains
         integer(i0) :: f0_inv(sys%basis%string_len)
         real(p) :: spawn_cutoff
         type(fciqmc_in_t) :: fciqmc_in_loc
+        type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
 #ifdef PARALLEL
         real(p) :: tmp_p
 #endif
 
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
+        if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
 
         call copy_reference_t(reference_in, qmc_state%ref)
 
@@ -105,15 +107,7 @@ contains
             ! determinant.
             if (fciqmc_in_loc%trial_function == neel_singlet) pl%info_size = 2
 
-            annihilation_flags%initiator_approx = qmc_in%initiator_approx
-            annihilation_flags%real_amplitudes = qmc_in%real_amplitudes
-            if (present(dmqmc_in)) then
-                annihilation_flags%propagate_to_beta = dmqmc_in%propagate_to_beta
-                annihilation_flags%replica_tricks = dmqmc_in%replica_tricks
-                annihilation_flags%symmetric = dmqmc_in%symmetric
-            end if
             if (present(fciqmc_in)) then
-                annihilation_flags%trial_function = fciqmc_in%trial_function
                 qmc_state%trial%wfn = fciqmc_in%trial_function
                 qmc_state%trial%guide = fciqmc_in%guiding_function
             end if
@@ -448,6 +442,8 @@ contains
             write (6,'()')
 
         end if
+
+        call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
 
     end subroutine init_qmc
 
@@ -830,5 +826,33 @@ contains
         end if
 
     end subroutine init_proc_pointers
+
+    subroutine init_annihilation_flags(qmc_in, fciqmc_in, dmqmc_in, annihilation_flags)
+
+        ! Initialise annihilation flags
+
+        ! In:
+        !   qmc_in: input options relating to qmc
+        !   fciqmc_in: input options relating to fciqmc
+        !   dmqmc_in: input options relating to dmqmc
+        ! Out:
+        !   annihilation_flags: calculation specific annihilation flags.
+
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, annihilation_flags_t
+        use dmqmc_data, only: dmqmc_in_t
+
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(fciqmc_in_t), intent(in) :: fciqmc_in
+        type(dmqmc_in_t), intent(in) :: dmqmc_in
+        type(annihilation_flags_t), intent(out) :: annihilation_flags
+
+        annihilation_flags%initiator_approx = qmc_in%initiator_approx
+        annihilation_flags%real_amplitudes = qmc_in%real_amplitudes
+        annihilation_flags%trial_function = fciqmc_in%trial_function
+        annihilation_flags%propagate_to_beta = dmqmc_in%propagate_to_beta
+        annihilation_flags%replica_tricks = dmqmc_in%replica_tricks
+        annihilation_flags%symmetric = dmqmc_in%symmetric
+
+    end subroutine init_annihilation_flags
 
 end module qmc
