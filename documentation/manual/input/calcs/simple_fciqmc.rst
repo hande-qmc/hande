@@ -16,6 +16,9 @@ Find the ground state of a system via FCIQMC [Booth09]_.
         qmc_state = qmc_state,
     }
 
+Returns:
+    a qmc_state object.
+
 ``simple_fciqmc`` performs a full configuration interaction quantum Monte Carlo (FCIQMC)
 calculation on a system using an explicitly calculated and stored Hamiltonian matrix.
 
@@ -70,3 +73,7 @@ Options
     Optional.
 
     Output of a previous calculation to resume.
+
+    .. warning::
+
+        The calculation must be of the same type to succesfully resume, but this is not checked.

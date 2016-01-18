@@ -14,6 +14,9 @@ Coupled Cluster Monte Carlo
         qmc_state = qmc_state,
     }
 
+Returns:
+    a qmc_state object.
+
 ``ccmc`` performs a coupled cluster Monte Carlo (CCMC) calculation [Thom10]_ on a system.
 
 Options
@@ -58,6 +61,10 @@ Options
     Optional.
 
     Output of a previous calculation to resume.
+
+    .. warning::
+
+        The calculation must be of the same type to succesfully resume, but this is not checked.
 
 .. _ccmc_table:
 

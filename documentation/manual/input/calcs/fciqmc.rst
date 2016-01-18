@@ -81,6 +81,10 @@ Options
 
     Output of a previous calculation to resume.
 
+    .. warning::
+
+        The calculation must be of the same type to succesfully resume, but this is not checked.
+
 .. _fciqmc_table:
 
 fciqmc options
