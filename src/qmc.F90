@@ -107,11 +107,6 @@ contains
             ! determinant.
             if (fciqmc_in_loc%trial_function == neel_singlet) pl%info_size = 2
 
-            if (present(fciqmc_in)) then
-                qmc_state%trial%wfn = fciqmc_in%trial_function
-                qmc_state%trial%guide = fciqmc_in%guiding_function
-            end if
-
             ! Each spawned_walker occupies spawned_size kind=int_s integers.
             if (qmc_in%initiator_approx) then
                 size_spawned_walker = (sys%basis%tensor_label_len+pl%nspaces+1)*int_s_length/8
@@ -185,20 +180,6 @@ contains
             call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
 
             ! --- Importance sampling ---
-
-            if (qmc_state%trial%wfn == neel_singlet) then
-                ! Calculate all the possible different amplitudes for the Neel singlet state
-                ! and store them in an array
-                allocate(qmc_state%trial%wfn_dat(-1:(sys%lattice%nsites/2)+1), stat=ierr)
-                call check_allocate('qmc_state%trial%wfn_dat',(sys%lattice%nsites/2)+1,ierr)
-
-                qmc_state%trial%wfn_dat(-1) = 0
-                qmc_state%trial%wfn_dat((sys%lattice%nsites/2)+1) = 0
-                do i=0,(sys%lattice%nsites/2)
-                    qmc_state%trial%wfn_dat(i) = factorial_combination_1( (sys%lattice%nsites/2)-i , i )
-                    qmc_state%trial%wfn_dat(i) = -(2*mod(i,2)-1) * qmc_state%trial%wfn_dat(i)
-                end do
-            end if
 
             ! --- Initial walker distributions ---
             ! Note occ_list could be set and allocated in the input.
@@ -444,6 +425,7 @@ contains
         end if
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
+        call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
 
     end subroutine init_qmc
 
@@ -826,6 +808,46 @@ contains
         end if
 
     end subroutine init_proc_pointers
+
+    subroutine init_trial(sys, fciqmc_in, trial)
+
+        ! Initialise trial_t object with trial wavefunction details
+
+        ! In:
+        !   sys: system being studied
+        !   fciqmc_in: input options relating to fciqmc
+        ! In/Out:
+        !   trial: trial wavefunction for importance sampling
+
+        use checking, only: check_allocate
+        use system, only: sys_t
+        use qmc_data, only: fciqmc_in_t, trial_t, neel_singlet
+        use utils, only: factorial_combination_1
+
+        type(sys_t), intent(in) :: sys
+        type(fciqmc_in_t), intent(in) :: fciqmc_in
+        type(trial_t), intent(out) :: trial
+
+        integer :: i, ierr
+
+        trial%wfn = fciqmc_in%trial_function
+        trial%guide = fciqmc_in%guiding_function
+
+        if (trial%wfn == neel_singlet) then
+            ! Calculate all the possible different amplitudes for the Neel singlet state
+            ! and store them in an array
+            allocate(trial%wfn_dat(-1:(sys%lattice%nsites/2)+1), stat=ierr)
+            call check_allocate('qmc_state%trial%wfn_dat',(sys%lattice%nsites/2)+1,ierr)
+
+            trial%wfn_dat(-1) = 0
+            trial%wfn_dat((sys%lattice%nsites/2)+1) = 0
+            do i=0,(sys%lattice%nsites/2)
+                trial%wfn_dat(i) = factorial_combination_1((sys%lattice%nsites/2)-i, i)
+                trial%wfn_dat(i) = -(2*mod(i,2)-1) * trial%wfn_dat(i)
+            end do
+        end if
+
+    end subroutine init_trial
 
     subroutine init_annihilation_flags(qmc_in, fciqmc_in, dmqmc_in, annihilation_flags)
 
