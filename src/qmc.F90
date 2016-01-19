@@ -52,7 +52,7 @@ contains
         use spawning, only: assign_particle_processor
         use system
         use symmetry, only: symmetry_orb_list
-        use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t
+        use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             reference_t, neel_singlet, single_basis
@@ -185,6 +185,7 @@ contains
                     call check_allocate('reference%occ_list0',sys%nel,ierr)
                 end if
                 call init_restart_info_t(ri, read_id=restart_in%read_id)
+                call get_reference_hdf5(ri, qmc_state%ref)
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
                 ! Need to re-calculate the reference determinant data
                 call decode_det(sys%basis, reference%f0, reference%occ_list0)
