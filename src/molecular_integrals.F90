@@ -432,9 +432,9 @@ contains
         if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
             re = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
             im = get_one_body_int_mol_nonzero(im_store, i, j, basis_fns)
-            intgrl = cmplx(re, im)
+            intgrl = cmplx(re, im, p)
         else
-            intgrl = cmplx(0.0_p, 0.0_p)
+            intgrl = cmplx(0.0_p, 0.0_p, p)
         end if
 
     end function get_one_body_int_mol_complex
@@ -599,7 +599,7 @@ contains
 
     end function two_body_int_indx
 
-    pure function two_body_int_indx_complex(uhf, i, j, a, b, basis_fns) result(indx)
+    pure function two_body_int_indx_complex(uhf, i_, j_, a_, b_, basis_fns) result(indx)
 
         ! In:
         !    uhf: whether integral store is from a UHF calculation (and hence is
@@ -623,12 +623,13 @@ contains
         type(int_indx) :: indx
         type(basis_fn_t), intent(in) :: basis_fns(:)
         logical, intent(in) :: uhf
-        integer, intent(in) :: i, j, a, b
+        integer, intent(in) :: i_, j_, a_, b_
+        integer :: orbs(4), oldorbs(4)
 
         integer :: ia, jb, ii, jj, aa, bb
-        logical :: conj
+        logical :: conj, eswap
 
-        integer :: maxv
+        integer :: maxv, scratch(2), i, j, a, b
 
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
@@ -640,40 +641,98 @@ contains
 
         ! For UHF systems we must also keep track of the spin of the orbitals
         ! during the permutations so we know which spin channel the integral is
-        ! in.
+        ! in. This is WIP currently- due to the use of spatial orbitals for 
+        ! ordering in complex we will have to change implementation slightly.
 
         ! We're given integral <ij|o_2|ab>
-        ! Require i>=a, but cannot always also guarantee j>=b. Instead can only specify i>=j,a,b.
+        ! If doing complex, can't simply reorder spinorbital indexes naively; have to use spatial 
+        ! orbitals to ensure correct result.
+        ! We require i>=a, but cannot always also guarantee j>=b. Instead can only specify i>=j,a,b.
+        ! If i == a can have j >= b, but must ensure ia >= jb. This can lead to complications in
+        ! cases of multiple values being equal to the maximum index. As such, we aim to ensure 
+        ! ia >= jb then j >= b:
+        ! - For instance, in the case of <ij|ai>, where i is the largest spatial index.
+        !   Conventionally we would seek i >= a (satified by definition), then seek to ensure the
+        !   largest of j and a was in the second position from the left. If j > a, this would lead
+        !   to ia < jb and giving us a nonsensical final index iajb. If instead we seek to maximise 
+        !   the value of the a position, we will obtain the correct answer.
 
+
+
+
+        oldorbs = (/i_, j_, a_, b_/)
+        i = basis_fns(i_)%spatial_index
+        j = basis_fns(j_)%spatial_index
+        a = basis_fns(a_)%spatial_index
+        b = basis_fns(b_)%spatial_index
+
+        orbs = (/i, j, a, b/)
         maxv = max(i,j,a,b)
-        if (maxv == i) then
-            ii = i
-            jj = j
-            aa = a
-            bb = b
-            conj = .false.
-        else if (maxv == j) then
-            ii = j
-            jj = i
-            aa = b
-            bb = a
-            conj = .false.
-        else if (maxv == a) then
+        ! Use counting here to avoid degeneracy issues from complex notation.
+        ! If only one maximum value, have unique choice of ordering. In degenerate cases, have to
+        ! be more careful
+        
+        orbs = (/i, j, a, b/)
+        ! First figure out if we have to conjugate or swap electrons for best alignment
+        if (count(orbs == maxv) == 1) then
+            conj = (maxv == a .or. maxv == b)
+            eswap = (maxv == j .or. maxv == b)
+        else
+            if (i == j .and. i == maxv) then
+                ! Have <ii|ab>, <ii|ai>, <ii|ib> or <ii|ii>
+                conj = .false.
+                eswap = (b > a)
+            else if (a == b .and. a == maxv) then
+                ! Have <ij|aa>, <aj|aa> or <ia|aa>
+                conj = .true.
+                eswap = (j > i)
+            else if (i == a .and. i == maxv) then
+                ! <ij|ib>
+                conj = (b > j)
+                eswap = .false.
+            else if (i == b .and. i == maxv) then
+                ! <ij|ai>
+                conj = (j > a)
+                eswap = conj
+            else if (j == a .and. j == maxv) then
+                ! <ij|jb>
+                conj = (i > b)
+                eswap = (.not.conj)
+            else if (j == b .and. j == maxv) then
+                ! <ij|aj>
+                conj = (i < a)
+                eswap = .true.
+            end if
+        end if
+
+        ! Perform operations we've decided we need.
+
+        if (conj) then
             ii = a
             jj = b
             aa = i
             bb = j
-            conj = .true.
         else
-            ii = b
-            jj = a
-            aa = j
-            bb = i
-            conj = .true.
+            ii = i
+            jj = j
+            aa = a
+            bb = b
         end if
 
-        ia = tri_ind(basis_fns(ii)%spatial_index, basis_fns(aa)%spatial_index)
-        jb = tri_ind_reorder(basis_fns(jj)%spatial_index, basis_fns(bb)%spatial_index)
+        if (eswap) then
+            scratch(1) = ii 
+            scratch(2) = jj
+            jj = scratch(1)
+            ii = scratch(2)
+            scratch(1) = aa
+            scratch(2) = bb
+            bb = scratch(1)
+            aa = scratch(2)
+        end if
+
+        ! Combine values uniquely, with reordering for jb as we can't guarantee j >= b
+        ia = tri_ind(ii, aa)
+        jb = tri_ind_reorder(jj, bb)
 
         ! Combine ia and jb in a unique way.
         ! This amounts to requiring (i,a) >= (j,b), i.e. i>=j || (i==j && a>=b),
@@ -917,9 +976,9 @@ contains
                                        .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             re = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
             im = get_two_body_int_mol_nonzero(im_store, i, j, a, b, basis_fns)
-            intgrl = cmplx(re, im)
+            intgrl = cmplx(re, im, p)
         else
-            intgrl = cmplx(0.0_p,0.0_p)
+            intgrl = cmplx(0.0_p,0.0_p, p)
         end if
 
     end function get_two_body_int_mol_complex

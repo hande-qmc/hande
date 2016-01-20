@@ -7,6 +7,9 @@ use const, only: p, i0
 
 implicit none
 
+private
+public :: get_hmatel_mol_comp
+
 contains
 
     pure function get_hmatel_mol_comp(sys, f1, f2) result(hmatel)
@@ -119,16 +122,16 @@ contains
                 i = occ_list(iel)
                 re = get_one_body_int_mol_nonzero(one_e_ints, i, i, sys%basis%basis_fns)
                 im = get_one_body_int_mol_nonzero(one_e_ints_im, i, i, sys%basis%basis_fns)
-                hmatel = hmatel + cmplx(re, im)
+                hmatel = hmatel + cmplx(re, im, p)
                 do jel = iel+1, sys%nel
                     j = occ_list(jel)
                     re =  get_two_body_int_mol_nonzero(coulomb_ints, i, j, i, j, sys%basis%basis_fns)
                     im =  get_two_body_int_mol_nonzero(coulomb_ints_im, i, j, i, j, sys%basis%basis_fns)
-                    hmatel = hmatel + cmplx(re, im)
+                    hmatel = hmatel + cmplx(re, im, p)
                     if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(j)%Ms) then
                         re =  get_two_body_int_mol_nonzero(coulomb_ints, i, j, j, i, sys%basis%basis_fns)
                         im =  get_two_body_int_mol_nonzero(coulomb_ints_im, i, j, j, i, sys%basis%basis_fns)
-                        hmatel = hmatel - cmplx(re, im)
+                        hmatel = hmatel - cmplx(re, im, p)
                     end if
                 end do
             end do
@@ -164,7 +167,7 @@ contains
 
         ! Check that this excitation is symmetry allowed.
         if (sys%basis%basis_fns(i)%sym/=sys%basis%basis_fns(a)%sym) then
-            hmatel = cmplx(0.0_p, 0.0_p)
+            hmatel = cmplx(0.0_p, 0.0_p, p)
         else
             ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
@@ -231,16 +234,16 @@ contains
 
             re = get_one_body_int_mol_nonzero(one_e_ints, i, a, basis_fns)
             im = get_one_body_int_mol_nonzero(one_e_ints_im, i, a, basis_fns)
-
+            hmatel = cmplx(re, im, p)
             do iel = 1, sys%nel
                 if (occ_list(iel) /= i) then
                     re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), basis_fns)
-                    hmatel = hmatel + cmplx(re, im) 
+                    hmatel = hmatel + cmplx(re, im, p) 
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
                         re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
                         im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, basis_fns)
-                        hmatel = hmatel - cmplx(re, im)
+                        hmatel = hmatel - cmplx(re, im, p)
                 end if
             end do
         end associate
@@ -249,7 +252,7 @@ contains
 
     end function slater_condon1_mol_excit
 
-    elemental function slater_condon2_mol(sys, i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_mol(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -332,12 +335,12 @@ contains
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) then
             re = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
             im = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals_imag, i, j, a, b, sys%basis%basis_fns)
-            hmatel = cmplx(re, im)
+            hmatel = cmplx(re, im, p)
         end if
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(b)%Ms) then
             re =  get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns)
             im =  get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals_imag, i, j, b, a, sys%basis%basis_fns)
-            hmatel = hmatel - cmplx(re, im)
+            hmatel = hmatel - cmplx(re, im, p)
         end if
         if (perm) hmatel = -hmatel
 

@@ -217,6 +217,7 @@ contains
         use parallel
 
         use hamiltonian, only: get_hmatel, get_hmatel_complex
+
         use real_lattice
         use system, only: sys_t
 
@@ -233,16 +234,23 @@ contains
         logical :: sparse_mode
         real(p) :: hmatel
 
+
+
+
         sparse_mode = present(hamil_csr) .and. .not.present(hamil)
         if (.not.present(hamil) .and. .not.present(hamil_csr) .and. .not.present(hamil_comp)) &
-            call stop_all('generate_hamil', 'Must supply either hamil or hamil_csr in argument list.')
+            call stop_all('generate_hamil', 'Must supply either hamil or hamil_csr or hamil_comp in argument list.')
 
         if (sparse_mode .and. present(proc_blacs_info)) then
             call stop_all('generate_hamil', &
                 'Sparse distributed matrices are not currently implemented.  &
                 &If this is disagreeable to you, please contribute patches resolving this situation.')
         end if
-
+        if (present(hamil_comp) .and. present(proc_blacs_info)) then
+            call stop_all('generate_hamil', &
+                'Complex distributed matrices are not currently implemented.  &
+                &If this is disagreeable to you, please contribute patches resolving this situation.')
+        end if
         if (present(hamil)) then
             if (present(proc_blacs_info)) then
                 allocate(hamil(proc_blacs_info%nrows,proc_blacs_info%ncols), stat=ierr)
@@ -251,6 +259,9 @@ contains
                 allocate(hamil(ndets, ndets), stat=ierr)
                 call check_allocate('hamil', ndets**2, ierr)
             end if
+        else if (present(hamil_comp)) then
+            allocate(hamil_comp(ndets, ndets), stat=ierr)
+            call check_allocate('hamil_comp', ndets**2, ierr)
         end if
 
         ! Form the Hamiltonian matrix < D_i | H | D_j >.
@@ -341,9 +352,11 @@ contains
                         hamil(i,j) = get_hmatel(sys,dets(:,i),dets(:,j))
                     end do
                 else if (present(hamil_comp)) then
-                    do j = ii, ndets
+                    do j = i, ndets
                         hamil_comp(i,j) = get_hmatel_complex(sys,dets(:,i),dets(:,j))
                     end do
+
+
                 end if
                 !$omp end do
             end do

@@ -63,7 +63,10 @@ contains
                 proc_blacs_info = get_blacs_info(ndets, fci_in%block_size)
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
-            if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
+            call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
+            if (fci_in%write_hamiltonian) then
+                call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
+            end if 
             call lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
         end if
 

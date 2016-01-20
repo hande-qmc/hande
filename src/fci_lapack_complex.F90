@@ -26,7 +26,6 @@ contains
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
         use system, only: sys_t, copy_sys_spin_info, heisenberg
-
         use checking, only: check_allocate
         use errors, only: warning
         use parallel, only: parent, nprocs, blacs_info, get_blacs_info
@@ -39,7 +38,7 @@ contains
         type(sys_t) :: sys_bak
         type(reference_t) :: ref
         integer(i0), allocatable :: dets(:,:)
-        complex(p), allocatable :: eigv(:)
+        real(p), allocatable :: eigv(:)
         complex(p), allocatable :: hamil(:,:)
         integer :: ndets, ierr, i
         type(blacs_info) :: proc_blacs_info
@@ -65,7 +64,9 @@ contains
                 proc_blacs_info = get_blacs_info(ndets, fci_in%block_size)
                 call generate_hamil(sys, ndets, dets, hamil_comp=hamil, proc_blacs_info=proc_blacs_info)
             end if
-            if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil_comp=hamil)
+            if (fci_in%write_hamiltonian) then
+                call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil_comp=hamil)
+            end if
             call lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
         end if
 
@@ -76,7 +77,6 @@ contains
             do i = 1, ndets
                 write (6,'(1X,i6,1X,f18.12)') i, eigv(i)
             end do
-            write (6,'()')
         end if
 
         ! If requested, calculate and print eigenvalues for an RDM.
@@ -122,8 +122,9 @@ contains
         integer(i0), intent(in) :: dets(:,:)
         type(blacs_info), intent(in) :: proc_blacs_info
         complex(p), intent(inout) :: hamil(:,:)
-        complex(p), intent(out) :: eigv(:)
-        real(p), allocatable :: work(:)
+        real(p), intent(out) :: eigv(:)
+        complex(p), allocatable :: work(:)
+        real(p), allocatable :: rwork(:)
         complex(p), allocatable :: eigvec(:,:)
         integer :: info, ierr, lwork, i, nwfn, ndets
         character(1) :: job
@@ -132,6 +133,7 @@ contains
 
         if (parent) then
             write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
+
         end if
 
         if (fci_in%analyse_fci_wfn /= 0 .or. fci_in%print_fci_wfn /= 0 &
@@ -146,33 +148,35 @@ contains
             call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
         end if
 
+        
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
+        allocate(rwork(max(1,3*ndets-2)), stat = ierr)
+        call check_allocate('rwork',max(1, 3*ndets - 2), ierr)
         if (nprocs == 1) then
 #ifdef SINGLE_PRECISION
-            call cheev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
+            call cheev(job, 'U', ndets, hamil, ndets, eigv, work, -1, rwork, info)
 #else
-            call zheev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
+            call zheev(job, 'U', ndets, hamil, ndets, eigv, work, -1, rwork, info)
 #endif
         else
 #ifdef PARALLEL
 #ifdef SINGLE_PRECISION
             call pcheev(job, 'U', ndets, hamil, 1, 1,               &
                         proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, -1, info)
+                        proc_blacs_info%desc_m, work, -1, rwork, info)
 #else
             call pzheev(job, 'U', ndets, hamil, 1, 1,               &
                         proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, -1, info)
+                        proc_blacs_info%desc_m, work, -1, rwork, info)
 #endif
 #endif
         end if
 
-        lwork = nint(work(1))
+        lwork = nint(real(work(1)))
         deallocate(work)
         call check_deallocate('work',ierr)
-
         ! Now perform the diagonalisation.
         allocate(work(lwork), stat=ierr)
         call check_allocate('work',lwork,ierr)
@@ -180,9 +184,9 @@ contains
         if (nprocs == 1) then
             ! Use lapack.
 #ifdef SINGLE_PRECISION
-            call cheev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+            call cheev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, rwork, info)
 #else
-            call zheev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+            call zheev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, rwork, info)
 #endif
         else
 #ifdef PARALLEL
@@ -190,27 +194,18 @@ contains
 #ifdef SINGLE_PRECISION
             call pcheev(job, 'U', ndets, hamil, 1, 1,               &
                         proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, lwork, info)
+                        proc_blacs_info%desc_m, work, lwork, rwork, info)
 #else
             call pzheev(job, 'U', ndets, hamil, 1, 1,               &
                         proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, lwork, info)
+                        proc_blacs_info%desc_m, work, lwork, rwork, info)
 #endif
 #endif
         end if
-
         deallocate(work, stat=ierr)
         call check_deallocate('work',ierr)
-
-        !nwfn = fci_in%analyse_fci_wfn
-        !if (nwfn < 0) nwfn = ndets
-        !do i = 1, nwfn
-        !    if (nprocs == 1) then
-        !        call analyse_wavefunction_complex(sys, hamil(:,i), dets, proc_blacs_info)
-        !    else
-        !        call analyse_wavefunction_complex(sys, eigvec(:,i), dets, proc_blacs_info)
-        !    end if
-        !end do
+        deallocate(rwork, stat=ierr)
+        call check_deallocate('rwork',ierr)
         nwfn = fci_in%print_fci_wfn
         if (nwfn < 0) nwfn = ndets
         do i = 1, nwfn
