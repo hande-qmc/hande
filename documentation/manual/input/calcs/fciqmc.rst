@@ -83,7 +83,8 @@ Options
 
     .. warning::
 
-        The calculation must be of the same type to succesfully resume, but this is not checked.
+        The qmc_state object must have been returned by a previous FCIQMC calculation.
+        The validity of this is not checked.  The system must also be unchanged.
 
 .. _fciqmc_table:
 
