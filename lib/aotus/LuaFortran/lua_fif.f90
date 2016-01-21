@@ -243,6 +243,19 @@ module lua_fif
       integer(kind=c_int) :: luaL_loadstring
     end function luaL_loadstring
 
+    subroutine luaL_setmetatable(L, tname) bind(c, name="luaL_setmetatable")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: L
+      character(kind=c_char), dimension(*) :: tname
+    end subroutine luaL_setmetatable
+
+    function luaL_newmetatable(L, tname) bind(c, name="luaL_newmetatable")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: L
+      character(kind=c_char), dimension(*) :: tname
+      integer(kind=c_int) :: luaL_newmetatable
+    end function luaL_newmetatable
+
   end interface
 
 end module lua_fif
