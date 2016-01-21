@@ -68,4 +68,35 @@ type mom_sym_t
     integer, allocatable :: inv_sym(:) ! nsym
 end type mom_sym_t
 
+contains
+
+    subroutine dealloc_pg_sym_t(pg_sym)
+
+        ! Deallocate all allocated components of pg_sym.
+
+        ! In/Out:
+        !   pg_sym: pg_sym_t object to deallocate.
+
+        type(pg_sym_t), intent(inout) :: pg_sym
+
+        if (allocated(pg_sym%nbasis_sym)) deallocate(pg_sym%nbasis_sym)
+        if (allocated(pg_sym%nbasis_sym_spin)) deallocate(pg_sym%nbasis_sym_spin)
+        if (allocated(pg_sym%sym_spin_basis_fns)) deallocate(pg_sym%sym_spin_basis_fns)
+
+    end subroutine dealloc_pg_sym_t
+
+    subroutine dealloc_mom_sym_t(mom_sym)
+
+        ! Deallocate all allocated components of mom_sym.
+
+        ! In/Out:
+        !   mom_sym: mom_sym_t object to deallocate.
+
+        type(mom_sym_t), intent(inout) :: mom_sym
+
+        if (allocated(mom_sym%sym_table)) deallocate(mom_sym%sym_table)
+        if (allocated(mom_sym%inv_sym)) deallocate(mom_sym%inv_sym)
+
+    end subroutine dealloc_mom_sym_t
+
 end module symmetry_types
