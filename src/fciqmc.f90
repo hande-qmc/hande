@@ -52,7 +52,7 @@ contains
         use spawning, only: create_spawned_particle_initiator
         use qmc, only: init_qmc
         use qmc_common
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
         use system, only: sys_t, sys_t_json
@@ -355,6 +355,8 @@ contains
         if (determ%doing_semi_stoch) call dealloc_semi_stoch_t(determ, .false.)
 
         call dealloc_det_info_t(cdet, .false.)
+
+        call dSFMT_end(rng)
 
     end subroutine do_fciqmc
 

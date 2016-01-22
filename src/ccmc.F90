@@ -286,7 +286,7 @@ contains
         !    qs: qmc_state for use if restarting the calculation
 
         use checking, only: check_allocate, check_deallocate
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use errors, only: stop_all
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
@@ -813,6 +813,10 @@ contains
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, nparticles_old, sys%basis%nbasis, .false.)
             if (parent) write (6,'()')
         end if
+
+        do i = 0, nthreads-1
+            call dSFMT_end(rng(i))
+        end do
 
         ! TODO: deallocation...
 !        call dealloc_det_info_t(cdet)
