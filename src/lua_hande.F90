@@ -174,6 +174,10 @@ contains
         ! Helper functions
         call flu_register(lua_state, 'redistribute', lua_redistribute_restart)
 
+        ! Deallocation
+        call flu_register(lua_state, 'free_qmc_state', lua_dealloc_qmc_state)
+        call flu_register(lua_state, 'free_sys', lua_dealloc_sys)
+
     end subroutine register_lua_hande_api
 
     ! --- Helper functions : lua ---

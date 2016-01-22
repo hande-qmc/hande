@@ -1575,4 +1575,34 @@ contains
 
     end subroutine get_qmc_state
 
+    function lua_dealloc_qmc_state(L) result(nresult) bind(c)
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_top_module, only: aot_top_get_val
+
+        use qmc_data, only: qmc_state_t
+        use dealloc, only: dealloc_qmc_state_t
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+        integer :: ierr
+        type(c_ptr) :: qs_ptr
+        type(qmc_state_t), pointer :: qs
+
+        lua_state = flu_copyptr(L)
+
+        call aot_top_get_val(qs_ptr, ierr, lua_state)
+        call c_f_pointer(qs_ptr, qs)
+
+        call dealloc_qmc_state_t(qs)
+
+        deallocate(qs)
+
+        nresult = 0
+
+    end function lua_dealloc_qmc_state
+
 end module lua_hande_calc

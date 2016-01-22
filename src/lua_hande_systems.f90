@@ -760,4 +760,33 @@ contains
 
     end function lua_ringium
 
+    function lua_dealloc_sys(L) result(nresult) bind(c)
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
+        use flu_binding, only: flu_State, flu_copyptr
+        use aot_top_module, only: aot_top_get_val
+
+        use system, only: sys_t
+        use dealloc, only: dealloc_sys_t
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+        integer :: ierr
+        type(c_ptr) :: sys_ptr
+        type(sys_t), pointer :: sys
+
+        lua_state = flu_copyptr(L)
+
+        call aot_top_get_val(sys_ptr, ierr, lua_state)
+        call c_f_pointer(sys_ptr, sys)
+
+        call dealloc_sys_t(sys)
+        deallocate(sys)
+
+        nresult = 0
+
+    end function lua_dealloc_sys
+
 end module lua_hande_system

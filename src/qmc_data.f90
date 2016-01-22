@@ -302,7 +302,7 @@ type reference_t
     ! Energy shift of the reference determinant i.e.
     ! <D0|H_new|D0>-<D0|H_old|D0>, where H_old and H_new are two different
     ! Hamiltonians. Used in ip-dmqmc when reweighing the initial density matrix.
-    real(p) :: energy_shift
+    real(p) :: energy_shift = 0.0_p
 end type reference_t
 
 ! --- semi-stochastic ---
