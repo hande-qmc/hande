@@ -17,6 +17,9 @@ Density Matrix Quantum Monte Carlo
         qmc_state = qmc_state,
     }
 
+Returns:
+    a qmc_state object.
+
 ``dmqmc`` performs a density matrix quantum Monte Carlo (DMQMC) calculation on a system.
 
 Unlike :ref:`ccmc` and :ref:`fciqmc`, where quantities are averaged inside each report
@@ -100,6 +103,11 @@ Options
     Optional.
 
     Output of a previous calculation to resume.
+
+    .. warning::
+
+        The qmc_state object must have been returned by a previous DMQMC calculation.
+        The validity of this is not checked.  The system must also be unchanged.
 
 .. _dmqmc_table:
 

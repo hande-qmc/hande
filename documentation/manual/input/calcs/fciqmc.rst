@@ -81,6 +81,11 @@ Options
 
     Output of a previous calculation to resume.
 
+    .. warning::
+
+        The qmc_state object must have been returned by a previous FCIQMC calculation.
+        The validity of this is not checked.  The system must also be unchanged.
+
 .. _fciqmc_table:
 
 fciqmc options
