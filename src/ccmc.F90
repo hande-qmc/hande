@@ -816,13 +816,15 @@ contains
 
         do i = 0, nthreads-1
             call dSFMT_end(rng(i))
+            call dealloc_det_info_t(cdet(i))
+            if (ccmc_in%linked) then
+                call dealloc_det_info_t(ldet(i))
+                call dealloc_det_info_t(rdet(i))
+            end if
+            nullify(cdet(i)%cluster)
+            deallocate(cluster(i)%excitors, stat=ierr)
+            call check_deallocate('cluster%excitors', ierr)
         end do
-
-        ! TODO: deallocation...
-!        call dealloc_det_info_t(cdet)
-!        cdet%cluster => NULL()
-!        deallocate(cluster%excitors, stat=ierr)
-!        call check_deallocate('cluster%excitors', ierr)
 
     end subroutine do_ccmc
 
