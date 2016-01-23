@@ -54,8 +54,9 @@ contains
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
                               rdm_in_t_json, operators_in_t_json
         use check_input, only: check_qmc_opts, check_dmqmc_opts
-        use spawn_data, only: write_memcheck_report
+        use spawn_data, only: write_memcheck_report, dealloc_spawn_t
         use idmqmc, only: set_parent_flag_dmqmc
+        use hash_table, only: free_hash_table
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -377,6 +378,13 @@ contains
         call dealloc_det_info_t(cdet2, .false.)
 
         call dSFMT_end(rng)
+
+        if (allocated(dmqmc_estimates%inst_rdm%spawn)) then
+            do idet = 1, size(dmqmc_estimates%subsys_info)
+                call free_hash_table(dmqmc_estimates%inst_rdm%spawn(idet)%ht)
+                call dealloc_spawn_t(dmqmc_estimates%inst_rdm%spawn(idet)%spawn)
+            end do
+        end if
 
     end subroutine do_dmqmc
 
