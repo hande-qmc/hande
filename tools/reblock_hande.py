@@ -204,8 +204,7 @@ reblock_plot : string
     else:
         options.filenames = [[fname] for fname in options.filenames]
 
-    return (options.filenames, options.start_iteration, options.plotfile,
-            options.verbose, options.width)
+    return options
 
 def main(args):
     '''Run reblocking and data analysis on HANDE output.
@@ -220,8 +219,9 @@ Returns
 None.
 '''
 
-    (files, start_iteration, reblock_plot, verbose, width) = parse_args(args)
-    run_hande_blocking(files, start_iteration, reblock_plot, verbose, width)
+    options = parse_args(args)
+    run_hande_blocking(options.filenames, options.start_iteration,
+                       options.plotfile, options.verbose, options.width)
 
 if __name__ == '__main__':
 
