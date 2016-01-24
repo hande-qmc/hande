@@ -313,33 +313,8 @@ contains
             pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
 #endif
 
-            ! calculate the reference determinant symmetry
-            ref_sym = symmetry_orb_list(sys, reference%occ_list0)
 
         end associate
-
-        if (parent) then
-            write (6,'(1X,"Reference determinant, |D0> =",1X)',advance='no')
-            call write_det(sys%basis, sys%nel, qmc_state%ref%f0, new_line=.true.)
-            write (6,'(1X,"E0 = <D0|H|D0> =",f20.12)') qmc_state%ref%H00
-            if (doing_calc(hfs_fciqmc_calc)) write (6,'(1X,"O00 = <D0|O|D0> =",f20.12)')  qmc_state%ref%O00
-            write(6,'(1X,"Symmetry of reference determinant:")',advance='no')
-            select case(sys%system)
-            case (hub_k)
-                call write_basis_fn(sys, sys%basis%basis_fns(2*ref_sym), new_line=.true., print_full=.false.)
-            case default
-                write(6,'(1X,i0)') ref_sym
-            end select
-
-            if (doing_calc(dmqmc_calc)) then
-                write (6,'(1X,"Initial population on the trace of the density matrix:",1X,i0)') int(qmc_in%D0_population,int_64)
-            else
-                write (6,'(1X,"Initial population on reference determinant:",1X,f11.4)') qmc_in%D0_population
-                write (6,'(1X,"Note that the correlation energy is relative to |D0>.")')
-            end if
-            write (6,'()')
-
-        end if
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
