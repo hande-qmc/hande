@@ -84,98 +84,52 @@ contains
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
-        ! --------- Reference det --------
-
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
         else
             call init_reference(sys, reference_in, qmc_state%ref)
         end if
 
-        ! --- Array sizes depending upon QMC algorithms ---
+        ! --- Allocate psip list ---
+
+        if (doing_calc(hfs_fciqmc_calc)) then
+            qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+        else if (present(dmqmc_in)) then
+            if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+        end if
+
+        ! Each determinant occupies string_len kind=i0 integers,
+        ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
+        ! integer. If the Neel singlet state is used as the reference state for
+        ! the projected estimator, then a further 2 reals are used per
+        ! determinant.
+        if (fciqmc_in_loc%trial_function == neel_singlet) qmc_state%psip_list%info_size = 2
+
+        ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
+        ! calculation of memory occupied by the main particle lists.
+        call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                             qmc_in%real_amplitude_force_32, qmc_state%psip_list)
+
+
+        call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
+                             qmc_state%par_info, load_bal_in%nslots)
+
+        call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
+                              fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, qmc_state%spawn_store)
+
+        ! Allocate the shift.
+        allocate(qmc_state%shift(qmc_state%psip_list%nspaces), stat=ierr)
+        call check_allocate('qmc_state%shift', qmc_state%psip_list%nspaces, ierr)
+        allocate(qmc_state%vary_shift(qmc_state%psip_list%nspaces), stat=ierr)
+        call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
+        qmc_state%shift = qmc_in%initial_shift
 
         associate(pl=>qmc_state%psip_list, reference=>qmc_state%ref, spawn=>qmc_state%spawn_store%spawn, &
                   spawn_recv=>qmc_state%spawn_store%spawn_recv)
 
-            if (doing_calc(hfs_fciqmc_calc)) then
-                pl%nspaces = pl%nspaces + 1
-            else if (present(dmqmc_in)) then
-                if (dmqmc_in%replica_tricks) pl%nspaces = pl%nspaces + 1
-            end if
+            ! -- Allocate spawn store --
 
-            ! Each determinant occupies string_len kind=i0 integers,
-            ! pl%nspaces kind=int_p integers, pl%nspaces kind=p reals and one
-            ! integer. If the Neel singlet state is used as the reference state for
-            ! the projected estimator, then a further 2 reals are used per
-            ! determinant.
-            if (fciqmc_in_loc%trial_function == neel_singlet) pl%info_size = 2
 
-            ! Each spawned_walker occupies spawned_size kind=int_s integers.
-            if (qmc_in%initiator_approx) then
-                size_spawned_walker = (sys%basis%tensor_label_len+pl%nspaces+1)*int_s_length/8
-            else
-                size_spawned_walker = (sys%basis%tensor_label_len+pl%nspaces)*int_s_length/8
-            end if
-            max_nspawned_states = qmc_in%spawned_walker_length
-            if (max_nspawned_states < 0) then
-                ! Given in MB.  Convert.
-                ! Note that we store 2 arrays.
-                max_nspawned_states = int((-real(max_nspawned_states,p)*10**6)/(2*size_spawned_walker))
-            end if
-
-            if (parent) then
-                write (6,'(1X,a57,f7.2)') &
-                    'Memory allocated per core for spawned walker lists (MB): ', &
-                    size_spawned_walker*real(2*max_nspawned_states,p)/10**6
-                write (6,'(1X,a51,'//int_fmt(max_nspawned_states,1)//',/)') &
-                    'Number of elements per core in spawned walker list:', max_nspawned_states
-            end if
-
-            ! --- Memory allocation ---
-
-            call init_parallel_t(pl%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, qmc_state%par_info, &
-                                 load_bal_in%nslots)
-
-            ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
-            ! calculation of memory occupied by the main particle lists.
-            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
-                                 qmc_in%real_amplitude_force_32, pl)
-
-            ! Allocate the shift.
-            allocate(qmc_state%shift(pl%nspaces), stat=ierr)
-            call check_allocate('qmc_state%shift', pl%nspaces, ierr)
-            allocate(qmc_state%vary_shift(pl%nspaces), stat=ierr)
-            call check_allocate('qmc_state%vary_shift', pl%nspaces, ierr)
-            qmc_state%shift = qmc_in%initial_shift
-
-            ! Allocate spawned particle lists.
-            if (mod(max_nspawned_states, nprocs) /= 0) then
-                if (parent) write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
-                max_nspawned_states = ceiling(real(max_nspawned_states)/nprocs)*nprocs
-                if (parent) write (6,'(1X,a35,'//int_fmt(max_nspawned_states,1)//',a1,/)') &
-                                            'Increasing spawned_walker_length to',max_nspawned_states,'.'
-            end if
-
-            ! If not using real amplitudes then we always want spawn_cutoff to be
-            ! equal to 1.0, so overwrite the default before creating spawn_t objects.
-            spawn_cutoff = qmc_in%spawn_cutoff
-            if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
-
-            if (doing_calc(dmqmc_calc)) then
-                ! Hash the entire first bit array and the minimum number of bits
-                ! in the second bit array.
-                nhash_bits = sys%basis%nbasis + i0_length*sys%basis%string_len
-            else
-                nhash_bits = sys%basis%nbasis
-            end if
-            call alloc_spawn_t(sys%basis%tensor_label_len, nhash_bits, pl%nspaces, qmc_in%initiator_approx, &
-                               max_nspawned_states, spawn_cutoff, pl%pop_real_factor, qmc_state%par_info%load%proc_map, 7, &
-                               qmc_in%use_mpi_barriers, spawn)
-            if (fciqmc_in_loc%non_blocking_comm) then
-                call alloc_spawn_t(sys%basis%tensor_label_len, nhash_bits, pl%nspaces, qmc_in%initiator_approx, &
-                                   max_nspawned_states, spawn_cutoff, pl%pop_real_factor, qmc_state%par_info%load%proc_map, 7, &
-                                   .false., spawn_recv)
-            end if
 
             ! --- Initial walker distributions ---
 
@@ -312,7 +266,6 @@ contains
             pl%tot_nparticles = pl%nparticles
             pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
 #endif
-
 
         end associate
 
@@ -919,5 +872,81 @@ contains
         reference%ex_level = reference_in%ex_level
 
     end subroutine init_reference_restart
+
+    subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, spawn_store)
+
+        use qmc_data, only: qmc_in_t, spawned_particle_t
+        use const
+        use parallel, only: parent, nprocs
+        use calc, only: doing_calc, dmqmc_calc
+        use basis_types, only: basis_t
+        use spawn_data, only: proc_map_t, alloc_spawn_t
+
+        type(qmc_in_t), intent(in) :: qmc_in
+        integer, intent(in) :: nspaces
+        integer(int_p), intent(in) :: pop_real_factor
+        type(basis_t), intent(in) :: basis
+        logical, intent(in) :: non_blocking_comm
+        type(proc_map_t), intent(in) :: proc_map
+        type(spawned_particle_t), intent(out) :: spawn_store
+
+        integer :: size_spawned_walker, max_nspawned_states, nhash_bits
+        real(p) :: spawn_cutoff
+
+        ! Calculate length of spawned particle arrays
+
+        ! Each spawned_walker occupies spawned_size kind=int_s integers.
+        if (qmc_in%initiator_approx) then
+            size_spawned_walker = (basis%tensor_label_len+nspaces+1)*int_s_length/8
+        else
+            size_spawned_walker = (basis%tensor_label_len+nspaces)*int_s_length/8
+        end if
+
+        max_nspawned_states = qmc_in%spawned_walker_length
+        if (max_nspawned_states < 0) then
+            ! Given in MB.  Convert.
+            ! Note that we store 2 arrays.
+            max_nspawned_states = int((-real(max_nspawned_states,p)*10**6)/(2*size_spawned_walker))
+        end if
+        if (parent) then
+            write (6,'(1X,a57,f7.2)') &
+                'Memory allocated per core for spawned walker lists (MB): ', &
+                size_spawned_walker*real(2*max_nspawned_states,p)/10**6
+            write (6,'(1X,a51,1x,i0,/)') &
+                'Number of elements per core in spawned walker list:', max_nspawned_states
+        end if
+        if (mod(max_nspawned_states, nprocs) /= 0) then
+            max_nspawned_states = ceiling(real(max_nspawned_states)/nprocs)*nprocs
+            if (parent) then
+               write (6,'(1X,a68)') 'spawned_walker_length is not a multiple of the number of processors.'
+               write (6,'(1X,a35,1x,i0,a1,/)') &
+                'Increasing spawned_walker_length to',max_nspawned_states,'.'
+            end if
+        end if
+
+        ! If not using real amplitudes then we always want spawn_cutoff to be
+        ! equal to 1.0, so overwrite the default before creating spawn_t objects.
+        spawn_cutoff = qmc_in%spawn_cutoff
+        if (.not. qmc_in%real_amplitudes) spawn_cutoff = 0.0_p
+
+        if (doing_calc(dmqmc_calc)) then
+            ! Hash the entire first bit array and the minimum number of bits
+            ! in the second bit array.
+            nhash_bits = basis%nbasis + i0_length*basis%string_len
+        else
+            nhash_bits = basis%nbasis
+        end if
+
+        ! Allocate spawned particle lists.
+        call alloc_spawn_t(basis%tensor_label_len, nhash_bits, nspaces, qmc_in%initiator_approx, &
+                           max_nspawned_states, spawn_cutoff, pop_real_factor, proc_map, 7, &
+                           qmc_in%use_mpi_barriers, spawn_store%spawn)
+        if (non_blocking_comm) then
+            call alloc_spawn_t(basis%tensor_label_len, nhash_bits, nspaces, qmc_in%initiator_approx, &
+                               max_nspawned_states, spawn_cutoff, pop_real_factor, proc_map, 7, &
+                               .false., spawn_store%spawn_recv)
+        end if
+
+    end subroutine init_spawn_store
 
 end module qmc
