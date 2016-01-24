@@ -15,7 +15,7 @@ import argparse
 import pprint
 
 def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1,
-                       width=0):
+                       width=0, out_method='to_string'):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
@@ -46,6 +46,9 @@ width : int
     Maximum width (in characters) of lines to print out for
     :class:`pandas.DataFrame` objects; exceeding this results in line wrapping.
     A non-positive value corresponds to disabling line wrapping.
+out_method : string
+    Output method for printing out tables.  Either 'to_string' to print a
+    space-separate table or 'to_csv' to print a CSV table.
 
 Returns
 -------
@@ -58,12 +61,26 @@ opt_block: :class:`pandas.DataFrame`
 '''
 
     try:
+        float_str = '%-#.8e'
         float_fmt = '{0:-#.8e}'.format
         float_fmt(1.0)
     except ValueError:
         # GAH.  Alternate formatting only added to format function after
         # python 2.6..
+        float_str = '%-.8e'
         float_fmt = '{0:-.8e}'.format
+
+    def df_to_x(df, out_method, float_fmt, float_fmt_str, width):
+        tbl_fn = getattr(df, out_method)
+        try:
+            return tbl_fn(float_format=float_fmt, na_rep='n/a',
+                          line_width=width)
+        except TypeError:
+            # Annoyingly to_csv and to_string take different types for
+            # their float_fmt arguments.
+            # See: https://github.com/pydata/pandas/issues/9448
+            return tbl_fn(float_format=float_str, na_rep='n/a',
+                          line_width=width)
 
     if width <= 0:
         width = None
@@ -91,7 +108,7 @@ opt_block: :class:`pandas.DataFrame`
                 print('')
         if verbose >= v_analysis:
             for i in info: 
-                print(i.reblock.to_string(float_format=float_fmt, line_width=width))
+                print(df_to_x(i.reblock, out_method, float_fmt, float_str, width))
                 print('')
         infos.extend(info)
         if len(info) == 1:
@@ -114,8 +131,7 @@ opt_block: :class:`pandas.DataFrame`
     if not opt_block.empty and verbose > v_silent:
         print('Recommended statistics from optimal block size:')
         print('')
-        print(opt_block.to_string(float_format=float_fmt, na_rep='n/a',
-                                  line_width=width))
+        print(df_to_x(opt_block, out_method, float_fmt, float_str, width))
 
     for (calc, info) in zip(indices, infos):
         if info.no_opt_block and verbose > v_silent:
@@ -164,6 +180,8 @@ reblock_plot : string
                         'Separate calculations can be denoted by placing \'--\''
                         ' between groups of files.  Default: treat each file as'
                         ' an independent calculation.')
+    parser.add_argument('-o', '--output', default='txt', choices=['txt', 'csv'],
+                        help='Format for data table.  Default: %(default)s.')
     parser.add_argument('-p', '--plot', default=None, dest='plotfile',
                         help='Filename to which the reblocking convergence plot '
                         'is saved.  Use \'-\' to show plot interactively.  '
@@ -204,6 +222,9 @@ reblock_plot : string
     else:
         options.filenames = [[fname] for fname in options.filenames]
 
+    out_methods = {'txt': 'to_string', 'csv': 'to_csv'}
+    options.output = out_methods[options.output]
+
     return options
 
 def main(args):
@@ -221,7 +242,8 @@ None.
 
     options = parse_args(args)
     run_hande_blocking(options.filenames, options.start_iteration,
-                       options.plotfile, options.verbose, options.width)
+                       options.plotfile, options.verbose, options.width,
+                       options.output)
 
 if __name__ == '__main__':
 
