@@ -94,22 +94,26 @@ opt_block: :class:`pandas.DataFrame`
     for calc in files:
         info = pyhande.lazy.std_analysis(calc, start_iteration,
                                          extract_psips=True)
-        if verbose >= v_analysis:
-            print('Analysing file(s): %s' % (' '.join(calc)))
-        if verbose >= v_meta:
-            for i in info:
-                md = i.metadata
+        for (i, i_info) in enumerate(info):
+            if verbose >= v_analysis:
+                msg = 'Analysing file(s): %s.' % (' '.join(calc))
+                if len(info) > 1:
+                    msg += '\nCalculation: %i' % (i,)
+                print(msg)
+            if verbose >= v_meta:
+                md = i_info.metadata
                 calc_type = md.pop('calc_type')
                 calc_input = md.pop('input')
-                print('\ncalc_type: %s' % (calc_type))
+                print('calc_type: %s.\n' % (calc_type))
                 pprint.pprint(md)
                 if verbose >= v_input:
                     print('\nFull input options:\n%s' % '\n'.join(calc_input))
                 print('')
-        if verbose >= v_analysis:
-            for i in info: 
-                print(df_to_x(i.reblock, out_method, float_fmt, float_str, width))
+            if verbose >= v_analysis:
+                print(df_to_x(i_info.reblock, out_method, float_fmt, float_str,
+                              width))
                 print('')
+
         infos.extend(info)
         if len(info) == 1:
             indices.append(','.join(calc))
