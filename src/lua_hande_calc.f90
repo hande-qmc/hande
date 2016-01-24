@@ -214,8 +214,8 @@ contains
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close, aot_get_val
 
         use simple_fciqmc, only: do_simple_fciqmc
@@ -265,7 +265,7 @@ contains
             call do_simple_fciqmc(sys, qmc_in, restart_in, reference, use_sparse_hamil, qmc_state_out)
         end if
 
-        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_out))
+        call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
 
     end function lua_simple_fciqmc
@@ -292,8 +292,8 @@ contains
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close
 
         use dmqmc_data, only: dmqmc_in_t
@@ -357,7 +357,7 @@ contains
         end if
 
         ! Return qmc_state to the user.
-        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_out))
+        call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
 
     end function lua_fciqmc
@@ -382,8 +382,8 @@ contains
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close
 
         use dmqmc_data, only: dmqmc_in_t
@@ -441,7 +441,7 @@ contains
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out)
         end if
 
-        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_out))
+        call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
 
     end function lua_ccmc
@@ -469,8 +469,8 @@ contains
         ! See interface documentation for the relevant read_TYPE procedure to
         ! understand the options available within a given subtable.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close
 
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
@@ -551,7 +551,7 @@ contains
 
         sys%basis%tensor_label_len = sys%basis%string_len
 
-        call flu_pushlightuserdata(lua_state, c_loc(qmc_state_out))
+        call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
 
     end function lua_dmqmc
@@ -1554,6 +1554,7 @@ contains
 
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_table_top, aot_exists, aot_get_val
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
 
         use qmc_data, only: qmc_state_t
 
@@ -1561,7 +1562,7 @@ contains
         logical, intent(out) :: have_qmc_state
         type(qmc_state_t), pointer, intent(out) :: qmc_state
 
-        integer :: err, opts
+        integer :: err, opts, qs_table
         type(c_ptr) :: qs_ptr
 
         opts = aot_table_top(lua_state)
@@ -1569,17 +1570,50 @@ contains
         have_qmc_state = aot_exists(lua_state, opts, 'qmc_state')
         if (have_qmc_state) then
             ! Get qmc_state object
-            call aot_get_val(qs_ptr, err, lua_state, opts, key='qmc_state')
+            call aot_table_open(lua_state, opts, qs_table, key='qmc_state')
+            call aot_get_val(qs_ptr, err, lua_state, qs_table, key='qmc_state')
+            call aot_table_close(lua_state, qs_table)
             call c_f_pointer(qs_ptr, qmc_state)
         end if
 
     end subroutine get_qmc_state
 
+    subroutine push_qmc_state(lua_state, qmc_state)
+
+        ! Add a table containing the passed qmc_state to the lua stack for returning
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !   qmc_state: the qmc_state object to return to lua
+
+        use, intrinsic :: iso_c_binding, only: c_loc
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
+
+        use qmc_data, only: qmc_state_t
+
+        type(qmc_state_t), pointer, intent(in) :: qmc_state
+        type(flu_state), intent(inout) :: lua_state
+
+        integer :: table
+
+        ! Create table to become qmc_state object
+        call aot_table_open(lua_state, thandle=table)
+        
+        ! Add qmc_state pointer as t.qmc_state
+        call flu_pushstring(lua_state, "qmc_state")
+        call flu_pushlightuserdata(lua_state, c_loc(qmc_state))
+        call flu_settable(lua_state, table)
+
+    end subroutine push_qmc_state
+
     function lua_dealloc_qmc_state(L) result(nresult) bind(c)
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_top_module, only: aot_top_get_val
+        use aot_table_ops_module, only: aot_table_top
+        use aot_table_module, only: aot_get_val, aot_table_close
 
         use qmc_data, only: qmc_state_t
         use dealloc, only: dealloc_qmc_state_t
@@ -1588,13 +1622,15 @@ contains
         type(c_ptr), value :: L
 
         type(flu_State) :: lua_state
-        integer :: ierr
+        integer :: ierr, qs_table
         type(c_ptr) :: qs_ptr
         type(qmc_state_t), pointer :: qs
 
         lua_state = flu_copyptr(L)
 
-        call aot_top_get_val(qs_ptr, ierr, lua_state)
+        qs_table = aot_table_top(lua_state)
+        call aot_get_val(qs_ptr, ierr, lua_state, qs_table, key='qmc_state')
+        call aot_table_close(lua_state, qs_table)
         call c_f_pointer(qs_ptr, qs)
 
         call dealloc_qmc_state_t(qs)
