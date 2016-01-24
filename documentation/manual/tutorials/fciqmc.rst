@@ -69,6 +69,7 @@ before it.  This is done using an input file like [#]_:
 As the input file is a lua script, we can use lua expressions (e.g. ``10^10`` for
 :math:`1 \times 10^{10}`) at any point.
 
+.. [review] - FDM: is the second timestep a typo or a joke?
 The choice of timestep is beyond the timestep of a simple tutorial; broadly it is chosen
 such that the population is stable and there are no 'blooms' (spawning events which create
 a large number of particles).  HANDE will print out a warning and a summary at the end of
@@ -78,6 +79,7 @@ were chosen such that enough states could be stored and the plateau occurs withi
 iterations used.  Choosing these for a new system typically requires some trial and error.
 Given the large population, we will run this calculation in parallel using MPI:
 
+.. [review] - FDM: number of cores?
 .. code-block:: bash
 
     $ mpiexec hande.x hubbard_plateau.lua > hubbard_plateau.out
@@ -143,6 +145,7 @@ This time, the population starts to be controlled after it reaches the desired
     plt.xlabel('iteration')
     plt.ylabel('# particles')
 
+.. [review] - FDM: line lengths?
 Note that it takes some time for the population to stabilise as the shift gradually decays
 towards the ground state correlation energy.  Once the population is stable, both the shift and the **instantaneous** projected energy vary about a fixed value, namely the ground state energy:
 

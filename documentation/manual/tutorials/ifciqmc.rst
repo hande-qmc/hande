@@ -79,7 +79,7 @@ for the FCIQMC calculation is sufficiently small:
     plt.xlabel('# particles')
     plt.ylabel('Projected energy / $t$')
     plt.legend()
-    
+
 
 The light blue region indicates the extent of the FCIQMC stochastic error, as
 calculated in the :ref:`FCIQMC tutorial <fciqmc_tutorial>`.  In this case, the initiator
