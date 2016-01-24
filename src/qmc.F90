@@ -82,7 +82,15 @@ contains
         if (present(fciqmc_in)) fciqmc_in_loc = fciqmc_in
         if (present(dmqmc_in)) dmqmc_in_loc = dmqmc_in
 
-        call copy_reference_t(reference_in, qmc_state%ref)
+        if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
+
+        ! --------- Reference det --------
+
+        if (restart_in%read_restart) then
+            call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
+        else
+            call init_reference(sys, reference_in, qmc_state%ref)
+        end if
 
         ! --- Array sizes depending upon QMC algorithms ---
 
@@ -169,68 +177,11 @@ contains
                                    .false., spawn_recv)
             end if
 
-            allocate(reference%f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%f0',sys%basis%string_len,ierr)
-            allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
-            call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
-
-            ! --- Importance sampling ---
-
             ! --- Initial walker distributions ---
-            ! Note occ_list could be set and allocated in the input.
 
             if (restart_in%read_restart) then
-                if (.not.allocated(reference%occ_list0)) then
-                    allocate(reference%occ_list0(sys%nel), stat=ierr)
-                    call check_allocate('reference%occ_list0',sys%nel,ierr)
-                end if
-                call init_restart_info_t(ri, read_id=restart_in%read_id)
-                call get_reference_hdf5(ri, qmc_state%ref)
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
-                ! Need to re-calculate the reference determinant data
-                call decode_det(sys%basis, reference%f0, reference%occ_list0)
-                if (fciqmc_in_loc%trial_function == neel_singlet) then
-                    ! Set the Neel state data for the reference state, if it is being used.
-                    reference%H00 = 0.0_p
-                else
-                    reference%H00 = sc0_ptr(sys, reference%f0)
-                end if
-                if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
             else
-
-                ! Reference det
-
-                ! Set the reference determinant to be the spin-orbitals with the lowest
-                ! single-particle eigenvalues which satisfy the spin polarisation.
-                ! Note: this is for testing only!  The symmetry input is currently
-                ! ignored.
-                if (sys%symmetry < sys%sym_max) then
-                    call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
-                else
-                    call set_reference_det(sys, reference%occ_list0, .false.)
-                end if
-
-                call encode_det(sys%basis, reference%occ_list0, reference%f0)
-
-                if (allocated(reference%hs_occ_list0)) then
-                    call encode_det(sys%basis, reference%hs_occ_list0, reference%hs_f0)
-                else
-                    allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
-                    call check_allocate('reference%hs_occ_list0', sys%nel, ierr)
-                    reference%hs_occ_list0 = reference%occ_list0
-                    reference%hs_f0 = reference%f0
-                end if
-
-                ! Energy of reference determinant.
-                reference%H00 = sc0_ptr(sys, reference%f0)
-                ! Exchange energy of reference determinant.
-                select case (sys%system)
-                case (ueg, read_in)
-                    reference%energy_shift = energy_diff_ptr(sys, reference%occ_list0)
-                case default
-                    ! [todo] - Implement for all models.
-                end select
-                if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 
                 ! In general FCIQMC, we start with psips only on the
                 ! reference determinant, so set pl%nstates = 1 and
@@ -902,5 +853,96 @@ contains
         qmc_state%estimators%D0_population = qmc_in%D0_population
 
     end subroutine init_estimators
+
+    subroutine init_reference(sys, reference_in, reference)
+
+        use qmc_data, only: reference_t
+        use system, only: sys_t, ueg, read_in
+        use proc_pointers, only: sc0_ptr, energy_diff_ptr, op0_ptr
+        use calc, only: doing_calc, hfs_fciqmc_calc
+        use reference_determinant, only: copy_reference_t, set_reference_det
+        use checking, only: check_allocate
+        use determinants, only: encode_det
+
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference_in
+        type(reference_t), intent(out) :: reference
+
+        integer :: ierr
+
+        ! Note occ_list could be set and allocated in the input.
+        call copy_reference_t(reference_in, reference)
+
+        allocate(reference%f0(sys%basis%string_len), stat=ierr)
+        call check_allocate('reference%f0',sys%basis%string_len,ierr)
+        allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
+        call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
+
+        ! Set the reference determinant to be the spin-orbitals with the lowest
+        ! single-particle eigenvalues which satisfy the spin polarisation.
+        ! Note: this is for testing only!  The symmetry input is currently
+        ! ignored.
+        if (sys%symmetry < sys%sym_max) then
+            call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
+        else
+            call set_reference_det(sys, reference%occ_list0, .false.)
+        end if
+
+        call encode_det(sys%basis, reference%occ_list0, reference%f0)
+
+        if (allocated(reference%hs_occ_list0)) then
+            call encode_det(sys%basis, reference%hs_occ_list0, reference%hs_f0)
+        else
+            allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
+            call check_allocate('reference%hs_occ_list0', sys%nel, ierr)
+            reference%hs_occ_list0 = reference%occ_list0
+            reference%hs_f0 = reference%f0
+        end if
+
+        ! Energy of reference determinant.
+        reference%H00 = sc0_ptr(sys, reference%f0)
+        ! Exchange energy of reference determinant.
+        select case (sys%system)
+        case (ueg, read_in)
+            reference%energy_shift = energy_diff_ptr(sys, reference%occ_list0)
+        case default
+            ! [todo] - Implement for all models.
+        end select
+        if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
+
+    end subroutine init_reference
+
+    subroutine init_reference_restart(sys, reference_in, ri, reference)
+
+        use qmc_data, only: reference_t
+        use system, only: sys_t
+        use restart_hdf5, only: restart_info_t, get_reference_hdf5
+        use calc, only: doing_calc, hfs_fciqmc_calc
+        use proc_pointers, only: sc0_ptr, op0_ptr
+        use checking, only: check_allocate
+        use determinants, only: decode_det
+
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: reference_in
+        type(restart_info_t), intent(in) :: ri
+        type(reference_t), intent(out) :: reference
+
+        integer :: ierr
+
+        allocate(reference%f0(sys%basis%string_len), stat=ierr)
+        call check_allocate('reference%f0',sys%basis%string_len,ierr)
+        allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
+        call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
+        allocate(reference%occ_list0(sys%nel), stat=ierr)
+        call check_allocate('reference%occ_list0',sys%nel,ierr)
+        call get_reference_hdf5(ri, reference)
+        ! Need to re-calculate the reference determinant data
+        call decode_det(sys%basis, reference%f0, reference%occ_list0)
+        reference%H00 = sc0_ptr(sys, reference%f0)
+        if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
+
+        reference%ex_level = reference_in%ex_level
+
+    end subroutine init_reference_restart
 
 end module qmc
