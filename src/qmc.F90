@@ -118,8 +118,8 @@ contains
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0
             else
-                call initial_distribution(sys, qmc_state%ref, qmc_state%spawn_store%spawn, qmc_in%D0_population, &
-                                          fciqmc_in_loc, qmc_state%psip_list)
+                call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
+                                          qmc_state%ref, qmc_state%psip_list)
             end if
 
         end if
@@ -585,6 +585,8 @@ contains
         ! In:
         !   sys: system being studied
         !   qmc_in: input options relating to qmc methods
+        !   have_tot_nparticles: if true, don't recalculate tot_nparticles as&
+        !       it is provided by a restart file.
         ! In/Out:
         !   qmc_state: current state of qmc calculation
 
@@ -661,6 +663,14 @@ contains
 
     subroutine init_reference(sys, reference_in, reference)
 
+        ! Set the reference determinant from input options
+
+        ! In:
+        !   sys: system being studied.
+        !   reference_in: reference provided in input, if any.
+        ! Out:
+        !   reference: reference selected for the qmc calculation.
+
         use qmc_data, only: reference_t
         use system, only: sys_t, ueg, read_in
         use proc_pointers, only: sc0_ptr, energy_diff_ptr, op0_ptr
@@ -719,6 +729,15 @@ contains
 
     subroutine init_reference_restart(sys, reference_in, ri, reference)
 
+        ! Set the reference determinant from a HDF5 restart file.
+
+        ! In:
+        !   sys: system being studied.
+        !   reference_in: reference provided in input.  Only ex_level is used.
+        !   ri: restart information.
+        ! Out:
+        !   reference: reference selected for the qmc calculation.
+
         use qmc_data, only: reference_t
         use system, only: sys_t
         use restart_hdf5, only: restart_info_t, get_reference_hdf5
@@ -751,6 +770,18 @@ contains
     end subroutine init_reference_restart
 
     subroutine init_spawn_store(qmc_in, nspaces, pop_real_factor, basis, non_blocking_comm, proc_map, spawn_store)
+
+        ! Allocate and initialise spawn store
+
+        ! In:
+        !   qmc_in: input options relating to qmc methods
+        !   nspaces: number of particle types in use.
+        !   pop_real_factor: scaling factor to encode real populations.
+        !   basis: information on the single particle basis used.
+        !   non_blocking_comm: whether non-blocking MPI communication is being used.
+        !   proc_map: settings for mapping hash of a determinant to a processor.
+        ! Out:
+        !   spawn_store: spawned array.  All components allocated/initialised on exit.
 
         use qmc_data, only: qmc_in_t, spawned_particle_t
         use const
@@ -826,7 +857,18 @@ contains
 
     end subroutine init_spawn_store
 
-    subroutine initial_distribution(sys, reference, spawn, D0_pop, fciqmc_in, pl)
+    subroutine initial_distribution(sys, spawn, D0_pop, fciqmc_in, reference, pl)
+
+        ! Set the initial psip distribution for a CCMC/FCIQMC calculation.
+
+        ! In:
+        !   sys: system being studied.
+        !   spawn: spawned array.
+        !   D0_pop: initial population on the reference determinant(s).
+        !   fciqmc_in: input options relating to fciqmc.
+        ! In/Out:
+        !   reference: reference determinant.  H00 is reset on exit if using neel singlet trial function.
+        !   pl: main particle list.  On exit, the initial distribution is set.
 
         use qmc_data, only: particle_t, reference_t, fciqmc_in_t, neel_singlet, single_basis
         use parallel, only: iproc, nprocs
@@ -836,10 +878,10 @@ contains
         use determinants, only: encode_det
 
         type(sys_t), intent(in) :: sys
-        type(reference_t), intent(inout) :: reference
         type(spawn_t), intent(in) :: spawn
         type(fciqmc_in_t), intent(in) :: fciqmc_in
         real(p), intent(in) :: D0_pop
+        type(reference_t), intent(inout) :: reference
         type(particle_t), intent(inout) :: pl
 
         integer :: D0_proc, slot, i, ipos, D0_inv_proc

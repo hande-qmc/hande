@@ -651,6 +651,13 @@ module restart_hdf5
 
         subroutine get_reference_hdf5(ri, reference)
 
+            ! Read a reference determinant from a restart file.
+
+            ! In:
+            !    ri: restart information.  ri%restart_stem and ri%read_id are used.
+            ! In/Out:
+            !    reference: info on the reference determinant read from file.
+
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path
