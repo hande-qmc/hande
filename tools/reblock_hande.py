@@ -70,7 +70,7 @@ opt_block: :class:`pandas.DataFrame`
         float_str = '%-.8e'
         float_fmt = '{0:-.8e}'.format
 
-    def df_to_x(df, out_method, float_fmt, float_fmt_str, width):
+    def df_to_x(df, out_method, float_fmt, float_str, width):
         tbl_fn = getattr(df, out_method)
         try:
             return tbl_fn(float_format=float_fmt, na_rep='n/a',
