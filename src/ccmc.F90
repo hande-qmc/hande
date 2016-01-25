@@ -279,7 +279,9 @@ contains
         !       desired spin/symmetry.
         !    load_bal_in: input options for load balancing.
         !    qmc_in: input options relating to QMC methods.
-        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
+        ! In/Out:
+        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
+        !       Deallocated on exit.
         ! Out:
         !    qs: qmc_state for use if restarting the calculation
 
@@ -320,7 +322,7 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), target, intent(out) :: qs
-        type(qmc_state_t), intent(in), optional :: qmc_state_restart
+        type(qmc_state_t), intent(inout), optional :: qmc_state_restart
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
@@ -372,8 +374,8 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
-        if (present(qmc_state_restart)) qs = qmc_state_restart
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, &
+                      qmc_state_restart=qmc_state_restart)
 
         if (parent) then
             call json_object_init(js, tag=.true.)

@@ -86,7 +86,7 @@ type spawn_t
     ! spawned particles and each processor will be sent a roughly equal number
     ! of spawned particles from a given processor.
 
-    ! Note sdata is actually allocated but actually points to an internal store (store1 or
+    ! Note sdata is not actually allocated but actually points to an internal store (store1 or
     ! store2) for efficient communication and simpler code.
     integer(int_s), pointer :: sdata(:,:) ! (element_len,array_len)
 
@@ -246,6 +246,28 @@ contains
         spawn%head = spawn%head_start
 
     end subroutine alloc_spawn_t
+
+    subroutine move_spawn_t(spawn_old, spawn_new)
+
+        ! Move allocated memory from one spawn_t to another.
+
+        ! In/Out:
+        !   spawn_old: allocated spawn_t; deallocated on exit.
+        ! Out:
+        !   spawn_new: newly allocated spawn_t.
+
+        type(spawn_t), intent(inout) :: spawn_old
+        type(spawn_t), intent(out) :: spawn_new
+
+        ! As tha large arrays are pointers, not allocatable, this copy does not allocate new memory.
+        spawn_new = spawn_old
+        ! Nullify pointer components to avoid later on trying to deallocate the same memory twice.
+        nullify(spawn_old%sdata)
+        nullify(spawn_old%sdata_recvd)
+        nullify(spawn_old%store1)
+        nullify(spawn_old%store2)
+
+    end subroutine move_spawn_t
 
     subroutine dealloc_spawn_t(spawn)
 

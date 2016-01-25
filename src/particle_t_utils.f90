@@ -154,4 +154,32 @@ contains
 
     end subroutine dealloc_particle_t
 
+    subroutine move_particle_t(old_particles, new_particles)
+
+        ! Move the particle list from old_particles to new_particles. Using move_alloc avoids
+        ! allocating another (potentially very large) main particle list.
+
+        ! In/Out:
+        !   old_particles: contains particle list on entry.  Deallocated on exit.
+        ! Out:
+        !   new_particles: on exit contains original contents of old_particles.
+
+        use qmc_data, only: particle_t
+
+        type(particle_t), intent(inout) :: old_particles
+        type(particle_t), intent(out) :: new_particles
+
+        new_particles%nstates = old_particles%nstates
+        call move_alloc(old_particles%nparticles, new_particles%nparticles)
+        call move_alloc(old_particles%tot_nparticles, new_particles%tot_nparticles)
+        call move_alloc(old_particles%nparticles_proc, new_particles%nparticles_proc)
+        new_particles%nspaces = old_particles%nspaces
+        new_particles%info_size = old_particles%info_size
+        new_particles%pop_real_factor = old_particles%pop_real_factor
+        call move_alloc(old_particles%states, new_particles%states)
+        call move_alloc(old_particles%pops, new_particles%pops)
+        call move_alloc(old_particles%dat, new_particles%dat)
+
+    end subroutine move_particle_t
+
 end module particle_t_utils

@@ -10,7 +10,8 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, dmqmc_in, fciqmc_in)
+    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, dmqmc_in, fciqmc_in, &
+                        qmc_state_restart)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -27,9 +28,12 @@ contains
         !       allocated) then this is copied into qmc_state%ref.
         !       Otherwise a best guess is made based upon symmetry/spin/number
         !       of electrons/etc in set_reference_det.
-        ! In/Out:
         !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in (optional): input options relating to DMQMC.
+        ! In/Out:
+        !    qmc_state_restart (optional): qmc_state_t object from a calculation
+        !       to restart. Deallocated on exit.
+        ! Out:
         !    annihilation_flags: calculation specific annihilation flags.
         !    qmc_state: qmc_state_t object.  On output the QMC state is
         !       initialsed (potentially from a restart file) with components
@@ -39,13 +43,14 @@ contains
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, init_parallel_t
         use energy_evaluation, only: nparticles_start_ind
-        use particle_t_utils, only: init_particle_t
+        use particle_t_utils, only: init_particle_t, move_particle_t
         use system, only: sys_t
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             reference_t, neel_singlet
         use dmqmc_data, only: dmqmc_in_t
+        use spawn_data, only: move_spawn_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -56,6 +61,7 @@ contains
         type(qmc_state_t), intent(out) :: qmc_state
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
+        type(qmc_state_t), intent(inout), optional :: qmc_state_restart
 
         integer :: ierr
         type(fciqmc_in_t) :: fciqmc_in_loc
@@ -69,6 +75,10 @@ contains
 
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
+        else if (present(qmc_state_restart)) then
+            qmc_state%ref = qmc_state_restart%ref
+            qmc_state%estimators%D0_population = qmc_state_restart%estimators%D0_population
+            qmc_state%mc_cycles_done = qmc_state_restart%mc_cycles_done
         else
             call init_reference(sys, reference_in, qmc_state%ref)
         end if
@@ -88,40 +98,45 @@ contains
 
         ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
         ! calculation of memory occupied by the main particle lists.
-        call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
-                             qmc_in%real_amplitude_force_32, qmc_state%psip_list)
-
+        if (.not. present(qmc_state_restart)) then
+            call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
+                                 qmc_in%real_amplitude_force_32, qmc_state%psip_list)
+        end if
 
         call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 
-        call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
-                              fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, qmc_state%spawn_store)
+        if (present(qmc_state_restart)) then
+            call move_spawn_t(qmc_state_restart%spawn_store%spawn, qmc_state%spawn_store%spawn)
+            call move_spawn_t(qmc_state_restart%spawn_store%spawn_recv, qmc_state%spawn_store%spawn_recv)
+        else
+            call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
+                                  fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, qmc_state%spawn_store)
+        end if
 
-        ! Allocate the shift.
-        allocate(qmc_state%shift(qmc_state%psip_list%nspaces), stat=ierr)
-        call check_allocate('qmc_state%shift', qmc_state%psip_list%nspaces, ierr)
-        allocate(qmc_state%vary_shift(qmc_state%psip_list%nspaces), stat=ierr)
-        call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
-        qmc_state%shift = qmc_in%initial_shift
+        if (present(qmc_state_restart)) then
+            call move_alloc(qmc_state_restart%shift, qmc_state%shift)
+            call move_alloc(qmc_state_restart%vary_shift, qmc_state%vary_shift)
+        else
+            ! Allocate the shift.
+            allocate(qmc_state%shift(qmc_state%psip_list%nspaces), stat=ierr)
+            call check_allocate('qmc_state%shift', qmc_state%psip_list%nspaces, ierr)
+            allocate(qmc_state%vary_shift(qmc_state%psip_list%nspaces), stat=ierr)
+            call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
+            qmc_state%shift = qmc_in%initial_shift
+        end if
 
         ! Initial walker distributions
         if (restart_in%read_restart) then
             call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
+        else if (present(qmc_state_restart)) then
+            call move_particle_t(qmc_state_restart%psip_list, qmc_state%psip_list)
+        else if (doing_calc(dmqmc_calc)) then
+            ! Initial distribution handled later
+            qmc_state%psip_list%nstates = 0
         else
-
-            ! In general FCIQMC, we start with psips only on the
-            ! reference determinant  For DMQMC, this is
-            ! not required, as psips are spawned along the diagonal
-            ! initially.
-            if (doing_calc(dmqmc_calc)) then
-                ! Initial distribution handled later
-                qmc_state%psip_list%nstates = 0
-            else
-                call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
-                                          qmc_state%ref, qmc_state%psip_list)
-            end if
-
+            call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
+                                      qmc_state%ref, qmc_state%psip_list)
         end if
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
