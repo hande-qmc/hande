@@ -23,7 +23,7 @@ contains
         !    load_bal_in: input options for load balancing.
         !    fciqmc_in (optional): input options relating to FCIQMC.  Default
         !       fciqmc_in_t settings are used if not present.
-        !    referemce_in: reference determinant.  If set (ie components
+        !    reference_in: reference determinant.  If set (ie components
         !       allocated) then this is copied into qmc_state%ref.
         !       Otherwise a best guess is made based upon symmetry/spin/number
         !       of electrons/etc in set_reference_det.
@@ -124,130 +124,27 @@ contains
         call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
         qmc_state%shift = qmc_in%initial_shift
 
-        associate(pl=>qmc_state%psip_list, reference=>qmc_state%ref, spawn=>qmc_state%spawn_store%spawn, &
-                  spawn_recv=>qmc_state%spawn_store%spawn_recv)
+        ! --- Initial walker distributions ---
 
-            ! -- Allocate spawn store --
+        if (restart_in%read_restart) then
+            call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
+        else
 
-
-
-            ! --- Initial walker distributions ---
-
-            if (restart_in%read_restart) then
-                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
+            ! In general FCIQMC, we start with psips only on the
+            ! reference determinant  For DMQMC, this is
+            ! not required, as psips are spawned along the diagonal
+            ! initially.
+            if (doing_calc(dmqmc_calc)) then
+                ! Initial distribution handled later
+                qmc_state%psip_list%nstates = 0
             else
+                call initial_distribution(sys, qmc_state%ref, qmc_state%spawn_store%spawn, qmc_in%D0_population, &
+                                          fciqmc_in_loc, qmc_state%psip_list)
+            end if
 
-                ! In general FCIQMC, we start with psips only on the
-                ! reference determinant, so set pl%nstates = 1 and
-                ! initialise pl%pops. For DMQMC, this is
-                ! not required, as psips are spawned along the diagonal
-                ! initially.
-                if (doing_calc(dmqmc_calc)) then
-                    ! Initial distribution handled later
-                    pl%nstates = 0
-                else
-                    pl%nstates = 1
-                    ! Zero all populations...
-                    pl%pops(:,pl%nstates) = 0_int_p
-                    ! Set initial population of Hamiltonian walkers.
-                    pl%pops(1,pl%nstates) = nint(qmc_in%D0_population)*pl%pop_real_factor
-                    ! Set the bitstring of this psip to be that of the
-                    ! reference state.
-                    pl%states(:,pl%nstates) = reference%f0
+        end if ! End of initialisation of reference state(s)/restarting from previous calculations
 
-                    ! Determine and set properties for the reference state which we start on.
-                    ! By definition, when using a single determinant as a reference state:
-                    pl%dat(1,pl%nstates) = 0.0_p
-                    ! Or if not using a single determinant:
-                    if (fciqmc_in_loc%trial_function == neel_singlet) then
-                        ! Set the Neel state data for the reference state, if it is being used.
-                        pl%dat(1,pl%nstates) = reference%H00
-                        reference%H00 = 0.0_p
-
-                        pl%dat(pl%nspaces+1,pl%nstates) = sys%lattice%nsites/2
-                        ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
-                        ! The Neel state cannot be used for non-bipartite lattices.
-                        pl%dat(pl%nspaces+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
-                    end if
-
-                    ! Finally, we need to check if the reference determinant actually
-                    ! belongs on this processor.
-                    ! If it doesn't, set the walkers array to be empty.
-                    associate(pm=>spawn%proc_map)
-                        call assign_particle_processor(reference%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
-                                                       spawn%move_freq, nprocs, D0_proc, slot, pm%map, pm%nslots)
-                    end associate
-                    if (D0_proc /= iproc) pl%nstates = 0
-                end if
-
-                ! For the Heisenberg model and open shell systems, it is often useful to
-                ! have psips start on both the reference state and the spin-flipped version.
-                if (fciqmc_in_loc%init_spin_inv_D0) then
-
-                    ! Need to handle the Heisenberg model (consisting of spinors on
-                    ! lattice sites) and electron systems differently, as the
-                    ! Heisenberg model has no concept of unoccupied basis
-                    ! functions/holes.
-                    select case (sys%system)
-                    case (heisenberg)
-                        ! Flip all spins in f0 to get f0_inv
-                        f0_inv = not(reference%f0)
-                        ! In general, the basis bit string has some padding at the
-                        ! end which must be unset.  We need to clear this...
-                        ! Loop over all bits after the last basis function.
-                        i = sys%basis%bit_lookup(2,sys%basis%nbasis)
-                        do ipos = sys%basis%bit_lookup(1,sys%basis%nbasis)+1, i0_end
-                            f0_inv(i) = ibclr(f0_inv(i), ipos)
-                        end do
-                    case default
-                        ! Swap each basis function for its spin-inverse
-                        ! This looks somewhat odd, but relies upon basis
-                        ! functions alternating down (Ms=-1) and up (Ms=1).
-                        do i = 1, sys%nel
-                            if (mod(reference%occ_list0(i),2) == 1) then
-                                occ_list0_inv(i) = reference%occ_list0(i) + 1
-                            else
-                                occ_list0_inv(i) = reference%occ_list0(i) - 1
-                            end if
-                        end do
-                        call encode_det(sys%basis, occ_list0_inv, f0_inv)
-                    end select
-
-                    associate(pm=>spawn%proc_map)
-                        call assign_particle_processor(f0_inv, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
-                                                       spawn%move_freq, nprocs, D0_inv_proc, slot, pm%map, pm%nslots)
-                    end associate
-
-                    ! Store if not identical to reference det.
-                    if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then
-                        pl%nstates = pl%nstates + 1
-                        ! Zero all populations for this determinant.
-                        pl%pops(:,pl%nstates) = 0_int_p
-                        ! Set the population for this basis function.
-                        pl%pops(1,pl%nstates) = nint(qmc_in%D0_population)*pl%pop_real_factor
-                        pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
-                        select case(sys%system)
-                        case(heisenberg)
-                            if (fciqmc_in_loc%trial_function /= single_basis) then
-                                pl%dat(1,pl%nstates) = 0
-                            else
-                                pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
-                            end if
-                        case default
-                            pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
-                        end select
-                        pl%states(:,pl%nstates) = f0_inv
-                        ! If we are using the Neel state as a reference in the
-                        ! Heisenberg model, then set the required data.
-                        if (fciqmc_in_loc%trial_function == neel_singlet) then
-                            pl%dat(pl%nspaces+1,pl%nstates) = 0
-                            pl%dat(pl%nspaces+2,pl%nstates) = 0
-                        end if
-                    end if
-                end if
-
-            end if ! End of initialisation of reference state(s)/restarting from previous calculations
-
+        associate(pl=>qmc_state%psip_list)
             ! Total number of particles on processor.
             ! Probably should be handled more simply by setting it to be either 0 or
             ! D0_population or obtaining it from the restart file, as appropriate.
@@ -760,7 +657,7 @@ contains
             call mpi_allreduce(tmp_p, qmc_state%estimators%hf_signed_pop, qmc_state%psip_list%nspaces, mpi_preal, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
 #else
-            qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(pl)
+            qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(qmc_state%psip_list)
 #endif
         end if
 
@@ -948,5 +845,125 @@ contains
         end if
 
     end subroutine init_spawn_store
+
+    subroutine initial_distribution(sys, reference, spawn, D0_pop, fciqmc_in, pl)
+
+        use qmc_data, only: particle_t, reference_t, fciqmc_in_t, neel_singlet, single_basis
+        use parallel, only: iproc, nprocs
+        use system, only: sys_t, heisenberg
+        use proc_pointers, only: sc0_ptr
+        use spawning, only: assign_particle_processor
+        use determinants, only: encode_det
+
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(inout) :: reference
+        type(spawn_t), intent(in) :: spawn
+        type(fciqmc_in_t), intent(in) :: fciqmc_in
+        real(p), intent(in) :: D0_pop
+        type(particle_t), intent(inout) :: pl
+
+        integer :: D0_proc, slot, i, ipos, D0_inv_proc
+        integer :: occ_list0_inv(sys%nel)
+        integer(i0) :: f0_inv(sys%basis%string_len)
+
+        ! We start with psips only on the reference determinant,
+        ! so set pl%nstates = 1 and initialise pl%pops.
+
+        pl%nstates = 1
+        ! Set the bitstring of this psip to be that of the
+        ! reference state.
+        pl%states(:,pl%nstates) = reference%f0
+        ! Zero population for all spaces.
+        pl%pops(:,pl%nstates) = 0_int_p
+        ! Set initial population of Hamiltonian walkers.
+        pl%pops(1,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+
+        ! Determine and set properties for the reference state which we start on.
+        ! By definition, when using a single determinant as a reference state:
+        pl%dat(1,pl%nstates) = 0.0_p
+        ! Or if not using a single determinant:
+        if (fciqmc_in%trial_function == neel_singlet) then
+            ! Set the Neel state data for the reference state, if it is being used.
+            pl%dat(1,pl%nstates) = reference%H00
+            reference%H00 = 0.0_p
+
+            pl%dat(pl%nspaces+1,pl%nstates) = sys%lattice%nsites/2
+            ! For a rectangular bipartite lattice, nbonds = ndim*nsites.
+            ! The Neel state cannot be used for non-bipartite lattices.
+            pl%dat(pl%nspaces+2,pl%nstates) = sys%lattice%ndim*sys%lattice%nsites
+        end if
+
+        ! Finally, we need to check if the reference determinant actually
+        ! belongs on this processor.
+        ! If it doesn't, set the walkers array to be empty.
+        call assign_particle_processor(reference%f0, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                       spawn%move_freq, nprocs, D0_proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+        if (D0_proc /= iproc) pl%nstates = 0
+
+        ! For the Heisenberg model and open shell systems, it is often useful to
+        ! have psips start on both the reference state and the spin-flipped version.
+        if (fciqmc_in%init_spin_inv_D0) then
+
+            ! Need to handle the Heisenberg model (consisting of spinors on
+            ! lattice sites) and electron systems differently, as the
+            ! Heisenberg model has no concept of unoccupied basis
+            ! functions/holes.
+            select case (sys%system)
+            case (heisenberg)
+                ! Flip all spins in f0 to get f0_inv
+                f0_inv = not(reference%f0)
+                ! In general, the basis bit string has some padding at the
+                ! end which must be unset.  We need to clear this...
+                ! Loop over all bits after the last basis function.
+                i = sys%basis%bit_lookup(2,sys%basis%nbasis)
+                do ipos = sys%basis%bit_lookup(1,sys%basis%nbasis)+1, i0_end
+                    f0_inv(i) = ibclr(f0_inv(i), ipos)
+                end do
+            case default
+                ! Swap each basis function for its spin-inverse
+                ! This looks somewhat odd, but relies upon basis
+                ! functions alternating down (Ms=-1) and up (Ms=1).
+                do i = 1, sys%nel
+                    if (mod(reference%occ_list0(i),2) == 1) then
+                        occ_list0_inv(i) = reference%occ_list0(i) + 1
+                    else
+                        occ_list0_inv(i) = reference%occ_list0(i) - 1
+                    end if
+                end do
+                call encode_det(sys%basis, occ_list0_inv, f0_inv)
+            end select
+
+            call assign_particle_processor(f0_inv, spawn%bit_str_nbits, spawn%hash_seed, spawn%hash_shift, &
+                                           spawn%move_freq, nprocs, D0_inv_proc, slot, spawn%proc_map%map, spawn%proc_map%nslots)
+
+            ! Store if not identical to reference det.
+            if (D0_inv_proc == iproc .and. any(reference%f0 /= f0_inv)) then
+                pl%nstates = pl%nstates + 1
+                ! Zero all populations for this determinant.
+                pl%pops(:,pl%nstates) = 0_int_p
+                ! Set the population for this basis function.
+                pl%pops(1,pl%nstates) = nint(D0_pop)*pl%pop_real_factor
+                pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
+                select case(sys%system)
+                case(heisenberg)
+                    if (fciqmc_in%trial_function /= single_basis) then
+                        pl%dat(1,pl%nstates) = 0
+                    else
+                        pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
+                    end if
+                case default
+                    pl%dat(1,pl%nstates) = sc0_ptr(sys, reference%f0) - reference%H00
+                end select
+                pl%states(:,pl%nstates) = f0_inv
+                ! If we are using the Neel state as a reference in the
+                ! Heisenberg model, then set the required data.
+                if (fciqmc_in%trial_function == neel_singlet) then
+                    pl%dat(pl%nspaces+1,pl%nstates) = 0
+                    pl%dat(pl%nspaces+2,pl%nstates) = 0
+                end if
+            end if
+        end if
+
+    end subroutine initial_distribution
 
 end module qmc
