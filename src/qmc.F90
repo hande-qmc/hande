@@ -35,27 +35,16 @@ contains
         !       initialsed (potentially from a restart file) with components
         !       correctly allocated and useful information printed out...
 
-        use checking, only: check_allocate, check_deallocate
-        use errors, only: stop_all, warning
-        use parallel
-        use utils, only: int_fmt
+        use checking, only: check_allocate
 
-        use basis, only: write_basis_fn
-        use calc
-        use dmqmc_procedures, only: init_dmqmc
-        use determinants, only: decode_det, encode_det, write_det
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, init_parallel_t
         use energy_evaluation, only: nparticles_start_ind
-        use reference_determinant, only: set_reference_det, copy_reference_t
-        use particle_t_utils
-        use proc_pointers, only: sc0_ptr, op0_ptr, energy_diff_ptr
-        use spawn_data, only: alloc_spawn_t
-        use spawning, only: assign_particle_processor
-        use system
-        use symmetry, only: symmetry_orb_list
+        use particle_t_utils, only: init_particle_t
+        use system, only: sys_t
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            reference_t, neel_singlet, single_basis
+                            reference_t, neel_singlet
         use dmqmc_data, only: dmqmc_in_t
 
         type(sys_t), intent(in) :: sys
@@ -69,12 +58,6 @@ contains
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
 
         integer :: ierr
-        integer :: i, D0_proc, D0_inv_proc, ipos, occ_list0_inv(sys%nel), slot
-        integer :: size_spawned_walker, max_nspawned_states
-        integer :: nhash_bits
-        integer :: ref_sym ! the symmetry of the reference determinant
-        integer(i0) :: f0_inv(sys%basis%string_len)
-        real(p) :: spawn_cutoff
         type(fciqmc_in_t) :: fciqmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         type(restart_info_t) :: ri
@@ -91,13 +74,11 @@ contains
         end if
 
         ! --- Allocate psip list ---
-
         if (doing_calc(hfs_fciqmc_calc)) then
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (present(dmqmc_in)) then
             if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         end if
-
         ! Each determinant occupies string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
         ! integer. If the Neel singlet state is used as the reference state for
@@ -124,8 +105,7 @@ contains
         call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
         qmc_state%shift = qmc_in%initial_shift
 
-        ! --- Initial walker distributions ---
-
+        ! Initial walker distributions
         if (restart_in%read_restart) then
             call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
         else
@@ -142,33 +122,11 @@ contains
                                           fciqmc_in_loc, qmc_state%psip_list)
             end if
 
-        end if ! End of initialisation of reference state(s)/restarting from previous calculations
-
-        associate(pl=>qmc_state%psip_list)
-            ! Total number of particles on processor.
-            ! Probably should be handled more simply by setting it to be either 0 or
-            ! D0_population or obtaining it from the restart file, as appropriate.
-            forall (i=1:pl%nspaces) pl%nparticles(i) = sum(abs( real(pl%pops(i,:pl%nstates),p)/pl%pop_real_factor))
-            ! Should we already be in varyshift mode (e.g. restarting a calculation)?
-#ifdef PARALLEL
-            do i=1, pl%nspaces
-                call mpi_allgather(pl%nparticles(i), 1, MPI_PREAL, pl%nparticles_proc(i,:), 1, MPI_PREAL, MPI_COMM_WORLD, ierr)
-            end do
-            ! When restarting a non-blocking calculation this sum will not equal
-            ! tot_nparticles as some walkers have been communicated around the report
-            ! loop. The correct total is in the restart file so get it from there.
-            if (.not. (restart_in%read_restart .and. fciqmc_in_loc%non_blocking_comm)) &
-                forall(i=1:pl%nspaces) pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
-#else
-            pl%tot_nparticles = pl%nparticles
-            pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
-#endif
-
-        end associate
+        end if
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
-        call init_estimators(sys, qmc_in, qmc_state)
+        call init_estimators(sys, qmc_in, restart_in%read_restart.and.fciqmc_in_loc%non_blocking_comm, qmc_state)
 
     end subroutine init_qmc
 
@@ -620,7 +578,7 @@ contains
 
     end subroutine init_annihilation_flags
 
-    subroutine init_estimators(sys, qmc_in, qmc_state)
+    subroutine init_estimators(sys, qmc_in, have_tot_nparticles, qmc_state)
 
         ! Initialise estimators and related components of qmc_state
 
@@ -640,12 +598,34 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
+        logical, intent(in) :: have_tot_nparticles
         type(qmc_state_t), intent(inout) :: qmc_state
 
-        integer :: ierr
+        integer :: ierr, i
 #ifdef PARALLEL
         real(p) :: tmp_p
 #endif
+
+        associate(pl=>qmc_state%psip_list)
+            ! Total number of particles on processor.
+            ! Probably should be handled more simply by setting it to be either 0 or
+            ! D0_population or obtaining it from the restart file, as appropriate.
+            forall (i=1:pl%nspaces) pl%nparticles(i) = sum(abs( real(pl%pops(i,:pl%nstates),p)/pl%pop_real_factor))
+            ! Should we already be in varyshift mode (e.g. restarting a calculation)?
+#ifdef PARALLEL
+            do i=1, pl%nspaces
+                call mpi_allgather(pl%nparticles(i), 1, MPI_PREAL, pl%nparticles_proc(i,:), 1, MPI_PREAL, MPI_COMM_WORLD, ierr)
+            end do
+            ! When restarting a non-blocking calculation this sum will not equal
+            ! tot_nparticles as some walkers have been communicated around the report
+            ! loop. The correct total is in the restart file so get it from there.
+            if (.not. have_tot_nparticles) &
+                forall(i=1:pl%nspaces) pl%tot_nparticles(i) = sum(pl%nparticles_proc(i,:))
+#else
+            pl%tot_nparticles = pl%nparticles
+            pl%nparticles_proc(:pl%nspaces,1) = pl%nparticles(:pl%nspaces)
+#endif
+        end associate
 
         ! Decide whether the shift should be turned on from the start.
         qmc_state%target_particles = qmc_in%target_particles
