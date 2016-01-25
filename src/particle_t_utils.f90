@@ -134,23 +134,35 @@ contains
         type(particle_t), intent(inout) :: pl
         integer :: ierr
 
-        deallocate(pl%nparticles, stat=ierr)
-        call check_deallocate('pl%nparticles', ierr)
+        if (allocated(pl%nparticles)) then
+            deallocate(pl%nparticles, stat=ierr)
+            call check_deallocate('pl%nparticles', ierr)
+        end if
 
-        deallocate(pl%tot_nparticles, stat=ierr)
-        call check_deallocate('pl%tot_nparticles', ierr)
+        if (allocated(pl%tot_nparticles)) then
+            deallocate(pl%tot_nparticles, stat=ierr)
+            call check_deallocate('pl%tot_nparticles', ierr)
+        end if
 
-        deallocate(pl%states, stat=ierr)
-        call check_deallocate('pl%states', ierr)
+        if (allocated(pl%states)) then
+            deallocate(pl%states, stat=ierr)
+            call check_deallocate('pl%states', ierr)
+        end if
 
-        deallocate(pl%pops, stat=ierr)
-        call check_deallocate('pl%pops', ierr)
+        if (allocated(pl%pops)) then
+            deallocate(pl%pops, stat=ierr)
+            call check_deallocate('pl%pops', ierr)
+        end if
 
-        deallocate(pl%dat, stat=ierr)
-        call check_deallocate('pl%dat', ierr)
+        if (allocated(pl%dat)) then
+            deallocate(pl%dat, stat=ierr)
+            call check_deallocate('pl%dat', ierr)
+        end if
 
-        deallocate(pl%nparticles_proc, stat=ierr)
-        call check_deallocate('pl%nparticles_proc', ierr)
+        if (allocated(pl%nparticles_proc)) then
+            deallocate(pl%nparticles_proc, stat=ierr)
+            call check_deallocate('pl%nparticles_proc', ierr)
+        end if
 
     end subroutine dealloc_particle_t
 
