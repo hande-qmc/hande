@@ -56,7 +56,7 @@ module checking
                 ! Error in deallocating array.
                 if (nprocs > 1) then
                     write (6,'(1X,a25,1X,a,1X,a12,'//int_fmt(iproc,1)//')') &
-                        'Error in allocating array',trim(array_name),'on processor',iproc
+                        'Error in deallocating array',trim(array_name),'on processor',iproc
                 else
                     write (6,'(1X,a25,1X,a,1X,a9)') 'Error in deallocating array',trim(array_name)
                 end if
