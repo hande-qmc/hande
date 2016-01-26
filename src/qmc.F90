@@ -73,8 +73,7 @@ contains
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
-        ! [review] - JSS: Interesting.  It is not possible to override a previously chosen reference (nor has it ever been, I think).
-        ! [review] - JSS: Worth adding in the future?
+        ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
         else if (present(qmc_state_restart)) then
@@ -100,7 +99,6 @@ contains
 
         ! Allocate main particle lists.  Include the memory used by semi_stoch_t%determ in the
         ! calculation of memory occupied by the main particle lists.
-        ! [review] - JSS: document that can't change the size of the main and spawned lists.
         if (.not. present(qmc_state_restart)) then
             call init_particle_t(qmc_in%walker_length, 1, sys%basis%tensor_label_len, qmc_in%real_amplitudes, &
                                  qmc_in%real_amplitude_force_32, qmc_state%psip_list)
@@ -709,16 +707,6 @@ contains
         ! Note occ_list could be set and allocated in the input.
         call copy_reference_t(reference_in, reference)
 
-        ! [review] - JSS: how does this allocation match up with copy_reference_t, if reference_in has allocated components?
-        ! [review] - JSS: My confusion seems to arise from the (almost certainly my) original code.
-        ! [review] - JSS: reference_in is, in practice, set in read_reference_t, which only sets reference_in%occ_list and
-        ! [review] - JSS: reference_in%hs_occ_list0.  Nonetheless, we should allow for developers to pass in reference_in from
-        ! [review] - JSS: another source and protect with if (.not.allocated(...)).
-        allocate(reference%f0(sys%basis%string_len), stat=ierr)
-        call check_allocate('reference%f0',sys%basis%string_len,ierr)
-        allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
-        call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
-
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation.
         ! [review] - JSS: symmetry input is not ignored now?
@@ -731,9 +719,18 @@ contains
             call set_reference_det(sys, reference%occ_list0, .false.)
         end if
 
+        if (.not. allocated(reference%f0)) then
+            allocate(reference%f0(sys%basis%string_len), stat=ierr)
+            call check_allocate('reference%f0',sys%basis%string_len,ierr)
+        end if
         call encode_det(sys%basis, reference%occ_list0, reference%f0)
 
-        ! [review] - JSS: this is also rather opaque but can only be true if it was allocated in copy_reference_t.
+        if (.not. allocated(reference%hs_f0)) then
+            allocate(reference%hs_f0(sys%basis%string_len), stat=ierr)
+            call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
+        end if
+
+        ! Set hilbert space reference if not given in input
         if (allocated(reference%hs_occ_list0)) then
             call encode_det(sys%basis, reference%hs_occ_list0, reference%hs_f0)
         else
@@ -745,13 +742,12 @@ contains
 
         ! Energy of reference determinant.
         reference%H00 = sc0_ptr(sys, reference%f0)
-        ! Exchange energy of reference determinant.
+        ! Exchange energy of reference determinant.  (Only used in ip-dmqmc)
         select case (sys%system)
         case (ueg, read_in)
             reference%energy_shift = energy_diff_ptr(sys, reference%occ_list0)
         case default
             ! [todo] - Implement for all models.
-            ! [review] - JSS: throw a stop_all for now.
         end select
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 
@@ -789,10 +785,13 @@ contains
         call check_allocate('reference%hs_f0', sys%basis%string_len, ierr)
         allocate(reference%occ_list0(sys%nel), stat=ierr)
         call check_allocate('reference%occ_list0',sys%nel,ierr)
+        allocate(reference%hs_occ_list0(sys%nel), stat=ierr)
+        call check_allocate('reference%hs_occ_list0',sys%nel,ierr)
         call get_reference_hdf5(ri, reference)
+
         ! Need to re-calculate the reference determinant data
-        ! [review] - JSS: decode hs_occ_list0?
         call decode_det(sys%basis, reference%f0, reference%occ_list0)
+        call decode_det(sys%basis, reference%hs_f0, reference%hs_occ_list0)
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 

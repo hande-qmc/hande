@@ -53,6 +53,8 @@ algorithms and control the core settings in the algorithms.
     If negative, then the absolute value is used as the maximum amount of memory in MB to
     use for this information.
 
+    Ignored if qmc_state is given.
+
     .. note::
 
         This is a **per processor** quantity.  It is usually safe to assume that each
@@ -73,6 +75,8 @@ algorithms and control the core settings in the algorithms.
 
     If negative, then the absolute value is used as the maximum amount of memory in MB to
     use for this information.
+
+    Ignored if qmc_state is given.
 
     .. note::
 
