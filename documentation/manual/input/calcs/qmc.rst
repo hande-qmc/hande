@@ -6,6 +6,8 @@ qmc options
 The following options in the ``qmc`` table are common to the FCIQMC, CCMC and DMQMC
 algorithms and control the core settings in the algorithms.
 
+.. [review] - JSS: note init_pop, state_size and spawned_state_size are not required if restarting from qmc_restart.
+
 ``tau``
     type: float.
 

@@ -763,6 +763,9 @@ contains
 
         ! Read in a qmc table to a qmc_in_t object.
 
+        ! [review] - JSS: init_pop (file and mem), state_size (mem only) and spawned_state_size (mem only) should not be required if
+        ! [review] - JSS: restarting a calculation (either from file or memory).
+
         ! qmc = {
         !     tau = tau,                                  -- required
         !     init_pop = N,                               -- required
