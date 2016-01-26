@@ -113,6 +113,7 @@ contains
             ! Attempt to run lua script.
             lua_state = fluL_newstate()
             call register_lua_hande_api(lua_state)
+            call create_metatables(lua_state)
             call open_config_chunk(lua_state, buffer, lua_err, err_string)
             if (lua_err == 0) then
                 call flu_close(lua_state)
@@ -175,6 +176,34 @@ contains
         call flu_register(lua_state, 'redistribute', lua_redistribute_restart)
 
     end subroutine register_lua_hande_api
+
+    subroutine create_metatables(lua_state)
+
+        use flu_binding, only: flu_State, fluL_newmetatable, flu_pushstring, flu_pushcclosure, flu_settable, flu_pop
+        use aot_table_ops_module, only: aot_table_top
+
+        use lua_hande_system, only: lua_dealloc_sys
+        use lua_hande_calc, only: lua_dealloc_qmc_state
+
+        type(flu_State), intent(inout) :: lua_state
+
+        integer :: metatable, err
+
+        err = fluL_newmetatable(lua_state, "sys")
+        metatable = aot_table_top(lua_state)
+        call flu_pushstring(lua_state, "__gc")
+        call flu_pushcclosure(lua_state, lua_dealloc_sys, 0)
+        call flu_settable(lua_state, metatable)
+        call flu_pop(lua_state)
+
+        err = fluL_newmetatable(lua_state, "qmc_state")
+        metatable = aot_table_top(lua_state)
+        call flu_pushstring(lua_state, "__gc")
+        call flu_pushcclosure(lua_state, lua_dealloc_qmc_state, 0)
+        call flu_settable(lua_state, metatable)
+        call flu_pop(lua_state)
+
+    end subroutine create_metatables
 
     ! --- Helper functions : lua ---
 

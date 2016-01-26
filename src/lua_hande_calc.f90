@@ -1588,7 +1588,7 @@ contains
         !   qmc_state: the qmc_state object to return to lua
 
         use, intrinsic :: iso_c_binding, only: c_loc
-        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
         use aot_table_ops_module, only: aot_table_open, aot_table_close
 
         use qmc_data, only: qmc_state_t
@@ -1610,6 +1610,9 @@ contains
         call flu_pushstring(lua_state, "free")
         call flu_pushcclosure(lua_state, lua_dealloc_qmc_state, 0)
         call flu_settable(lua_state, table)
+
+        ! Set metatable to mark for finalisation
+        call fluL_setmetatable(lua_state, "qmc_state")
 
     end subroutine push_qmc_state
 

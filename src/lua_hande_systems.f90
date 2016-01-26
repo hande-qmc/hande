@@ -79,7 +79,7 @@ contains
     subroutine push_sys(lua_state, sys)
 
         use, intrinsic :: iso_c_binding, only: c_loc
-        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
         use aot_table_ops_module, only: aot_table_open, aot_table_close
 
         use system, only: sys_t
@@ -101,6 +101,9 @@ contains
         call flu_pushstring(lua_state, "free")
         call flu_pushcclosure(lua_state, lua_dealloc_sys, 0)
         call flu_settable(lua_state, table)
+
+        ! Set metatable to mark for finalisation
+        call fluL_setmetatable(lua_state, "sys")
 
     end subroutine push_sys
 
