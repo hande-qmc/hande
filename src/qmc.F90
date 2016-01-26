@@ -43,14 +43,13 @@ contains
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, init_parallel_t
         use energy_evaluation, only: nparticles_start_ind
-        use particle_t_utils, only: init_particle_t, move_particle_t
+        use particle_t_utils, only: init_particle_t
         use system, only: sys_t
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             reference_t, neel_singlet
         use dmqmc_data, only: dmqmc_in_t
-        use spawn_data, only: move_spawn_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -107,39 +106,27 @@ contains
         call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 
-        ! [review] - JSS: perhaps a move_qmc_state_t procedure as a wrapper around move_spawn_t and move_particle_t
-        ! [review] - JSS: and the individual move_alloc calls?
         if (present(qmc_state_restart)) then
-            call move_spawn_t(qmc_state_restart%spawn_store%spawn, qmc_state%spawn_store%spawn)
-            call move_spawn_t(qmc_state_restart%spawn_store%spawn_recv, qmc_state%spawn_store%spawn_recv)
+            call move_qmc_state_t(qmc_state_restart, qmc_state)
         else
             call init_spawn_store(qmc_in, qmc_state%psip_list%nspaces, qmc_state%psip_list%pop_real_factor, sys%basis, &
                                   fciqmc_in_loc%non_blocking_comm, qmc_state%par_info%load%proc_map, qmc_state%spawn_store)
-        end if
-
-        if (present(qmc_state_restart)) then
-            call move_alloc(qmc_state_restart%shift, qmc_state%shift)
-            call move_alloc(qmc_state_restart%vary_shift, qmc_state%vary_shift)
-        else
             ! Allocate the shift.
             allocate(qmc_state%shift(qmc_state%psip_list%nspaces), stat=ierr)
             call check_allocate('qmc_state%shift', qmc_state%psip_list%nspaces, ierr)
             allocate(qmc_state%vary_shift(qmc_state%psip_list%nspaces), stat=ierr)
             call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
             qmc_state%shift = qmc_in%initial_shift
-        end if
-
-        ! Initial walker distributions
-        if (restart_in%read_restart) then
-            call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
-        else if (present(qmc_state_restart)) then
-            call move_particle_t(qmc_state_restart%psip_list, qmc_state%psip_list)
-        else if (doing_calc(dmqmc_calc)) then
-            ! Initial distribution handled later
-            qmc_state%psip_list%nstates = 0
-        else
-            call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
-                                      qmc_state%ref, qmc_state%psip_list)
+            ! Initial walker distributions
+            if (restart_in%read_restart) then
+                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
+            else if (doing_calc(dmqmc_calc)) then
+                ! Initial distribution handled later
+                qmc_state%psip_list%nstates = 0
+            else
+                call initial_distribution(sys, qmc_state%spawn_store%spawn, qmc_in%D0_population, fciqmc_in_loc, &
+                                          qmc_state%ref, qmc_state%psip_list)
+            end if
         end if
 
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
@@ -1017,5 +1004,27 @@ contains
         end if
 
     end subroutine initial_distribution
+
+    subroutine move_qmc_state_t(qmc_state_old, qmc_state_new)
+
+        ! Move components of qmc_state_old to qmc_state_new
+
+        ! In/Out:
+        !   qmc_state_old: existing qmc_state.  Deallocated on exit.
+        !   qmc_state_new: qmc_state_t.  Components allocated an initialised on exit.
+
+        use qmc_data, only: qmc_state_t
+        use spawn_data, only: move_spawn_t
+        use particle_t_utils, only: move_particle_t
+
+        type(qmc_state_t), intent(inout) :: qmc_state_old, qmc_state_new
+
+        call move_spawn_t(qmc_state_old%spawn_store%spawn, qmc_state_new%spawn_store%spawn)
+        call move_spawn_t(qmc_state_old%spawn_store%spawn_recv, qmc_state_new%spawn_store%spawn_recv)
+        call move_alloc(qmc_state_old%shift, qmc_state_new%shift)
+        call move_alloc(qmc_state_old%vary_shift, qmc_state_new%vary_shift)
+        call move_particle_t(qmc_state_old%psip_list, qmc_state_new%psip_list)
+
+    end subroutine move_qmc_state_t
 
 end module qmc
