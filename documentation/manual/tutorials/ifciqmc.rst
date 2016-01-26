@@ -124,3 +124,6 @@ followed by the blocking analysis on the :download:`output <calcs/ifciqmc/hubbar
 results in
 
 .. literalinclude:: calcs/ifciqmc/hubbard_ifciqmc_real.block
+
+.. [review] - AJWT: Plotting both the reals and non-reals on the same graph is quite instructive.
+.. [review] - AJWT: As such you need some more data up to 10^6 to get to a convergerd number by the look of it.

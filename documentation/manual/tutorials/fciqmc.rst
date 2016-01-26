@@ -28,6 +28,8 @@ This file can be run using:
 The output file, :download:`hubbard_sym.out <calcs/fciqmc/hubbard_sym.out>`, contains
 a symmetry table which informs us that the wavevector :math:`(0,0)` corresponds to the
 index 1; this value should be specified in subsequent calculations.
+.. [review] - AJWT: The output has the line "    1      (0,0)  " indicating index 1, but
+.. [review] - AJWT: the example below uses "    sym = 0,   ".          
 
 It is useful to know the size of the FCI Hilbert space.  Whilst the full space can be
 determined from simple combinatorics, the size of the subspace containing only
