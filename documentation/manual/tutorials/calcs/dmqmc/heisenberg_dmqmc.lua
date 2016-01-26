@@ -10,19 +10,19 @@ sys = heisenberg {
 dmqmc {
     sys = sys,
     qmc = {
-        tau = 0.0025,
-        init_pop = 10000,
+        tau = 0.001,
+        init_pop = 10^6,
+        rng_seed = 19838,
         mc_cycles = 10,
-        nreports = 40,
-        target_population = 10000,
-        state_size = -100,
-        spawned_state_size = -100,
+        nreports = 400,
+        target_population = 10^6,
+        state_size = -400,
+        spawned_state_size = -400,
     },
     dmqmc = {
-        beta_loops = 50,
+        beta_loops = 100,
     },
     operators = {
         energy = true,
-        staggered_magnetisation = true,
     },
 }
