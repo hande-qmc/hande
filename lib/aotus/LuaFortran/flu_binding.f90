@@ -44,7 +44,7 @@ module flu_binding
   public :: flu_tolstring, flu_tonumber, flu_toboolean, flu_touserdata
   public :: flu_pop
   public :: flu_pushinteger, flu_pushnil, flu_pushnumber, flu_pushboolean
-  public :: flu_pushstring, flu_pushvalue, flu_pushlightuserdata
+  public :: flu_pushstring, flu_pushvalue, flu_pushlightuserdata, flu_pushcclosure
 
   public :: flu_copyptr
   public :: flu_register

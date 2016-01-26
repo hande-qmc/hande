@@ -1588,7 +1588,7 @@ contains
         !   qmc_state: the qmc_state object to return to lua
 
         use, intrinsic :: iso_c_binding, only: c_loc
-        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure
         use aot_table_ops_module, only: aot_table_open, aot_table_close
 
         use qmc_data, only: qmc_state_t
@@ -1604,6 +1604,11 @@ contains
         ! Add qmc_state pointer as t.qmc_state
         call flu_pushstring(lua_state, "qmc_state")
         call flu_pushlightuserdata(lua_state, c_loc(qmc_state))
+        call flu_settable(lua_state, table)
+
+        ! Add deallocation function as t:free()
+        call flu_pushstring(lua_state, "free")
+        call flu_pushcclosure(lua_state, lua_dealloc_qmc_state, 0)
         call flu_settable(lua_state, table)
 
     end subroutine push_qmc_state

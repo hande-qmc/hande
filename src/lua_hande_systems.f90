@@ -79,7 +79,7 @@ contains
     subroutine push_sys(lua_state, sys)
 
         use, intrinsic :: iso_c_binding, only: c_loc
-        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure
         use aot_table_ops_module, only: aot_table_open, aot_table_close
 
         use system, only: sys_t
@@ -95,6 +95,11 @@ contains
         ! Add sys pointer as t.sys
         call flu_pushstring(lua_state, "sys")
         call flu_pushlightuserdata(lua_state, c_loc(sys))
+        call flu_settable(lua_state, table)
+
+        ! Add deallocation function as t:free()
+        call flu_pushstring(lua_state, "free")
+        call flu_pushcclosure(lua_state, lua_dealloc_sys, 0)
         call flu_settable(lua_state, table)
 
     end subroutine push_sys
