@@ -608,10 +608,10 @@ contains
         logical, intent(in) :: have_tot_nparticles
         type(qmc_state_t), intent(inout) :: qmc_state
 
-        ! [review] - JSS: ierr only used in parallel.
-        integer :: ierr, i
+        integer :: i
 #ifdef PARALLEL
         real(p) :: tmp_p
+        integer :: ierr
 #endif
 
         associate(pl=>qmc_state%psip_list)
@@ -695,16 +695,9 @@ contains
         call copy_reference_t(reference_in, reference)
 
         ! Set the reference determinant to be the spin-orbitals with the lowest
-        ! single-particle eigenvalues which satisfy the spin polarisation.
-        ! [review] - JSS: symmetry input is not ignored now?
-        ! Note: this is for testing only!  The symmetry input is currently
-        ! ignored.
-        ! [review] - JSS: this check seems to be pointless, given the code in set_reference_det.  (Legacy test.)
-        if (sys%symmetry < sys%sym_max) then
-            call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
-        else
-            call set_reference_det(sys, reference%occ_list0, .false.)
-        end if
+        ! single-particle eigenvalues which satisfy the spin polarisation and, if
+        ! specified, the symmetry.
+        call set_reference_det(sys, reference%occ_list0, .false., sys%symmetry)
 
         if (.not. allocated(reference%f0)) then
             allocate(reference%f0(sys%basis%string_len), stat=ierr)
