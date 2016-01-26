@@ -87,12 +87,12 @@ type qmc_in_t
     ! CARE: as we don't modify qmc_in_t objects, one should inspect the sizes
     ! used in particle_t and spawned_particle_t for the exact values used (which may
     ! be rounded for various reasons).
-    integer :: walker_length
-    integer :: spawned_walker_length
+    integer :: walker_length = 0
+    integer :: spawned_walker_length = 0
 
     ! The initial population on the reference determinant/trace of the density matrix.
     ! Overridden by a restart file.
-    real(p) :: D0_population
+    real(p) :: D0_population = 0
     ! Number of particles before which varyshift mode is turned on.
     real(p) :: target_particles = huge(1.0_p)
 

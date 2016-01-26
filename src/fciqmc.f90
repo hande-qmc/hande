@@ -103,7 +103,7 @@ contains
 
         real :: t1, t2
 
-        logical :: update_tau
+        logical :: update_tau, restarting
 
         if (parent) then
             write (6,'(1X,"FCIQMC")')
@@ -112,7 +112,8 @@ contains
 
         if (parent) then
             ! Check input options.
-            call check_qmc_opts(qmc_in, .false.)
+            restarting = present(qmc_state_restart) .or. restart_in%read_restart
+            call check_qmc_opts(qmc_in, .not.present(qmc_state_restart), restarting)
             call check_fciqmc_opts(sys, fciqmc_in)
             call check_load_bal_opts(load_bal_in)
         end if

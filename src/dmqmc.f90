@@ -79,7 +79,7 @@ contains
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
         logical :: soft_exit, write_restart_shift, update_tau
-        logical :: error, rdm_error, attempt_spawning
+        logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
@@ -96,7 +96,8 @@ contains
         end if
 
         if (parent) then
-            call check_qmc_opts(qmc_in, .false.)
+            restarting = present(qmc_state_restart) .or. restart_in%read_restart
+            call check_qmc_opts(qmc_in, .not. present(qmc_state_restart), restarting)
             call check_dmqmc_opts(sys, dmqmc_in)
         end if
 

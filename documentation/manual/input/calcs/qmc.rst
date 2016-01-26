@@ -6,8 +6,6 @@ qmc options
 The following options in the ``qmc`` table are common to the FCIQMC, CCMC and DMQMC
 algorithms and control the core settings in the algorithms.
 
-.. [review] - JSS: note init_pop, state_size and spawned_state_size are not required if restarting from qmc_restart.
-
 ``tau``
     type: float.
 
@@ -22,7 +20,7 @@ algorithms and control the core settings in the algorithms.
 ``init_pop``
     type: float.
 
-    Required.  Overridden if the calculations is initialised from a restart file.
+    Required unless the calculations is initialised from a restart file or qmc_state.
 
     Set the initial population on the reference determinant.  For DMQMC calculations this
     option sets the number of psips which will be randomly distributed along the diagonal
@@ -45,7 +43,7 @@ algorithms and control the core settings in the algorithms.
 ``state_size``
     type: integer.
 
-    Required.
+    Required unless qmc_state is given.
 
     Maximum number of states (i.e. determinants, excitors or density matrix elements) to
     store in the "main" list, which holds the number of particles on the state and related
@@ -63,7 +61,7 @@ algorithms and control the core settings in the algorithms.
 ``spawned_state_size``
     type: integer.
 
-    Required.
+    Required unless qmc_state is given.
 
     Maximum number of states (i.e. determinants, excitors or density matrix elements) to
     store in the "spawned" list, i.e. the maximum number of states which can be spawned onto

@@ -763,16 +763,13 @@ contains
 
         ! Read in a qmc table to a qmc_in_t object.
 
-        ! [review] - JSS: init_pop (file and mem), state_size (mem only) and spawned_state_size (mem only) should not be required if
-        ! [review] - JSS: restarting a calculation (either from file or memory).
-
         ! qmc = {
         !     tau = tau,                                  -- required
-        !     init_pop = N,                               -- required
+        !     init_pop = N,                               -- required unless restarting
         !     mc_cycles = ncycles,                        -- required
         !     nreports = nreport,                         -- required
-        !     state_size = walker_length,                 -- required
-        !     spawned_state_size = spawned_walker_length, -- required
+        !     state_size = walker_length,                 -- required unless restarting
+        !     spawned_state_size = spawned_walker_length, -- required unless restarting
         !     rng_seed = seed,
         !     target_population = pop,
         !     real_amplitudes = true/false,
@@ -837,17 +834,16 @@ contains
         ! Required arguments
         call aot_get_val(qmc_in%tau, err, lua_state, qmc_table, 'tau')
         if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'tau not set.')
-        call aot_get_val(qmc_in%D0_population, err, lua_state, qmc_table, 'init_pop')
-        if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'init_pop not set.')
         call aot_get_val(qmc_in%ncycles, err, lua_state, qmc_table, 'mc_cycles')
         if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'mc_cycles not set.')
         call aot_get_val(qmc_in%nreport, err, lua_state, qmc_table, 'nreports')
         if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'nreports not set.')
+
+        ! Usually required, but not always. (Checked later if needed.)
+        call aot_get_val(qmc_in%D0_population, err, lua_state, qmc_table, 'init_pop')
         if (.not. skip) then
             call aot_get_val(qmc_in%walker_length, err, lua_state, qmc_table, 'state_size')
-            if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'state_size not set.')
             call aot_get_val(qmc_in%spawned_walker_length, err, lua_state, qmc_table, 'spawned_state_size')
-            if (err /= 0 .and. parent) call stop_all('read_qmc_in', 'spawned_state_size not set.')
         end if
 
         ! Optional arguments (defaults set in derived type).

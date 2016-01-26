@@ -342,7 +342,7 @@ contains
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
 
-        logical :: soft_exit, dump_restart_shift
+        logical :: soft_exit, dump_restart_shift, restarting
 
         integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
@@ -369,7 +369,8 @@ contains
 
         ! Check input options.
         if (parent) then
-            call check_qmc_opts(qmc_in, .false.)
+            restarting = present(qmc_state_restart) .or. restart_in%read_restart
+            call check_qmc_opts(qmc_in, .not.present(qmc_state_restart), restarting)
             call check_ccmc_opts(sys, ccmc_in)
         end if
 

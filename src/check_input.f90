@@ -99,28 +99,34 @@ contains
 
     end subroutine check_fciqmc_opts
 
-    subroutine check_qmc_opts(qmc_in, simple_fciqmc)
+    subroutine check_qmc_opts(qmc_in, need_length, restarting)
 
         ! Check options common to QMC methods.
 
         ! In:
         !   qmc_in: QMC input options.
-        !   simple_fciqmc: true if using the simple FCIQMC algorithm.
+        !   need_length: whether the size of main/spawned particle arrays is needed.
+        !       false if using simple fciqmc algorithm or restarting from memory.
+        !   restarting: whether the calculation is restarting from a previous one.
 
         use qmc_data, only: qmc_in_t
         use errors, only: stop_all
 
         type(qmc_in_t), intent(in) :: qmc_in
-        logical, intent(in) :: simple_fciqmc
+        logical, intent(in) :: need_length, restarting
 
         character(*), parameter :: this = 'check_qmc_opts'
 
-        if (qmc_in%tau <= 0) call stop_all(this,'Tau not positive.')
-        if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping not positive.')
+        if (qmc_in%tau <= 0) call stop_all(this,'Tau must be positive.')
+        if (qmc_in%shift_damping <= 0) call stop_all(this,'Shift damping must be positive.')
 
-        if (.not. simple_fciqmc) then
-            if (qmc_in%walker_length == 0) call stop_all(this,'Walker length zero.')
-            if (qmc_in%spawned_walker_length == 0) call stop_all(this,'Spawned walker length zero.')
+        if (need_length) then
+            if (qmc_in%walker_length == 0) call stop_all(this,'Walker length must not be zero.')
+            if (qmc_in%spawned_walker_length == 0) call stop_all(this,'Spawned walker length must not be zero.')
+        end if
+
+        if (.not. restarting) then
+            if (qmc_in%D0_population <= 0) call stop_all(this, 'Initial population must be positive.')
         end if
 
     end subroutine check_qmc_opts
