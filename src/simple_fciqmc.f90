@@ -377,6 +377,8 @@ contains
         end if
 
         deallocate(dets)
+        deallocate(spawn%sdata)
+        call dSFMT_end(rng)
 
     end subroutine do_simple_fciqmc
 
