@@ -1557,6 +1557,7 @@ contains
         use aot_table_ops_module, only: aot_table_open, aot_table_close
 
         use qmc_data, only: qmc_state_t
+        use lua_hande_utils, only: get_userdata
 
         type(flu_State), intent(inout) :: lua_state
         logical, intent(out) :: have_qmc_state
@@ -1571,7 +1572,7 @@ contains
         if (have_qmc_state) then
             ! Get qmc_state object
             call aot_table_open(lua_state, opts, qs_table, key='qmc_state')
-            call aot_get_val(qs_ptr, err, lua_state, qs_table, key='qmc_state')
+            call get_userdata(lua_state, qs_table, "qmc_state", qs_ptr)
             call aot_table_close(lua_state, qs_table)
             call c_f_pointer(qs_ptr, qmc_state)
         end if
@@ -1619,12 +1620,16 @@ contains
     function lua_dealloc_qmc_state(L) result(nresult) bind(c)
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable, &
+                               flu_getmetatable, flu_pop
         use aot_table_ops_module, only: aot_table_top
         use aot_table_module, only: aot_get_val, aot_table_close
+        use aot_top_module, only: aot_top_get_val
 
         use qmc_data, only: qmc_state_t
         use dealloc, only: dealloc_qmc_state_t
+        use errors, only: stop_all
+        use lua_hande_utils, only: get_userdata
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -1633,11 +1638,12 @@ contains
         integer :: ierr, qs_table
         type(c_ptr) :: qs_ptr
         type(qmc_state_t), pointer :: qs
+        character(100) :: name
 
         lua_state = flu_copyptr(L)
 
         qs_table = aot_table_top(lua_state)
-        call aot_get_val(qs_ptr, ierr, lua_state, qs_table, key='qmc_state')
+        call get_userdata(lua_state, qs_table, "qmc_state", qs_ptr)
         call c_f_pointer(qs_ptr, qs)
 
         if (associated(qs)) then

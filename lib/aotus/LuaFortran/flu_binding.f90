@@ -55,7 +55,7 @@ module flu_binding
   public :: fluL_loadfile, fluL_newstate, fluL_openlibs, fluL_loadstring
   public :: fluL_loadbuffer
 
-  public :: fluL_newmetatable, fluL_setmetatable
+  public :: fluL_newmetatable, fluL_setmetatable, flu_getmetatable
 
   public :: lua_Function
 
@@ -541,6 +541,18 @@ contains
 
   end subroutine flu_register
 
+  function flu_getmetatable(L, index) result(errcode)
+    type(flu_State) :: L
+    integer :: index, errcode
+
+    integer(c_int) :: c_idx, c_errcode
+
+    c_idx = index
+    c_errcode = lua_getmetatable(L%state, c_idx)
+    errcode = c_errcode
+
+  end function flu_getmetatable
+
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -644,8 +656,9 @@ contains
     c_name = trim(tname) // c_null_char
     c_errcode = luaL_newmetatable(L%state, c_name)
 
-  end function fluL_newmetatable
+    errcode = c_errcode
 
+  end function fluL_newmetatable
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Routines for using existing Lua states with 

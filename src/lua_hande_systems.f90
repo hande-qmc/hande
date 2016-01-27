@@ -39,13 +39,14 @@ contains
         use aot_table_module, only: aot_exists, aot_get_val, aot_table_top
         use aot_table_ops_module, only: aot_table_open, aot_table_close
         use system, only: sys_t
+        use lua_hande_utils, only: get_userdata
 
         type(flu_State), intent(inout) :: lua_state
         type(sys_t), pointer, intent(out) :: sys
         logical, optional, intent(out) :: new
 
         type(c_ptr) :: sys_ptr
-        integer :: err, table, sys_table
+        integer :: table, sys_table
         logical :: have_sys_entry
 
         table = aot_table_top(lua_state)
@@ -60,8 +61,7 @@ contains
         ! this object instead of creating a new one.
         if (have_sys_entry) then
             call aot_table_open(lua_state, table, sys_table, key='sys')
-            call aot_get_val(sys_ptr, err, lua_state, thandle=sys_table, key='sys')
-            if (err /= 0 .and. parent) call stop_all('get_sys_t', 'Problem receiving sys_t object.')
+            call get_userdata(lua_state, sys_table, "sys", sys_ptr)
             call aot_table_close(lua_state, sys_table)
             call c_f_pointer(sys_ptr, sys)
             if (present(new)) new = .false.
@@ -797,6 +797,7 @@ contains
 
         use system, only: sys_t
         use dealloc, only: dealloc_sys_t
+        use lua_hande_utils, only: get_userdata
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -809,7 +810,7 @@ contains
         lua_state = flu_copyptr(L)
 
         sys_table = aot_table_top(lua_state)
-        call aot_get_val(sys_ptr, ierr, lua_state, sys_table, key='sys')
+        call get_userdata(lua_state, sys_table, "sys", sys_ptr)
         call c_f_pointer(sys_ptr, sys)
 
         if (associated(sys)) then

@@ -196,6 +196,13 @@ module lua_fif
       type(c_ptr), value :: ptr
     end subroutine lua_pushlightuserdata
 
+    function lua_getmetatable(L, index) bind(c, name="lua_getmetatable")
+      use, intrinsic :: iso_c_binding
+      type(c_ptr), value :: L
+      integer(c_int), value :: index
+      integer(c_int) :: lua_getmetatable
+    end function lua_getmetatable
+
   end interface
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

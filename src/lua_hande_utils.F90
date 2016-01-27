@@ -133,4 +133,44 @@ contains
 
     end subroutine get_rng_seed
 
+    subroutine get_userdata(lua_state, table, name, ptr)
+
+        ! Check a table is the correct type (has the correct metatable) and return its userdata.
+
+        ! In/Out:
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    table: handle for the table containing the userdata.
+        !    name: expected name of metatable and key for userdata.
+        ! Out:
+        !    ptr: C pointer to userdata.
+
+        use, intrinsic :: iso_c_binding, only: c_ptr
+        use flu_binding, only: flu_State, flu_getmetatable, flu_pop
+        use aot_table_module, only: aot_get_val
+
+        use errors, only: stop_all
+
+        type(flu_state), intent(inout) :: lua_state
+        integer, intent(in) :: table
+        character(*), intent(in) :: name
+        type(c_ptr), intent(out) :: ptr
+
+        integer :: ierr
+        character(100) :: udata_name
+
+        ! check metatable of object
+        ierr = flu_getmetatable(lua_state, table)
+        if (ierr == 0) call stop_all("get_userdata", "Problem receiving "//trim(name)//" object: no metatable.")
+        call aot_get_val(udata_name, ierr, lua_state, -1, key="__metatable")
+        if (trim(name) /= trim(udata_name)) call stop_all("get_userdata", trim(name)//" expected but " &
+                                                          //trim(udata_name)//" recieved.")
+        ! Pop metatable off stack
+        call flu_pop(lua_state)
+
+        ! If successful, return userdata.
+        call aot_get_val(ptr, ierr, lua_state, table, key=trim(name))
+
+    end subroutine get_userdata
+
 end module lua_hande_utils
