@@ -57,6 +57,8 @@ module flu_binding
 
   public :: fluL_newmetatable, fluL_setmetatable
 
+  public :: lua_Function
+
   interface flu_pushnumber
     module procedure flu_pushreal
     module procedure flu_pushdouble
