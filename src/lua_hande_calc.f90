@@ -1618,8 +1618,8 @@ contains
 
     function lua_dealloc_qmc_state(L) result(nresult) bind(c)
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
-        use flu_binding, only: flu_State, flu_copyptr
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable
         use aot_table_ops_module, only: aot_table_top
         use aot_table_module, only: aot_get_val, aot_table_close
 
@@ -1638,12 +1638,19 @@ contains
 
         qs_table = aot_table_top(lua_state)
         call aot_get_val(qs_ptr, ierr, lua_state, qs_table, key='qmc_state')
-        call aot_table_close(lua_state, qs_table)
         call c_f_pointer(qs_ptr, qs)
 
-        call dealloc_qmc_state_t(qs)
+        if (associated(qs)) then
+            call dealloc_qmc_state_t(qs)
+            deallocate(qs)
+        end if
 
-        deallocate(qs)
+        ! Update table with deallocated pointer.
+        call flu_pushstring(lua_state, "qmc_state")
+        call flu_pushlightuserdata(lua_state, c_loc(qs))
+        call flu_settable(lua_state, qs_table)
+
+        call aot_table_close(lua_state, qs_table)
 
         nresult = 0
 
