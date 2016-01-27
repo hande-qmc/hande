@@ -27,7 +27,7 @@ contains
         use aotus_module, only: open_config_chunk
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
         use aot_vector_module, only: aot_get_val
-        use flu_binding, only: flu_State
+        use flu_binding, only: flu_State, flu_close
 
         use utils, only: get_free_unit, read_file_to_buffer
         use parallel
@@ -154,6 +154,8 @@ contains
                     call aot_get_val(qs%target_particles, ierr, lua_state, key='target_population')
                     if (qs%target_particles < 0 .and. present(qs)) qs%vary_shift = .true.
                 end if
+
+                call flu_close(lua_state)
             end if
 
             if (parent) then
