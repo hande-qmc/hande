@@ -75,7 +75,7 @@ module restart_hdf5
 
     private
     public :: dump_restart_hdf5, read_restart_hdf5, restart_info_t, init_restart_info_t, redistribute_restart_hdf5, &
-              dump_restart_file_wrapper
+              dump_restart_file_wrapper, get_reference_hdf5
 
     type restart_info_t
         ! If write_id is negative, then set Y=-ID-1 in parse_input, where Y is in the restart
@@ -627,15 +627,7 @@ module restart_hdf5
                 ! --- qmc/reference group ---
                 call h5gopen_f(group_id, gref, subgroup_id, ierr)
 
-                    qs%ref%f0 = 0
-                    qs%ref%hs_f0 = 0
-                    if (i0_length == i0_length_restart) then
-                        call hdf5_read(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
-                        call hdf5_read(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)
-                    else
-                        call convert_ref(subgroup_id, dref, kinds, qs%ref%f0)
-                        call convert_ref(subgroup_id, dhsref, kinds, qs%ref%hs_f0)
-                    end if
+                    ! Already read the reference determinant - only need the population
 
                     call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
                     qs%estimators%D0_population = tmp(1)
@@ -656,6 +648,72 @@ module restart_hdf5
 #endif
 
         end subroutine read_restart_hdf5
+
+        subroutine get_reference_hdf5(ri, reference)
+
+            ! Read a reference determinant from a restart file.
+
+            ! In:
+            !    ri: restart information.  ri%restart_stem and ri%read_id are used.
+            ! In/Out:
+            !    reference: info on the reference determinant read from file.
+
+#ifndef DISABLE_HDF5
+            use hdf5
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path
+            use restart_utils, only: convert_ref
+#endif
+            use errors, only: stop_all
+            use const
+
+            use qmc_data, only: reference_t
+
+            type(restart_info_t), intent(in) :: ri
+            type(reference_t), intent(inout) :: reference
+
+#ifndef DISABLE_HDF5
+
+            integer :: ierr, i0_length_restart
+            character(255) :: restart_file
+            type(hdf5_kinds_t) :: kinds
+            integer(hid_t) :: file_id, group_id
+
+            ! Initialise HDF5 and open file.
+            call h5open_f(ierr)
+            call init_restart_hdf5(ri, .false., restart_file, kinds)
+            call h5fopen_f(restart_file, H5F_ACC_RDONLY_F, file_id, ierr)
+            if (ierr/=0) then
+               call stop_all('read_restart_hdf5', "Unable to open restart file.")
+            endif
+
+            call h5gopen_f(file_id, gmetadata, group_id, ierr)
+                call hdf5_read(group_id, di0_length, i0_length_restart)
+            call h5gclose_f(group_id, ierr)
+
+            ! --- qmc/reference group ---
+            call h5gopen_f(file_id, hdf5_path(gqmc,gref), group_id, ierr)
+
+                reference%f0 = 0
+                reference%hs_f0 = 0
+                if (i0_length == i0_length_restart) then
+                    call hdf5_read(group_id, dref, kinds, shape(reference%f0), reference%f0)
+                    call hdf5_read(group_id, dhsref, kinds, shape(reference%hs_f0), reference%hs_f0)
+                else
+                    call convert_ref(group_id, dref, kinds, reference%f0)
+                    call convert_ref(group_id, dhsref, kinds, reference%hs_f0)
+                end if
+
+            call h5gclose_f(group_id, ierr)
+
+            ! And terminate HDF5.
+            call h5fclose_f(file_id, ierr)
+            call h5close_f(ierr)
+
+#else
+            call stop_all('get_reference_hdf5', '# Not compiled with HDF5 support.  Cannot read in restart file.')
+#endif
+
+        end subroutine get_reference_hdf5
 
         subroutine redistribute_restart_hdf5(ri, nprocs_target, sys)
 
@@ -678,7 +736,8 @@ module restart_hdf5
             use errors, only: warning, stop_all
             use parallel
 
-            use calc, only: ccmc_calc, init_proc_map_t
+            use calc, only: ccmc_calc
+            use load_balancing, only: init_proc_map_t
             use qmc_data, only: ccmc_in_t, particle_t
             use spawn_data, only: proc_map_t
             use particle_t_utils, only: init_particle_t, dealloc_particle_t

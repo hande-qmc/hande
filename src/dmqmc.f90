@@ -24,8 +24,9 @@ contains
         !    reference_in: current reference determinant.  If not set (ie
         !       components allocated) then a best guess is made based upon the
         !       desired spin/symmetry.
-        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
         ! In/Out:
+        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
+        !       Deallocated on exit.
         !    dmqmc_estimates: type containing all DMQMC estimates.
         ! Out:
         !    qs: qmc_state for use if restarting the calculation
@@ -64,7 +65,7 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), intent(out), target :: qs
-        type(qmc_state_t), intent(in), optional :: qmc_state_restart
+        type(qmc_state_t), intent(inout), optional :: qmc_state_restart
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport
@@ -78,7 +79,7 @@ contains
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
         logical :: soft_exit, write_restart_shift, update_tau
-        logical :: error, rdm_error, attempt_spawning
+        logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
@@ -95,12 +96,14 @@ contains
         end if
 
         if (parent) then
-            call check_qmc_opts(qmc_in, .false.)
+            restarting = present(qmc_state_restart) .or. restart_in%read_restart
+            call check_qmc_opts(qmc_in, .not. present(qmc_state_restart), restarting)
             call check_dmqmc_opts(sys, dmqmc_in)
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in, &
+                      qmc_state_restart=qmc_state_restart)
 
         allocate(tot_nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('tot_nparticles_old', qs%psip_list%nspaces, ierr)
@@ -124,8 +127,6 @@ contains
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
 
-        if (present(qmc_state_restart)) qs = qmc_state_restart
-
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
@@ -140,7 +141,7 @@ contains
             call operators_in_t_json(js)
             call restart_in_t_json(js, restart_in)
             call load_bal_in_t_json(js, load_bal_in)
-            call reference_t_json(js, qs%ref, .true.)
+            call reference_t_json(js, qs%ref, sys, .true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if

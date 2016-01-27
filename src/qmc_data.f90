@@ -87,12 +87,12 @@ type qmc_in_t
     ! CARE: as we don't modify qmc_in_t objects, one should inspect the sizes
     ! used in particle_t and spawned_particle_t for the exact values used (which may
     ! be rounded for various reasons).
-    integer :: walker_length
-    integer :: spawned_walker_length
+    integer :: walker_length = 0
+    integer :: spawned_walker_length = 0
 
     ! The initial population on the reference determinant/trace of the density matrix.
     ! Overridden by a restart file.
-    real(p) :: D0_population
+    real(p) :: D0_population = 0
     ! Number of particles before which varyshift mode is turned on.
     real(p) :: target_particles = huge(1.0_p)
 
@@ -753,7 +753,7 @@ contains
 
     end subroutine load_bal_in_t_json
 
-    subroutine reference_t_json(js, ref, terminal)
+    subroutine reference_t_json(js, ref, sys, terminal)
 
         ! Serialise a reference_t object in JSON format.
 
@@ -761,17 +761,35 @@ contains
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
         !   reference: reference_t object containing the information about reference state (including any defaults set).
+        !   sys (optional): system to which reference belongs.  If present, output the spin and symmetry information of the reference.
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
 
+        use determinants, only: spin_orb_list
+        use system, only: sys_t
+        use symmetry, only: symmetry_orb_list
+
         type(json_out_t), intent(inout) :: js
         type(reference_t), intent(in) :: ref
+        type(sys_t), intent(in), optional :: sys
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'reference')
-        if (allocated(ref%occ_list0)) call json_write_key(js, 'occ_list', ref%occ_list0)
-        if (allocated(ref%hs_occ_list0)) call json_write_key(js, 'hs_occ_list', ref%hs_occ_list0)
+        if (allocated(ref%occ_list0)) then
+            call json_write_key(js, 'det', ref%occ_list0)
+            if (present(sys)) then
+                call json_write_key(js, 'det_ms', spin_orb_list(sys%basis%basis_fns, ref%occ_list0))
+                call json_write_key(js, 'det_symmetry', symmetry_orb_list(sys, ref%occ_list0))
+            end if
+        end if
+        if (allocated(ref%hs_occ_list0)) then
+            call json_write_key(js, 'hilbert_space_det', ref%hs_occ_list0)
+            if (present(sys)) then
+                call json_write_key(js, 'hilbert_space_det_ms', spin_orb_list(sys%basis%basis_fns, ref%hs_occ_list0))
+                call json_write_key(js, 'hilbert_space_det_symmetry', symmetry_orb_list(sys, ref%hs_occ_list0))
+            end if
+        end if
         call json_write_key(js, 'ex_level', ref%ex_level)
         call json_write_key(js, 'H00', ref%H00)
         call json_write_key(js, 'shift', ref%energy_shift, .true.)

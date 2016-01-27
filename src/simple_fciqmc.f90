@@ -237,7 +237,7 @@ contains
         real(p) :: H0i, Hii
         type(particle_t) :: psip_list
         type(spawn_t) :: spawn
-        logical :: write_restart_shift
+        logical :: write_restart_shift, restarting
         type(restart_info_t) :: ri, ri_shift
         real(p), allocatable :: hamil(:,:)
         type(csrp_t) :: hamil_csr
@@ -245,7 +245,8 @@ contains
         type(qmc_in_t) :: qmc_in_loc
 
         ! Check input options
-        call check_qmc_opts(qmc_in, .true.)
+        restarting = present(qmc_state_restart) .or. restart_in%read_restart
+        call check_qmc_opts(qmc_in, .false., restarting)
 
         call init_simple_fciqmc(sys, qmc_in, reference, qs, sparse_hamil, restart_in%read_restart, ndets, dets, ref_det, &
                                 psip_list, spawn, hamil, hamil_csr)
@@ -261,7 +262,7 @@ contains
             qmc_in_loc%pattempt_double = qs%pattempt_double
             call qmc_in_t_json(js, qmc_in_loc)
             call restart_in_t_json(js, restart_in)
-            call reference_t_json(js, reference)
+            call reference_t_json(js, reference, sys)
             call json_write_key(js, 'sparse_hamil', sparse_hamil, .true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io,'()')

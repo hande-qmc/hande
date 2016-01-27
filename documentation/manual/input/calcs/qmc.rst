@@ -20,7 +20,7 @@ algorithms and control the core settings in the algorithms.
 ``init_pop``
     type: float.
 
-    Required.  Overridden if the calculations is initialised from a restart file.
+    Required unless the calculations is initialised from a restart file or qmc_state.
 
     Set the initial population on the reference determinant.  For DMQMC calculations this
     option sets the number of psips which will be randomly distributed along the diagonal
@@ -43,7 +43,7 @@ algorithms and control the core settings in the algorithms.
 ``state_size``
     type: integer.
 
-    Required.
+    Required unless qmc_state is given.
 
     Maximum number of states (i.e. determinants, excitors or density matrix elements) to
     store in the "main" list, which holds the number of particles on the state and related
@@ -53,6 +53,8 @@ algorithms and control the core settings in the algorithms.
     If negative, then the absolute value is used as the maximum amount of memory in MB to
     use for this information.
 
+    Ignored if qmc_state is given.
+
     .. note::
 
         This is a **per processor** quantity.  It is usually safe to assume that each
@@ -61,7 +63,7 @@ algorithms and control the core settings in the algorithms.
 ``spawned_state_size``
     type: integer.
 
-    Required.
+    Required unless qmc_state is given.
 
     Maximum number of states (i.e. determinants, excitors or density matrix elements) to
     store in the "spawned" list, i.e. the maximum number of states which can be spawned onto
@@ -73,6 +75,8 @@ algorithms and control the core settings in the algorithms.
 
     If negative, then the absolute value is used as the maximum amount of memory in MB to
     use for this information.
+
+    Ignored if qmc_state is given.
 
     .. note::
 

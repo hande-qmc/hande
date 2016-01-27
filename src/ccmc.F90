@@ -279,7 +279,9 @@ contains
         !       desired spin/symmetry.
         !    load_bal_in: input options for load balancing.
         !    qmc_in: input options relating to QMC methods.
-        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
+        ! In/Out:
+        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
+        !       Deallocated on exit.
         ! Out:
         !    qs: qmc_state for use if restarting the calculation
 
@@ -320,7 +322,7 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), target, intent(out) :: qs
-        type(qmc_state_t), intent(in), optional :: qmc_state_restart
+        type(qmc_state_t), intent(inout), optional :: qmc_state_restart
 
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
@@ -340,7 +342,7 @@ contains
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
 
-        logical :: soft_exit, dump_restart_shift
+        logical :: soft_exit, dump_restart_shift, restarting
 
         integer(int_p), allocatable :: cumulative_abs_nint_pops(:)
         integer :: D0_proc, D0_pos, nD0_proc, min_cluster_size, max_cluster_size, iexcip_pos, slot
@@ -367,13 +369,14 @@ contains
 
         ! Check input options.
         if (parent) then
-            call check_qmc_opts(qmc_in, .false.)
+            restarting = present(qmc_state_restart) .or. restart_in%read_restart
+            call check_qmc_opts(qmc_in, .not.present(qmc_state_restart), restarting)
             call check_ccmc_opts(sys, ccmc_in)
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
-        if (present(qmc_state_restart)) qs = qmc_state_restart
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, &
+                      qmc_state_restart=qmc_state_restart)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -386,7 +389,7 @@ contains
             call ccmc_in_t_json(js, ccmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in)
-            call reference_t_json(js, qs%ref, .true.)
+            call reference_t_json(js, qs%ref, sys, .true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if

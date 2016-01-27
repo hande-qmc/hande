@@ -28,7 +28,9 @@ contains
         !       desired spin/symmetry.
         !    qmc_in: input options relating to QMC methods.
         !    load_bal_in: input options for load balancing.
-        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation
+        ! In/Out:
+        !    qmc_state_restart (optional): if present, restart from a previous fciqmc calculation.
+        !       Deallocated on exit.
         ! Out:
         !    qs: qmc_state for use if restarting the calculation
 
@@ -71,7 +73,7 @@ contains
         type(restart_in_t), intent(in) :: restart_in
         type(load_bal_in_t), intent(in) :: load_bal_in
         type(reference_t), intent(in) :: reference_in
-        type(qmc_state_t), intent(in), optional :: qmc_state_restart
+        type(qmc_state_t), intent(inout), optional :: qmc_state_restart
         type(qmc_state_t), intent(out), target :: qs
 
         type(det_info_t) :: cdet
@@ -101,7 +103,7 @@ contains
 
         real :: t1, t2
 
-        logical :: update_tau
+        logical :: update_tau, restarting
 
         if (parent) then
             write (6,'(1X,"FCIQMC")')
@@ -110,16 +112,15 @@ contains
 
         if (parent) then
             ! Check input options.
-            call check_qmc_opts(qmc_in, .false.)
+            restarting = present(qmc_state_restart) .or. restart_in%read_restart
+            call check_qmc_opts(qmc_in, .not.present(qmc_state_restart), restarting)
             call check_fciqmc_opts(sys, fciqmc_in)
             call check_load_bal_opts(load_bal_in)
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, fciqmc_in=fciqmc_in)
-
-        ! Copy over data from restart
-        if (present(qmc_state_restart)) qs = qmc_state_restart
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, fciqmc_in=fciqmc_in, &
+                      qmc_state_restart=qmc_state_restart)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -133,7 +134,7 @@ contains
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in)
             call load_bal_in_t_json(js, load_bal_in)
-            call reference_t_json(js, qs%ref, .true.)
+            call reference_t_json(js, qs%ref, sys, .true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if

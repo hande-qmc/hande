@@ -377,7 +377,7 @@ contains
 
         use checking, only: check_deallocate
         use spawn_data, only: dealloc_spawn_t
-        use calc, only: dealloc_parallel_t
+        use load_balancing, only: dealloc_parallel_t
         use qmc_data, only: reference_t, particle_t
         use reference_determinant, only: dealloc_reference_t
 
