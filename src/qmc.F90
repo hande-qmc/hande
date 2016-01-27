@@ -41,8 +41,9 @@ contains
 
         use checking, only: check_allocate
 
-        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, init_parallel_t
+        use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc
         use energy_evaluation, only: nparticles_start_ind
+        use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
         use system, only: sys_t
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5

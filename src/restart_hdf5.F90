@@ -736,7 +736,8 @@ module restart_hdf5
             use errors, only: warning, stop_all
             use parallel
 
-            use calc, only: ccmc_calc, init_proc_map_t
+            use calc, only: ccmc_calc
+            use load_balancing, only: init_proc_map_t
             use qmc_data, only: ccmc_in_t, particle_t
             use spawn_data, only: proc_map_t
             use particle_t_utils, only: init_particle_t, dealloc_particle_t

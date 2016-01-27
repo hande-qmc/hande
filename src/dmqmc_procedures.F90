@@ -197,11 +197,12 @@ contains
         !     inst_rdms (optional): estimates of instantaneous
         !         (temperature-dependent) reduced density matrices.
 
-        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2, init_proc_map_t
+        use calc, only: doing_dmqmc_calc, dmqmc_rdm_r2
         use checking, only: check_allocate
         use dmqmc_data, only: subsys_t, dmqmc_inst_rdms_t
         use errors
         use hash_table, only: alloc_hash_table
+        use load_balancing, only: init_proc_map_t
         use parallel, only: parent
         use spawn_data, only: alloc_spawn_t, proc_map_t
         use system, only: sys_t, heisenberg
