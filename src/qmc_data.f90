@@ -491,9 +491,9 @@ type estimators_t
     ! accordingly.
     real(p) :: proj_energy
     ! Total number of occupied states across all processors.
-    integer :: tot_nstates
+    integer :: tot_nstates = 0
     ! The total number of successful spawning events, across all processors.
-    integer :: tot_nspawn_events
+    integer :: tot_nspawn_events = 0
 
     ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
     ! Signed population of Hellmann--Feynman particles

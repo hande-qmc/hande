@@ -242,7 +242,6 @@ contains
         real(p), allocatable :: hamil(:,:)
         type(csrp_t) :: hamil_csr
         type(json_out_t) :: js
-        type(qmc_in_t) :: qmc_in_loc
 
         ! Check input options
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
@@ -256,11 +255,7 @@ contains
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
-            ! The default values of pattempt_* are not in qmc_in
-            qmc_in_loc = qmc_in
-            qmc_in_loc%pattempt_single = qs%pattempt_single
-            qmc_in_loc%pattempt_double = qs%pattempt_double
-            call qmc_in_t_json(js, qmc_in_loc)
+            call qmc_in_t_json(js, qmc_in)
             call restart_in_t_json(js, restart_in)
             call reference_t_json(js, reference, sys)
             call json_write_key(js, 'sparse_hamil', sparse_hamil, .true.)
