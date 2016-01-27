@@ -262,7 +262,7 @@ contains
             qmc_in_loc%pattempt_double = qs%pattempt_double
             call qmc_in_t_json(js, qmc_in_loc)
             call restart_in_t_json(js, restart_in)
-            call reference_t_json(js, reference)
+            call reference_t_json(js, reference, sys)
             call json_write_key(js, 'sparse_hamil', sparse_hamil, .true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io,'()')

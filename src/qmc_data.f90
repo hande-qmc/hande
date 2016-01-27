@@ -753,7 +753,7 @@ contains
 
     end subroutine load_bal_in_t_json
 
-    subroutine reference_t_json(js, ref, terminal)
+    subroutine reference_t_json(js, ref, sys, terminal)
 
         ! Serialise a reference_t object in JSON format.
 
@@ -761,17 +761,28 @@ contains
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
         !   reference: reference_t object containing the information about reference state (including any defaults set).
+        !   sys (optional): system to which reference belongs.  If present, output the symmetry information of the reference.
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
 
+        use system, only: sys_t
+        use symmetry, only: symmetry_orb_list
+
         type(json_out_t), intent(inout) :: js
         type(reference_t), intent(in) :: ref
+        type(sys_t), intent(in), optional :: sys
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'reference')
-        if (allocated(ref%occ_list0)) call json_write_key(js, 'det', ref%occ_list0)
-        if (allocated(ref%hs_occ_list0)) call json_write_key(js, 'hilbert_space_det', ref%hs_occ_list0)
+        if (allocated(ref%occ_list0)) then
+            call json_write_key(js, 'det', ref%occ_list0)
+            if (present(sys)) call json_write_key(js, 'det_symmetry', symmetry_orb_list(sys, ref%occ_list0))
+        end if
+        if (allocated(ref%hs_occ_list0)) then
+            call json_write_key(js, 'hilbert_space_det', ref%hs_occ_list0)
+            if (present(sys)) call json_write_key(js, 'hilbert_space_det_symmetry', symmetry_orb_list(sys, ref%hs_occ_list0))
+        end if
         call json_write_key(js, 'ex_level', ref%ex_level)
         call json_write_key(js, 'H00', ref%H00)
         call json_write_key(js, 'shift', ref%energy_shift, .true.)

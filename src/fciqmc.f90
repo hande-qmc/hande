@@ -134,7 +134,7 @@ contains
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in)
             call load_bal_in_t_json(js, load_bal_in)
-            call reference_t_json(js, qs%ref, .true.)
+            call reference_t_json(js, qs%ref, sys, .true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if
