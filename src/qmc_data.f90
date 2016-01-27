@@ -770,8 +770,8 @@ contains
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'reference')
-        if (allocated(ref%occ_list0)) call json_write_key(js, 'occ_list', ref%occ_list0)
-        if (allocated(ref%hs_occ_list0)) call json_write_key(js, 'hs_occ_list', ref%hs_occ_list0)
+        if (allocated(ref%occ_list0)) call json_write_key(js, 'det', ref%occ_list0)
+        if (allocated(ref%hs_occ_list0)) call json_write_key(js, 'hilbert_space_det', ref%hs_occ_list0)
         call json_write_key(js, 'ex_level', ref%ex_level)
         call json_write_key(js, 'H00', ref%H00)
         call json_write_key(js, 'shift', ref%energy_shift, .true.)
