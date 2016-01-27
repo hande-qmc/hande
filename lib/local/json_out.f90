@@ -453,8 +453,14 @@ contains
             else
                 write (io, '(f10.8)', advance='no') val
             end if
-        else
+        else if (abs(val) < 1.0e20_sp) then
             write (io, '(f0.8)', advance='no') val
+        else
+            if (val < 0.0_sp) then
+                write (io, '(es15.8)', advance='no') val
+            else
+                write (io, '(es14.8)', advance='no') val
+            end if
         end if
 
     end subroutine write_real_val_32
@@ -472,8 +478,14 @@ contains
             else
                 write (io, '(f10.8)', advance='no') val
             end if
-        else
+        else if (abs(val) < 1.0e20_dp) then
             write (io, '(f0.8)', advance='no') val
+        else
+            if (val < 0.0_dp) then
+                write (io, '(es15.8)', advance='no') val
+            else
+                write (io, '(es14.8)', advance='no') val
+            end if
         end if
 
     end subroutine write_real_val_64
