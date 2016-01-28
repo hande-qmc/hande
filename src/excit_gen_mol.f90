@@ -1071,56 +1071,48 @@ contains
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
-        integer :: ij_sym, ab_spin
+        integer ::  ab_spin
 
         real(p) :: ia_weights(max(sys%nalpha,sys%nbeta))
         real(p) :: jb_weights(max(sys%nalpha,sys%nbeta))
       
-        integer :: ia_inds(max(sys%nalpha,sys%nbeta)) 
-        integer :: jb_inds(max(sys%nalpha,sys%nbeta)) 
-
         real(p) :: ia_weights_tot 
         real(p) :: jb_weights_tot 
-        integer :: ind, a, b, i, j
-        integer :: i_count, j_count
+        integer :: ind, a, b, i, j, i_ind, j_ind
 
 
         ! 1. Select single or double.
-
         if (get_rand_close_open(rng) < pattempt_single) then
 
+
             ! 2a. Select orbital to excite from and orbital to excite into.
-            call choose_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, cdet%symunocc, &
-                               connection%from_orb(1), connection%to_orb(1), allowed_excitation)
+            call find_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
+                             connection%to_orb(1), allowed_excitation)
             connection%nexcit = 1
 
             if (allowed_excitation) then
                 ! 3a. Probability of generating this excitation.
-                pgen = pattempt_single*calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, &
-                                                                   cdet%symunocc, connection%to_orb(1))
+                pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
 
                 ! 4a. Parity of permutation required to line up determinants.
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
-                                                  connection%perm)
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
             else
-                ! We have a highly restrained system and this det has no single
-                ! excitations at all.  To avoid reweighting pattempt_single and
-                ! pattempt_double (an O(N^3) operation), we simply return a null
-                ! excitation
+                ! Forbidden---connection%to_orb(1) is already occupied.
                 hmatel = 0.0_p
-                pgen = 1.0_p
+                pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
             end if
+
 
         else !we have a double
 
             ! 2b. Select orbitals to excite to
             
             ! sys%nvirt is the number of virtual orbitals
-            ind = int(get_rand_close_open(rng)*sys%nvirt*(sys%nvirt-1)/2) + 1
-            ! a,b initially refer to the indices in the lists of occupied spin-orbitals
+            ind = int(get_rand_close_open(rng)*sys%nvirt*(sys%nvirt-1)/2.0_p) + 1
+            ! a,b initially refer to the indices in the lists of virtual spin-orbitals
             ! rather than the spin-orbitals.
             b = int(1.50_p + sqrt(2*ind-1.750_p))
             a = ind - ((b-1)*(b-2))/2
@@ -1148,23 +1140,60 @@ contains
 
             ! Given a, construct the weights of all possible i
             if (sys%basis%basis_fns(a)%Ms < 0) then
-                !call create_weighted_excitation_list(a,cdet%occ_list_beta,sys%nbeta,ia_weights,ia_weights_tot,ia_inds,i_count)
+                call create_weighted_excitation_list(sys, a, cdet%occ_list_beta, sys%nbeta, ia_weights, ia_weights_tot)
+                ! Use the alias method to select i with the appropriate probability
+                i_ind = select_weighted_value(rng, sys%nbeta, ia_weights, ia_weights_tot)
+                i = cdet%occ_list_beta(i_ind) 
             else
-                !call create_weighted_excitation_list(a,cdet%occ_list_alpha,sys%nalpha,ia_weights,ia_weights_tot,ia_inds,i_count)
+                call create_weighted_excitation_list(sys, a, cdet%occ_list_alpha, sys%nalpha, ia_weights, ia_weights_tot)
+                ! Use the alias method to select i with the appropriate probability
+                i_ind = select_weighted_value(rng, sys%nalpha, ia_weights, ia_weights_tot)
+                i = cdet%occ_list_alpha(i_ind) 
             endif 
-            ! Use the alias method to select a with the appropriate probability
-            i = select_weighted_value(rng, i_count, ia_weights, ia_weights_tot)
-            i = ia_inds(i)           
- 
             ! Given j construct the weights of all possible b
+            if (sys%basis%basis_fns(b)%Ms < 0) then
+                call create_weighted_excitation_list(sys, b, cdet%occ_list_beta, sys%nbeta, jb_weights, jb_weights_tot)
+                ! Use the alias method to select j with the appropriate probability
+                j_ind = select_weighted_value(rng, sys%nbeta, jb_weights, jb_weights_tot)
+                j = cdet%occ_list_beta(j_ind) 
+            else
+                call create_weighted_excitation_list(sys, b, cdet%occ_list_alpha, sys%nalpha, jb_weights, jb_weights_tot)
+                ! Use the alias method to select a with the appropriate probability
+                j_ind = select_weighted_value(rng, sys%nalpha, jb_weights, jb_weights_tot)
+                j = cdet%occ_list_alpha(j_ind) 
+            endif 
             
             ! Use the alias method to select b with the appropriate probability
 
             ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
-            
+          
+            if (ab_spin==0) then 
+                !not possible to have chosen the reversed excitation
+                pgen=ia_weights(i_ind)/ia_weights_tot*jb_weights(j_ind)/jb_weights_tot
+            else !i and j have same spin, so could have been selected in the other order.
+                pgen=       (ia_weights(i_ind)*jb_weights(j_ind) + ia_weights(j_ind)*jb_weights(i_ind) ) &
+                        /   (ia_weights_tot*jb_weights_tot)
+            endif
+            pgen = (1.0_p - pattempt_single) * pgen *2.0_p/(sys%nvirt*(sys%nvirt-1)) ! pgen(ab)
             connection%nexcit = 2
 
             allowed_excitation = (i/=j)
+
+            if (i<j) then
+                connection%from_orb(1)=i
+                connection%from_orb(2)=j
+            else
+                connection%from_orb(2)=i
+                connection%from_orb(1)=j
+            endif
+            if (a<b) then
+                connection%to_orb(1)=a
+                connection%to_orb(2)=b 
+            else
+                connection%to_orb(2)=a
+                connection%to_orb(1)=b 
+            endif
+!            write(6,*) "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
             if (allowed_excitation) then
 
                 ! 3b. Probability of generating this excitation.
@@ -1186,9 +1215,31 @@ contains
             end if
 
         end if
-
     end subroutine gen_excit_mol_cauchy_schwarz
-    
+    subroutine create_weighted_excitation_list(sys, virt, occ_list, nocc, weights, weighttot)
+        ! Generate a list of allowed excitations from virt to one of occ_list with their weights based on
+        ! sqrt(|<virt occ | occ virt>|)
+
+        use system, only: sys_t
+        use molecular_integrals, only: get_two_body_int_mol
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: virt, nocc, occ_list(nocc)
+        real(p), intent(out) :: weights(nocc), weighttot
+        
+        integer :: i
+        real(p) :: weight
+
+        weighttot = 0 
+        do i=1, nocc
+            weight = get_two_body_int_mol(sys%read_in%coulomb_integrals, virt, occ_list(i), occ_list(i), virt,  & 
+                        sys%basis%basis_fns, sys%read_in%pg_sym) !This exchange integral should be +ve, but best abs below in case!
+!            weight = 1
+            weight = sqrt(abs(weight))
+            weights(i) = weight
+            weighttot = weighttot + weight
+        enddo
+    end subroutine create_weighted_excitation_list 
+
     function select_weighted_value(rng, N, weights, totweight) result(ret)
         ! Select an element, i=1..N with probability weights(i)/totweight.
         ! This uses the alias method, requiring O(N) storage, and O(N) time
@@ -1229,10 +1280,12 @@ contains
         ! If V<P_K then X=K, else X=Y_K.
         x=get_rand_close_open(rng)*N
         K=floor(x)
-        if ((x-K)<aliasP(K)) then
-            ret=K+1
+        x=x-K
+        K=K+1
+        if (x<aliasP(K)) then
+            ret=K
         else
-            ret=aliasY(K)+1
+            ret=aliasY(K)
         endif
     end function select_weighted_value
 
@@ -1297,8 +1350,7 @@ contains
             endif
             aliasK(i)=i !just in case
         enddo
-        
-        do while (nover > 0)
+        do while (nover > 0 .and. nunder > 0)
             ! match the last nover with the last nunder
             ov = overfull(nover)
             un = underfull(nunder)

@@ -908,6 +908,7 @@ contains
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
+        !     excit_gen = 'renorm', 'no_renorm', 'cauchy_schwarz'
         ! }
 
         ! In/Out:
@@ -922,7 +923,7 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
-        use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm
+        use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
         use errors, only: stop_all, warning
@@ -933,7 +934,7 @@ contains
         logical, intent(in), optional :: short
 
         integer :: qmc_table, err
-        character(len=10) :: str
+        character(len=20) :: str
         logical :: skip, no_renorm
 
         character(23), parameter :: keys(27) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
@@ -1018,6 +1019,8 @@ contains
                 qmc_in%excit_gen = excit_gen_renorm
             case('no_renorm')
                 qmc_in%excit_gen = excit_gen_no_renorm
+            case('cauchy_schwarz')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz
             case default
                 call stop_all('read_qmc_in', 'Invalid excit_gen setting: '//trim(str))
             end select
