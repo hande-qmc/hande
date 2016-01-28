@@ -1058,7 +1058,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
-        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
+        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -1117,13 +1117,13 @@ contains
             b = int(1.50_p + sqrt(2*ind-1.750_p))
             a = ind - ((b-1)*(b-2))/2
 
-            !Now to convert from virual #a to orbital a
+            ! Now to convert from virtual #a to orbital a
             if (a <= sys%nvirt_alpha) then
                 a = cdet%unocc_list_alpha(a)
             else
                 a = cdet%unocc_list_beta(a-sys%nvirt_alpha)
             endif
-            !Now to convert from virual #a to orbital a
+            ! Now to convert from virtual #b to orbital b
             if (b <= sys%nvirt_alpha) then
                 b = cdet%unocc_list_alpha(b)
             else
@@ -1162,8 +1162,8 @@ contains
                 j_ind = select_weighted_value(rng, sys%nalpha, jb_weights, jb_weights_tot)
                 j = cdet%occ_list_alpha(j_ind) 
             endif 
-            
-            ! Use the alias method to select b with the appropriate probability
+
+            ! 3b. Probability of generating this excitation.
 
             ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
           
@@ -1196,14 +1196,12 @@ contains
 !            write(6,*) "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
             if (allowed_excitation) then
 
-                ! 3b. Probability of generating this excitation.
-
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
+                hmatel = slater_condon2_mol(sys, connection%from_orb(1), connection%from_orb(2), &
                                                   connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
