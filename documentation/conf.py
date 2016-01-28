@@ -30,9 +30,14 @@ extensions = ['sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.autodoc',
               'sphinx.ext.intersphinx', 'matplotlib.sphinxext.plot_directive']
 
 # matplotlib plot configuration
-plot_pre_code = '''import matplotlib.style
-matplotlib.style.use('ggplot')
-'''
+try:
+    import matplotlib.style
+    plot_pre_code = '''import matplotlib.style
+    matplotlib.style.use('ggplot')
+    '''
+except ImportError:
+    # Using an old version of matplotlib
+    pass
 
 # Use napoleon to aprse docstrings.  From sphinx 1.3 onwards, this is packaged
 # with sphinx.  Earlier versions: require user to install it.
