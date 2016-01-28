@@ -482,9 +482,9 @@ contains
             write (io, '(f0.8)', advance='no') val
         else
             if (val < 0.0_dp) then
-                write (io, '(es15.8)', advance='no') val
+                write (io, '(es16.8e3)', advance='no') val
             else
-                write (io, '(es14.8)', advance='no') val
+                write (io, '(es15.8e3)', advance='no') val
             end if
         end if
 
