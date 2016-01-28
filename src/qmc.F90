@@ -199,7 +199,7 @@ contains
         use system
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
-                            excit_gen_renorm, excit_gen_no_renorm
+                            excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
 
@@ -362,6 +362,9 @@ contains
             case(excit_gen_renorm)
                 gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
+            case(excit_gen_cauchy_schwarz)
+                gen_excit_ptr%full => gen_excit_mol_cauchy_schwarz
+                decoder_ptr => decode_det_spinocc_spinunocc
             case default
                 call stop_all('init_proc_pointers', 'Selected excitation generator not implemented.')
             end select

@@ -1030,4 +1030,290 @@ contains
 
     end function calc_pgen_double_mol_no_renorm
 
+
+    subroutine gen_excit_mol_cauchy_schwarz(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        ! Create a random excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+
+        ! In:
+        !    sys: system object being studied.
+        !    pattempt_single: Probability to attempt a single excitation.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !        determinant and a connected determinant in molecular systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t
+        use excitations, only: find_excitation_permutation1, find_excitation_permutation2
+        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol_excit
+        use system, only: sys_t
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: pattempt_single
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pgen, hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
+
+        integer :: ij_sym, ab_spin
+
+        real(p) :: ia_weights(max(sys%nalpha,sys%nbeta))
+        real(p) :: jb_weights(max(sys%nalpha,sys%nbeta))
+      
+        integer :: ia_inds(max(sys%nalpha,sys%nbeta)) 
+        integer :: jb_inds(max(sys%nalpha,sys%nbeta)) 
+
+        real(p) :: ia_weights_tot 
+        real(p) :: jb_weights_tot 
+        integer :: ind, a, b, i, j
+        integer :: i_count, j_count
+
+
+        ! 1. Select single or double.
+
+        if (get_rand_close_open(rng) < pattempt_single) then
+
+            ! 2a. Select orbital to excite from and orbital to excite into.
+            call choose_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, cdet%symunocc, &
+                               connection%from_orb(1), connection%to_orb(1), allowed_excitation)
+            connection%nexcit = 1
+
+            if (allowed_excitation) then
+                ! 3a. Probability of generating this excitation.
+                pgen = pattempt_single*calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, cdet%occ_list, &
+                                                                   cdet%symunocc, connection%to_orb(1))
+
+                ! 4a. Parity of permutation required to line up determinants.
+                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
+
+                ! 5a. Find the connecting matrix element.
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
+                                                  connection%perm)
+            else
+                ! We have a highly restrained system and this det has no single
+                ! excitations at all.  To avoid reweighting pattempt_single and
+                ! pattempt_double (an O(N^3) operation), we simply return a null
+                ! excitation
+                hmatel = 0.0_p
+                pgen = 1.0_p
+            end if
+
+        else !we have a double
+
+            ! 2b. Select orbitals to excite to
+            
+            ! sys%nvirt is the number of virtual orbitals
+            ind = int(get_rand_close_open(rng)*sys%nvirt*(sys%nvirt-1)/2) + 1
+            ! a,b initially refer to the indices in the lists of occupied spin-orbitals
+            ! rather than the spin-orbitals.
+            b = int(1.50_p + sqrt(2*ind-1.750_p))
+            a = ind - ((b-1)*(b-2))/2
+
+            !Now to convert from virual #a to orbital a
+            if (a <= sys%nvirt_alpha) then
+                a = cdet%unocc_list_alpha(a)
+            else
+                a = cdet%unocc_list_beta(a-sys%nvirt_alpha)
+            endif
+            !Now to convert from virual #a to orbital a
+            if (b <= sys%nvirt_alpha) then
+                b = cdet%unocc_list_alpha(b)
+            else
+                b = cdet%unocc_list_beta(b-sys%nvirt_alpha)
+            endif
+            ab_spin = sys%basis%basis_fns(a)%Ms + sys%basis%basis_fns(b)%Ms
+
+            !now we've chosen a and b. 
+ 
+            ! We now need to select the orbitals to excite into which we do with weighting:
+            ! p(ij|ab) = p(i|a) p(j|b) + p(i|b) p(j|a)
+            
+            ! We actually choose i|a then j|b, but since we could have also generated the excitation b from i and a from j, we need to include that prob too.
+
+            ! Given a, construct the weights of all possible i
+            if (sys%basis%basis_fns(a)%Ms < 0) then
+                !call create_weighted_excitation_list(a,cdet%occ_list_beta,sys%nbeta,ia_weights,ia_weights_tot,ia_inds,i_count)
+            else
+                !call create_weighted_excitation_list(a,cdet%occ_list_alpha,sys%nalpha,ia_weights,ia_weights_tot,ia_inds,i_count)
+            endif 
+            ! Use the alias method to select a with the appropriate probability
+            i = select_weighted_value(rng, i_count, ia_weights, ia_weights_tot)
+            i = ia_inds(i)           
+ 
+            ! Given j construct the weights of all possible b
+            
+            ! Use the alias method to select b with the appropriate probability
+
+            ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
+            
+            connection%nexcit = 2
+
+            allowed_excitation = (i/=j)
+            if (allowed_excitation) then
+
+                ! 3b. Probability of generating this excitation.
+
+                ! 4b. Parity of permutation required to line up determinants.
+                ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
+                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
+
+                ! 5b. Find the connecting matrix element.
+                hmatel = slater_condon2_mol_excit(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
+            else
+                ! Carelessly selected ij with no possible excitations.  Such
+                ! events are not worth the cost of renormalising the generation
+                ! probabilities.
+                ! Return a null excitation.
+                hmatel = 0.0_p
+                pgen = 1.0_p
+            end if
+
+        end if
+
+    end subroutine gen_excit_mol_cauchy_schwarz
+    
+    function select_weighted_value(rng, N, weights, totweight) result(ret)
+        ! Select an element, i=1..N with probability weights(i)/totweight.
+        ! This uses the alias method, requiring O(N) storage, and O(N) time
+        
+        ! In:
+        !    N: the number of objects to select from
+        !    weights: a length N array of reals containing the weights of each element
+        !    totweight: sum(weights(1:N))
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    ret: the index of the element chosen.
+
+        ! The 'alias method' allows one to select from a discrete probability distribution of k objects (with object j having probability p_j) in O(1) time. There's an O(k) storage and O(k) setup cost - a list of k reals (P_j) and k integers (Y_j)  which requires O(k) setup.
+
+        ! Pick a random real number x, 0<=x<k.  Let K=floor(x) and V=x-K. (so K is an integer and V the remainder).  X will be the result
+        ! If V<P_K then X=K, else X=Y_K.
+
+        ! Here's Knuth's exercise:
+        ! Vol2: 3.4.1 Ex 7 [20] (A. J. Walker) Suppose we have a bunch of cubes of k different colors, say n_j cubes of color C_j for 1<=j<=k, and we have k boxes {B_1,...,B_k} each of which can hold exactly n cubes.  Furthermore n_1+...+n_k=kn, so the cubes will just fit in the boxes.  Prove (constructively) that there is always a way to put the cubes into the boxes so that each box contains at most two different colors of cubes; in fact there is a way to do it so that, whenever box B_j contains two colors, one of those colors is C_j.  Show how to use this principle to compute the P and Y tables given a probability distribution (p_1,...p_k).
+
+
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+        type(dSFMT_t), intent(inout) :: rng
+        
+        integer, intent(in) :: N
+        real(p), intent(in) :: totweight, weights(N) 
+        integer :: ret
+
+        real(p) :: aliasP(N)
+        integer :: aliasY(N)
+        
+        real(p) :: x
+        integer :: K 
+        call generate_alias_tables(N, weights, totweight, aliasP, aliasY)        
+        ! Pick a random real number x, 0<=x<k.  Let K=floor(x) and V=x-K. (so K is an integer and V the remainder).  X will be the result
+        ! If V<P_K then X=K, else X=Y_K.
+        x=get_rand_close_open(rng)*N
+        K=floor(x)
+        if ((x-K)<aliasP(K)) then
+            ret=K+1
+        else
+            ret=aliasY(K)+1
+        endif
+    end function select_weighted_value
+
+    subroutine generate_alias_tables(N, weights, totweight, aliasU, aliasK)
+        ! Generate an alias table for the alias method.
+        ! This requires O(N) time and O(2N) scratch space
+        !
+        ! In:
+        !    N: number of objects to select from
+        !    weights: a length N array of reals containing the weights of each element
+        !    totweight: sum(weights(1:N))
+        ! Out:
+        !    aliasU: a length N array of reals for the U table
+        !    aliasK: a length N array of integers for the K table.
+
+        !
+        ! The alias method (a la Wikipedia)
+        ! The distribution may be padded with additional probabilities /p_i / = 0 to increase n to a convenient value, such as a power of two.
+
+        ! To generate the table, first initialize /U_i / = /np_i /. While doing this, divide the table entries into three categories:
+
+        !  * The “overfull” group, where /U_i / > 1,
+        !  * The “underfull” group, where /U_i / < 1 and K_i has not been
+        !    initialized, and
+        !  * The “exactly full” group, where /U_i / = 1 or K_i /has/ been
+        !    initialized.
+
+        ! If /U_i / = 1, the corresponding value K_i will never be consulted and is unimportant, but a value of /K_i / = /i/ is sensible.
+
+        ! As long as not all table entries are exactly full, repeat the following steps:
+
+        ! 1. Arbitrarily choose an overfull entry /U_i / > 1 and an underfull
+        !    entry /U_j / < 1. (If one of these exists, the other must, as well.)
+        ! 2. Allocate the unused space in entry j to outcome i, by setting /K_j /
+        !    = /i/.
+        ! 3. Remove the allocated space from entry i by changing /U_i / = /U_i /
+        !    − (1 − /U_j /) = /U_i / + /U_j / − 1.
+        ! 4. Entry j is now exactly full.
+        ! 5. Assign entry i to the appropriate category based on the new value of
+        !    U_i .  
+
+        integer, intent(in) :: N
+        real(p), intent(in) :: totweight, weights(N) 
+        real(p), intent(out) :: aliasU(N)
+        integer, intent(out) :: aliasK(N)
+
+        ! Working space:  We need a list of the underfull and the overfull, and a copy of the weights
+        integer :: underfull(N)
+        integer :: overfull(N)
+        integer :: i, nunder, nover, ov, un
+
+        aliasU(:)=weights(:) * (N / totweight)
+        nunder = 0
+        nover = 0
+        do i = 1, N
+            if (aliasU(i) <= 1) then
+                nunder = nunder + 1
+                underfull(nunder) = i
+            else ! account for weight=1 as underfull
+                nover = nover +1
+                overfull(nover) = i
+            endif
+            aliasK(i)=i !just in case
+        enddo
+        
+        do while (nover > 0)
+            ! match the last nover with the last nunder
+            ov = overfull(nover)
+            un = underfull(nunder)
+            ! put ov as the alternate for un
+            aliasK(un) = ov
+            ! un is now full, so we remove it from the un list
+            nunder = nunder - 1
+            ! remove that much probability from the ov's amount
+            aliasU(ov) = aliasU(ov) - (1 - aliasU(un))
+            if (aliasU(ov) < 1) then
+                !move it to the under list
+                nunder = nunder + 1
+                underfull(nunder) = overfull(nover)
+                nover = nover - 1
+            endif
+        enddo 
+    end subroutine generate_alias_tables        
 end module excit_gen_mol

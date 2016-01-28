@@ -37,6 +37,9 @@ enum, bind(c)
     ! avoids an expensive renormalisation step to calculate the excitation generation
     ! probabilities.
     enumerator :: excit_gen_no_renorm
+    ! Weight the excitations according to a Cauchy-Schwarz limit on the bounds of the integrals
+    ! This is O(N).
+    enumerator :: excit_gen_cauchy_schwarz
 end enum
 
 ! Types of semi-stochastic space.
