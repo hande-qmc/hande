@@ -7,7 +7,7 @@ hubbard = hubbard_k {
     ms = 0,
     U = 1.3,
     t = 1,
-    sym = 0,
+    sym = 1,
 }
 
 fciqmc {
