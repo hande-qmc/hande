@@ -83,3 +83,56 @@ the processor is the MPI root processor is a safe way to do this, e.g.
     if mpi_root() then
         print('root says hello from lua!')
     end
+
+Memory management
+-----------------
+
+Objects returned from functions (e.g. system and qmc_state objects) are deallocated by
+Lua's garbage collector when they are no longer required.  This can either be because the
+variable goes out of scope or is set to :code:`nil`.  This level of memory management is
+sufficient in most calculations.  However, there may be a substantial memory overhead when
+running multiple separate calculations in the same input file as the garbage collection
+need not take place immediately.  As such, objects which are no longer required can be
+explicitly freed using :code:`free` methods on all objects returned by HANDE's functions.
+For example, for :code:`qmc_state` objects:
+
+.. code-block:: lua
+
+    system = hubbard_k {
+        lattice = { { 10 } },
+        electrons = 6,
+        ms = 0,
+        sym = 1,
+        U = 1,
+    }
+
+    qs1 = fciqmc {
+        sys = system,
+        qmc = {
+            tau = 0.01,
+            init_pop = 10,
+            mc_cycles = 20,
+            nreports = 100,
+            target_population = 50000,
+            state_size = 5000,
+            spawned_state_size = 500,
+        },
+    }
+
+    -- Deallocate all memory associated with qs1 produced by the first FCIQMC calculation.
+    qs1:free()
+
+    qs2 = fciqmc {
+        sys = system,
+        qmc = {
+            tau = 0.02,
+            init_pop = 10,
+            mc_cycles = 10,
+            nreports = 100,
+            target_population = 50000,
+            state_size = 5000,
+            spawned_state_size = 500,
+        },
+    }
+
+and similarly for :code:`system` objects.

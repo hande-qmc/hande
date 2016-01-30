@@ -19,9 +19,9 @@ integer, such as 1; boolean, either ``true`` or ``false``) of each variable is a
 Systems
 ^^^^^^^
 
-All functions which create a system return a pointer to an object (which currently cannot
-be manipulated or inspected from lua).  All calculation functions take this system
-variable as an argument.
+All functions which create a system return a pointer to a :code:`system` object (which
+currently cannot be manipulated or inspected from lua).  All calculation functions take
+this variable as an argument.
 
 .. toctree::
    :maxdepth: 2
@@ -34,7 +34,7 @@ Calculations
 ^^^^^^^^^^^^
 
 All QMC methods (FCIQMC, CCMC, DMQMC and the simple FCIQMC implementation)
-return a pointer to a qmc_state object (which cannot be directly manipulated or
+return a pointer to a :code:`qmc_state` object (which cannot be directly manipulated or
 inspected from lua).  They also accept such an object as an optional argument to
 resume a previous QMC calculation.
 
