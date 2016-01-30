@@ -7,12 +7,12 @@ hubbard = hubbard_k {
     ms = 0,
     U = 1.3,
     t = 1,
-    sym = 0,
+    sym = 1,
 }
 
 targets = {2.5*10^3, 5*10^3, 7.5*10^3, 10^4, 2.5*10^4, 5*10^4, 1*10^5, 2.5*10^5, 5*10^5, 1*10^6}
 for i,target in ipairs(targets) do
-    fciqmc {
+    qmc_state = fciqmc {
         sys = hubbard,
         qmc = {
             tau = 0.002,
@@ -25,4 +25,6 @@ for i,target in ipairs(targets) do
             initiator = true,
         },
     }
+    -- For memory efficiency, explicitly free qmc_state after each calculation.
+    qmc_state:free()
 end
