@@ -199,8 +199,9 @@ which gives
 .. literalinclude:: calcs/fciqmc/hubbard_fciqmc.block
 
 The stochastic error can be reduced by running with more particles and/or running for
-longer.  Another very effective method is to use a floating point rather than integer
-representation of the wavefunction via the ``real_amplitudes`` keyword:
+longer.  Another very effective method is to allow determinants to have fractional numbers
+of particles on determinants rather than just using a strictly integer representation of
+the wavefunction.  This is done using the ``real_amplitudes`` keyword:
 
 .. literalinclude:: calcs/fciqmc/hubbard_fciqmc_real.lua
     :language: lua

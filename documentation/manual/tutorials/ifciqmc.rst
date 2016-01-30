@@ -103,9 +103,9 @@ each separate file is passed in as a separate argument on the command line.
 
 .. note::
 
-    We highly recommend a visual inspection of the convergence plot of the initiator error
-    as the convergence can be non-monotonic and, as a result, requiring more than two
-    populations give statistically equivalent results.
+    We highly recommend a visual inspection of the plot of the initiator error as
+    a function of population as the convergence can be non-monotonic and, as a result,
+    requiring more than two populations give statistically equivalent results.
 
 Finally, using real populations can, as with :ref:`fciqmc <fciqmc_tutorial>`, have
 a significant impact on the stochastic error.  Again, this is done by setting
