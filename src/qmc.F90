@@ -46,7 +46,7 @@ contains
         use checking, only: check_allocate
 
         use calc, only: doing_calc, hfs_fciqmc_calc, dmqmc_calc, GLOBAL_META
-        use energy_evaluation, only: nparticles_start_ind
+        use energy_evaluation, only: error_ind
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
         use system
@@ -137,7 +137,7 @@ contains
                                  qmc_in%real_amplitude_force_32, qmc_state%psip_list, io_unit=io_unit)
         end if
 
-        call init_parallel_t(qmc_state%psip_list%nspaces, nparticles_start_ind-1, fciqmc_in_loc%non_blocking_comm, &
+        call init_parallel_t(qmc_state%psip_list%nspaces+1, error_ind, fciqmc_in_loc%non_blocking_comm, &
                              qmc_state%par_info, load_bal_in%nslots)
 
         uuid_restart = ''

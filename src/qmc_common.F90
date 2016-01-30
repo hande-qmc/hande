@@ -1136,7 +1136,7 @@ contains
         logical, optional, intent(inout) :: error
 
         logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param, overflow
-        real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
+        real(dp) :: rep_info_copy(size(qs%par_info%report_comm%rep_info))
         integer :: iunit
 
 #ifdef PARALLEL

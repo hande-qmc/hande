@@ -32,34 +32,46 @@ enum, bind(c)
     enumerator :: nocc_states_ind
     enumerator :: nspawned_ind
     enumerator :: comms_found_ind
-    enumerator :: error_ind
     enumerator :: rdm_energy_ind
     enumerator :: rdm_trace_ind
     enumerator :: nattempts_ind
     enumerator :: reblock_done_ind
-    enumerator :: nparticles_start_ind ! ensure this is always the last enumerator
+    enumerator :: error_ind ! Also used to mark end of single-element data.  Ensure last entry before per-processor entries.
+    ! Per-processor data - leave order unchanged and keep at end of enum.
+    ! This data is sent all-to-all via a MPI_SUM and setting slots correspond to other processors to 0 initially.
+    ! Note this means that (bar the next entry) the real start of subsequent entries are shifted.
+    enumerator :: nparticles_start_ind ! broadcast # particles on each processor to each processor (slots: nspaces/processor)
 end enum
 
 contains
 
 ! --- Estimator/population/etc communication ---
 
-    ! In order to avoid doing repeated MPI calls, we place information that must be
-    ! summed over processors into one buffer and sum that buffer in one call.
-    ! The buffer (typically with a name begging with rep_loop) contains:
+    ! In order to avoid doing repeated MPI calls, we place information that must be summed over processors into one
+    ! buffer and sum that buffer in one call.  The buffer (typically with a name beginning with rep_loop) contains:
 
-    ! buffer(1:nparticles_start_ind-1)
+    ! buffer(1:error_ind)
     !   single-valued data given by the (descriptive) name in the enumerator
     !   above.
-    ! buffer(nparticles_start_ind+iproc*particle_t%nspaces:nparticles_start_ind-1+(iproc+1)*particle_t%nspaces)
-    !   the total population of each particle type on processor iproc.  Prior to
-    !   communication, each processor only sets its only value.
+    ! buffer(error_ind+1:)
+    !   per-processor quantities which are broadcast to all other processors.  This is done by setting values for all
+    !   bar the current processor to 0 and then performing MPI_SUM.  The (small) additional extra amount of data is more
+    !   than compensated for by avoiding the latency of multiple MPI calls.
 
     ! To add a data item to the buffer:
-    ! 1. add it (before nparticles_start_ind) to the enum above.
+    ! 1. add it (before error_ind) to the enum above.
     ! 2. set the buffer (with appropriate index) in local_energy_estimators.
     ! 3. set the variable to the summed version after the comm call (i.e. in
     !    communicated_energy_estimators).
+
+    ! To add a per-processor quantity:
+    ! 1. add it to enum (preferably before nparticles_start_ind -- it's easiest to group items together based on how
+    !    many slots per processor they require).
+    ! 2. Follow steps 2 and 3 as above, taking care of the offset in the buffer due to per-procssor quantities
+    !    preceeding the new item in the enum.
+    ! 3. Check array dimensions in init_parallel_t, update_energy_estimators, update_energy_estimators_recv are correct (probably
+    !    need to be increased).
+    ! 4. adjust the offset used to access the buffer for all per-processor quantities following the new item in the enum.
 
     ! All other elements are set to zero.
 
@@ -114,8 +126,8 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, intent(in), optional :: vary_shift_reference
 
-        real(dp) :: rep_loop_loc(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
-        real(dp) :: rep_loop_sum(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
+        real(dp) :: rep_loop_loc((qs%psip_list%nspaces+1)*nprocs+error_ind)
+        real(dp) :: rep_loop_sum((qs%psip_list%nspaces+1)*nprocs+error_ind)
         integer :: ierr
 
         call local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, error, update_tau, &
@@ -196,7 +208,7 @@ contains
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout) :: qs
-        integer :: ntypes
+        integer, intent(in) :: ntypes
         integer, intent(inout) :: rep_request_s(:)
         real(dp), intent(inout) :: ntot_particles_old(:)
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -206,8 +218,8 @@ contains
         logical, intent(out), optional :: update_tau
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
 
-        real(dp) :: rep_info_sum(nprocs*ntypes+nparticles_start_ind-1)
-        real(dp) :: rep_loop_reduce(nprocs*(nprocs*ntypes+nparticles_start_ind-1))
+        real(dp) :: rep_info_sum(nprocs*(ntypes+1)+error_ind)
+        real(dp) :: rep_loop_reduce(nprocs*(nprocs*(ntypes+1)+error_ind))
 #ifdef PARALLEL
         integer :: rep_request_r(0:nprocs-1)
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
@@ -218,7 +230,7 @@ contains
         comp_loc = .false.
         if (present(comp)) comp_loc = comp
 
-        data_size = nprocs*ntypes+ nparticles_start_ind-1
+        data_size = size(rep_info_sum)
 #ifdef PARALLEL
         do i = 0, nprocs-1
             call MPI_IRecv(rep_loop_reduce(i*data_size+1:(i+1)*data_size), data_size, MPI_REAL8, &
@@ -234,8 +246,10 @@ contains
         do i = 1, nparticles_start_ind-1
             rep_info_sum(i) = sum(rep_loop_reduce(i::data_size))
         end do
-        forall (i=nparticles_start_ind:nparticles_start_ind+ntypes-1,j=0:nprocs-1) &
-                rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
+        associate(real_start_ind => (nparticles_start_ind - 1 + nprocs))
+            forall (i=real_start_ind:real_start_ind+ntypes-1,j=0:nprocs-1) &
+                    rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
+        end associate
 
         call communicated_energy_estimators(qmc_in, qs, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
                                     nparticles_proc, comms_found, error, update_tau, bloom_stats, comp_loc)
@@ -266,7 +280,7 @@ contains
 
         use bloom_handler, only: bloom_stats_t
         use calc, only: doing_calc, hfs_fciqmc_calc
-        use parallel, only: iproc
+        use parallel, only: iproc, nprocs
         use qmc_data, only: qmc_state_t
 
         type(qmc_state_t), intent(in) :: qs
@@ -277,7 +291,6 @@ contains
         integer, intent(in) , optional :: spawn_elsewhere
         logical, intent(in), optional :: comms_found, error, comp
 
-        integer :: offset
         logical :: comp_param
 
         rep_loop_loc = 0.0_dp
@@ -333,12 +346,14 @@ contains
         end if
         if (qs%reblock_done) rep_loop_loc(reblock_done_ind) = 1.0_p
 
-        offset = nparticles_start_ind-1 + iproc*qs%psip_list%nspaces
-        if (present(spawn_elsewhere)) then
-            rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles + spawn_elsewhere
-        else
-            rep_loop_loc(offset+1:offset+qs%psip_list%nspaces) = qs%psip_list%nparticles
-        end if
+        ! Multi-dimensional and per-processor data.
+        associate(offset => (nparticles_start_ind - 1 + nprocs) + iproc*qs%psip_list%nspaces)
+            if (present(spawn_elsewhere)) then
+                rep_loop_loc(offset:offset+qs%psip_list%nspaces-1) = qs%psip_list%nparticles + spawn_elsewhere
+            else
+                rep_loop_loc(offset:offset+qs%psip_list%nspaces-1) = qs%psip_list%nparticles
+            end if
+        end associate
 
     end subroutine local_energy_estimators
 
@@ -462,10 +477,12 @@ contains
 
         qs%reblock_done = abs(rep_loop_sum(reblock_done_ind)) > depsilon
 
-        do i = 1, ntypes
-            nparticles_proc(i,:nprocs) = rep_loop_sum(nparticles_start_ind-1+i::ntypes)
-            ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
-        end do
+        associate(real_start_ind => (nparticles_start_ind - 1 + nprocs))
+            do i = 1, ntypes
+                nparticles_proc(i,:nprocs) = rep_loop_sum(real_start_ind+i-1::ntypes)
+                ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
+            end do
+        end associate
 
         associate(lb=>qs%par_info%load)
             if (present(doing_lb)) then

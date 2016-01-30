@@ -97,14 +97,15 @@ end type dbin_t
 
 contains
 
-    subroutine init_parallel_t(ntypes, ndata, non_blocking_comm, par_calc, nslots)
+    subroutine init_parallel_t(ndata_per_proc, ndata, non_blocking_comm, par_calc, nslots)
 
         ! Allocate and initialise a parallel_t object.
 
         ! In:
-        !    ntypes: number of types of walkers sampled (see sampling_size).
+        !    ndata_per_proc: number of data items that are gathered per processor (e.g.
+        !        particles for each space and bloom stats).
         !    ndata: the number of additional data elements accumulated over all
-        !        processors (nparticles_start_ind-1).
+        !        processors (e.g. error_ind).
         !    non_blocking_comm: true if using non-blocking communications
         !    nslots: number of slots we divide proc_map into
         ! In/Out:
@@ -115,7 +116,7 @@ contains
         use checking, only: check_allocate
         use qmc_data, only: parallel_t
 
-        integer, intent(in) :: ntypes, ndata
+        integer, intent(in) :: ndata_per_proc, ndata
         logical, intent(in) :: non_blocking_comm
         integer, intent(in) :: nslots
         type(parallel_t), intent(inout) :: par_calc
@@ -124,8 +125,8 @@ contains
 
         associate(nb=>par_calc%report_comm)
             if (non_blocking_comm) then
-                allocate(nb%rep_info(ntypes*nprocs+ndata), stat=ierr)
-                call check_allocate('nb%rep_info', ntypes*nprocs+ndata, ierr)
+                allocate(nb%rep_info(ndata_per_proc*nprocs+ndata), stat=ierr)
+                call check_allocate('nb%rep_info', ndata_per_proc*nprocs+ndata, ierr)
                 allocate(nb%request(0:nprocs-1), stat=ierr)
                 call check_allocate('nb%request', nprocs, ierr)
             end if
