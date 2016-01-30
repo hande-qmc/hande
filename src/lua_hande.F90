@@ -176,6 +176,8 @@ contains
         call flu_register(lua_state, 'redistribute', lua_redistribute_restart)
 
         ! Metatables for objects returned to lua
+        ! [review] - JSS: is there a danger that these variables could be overridden by the user going (e.g)
+        ! [review] - JSS: sys = hubbard_k { ... }?  Would names like _hande_metatable_sys be safer?
         call create_metatable(lua_state, "sys", lua_dealloc_sys)
         call create_metatable(lua_state, "qmc_state", lua_dealloc_qmc_state)
 
@@ -202,7 +204,7 @@ contains
 
         err = fluL_newmetatable(lua_state, name)
         metatable = aot_table_top(lua_state)
-        ! Type name
+        ! Type name.  Note this also protects tables with this metatable from having their metatable changed or accessed.
         call flu_pushstring(lua_state, "__metatable")
         call flu_pushstring(lua_state, name)
         call flu_settable(lua_state, metatable)

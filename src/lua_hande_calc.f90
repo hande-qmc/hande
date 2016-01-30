@@ -1612,12 +1612,14 @@ contains
         call flu_pushcclosure(lua_state, lua_dealloc_qmc_state, 0)
         call flu_settable(lua_state, table)
 
-        ! Set metatable to mark for finalisation
+        ! Set metatable to mark for finalisation.  Note metatable is created in register_lua_hande_api.
         call fluL_setmetatable(lua_state, "qmc_state")
 
     end subroutine push_qmc_state
 
     function lua_dealloc_qmc_state(L) result(nresult) bind(c)
+
+        ! [review] - JSS: docs
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_loc
         use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable, &
@@ -1646,6 +1648,7 @@ contains
         call get_userdata(lua_state, qs_table, "qmc_state", qs_ptr)
         call c_f_pointer(qs_ptr, qs)
 
+        ! [review] - JSS: can qs be undefined?
         if (associated(qs)) then
             call dealloc_qmc_state_t(qs)
             deallocate(qs)
