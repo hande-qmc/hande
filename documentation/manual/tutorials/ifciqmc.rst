@@ -16,6 +16,7 @@ different ``target_population`` values one after the other in the same HANDE cal
 This is trivial to do by using a lua loop as ``fciqmc`` is simply a function call:
 
 .. literalinclude:: calcs/ifciqmc/hubbard_ifciqmc.lua
+    :language: lua
 
 The only difference between the above input and an FCIQMC calculation is the setting
 ``initiator = true``.  As before, this can be run using:

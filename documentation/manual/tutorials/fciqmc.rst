@@ -28,8 +28,6 @@ This file can be run using:
 The output file, :download:`hubbard_sym.out <calcs/fciqmc/hubbard_sym.out>`, contains
 a symmetry table which informs us that the wavevector :math:`(0,0)` corresponds to the
 index 1; this value should be specified in subsequent calculations.
-.. [review] - AJWT: The output has the line "    1      (0,0)  " indicating index 1, but
-.. [review] - AJWT: the example below uses "    sym = 0,   ".          
 
 It is useful to know the size of the FCI Hilbert space.  Whilst the full space can be
 determined from simple combinatorics, the size of the subspace containing only
@@ -37,6 +35,7 @@ determinants of the desired symmetry is less straightforward.  A fast way to det
 is use Monte Carlo sampling with an input file containing:
 
 .. literalinclude:: calcs/fciqmc/hubbard_hilbert.lua
+    :language: lua
 
 The Monte Carlo algorithm produces ``nattempts`` random determinants per cycle, from which
 it estimates the size of the Hilbert space.  The independent cycles are used to provide an
@@ -67,12 +66,12 @@ vary, to a large value (i.e. effectively infinite) such that the plateau should 
 before it.  This is done using an input file like [#]_:
 
 .. literalinclude:: calcs/fciqmc/hubbard_plateau.lua
+    :language: lua
 
 As the input file is a lua script, we can use lua expressions (e.g. ``10^10`` for
 :math:`1 \times 10^{10}`) at any point.
 
-.. [review] - FDM: is the second timestep a typo or a joke?
-The choice of timestep is beyond the timestep of a simple tutorial; broadly it is chosen
+The choice of timestep is beyond the scope of a simple tutorial; broadly it is chosen
 such that the population is stable and there are no 'blooms' (spawning events which create
 a large number of particles).  HANDE will print out a warning and a summary at the end of
 the calculation if blooms occur.  The other key values are how many iterations to run for
@@ -81,7 +80,6 @@ were chosen such that enough states could be stored and the plateau occurs withi
 iterations used.  Choosing these for a new system typically requires some trial and error.
 Given the large population, we will run this calculation in parallel using MPI:
 
-.. [review] - FDM: number of cores?
 .. code-block:: bash
 
     $ mpiexec hande.x hubbard_plateau.lua > hubbard_plateau.out
@@ -90,7 +88,21 @@ Given the large population, we will run this calculation in parallel using MPI:
 
     The exact command to launch HANDE with MPI depends upon the exact configuration of
     MPI.  The command may be different (e.g. ``mpirun`` instead of ``mpiexec``) and might
-    require the number of processors to be passed as an argument.
+    require the number of processors to be passed as an argument.  For example, with
+    OpenMPI on Debian ad Ubuntu, one would use:
+
+    .. code-block:: bash
+
+        $ mpiexec -n 4 hande.x hubbard_plateau.lua > hubbard_plateau.out
+
+    or equivalently
+
+    .. code-block:: bash
+
+        $ mpirun -n 4 hande.x hubbard_plateau.lua > hubbard_plateau.out
+
+    to run on 4 cores.  Please consult local documentation, particularly if running on HPC
+    facilities for details on how to run MPI jobs.
 
 The parallel scaling of HANDE depends upon the system being studied and quality of the
 hardware being used.  Typically using a minimum population per core of :math:`\sim 10^5`
@@ -128,6 +140,7 @@ is set to a value above the plateau (but not so large that the computational cos
 overwhelming) and the simulation is run for more iterations, i.e.:
 
 .. literalinclude:: calcs/fciqmc/hubbard_fciqmc.lua
+    :language: lua
 
 and can again be run using:
 
@@ -147,9 +160,10 @@ This time, the population starts to be controlled after it reaches the desired
     plt.xlabel('iteration')
     plt.ylabel('# particles')
 
-.. [review] - FDM: line lengths?
 Note that it takes some time for the population to stabilise as the shift gradually decays
-towards the ground state correlation energy.  Once the population is stable, both the shift and the **instantaneous** projected energy vary about a fixed value, namely the ground state energy:
+towards the ground state correlation energy.  Once the population is stable, both the
+shift and the **instantaneous** projected energy vary about a fixed value, namely the
+ground state energy:
 
 .. plot::
 
@@ -189,6 +203,7 @@ longer.  Another very effective method is to use a floating point rather than in
 representation of the wavefunction via the ``real_amplitudes`` keyword:
 
 .. literalinclude:: calcs/fciqmc/hubbard_fciqmc_real.lua
+    :language: lua
 
 The calculation can be run and analysed in the same manner:
 
