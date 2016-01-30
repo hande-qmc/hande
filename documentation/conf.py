@@ -32,9 +32,10 @@ extensions = ['sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.autodoc',
 # matplotlib plot configuration
 try:
     import matplotlib.style
-    plot_pre_code = '''import matplotlib.style
-    matplotlib.style.use('ggplot')
-    '''
+    plot_pre_code = '''
+import matplotlib.style
+matplotlib.style.use('ggplot')
+'''
 except ImportError:
     # Using an old version of matplotlib
     pass
