@@ -1,3 +1,5 @@
+.. _generic_systems:
+
 Generic systems
 ===============
 
@@ -15,6 +17,7 @@ containing information about the single-particle basis set and the one- and two-
 integrals between these basis functions.  This file is in FCIDUMP format
 [Knowles89]_, which can be produced by several quantum chemistry packages including
 MOLPRO, Q-Chem (via additions from Alex Thom) and PSI4 (via a plugin from James Spencer).
+See :ref:`generating_integrals` for more details.
 
 Options
 ^^^^^^^
