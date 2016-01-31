@@ -36,3 +36,4 @@ _build/
 build/
 .vimrc
 *.combine
+*.egg-info/
