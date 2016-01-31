@@ -23,13 +23,20 @@ Installation
 ------------
 
 `pyblock` can be used simply by adding to `$PYTHONPATH`.  Alternatively, it can be
-installed using distutils:
+installed using distutils by running:
 
 ::
 
-    $ pip install pyblock
+    $ pip install /path/to/pyblock
 
-or from PyPI:
+where `/path/to/` is the (relative or absolute) path to the directory containing
+`pyblock`.  To install an editable version (useful for development work) do:
+
+::
+
+    $ pip install -e /path/to/pyblock
+
+`pyblock` can also be installed from PyPI:
 
 ::
 
