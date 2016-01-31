@@ -3,12 +3,20 @@
 
 Plot the population dynamics and energy profile of a HANDE QMC output file.'''
 
-import sys
-import pandas as pd
-import numpy as np
-import pyhande
-import matplotlib.pyplot as pyplot
 import argparse
+import os
+import sys
+
+import matplotlib.pyplot as pyplot
+import numpy as np
+import pandas as pd
+
+try:
+    import pyhande
+except ImportError:
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.append(os.path.join(_script_dir, '../pyhande'))
+    import pyhande
 
 def main(datafile, plotfile):
 

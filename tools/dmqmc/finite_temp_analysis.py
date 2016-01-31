@@ -7,15 +7,22 @@ temperature-dependent data across beta loops.'''
 import pandas as pd
 import os
 import sys
-script_dir = os.path.dirname(__file__)
-sys.path.extend([os.path.join(script_dir, '../'),
-                 os.path.join(script_dir, '../pyblock')])
-import pyhande
-import pyblock
 import optparse
 import numpy as np
 import scipy.interpolate
 import warnings
+
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+try:
+    import pyhande
+except ImportError:
+    sys.path.append(os.path.join(_script_dir, '../pyhande'))
+    import pyhande
+try:
+    import pyblock
+except ImportError:
+    sys.path.append(os.path.join(_script_dir, '../pyblock'))
+    import pyblock
 
 def analyse_observables(means, covariances, nsamples):
     '''Calculate all mean and error estimates of the form Tr(\rho O)/Tr(\rho).

@@ -4,9 +4,12 @@ import pandas as pd
 import os
 import sys
 import warnings
-script_dir = os.path.dirname(__file__)
-sys.path.extend([os.path.join(script_dir, '../')])
-import pyhande
+try:
+    import pyhande
+except ImportError:
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.append(os.path.join(_script_dir, '../pyhande'))
+    import pyhande
 
 
 def main(filename):
