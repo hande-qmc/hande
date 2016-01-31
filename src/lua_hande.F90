@@ -113,6 +113,7 @@ contains
             ! Attempt to run lua script.
             lua_state = fluL_newstate()
             call register_lua_hande_api(lua_state)
+
             call open_config_chunk(lua_state, buffer, lua_err, err_string)
             if (lua_err == 0) then
                 call flu_close(lua_state)
@@ -174,7 +175,44 @@ contains
         ! Helper functions
         call flu_register(lua_state, 'redistribute', lua_redistribute_restart)
 
+        ! Metatables for objects returned to lua
+        call create_metatable(lua_state, "sys", lua_dealloc_sys)
+        call create_metatable(lua_state, "qmc_state", lua_dealloc_qmc_state)
+
     end subroutine register_lua_hande_api
+
+    subroutine create_metatable(lua_state, name, dealloc)
+
+        ! Create a metatable with a name and a finaliser
+
+        ! In/Out;
+        !    lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !    name: name of metatable/type
+        !    dealloc: deallocation function for the type
+
+        use flu_binding, only: flu_State, fluL_newmetatable, flu_pushstring, flu_pushcclosure, flu_settable, flu_pop, lua_function
+        use aot_table_ops_module, only: aot_table_top
+
+        type(flu_State), intent(inout) :: lua_state
+        character(*), intent(in) :: name
+        procedure(lua_Function) :: dealloc
+
+        integer :: metatable, err
+
+        err = fluL_newmetatable(lua_state, name)
+        metatable = aot_table_top(lua_state)
+        ! Type name.  Note this also protects tables with this metatable from having their metatable changed or accessed.
+        call flu_pushstring(lua_state, "__metatable")
+        call flu_pushstring(lua_state, name)
+        call flu_settable(lua_state, metatable)
+        ! Finalisation
+        call flu_pushstring(lua_state, "__gc")
+        call flu_pushcclosure(lua_state, dealloc, 0)
+        call flu_settable(lua_state, metatable)
+        call flu_pop(lua_state)
+
+    end subroutine create_metatable
 
     ! --- Helper functions : lua ---
 

@@ -302,7 +302,7 @@ type reference_t
     ! Energy shift of the reference determinant i.e.
     ! <D0|H_new|D0>-<D0|H_old|D0>, where H_old and H_new are two different
     ! Hamiltonians. Used in ip-dmqmc when reweighing the initial density matrix.
-    real(p) :: energy_shift
+    real(p) :: energy_shift = 0.0_p
 end type reference_t
 
 ! --- semi-stochastic ---
@@ -491,9 +491,9 @@ type estimators_t
     ! accordingly.
     real(p) :: proj_energy
     ! Total number of occupied states across all processors.
-    integer :: tot_nstates
+    integer :: tot_nstates = 0
     ! The total number of successful spawning events, across all processors.
-    integer :: tot_nspawn_events
+    integer :: tot_nspawn_events = 0
 
     ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
     ! Signed population of Hellmann--Feynman particles

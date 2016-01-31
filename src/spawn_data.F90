@@ -134,7 +134,7 @@ type spawn_t
     ! to sdata_recvd and then point sdata to the memory previously associated with
     ! sdata_recvd and vice versa.  This allows for the spawning and annihilation
     ! procedures to be identical with and without MPI parallelisation.
-    integer(int_s), pointer, private :: store1(:,:), store2(:,:) ! (element_len,array_len)
+    integer(int_s), pointer, private :: store1(:,:) => null(), store2(:,:) => null() ! (element_len,array_len)
     ! This variable will become equal to true if we ever run out of memory in
     ! sdata, in which case the program will exit at the next opportunity.
     logical :: error = .false.

@@ -48,14 +48,15 @@ contains
         use qmc_common
         use restart_hdf5, only: restart_info_t, dump_restart_hdf5, init_restart_info_t
         use system
-        use dSFMT_interface, only: dSFMT_t
+        use dSFMT_interface, only: dSFMT_t, dSFMT_end
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             qmc_in_t_json, restart_in_t_json, load_bal_in_t_json, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
                               rdm_in_t_json, operators_in_t_json
         use check_input, only: check_qmc_opts, check_dmqmc_opts
-        use spawn_data, only: write_memcheck_report
+        use spawn_data, only: write_memcheck_report, dealloc_spawn_t
         use idmqmc, only: set_parent_flag_dmqmc
+        use hash_table, only: free_hash_table
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -375,6 +376,15 @@ contains
         call copy_sys_spin_info(sys_copy, sys)
         call dealloc_det_info_t(cdet1, .false.)
         call dealloc_det_info_t(cdet2, .false.)
+
+        call dSFMT_end(rng)
+
+        if (allocated(dmqmc_estimates%inst_rdm%spawn)) then
+            do idet = 1, size(dmqmc_estimates%subsys_info)
+                call free_hash_table(dmqmc_estimates%inst_rdm%spawn(idet)%ht)
+                call dealloc_spawn_t(dmqmc_estimates%inst_rdm%spawn(idet)%spawn)
+            end do
+        end if
 
     end subroutine do_dmqmc
 

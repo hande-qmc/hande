@@ -48,7 +48,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use determinants, only: encode_det, det_info_t, alloc_det_info_t,  &
                                 dealloc_det_info_t, decode_det_spinocc_spinunocc
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use json_out
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
@@ -266,6 +266,8 @@ contains
 
         ! Return sys in an unaltered state.
         call copy_sys_spin_info(sys_bak, sys)
+
+        call dSFMT_end(rng)
 
     end subroutine estimate_hilbert_space
 

@@ -286,7 +286,7 @@ contains
         !    qs: qmc_state for use if restarting the calculation
 
         use checking, only: check_allocate, check_deallocate
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use errors, only: stop_all
         use parallel
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
@@ -814,11 +814,17 @@ contains
             if (parent) write (6,'()')
         end if
 
-        ! TODO: deallocation...
-!        call dealloc_det_info_t(cdet)
-!        cdet%cluster => NULL()
-!        deallocate(cluster%excitors, stat=ierr)
-!        call check_deallocate('cluster%excitors', ierr)
+        do i = 0, nthreads-1
+            call dSFMT_end(rng(i))
+            call dealloc_det_info_t(cdet(i))
+            if (ccmc_in%linked) then
+                call dealloc_det_info_t(ldet(i))
+                call dealloc_det_info_t(rdet(i))
+            end if
+            nullify(cdet(i)%cluster)
+            deallocate(cluster(i)%excitors, stat=ierr)
+            call check_deallocate('cluster%excitors', ierr)
+        end do
 
     end subroutine do_ccmc
 

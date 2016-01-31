@@ -168,12 +168,10 @@ contains
 
     end subroutine init_proc_map_t
 
-    subroutine dealloc_parallel_t(non_blocking_comm, par_calc)
+    subroutine dealloc_parallel_t(par_calc)
 
         ! Deallocate parallel_t object.
 
-        ! In:
-        !    non_blocking_comm: true if using non-blocking communications
         ! In/Out:
         !    par_calc: type containing parallel information for calculation
         !        see definitions above.
@@ -181,21 +179,18 @@ contains
         use checking, only: check_deallocate
         use qmc_data, only: parallel_t
 
-        logical, intent(in) :: non_blocking_comm
         type(parallel_t), intent(inout) :: par_calc
 
         integer :: ierr
 
         associate(nb=>par_calc%report_comm)
-            if (non_blocking_comm) then
-                if (allocated(nb%rep_info)) then
-                    deallocate(nb%rep_info, stat=ierr)
-                    call check_deallocate('nb%rep_info', ierr)
-                end if
-                if (allocated(nb%request)) then
-                    deallocate(nb%request, stat=ierr)
-                    call check_deallocate('nb%request', ierr)
-                end if
+            if (allocated(nb%rep_info)) then
+                deallocate(nb%rep_info, stat=ierr)
+                call check_deallocate('nb%rep_info', ierr)
+            end if
+            if (allocated(nb%request)) then
+                deallocate(nb%request, stat=ierr)
+                call check_deallocate('nb%request', ierr)
             end if
         end associate
 

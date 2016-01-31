@@ -37,14 +37,16 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use flu_binding, only: flu_State, flu_gettop
         use aot_table_module, only: aot_exists, aot_get_val, aot_table_top
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
         use system, only: sys_t
+        use lua_hande_utils, only: get_userdata
 
         type(flu_State), intent(inout) :: lua_state
         type(sys_t), pointer, intent(out) :: sys
         logical, optional, intent(out) :: new
 
         type(c_ptr) :: sys_ptr
-        integer :: err, table
+        integer :: table, sys_table
         logical :: have_sys_entry
 
         table = aot_table_top(lua_state)
@@ -58,8 +60,9 @@ contains
         ! Check if an existing system object was passed in. If so then use
         ! this object instead of creating a new one.
         if (have_sys_entry) then
-            call aot_get_val(sys_ptr, err, lua_state, thandle=1, key='sys')
-            if (err /= 0 .and. parent) call stop_all('get_sys_t', 'Problem receiving sys_t object.')
+            call aot_table_open(lua_state, table, sys_table, key='sys')
+            call get_userdata(lua_state, sys_table, "sys", sys_ptr)
+            call aot_table_close(lua_state, sys_table)
             call c_f_pointer(sys_ptr, sys)
             if (present(new)) new = .false.
         else
@@ -72,6 +75,44 @@ contains
         end if
 
     end subroutine get_sys_t
+
+    subroutine push_sys(lua_state, sys)
+
+        ! Add a table containing the passed system to the lua stack for returning
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !   sys: the sys object to return to lua
+
+        use, intrinsic :: iso_c_binding, only: c_loc
+        use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
+        use aot_table_ops_module, only: aot_table_open, aot_table_close
+
+        use system, only: sys_t
+
+        type(sys_t), pointer, intent(in) :: sys
+        type(flu_state), intent(inout) :: lua_state
+
+        integer :: table
+
+        ! Create table to become sys object
+        call aot_table_open(lua_state, thandle=table)
+        
+        ! Add sys pointer as t.sys
+        call flu_pushstring(lua_state, "sys")
+        call flu_pushlightuserdata(lua_state, c_loc(sys))
+        call flu_settable(lua_state, table)
+
+        ! Add deallocation function as t:free()
+        call flu_pushstring(lua_state, "free")
+        call flu_pushcclosure(lua_state, lua_dealloc_sys, 0)
+        call flu_settable(lua_state, table)
+
+        ! Set metatable to mark for finalisation.  Note metatable is created in register_lua_hande_api.
+        call fluL_setmetatable(lua_state, "sys")
+
+    end subroutine push_sys
 
     subroutine set_common_sys_options(lua_state, sys, opts)
 
@@ -243,8 +284,8 @@ contains
         !        twist = {...},    -- D-dimensional vector.
         !    }
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
@@ -294,7 +335,7 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        call flu_pushlightuserdata(lua_state, c_loc(sys))
+        call push_sys(lua_state, sys)
         nreturn = 1
 
     end function lua_hubbard_k
@@ -367,8 +408,8 @@ contains
 
         ! See comments for lua_hubbard_real and lua_chung_landau for accepted keys.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
@@ -423,7 +464,7 @@ contains
         end if
         call aot_table_close(lua_state, opts)
 
-        call flu_pushlightuserdata(lua_state, c_loc(sys))
+        call push_sys(lua_state, sys)
         nreturn = 1
 
     end function real_lattice_wrapper
@@ -447,8 +488,8 @@ contains
         !        CAS = {cas1, cas2}
         !    }
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
@@ -465,7 +506,6 @@ contains
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        type(c_ptr) :: sys_ptr
         integer :: opts
         logical :: new, new_basis
         integer :: err
@@ -504,8 +544,7 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        sys_ptr = c_loc(sys)
-        call flu_pushlightuserdata(lua_state, sys_ptr)
+        call push_sys(lua_state, sys)
         nreturn = 1
 
     end function lua_read_in
@@ -529,8 +568,8 @@ contains
         !        magnetic_field = field,
         !    }
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
@@ -583,7 +622,7 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        call flu_pushlightuserdata(lua_state, c_loc(sys))
+        call push_sys(lua_state, sys)
         nreturn = 1
 
     end function lua_heisenberg
@@ -608,8 +647,8 @@ contains
         !    }
         !    Returns: sys_t object.
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_State, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr, flu_gettop
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
@@ -626,7 +665,6 @@ contains
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        type(c_ptr) :: sys_ptr
         integer :: opts
         logical :: new_basis, new
         integer :: err
@@ -672,8 +710,7 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        sys_ptr = c_loc(sys)
-        call flu_pushlightuserdata(lua_state, sys_ptr)
+        call push_sys(lua_state, sys)
         nreturn = 1
 
     end function lua_ueg
@@ -694,8 +731,8 @@ contains
         !    }
         !    Returns: sys_t object
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
-        use flu_binding, only: flu_state, flu_copyptr, flu_gettop, flu_pushlightuserdata
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_state, flu_copyptr, flu_gettop
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
@@ -712,7 +749,6 @@ contains
         type(flu_state) :: lua_state
 
         type(sys_t), pointer :: sys
-        type(c_ptr) :: sys_ptr
         integer :: opts
         logical :: new_basis, new
         integer :: err
@@ -754,10 +790,56 @@ contains
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        sys_ptr = c_loc(sys)
-        call flu_pushlightuserdata(lua_state, sys_ptr)
+        call push_sys(lua_state, sys)
         nreturn = 1
 
     end function lua_ringium
+
+    function lua_dealloc_sys(L) result(nresult) bind(c)
+
+        ! Deallocate a sys object.  Expects to be called from lua with a single argument --
+        ! the sys object to be deallocated.
+
+        ! In/Out:
+        !   L: lua state (bare C pointer).
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_loc
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable
+        use aot_table_ops_module, only: aot_table_top
+        use aot_table_module, only: aot_get_val, aot_table_close
+
+        use system, only: sys_t
+        use dealloc, only: dealloc_sys_t
+        use lua_hande_utils, only: get_userdata
+
+        integer(c_int) :: nresult
+        type(c_ptr), value :: L
+
+        type(flu_State) :: lua_state
+        integer :: ierr, sys_table
+        type(c_ptr) :: sys_ptr
+        type(sys_t), pointer :: sys
+
+        lua_state = flu_copyptr(L)
+
+        sys_table = aot_table_top(lua_state)
+        call get_userdata(lua_state, sys_table, "sys", sys_ptr)
+        call c_f_pointer(sys_ptr, sys)
+
+        if (associated(sys)) then
+            call dealloc_sys_t(sys)
+            deallocate(sys)
+        end if
+
+        ! Update table with deallocated pointer.
+        call flu_pushstring(lua_state, "sys")
+        call flu_pushlightuserdata(lua_state, c_loc(sys))
+        call flu_settable(lua_state, sys_table)
+
+        call aot_table_close(lua_state, sys_table)
+
+        nresult = 0
+
+    end function lua_dealloc_sys
 
 end module lua_hande_system

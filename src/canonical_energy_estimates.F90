@@ -61,7 +61,7 @@ contains
         !    sys: system being studied.
 
         use system
-        use dSFMT_interface, only: dSFMT_t, dSFMT_init
+        use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use json_out
         use parallel
 
@@ -222,6 +222,8 @@ contains
 
         ! Return sys in unaltered state.
         call copy_sys_spin_info(sys_bak, sys)
+
+        call dSFMT_end(rng)
 
     end subroutine estimate_canonical_energy
 

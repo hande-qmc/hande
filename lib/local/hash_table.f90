@@ -190,14 +190,14 @@ module hash_table
             integer :: ierr
 
             if (allocated(ht%table)) then
-                deallocate(ht%table)
+                deallocate(ht%table, stat=ierr)
                 call check_deallocate('ht%table', ierr)
             end if
             if (associated(ht%data_label)) then
                 if (ht%extern_data_label) then
                     ht%data_label => null()
                 else
-                    deallocate(ht%data_label)
+                    deallocate(ht%data_label, stat=ierr)
                     call check_deallocate('ht%data_label', ierr)
                 end if
             end if
@@ -205,12 +205,12 @@ module hash_table
                 if (ht%extern_payload) then
                     ht%payload => null()
                 else
-                    deallocate(ht%payload)
+                    deallocate(ht%payload, stat=ierr)
                     call check_deallocate('ht%payload', ierr)
                 end if
             end if
             if (allocated(ht%free_entries)) then
-                deallocate(ht%free_entries)
+                deallocate(ht%free_entries, stat=ierr)
                 call check_deallocate('ht%free_entries', ierr)
             end if
 
