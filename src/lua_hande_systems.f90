@@ -78,7 +78,12 @@ contains
 
     subroutine push_sys(lua_state, sys)
 
-        ! [review] - JSS: docs.
+        ! Add a table containing the passed system to the lua stack for returning
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+        ! In:
+        !   sys: the sys object to return to lua
 
         use, intrinsic :: iso_c_binding, only: c_loc
         use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
@@ -792,7 +797,11 @@ contains
 
     function lua_dealloc_sys(L) result(nresult) bind(c)
 
-        ! [review] - JSS: doc
+        ! Deallocate a sys object.  Expects to be called from lua with a single argument --
+        ! the sys object to be deallocated.
+
+        ! In/Out:
+        !   L: lua state (bare C pointer).
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_loc
         use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable
