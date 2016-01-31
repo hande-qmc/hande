@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # WARNING: this is a hack.  Only common (simple) cases are considered.
 
