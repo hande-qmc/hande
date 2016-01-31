@@ -1,13 +1,13 @@
 import numpy
 import unittest
 
-import base
 import os
 import sys
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), '../'))
 )
 import pyblock
+import pyblock.tests.base as tests_base
 
 class BlockTest(unittest.TestCase):
     def check_stats(self, benchmark, test):
@@ -23,11 +23,11 @@ class BlockTest(unittest.TestCase):
 
 class BlockingTests1D(BlockTest):
     def setUp(self):
-        self.data = base.data_1D
+        self.data = tests_base.data_1D
         self.weights = None
-        self.benchmark = base.reblock_1D
-        self.benchmark_opt = base.reblock_1D_opt
-        self.benchmark_ddof = base.reblock_1D_ddof
+        self.benchmark = tests_base.reblock_1D
+        self.benchmark_opt = tests_base.reblock_1D_opt
+        self.benchmark_ddof = tests_base.reblock_1D_ddof
     def tearDown(self):
         del self.data
         del self.weights
@@ -56,11 +56,11 @@ class UnitWeightedBlockingTests1D(BlockingTests1D):
 
 class WeightedBlockingTests1D(BlockingTests1D):
     def setUp(self):
-        self.data = base.data_1D
-        self.weights = base.weights
-        self.benchmark = base.weighted_reblock_1D
-        self.benchmark_opt = base.weighted_reblock_1D_opt
-        self.benchmark_ddof = base.weighted_reblock_1D_ddof
+        self.data = tests_base.data_1D
+        self.weights = tests_base.weights
+        self.benchmark = tests_base.weighted_reblock_1D
+        self.benchmark_opt = tests_base.weighted_reblock_1D_opt
+        self.benchmark_ddof = tests_base.weighted_reblock_1D_ddof
     def test_weight_negative(self):
         with self.assertRaises(RuntimeError):
             pyblock.blocking.reblock(self.data, weights=-self.weights)
@@ -71,10 +71,10 @@ class WeightedBlockingTests1D(BlockingTests1D):
 
 class BlockingTests2D(BlockTest):
     def setUp(self):
-        self.data = base.data_2D
+        self.data = tests_base.data_2D
         self.weights = None
-        self.benchmark = base.reblock_2D
-        self.benchmark_opt = base.reblock_2D_opt
+        self.benchmark = tests_base.reblock_2D
+        self.benchmark_opt = tests_base.reblock_2D_opt
     def tearDown(self):
         del self.data
     def test_reblock(self):
@@ -103,10 +103,10 @@ class UnitWeightedBlockingTests2D(BlockingTests2D):
 
 class WeightedBlockingTests2D(BlockingTests2D):
     def setUp(self):
-        self.data = base.data_2D
-        self.weights = base.weights
-        self.benchmark = base.weighted_reblock_2D
-        self.benchmark_opt = base.weighted_reblock_2D_opt
+        self.data = tests_base.data_2D
+        self.weights = tests_base.weights
+        self.benchmark = tests_base.weighted_reblock_2D
+        self.benchmark_opt = tests_base.weighted_reblock_2D_opt
     def test_weight_ndim(self):
         weights_2D = numpy.vstack((self.weights, self.weights))
         with self.assertRaises(RuntimeError):
