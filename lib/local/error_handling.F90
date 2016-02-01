@@ -3,6 +3,21 @@ module errors
 
 implicit none
 
+interface
+    function backtrace(buffer, size) bind(c, name="backtrace")
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        type(c_ptr) :: buffer
+        integer(c_int), value :: size
+        integer(c_int) :: backtrace
+    end function backtrace
+
+    subroutine backtrace_symbols_fd(buffer, size, fd) bind(c, name="backtrace_symbols_fd")
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        type(c_ptr) :: buffer
+        integer(c_int), value :: size, fd
+    end subroutine backtrace_symbols_fd
+end interface
+
 contains
 
     subroutine stop_all(sub_name,error_msg)
@@ -14,6 +29,7 @@ contains
         !    error_msg: error message.
 
         use, intrinsic :: iso_fortran_env, only: error_unit
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
 
 #ifdef PARALLEL
         use mpi
@@ -24,13 +40,21 @@ contains
         ! It seems that giving STOP a string is far more portable.
         ! mpi_abort requires an integer though.
         character(3), parameter :: error_str='999'
+        type(c_ptr), target :: buffer(100)
+        type(c_ptr) :: c_buf
+        integer(c_int) :: btr_size
 #ifdef PARALLEL
         integer, parameter :: error_code=999
         integer :: ierr
 #endif
 
+        c_buf = c_loc(buffer)
+        btr_size = backtrace(c_buf, 100)
+        call backtrace_symbols_fd(c_buf, btr_size, error_unit)
+
         write (error_unit,'(/a7)') 'ERROR.'
         write (error_unit,'(1X,a)') 'HANDE stops in subroutine: '//adjustl(sub_name)//'.'
+
         write (error_unit,'(a9,a)') 'Reason: ',adjustl(error_msg)
         write (error_unit,'(1X,a10)') 'EXITING...'
 
