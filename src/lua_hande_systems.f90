@@ -816,7 +816,7 @@ contains
         type(c_ptr), value :: L
 
         type(flu_State) :: lua_state
-        integer :: ierr, sys_table
+        integer :: sys_table
         type(c_ptr) :: sys_ptr
         type(sys_t), pointer :: sys
 
