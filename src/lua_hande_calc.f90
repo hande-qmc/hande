@@ -1563,7 +1563,7 @@ contains
         logical, intent(out) :: have_qmc_state
         type(qmc_state_t), pointer, intent(out) :: qmc_state
 
-        integer :: err, opts, qs_table
+        integer :: opts, qs_table
         type(c_ptr) :: qs_ptr
 
         opts = aot_table_top(lua_state)
@@ -1641,10 +1641,9 @@ contains
         type(c_ptr), value :: L
 
         type(flu_State) :: lua_state
-        integer :: ierr, qs_table
+        integer :: qs_table
         type(c_ptr) :: qs_ptr
         type(qmc_state_t), pointer :: qs
-        character(100) :: name
 
         lua_state = flu_copyptr(L)
 
