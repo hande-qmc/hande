@@ -775,7 +775,8 @@ contains
 
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
-                                 load_bal_in, bloom_stats=bloom_stats, error=error)
+                                 load_bal_in, bloom_stats=bloom_stats, error=error, &
+                                 vary_shift_reference=ccmc_in%vary_shift_reference)
             if (error) exit
 
             call cpu_time(t2)

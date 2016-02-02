@@ -860,10 +860,9 @@ contains
 
 ! --- QMC loop and cycle termination routines ---
 
-    subroutine end_report_loop(qmc_in, iteration, update_tau, qs, ntot_particles,              &
-                                nspawn_events, semi_stoch_shift_it, semi_stoch_start_it, soft_exit, &
-                                load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, &
-                                comp, error)
+    subroutine end_report_loop(qmc_in, iteration, update_tau, qs, ntot_particles, nspawn_events, semi_stoch_shift_it, &
+                               semi_stoch_start_it, soft_exit, load_bal_in, update_estimators, bloom_stats, doing_lb, &
+                               nb_comm, comp, error, vary_shift_reference)
 
         ! In:
         !    qmc_in: input optons relating to QMC methods.
@@ -892,6 +891,7 @@ contains
         !    nb_comm: true if using non-blocking communications.
         !    load_bal_in: input options for load balancing.
         !    comp: true if doing qmc calculation with real and imaginary walkers.
+        !    vary_shift_reference: if true, vary shift to control reference, not total, population
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    error: true if an error has occured and we need to quit.
@@ -916,6 +916,7 @@ contains
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit
+        logical, intent(in), optional :: vary_shift_reference
 
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb, nb_comm
@@ -950,7 +951,7 @@ contains
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
             call update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles, load_bal_in, doing_lb, &
-                                      comms_found, error, update_tau, bloom_stats, comp_param)
+                                          comms_found, error, update_tau, bloom_stats, vary_shift_reference, comp_param)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion

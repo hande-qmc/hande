@@ -219,6 +219,8 @@ type ccmc_in_t
     logical :: full_nc = .false.
     ! Sample only linked clusters in CCMC?
     logical :: linked = .false.
+    ! If true, vary shift to control reference, not total, population
+    logical :: vary_shift_reference = .false.
 end type ccmc_in_t
 
 type restart_in_t
@@ -462,6 +464,8 @@ end type spawned_particle_t
 type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
     real(p) :: D0_population
+    ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
+    real(p) :: D0_population_old
     ! projected energy
     ! This stores during an FCIQMC report loop
     !   \sum_{i/=0} <D_0|H|D_i> N_i

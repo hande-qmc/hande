@@ -1157,6 +1157,7 @@ contains
         !     cluster_multispawn_threshold = threshold,
         !     full_non_composite = true/false,
         !     linked = true/false,
+        !     vary_shift_reference = true/false,
         ! }
 
         ! In/Out:
@@ -1189,6 +1190,7 @@ contains
             call aot_get_val(ccmc_in%cluster_multispawn_threshold, err, lua_state, ccmc_table, 'cluster_multispawn_threshold')
             call aot_get_val(ccmc_in%full_nc, err, lua_state, ccmc_table, 'full_non_composite')
             call aot_get_val(ccmc_in%linked, err, lua_state, ccmc_table, 'linked')
+            call aot_get_val(ccmc_in%vary_shift_reference, err, lua_state, ccmc_table, 'vary_shift_reference')
 
             call warn_unused_args(lua_state, keys, ccmc_table)
 
