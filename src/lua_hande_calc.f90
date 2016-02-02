@@ -924,6 +924,7 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
         use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz
+        use qmc_data, only: excit_gen_cauchy_schwarz_occ
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
         use errors, only: stop_all, warning
@@ -1021,6 +1022,8 @@ contains
                 qmc_in%excit_gen = excit_gen_no_renorm
             case('cauchy_schwarz')
                 qmc_in%excit_gen = excit_gen_cauchy_schwarz
+            case('cauchy_schwarz_occ')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ
             case default
                 call stop_all('read_qmc_in', 'Invalid excit_gen setting: '//trim(str))
             end select

@@ -1031,6 +1031,170 @@ contains
     end function calc_pgen_double_mol_no_renorm
 
 
+    subroutine gen_excit_mol_cauchy_schwarz_occ(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        ! Create a random excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+
+        ! In:
+        !    sys: system object being studied.
+        !    pattempt_single: Probability to attempt a single excitation.
+        !    cdet: info on the current determinant (cdet) that we will gen
+        !        from.
+        !    parent_sign: sign of the population on the parent determinant (i.e.
+        !        either a positive or negative integer).
+        ! In/Out:
+        !    rng: random number generator.
+        ! Out:
+        !    pgen: probability of generating the excited determinant from cdet.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are gened.
+        !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
+        !        determinant and a connected determinant in molecular systems.
+        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t
+        use excitations, only: find_excitation_permutation1, find_excitation_permutation2
+        use hamiltonian_molecular, only: slater_condon1_mol_excit, slater_condon2_mol
+        use system, only: sys_t
+
+        use dSFMT_interface, only: dSFMT_t, get_rand_close_open
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: pattempt_single
+        type(det_info_t), intent(in) :: cdet
+        type(dSFMT_t), intent(inout) :: rng
+        real(p), intent(out) :: pgen, hmatel
+        type(excit_t), intent(out) :: connection
+        logical, intent(out) :: allowed_excitation
+
+        integer ::  ij_spin, ij_sym
+
+        real(p) :: ia_weights(max(sys%nvirt_alpha,sys%nvirt_beta))
+        real(p) :: jb_weights(max(sys%nvirt_alpha,sys%nvirt_beta))
+      
+        real(p) :: ia_weights_tot 
+        real(p) :: jb_weights_tot 
+        integer :: a, b, i, j, a_ind, b_ind
+
+
+        ! 1. Select single or double.
+        if (get_rand_close_open(rng) < pattempt_single) then
+
+
+            ! 2a. Select orbital to excite from and orbital to excite into.
+            call find_ia_mol(rng, sys, sys%read_in%pg_sym%gamma_sym, cdet%f, cdet%occ_list, connection%from_orb(1), &
+                             connection%to_orb(1), allowed_excitation)
+            connection%nexcit = 1
+
+            if (allowed_excitation) then
+                ! 3a. Probability of generating this excitation.
+                pgen = pattempt_single*calc_pgen_single_mol_no_renorm(sys, connection%to_orb(1))
+
+                ! 4a. Parity of permutation required to line up determinants.
+                call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
+
+                ! 5a. Find the connecting matrix element.
+                hmatel = slater_condon1_mol_excit(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), connection%perm)
+            else
+                ! Forbidden---connection%to_orb(1) is already occupied.
+                hmatel = 0.0_p
+                pgen = 1.0_p ! Avoid any dangerous division by pgen by returning a sane (but cheap) value.
+            end if
+
+
+        else !we have a double
+
+            ! 2b. Select orbitals to excite from
+            
+            call choose_ij_mol(rng, sys, cdet%occ_list, i, j, ij_sym, ij_spin)
+
+            !now we've chosen i and j. 
+ 
+            ! We now need to select the orbitals to excite into which we do with weighting:
+            ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
+            
+            ! We actually choose a|i then b|j, but since we could have also generated the excitation b from i and a from j, we need to include that prob too.
+
+            ! Given i, construct the weights of all possible a
+            if (sys%basis%basis_fns(i)%Ms < 0) then
+                call create_weighted_excitation_list(sys, i, cdet%unocc_list_beta, sys%nvirt_beta, ia_weights, ia_weights_tot)
+                ! Use the alias method to select i with the appropriate probability
+                a_ind = select_weighted_value(rng, sys%nvirt_beta, ia_weights, ia_weights_tot)
+                a = cdet%unocc_list_beta(a_ind) 
+            else
+                call create_weighted_excitation_list(sys, i, cdet%unocc_list_alpha, sys%nvirt_alpha, ia_weights, ia_weights_tot)
+                ! Use the alias method to select i with the appropriate probability
+                a_ind = select_weighted_value(rng, sys%nvirt_alpha, ia_weights, ia_weights_tot)
+                a = cdet%unocc_list_alpha(a_ind) 
+            endif 
+            ! Given j construct the weights of all possible b
+            if (sys%basis%basis_fns(j)%Ms < 0) then
+                call create_weighted_excitation_list(sys, j, cdet%unocc_list_beta, sys%nvirt_beta, jb_weights, jb_weights_tot)
+                ! Use the alias method to select j with the appropriate probability
+                b_ind = select_weighted_value(rng, sys%nvirt_beta, jb_weights, jb_weights_tot)
+                b = cdet%unocc_list_beta(b_ind) 
+            else
+                call create_weighted_excitation_list(sys, j, cdet%unocc_list_alpha, sys%nvirt_alpha, jb_weights, jb_weights_tot)
+                ! Use the alias method to select a with the appropriate probability
+                b_ind = select_weighted_value(rng, sys%nvirt_alpha, jb_weights, jb_weights_tot)
+                b = cdet%unocc_list_alpha(b_ind) 
+            endif 
+
+            ! 3b. Probability of generating this excitation.
+
+            ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
+          
+            if (ij_spin==0) then 
+                !not possible to have chosen the reversed excitation
+                pgen=ia_weights(a_ind)/ia_weights_tot*jb_weights(b_ind)/jb_weights_tot
+            else !i and j have same spin, so could have been selected in the other order.
+                pgen=       (ia_weights(a_ind)*jb_weights(b_ind) + ia_weights(b_ind)*jb_weights(a_ind) ) &
+                        /   (ia_weights_tot*jb_weights_tot)
+            endif
+            pgen = (1.0_p - pattempt_single) * pgen *2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ab)
+            connection%nexcit = 2
+
+            allowed_excitation = (a/=b)
+
+            if (i<j) then
+                connection%from_orb(1)=i
+                connection%from_orb(2)=j
+            else
+                connection%from_orb(2)=i
+                connection%from_orb(1)=j
+            endif
+            if (a<b) then
+                connection%to_orb(1)=a
+                connection%to_orb(2)=b 
+            else
+                connection%to_orb(2)=a
+                connection%to_orb(1)=b 
+            endif
+!            write(6,*) "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
+            if (allowed_excitation) then
+
+                ! 4b. Parity of permutation required to line up determinants.
+                ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
+                call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
+
+                ! 5b. Find the connecting matrix element.
+                hmatel = slater_condon2_mol(sys, connection%from_orb(1), connection%from_orb(2), &
+                                                  connection%to_orb(1), connection%to_orb(2), connection%perm)
+            else
+                ! Carelessly selected ij with no possible excitations.  Such
+                ! events are not worth the cost of renormalising the generation
+                ! probabilities.
+                ! Return a null excitation.
+                hmatel = 0.0_p
+                pgen = 1.0_p
+            end if
+
+        end if
+    end subroutine gen_excit_mol_cauchy_schwarz_occ
     subroutine gen_excit_mol_cauchy_schwarz(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
@@ -1109,7 +1273,8 @@ contains
         else !we have a double
 
             ! 2b. Select orbitals to excite to
-            
+
+                        
             ! sys%nvirt is the number of virtual orbitals
             ind = int(get_rand_close_open(rng)*sys%nvirt*(sys%nvirt-1)/2.0_p) + 1
             ! a,b initially refer to the indices in the lists of virtual spin-orbitals
