@@ -1,0 +1,22 @@
+[DEFAULT]
+include_f = -I $${HDF5_ROOT-/usr}/include
+
+[main]
+fc = gfortran
+cc = gcc
+cxx = g++
+cppflags =
+ld = gfortran
+ldflags = -L ${HOME}/lib -L/usr/local/lib -fsanitize=address
+libs = -ltrlan -llapack -lblas -luuid -llua -ldl -lhdf5 -lhdf5_fortran
+f90_module_flag = -J
+
+[opt]
+fflags = %(include_f)s -O3 -mfpmath=sse -msse2 -fsanitize=address
+cflags = -O3 -mfpmath=sse -msse2
+cxxflags = -O3 -mfpmath=sse -msse2
+
+[dbg]
+fflags = %(include_f)s -g -fbounds-check -Wall -Wextra -fbacktrace -mfpmath=sse -msse2 -fsanitize=address
+cflags = -g -Wall -Wextra -fbacktrace -mfpmath=sse -msse2
+cxxflags = -g -Wall -Wextra -fbacktrace -mfpmath=sse -msse2
