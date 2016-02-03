@@ -107,10 +107,10 @@ each separate file is passed in as a separate argument on the command line.
     a function of population as the convergence can be non-monotonic and, as a result,
     requiring more than two populations give statistically equivalent results.
 
-Finally, using real populations can, as with :ref:`fciqmc <fciqmc_tutorial>`, have
+Finally, using real populations can, as with the :ref:`FCIQMC <fciqmc_tutorial>`, have
 a significant impact on the stochastic error.  Again, this is done by setting
 ``real_amplitudes = true`` in the input file (see
-:download:`hubbard_ifciqmc_real.lua <calcs/ifciqmc/hubbard_ifciqmc_real.lua>`) and running:
+:download:`hubbard_ifciqmc_real.lua <calcs/ifciqmc/hubbard_ifciqmc_real.lua>`).  Running:
 
 .. code-block:: bash
 
