@@ -124,6 +124,100 @@ contains
 
     end subroutine neel_trial_state
 
+    subroutine dmqmc_int_pic_free_importance_sampling(sys, cdet, connection, trial_func, hmatel)
+
+        ! Apply a transformation to the Hamiltonian matrix element by
+        ! reducing the probability of spawning to higher excitation levels
+        ! between the two ends of the DMQMC bitstring. The exact trial function
+        ! used is specified by the users upon input, and stored in the vector
+        ! accumulated_probs.
+
+        ! This is a wrapper function for using importance sampling with the symmetric version
+        ! of the ip-dmqmc algorithm, which also requires the Hamiltonian matrix element to be reweighted.
+        ! This assumes the use of a free electron zeroth order Hamiltonian.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        !    trial_func: importance sampling weights.
+        ! In/Out:
+        !    hmatel: on input, untransformed matrix element connecting two spin
+        !        functions (kets).  On output, transformed matrix element,
+        !        \Psi^T(cdet%f,cdet%f2) H_{ij} 1/\Psi(f_new,cdet%f2).
+        !        The factors which the Hamiltonian are multiplied by depend
+        !        on the level which we come from, and go to, and so depend on
+        !        the two ends of the bitstring we spawn from, and the new
+        !        bitstring we spawn onto. Note this is different to more conventional
+        !        importance sampling.
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t, get_excitation_level, create_excited_det
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: connection
+        real(p), allocatable, intent(in) :: trial_func(:)
+        real(p), intent(inout) :: hmatel
+        integer(i0) :: f_new(sys%basis%string_len)
+        integer :: excit_level_old, excit_level_new
+
+        call interaction_picture_reweighting_free(sys, cdet, connection, trial_func, hmatel)
+
+        call dmqmc_weighting_fn(sys, cdet, connection, trial_func, hmatel)
+
+    end subroutine dmqmc_int_pic_free_importance_sampling
+
+    subroutine dmqmc_int_pic_hf_importance_sampling(sys, cdet, connection, trial_func, hmatel)
+
+        ! Apply a transformation to the Hamiltonian matrix element by
+        ! reducing the probability of spawning to higher excitation levels
+        ! between the two ends of the DMQMC bitstring. The exact trial function
+        ! used is specified by the users upon input, and stored in the vector
+        ! accumulated_probs.
+
+        ! This is a wrapper function for using importance sampling with the symmetric version
+        ! of the ip-dmqmc algorithm, which also requires the hamiltonian matrix element to be reweighted.
+        ! This assumes the use of a Hartree-Fock-like zeroth order Hamiltonian.
+
+        ! In:
+        !    sys: system being studied.
+        !    cdet: info on the current determinant (cdet) that we will spawn
+        !        from.
+        !    connection: excitation connection between the current determinant
+        !        and the child determinant, on which progeny are spawned.
+        !    trial_func: importance sampling weights.
+        ! In/Out:
+        !    hmatel: on input, untransformed matrix element connecting two spin
+        !        functions (kets).  On output, transformed matrix element,
+        !        \Psi^T(cdet%f,cdet%f2) H_{ij} 1/\Psi(f_new,cdet%f2).
+        !        The factors which the Hamiltonian are multiplied by depend
+        !        on the level which we come from, and go to, and so depend on
+        !        the two ends of the bitstring we spawn from, and the new
+        !        bitstring we spawn onto. Note this is different to more conventional
+        !        importance sampling.
+
+        use determinants, only: det_info_t
+        use excitations, only: excit_t, get_excitation_level, create_excited_det
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(det_info_t), intent(in) :: cdet
+        type(excit_t), intent(in) :: connection
+        real(p), allocatable, intent(in) :: trial_func(:)
+        real(p), intent(inout) :: hmatel
+        integer(i0) :: f_new(sys%basis%string_len)
+        integer :: excit_level_old, excit_level_new
+
+        call interaction_picture_reweighting_hartree_fock(sys, cdet, connection, trial_func, hmatel)
+
+        call dmqmc_weighting_fn(sys, cdet, connection, trial_func, hmatel)
+
+    end subroutine dmqmc_int_pic_hf_importance_sampling
+
     subroutine dmqmc_weighting_fn(sys, cdet, connection, trial_func, hmatel)
 
         ! Apply a transformation to the Hamiltonian matrix element by

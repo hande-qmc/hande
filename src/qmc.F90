@@ -445,14 +445,22 @@ contains
                     if (dmqmc_in%initial_matrix == free_electron_dm) then
                         trial_dm_ptr => kinetic_energy_ueg
                         if (dmqmc_in%symmetric) then
-                            gen_excit_ptr%trial_fn => interaction_picture_reweighting_free
-                            spawner_ptr => spawn_importance_sampling
+                            if (dmqmc_in%weighted_sampling) then
+                                gen_excit_ptr%trial_fn => dmqmc_int_pic_free_importance_sampling
+                            else
+                                spawner_ptr => spawn_importance_sampling
+                                gen_excit_ptr%trial_fn => interaction_picture_reweighting_free
+                            endif
                         end if
                     else
                         trial_dm_ptr => slater_condon0_ueg
                         if (dmqmc_in%symmetric) then
-                            gen_excit_ptr%trial_fn => interaction_picture_reweighting_hartree_fock
-                            spawner_ptr => spawn_importance_sampling
+                            if (dmqmc_in%weighted_sampling) then
+                                gen_excit_ptr%trial_fn => dmqmc_int_pic_hf_importance_sampling
+                            else
+                                spawner_ptr => spawn_importance_sampling
+                                gen_excit_ptr%trial_fn => interaction_picture_reweighting_hartree_fock
+                            endif
                         end if
                     end if
                 end if
