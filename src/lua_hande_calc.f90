@@ -31,7 +31,6 @@ contains
         use calc, only: calc_type, exact_diag, lanczos_diag
         use fci_lanczos, only: do_fci_lanczos
         use fci_lapack, only: do_fci_lapack
-        use fci_lapack_complex, only: do_fci_lapack_complex
         use fci_utils, only: fci_in_t
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
@@ -62,9 +61,6 @@ contains
         if (lanczos) then
             calc_type = lanczos_diag
             call do_fci_lanczos(sys, fci_in, ref, use_sparse_hamil)
-        else if (sys%comp) then 
-            calc_type = exact_diag
-            call do_fci_lapack_complex(sys, fci_in, ref)
         else
             calc_type = exact_diag
             call do_fci_lapack(sys, fci_in, ref)

@@ -20,7 +20,7 @@ contains
         !        truncated Hilbert space.
 
         use dmqmc_procedures, only: setup_rdm_arrays
-        use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil
+        use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil, hamil_t
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
@@ -38,9 +38,10 @@ contains
         type(sys_t) :: sys_bak
         type(reference_t) :: ref
         integer(i0), allocatable :: dets(:,:)
-        real(p), allocatable :: eigv(:), rdm_eigv(:), rdm(:,:), hamil(:,:)
+        real(p), allocatable :: eigv(:), rdm_eigv(:), rdm(:,:)
         integer :: ndets, ierr, i, rdm_size
         type(blacs_info) :: proc_blacs_info
+        type(hamil_t) :: hamil
 
         if (parent) call check_fci_opts(sys, fci_in, .false.)
 
@@ -63,7 +64,6 @@ contains
                 proc_blacs_info = get_blacs_info(ndets, fci_in%block_size)
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
-            call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             if (fci_in%write_hamiltonian) then
                 call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
             end if 
@@ -92,7 +92,7 @@ contains
                 rdm_size = size(rdm, 1)
                 allocate(rdm_eigv(rdm_size), stat=ierr)
                 call check_allocate('rdm_eigv',rdm_size,ierr)
-                call get_rdm_eigenvalues(sys%basis, fci_in%subsys_info, ndets, dets, hamil, rdm, rdm_eigv)
+                call get_rdm_eigenvalues(sys%basis, fci_in%subsys_info, ndets, dets, hamil%rmat, rdm, rdm_eigv)
 
                 write (6,'(1X,"RDM eigenvalues")')
                 write (6,'(1X,"^^^^^^^^^^^^^^^",/)')
@@ -134,16 +134,17 @@ contains
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
 
-        use fci_utils, only: fci_in_t
+        use fci_utils, only: fci_in_t, hamil_t
         use operators
 
         type(sys_t), intent(in) :: sys
         type(fci_in_t), intent(in) :: fci_in
         integer(i0), intent(in) :: dets(:,:)
         type(blacs_info), intent(in) :: proc_blacs_info
-        real(p), intent(inout) :: hamil(:,:)
+        type(hamil_t), intent(inout) :: hamil
         real(p), intent(out) :: eigv(:)
-        real(p), allocatable :: work(:), eigvec(:,:)
+        real(p), allocatable :: rwork(:), eigvec(:,:)
+        complex(p), allocatable :: cwork(:)
         integer :: info, ierr, lwork, i, nwfn, ndets
         character(1) :: job
 
@@ -166,79 +167,140 @@ contains
         end if
 
         ! Find the optimal size of the workspace.
-        allocate(work(1), stat=ierr)
-        call check_allocate('work',1,ierr)
-        if (nprocs == 1) then
+
+        if (hamil%complex) then
+            allocate(cwork(1), stat=ierr)
+            call check_allocate('cwork',1,ierr)
+            allocate(rwork(max(1,3*ndets-2)), stat = ierr)
+            call check_allocate('rwork',max(1, 3*ndets - 2), ierr)
+            if (nprocs == 1) then
 #ifdef SINGLE_PRECISION
-            call ssyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
+                call cheev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, -1, rwork, info)
 #else
-            call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
+                call zheev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, -1, rwork, info)
 #endif
-        else
+            else
 #ifdef PARALLEL
 #ifdef SINGLE_PRECISION
-            call pssyev(job, 'U', ndets, hamil, 1, 1,               &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, -1, info)
+                call pcheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, cwork, -1, rwork, info)
 #else
-            call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, -1, info)
+                call pzheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, cwork, -1, rwork, info)
 #endif
 #endif
-        end if
+            end if
+            lwork = nint(real(cwork(1)))
+            deallocate(cwork)
+            call check_deallocate('cwork',ierr)
+            ! Now perform the diagonalisation.
+            allocate(cwork(lwork), stat=ierr)
+            call check_allocate('cwork',lwork,ierr)
 
-        lwork = nint(work(1))
-        deallocate(work)
-        call check_deallocate('work',ierr)
-
-        ! Now perform the diagonalisation.
-        allocate(work(lwork), stat=ierr)
-        call check_allocate('work',lwork,ierr)
-
-        if (nprocs == 1) then
-            ! Use lapack.
+            if (nprocs == 1) then
+                ! Use lapack.
 #ifdef SINGLE_PRECISION
-            call ssyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+                call cheev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, lwork, rwork, info)
 #else
-            call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
+                call zheev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, lwork, rwork, info)
 #endif
-        else
+            else
 #ifdef PARALLEL
-            ! Use scalapack to do the diagonalisation in parallel.
+                ! Use scalapack to do the diagonalisation in parallel.
 #ifdef SINGLE_PRECISION
-            call pssyev(job, 'U', ndets, hamil, 1, 1,               &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, lwork, info)
+                call pcheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, cwork, lwork, rwork, info)
 #else
-            call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
+                call pzheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, cwork, lwork, rwork, info)
+#endif
+#endif
+            end if
+            deallocate(cwork, stat=ierr)
+            call check_deallocate('cwork',ierr)
+            deallocate(rwork, stat=ierr)
+            call check_deallocate('rwork',ierr)
+                
+        else
+            allocate(rwork(1), stat=ierr)
+            call check_allocate('rwork',1,ierr)
+            if (nprocs == 1) then
+#ifdef SINGLE_PRECISION
+                call ssyev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, -1, info)
+#else
+                call dsyev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, -1, info)
+#endif
+            else
+#ifdef PARALLEL
+#ifdef SINGLE_PRECISION
+                call pssyev(job, 'U', ndets, hamil%rmat, 1, 1,               &
                         proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, lwork, info)
+                        proc_blacs_info%desc_m, rwork, -1, info)
+#else
+                call pdsyev(job, 'U', ndets, hamil%rmat, 1, 1,               &
+                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                        proc_blacs_info%desc_m, rwork, -1, info)
 #endif
 #endif
+            end if
+            lwork = nint(rwork(1))
+            deallocate(rwork)
+            call check_deallocate('rwork',ierr)
+
+            ! Now perform the diagonalisation.
+            allocate(rwork(lwork), stat=ierr)
+            call check_allocate('rwork',lwork,ierr)
+
+            if (nprocs == 1) then
+                ! Use lapack.
+#ifdef SINGLE_PRECISION
+                call ssyev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, lwork, info)
+#else
+                call dsyev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, lwork, info)
+#endif
+            else
+#ifdef PARALLEL
+                ! Use scalapack to do the diagonalisation in parallel.
+#ifdef SINGLE_PRECISION
+                call pssyev(job, 'U', ndets, hamil%rmat, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, rwork, lwork, info)
+#else
+                call pdsyev(job, 'U', ndets, hamil%rmat, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, rwork, lwork, info)
+#endif
+#endif
+            end if
+
+            deallocate(rwork, stat=ierr)
+            call check_deallocate('rwork',ierr)
+            nwfn = fci_in%analyse_fci_wfn
+            if (nwfn < 0) nwfn = ndets
+            do i = 1, nwfn
+                if (nprocs == 1) then
+                    call analyse_wavefunction(sys, hamil%rmat(:,i), dets, proc_blacs_info)
+                else
+                    call analyse_wavefunction(sys, eigvec(:,i), dets, proc_blacs_info)
+                end if
+            end do
+            nwfn = fci_in%print_fci_wfn
+            if (nwfn < 0) nwfn = ndets
+            do i = 1, nwfn
+                if (nprocs == 1) then
+                    call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, hamil%rmat(:,i))
+                else
+                    call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, eigvec(:,i))
+                end if
+            end do
         end if
 
-        deallocate(work, stat=ierr)
-        call check_deallocate('work',ierr)
 
-        nwfn = fci_in%analyse_fci_wfn
-        if (nwfn < 0) nwfn = ndets
-        do i = 1, nwfn
-            if (nprocs == 1) then
-                call analyse_wavefunction(sys, hamil(:,i), dets, proc_blacs_info)
-            else
-                call analyse_wavefunction(sys, eigvec(:,i), dets, proc_blacs_info)
-            end if
-        end do
-        nwfn = fci_in%print_fci_wfn
-        if (nwfn < 0) nwfn = ndets
-        do i = 1, nwfn
-            if (nprocs == 1) then
-                call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, hamil(:,i))
-            else
-                call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, eigvec(:,i))
-            end if
-        end do
+
 
         if (nprocs > 1) then
             deallocate(eigvec, stat=ierr)

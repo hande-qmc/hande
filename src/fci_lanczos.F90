@@ -16,7 +16,7 @@ contains
         !    ref_in: reference determinant defining (if relevant) a
         !        truncated Hilbert space.
 
-        use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil
+        use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil, hamil_t
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
@@ -40,8 +40,7 @@ contains
         real(p), allocatable :: eigv(:)
         integer :: ndets, ierr, i, nfound, block_size
         type(blacs_info) :: proc_blacs_info
-        real(p), allocatable :: hamil(:,:)
-        type(csrp_t) :: hamil_csr
+        type(hamil_t), allocatable :: hamil
 
         if (parent) call check_fci_opts(sys, fci_in, .true.)
 
@@ -82,20 +81,15 @@ contains
         else
             if (nprocs == 1) then
                 if (sparse_hamil) then
-                    call generate_hamil(sys, ndets, dets, hamil_csr=hamil_csr)
+                    call generate_hamil(sys, ndets, dets, hamil, use_sparse_hamil = sparse_hamil)
                 else
                     call generate_hamil(sys, ndets, dets, hamil)
                 end if
             else
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
-            if (sparse_hamil) then
-                if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil_csr=hamil_csr)
-                call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil_csr=hamil_csr)
-            else
-                if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
-                call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil)
-            end if
+            if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
+            call lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil)
         end if
 
         if (parent) then
@@ -113,7 +107,7 @@ contains
 
     end subroutine do_fci_lanczos
 
-    subroutine lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil, hamil_csr)
+    subroutine lanczos_diagonalisation(sys, fci_in, dets, proc_blacs_info, nfound, eigv, hamil)
 
         ! Perform a Lanczos diagonalisation of the current (spin) block of the
         ! Hamiltonian matrix.
@@ -143,7 +137,7 @@ contains
         use csr, only: csrp_t
         use errors, only: stop_all
         use system, only: sys_t
-        use fci_utils, only: fci_in_t
+        use fci_utils, only: fci_in_t, hamil_t
         use parallel, only: blacs_info
 
         type(sys_t), intent(in) :: sys
@@ -152,8 +146,7 @@ contains
         type(blacs_info), intent(in) :: proc_blacs_info
         integer, intent(out) :: nfound
         real(p), intent(out) :: eigv(:)
-        real(p), intent(in), optional :: hamil(:,:)
-        type(csrp_t), intent(in), optional :: hamil_csr
+        type(hamil_t), intent(in) :: hamil
         logical :: sparse_hamil
 
         integer :: ndets
@@ -177,10 +170,10 @@ contains
         real(p), allocatable :: evec_copy(:,:)
 #endif
 
-        if (.not.present(hamil) .and. .not.present(hamil_csr)) then
+        if (.not.present(hamil%rmat) .and. .not.present(hamil%mat_sparse)) then
             call stop_all('lanczos_diagonalisation', 'No Hamiltonian supplied.')
         end if
-        sparse_hamil = present(hamil_csr) .and. .not.present(hamil)
+        sparse_hamil = present(hamil%mat_sparse) .and. .not.present(hamil%rmat)
 
         ndets = ubound(dets, dim=2)
 
@@ -330,15 +323,15 @@ contains
                         ! This could be improved by multiplying the sparse
                         ! hamiltonian matrix by the dense xin matrix, rather than
                         ! doing one vector at a time.
-                        call csrpsymv(hamil_csr, xin_p(:,i), yout_p(:,i))
+                        call csrpsymv(hamil%mat_sparse, xin_p(:,i), yout_p(:,i))
                     else
-                        call ssymv('U', nrow, 1.0_p, hamil, nrow, xin_p(:,i), 1, 0.0_p, yout_p(:,i), 1)
+                        call ssymv('U', nrow, 1.0_p, hamil%rmat, nrow, xin_p(:,i), 1, 0.0_p, yout_p(:,i), 1)
                     end if
 #else
                     if (sparse_hamil) then
-                        call csrpsymv(hamil_csr, xin(:,i), yout(:,i))
+                        call csrpsymv(hamil%mat_sparse, xin(:,i), yout(:,i))
                     else
-                        call dsymv('U', nrow, 1.0_dp, hamil, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
+                        call dsymv('U', nrow, 1.0_dp, hamil%rmat, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
                     end if
 #endif
                 end do
@@ -354,12 +347,12 @@ contains
                         ! where H is the Hamiltonian matrix, x is the input Lanczos vector
                         ! and y the output Lanczos vector.
 #ifdef SINGLE_PRECISION
-                        call pssymv('U', ndets, 1.0_p, hamil, 1, 1,                   &
+                        call pssymv('U', ndets, 1.0_p, hamil%rmat, 1, 1,                   &
                                     proc_blacs_info%desc_m, xin_p(:,i), 1, 1,         &
                                     proc_blacs_info%desc_v, 1, 0.0_p, yout_p(:,i), 1, &
                                     1, proc_blacs_info%desc_v, 1)
 #else
-                        call pdsymv('U', ndets, 1.0_dp, hamil, 1, 1,                 &
+                        call pdsymv('U', ndets, 1.0_dp, hamil%rmat, 1, 1,                 &
                                     proc_blacs_info%desc_m, xin(:,i), 1, 1,          &
                                     proc_blacs_info%desc_v, 1, 0.0_dp, yout(:,i), 1, &
                                     1, proc_blacs_info%desc_v, 1)
