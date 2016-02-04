@@ -463,6 +463,7 @@ contains
 
         character(*), intent(in) :: filename
         type(blacs_info), intent(in) :: proc_blacs_info
+        ! [review] - RSTF: you don't seem to have done anything with this.
         real(p), intent(in), optional :: wfn(:)
         complex(p), intent(in), optional :: wfn_complex(:)
         integer(i0), intent(in) :: dets(:,:)

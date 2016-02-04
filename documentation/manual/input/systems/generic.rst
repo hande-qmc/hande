@@ -81,6 +81,8 @@ Options
     be in the lowest spin orbitals) and any additional high-energy spin orbitals are
     removed from the basis set.
 
+.. [review] - RSTF: Document complex option.
+
 :math:`L_z` symmetry
 --------------------
 

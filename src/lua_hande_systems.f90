@@ -145,6 +145,7 @@ contains
         call aot_get_val(sys%Ms, err, lua_state, opts, 'ms')
         call aot_get_val(sys%symmetry, err, lua_state, opts, 'sym')
         call aot_get_val(sys%chem_pot, err, lua_state, opts, 'chem_pot')
+        ! [review] RSTF: Complex is only a option for read_in, so probably should be read there not here.
         call aot_get_val(sys%comp, err, lua_state, opts, 'complex')
         call aot_get_val(cas, err_arr, 2, lua_state, opts, key='CAS')
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
@@ -486,6 +487,7 @@ contains
         !        Lz = true/false
         !        sym = S,
         !        CAS = {cas1, cas2}
+        !        complex = true/false,
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -510,8 +512,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(15), parameter :: keys(10) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms', 'CAS', 'chem_pot']
+        character(15), parameter :: keys(11) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS', 'chem_pot', 'complex']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)

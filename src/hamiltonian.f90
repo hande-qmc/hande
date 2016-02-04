@@ -4,6 +4,7 @@ use const
 
 implicit none
 
+! [review] - RSTF: This comment seems incorrect as the two functions take the same arguments.
 ! Would be cleaner to have a single interface to call for get_hmatel whether
 ! real or complex, but as resulting elements either differ in type or in 
 ! number of arguments will never be able to call this without implicitly 
@@ -89,7 +90,7 @@ contains
         !   vs real types.
         !  -Limits number of bool checks to get hmatel.
         !  -Could make it easier to use pointers later (if complex just point 
-        !   to this one.
+        !   to this one).
         !  -Alternatively have to define second hmatel factor in all real 
         !   routines to allow return of two values from all pure values.
         !  -If use array of allocatable length, redefine existing for minimally 
@@ -109,4 +110,5 @@ contains
         end select
 
     end function get_hmatel_complex
+
 end module hamiltonian

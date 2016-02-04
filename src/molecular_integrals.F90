@@ -657,9 +657,7 @@ contains
         !   to ia < jb and giving us a nonsensical final index iajb. If instead we seek to maximise 
         !   the value of the a position, we will obtain the correct answer.
 
-
-
-
+        ! [review] - RSTF: oldorbs appears not to be used anywhere?
         oldorbs = (/i_, j_, a_, b_/)
         i = basis_fns(i_)%spatial_index
         j = basis_fns(j_)%spatial_index
@@ -672,6 +670,7 @@ contains
         ! If only one maximum value, have unique choice of ordering. In degenerate cases, have to
         ! be more careful
         
+        ! [review] - RSTF: already has this value from two lines ago!
         orbs = (/i, j, a, b/)
         ! First figure out if we have to conjugate or swap electrons for best alignment
         if (count(orbs == maxv) == 1) then
@@ -775,6 +774,7 @@ contains
             ! permutation to look up.
 
 
+! [review] - RSTF: Is this a review comment which should go?
 !  e.g. <ij|ab> = <13|24> so <ii jj|aa bb> = <42|31> (with conjugate=true)
 ! these have spatial indices  2  1  2  1.  ia=2*1/2+2 = 3. jb =1*0/2+1 = 1
 ! That wasn't what I expected.  Try next
@@ -790,7 +790,7 @@ contains
 
 ! A little more explanation warranted I think.
 
-! We swap around ii and jj if ii<jj
+            ! We swap around ii and jj if ii<jj
             if ( ia < jb .or. ( ia == jb .and. ii < jj) ) then
                 aa = ii ! don't need aa and bb any more; use as scratch space
                 ii = jj

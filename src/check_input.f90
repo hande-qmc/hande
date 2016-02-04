@@ -5,6 +5,10 @@ implicit none
 
 contains
 
+    ! [review] - RSTF: Add checks for complex?
+    ! [review] - probably  if (sys%comp and sys%system /= read_in) in check sys
+    ! [review] - and (for the time being) if (sys%comp) in check_*mc_opts
+
     subroutine check_sys(sys)
 
         ! Check the input parameters for the system.

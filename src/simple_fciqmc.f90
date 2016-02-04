@@ -75,6 +75,7 @@ contains
         type(sys_t) :: sys_bak
 
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
+        ! [review] - RSTF: stop_all if sys%comp? (for the time being) - and for other 
 
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
@@ -309,6 +310,7 @@ contains
                     call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
+                    ! [review] - RSTF: Is not making both checks redundant?
                     if (sparse_hamil .and. (hamil%sparse)) then
                         associate(hstart=>hamil%mat_sparse%row_ptr(idet), hend=>hamil%mat_sparse%row_ptr(idet+1)-1)
                             do ipart = 1, abs(psip_list%pops(1,idet))

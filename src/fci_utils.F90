@@ -216,8 +216,8 @@ contains
         !        described in csr.
         ! Out:
         !    hamil: hamil_t derived type, containing Hamiltonian matrix in a square array of appropriate 
-        !    format for system and settings given (real, complex or sparse). In a complex system only
-        !    sparse format is not implemented.
+        !        format for system and settings given (real, complex or sparse). In a complex system only
+        !        sparse format is not implemented.
 
         use checking, only: check_allocate, check_deallocate
         use csr, only: init_csrp, end_csrp, csrp_t
@@ -357,8 +357,10 @@ contains
                 if (present(full_mat)) then
                     if (full_mat) ii = 1
                 end if
+                ! [review] - RSTF: The OpenMP directive must immediately precede the do loop
                 !$omp do private(j) schedule(dynamic, 200)
                 if (hamil%complex) then
+                    ! [review] - RSTF: Why is this iterating from i and the other ii?
                     do j = i, ndets
                         hamil%cmat(i,j) = get_hmatel_complex(sys,dets(:,i),dets(:,j))
                     end do
@@ -419,6 +421,8 @@ contains
             deallocate(work_print)
             call check_deallocate('work_print', ierr)
         else
+            ! [review] - RSTF: This test will also be true for csr format
+            ! [review] - RSTF: You probably want if (allocated(hamil%rmat)) instead
             if (.not. hamil%complex) then
                 do i=1, ndets
                     write (iunit,*) i,i,hamil%rmat(i,i)

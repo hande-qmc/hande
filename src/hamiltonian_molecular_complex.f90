@@ -36,6 +36,9 @@ contains
         type(excit_t) :: excitation
         integer :: occ_list(sys%nel)
 
+        ! [review] - RSTF: need a default value of 0 for if f1 and f2 differ by more than 2 spin
+        ! [review] - RSTF: orbitals (it will probably be 0 anyway but shouldn't rely on this).
+
         ! Test to see if matrix element is non-zero.
         excitation = get_excitation(sys%nel, sys%basis, f1, f2)
 
