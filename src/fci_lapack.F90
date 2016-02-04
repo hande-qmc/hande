@@ -123,7 +123,8 @@ contains
         !    proc_blacs_info: BLACS description of distribution of the Hamiltonian.
         !        Used only if running on multiple processors.
         ! In/Out:
-        !    hamil: Hamiltonian matrix of the system in the Hilbert space used.
+        !    hamil: hamil_t derived type containing Hamiltonian matrix of the system 
+        !        in the Hilbert space used in appropriate format.
         !        On output contains the eigenvectors, if requested, or is
         !        otherwise destroyed.
         ! Out:

@@ -15,6 +15,7 @@ contains
         !    fci_in: fci input options.
         !    ref_in: reference determinant defining (if relevant) a
         !        truncated Hilbert space.
+        !    sparse_hamil: if true, use CSR dense format for Hamiltonian.
 
         use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil, hamil_t
         use hamiltonian, only: get_hmatel
@@ -117,8 +118,8 @@ contains
         !    dets: list of determinants in the Hilbert space in the bit
         !        string representation.
         !    proc_blacs_info: BLACS description of distribution of the Hamiltonian.
-        !    hamil (optional): Hamiltonian matrix.
-        !    hamil_csr (optional): Hamiltonian matrix in sparse format.
+        !    hamil: derived type containing Hamiltonian matrix in appropriate 
+        !        format (real, complex or CSR-format matrix).
         ! Out:
         !    nfound: number of solutions found from this block.  This is
         !        min(number of determinants with current spin, fci_in%nlanczos_eigv).

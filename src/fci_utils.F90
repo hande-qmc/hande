@@ -212,14 +212,12 @@ contains
         !    proc_blacs_info (optional): BLACS distribution (and related info) of the Hamiltonian matrix.
         !    full_mat (optional): if present and true generate the full matrix rather than
         !        just storing one triangle.
+        !    use_sparse_hamil (optional): if present and true generate a sparse matrix format, as
+        !        described in csr.
         ! Out:
-        !    hamil (optional): Hamiltonian matrix in a square array.
-        !    hamil_csr (optional): Hamiltonian matrix in a sparse (compressed sparse row)
-        !        format.
-        !    hamil_comp (optional): Complex Hamiltonian matrix in a square array.
-
-        ! Note: either hamil or hamil_csr must be supplied.  If both are supplied then only
-        ! hamil is used.
+        !    hamil: hamil_t derived type, containing Hamiltonian matrix in a square array of appropriate 
+        !    format for system and settings given (real, complex or sparse). In a complex system only
+        !    sparse format is not implemented.
 
         use checking, only: check_allocate, check_deallocate
         use csr, only: init_csrp, end_csrp, csrp_t
@@ -385,9 +383,8 @@ contains
         !    ndets: number of determinants in Hilbert space.
         !    proc_blacs_info (optional, required if nprocs>1): BLACS distribution
         !        (and related info) of the Hamiltonian matrix.
-        !    hamil (optional): Hamiltonian matrix in dense matrix format.
-        !    hamil_csr (optional): Hamiltonian matrix in sparse (CSR) matrix format.
-        !    hamil_comp (optional): Complex Hamiltonian matrix in dense matrix format
+        !    hamil: hamil_t derived type containing hamiltonian matrix in appropriate
+        !        matrix format (real, complex or sparse matrix).
 
         use checking, only: check_allocate, check_deallocate
         use const, only: p, depsilon
