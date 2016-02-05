@@ -41,9 +41,7 @@ contains
         real(p), allocatable :: eigv(:)
         integer :: ndets, ierr, i, nfound, block_size
         type(blacs_info) :: proc_blacs_info
-        ! [review] - RSTF: You don't want allocatable here.  (Allocatable scalars are a thing, but
-        ! [review] - RSTF: only useful with polymorphic types.)
-        type(hamil_t), allocatable :: hamil
+        type(hamil_t) :: hamil
 
         if (parent) call check_fci_opts(sys, fci_in, .true.)
 
@@ -83,14 +81,7 @@ contains
             nfound = 1
         else
             if (nprocs == 1) then
-                ! [review] - RSTF: Why not just do:
-                !   call generate_hamil(sys, ndets, dets, hamil, use_sparse_hamil = sparse_hamil)
-                ! [review] - RSTF: without the if...else block?
-                if (sparse_hamil) then
-                    call generate_hamil(sys, ndets, dets, hamil, use_sparse_hamil = sparse_hamil)
-                else
-                    call generate_hamil(sys, ndets, dets, hamil)
-                end if
+                call generate_hamil(sys, ndets, dets, hamil, use_sparse_hamil = sparse_hamil)
             else
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
@@ -176,12 +167,10 @@ contains
         real(p), allocatable :: evec_copy(:,:)
 #endif
 
-        ! [review] - RSTF: you want to test if (allocated) not if (present) - that can only be used
-        ! [review] - RSTF: for optional dummy arguments.
-        if (.not.present(hamil%rmat) .and. .not.present(hamil%mat_sparse)) then
+        if (.not.allocated(hamil%rmat) .and. .not.allocated(hamil%mat_sparse) .and. .not.allocated(hamil%cmat)) then
             call stop_all('lanczos_diagonalisation', 'No Hamiltonian supplied.')
         end if
-        sparse_hamil = present(hamil%mat_sparse) .and. .not.present(hamil%rmat)
+        sparse_hamil = hamil%sparse
 
         ndets = ubound(dets, dim=2)
 

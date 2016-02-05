@@ -241,7 +241,7 @@ contains
         logical :: sparse_mode
         real(p) :: hmatel
 
-        hamil%complex = sys%comp
+        hamil%complex = sys%read_in%comp
         if (present(use_sparse_hamil)) then
              hamil%sparse = use_sparse_hamil
              
@@ -358,18 +358,20 @@ contains
                     if (full_mat) ii = 1
                 end if
                 ! [review] - RSTF: The OpenMP directive must immediately precede the do loop
-                !$omp do private(j) schedule(dynamic, 200)
+                ! [reply] - CJCS: Apologies, didn't notice and not familiar with OpenMP- is this better now?
                 if (hamil%complex) then
-                    ! [review] - RSTF: Why is this iterating from i and the other ii?
-                    do j = i, ndets
+                    !$omp do private(j) schedule(dynamic, 200)
+                    do j = ii, ndets
                         hamil%cmat(i,j) = get_hmatel_complex(sys,dets(:,i),dets(:,j))
                     end do
+                    !$omp end do
                 else
+                    !$omp do private(j) schedule(dynamic, 200)
                     do j = ii, ndets
                         hamil%rmat(i,j) = get_hmatel(sys,dets(:,i),dets(:,j))
                     end do
+                    !$omp end do
                 end if
-                !$omp end do
             end do
             !$omp end parallel
         end if
@@ -421,9 +423,7 @@ contains
             deallocate(work_print)
             call check_deallocate('work_print', ierr)
         else
-            ! [review] - RSTF: This test will also be true for csr format
-            ! [review] - RSTF: You probably want if (allocated(hamil%rmat)) instead
-            if (.not. hamil%complex) then
+            if (.not. hamil%complex .and. .not. hamil%sparse) then
                 do i=1, ndets
                     write (iunit,*) i,i,hamil%rmat(i,i)
                     do j=i+1, ndets

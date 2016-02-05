@@ -599,7 +599,7 @@ contains
 
     end function two_body_int_indx
 
-    pure function two_body_int_indx_complex(uhf, i_, j_, a_, b_, basis_fns) result(indx)
+    pure function two_body_int_indx_complex(uhf, i, j, a, b, basis_fns) result(indx)
 
         ! In:
         !    uhf: whether integral store is from a UHF calculation (and hence is
@@ -623,13 +623,13 @@ contains
         type(int_indx) :: indx
         type(basis_fn_t), intent(in) :: basis_fns(:)
         logical, intent(in) :: uhf
-        integer, intent(in) :: i_, j_, a_, b_
+        integer, intent(in) :: i, j, a, b
         integer :: orbs(4), oldorbs(4)
 
         integer :: ia, jb, ii, jj, aa, bb
         logical :: conj, eswap
 
-        integer :: maxv, scratch(2), i, j, a, b
+        integer :: maxv, scratch(2)
 
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
@@ -658,48 +658,47 @@ contains
         !   the value of the a position, we will obtain the correct answer.
 
         ! [review] - RSTF: oldorbs appears not to be used anywhere?
-        oldorbs = (/i_, j_, a_, b_/)
-        i = basis_fns(i_)%spatial_index
-        j = basis_fns(j_)%spatial_index
-        a = basis_fns(a_)%spatial_index
-        b = basis_fns(b_)%spatial_index
+        ! [reply] - CJCS: saved for UHF functionality; now implemented.
+        oldorbs = (/i, j, a, b/)
 
-        orbs = (/i, j, a, b/)
-        maxv = max(i,j,a,b)
+        ii = basis_fns(i)%spatial_index
+        jj = basis_fns(j)%spatial_index
+        aa = basis_fns(a)%spatial_index
+        bb = basis_fns(b)%spatial_index
+
+        orbs = (/ii, jj, aa, bb/)
+        maxv = max(ii,jj,aa,bb)
         ! Use counting here to avoid degeneracy issues from complex notation.
         ! If only one maximum value, have unique choice of ordering. In degenerate cases, have to
         ! be more careful
-        
-        ! [review] - RSTF: already has this value from two lines ago!
-        orbs = (/i, j, a, b/)
         ! First figure out if we have to conjugate or swap electrons for best alignment
         if (count(orbs == maxv) == 1) then
-            conj = (maxv == a .or. maxv == b)
-            eswap = (maxv == j .or. maxv == b)
+            conj = (maxv == aa .or. maxv == bb)
+            eswap = (maxv == jj .or. maxv == bb)
         else
-            if (i == j .and. i == maxv) then
+            if (ii == jj .and. ii == maxv) then
                 ! Have <ii|ab>, <ii|ai>, <ii|ib> or <ii|ii>
                 conj = .false.
-                eswap = (b > a)
-            else if (a == b .and. a == maxv) then
+                eswap = (bb > aa)
+            else if (aa == bb .and. aa == maxv) then
                 ! Have <ij|aa>, <aj|aa> or <ia|aa>
                 conj = .true.
-                eswap = (j > i)
-            else if (i == a .and. i == maxv) then
+                eswap = (jj > ii)
+            else if (ii == aa .and. ii == maxv) then
                 ! <ij|ib>
-                conj = (b > j)
+                conj = (bb > jj)
                 eswap = .false.
-            else if (i == b .and. i == maxv) then
+            else if (ii == bb .and. ii == maxv) then
                 ! <ij|ai>
-                conj = (j > a)
+                conj = (jj > aa)
                 eswap = conj
-            else if (j == a .and. j == maxv) then
+            else if (jj == aa .and. jj == maxv) then
                 ! <ij|jb>
-                conj = (i > b)
+                conj = (ii > bb)
                 eswap = (.not.conj)
-            else if (j == b .and. j == maxv) then
+            else if (jj == bb .and. jj == maxv) then
                 ! <ij|aj>
-                conj = (i < a)
+                conj = (ii < aa)
                 eswap = .true.
             end if
         end if
@@ -707,26 +706,22 @@ contains
         ! Perform operations we've decided we need.
 
         if (conj) then
-            ii = a
-            jj = b
-            aa = i
-            bb = j
-        else
-            ii = i
-            jj = j
-            aa = a
-            bb = b
+            scratch = (/aa, ii/)
+            ii = scratch(1)
+            aa = scratch(2)
+            scratch = (/bb, jj/)
+            jj = scratch(1) 
+            bb = scratch(2)
         end if
 
         if (eswap) then
-            scratch(1) = ii 
-            scratch(2) = jj
+            scratch = (/ii, jj/)
             jj = scratch(1)
             ii = scratch(2)
-            scratch(1) = aa
-            scratch(2) = bb
+            scratch = (/aa, bb/)
             bb = scratch(1)
             aa = scratch(2)
+
         end if
 
         ! Combine values uniquely, with reordering for jb as we can't guarantee j >= b
@@ -772,30 +767,34 @@ contains
             ! If ia == jb (ie i,a and j,b both have one spin orbital from each of a pair
             ! of spatial orbitals) then we need to make an arbitrary choice as to which
             ! permutation to look up.
-
-
-! [review] - RSTF: Is this a review comment which should go?
-!  e.g. <ij|ab> = <13|24> so <ii jj|aa bb> = <42|31> (with conjugate=true)
-! these have spatial indices  2  1  2  1.  ia=2*1/2+2 = 3. jb =1*0/2+1 = 1
-! That wasn't what I expected.  Try next
-!  e.g. <ij|ab> = <12|34> so <ii jj|aa bb> = <43|21> (with conjugate=true)
-! these have spatial indices  2  2  1  1.  ia=2*1/2+1 = 2. jb =2*1/2+1 = 2
-! Aha - this has ia=jb. 
-
-! The latter <43|21> example has ia==jb, but ii>jj, so we switch
-! Isn't it the case that ii>=jj because of the max() above?
-
-! The former, <42|31> has ia>jb.  Also, doesn't ii>=jj ensure this?
-!  Perhaps the case where ia>jb because i=j but b>a. i.e. <66|24> which isn't covered above.
-
-! A little more explanation warranted I think.
-
-            ! We swap around ii and jj if ii<jj
-            if ( ia < jb .or. ( ia == jb .and. ii < jj) ) then
-                aa = ii ! don't need aa and bb any more; use as scratch space
-                ii = jj
-                jj = aa
+            ! First apply operations we know we need to spinorbitals.
+            if (conj) then
+                scratch = (/oldorbs(1), oldorbs(3)/)
+                oldorbs(1) = scratch(2)
+                oldorbs(3) = scratch(1)
+                scratch = (/ oldorbs(2), oldorbs(4) /)
+                oldorbs(2) = scratch(2)
+                oldorbs(4) = scratch(1)
             end if
+
+            if (eswap) then
+                scratch = (/oldorbs(1), oldorbs(2)/)
+                oldorbs(1) = scratch(2)
+                oldorbs(2) = scratch(1)
+                scratch = (/ oldorbs(3), oldorbs(4) /)
+                oldorbs(3) = scratch(2)
+                oldorbs(4) = scratch(1)
+            end if
+
+            ! From previous operations, should have ensured ia >= jb & i >= j for 
+            ! spatial orbitals. As such, we now just have to figure out which spin
+            ! channel the resultant arrangement is in. As we've already ensured a 
+            ! unique arrangement, we can ensure any rearrangement of same spinorbitals
+            ! will give the same index and spin channel.
+
+            ii = oldorbs(1)
+            jj = oldorbs(2)
+
 
             if (basis_fns(ii)%ms == -1) then
                 if (basis_fns(jj)%ms == -1) then

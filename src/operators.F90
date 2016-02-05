@@ -443,15 +443,14 @@ contains
 
     end subroutine analyse_wavefunction
 
-    subroutine print_wavefunction(filename, dets, proc_blacs_info, wfn, wfn_complex)
+    subroutine print_wavefunction(filename, dets, proc_blacs_info, wfn)
 
         ! Print out an exact wavefunction.
 
         ! In:
         !    filename: file to be printed to.
-        !    wfn (optional): exact wavefunction to be printed out.  wfn(i) = c_i, where
+        !    wfn: exact wavefunction to be printed out.  wfn(i) = c_i, where
         !    |\Psi> = \sum_i c_i|D_i>.
-        !    wfn_complex (optional): exact complex wavefunction to be printed out.
         !    dets: list of determinants in the Hilbert space (bit string representation).
         !    proc_blacs_info: BLACS information describing distribution of wfn.
 
@@ -464,8 +463,9 @@ contains
         character(*), intent(in) :: filename
         type(blacs_info), intent(in) :: proc_blacs_info
         ! [review] - RSTF: you don't seem to have done anything with this.
-        real(p), intent(in), optional :: wfn(:)
-        complex(p), intent(in), optional :: wfn_complex(:)
+        ! [reply] - CJCS: started making changes at same time as analysing 
+        ! [reply] - CJCS: wfn but decided probably not much use for it?
+        real(p), intent(in) :: wfn(:)
         integer(i0), intent(in) :: dets(:,:)
 
         integer :: idet, i, ii, ilocal, iunit

@@ -297,8 +297,12 @@ type sys_read_in_t
 
     ! Store for imaginary component of two-body integrals, 
     type(two_body_t) :: coulomb_integrals_imag
+
     ! Data about the orbital symmetries
     type(pg_sym_t) :: pg_sym
+
+    ! Is system complex?
+    logical :: comp = .false.
 
 end type sys_read_in_t
 
@@ -383,8 +387,7 @@ type sys_t
     ! Chemical potential.
     real(p) :: chem_pot = huge(1.0_p)
 
-    ! Is system complex?
-    logical :: comp = .false.
+
 
     ! Basis set information
     ! ^^^^^^^^^^^^^^^^^^^^^
@@ -805,7 +808,7 @@ contains
         call json_write_key(js, 'sym_max_tot', sys%sym_max_tot)
         call json_write_key(js, 'symmetry', sys%symmetry)
         call json_write_key(js, 'max_number_excitations', sys%max_number_excitations)
-        call json_write_key(js, 'complex', sys%comp)
+
         if (abs(sys%chem_pot - huge(1.0_p)) < 1.0_p) then
             call json_write_key(js, 'chem_pot', 'nan')
         else
@@ -870,8 +873,10 @@ contains
                 call json_write_key(js, 'dipole_core', sys%read_in%dipole_core)
             end if
             call json_write_key(js, 'CAS', sys%CAS)
-            call json_write_key(js, 'useLz', sys%read_in%useLz, terminal=.true.)
+            call json_write_key(js, 'useLz', sys%read_in%useLz)
+            call json_write_key(js, 'complex', sys%read_in%comp, terminal=.true.)
             call json_object_end(js, terminal=.true.)
+
         end if
 
         if (sys%system == ringium) then

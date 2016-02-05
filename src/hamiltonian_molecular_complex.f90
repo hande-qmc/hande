@@ -36,9 +36,8 @@ contains
         type(excit_t) :: excitation
         integer :: occ_list(sys%nel)
 
-        ! [review] - RSTF: need a default value of 0 for if f1 and f2 differ by more than 2 spin
-        ! [review] - RSTF: orbitals (it will probably be 0 anyway but shouldn't rely on this).
-
+        hmatel = cmplx(0.0, 0.0, p)
+        
         ! Test to see if matrix element is non-zero.
         excitation = get_excitation(sys%nel, sys%basis, f1, f2)
 
@@ -67,6 +66,9 @@ contains
                 ! Two electron operator
                 hmatel = slater_condon2_mol(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
+            case default
+                ! If f1 & f2 differ by more than two spin orbitals integral value is zero.
+
             end select
 
         end if

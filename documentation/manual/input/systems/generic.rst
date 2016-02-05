@@ -81,7 +81,15 @@ Options
     be in the lowest spin orbitals) and any additional high-energy spin orbitals are
     removed from the basis set.
 
-.. [review] - RSTF: Document complex option.
+``complex``
+    type: boolean.
+
+    Optional. Default: false.
+
+    Specify if the calculation should use complex dynamics in any calculation performed, 
+    and if the FCIDUMP supplied is complex-formatted. Currently only compatible with
+    fci calculations.
+
 
 :math:`L_z` symmetry
 --------------------

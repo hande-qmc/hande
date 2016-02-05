@@ -145,8 +145,6 @@ contains
         call aot_get_val(sys%Ms, err, lua_state, opts, 'ms')
         call aot_get_val(sys%symmetry, err, lua_state, opts, 'sym')
         call aot_get_val(sys%chem_pot, err, lua_state, opts, 'chem_pot')
-        ! [review] RSTF: Complex is only a option for read_in, so probably should be read there not here.
-        call aot_get_val(sys%comp, err, lua_state, opts, 'complex')
         call aot_get_val(cas, err_arr, 2, lua_state, opts, key='CAS')
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
         if (size(cas) == 0) deallocate(cas)
@@ -529,6 +527,7 @@ contains
         call aot_get_val(sys%read_in%fcidump, err, lua_state, opts, 'int_file')
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
         call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
+        call aot_get_val(sys%read_in%comp, err, lua_state, opts, 'complex')
 
         new_basis = new .or. aot_exists(lua_state, opts, 'int_file') &
                         .or. aot_exists(lua_state, opts, 'CAS')

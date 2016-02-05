@@ -54,7 +54,7 @@ contains
         use fci_utils, only: generate_hamil, hamil_t
         use qmc_data, only: qmc_in_t, reference_t, particle_t, qmc_state_t
         use spawn_data, only: spawn_t
-        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+        use system!, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -75,7 +75,9 @@ contains
         type(sys_t) :: sys_bak
 
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
-        ! [review] - RSTF: stop_all if sys%comp? (for the time being) - and for other 
+        if (sys%system == read_in) then
+            if (sys%read_in%comp) call stop_all('init_simple_fciqmc', 'Complex simple fciqmc not currently implemented.')
+        end if
 
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
@@ -310,7 +312,6 @@ contains
                     call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
-                    ! [review] - RSTF: Is not making both checks redundant?
                     if (sparse_hamil .and. (hamil%sparse)) then
                         associate(hstart=>hamil%mat_sparse%row_ptr(idet), hend=>hamil%mat_sparse%row_ptr(idet+1)-1)
                             do ipart = 1, abs(psip_list%pops(1,idet))

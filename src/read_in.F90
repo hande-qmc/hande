@@ -244,7 +244,7 @@ contains
         if (parent) then
             do
                 ! loop over lines.
-                if (sys%comp) then
+                if (sys%read_in%comp) then
                         read (ir,*, iostat=ios) compint, i, a, j, b
                         ! if complex will have complex formatting but sp_eigv should still be real.
                         x=real(compint,p)
@@ -362,14 +362,14 @@ contains
         if (t_store) then
             call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
                                  .false., sys%read_in%one_e_h_integrals)
-            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%comp, &
+            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
                                  .false., sys%read_in%coulomb_integrals)
-            if (sys%comp) then
+            if (sys%read_in%comp) then
                 call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
                     sys%read_in%pg_sym%nbasis_sym_spin, .true., &
                     sys%read_in%one_e_h_integrals_imag)
                 call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
-                                 sys%comp, .true., sys%read_in%coulomb_integrals_imag)
+                                 sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
             end if
         end if
 
@@ -409,7 +409,7 @@ contains
         if (t_store) then
             call zero_one_body_int_store(sys%read_in%one_e_h_integrals)
             call zero_two_body_int_store(sys%read_in%coulomb_integrals)
-            if (sys%comp) then
+            if (sys%read_in%comp) then
                 call zero_one_body_int_store(sys%read_in%one_e_h_integrals_imag)
                 call zero_two_body_int_store(sys%read_in%coulomb_integrals_imag)
             end if
@@ -464,7 +464,7 @@ contains
             do
 
                 ! loop over lines.
-                if (sys%comp) then
+                if (sys%read_in%comp) then
                     read (ir,*, iostat=ios) compint, i, a, j, b
                     x=real(compint,p)
                     y=aimag(compint)
@@ -527,7 +527,7 @@ contains
                                     call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
                                                                 int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
                                     int_err = int_err + ierr
-                                    if (sys%comp) then
+                                    if (sys%read_in%comp) then
                                         y = y + get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, ii, aa, &
                                                                      sys%basis%basis_fns, sys%read_in%pg_sym)
                                         call store_one_body_int_mol(ii, aa, y, sys%basis%basis_fns, sys%read_in%pg_sym, &
@@ -580,7 +580,7 @@ contains
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
                                 else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
-                                         (ii == jj .and. aa == bb .and. ii /= aa .and. .not. sys%comp)) then
+                                         (ii == jj .and. aa == bb .and. ii /= aa .and. .not. sys%read_in%comp)) then
                                     ! <ij|ji>, i/=j (or <ii|jj> version) can be treated together if real orbitals
                                     ! but not if complex orbitals.
                                     ! Only accept complex if is <ij|ji>
@@ -625,7 +625,7 @@ contains
                                                                         sys%read_in%pg_sym, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
-                                            if (sys%comp) then
+                                            if (sys%read_in%comp) then
                                                 y = y*rhf_fac + &
                                                     get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), &
                                                                          active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
@@ -637,7 +637,7 @@ contains
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 1
                                         end if
-                                    else if ((.not. sys%comp) .or. ((ii == core(1) .and. bb == core(2)) &
+                                    else if ((.not. sys%read_in%comp) .or. ((ii == core(1) .and. bb == core(2)) &
                                                 .or. (jj == core(1) .and. aa == core(2)))) then
                                         ! < i a | b i > (or allowed permutation thereof)
                                         ! For systems with complex orbitals (but real integrals)
@@ -660,7 +660,7 @@ contains
                                                                         sys%read_in%pg_sym, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
-                                            if (sys%comp) then
+                                            if (sys%read_in%comp) then
                                                 ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
                                                 ! and store_one_body... function ordering adjustments.
                                                 y = get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), active(2), &
@@ -680,7 +680,7 @@ contains
                                 call store_two_body_int_mol(ii, jj, aa, bb, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
                                                             int_err > max_err_msg, sys%read_in%coulomb_integrals, ierr)
                                 int_err = int_err + ierr
-                                if (sys%comp) then
+                                if (sys%read_in%comp) then
                                     call store_two_body_int_mol(ii, jj, aa, bb, y, sys%basis%basis_fns, sys%read_in%pg_sym, &
                                                             int_err > max_err_msg, sys%read_in%coulomb_integrals_imag, ierr)
                                     int_err = int_err + ierr
@@ -717,7 +717,7 @@ contains
 #endif
         call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
         call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
-        if (sys%comp) then
+        if (sys%read_in%comp) then
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
         end if
