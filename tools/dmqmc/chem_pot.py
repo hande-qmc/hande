@@ -59,20 +59,27 @@ class UEGSystem:
             self.pol = 1
         else:
             self.pol = 2
-        # Box Length.
-        self.L = self.rs*(4*self.ne*sc.pi/3.)**(1/3.)
+        self.dim = args.dim
+        if self.dim == 3:
+            # Box Length.
+            self.L = self.rs*(4*self.ne*sc.pi/3.)**(1/3.)
+            # Fermi energy (inifinite systems).
+            self.ef = 0.5*(9.0*sc.pi*self.pol/(4.0*self.rs**3.0))**(2./3.)
+        else:
+            # Box Length.
+            self.L = self.rs*(sc.pi*self.ne)**(1/2.)
+            # Fermi energy (inifinite systems).
+            self.ef = self.pol/self.rs**2.0
         # k-space grid spacing.
         self.kfac = 2*sc.pi/self.L
-        # Fermi energy (inifinite systems).
-        self.ef = 0.5*(9.0*sc.pi*self.pol/(4.0*self.rs**3.0))**(2./3.)
         # Single particle eigenvalues and corresponding kvectors
-        self.spval = self.sp_energies(self.kfac, self.ecut)
+        self.spval = self.sp_energies(self.kfac, self.ecut, self.dim)
         # Compress single particle eigenvalues by degeneracy.
         self.deg_e = compress_spval(self.spval)
         # epsilon value for comparison of floats.
         self.root_de = 1e-14
 
-    def sp_energies(self, kfac, ecut):
+    def sp_energies(self, kfac, ecut, dim):
         '''
         Calculate the allowed single particle eigenvalues which can fit in the
         sphere in kspace determined by ecut.
@@ -92,15 +99,15 @@ class UEGSystem:
 
         # Scaled Units to match with HANDE.
         # So ecut is measured in units of 1/kfac^2.
-        nmax = int(math.ceil(np.sqrt((2*ecut))))
+        nmax = [int(math.ceil(np.sqrt((2*ecut))))] * dim + [0]*(3-dim)
 
         spval = []
         vec = []
         kval = []
 
-        for ni in range(-nmax, nmax+1):
-            for nj in range(-nmax, nmax+1):
-                for nk in range(-nmax, nmax+1):
+        for nj in range(-nmax[0], nmax[0]+1):
+            for nk in range(-nmax[1], nmax[1]+1):
+                for ni in range(-nmax[2], nmax[2]+1):
                     spe = 0.5*(ni**2 + nj**2 + nk**2)
                     if (spe <= ecut):
                         # Reintroduce 2 \pi / L factor.
@@ -306,6 +313,8 @@ args : :class:`ArgumentParser`
     parser_ueg = subparsers.add_parser('ueg', parents=[parent_parser],
                         help='Chemical potential for 3d UEG.')
     parser_ueg.add_argument('rs', type=float, help='Wigner-Seitz radius.')
+    parser_ueg.add_argument('dim', type=int, help='Dimensionality - either 2 or'
+                             '3.')
     parser_ueg.add_argument('ecutoff', type=float, help='Plane wave cutoff '
                         'in units of 0.5*(2\pi/L)**2.')
     parser_ueg.add_argument('-t', '--use--fermi', action='store_true',
