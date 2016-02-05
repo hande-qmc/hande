@@ -99,6 +99,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            dmqmc_real_32/np2/heisenberg_4_gs_entropy
            fci/H2-RHF-cc-pVTZ-Lz/
            fci/H2O-RHF-sto-2g
+           fci/H2O-RHF-sto-2g-complex
            fci/chung_landau_1d_fci
            fci/heisenberg_1d_fci
            fci/heisenberg_1d_fci_rdm
