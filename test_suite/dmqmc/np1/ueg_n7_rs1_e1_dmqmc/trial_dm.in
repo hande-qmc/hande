@@ -3,9 +3,8 @@ sys = ueg {
     ms = 7,
     sym = 1,
     dim = 3,
-    cutoff = 1,
+    cutoff = 10,
     rs = 1,
-    chem_pot = 1.65142241072,
 }
 
 dmqmc {
@@ -26,7 +25,7 @@ dmqmc {
         beta_loops = 10,
     },
     ipdmqmc = {
-        initial_beta = 1.0,
+        initial_beta = 16,
         initial_matrix = 'free_electron',
         grand_canonical_initialisation = true,
         symmetric = false,

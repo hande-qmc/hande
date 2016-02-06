@@ -36,7 +36,6 @@ ms = 0,
     dim = 3,
 cutoff = 4, 
 rs = 1, 
-chem_pot = 1.75325092535, 
 }
 
 dmqmc {

@@ -34,7 +34,6 @@ sys = read_in {
     nel = 10,
     ms = 0,
     sym = 0,
-    chem_pot = -1.98264116194,
 }
 
 canonical_energy {

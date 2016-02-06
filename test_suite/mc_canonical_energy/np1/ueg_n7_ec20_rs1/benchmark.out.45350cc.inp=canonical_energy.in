@@ -32,7 +32,6 @@ sys = ueg {
     dim = 3,
     cutoff = 20,
     rs = 1,
-    chem_pot = -0.0650329886175,
 }
 
 canonical_energy {

@@ -36,7 +36,6 @@ sys = ueg {
     dim = 3,
     cutoff = 1,
     rs = 1,
-    chem_pot = 1.65142241072,
 }
 
 dmqmc {
