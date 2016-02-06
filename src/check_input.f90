@@ -262,10 +262,6 @@ contains
             call stop_all(this, 'The vary_weights option can only be used together with the weighted_sampling option.')
         end if
 
-        if (dmqmc_in%grand_canonical_initialisation .and. .not. sys%chem_pot < huge(1.0_p)) then
-            call stop_all(this, 'Chemical potential must be supplied to use grand_canonical_initialisation.')
-        end if
-
         if (dmqmc_in%propagate_to_beta .and. .not. dmqmc_in%grand_canonical_initialisation &
             & .and.  dmqmc_in%metropolis_attempts == 0) then
             call stop_all(this, 'metropolis_attempts must be non-zero to sample the correct initial density matrix&

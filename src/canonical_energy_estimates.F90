@@ -72,6 +72,7 @@ contains
         use proc_pointers, only: energy_diff_ptr
         use errors, only: stop_all
         use reference_determinant, only: set_reference_det
+        use chem_pot, only: find_chem_pot
 
         type(sys_t), intent(inout) :: sys
         logical, intent(in) :: all_spin_sectors
@@ -83,7 +84,7 @@ contains
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         integer :: occ_list(sys%nel)
-        real(p) :: energy(hf_part_idx), beta_loc
+        real(p) :: energy(hf_part_idx), beta_loc, mu
         integer :: ireport, iorb
         integer(int_64) :: iaccept
         real(p) :: local_estimators(last_idx-1), estimators(last_idx-1)
@@ -104,6 +105,7 @@ contains
         call dSFMT_init(rng_seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
+        mu = find_chem_pot(sys, beta_loc)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -114,6 +116,7 @@ contains
             call json_write_key(js, 'nsamples', nsamples)
             call json_write_key(js, 'ncycles', ncycles)
             call json_write_key(js, 'rng_seed', rng_seed, terminal=.true.)
+            call json_write_key(js, 'chem_pot', mu, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io,'()')
         end if
@@ -154,7 +157,7 @@ contains
                     '# iterations', '<T>_0', '<V>_0', 'Tr(T\rho_HF)', 'Tr(V\rho_HF)', 'Tr(\rho_HF)'
 
         forall (iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                                          (1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-sys%chem_pot)))
+                                                          (1+exp(beta_loc*(sys%basis%basis_fns(iorb)%sp_eigv-mu)))
 
         if (all_spin_sectors) then
             ! If averaging over spin we need to allow for the number of

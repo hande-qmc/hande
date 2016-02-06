@@ -57,6 +57,7 @@ contains
         use spawn_data, only: write_memcheck_report, dealloc_spawn_t
         use idmqmc, only: set_parent_flag_dmqmc
         use hash_table, only: free_hash_table
+        use chem_pot, only: find_chem_pot
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -82,6 +83,7 @@ contains
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
+        real(p) :: mu
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
@@ -90,6 +92,7 @@ contains
         type(sys_t) :: sys_copy
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
+        type(dmqmc_in_t) :: dmqmc_in_loc
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -122,11 +125,13 @@ contains
         ! of the initial distribution, which corresponds to beta=0. Hence, in the
         ! output we subtract one from the iteration number, and run for one more
         ! report loop, asimplemented in the line of code below.
-        nreport = nreport+1
+        nreport = nreport + 1
 
         ! Initialise all the required arrays, ie to store thermal quantities,
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
+        ! Determine the chemical potential if doing the ip-dmqmc algorithm.
+        if (dmqmc_in%propagate_to_beta) mu = find_chem_pot(sys, qs%init_beta)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -137,7 +142,9 @@ contains
             qmc_in_loc%pattempt_double = qs%pattempt_double
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
-            call ipdmqmc_in_t_json(js, dmqmc_in)
+            dmqmc_in_loc = dmqmc_in
+            dmqmc_in_loc%chem_pot = mu
+            call ipdmqmc_in_t_json(js, dmqmc_in_loc)
             call rdm_in_t_json(js, dmqmc_in%rdm)
             call operators_in_t_json(js)
             call restart_in_t_json(js, restart_in)
@@ -184,7 +191,8 @@ contains
             ! Distribute psips uniformly along the diagonal of the density
             ! matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
-                                               init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn)
+                                               init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, &
+                                               mu)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.

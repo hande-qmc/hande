@@ -375,8 +375,6 @@ type sys_t
     ! Heisenberg model: number of antiparallel pairs of spins which can be
     ! flipped.  Used only in DMQMC.
     integer :: max_number_excitations
-    ! Chemical potential.
-    real(p) :: chem_pot = huge(1.0_p)
 
     ! Basis set information
     ! ^^^^^^^^^^^^^^^^^^^^^
@@ -797,11 +795,6 @@ contains
         call json_write_key(js, 'sym_max_tot', sys%sym_max_tot)
         call json_write_key(js, 'symmetry', sys%symmetry)
         call json_write_key(js, 'max_number_excitations', sys%max_number_excitations)
-        if (abs(sys%chem_pot - huge(1.0_p)) < 1.0_p) then
-            call json_write_key(js, 'chem_pot', 'nan')
-        else
-            call json_write_key(js, 'chem_pot', sys%chem_pot)
-        end if
 
         if (lattice_system) then
             call json_object_init(js, 'lattice')

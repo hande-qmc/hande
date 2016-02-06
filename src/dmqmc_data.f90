@@ -188,6 +188,8 @@ type dmqmc_in_t
     ! Do a symmetric version of DMQMC, default true and only changeable for the ip-dmqmc algorithm.
     ! This considerably changes the IP-DMQMC algorithm.
     logical :: symmetric = .true.
+    ! Chemical potential used to initialise density matrix.
+    real(p) :: chem_pot = 0.0_p
 
     ! Input options relating to RDMs in DMQMC.
     type(dmqmc_rdm_in_t) :: rdm
@@ -367,6 +369,7 @@ contains
         call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
         call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
         call json_write_key(js, 'symmetric', dmqmc%symmetric)
+        call json_write_key(js, 'chem_pot', dmqmc%chem_pot)
         call json_write_key(js, 'metropolis_attempts', dmqmc%metropolis_attempts, terminal=.true.)
         call json_object_end(js, terminal)
 
