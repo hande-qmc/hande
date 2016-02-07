@@ -33,6 +33,7 @@ We recommend working through the FCIQMC tutorial before the iFCIQMC, CCMC or DMQ
 
     fciqmc
     ifciqmc
+    semi_stoch
     ccmc
     dmqmc
     kinetic
