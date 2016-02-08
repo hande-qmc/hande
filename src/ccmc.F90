@@ -2313,7 +2313,7 @@ contains
                     ! It's possible to get the same excitation from different partitionings
                     ! of the cluster so they all need to be accounted for in pgen
                     call create_excited_det(sys%basis, rdet%f, connection, new_det)
-                    pgen = pgen + calc_pgen(sys, qmc_in%excit_gen, qs, rdet%f, connection, rdet)
+                    pgen = pgen + calc_pgen(sys, qmc_in%excit_gen, qs%excit_gen_data, rdet%f, connection, rdet)
 
                     ! Sign of the term in the commutator depends on the number of Ts in left_cluster
                     ! also need to account for possible sign change on going from excitor to determinant
@@ -2451,7 +2451,7 @@ contains
 
     end subroutine partition_cluster
 
-    function calc_pgen(sys, excit_gen, qmc_state, f, connection, parent_det) result(pgen)
+    function calc_pgen(sys, excit_gen, excit_gen_data, f, connection, parent_det) result(pgen)
 
         ! Calculate the probability of an excitation being selected.
         ! Wrapper round system specific functions.
@@ -2478,11 +2478,12 @@ contains
         use excit_gen_ringium, only: calc_pgen_ringium
         use point_group_symmetry, only: cross_product_pg_basis, pg_sym_conj
         use determinants, only: det_info_t
-        use qmc_data, only: qmc_state_t, excit_gen_no_renorm
+        use qmc_data, only: excit_gen_no_renorm
+        use excit_gens, only: excit_gen_data_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: excit_gen
-        type(qmc_state_t), intent(in) :: qmc_state
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         integer(i0), intent(in) :: f(sys%basis%string_len)
         type(excit_t), intent(in) :: connection
         type(det_info_t), intent(in) :: parent_det
@@ -2496,21 +2497,20 @@ contains
             case(read_in)
                 if (excit_gen == excit_gen_no_renorm) then
                     if (connection%nexcit == 1) then
-                        pgen = qmc_state%excit_gen_data%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
+                        pgen = excit_gen_data%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
-                        pgen = qmc_state%excit_gen_data%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
+                        pgen = excit_gen_data%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
                     end if
                 else
                     if (connection%nexcit == 1) then
-                        pgen = qmc_state%excit_gen_data%pattempt_single * calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, &
+                        pgen = excit_gen_data%pattempt_single * calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, &
                                                                                 parent_det%occ_list, parent_det%symunocc, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
                         ij_sym = pg_sym_conj(sys%read_in%pg_sym, &
                                              cross_product_pg_basis(sys%read_in%pg_sym, a, b, sys%basis%basis_fns))
-                        pgen = qmc_state%excit_gen_data%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, &
-                                                                                               parent_det%symunocc)
+                        pgen = excit_gen_data%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
                     end if
                 end if
             case(ueg)
