@@ -2509,7 +2509,8 @@ contains
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
                         ij_sym = pg_sym_conj(sys%read_in%pg_sym, &
                                              cross_product_pg_basis(sys%read_in%pg_sym, a, b, sys%basis%basis_fns))
-                        pgen = qmc_state%excit_gen_data%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
+                        pgen = qmc_state%excit_gen_data%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, &
+                                                                                               parent_det%symunocc)
                     end if
                 end if
             case(ueg)

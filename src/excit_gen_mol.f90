@@ -94,8 +94,8 @@ contains
             if (allowed_excitation) then
 
                 ! 3b. Probability of generating this excitation.
-                pgen = (1.0_p-excit_gen_data%pattempt_single)*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), connection%to_orb(2), &
-                                            ij_spin, cdet%symunocc)
+                pgen = (1.0_p-excit_gen_data%pattempt_single)*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), &
+                                                                                   connection%to_orb(2), ij_spin, cdet%symunocc)
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
