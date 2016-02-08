@@ -75,6 +75,8 @@ contains
 
     end function get_hmatel_mol_comp
 
+    ! [review] - JSS: seems a bit dangerous to have the same function names for slater_condon* as the real case.
+
     pure function slater_condon0_mol(sys, f) result(hmatel)
 
         ! In:
@@ -371,6 +373,8 @@ contains
 
         real(p) :: sc0, sum_hf, double_count
 
+        ! [review] - JSS: Calls the complex version but then ignores the imaginary part (which must be zero due to Hermiticity).
+        ! [review] - JSS: Was this deliberate?
         sc0 = slater_condon0_mol_orb_list(sys, occ_list)
         sum_hf = sum_sp_eigenvalues(sys, occ_list) + sys%read_in%Ecore
 

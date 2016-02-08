@@ -52,6 +52,8 @@ type hamil_t
     real(p), allocatable :: rmat(:,:)
     complex(p), allocatable :: cmat(:,:)
     type(csrp_t) :: mat_sparse ! Sparse complex not implemented. 
+    ! [review] - JSS: please avoid using keywords as variable/component names.  The syntax highlighting catches me out
+    ! [review] - JSS: and makes reasoning about code that little bit harder.
     logical :: complex = .false.
     logical :: sparse = .false.
 end type hamil_t

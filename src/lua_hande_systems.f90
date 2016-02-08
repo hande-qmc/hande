@@ -145,6 +145,7 @@ contains
         call aot_get_val(sys%Ms, err, lua_state, opts, 'ms')
         call aot_get_val(sys%symmetry, err, lua_state, opts, 'sym')
         call aot_get_val(sys%chem_pot, err, lua_state, opts, 'chem_pot')
+
         call aot_get_val(cas, err_arr, 2, lua_state, opts, key='CAS')
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
         if (size(cas) == 0) deallocate(cas)

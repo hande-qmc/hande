@@ -10,6 +10,7 @@ implicit none
 ! [reply] - CJCS: different types have to know which you're calling beforehand (unless we convert
 ! [reply] - CJCS: to using some derived type for hamiltonian elements, which would be massive 
 ! [reply] - CJCS: overkill for something not a problem). Anyways, will clarify/sort comment.
+! [review] - JSS: would just delete this.
 ! Might be cleaner to have a single interface function to call for get_hmatel whether real 
 ! or complex, but as result differs in type will have to know which we are calling beforehand.
 ! As such, use two separate functions, taking slightly more effort but 

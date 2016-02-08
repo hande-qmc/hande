@@ -54,6 +54,9 @@ contains
         use fci_utils, only: generate_hamil, hamil_t
         use qmc_data, only: qmc_in_t, reference_t, particle_t, qmc_state_t
         use spawn_data, only: spawn_t
+        ! [review] - JSS: Don't i) use an entire module unnecessarily; ii) comment out working (or indeed not-working) code.
+        ! [review] - JSS: Doing so leaves a trail of litter behind and figuring out what is functional/not-functional and why it was
+        ! [review] - JSS: commented out down the line is very hard.
         use system!, only: sys_t, copy_sys_spin_info, set_spin_polarisation
 
         type(sys_t), intent(inout) :: sys
@@ -99,6 +102,9 @@ contains
 
 
         ! Set up hamiltonian matrix.
+        ! [review] - JSS: this can now be just
+        !     call generate_hamil(sys, ndets, hamil, full_mat=.true., use_sparse_hamil=sparse_hamil)
+        ! [review] - JSS: right?
         if (sparse_hamil) then
             call generate_hamil(sys, ndets, dets, hamil, full_mat=.true., use_sparse_hamil=.true.)
         else
