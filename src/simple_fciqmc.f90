@@ -54,10 +54,7 @@ contains
         use fci_utils, only: generate_hamil, hamil_t
         use qmc_data, only: qmc_in_t, reference_t, particle_t, qmc_state_t
         use spawn_data, only: spawn_t
-        ! [review] - JSS: Don't i) use an entire module unnecessarily; ii) comment out working (or indeed not-working) code.
-        ! [review] - JSS: Doing so leaves a trail of litter behind and figuring out what is functional/not-functional and why it was
-        ! [review] - JSS: commented out down the line is very hard.
-        use system!, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation, read_in
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -102,14 +99,7 @@ contains
 
 
         ! Set up hamiltonian matrix.
-        ! [review] - JSS: this can now be just
-        !     call generate_hamil(sys, ndets, hamil, full_mat=.true., use_sparse_hamil=sparse_hamil)
-        ! [review] - JSS: right?
-        if (sparse_hamil) then
-            call generate_hamil(sys, ndets, dets, hamil, full_mat=.true., use_sparse_hamil=.true.)
-        else
-            call generate_hamil(sys, ndets, dets, hamil, full_mat=.true.)
-        end if
+        call generate_hamil(sys, ndets, dets, hamil, full_mat=.true., use_sparse_hamil=sparse_hamil)
 
         write (6,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
         write (6,'(1X,a53,1X)') 'Using a simple (but correct) serial FCIQMC algorithm.'
@@ -154,10 +144,10 @@ contains
                 reference%H00 = huge(1.0_p)
                 do i = 1, ndets
                     ! mat(k) is M_{ij}, so row_ptr(i) <= k < row_ptr(i+1) and col_ind(k) = j
-                    do j = hamil%mat_sparse%row_ptr(i), hamil%mat_sparse%row_ptr(i+1)-1
-                        if (hamil%mat_sparse%col_ind(j) == i) then
-                            if (hamil%mat_sparse%mat(j) < reference%H00) then
-                                reference%H00 = hamil%mat_sparse%mat(j)
+                    do j = hamil%smat%row_ptr(i), hamil%smat%row_ptr(i+1)-1
+                        if (hamil%smat%col_ind(j) == i) then
+                            if (hamil%smat%mat(j) < reference%H00) then
+                                reference%H00 = hamil%smat%mat(j)
                                 ref_det = i
                             end if
                         end if
@@ -304,9 +294,9 @@ contains
                     if (sparse_hamil) then
                         Hii = 0.0_p
                         H0i = 0.0_p
-                        do j = hamil%mat_sparse%row_ptr(idet), hamil%mat_sparse%row_ptr(idet+1)-1
-                            if (hamil%mat_sparse%col_ind(j) == idet) Hii = hamil%mat_sparse%mat(j)
-                            if (hamil%mat_sparse%col_ind(j) == ref_det) H0i = hamil%mat_sparse%mat(j)
+                        do j = hamil%smat%row_ptr(idet), hamil%smat%row_ptr(idet+1)-1
+                            if (hamil%smat%col_ind(j) == idet) Hii = hamil%smat%mat(j)
+                            if (hamil%smat%col_ind(j) == ref_det) H0i = hamil%smat%mat(j)
                         end do
                     else
                         H0i = hamil%rmat(idet,ref_det)
@@ -319,11 +309,11 @@ contains
 
                     ! Attempt to spawn from each particle onto all connected determinants.
                     if (sparse_hamil) then
-                        associate(hstart=>hamil%mat_sparse%row_ptr(idet), hend=>hamil%mat_sparse%row_ptr(idet+1)-1)
+                        associate(hstart=>hamil%smat%row_ptr(idet), hend=>hamil%smat%row_ptr(idet+1)-1)
                             do ipart = 1, abs(psip_list%pops(1,idet))
                                 call attempt_spawn(rng, spawn, qs%tau, idet, &
-                                                   psip_list%pops(1,idet), hamil%mat_sparse%mat(hstart:hend), &
-                                                   hamil%mat_sparse%col_ind(hstart:hend))
+                                                   psip_list%pops(1,idet), hamil%smat%mat(hstart:hend), &
+                                                   hamil%smat%col_ind(hstart:hend))
                             end do
                         end associate
                     else

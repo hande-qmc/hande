@@ -51,9 +51,7 @@ end type fci_in_t
 type hamil_t
     real(p), allocatable :: rmat(:,:)
     complex(p), allocatable :: cmat(:,:)
-    type(csrp_t) :: mat_sparse ! Sparse complex not implemented. 
-    ! [review] - JSS: please avoid using keywords as variable/component names.  The syntax highlighting catches me out
-    ! [review] - JSS: and makes reasoning about code that little bit harder.
+    type(csrp_t) :: smat ! Sparse complex not implemented. 
     logical :: complex = .false.
     logical :: sparse = .false.
 end type hamil_t
@@ -328,9 +326,9 @@ contains
                                 !$omp critical
                                 nnz = nnz + 1
                                 if (imode == 2) then
-                                    hamil%mat_sparse%mat(nnz) = hmatel
-                                    hamil%mat_sparse%col_ind(nnz) = j
-                                    if (hamil%mat_sparse%row_ptr(i) == 0) hamil%mat_sparse%row_ptr(i) = nnz
+                                    hamil%smat%mat(nnz) = hmatel
+                                    hamil%smat%col_ind(nnz) = j
+                                    if (hamil%smat%row_ptr(i) == 0) hamil%smat%row_ptr(i) = nnz
                                 end if
                                 !$omp end critical
                             end if
@@ -340,15 +338,15 @@ contains
                     !$omp end parallel
                     if (imode == 1) then
                         write (6,'(1X,a50,i8,/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
-                        call init_csrp(hamil%mat_sparse, ndets, nnz, .true.)
-                        hamil%mat_sparse%row_ptr(1:ndets) = 0
+                        call init_csrp(hamil%smat, ndets, nnz, .true.)
+                        hamil%smat%row_ptr(1:ndets) = 0
                     else
                         ! Any element not set in row_ptr means that the
                         ! corresponding row has no non-zero elements.
                         ! Set it to be identical to the next row (this avoids
                         ! looping over the zero-row).
                         do i = ndets, 1, -1
-                            if (hamil%mat_sparse%row_ptr(i) == 0) hamil%mat_sparse%row_ptr(i) = hamil%mat_sparse%row_ptr(i+1)
+                            if (hamil%smat%row_ptr(i) == 0) hamil%smat%row_ptr(i) = hamil%smat%row_ptr(i+1)
                         end do
                     end if
                 end do
@@ -432,10 +430,10 @@ contains
                 end do
             else if (hamil%sparse) then
                 j = 1
-                do i = 1, size(hamil%mat_sparse%mat)
-                    if (abs(hamil%mat_sparse%mat(i)) > depsilon) then
-                        if (hamil%mat_sparse%row_ptr(j+1) <= i) j = j+1
-                        write (iunit,*) j, hamil%mat_sparse%col_ind(i), hamil%mat_sparse%mat(i)
+                do i = 1, size(hamil%smat%mat)
+                    if (abs(hamil%smat%mat(i)) > depsilon) then
+                        if (hamil%smat%row_ptr(j+1) <= i) j = j+1
+                        write (iunit,*) j, hamil%smat%col_ind(i), hamil%smat%mat(i)
                     end if
                 end do
             else if (hamil%complex) then

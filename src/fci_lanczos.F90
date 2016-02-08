@@ -320,13 +320,13 @@ contains
                         ! This could be improved by multiplying the sparse
                         ! hamiltonian matrix by the dense xin matrix, rather than
                         ! doing one vector at a time.
-                        call csrpsymv(hamil%mat_sparse, xin_p(:,i), yout_p(:,i))
+                        call csrpsymv(hamil%smat, xin_p(:,i), yout_p(:,i))
                     else
                         call ssymv('U', nrow, 1.0_p, hamil%rmat, nrow, xin_p(:,i), 1, 0.0_p, yout_p(:,i), 1)
                     end if
 #else
                     if (sparse_hamil) then
-                        call csrpsymv(hamil%mat_sparse, xin(:,i), yout(:,i))
+                        call csrpsymv(hamil%smat, xin(:,i), yout(:,i))
                     else
                         call dsymv('U', nrow, 1.0_dp, hamil%rmat, nrow, xin(:,i), 1, 0.0_dp, yout(:,i), 1)
                     end if

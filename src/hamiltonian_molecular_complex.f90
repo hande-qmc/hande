@@ -50,13 +50,13 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel = slater_condon0_mol(sys, f1)
+                hmatel = slater_condon0_mol_complex(sys, f1)
 
             case(1)
 
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
                 call decode_det(sys%basis, f1, occ_list)
-                hmatel = slater_condon1_mol(sys, occ_list, excitation%from_orb(1), &
+                hmatel = slater_condon1_mol_complex(sys, occ_list, excitation%from_orb(1), &
                                             excitation%to_orb(1), excitation%perm)
 
             case(2)
@@ -64,7 +64,7 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
-                hmatel = slater_condon2_mol(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                hmatel = slater_condon2_mol_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             case default
                 ! If f1 & f2 differ by more than two spin orbitals integral value is zero.
@@ -76,8 +76,9 @@ contains
     end function get_hmatel_mol_comp
 
     ! [review] - JSS: seems a bit dangerous to have the same function names for slater_condon* as the real case.
-
-    pure function slater_condon0_mol(sys, f) result(hmatel)
+    ! [reply] - CJCS: declared the module private to try to avoid any complications but definitely- will change
+    ! [reply] - CJCS: to have cmplx added on the end to differentiate.
+    pure function slater_condon0_mol_complex(sys, f) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -99,11 +100,11 @@ contains
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(sys%basis, f, occ_list)
 
-        hmatel = slater_condon0_mol_orb_list(sys, occ_list)
+        hmatel = slater_condon0_mol_orb_list_complex(sys, occ_list)
 
-    end function slater_condon0_mol
+    end function slater_condon0_mol_complex
 
-    pure function slater_condon0_mol_orb_list(sys, occ_list) result(hmatel)
+    pure function slater_condon0_mol_orb_list_complex(sys, occ_list) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -144,9 +145,9 @@ contains
             end do
         end associate
 
-    end function slater_condon0_mol_orb_list
+    end function slater_condon0_mol_orb_list_complex
 
-    pure function slater_condon1_mol(sys, occ_list, i, a, perm) result(hmatel)
+    pure function slater_condon1_mol_complex(sys, occ_list, i, a, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -197,9 +198,9 @@ contains
             if (perm) hmatel = -hmatel
         end if
 
-    end function slater_condon1_mol
+    end function slater_condon1_mol_complex
 
-    pure function slater_condon1_mol_excit(sys, occ_list, i, a, perm) result(hmatel)
+    pure function slater_condon1_mol_excit_complex(sys, occ_list, i, a, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -257,9 +258,9 @@ contains
 
         if (perm) hmatel = -hmatel
 
-    end function slater_condon1_mol_excit
+    end function slater_condon1_mol_excit_complex
 
-    pure function slater_condon2_mol(sys, i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_mol_complex(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -298,9 +299,9 @@ contains
 
         if (perm) hmatel = -hmatel
 
-    end function slater_condon2_mol
+    end function slater_condon2_mol_complex
 
-    elemental function slater_condon2_mol_excit(sys, i, j, a, b, perm) result(hmatel)
+    elemental function slater_condon2_mol_excit_complex(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -351,9 +352,9 @@ contains
         end if
         if (perm) hmatel = -hmatel
 
-    end function slater_condon2_mol_excit
+    end function slater_condon2_mol_excit_complex
 
-    pure function double_counting_correction_mol(sys, occ_list) result(double_count)
+    pure function double_counting_correction_mol_complex(sys, occ_list) result(double_count)
 
         ! Work out the double counting correction between the Hartree-Fock
         ! energy and the sum of the Hartree-Fock orbitals.
@@ -371,15 +372,20 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
 
-        real(p) :: sc0, sum_hf, double_count
+        complex(p) :: sc0 
+        real(p) sum_hf, double_count
 
         ! [review] - JSS: Calls the complex version but then ignores the imaginary part (which must be zero due to Hermiticity).
         ! [review] - JSS: Was this deliberate?
-        sc0 = slater_condon0_mol_orb_list(sys, occ_list)
+        ! [reply] - CJCS: No; I didn't understand what this function does so decided not to touch it.
+        ! [reply] - CJCS: Asking around this function is mainly used for ipDMQMC; assuming it's not needed 
+        ! [reply] - CJCS: and can be deleted? Unless we intend to implement complex DMQMC in the near future,
+        ! [reply] - CJCS: but even then it can be reverse engineered from the real version easily.
+        sc0 = slater_condon0_mol_orb_list_complex(sys, occ_list)
         sum_hf = sum_sp_eigenvalues(sys, occ_list) + sys%read_in%Ecore
 
-        double_count = sc0-sum_hf
+        double_count = real(sc0, p)-sum_hf
 
-    end function double_counting_correction_mol
+    end function double_counting_correction_mol_complex
 
 end module hamiltonian_molecular_complex
