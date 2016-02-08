@@ -62,7 +62,7 @@ contains
 
         ! Integrals
         integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb, ti
-        real(p) :: x, y
+        real(p) :: x, y, im_core
         complex(p) :: compint
 
 
@@ -406,6 +406,7 @@ contains
         ! memory.
 
         sys%read_in%Ecore = 0.0_p
+        im_core = 0.0_p
         if (t_store) then
             call zero_one_body_int_store(sys%read_in%one_e_h_integrals)
             call zero_two_body_int_store(sys%read_in%coulomb_integrals)
@@ -504,7 +505,10 @@ contains
 
                         ! Nuclear energy.
                         sys%read_in%Ecore = sys%read_in%Ecore + x
-
+                        if (sys%read_in%comp) then
+                            ! Imaginary component should be 0 but just in case...
+                            im_core = im_core + y
+                        end if
                     else if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
 
                         ! \epsilon_i
@@ -520,6 +524,9 @@ contains
                                 ! If RHF need to include <i,up|h|i,up> and
                                 ! <i,down|h|i,down>.
                                 sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac
+                                if (sys%read_in%comp) then
+                                    im_core = im_core + y*rhf_fac
+                                end if
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
                                     x = x + get_one_body_int_mol(sys%read_in%one_e_h_integrals, ii, aa, &
@@ -558,14 +565,18 @@ contains
                                 ! we only use a unique integral once, no matter
                                 ! which permutation(s) occur in the FCIDUMP
                                 ! file.
-                                ! As all core orbitals, ignore any imaginary components
-                                ! since assume Ecore is real and so will only cancel
-                                ! anyway. Could calculate and check this if results dubious.
+                                ! For core orbitals, sum imaginary components;
+                                ! if overall core energy has non-negligible
+                                ! imaginary component raise error as something
+                                ! gone wrong.
                                 if (ii == aa .and. jj == bb .and. ii == jj) then
                                     if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                         ! RHF calculations: need to include <i,up i,down|i,up i,down>.
 
                                         sys%read_in%Ecore = sys%read_in%Ecore + x
+                                        if (sys%read_in%comp) then
+                                            im_core = im_core + y
+                                        end if
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
                                 else if (ii == aa .and. jj == bb .and. ii /= jj) then
@@ -577,6 +588,9 @@ contains
                                         !   <i,down j,up|i,down, j,up>
                                         !   <i,down j,down|i,down, j,down>
                                         sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac**2
+                                        if (sys%read_in%comp) then
+                                            im_core = im_core + y*rhf_fac**2
+                                        end if
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
                                 else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
@@ -594,6 +608,9 @@ contains
                                         !   <i,up j,up|j,up, i,up>
                                         !   <i,down j,down|j,down, i,down>
                                         sys%read_in%Ecore = sys%read_in%Ecore - rhf_fac*x
+                                        if (sys%read_in%comp) then
+                                            im_core = im_core - rhf_fac*y
+                                        end if
                                         seen_ijij(ti) = seen_ijij(ti) + 2
                                     end if
                                 end if
@@ -700,6 +717,13 @@ contains
                 call warning('read_in_integrals', trim(err_msg), 1)
                 if (int_err > max_err_msg) &
                     write (6,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
+            end if
+
+            ! If system is sensible, total Ecore including any CAS contribution will be purely real as is just the sum of Ecore and single
+            ! particle energies of core orbitals; if not then either these assumptions are wrong or something's up with the INTDUMP.
+            ! Either way will want to know.
+            if (abs(im_core) > depsilon) then
+                call stop_all('read_in_integrals' ,'Nonzero imaginary core energy found; check your CAS settings.')
             end if
 
             deallocate(seen_iha, stat=ierr)
@@ -990,6 +1014,7 @@ contains
             if (int_err > max_err_msg) &
                 write (6,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
         end if
+
 
         ! And now send info everywhere...
 #ifdef PARALLEL
