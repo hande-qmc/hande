@@ -908,7 +908,7 @@ contains
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
-        !     excit_gen = 'renorm', 'no_renorm', 'cauchy_schwarz'
+        !     excit_gen = 'renorm', 'no_renorm', 'cauchy_schwarz_virt', 'cauchy_schwarz_occ'
         ! }
 
         ! In/Out:
@@ -923,7 +923,7 @@ contains
         use flu_binding, only: flu_State
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
-        use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz
+        use qmc_data, only: qmc_in_t, excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz_virt
         use qmc_data, only: excit_gen_cauchy_schwarz_occ
         use lua_hande_utils, only: warn_unused_args, get_rng_seed
         use parallel, only: parent
@@ -1020,8 +1020,8 @@ contains
                 qmc_in%excit_gen = excit_gen_renorm
             case('no_renorm')
                 qmc_in%excit_gen = excit_gen_no_renorm
-            case('cauchy_schwarz')
-                qmc_in%excit_gen = excit_gen_cauchy_schwarz
+            case('cauchy_schwarz_virt')
+                qmc_in%excit_gen = excit_gen_cauchy_schwarz_virt
             case('cauchy_schwarz_occ')
                 qmc_in%excit_gen = excit_gen_cauchy_schwarz_occ
             case default

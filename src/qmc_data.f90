@@ -39,7 +39,7 @@ enum, bind(c)
     enumerator :: excit_gen_no_renorm
     ! Weight the excitations according to a Cauchy-Schwarz limit on the bounds of the integrals
     ! This is O(N).
-    enumerator :: excit_gen_cauchy_schwarz
+    enumerator :: excit_gen_cauchy_schwarz_virt
     ! The version O(M) which chooses occ orbitals first.
     enumerator :: excit_gen_cauchy_schwarz_occ
 end enum
