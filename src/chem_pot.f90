@@ -135,8 +135,14 @@ contains
         it = 0
 
         ! At zero temperature the chemical potential should be close to the
-        ! energy of the highest occupied orbital.
-        mu_old = sys%basis%basis_fns(sys%nel)%sp_eigv
+        ! energy of the highest occupied orbital (Fermi Energy). We assume
+        ! we only deal with completely polarised or unpolarised systems
+        ! This is typically a good guess for root finding as the chemical
+        ! potential is a monotonically decreasing function of temperature, and
+        ! its value at T=0 is the Fermi energy (in the TDL).
+        ! The following takes care of the spin polarised and unpolarised case given
+        ! how we enumerate basis functions.
+        mu_old = sys%basis%basis_fns(2*sys%nalpha)%sp_eigv
 
         do while (it < max_it)
             nav = particle_number(sys, beta, mu_old)
