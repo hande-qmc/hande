@@ -26,6 +26,8 @@ contains
 
         if (allocated(qs%trial%wfn_dat)) deallocate(qs%trial%wfn_dat)
 
+        if (allocated(qs%excit_gen_data%ueg_ternary_conserve)) deallocate(qs%excit_gen_data%ueg_ternary_conserve)
+
         call dealloc_particle_t(qs%psip_list)
         call dealloc_spawn_t(qs%spawn_store%spawn)
         call dealloc_spawn_t(qs%spawn_store%spawn_recv)
@@ -149,7 +151,6 @@ contains
 
        type(sys_ueg_t), intent(inout) :: ueg
 
-        if (allocated(ueg%ternary_conserve)) deallocate(ueg%ternary_conserve)
         nullify(ueg%coulomb_int)
         nullify(ueg%exchange_int)
 

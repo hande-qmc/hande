@@ -2518,9 +2518,9 @@ contains
                 ij_k = 0
                 ij_k(1:sys%lattice%ndim) = sys%basis%basis_fns(i)%l + sys%basis%basis_fns(j)%l
                 if (spin == -2) then
-                    poss_a = iand(not(f), ishft(sys%ueg%ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)),1))
+                    poss_a = iand(not(f), ishft(excit_gen_data%ueg_ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)),1))
                 else
-                    poss_a = iand(not(f), sys%ueg%ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)))
+                    poss_a = iand(not(f), excit_gen_data%ueg_ternary_conserve(1:,ij_k(1),ij_k(2),ij_k(3)))
                 end if
                 max_na = sum(count_set_bits(poss_a))
                 pgen = calc_pgen_ueg_no_renorm(sys, max_na, spin)
@@ -2530,6 +2530,7 @@ contains
                 call stop_all('calc_pgen', 'Linked CCMC is not implemented for this system.')
             end select
         end associate
+
     end function calc_pgen
 
 end module ccmc

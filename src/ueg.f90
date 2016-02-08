@@ -51,12 +51,10 @@ contains
         use system, only: sys_t
 
         use checking, only: check_allocate
-        use utils, only: tri_ind
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: ierr, i, a, N_kx, k_min(sys%lattice%ndim), bit_pos, bit_el, k(3)
-        integer :: k1, k2, k3, ktest(sys%lattice%ndim), kija(sys%lattice%ndim)
+        integer :: ierr, i, N_kx, k_min(sys%lattice%ndim)
 
         sys%ueg%basis%kmax = ceiling(sqrt(2*sys%ueg%ecutoff))
 
@@ -84,6 +82,18 @@ contains
                 ueg_basis%lookup(dot_product(bfns(i)%l, ueg_basis%offset_inds) + ueg_basis%offset) = i
             end do
         end associate
+    end subroutine init_ueg_indexing
+
+    subroutine init_ternary_conserve(sys, ternary_conserve)
+
+        use system, only: sys_t
+
+        use checking, only: check_allocate
+
+        type(sys_t), intent(in) :: sys
+        integer(i0), allocatable, intent(out) :: ternary_conserve(:,:,:,:)
+
+        integer :: ierr, a, bit_pos, bit_el, k(3), k1, k2, k3, ktest(sys%lattice%ndim), kija(sys%lattice%ndim)
 
         ! Now fill in the values for permitted k_a in an excitation
         ! k_i,k_j->k_a,k_b, given a choice of k_i ad k_j and requiring k_b is in
@@ -91,10 +101,10 @@ contains
 
         k = 0
         k(1:sys%lattice%ndim) = 2*sys%ueg%basis%kmax
-        allocate(sys%ueg%ternary_conserve(0:sys%basis%string_len, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
-        call check_allocate('sys%ueg%ternary_conserve', (sys%basis%string_len+1)*(2*k(1)+1)*(2*k(2)+1)*(2*k(3)+1), ierr)
-        sys%ueg%ternary_conserve = 0_i0
-        !$omp parallel do default(none) shared(k,sys) &
+        allocate(ternary_conserve(0:sys%basis%string_len, -k(1):k(1), -k(2):k(2), -k(3):k(3)), stat=ierr)
+        call check_allocate('ternary_conserve', (sys%basis%string_len+1)*(2*k(1)+1)*(2*k(2)+1)*(2*k(3)+1), ierr)
+        ternary_conserve = 0_i0
+        !$omp parallel do default(none) shared(k,sys,ternary_conserve) &
         !$omp private(k1,k2,k3,a,kija,ktest,bit_pos,bit_el)
         do k3 = -k(3), k(3)
             if (sys%lattice%ndim == 3) ktest(3) = k3
@@ -110,10 +120,10 @@ contains
                        kija = ktest - sys%basis%basis_fns(a)%l
                        if (real(dot_product(kija,kija),p)/2 - sys%ueg%ecutoff < 1.e-8) then
                            ! There exists an allowed b in the basis!
-                           sys%ueg%ternary_conserve(0,k1,k2,k3) = sys%ueg%ternary_conserve(0,k1,k2,k3) + 1
+                           ternary_conserve(0,k1,k2,k3) = ternary_conserve(0,k1,k2,k3) + 1
                            bit_pos = sys%basis%bit_lookup(1, a)
                            bit_el = sys%basis%bit_lookup(2, a)
-                           sys%ueg%ternary_conserve(bit_el,k1,k2,k3) = ibset(sys%ueg%ternary_conserve(bit_el,k1,k2,k3), bit_pos)
+                           ternary_conserve(bit_el,k1,k2,k3) = ibset(ternary_conserve(bit_el,k1,k2,k3), bit_pos)
                        end if
                    end do
                end do
@@ -121,7 +131,7 @@ contains
         end do
         !$omp end parallel do
 
-    end subroutine init_ueg_indexing
+    end subroutine init_ternary_conserve
 
     pure function ueg_basis_index(ueg_basis, k, spin) result(indx)
 
@@ -176,10 +186,6 @@ contains
         if (allocated(sys_ueg%basis%offset_inds)) then
             deallocate(sys_ueg%basis%offset_inds, stat=ierr)
             call check_deallocate('sys_ueg%basis%offset_inds', ierr)
-        end if
-        if (allocated(sys_ueg%ternary_conserve)) then
-            deallocate(sys_ueg%ternary_conserve, stat=ierr)
-            call check_deallocate('sys_ueg%ternary_conserve', ierr)
         end if
 
     end subroutine end_ueg_indexing
