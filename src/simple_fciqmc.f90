@@ -318,7 +318,7 @@ contains
                     call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
-                    if (sparse_hamil .and. (hamil%sparse)) then
+                    if (sparse_hamil) then
                         associate(hstart=>hamil%mat_sparse%row_ptr(idet), hend=>hamil%mat_sparse%row_ptr(idet+1)-1)
                             do ipart = 1, abs(psip_list%pops(1,idet))
                                 call attempt_spawn(rng, spawn, qs%tau, idet, &

@@ -97,6 +97,8 @@ contains
 
         if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be non-negative.')
 
+        if (sys%read_in%comp) call stop_all(this, 'Complex FCIQMC not yet implemented')
+
     end subroutine check_fciqmc_opts
 
     subroutine check_qmc_opts(qmc_in, need_length, restarting)
@@ -287,6 +289,8 @@ contains
 
         if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be positive.')
 
+        if (sys%read_in%comp) call stop_all(this, 'Complex DMQMC not yet implemented')
+
     end subroutine check_dmqmc_opts
 
     subroutine check_ccmc_opts(sys, ccmc_in)
@@ -317,6 +321,8 @@ contains
         end if
 
         if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be non-negative.')
+
+        if (sys%read_in%comp) call stop_all(this, 'Complex CCMC not yet implemented')
 
     end subroutine check_ccmc_opts
 

@@ -167,7 +167,7 @@ contains
         real(p), allocatable :: evec_copy(:,:)
 #endif
 
-        if (.not.allocated(hamil%rmat) .and. .not.allocated(hamil%mat_sparse) .and. .not.allocated(hamil%cmat)) then
+        if (.not.allocated(hamil%rmat) .and. .not. hamil%sparse .and. .not.allocated(hamil%cmat)) then
             call stop_all('lanczos_diagonalisation', 'No Hamiltonian supplied.')
         end if
         sparse_hamil = hamil%sparse

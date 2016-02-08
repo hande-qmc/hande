@@ -359,8 +359,6 @@ contains
                 if (present(full_mat)) then
                     if (full_mat) ii = 1
                 end if
-                ! [review] - RSTF: The OpenMP directive must immediately precede the do loop
-                ! [reply] - CJCS: Apologies, didn't notice and not familiar with OpenMP- is this better now?
                 if (hamil%complex) then
                     !$omp do private(j) schedule(dynamic, 200)
                     do j = ii, ndets

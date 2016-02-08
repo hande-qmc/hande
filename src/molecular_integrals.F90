@@ -657,8 +657,6 @@ contains
         !   to ia < jb and giving us a nonsensical final index iajb. If instead we seek to maximise 
         !   the value of the a position, we will obtain the correct answer.
 
-        ! [review] - RSTF: oldorbs appears not to be used anywhere?
-        ! [reply] - CJCS: saved for UHF functionality; now implemented.
         oldorbs = (/i, j, a, b/)
 
         ii = basis_fns(i)%spatial_index
