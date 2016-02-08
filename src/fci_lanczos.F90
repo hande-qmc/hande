@@ -114,7 +114,7 @@ contains
         !    dets: list of determinants in the Hilbert space in the bit
         !        string representation.
         !    proc_blacs_info: BLACS description of distribution of the Hamiltonian.
-        !    hamil: derived type containing Hamiltonian matrix in appropriate 
+        !    hamil: derived type containing Hamiltonian matrix in appropriate
         !        format (real, complex or CSR-format matrix).
         ! Out:
         !    nfound: number of solutions found from this block.  This is

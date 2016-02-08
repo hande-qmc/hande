@@ -66,7 +66,7 @@ contains
             end if
             if (fci_in%write_hamiltonian) then
                 call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
-            end if 
+            end if
             call lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
         end if
 
@@ -123,7 +123,7 @@ contains
         !    proc_blacs_info: BLACS description of distribution of the Hamiltonian.
         !        Used only if running on multiple processors.
         ! In/Out:
-        !    hamil: hamil_t derived type containing Hamiltonian matrix of the system 
+        !    hamil: hamil_t derived type containing Hamiltonian matrix of the system
         !        in the Hilbert space used in appropriate format.
         !        On output contains the eigenvectors, if requested, or is
         !        otherwise destroyed.
@@ -225,7 +225,6 @@ contains
             call check_deallocate('cwork',ierr)
             deallocate(rwork, stat=ierr)
             call check_deallocate('rwork',ierr)
-                
         else
             allocate(rwork(1), stat=ierr)
             call check_allocate('rwork',1,ierr)

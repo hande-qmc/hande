@@ -37,7 +37,7 @@ contains
         integer :: occ_list(sys%nel)
 
         hmatel = cmplx(0.0, 0.0, p)
-        
+
         ! Test to see if matrix element is non-zero.
         excitation = get_excitation(sys%nel, sys%basis, f1, f2)
 
@@ -247,7 +247,7 @@ contains
                 if (occ_list(iel) /= i) then
                     re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), basis_fns)
-                    hmatel = hmatel + cmplx(re, im, p) 
+                    hmatel = hmatel + cmplx(re, im, p)
                     if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
                         re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
                         im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, basis_fns)
@@ -372,13 +372,13 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: occ_list(:)
 
-        complex(p) :: sc0 
+        complex(p) :: sc0
         real(p) sum_hf, double_count
 
         ! [review] - JSS: Calls the complex version but then ignores the imaginary part (which must be zero due to Hermiticity).
         ! [review] - JSS: Was this deliberate?
         ! [reply] - CJCS: No; I didn't understand what this function does so decided not to touch it.
-        ! [reply] - CJCS: Asking around this function is mainly used for ipDMQMC; assuming it's not needed 
+        ! [reply] - CJCS: Asking around this function is mainly used for ipDMQMC; assuming it's not needed
         ! [reply] - CJCS: and can be deleted? Unless we intend to implement complex DMQMC in the near future,
         ! [reply] - CJCS: but even then it can be reverse engineered from the real version easily.
         sc0 = slater_condon0_mol_orb_list_complex(sys, occ_list)

@@ -76,16 +76,16 @@ contains
 
         ! Use separate function for obtaining complex hmatel as:
         !  -Avoids having either dummy argument for imaginary component
-        !   to real function (in form of extra result or complex component 
+        !   to real function (in form of extra result or complex component
         !   of existing). This would break all existing references to function
         !   in existing real codes due to either number of results or complex
         !   vs real types.
         !  -Limits number of bool checks to get hmatel.
-        !  -Could make it easier to use pointers later (if complex just point 
+        !  -Could make it easier to use pointers later (if complex just point
         !   to this one).
-        !  -Alternatively have to define second hmatel factor in all real 
+        !  -Alternatively have to define second hmatel factor in all real
         !   routines to allow return of two values from all pure values.
-        !  -If use array of allocatable length, redefine existing for minimally 
+        !  -If use array of allocatable length, redefine existing for minimally
         !   useful changes (haven't got complex behaviour/arithmetic).
 
         use hamiltonian_molecular_complex, only: get_hmatel_mol_comp

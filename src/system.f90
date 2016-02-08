@@ -284,7 +284,7 @@ type sys_read_in_t
 
     ! Store for <i|h|j>, where h is the one-electron Hamiltonian operator.
     type(one_body_t) :: one_e_h_integrals
-    
+
     ! Store for imaginary component of <i|h|j>, if using complex.
     type(one_body_t) :: one_e_h_integrals_imag
 
@@ -295,7 +295,7 @@ type sys_read_in_t
     ! functions and 1/r_12 is the Coulomb operator.
     type(two_body_t) :: coulomb_integrals
 
-    ! Store for imaginary component of two-body integrals, 
+    ! Store for imaginary component of two-body integrals
     type(two_body_t) :: coulomb_integrals_imag
 
     ! Data about the orbital symmetries

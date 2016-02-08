@@ -141,7 +141,7 @@ contains
         !    op_sym: bit string representations of irreducible representations
         !    of a point group.  See point_group_symmetry.
         !    comp: whether integral store is from a calculation using complex
-        !       orbitals and integrals. If true, the store will contain either 
+        !       orbitals and integrals. If true, the store will contain either
         !       the real or imaginary components of the complex two body integrals.
         !    imag: whether integral store contains imaginary component of complex
         !       integrals.
@@ -318,7 +318,7 @@ contains
         sym = cross_product_pg_sym(pg_sym, pg_sym_conj(pg_sym, basis_fns(i)%sym), basis_fns(j)%sym)
         sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
 
-        ! Currently inefficient for complex as will check symmetry when storing real and 
+        ! Currently inefficient for complex as will check symmetry when storing real and
         ! imaginary components of same integral.
 
         if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
@@ -633,7 +633,7 @@ contains
 
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
-        ! As orbitals and integrals are complex, 
+        ! As orbitals and integrals are complex,
         !       <ij|o_2|ab> = <ji|o_2|ba> = <ab|o_2|ij>* = <ba|o_2|ji>*
         !       =/= <ib|o_2|aj> = <bi|o_2|ja> = <aj|o_2|ib>* = <ja|o_2|bi>*
         ! Obviously we wish to use this permutation symmetry to reduce the
@@ -641,20 +641,18 @@ contains
 
         ! For UHF systems we must also keep track of the spin of the orbitals
         ! during the permutations so we know which spin channel the integral is
-        ! in. This is WIP currently- due to the use of spatial orbitals for 
-        ! ordering in complex we will have to change implementation slightly.
-
+        ! in.
         ! We're given integral <ij|o_2|ab>
-        ! If doing complex, can't simply reorder spinorbital indexes naively; have to use spatial 
+        ! If doing complex, can't simply reorder spinorbital indexes naively; have to use spatial
         ! orbitals to ensure correct result.
         ! We require i>=a, but cannot always also guarantee j>=b. Instead can only specify i>=j,a,b.
         ! If i == a can have j >= b, but must ensure ia >= jb. This can lead to complications in
-        ! cases of multiple values being equal to the maximum index. As such, we aim to ensure 
+        ! cases of multiple values being equal to the maximum index. As such, we aim to ensure
         ! ia >= jb then j >= b:
         ! - For instance, in the case of <ij|ai>, where i is the largest spatial index.
         !   Conventionally we would seek i >= a (satified by definition), then seek to ensure the
         !   largest of j and a was in the second position from the left. If j > a, this would lead
-        !   to ia < jb and giving us a nonsensical final index iajb. If instead we seek to maximise 
+        !   to ia < jb and giving us a nonsensical final index iajb. If instead we seek to maximise
         !   the value of the a position, we will obtain the correct answer.
 
         oldorbs = (/i, j, a, b/)
@@ -708,7 +706,7 @@ contains
             ii = scratch(1)
             aa = scratch(2)
             scratch = (/bb, jj/)
-            jj = scratch(1) 
+            jj = scratch(1)
             bb = scratch(2)
         end if
 
@@ -733,15 +731,15 @@ contains
         ! NOTE: this test *only* looks at the spatial indices so it is not
         ! sufficient for detecting the case where (e.g.) i and j are different
         ! spin-orbitals with the same spatial index (see below).
-        ! As two possible permutations give same ia and jb values, need to 
+        ! As two possible permutations give same ia and jb values, need to
         ! ensure give different values.
 
-        ! We observe that each previously unique index for a real integral store 
-        ! has a pair of values associated with it in the complex case, <ij|ab> and 
-        ! <ib|aj> for i >= j,a,b, j > b (see note on j == b case below). 
-        ! If we then double our inital index we can store the <ij|ab> value at the 
+        ! We observe that each previously unique index for a real integral store
+        ! has a pair of values associated with it in the complex case, <ij|ab> and
+        ! <ib|aj> for i >= j,a,b, j > b (see note on j == b case below).
+        ! If we then double our inital index we can store the <ij|ab> value at the
         ! associated odd-value index and the <ib|aj> value at the even-value index.
-        ! This gives a unique index for each integral in the complex system. 
+        ! This gives a unique index for each integral in the complex system.
 
         ! In various cases of equality the assumed pair of integrals will be identical
         ! and so one of the indexes will be unused. Depending on system size this will
@@ -784,9 +782,9 @@ contains
                 oldorbs(4) = scratch(1)
             end if
 
-            ! From previous operations, should have ensured ia >= jb & i >= j for 
+            ! From previous operations, should have ensured ia >= jb & i >= j for
             ! spatial orbitals. As such, we now just have to figure out which spin
-            ! channel the resultant arrangement is in. As we've already ensured a 
+            ! channel the resultant arrangement is in. As we've already ensured a
             ! unique arrangement, we can ensure any rearrangement of same spinorbitals
             ! will give the same index and spin channel.
 

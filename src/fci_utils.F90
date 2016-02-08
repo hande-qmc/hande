@@ -51,7 +51,7 @@ end type fci_in_t
 type hamil_t
     real(p), allocatable :: rmat(:,:)
     complex(p), allocatable :: cmat(:,:)
-    type(csrp_t) :: smat ! Sparse complex not implemented. 
+    type(csrp_t) :: smat ! Sparse complex not implemented.
     logical :: complex = .false.
     logical :: sparse = .false.
 end type hamil_t
@@ -215,7 +215,7 @@ contains
         !    use_sparse_hamil (optional): if present and true generate a sparse matrix format, as
         !        described in csr.
         ! Out:
-        !    hamil: hamil_t derived type, containing Hamiltonian matrix in a square array of appropriate 
+        !    hamil: hamil_t derived type, containing Hamiltonian matrix in a square array of appropriate
         !        format for system and settings given (real, complex or sparse). In a complex system only
         !        sparse format is not implemented.
 
@@ -244,7 +244,6 @@ contains
         hamil%complex = sys%read_in%comp
         if (present(use_sparse_hamil)) then
              hamil%sparse = use_sparse_hamil
-             
         end if
         sparse_mode = hamil%sparse
         if (sparse_mode .and. present(proc_blacs_info)) then

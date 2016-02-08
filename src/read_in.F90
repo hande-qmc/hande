@@ -119,7 +119,7 @@ contains
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
         !  * NPROP: Dimensions of supercell used in translationally symmetric systems.
-        !  * PROPBITLEN: Length in bits of each property (?) in translationally symmetric 
+        !  * PROPBITLEN: Length in bits of each property (?) in translationally symmetric
         !    systems. Translational symmetry not yet implemented.
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
@@ -434,7 +434,7 @@ contains
         ! We similarly need to remember if we've seen <i|h|a> or <a|h|i> as we
         ! only store one of the pair.
 
-        ! If using complex orbitals, <ii|jj> =/= <ij|ji>, etc, so no longer 
+        ! If using complex orbitals, <ii|jj> =/= <ij|ji>, etc, so no longer
         ! accept some permutations.
         ! For complex have also assumed expressions above for E_core and <a|h'|b>
         ! hold; if not the case then likely incorrect values obtained.
@@ -559,7 +559,7 @@ contains
                                 ! which permutation(s) occur in the FCIDUMP
                                 ! file.
                                 ! As all core orbitals, ignore any imaginary components
-                                ! since assume Ecore is real and so will only cancel 
+                                ! since assume Ecore is real and so will only cancel
                                 ! anyway. Could calculate and check this if results dubious.
                                 if (ii == aa .and. jj == bb .and. ii == jj) then
                                     if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
@@ -643,10 +643,10 @@ contains
                                         ! For systems with complex orbitals (but real integrals)
                                         ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
 
-                                        ! For complex we can only accept <ia|bi> or <ai|ib>, which gives the second two 
-                                        ! conditions above. 
-                                        ! For real we can also accept <ii|ab>/<ii|ba> etc, which are all remaining cases 
-                                        ! of core(1) == core(2) after the inital if statement. As such if real automatically 
+                                        ! For complex we can only accept <ia|bi> or <ai|ib>, which gives the second two
+                                        ! conditions above.
+                                        ! For real we can also accept <ii|ab>/<ii|ba> etc, which are all remaining cases
+                                        ! of core(1) == core(2) after the inital if statement. As such if real automatically
                                         ! accept.
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
                                             is_gamma_irrep_pg_sym(sys%read_in%pg_sym, &

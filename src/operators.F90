@@ -463,11 +463,11 @@ contains
         character(*), intent(in) :: filename
         type(blacs_info), intent(in) :: proc_blacs_info
         ! [review] - RSTF: you don't seem to have done anything with this.
-        ! [reply] - CJCS: started making changes at same time as analysing 
+        ! [reply] - CJCS: started making changes at same time as analysing
         ! [reply] - CJCS: wfn but decided probably not much use for it?
         ! [reply] - JSS: would leave subroutine untouched then.
-        ! [reply] - CJCS: have left with reordering of arguments (all calls 
-        ! [reply] - CJCS: already adjusted and makes later implementation 
+        ! [reply] - CJCS: have left with reordering of arguments (all calls
+        ! [reply] - CJCS: already adjusted and makes later implementation
         ! [reply] - CJCS: much easier if ever have to).
         real(p), intent(in) :: wfn(:)
         integer(i0), intent(in) :: dets(:,:)

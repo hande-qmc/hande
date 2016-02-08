@@ -41,7 +41,7 @@ contains
         !       output.
         !    spawn: spawn_t object for holding the spawned psips.  Allocated on
         !       output, with one slot for each determinant in thie Hilbert space.
-        !    hamil: derived type containing the Hamiltonian matrix. Depending on 
+        !    hamil: derived type containing the Hamiltonian matrix. Depending on
         !       system will contain real or complex matrix. If real and sparse_hamil
         !       is true will contain CSR format hamiltonian.
 
