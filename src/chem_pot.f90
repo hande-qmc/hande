@@ -1,12 +1,14 @@
 module chem_pot
 
+! Module to evaluate the chemical potential at a given temperature from an underlying single-particle basis set.
+
 use const, only: p, depsilon
 
 implicit none
 
 contains
 
-    function fermi_factor(ek, mu, beta) result(f_k)
+    pure function fermi_factor(ek, mu, beta) result(f_k)
 
         ! Calculate the Fermi factor, f_k = 1/(e^{beta(e_k-mu)}+1).
 
@@ -14,15 +16,18 @@ contains
         !    ek: single particle eigen value.
         !    mu: chemical potential.
         !    beta: inverse temperature.
+        ! Returns:
+        !    fk: Fermi factor for single-particle state ek.
 
         real(p), intent(in) :: ek, mu, beta
+
         real(p) :: f_k
 
         f_k = 1.0_p / (exp(beta*(ek-mu))+1)
 
     end function fermi_factor
 
-    function particle_number(sys, beta, mu) result (nav)
+    pure function particle_number(sys, beta, mu) result (nav)
 
         ! Evaluate the expected number of particles for given chemical potential
         ! mu at temperature T = 1 / beta.
@@ -39,11 +44,14 @@ contains
         !        set.
         !    beta: inverse temperature.
         !    mu_init: initial guess for the chemical potential.
+        ! Returns:
+        !    nav: expected number of particles.
 
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: beta, mu
+
         real(p) :: nav
 
         integer :: iorb
@@ -62,7 +70,7 @@ contains
 
     end function particle_number
 
-    function deriv_particle_number(sys, beta, mu) result(nav_deriv)
+    pure function deriv_particle_number(sys, beta, mu) result(nav_deriv)
 
         ! Derivative of the expected number of particles with respect to the
         ! chemical potential, i.e.,
@@ -76,6 +84,8 @@ contains
         !        set.
         !    beta: inverse temperature.
         !    mu: chemical potential.
+        ! Returns:
+        !    nav_deriv: derivative of the N wrt mu.
 
         use system, only: sys_t
 
@@ -113,7 +123,8 @@ contains
         !
         !   N - \sum_k f_k(beta,mu) = 0.
         !
-        ! This is done using the Newton-Raphson method.
+        ! This is done using the Newton-Raphson method (see, for example,
+        ! https://en.wikipedia.org/wiki/Newton%27s_method.)
 
         ! In:
         !    sys: system under consideration.
@@ -135,13 +146,13 @@ contains
         it = 0
 
         ! At zero temperature the chemical potential should be close to the
-        ! energy of the highest occupied orbital (Fermi Energy). We assume
-        ! we only deal with completely polarised or unpolarised systems
+        ! energy of the highest occupied orbital (Fermi Energy).
         ! This is typically a good guess for root finding as the chemical
         ! potential is a monotonically decreasing function of temperature, and
         ! its value at T=0 is the Fermi energy (in the TDL).
         ! The following takes care of the spin polarised and unpolarised case given
-        ! how we enumerate basis functions.
+        ! how we enumerate basis functions. We assume we only deal with completely
+        ! polarised or unpolarised systems
         mu_old = sys%basis%basis_fns(2*sys%nalpha)%sp_eigv
 
         do while (it < max_it)
