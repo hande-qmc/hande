@@ -86,6 +86,8 @@ contains
 
     subroutine init_ternary_conserve(sys, ternary_conserve)
 
+        ! [review] - JSS: interface docs (primarily just rearrange comments from function body to here..)
+
         use system, only: sys_t
 
         use checking, only: check_allocate
