@@ -52,7 +52,9 @@ type hamil_t
     real(p), allocatable :: rmat(:,:)
     complex(p), allocatable :: cmat(:,:)
     type(csrp_t) :: smat ! Sparse complex not implemented.
-    logical :: complex = .false.
+    ! [reply] - CJCS: Ruth has pointed out to me what you actually meant and I've
+    ! [reply] - CJCS: changed accordingly; I think smat can probably stay as well.
+    logical :: comp = .false.
     logical :: sparse = .false.
 end type hamil_t
 
@@ -241,7 +243,7 @@ contains
         logical :: sparse_mode
         real(p) :: hmatel
 
-        hamil%complex = sys%read_in%comp
+        hamil%comp = sys%read_in%comp
         if (present(use_sparse_hamil)) then
              hamil%sparse = use_sparse_hamil
         end if
@@ -251,17 +253,17 @@ contains
                 'Sparse distributed matrices are not currently implemented.  &
                 &If this is disagreeable to you, please contribute patches resolving this situation.')
         end if
-        if (hamil%complex .and. present(proc_blacs_info)) then
+        if (hamil%comp .and. present(proc_blacs_info)) then
             call stop_all('generate_hamil', &
                 'Complex distributed matrices are not currently implemented.  &
                 &If this is disagreeable to you, please contribute patches resolving this situation.')
         end if
-        if (hamil%complex .and. hamil%sparse) then
+        if (hamil%comp .and. hamil%sparse) then
             call stop_all('generate_hamil', &
                 'Complex sparse matrices are not currently implemented.  &
                 &If this is disagreeable to you, please contribute patches resolving this situation.')
         end if
-        if (hamil%complex) then
+        if (hamil%comp) then
             allocate(hamil%cmat(ndets, ndets), stat=ierr)
             call check_allocate('hamil_comp%cmat', ndets**2, ierr)
         else if (.not. hamil%sparse) then
@@ -356,7 +358,7 @@ contains
                 if (present(full_mat)) then
                     if (full_mat) ii = 1
                 end if
-                if (hamil%complex) then
+                if (hamil%comp) then
                     !$omp do private(j) schedule(dynamic, 200)
                     do j = ii, ndets
                         hamil%cmat(i,j) = get_hmatel_complex(sys,dets(:,i),dets(:,j))
@@ -405,7 +407,7 @@ contains
 
         iunit = get_free_unit()
         open(iunit, file=hamiltonian_file, status='unknown')
-        if (nprocs > 1 .and. (.not.hamil%complex)) then
+        if (nprocs > 1 .and. (.not.hamil%comp)) then
             if (.not.present(proc_blacs_info)) call stop_all('write_hamil', 'proc_blacs_info not supplied.')
             ! Note that this uses a different format to the serial case...
             allocate(work_print(proc_blacs_info%block_size**2), stat=ierr)
@@ -420,7 +422,7 @@ contains
             deallocate(work_print)
             call check_deallocate('work_print', ierr)
         else
-            if (.not. hamil%complex .and. .not. hamil%sparse) then
+            if (.not. hamil%comp .and. .not. hamil%sparse) then
                 do i=1, ndets
                     write (iunit,*) i,i,hamil%rmat(i,i)
                     do j=i+1, ndets
@@ -435,7 +437,7 @@ contains
                         write (iunit,*) j, hamil%smat%col_ind(i), hamil%smat%mat(i)
                     end if
                 end do
-            else if (hamil%complex) then
+            else if (hamil%comp) then
                 do i=1, ndets
                     write (iunit,*) i,i,hamil%cmat(i,i)
                     do j=i+1, ndets

@@ -169,7 +169,7 @@ contains
 
         ! Find the optimal size of the workspace.
 
-        if (hamil%complex) then
+        if (hamil%comp) then
             allocate(cwork(1), stat=ierr)
             call check_allocate('cwork',1,ierr)
             allocate(rwork(max(1,3*ndets-2)), stat = ierr)
