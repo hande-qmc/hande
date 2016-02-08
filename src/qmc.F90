@@ -655,11 +655,11 @@ contains
         ! determinants have a roughly similar ratio of single:double
         ! excitations.
         if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-            call find_single_double_prob(sys, qmc_state%ref%occ_list0, qmc_state%pattempt_single, qmc_state%pattempt_double)
+            call find_single_double_prob(sys, qmc_state%ref%occ_list0, qmc_state%excit_gen_data%pattempt_single, qmc_state%excit_gen_data%pattempt_double)
         else
             ! renormalise just in case input wasn't
-            qmc_state%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
-            qmc_state%pattempt_double = 1.0_p - qmc_in%pattempt_single
+            qmc_state%excit_gen_data%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
+            qmc_state%excit_gen_data%pattempt_double = 1.0_p - qmc_in%pattempt_single
         end if
 
         ! Set initial values from input

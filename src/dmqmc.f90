@@ -133,8 +133,8 @@ contains
             call sys_t_json(js, sys)
             ! The default values of pattempt_* are not in qmc_in
             qmc_in_loc = qmc_in
-            qmc_in_loc%pattempt_single = qs%pattempt_single
-            qmc_in_loc%pattempt_double = qs%pattempt_double
+            qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
+            qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             call qmc_in_t_json(js, qmc_in_loc)
             call dmqmc_in_t_json(js, dmqmc_in)
             call ipdmqmc_in_t_json(js, dmqmc_in)

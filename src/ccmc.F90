@@ -383,8 +383,8 @@ contains
             call sys_t_json(js, sys)
             ! The default values of pattempt_* are not in qmc_in
             qmc_in_loc = qmc_in
-            qmc_in_loc%pattempt_single = qs%pattempt_single
-            qmc_in_loc%pattempt_double = qs%pattempt_double
+            qmc_in_loc%pattempt_single = qs%excit_gen_data%pattempt_single
+            qmc_in_loc%pattempt_double = qs%excit_gen_data%pattempt_double
             call qmc_in_t_json(js, qmc_in_loc)
             call ccmc_in_t_json(js, ccmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
@@ -1477,7 +1477,7 @@ contains
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
         ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
         ! least for now) is left as an exercise to the interested reader.
-        call gen_excit_ptr%full(rng, sys, qs%pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+        call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         if (linked_ccmc .and. allowed_excitation) then
             ! For Linked Coupled Cluster we reject any spawning where the
@@ -2257,7 +2257,7 @@ contains
         ! 2) Choose excitation from right_cluster|D_0>
         if (allowed) then
             call decoder_ptr(sys, rdet%f, rdet)
-            call gen_excit_ptr%full(rng, sys, qs%pattempt_single, rdet, pgen, connection, hmatel, allowed)
+            call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, rdet, pgen, connection, hmatel, allowed)
         end if
 
         if (allowed) then
@@ -2496,20 +2496,20 @@ contains
             case(read_in)
                 if (excit_gen == excit_gen_no_renorm) then
                     if (connection%nexcit == 1) then
-                        pgen = qmc_state%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
+                        pgen = qmc_state%excit_gen_data%pattempt_single * calc_pgen_single_mol_no_renorm(sys, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
-                        pgen = qmc_state%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
+                        pgen = qmc_state%excit_gen_data%pattempt_double * calc_pgen_double_mol_no_renorm(sys, a, b, spin)
                     end if
                 else
                     if (connection%nexcit == 1) then
-                        pgen = qmc_state%pattempt_single * calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, &
+                        pgen = qmc_state%excit_gen_data%pattempt_single * calc_pgen_single_mol(sys, sys%read_in%pg_sym%gamma_sym, &
                                                                                 parent_det%occ_list, parent_det%symunocc, a)
                     else
                         spin = sys%basis%basis_fns(a)%ms + sys%basis%basis_fns(b)%ms
                         ij_sym = pg_sym_conj(sys%read_in%pg_sym, &
                                              cross_product_pg_basis(sys%read_in%pg_sym, a, b, sys%basis%basis_fns))
-                        pgen = qmc_state%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
+                        pgen = qmc_state%excit_gen_data%pattempt_double * calc_pgen_double_mol(sys, ij_sym, a, b, spin, parent_det%symunocc)
                     end if
                 end if
             case(ueg)

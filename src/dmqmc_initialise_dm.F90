@@ -452,7 +452,7 @@ contains
                         call encode_det(sys%basis, cdet%occ_list, f_new)
                     else
                         call decoder_ptr(sys, cdet%f, cdet)
-                        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel, allowed)
+                        call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
                         if (abs(hmatel) < depsilon) cycle
