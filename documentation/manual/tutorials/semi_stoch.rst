@@ -22,7 +22,7 @@ which results in the following simulation:
     import matplotlib.pyplot as plt
     (metadata, qmc_data) = pyhande.extract.extract_data('calcs/fciqmc/hubbard_fciqmc_real.out')[0]
     plt.ylim(-0.3315,-0.328)
-    plt.plot(qmc_data['iterations'], qmc_data['\sum H_0j N_j']/qmc_data['N_0'], label='$E(\tau) = \sum_j H_{0j} N_j(\tau)/N_0(\tau)$')
+    plt.plot(qmc_data['iterations'], qmc_data['\sum H_0j N_j']/qmc_data['N_0'], label='$E(\\tau) = \sum_j H_{0j} N_j(\\tau)/N_0(\\tau)$')
     plt.legend()
     plt.xlabel('iteration')
     plt.ylabel('Correlation energy / $t$')
@@ -65,7 +65,7 @@ This results in the following simulation:
     import matplotlib.pyplot as plt
     (metadata, qmc_data) = pyhande.extract.extract_data('calcs/semi_stoch/hubbard_semi_stoch_high.out')[0]
     plt.ylim(-0.3315,-0.328)
-    plt.plot(qmc_data['iterations'], qmc_data['\sum H_0j N_j']/qmc_data['N_0'], label='$E(\tau) = \sum_j H_{0j} N_j(\tau)/N_0(\tau)$')
+    plt.plot(qmc_data['iterations'], qmc_data['\sum H_0j N_j']/qmc_data['N_0'], label='$E(\\tau) = \sum_j H_{0j} N_j(\\tau)/N_0(\\tau)$')
     plt.legend()
     plt.xlabel('iteration')
     plt.ylabel('Correlation energy / $t$')
