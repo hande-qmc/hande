@@ -105,7 +105,6 @@ contains
         call dSFMT_init(rng_seed+iproc, 50000, rng)
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
-        mu = find_chem_pot(sys, beta_loc)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -125,6 +124,7 @@ contains
         if (fermi_temperature) then
             beta_loc = beta_loc / sys%ueg%ef
         end if
+        mu = find_chem_pot(sys, beta_loc)
 
         if (sys%symmetry < sys%sym_max) then
             call set_reference_det(sys, occ_list0, .false., sys%symmetry)
