@@ -26,9 +26,9 @@ results : :class:`pandas.DataFrame`
 '''
 
     observables = dict([
-        ('<T>_HF', r'Tr(T\rho_HF)'),
-        ('<V>_HF', r'Tr(V\rho_HF)'),
-        ('<H>_HF', r'Tr(H\rho_HF)'),
+        ('T_HF', r'Tr(T\rho_HF)'),
+        ('V_HF', r'Tr(V\rho_HF)'),
+        ('U_HF', r'Tr(H\rho_HF)'),
     ])
 
     num = pd.DataFrame()
@@ -68,12 +68,12 @@ results : :class:`pandas.DataFrame`
     Averaged estimates.
 '''
 
-    data['<H>_0'] = data['<T>_0'] + data['<V>_0']
+    data['U_0'] = data['T_0'] + data['V_0']
     data[r'Tr(H\rho_HF)'] = data[r'Tr(T\rho_HF)'] + data[r'Tr(V\rho_HF)']
 
     means = data.mean()
     covariances = data.cov()
-    nsamples = len(data['<T>_0'])
+    nsamples = len(data['T_0'])
 
     results = pd.DataFrame()
     if 'beta' in metadata:
@@ -90,15 +90,12 @@ results : :class:`pandas.DataFrame`
         results['mu'] = pyhande.legacy.extract_input(metadata, 'chem_pot')
     # Free estimates contain no denominator so the error is
     # just the standard error.
-    results['<H>_0'] = [means['<H>_0']]
-    results['<H>_0_error'] = [np.sqrt(covariances['<H>_0']['<H>_0']/nsamples)]
-    results['<T>_0'] = [means['<T>_0']]
-    results['<T>_0_error'] = [np.sqrt(covariances['<T>_0']['<T>_0']/nsamples)]
-    results['<V>_0'] = [means['<V>_0']]
-    results['<V>_0_error'] = [np.sqrt(covariances['<V>_0']['<V>_0']/nsamples)]
-    results['N_acc/N_att'] = [means['N_ACC/N_ATT']]
-    results['N_acc/N_att_error'] = (
-                  [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/nsamples)])
+    results['U_0'] = [means['U_0']]
+    results['U_0_error'] = [np.sqrt(covariances['U_0']['U_0']/nsamples)]
+    results['T_0'] = [means['T_0']]
+    results['T_0_error'] = [np.sqrt(covariances['T_0']['T_0']/nsamples)]
+    results['V_0'] = [means['V_0']]
+    results['V_0_error'] = [np.sqrt(covariances['V_0']['V_0']/nsamples)]
     if 'N_ACC/N_ATT' in means:
         results['N_acc/N_att'] = [means['N_ACC/N_ATT']]
         results['N_acc/N_att_error'] = (
