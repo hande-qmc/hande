@@ -22,7 +22,7 @@ Options
     Required.
 
     The system on which to perform the calculation.  Must be created via a system
-    function. chem_pot must be set.
+    function.
 ``canonical_energy``
     type: lua table.
 

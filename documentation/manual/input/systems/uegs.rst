@@ -88,12 +88,6 @@ Options
     Apply a twist to the wavevector grid.  The twist is an :math:`N`-dimensional vector in
     units of :math:`2\pi`.  The twist angle should be within the first Brillouin zone, and
     hence the components should be between -0.5 and +0.5.
-``chem_pot``
-    type: float.
-
-    Optional.  Used only in interaction-picture DMQMC calculations.
-
-    Set the chemical potential of the system.
 
 Ringium
 -------

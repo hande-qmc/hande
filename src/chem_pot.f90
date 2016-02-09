@@ -155,6 +155,10 @@ contains
         ! polarised or unpolarised systems
         mu_old = sys%basis%basis_fns(2*sys%nalpha)%sp_eigv
 
+        if (sys%ms /= sys%nel .and. sys%ms /= 0) then
+            call stop_all('find_chem_pot', 'Spin polarisation requested not supported - please implement.')
+        end if
+
         do while (it < max_it)
             nav = particle_number(sys, beta, mu_old)
             nav_deriv = deriv_particle_number(sys, beta, mu_old)
@@ -169,7 +173,7 @@ contains
         end do
 
         if (it == max_it) then
-            call stop_all('find_root', 'Root not found, check interval.')
+            call stop_all('find_chem_pot', 'Root not found, check interval.')
         end if
 
     end function find_chem_pot

@@ -280,9 +280,9 @@ ipdmqmc options
     Optional.  Default: false.
 
     Use the grand canonical partition function to initialise the psip distribution.
-    This requires a value of chem_pot to be set in sys. The default behaviour will
-    randomly distribute particles among the determinants requiring a non-zero value
-    of metropolis_attempts to be set for the correct distribution to be reached.
+    The default behaviour will randomly distribute particles among the determinants
+    requiring a non-zero value of metropolis_attempts to be set for the correct
+    distribution to be reached.
 
 ``metropolis_attempts``
     type: integer.
