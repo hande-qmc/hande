@@ -6,8 +6,8 @@ try:
     import pyhande
 except ImportError:
     # Try to find pyhande in the hande directory tree.
-    scriptdir = os.path.dirname(sys.argv[0])
-    sys.path.append(os.path.join(scriptdir, '..'))
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.append(os.path.join(_script_dir, '../pyhande'))
     import pyhande
 import pyhande.testcode
 

@@ -4,15 +4,24 @@ with either gzip, bzip2 or xz (python 3 only).  CCMC and FCIQMC calculations
 only are supported; other calculations have specific analysis scripts and/or
 should be analysed directly with pyhande.'''
 
-import pandas as pd
-from os import path
-import sys
-sys.path.append(path.join(path.abspath(path.dirname(sys.argv[0])), 'pyblock'))
-import pyblock
-import pyhande
-
 import argparse
+import os
 import pprint
+import sys
+
+import pandas as pd
+
+_script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+try:
+    import pyblock
+except ImportError:
+    sys.path.append(os.path.join(_script_dir, 'pyblock'))
+    import pyblock
+try:
+    import pyhande
+except ImportError:
+    sys.path.append(os.path.join(_script_dir, 'pyhande'))
+    import pyhande
 
 def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1,
                        width=0, out_method='to_string'):

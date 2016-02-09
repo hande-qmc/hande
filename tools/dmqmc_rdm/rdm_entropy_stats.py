@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''Analysis of rdm_entropy_estimates.x output.
 
 The estimate of the von Neumann and Renyi entropy measure comes directly from
