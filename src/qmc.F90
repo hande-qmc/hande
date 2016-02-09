@@ -51,6 +51,7 @@ contains
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             reference_t, neel_singlet
         use dmqmc_data, only: dmqmc_in_t
+        use excit_gens, only: dealloc_excit_gen_data_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -133,6 +134,8 @@ contains
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
         call init_estimators(sys, qmc_in, restart_in%read_restart.and.fciqmc_in_loc%non_blocking_comm, qmc_state)
+        if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
+        call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
 
     end subroutine init_qmc
 
@@ -602,7 +605,6 @@ contains
         use parallel
         use energy_evaluation, only: calculate_hf_signed_pop
         use checking, only: check_allocate
-        use qmc_common, only: find_single_double_prob
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -650,23 +652,53 @@ contains
 #endif
         end if
 
-        ! If not set at input, set probability of selecting single or double
-        ! excitations based upon the reference determinant and assume other
-        ! determinants have a roughly similar ratio of single:double
-        ! excitations.
-        if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
-            call find_single_double_prob(sys, qmc_state%ref%occ_list0, qmc_state%pattempt_single, qmc_state%pattempt_double)
-        else
-            ! renormalise just in case input wasn't
-            qmc_state%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
-            qmc_state%pattempt_double = 1.0_p - qmc_in%pattempt_single
-        end if
-
         ! Set initial values from input
         qmc_state%tau = qmc_in%tau
         qmc_state%estimators%D0_population = qmc_in%D0_population
 
     end subroutine init_estimators
+
+    subroutine init_excit_gen(sys, qmc_in, ref, excit_gen_data)
+
+        ! Initialise pre-computed data for excitation generators
+
+        ! In:
+        !   sys: system being studied
+        !   qmc_in: input options for qmc
+        !   ref: reference determinant
+        ! Out:
+        !   excit_gen_data: pre-computed data for fast excitation generation.
+
+        use system, only: sys_t, ueg
+        use qmc_data, only: qmc_in_t, reference_t
+        use excit_gens, only: excit_gen_data_t
+        use ueg_system, only: init_ternary_conserve
+        use qmc_common, only: find_single_double_prob
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_in_t), intent(in) :: qmc_in
+        type(reference_t), intent(in) :: ref
+        type(excit_gen_data_t), intent(out) :: excit_gen_data
+
+        ! Set type of excitation generator to use
+        excit_gen_data%excit_gen = qmc_in%excit_gen
+
+        ! If not set at input, set probability of selecting single or double
+        ! excitations based upon the reference determinant and assume other
+        ! determinants have a roughly similar ratio of single:double
+        ! excitations.
+        if (qmc_in%pattempt_single < 0 .or. qmc_in%pattempt_double < 0) then
+            call find_single_double_prob(sys, ref%occ_list0, excit_gen_data%pattempt_single, excit_gen_data%pattempt_double)
+        else
+            ! renormalise just in case input wasn't
+            excit_gen_data%pattempt_single = qmc_in%pattempt_single/(qmc_in%pattempt_single+qmc_in%pattempt_double)
+            excit_gen_data%pattempt_double = 1.0_p - qmc_in%pattempt_single
+        end if
+
+        ! UEG allowed excitations
+        if (sys%system == ueg) call init_ternary_conserve(sys, excit_gen_data%ueg_ternary_conserve)
+
+    end subroutine init_excit_gen
 
     subroutine init_reference(sys, reference_in, reference)
 

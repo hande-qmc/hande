@@ -11,15 +11,14 @@ implicit none
 
 contains
 
-    subroutine gen_excit_ringium_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_excit_ringium_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate the probability of
         ! selecting that excitation.
 
         ! In:
         !    sys: system object being studied.
-        !    pattempt_single: Probability to attempt a single excitation.
-        !        Unused but included for interface compatibility.
+        !    excit_gen_data: Data for excitation generator (not used) 
         !    cdet: info on the current determinant (cdet) that we will spawn
         !        from.
         ! Out:
@@ -34,6 +33,7 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t, find_excitation_permutation2
+        use excit_gens, only: excit_gen_data_t
         use system, only: sys_t
         use hamiltonian_ringium, only: slater_condon2_ringium_excit
         use dSFMT_interface, only: dSFMT_t
@@ -41,7 +41,7 @@ contains
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
-        real(p), intent(in) :: pattempt_single
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection

@@ -5,6 +5,7 @@ use spawn_data, only: spawn_t, proc_map_t
 use csr, only: csrp_t
 use parallel, only: parallel_timing_t
 use importance_sampling_data
+use excit_gens, only: excit_gen_data_t
 
 implicit none
 
@@ -534,8 +535,8 @@ type qmc_state_t
     logical, allocatable :: vary_shift(:) ! (psip_list%nspaces)
     ! Number of particles above which varyshift is turned on.
     real(p) :: target_particles = huge(1.0_p)
-    ! Probability of attempting single or double excitations.
-    real(p) :: pattempt_single, pattempt_double
+    ! Stores information used by the excitation generator
+    type(excit_gen_data_t) :: excit_gen_data
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
     real(p) :: init_beta = 1.0
     ! Convenience handles.

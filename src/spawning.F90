@@ -86,7 +86,7 @@ contains
         logical :: allowed
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel, allowed)
+        call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel, pgen, parent_sign)
@@ -152,7 +152,7 @@ contains
         logical :: allowed
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel, allowed)
+        call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel)
@@ -233,7 +233,7 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, abs_hmatel, allowed)
+        call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, abs_hmatel, allowed)
 
         ! 2. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel/pgen, rng)
@@ -318,7 +318,7 @@ contains
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
-        call gen_excit_ptr%init(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, tilde_hmatel, allowed)
+        call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, tilde_hmatel, allowed)
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel)

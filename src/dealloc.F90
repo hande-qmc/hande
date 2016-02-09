@@ -18,6 +18,7 @@ contains
         use spawn_data, only: dealloc_spawn_t
         use reference_determinant, only: dealloc_reference_t
         use load_balancing, only: dealloc_parallel_t
+        use excit_gens, only: dealloc_excit_gen_data_t
 
         type(qmc_state_t), intent(inout) :: qs
 
@@ -31,6 +32,7 @@ contains
         call dealloc_spawn_t(qs%spawn_store%spawn_recv)
         call dealloc_reference_t(qs%ref)
         call dealloc_parallel_t(qs%par_info)
+        call dealloc_excit_gen_data_t(qs%excit_gen_data)
 
     end subroutine dealloc_qmc_state_t
 
@@ -149,7 +151,6 @@ contains
 
        type(sys_ueg_t), intent(inout) :: ueg
 
-        if (allocated(ueg%ternary_conserve)) deallocate(ueg%ternary_conserve)
         nullify(ueg%coulomb_int)
         nullify(ueg%exchange_int)
 

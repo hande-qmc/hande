@@ -24,7 +24,7 @@ contains
 
 !--- Excitation generators ---
 
-    subroutine gen_excit_ueg_no_renorm(rng, sys, pattempt_single, cdet, pgen, connection, hmatel, allowed_excitation)
+    subroutine gen_excit_ueg_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -38,8 +38,7 @@ contains
 
         ! In:
         !    sys: system object being studied.
-        !    pattempt_single: Probability to attempt a single excitation.
-        !        Unused but included for interface compatibility.
+        !    excit_gen_data: Data for excitation generator (not used) 
         !    cdet: info on the current determinant (cdet) that we will gen
         !        from.
         !    parent_sign: sign of the population on the parent determinant (i.e.
@@ -57,6 +56,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation2
+        use excit_gens, only: excit_gen_data_t
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
         use system, only: sys_t
 
@@ -64,7 +64,7 @@ contains
         use bit_utils
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: pattempt_single
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(out) :: pgen, hmatel
@@ -78,7 +78,8 @@ contains
 
         ! 2. Select orbitals to excite from and into.
         call choose_ij_k(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_k, ij_spin)
-        call find_ab_ueg(rng, sys, cdet%f, ij_k, ij_spin, max_na, connection%to_orb(1), connection%to_orb(2), allowed_excitation)
+        call find_ab_ueg(rng, sys, cdet%f, ij_k, ij_spin, excit_gen_data%ueg_ternary_conserve, max_na, connection%to_orb(1), &
+                         connection%to_orb(2), allowed_excitation)
         
         if (allowed_excitation) then
 
@@ -187,7 +188,7 @@ contains
 
 !--- Select random orbitals in double excitations ---
 
-    subroutine find_ab_ueg(rng, sys, f, ij_k, ij_spin, max_na, a, b, allowed_excitation)
+    subroutine find_ab_ueg(rng, sys, f, ij_k, ij_spin, ternary_conserve, max_na, a, b, allowed_excitation)
 
         ! Select a random a (and hence b) to create an allowed excitation,
         ! (i,j)->(a,b), given a certain (i,j) pair.  Simply choose a random
@@ -204,6 +205,7 @@ contains
         !    ij_k: sum of the wavevectors of the i and j spin-orbitals.
         !    ij_spin: sum of the spins of the i and j spin-orbitals (in units of
         !       1/2).
+        !    ternary_conserve: details of allowed excitations to conserve crystal momentum
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -229,6 +231,7 @@ contains
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
         integer, intent(in) :: ij_k(sys%lattice%ndim), ij_spin
+        integer(i0), intent(in), allocatable :: ternary_conserve(:,:,:,:) ! Declared as allocatable to get correct array bounds
         integer, intent(out) :: a, b, max_na
         logical, intent(out) :: allowed_excitation
 
@@ -241,9 +244,9 @@ contains
         k3(1:sys%lattice%ndim) = ij_k
         k3(sys%lattice%ndim+1:) = 0
         if (ij_spin == -2) then
-            poss_a = iand(not(f), ishft(sys%ueg%ternary_conserve(1:,k3(1),k3(2),k3(3)),1))
+            poss_a = iand(not(f), ishft(ternary_conserve(1:,k3(1),k3(2),k3(3)),1))
         else
-            poss_a = iand(not(f), sys%ueg%ternary_conserve(1:,k3(1),k3(2),k3(3)))
+            poss_a = iand(not(f), ternary_conserve(1:,k3(1),k3(2),k3(3)))
         end if
         nposs_a = count_set_bits(poss_a)
         max_na = sum(nposs_a)

@@ -3,6 +3,7 @@ module proc_pointers
 use const, only: i0, p, dp, int_64, int_p
 use determinants, only: det_info_t
 use excitations, only: excit_t
+use excit_gens, only: excit_gen_data_t
 
 implicit none
 
@@ -78,14 +79,14 @@ abstract interface
         integer(i0), allocatable, intent(in) :: mask(:)
         real(p), intent(inout) :: cfunc
     end subroutine i_update_dmqmc_correlation_function
-    subroutine i_gen_excit(rng, sys, pattempt_single, d, pgen, connection, hmatel, allowed)
+    subroutine i_gen_excit(rng, sys, excit_gen_data, d, pgen, connection, hmatel, allowed)
         use dSFMT_interface, only: dSFMT_t
         use system, only: sys_t
-        import :: det_info_t, excit_t, p
+        import :: det_info_t, excit_t, p, excit_gen_data_t
         implicit none
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: pattempt_single
+        type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: d
         real(p), intent(out) :: pgen, hmatel
         type(excit_t), intent(out) :: connection
