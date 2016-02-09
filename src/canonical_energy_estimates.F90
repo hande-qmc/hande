@@ -85,7 +85,7 @@ contains
         integer, intent(in) :: rng_seed
 
         real(dp) :: p_single(sys%basis%nbasis/2)
-        integer :: occ_list(sys%nel)
+        integer :: occ_list(sys%nel), iorb, ireport
         logical :: gen
         real(p) :: energy(hf_part_idx), beta_loc, hfx, mu
         integer(int_64) :: iattempt
