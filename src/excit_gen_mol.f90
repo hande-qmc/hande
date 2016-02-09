@@ -94,8 +94,7 @@ contains
             if (allowed_excitation) then
 
                 ! 3b. Probability of generating this excitation.
-                ! [review] - JSS: use excit_gen_data%pattempt_double directly?
-                pgen = (1.0_p-excit_gen_data%pattempt_single)*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), &
+                pgen = excit_gen_data%pattempt_double*calc_pgen_double_mol(sys, ij_sym, connection%to_orb(1), &
                                                                                    connection%to_orb(2), ij_spin, cdet%symunocc)
 
                 ! 4b. Parity of permutation required to line up determinants.
@@ -201,8 +200,7 @@ contains
 
             if (allowed_excitation) then
                 ! 3b. Probability of generating this excitation.
-                ! [review] - JSS: use excit_gen_data%pattempt_double directly?
-                pgen = (1.0_p-excit_gen_data%pattempt_single)*calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), &
+                pgen = excit_gen_data%pattempt_double*calc_pgen_double_mol_no_renorm(sys, connection%to_orb(1), &
                                                                              connection%to_orb(2), ij_spin)
 
                 ! 4b. Parity of permutation required to line up determinants.

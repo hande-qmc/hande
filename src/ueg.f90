@@ -86,7 +86,14 @@ contains
 
     subroutine init_ternary_conserve(sys, ternary_conserve)
 
-        ! [review] - JSS: interface docs (primarily just rearrange comments from function body to here..)
+        ! Initialise an array of permitted k_a in an excitation k_i,k_j->k_a,k_b
+        ! given a choice of k_i ad k_j and requiring k_b is in the basis, for
+        ! use in excitation generators.  See comments on excit_gen_data_t.
+
+        ! In:
+        !   sys: system being studied
+        ! Out:
+        !   ternary_conserve: array of allowed excitations.
 
         use system, only: sys_t
 
@@ -96,10 +103,6 @@ contains
         integer(i0), allocatable, intent(out) :: ternary_conserve(:,:,:,:)
 
         integer :: ierr, a, bit_pos, bit_el, k(3), k1, k2, k3, ktest(sys%lattice%ndim), kija(sys%lattice%ndim)
-
-        ! Now fill in the values for permitted k_a in an excitation
-        ! k_i,k_j->k_a,k_b, given a choice of k_i ad k_j and requiring k_b is in
-        ! the basis.
 
         k = 0
         k(1:sys%lattice%ndim) = 2*sys%ueg%basis%kmax
