@@ -17,7 +17,7 @@ implicit none
 contains
 
     subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qmc_state, annihilation_flags, &
-                                             target_nparticles_tot, psip_list, spawn)
+                                             target_nparticles_tot, psip_list, spawn, chem_pot)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -40,6 +40,7 @@ contains
         !    annihilation_flags: calculation specific annihilation flags.
         !    target_nparticles_tot: The total number of psips to attempt to
         !        generate across all processes.
+        !    chem_pot: chemical potential for electronic Hamiltonians.
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only:  dSFMT_t, get_rand_close_open
@@ -59,6 +60,7 @@ contains
         type(qmc_state_t), intent(in) :: qmc_state
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
+        real(p), intent(in) :: chem_pot
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
 
@@ -118,7 +120,7 @@ contains
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
                                                            qmc_state%ref%energy_shift, qmc_state%init_beta, &
-                                                           & qmc_in%initiator_approx, qmc_in%initiator_pop, rng)
+                                                           & qmc_in%initiator_approx, qmc_in%initiator_pop, rng, chem_pot)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
                                                             dmqmc_in%all_sym_sectors, qmc_in%initiator_approx, &
@@ -565,7 +567,7 @@ contains
     end subroutine dmqmc_spin_cons_metropolis_move
 
     subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, pop_real_factor, spawn, energy_shift, &
-                                             init_beta, initiator_approx, initiator_pop, rng)
+                                             init_beta, initiator_approx, initiator_pop, rng, chem_pot)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -580,6 +582,7 @@ contains
         !    init_beta: temperature at which we initialise the density matrix.
         !    initiator_approx: using the initiator approximation?
         !    initiator_pop: population for element to be set to an initiator.
+        !    chem_pot: chemical potential.
         ! In/Out:
         !    spawn: spawned list.
         !    rng: random number generator.
@@ -601,6 +604,7 @@ contains
         real(p), intent(in) :: energy_shift, init_beta
         logical, intent(in) :: initiator_approx
         real(p), intent(in) :: initiator_pop
+        real(p), intent(in) :: chem_pot
         type(spawn_t), intent(inout) :: spawn
         type(dSFMT_t), intent(inout) :: rng
 
@@ -629,7 +633,7 @@ contains
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-sys%chem_pot)))
+                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-chem_pot)))
 
         ! In the grand canoical ensemble the probability of occupying a
         ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the

@@ -175,9 +175,6 @@ contains
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
-        if (.not. sys%chem_pot < huge(1.0_p) .and. parent) call stop_all('lua_canonical_energy', &
-                                                                        'chem_pot: chemical potential not supplied.')
-
         opts = aot_table_top(lua_state)
         call read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
         call warn_unused_args(lua_state, keys, opts)

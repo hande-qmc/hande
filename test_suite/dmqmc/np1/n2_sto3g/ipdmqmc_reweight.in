@@ -3,7 +3,6 @@ sys = read_in {
     nel = 10,
     ms = 0,
     sym = 0,
-    chem_pot = -0.96816632713,
 }
 
 dmqmc {
