@@ -106,6 +106,12 @@ contains
         call copy_sys_spin_info(sys, sys_bak)
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
+        beta_loc = beta
+        if (fermi_temperature) then
+            beta_loc = beta_loc / sys%ueg%ef
+        end if
+        mu = find_chem_pot(sys, beta_loc)
+
         if (parent) then
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
@@ -114,17 +120,11 @@ contains
             call json_write_key(js, 'fermi_temperature', fermi_temperature)
             call json_write_key(js, 'nsamples', nsamples)
             call json_write_key(js, 'ncycles', ncycles)
+            call json_write_key(js, 'chem_pot', mu)
             call json_write_key(js, 'rng_seed', rng_seed, terminal=.true.)
-            call json_write_key(js, 'chem_pot', mu, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io,'()')
         end if
-
-        beta_loc = beta
-        if (fermi_temperature) then
-            beta_loc = beta_loc / sys%ueg%ef
-        end if
-        mu = find_chem_pot(sys, beta_loc)
 
         if (sys%symmetry < sys%sym_max) then
             call set_reference_det(sys, occ_list0, .false., sys%symmetry)
