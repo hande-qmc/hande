@@ -95,7 +95,7 @@ contains
         type (dSFMT_t) :: rng
         logical :: soft_exit, comms_found
         integer :: ngen, nalpha_allowed, nbeta_allowed
-        real(p) :: ref_shift
+        real(p) :: ref_shift, correction
         integer, allocatable :: occ_list0(:)
         type(json_out_t) :: js
 #ifdef PARALLEL
@@ -113,6 +113,7 @@ contains
             beta_loc = beta_loc / sys%ueg%ef
         end if
         mu = find_chem_pot(sys, beta_loc)
+        correction = free_energy_correction(sys, mu, beta_loc)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -121,6 +122,7 @@ contains
             call json_write_key(js, 'beta', beta)
             call json_write_key(js, 'fermi_temperature', fermi_temperature)
             call json_write_key(js, 'nattempts', nattempts)
+            call json_write_key(js, 'free_energy_corr', correction)
             call json_write_key(js, 'ncycles', ncycles)
             call json_write_key(js, 'chem_pot', mu)
             call json_write_key(js, 'rng_seed', rng_seed, terminal=.true.)
@@ -286,5 +288,41 @@ contains
         end do
 
     end subroutine generate_allowed_orbital_list
+
+    pure function free_energy_correction(sys, mu, beta) result(correction)
+
+        ! Given an estimate for Z_GC(N)/Z_GC = N_ACC/N_ATT evaluated above, we can
+        ! estimate the non-interacting free energy as:
+        ! F^0_C = -kT log(e^{-beta mu N}Z_GC(N)), so given N_ACC/N_ATT = d, it follows that
+        ! F^0_C = -kT log(d) -kT log(Z_GC) + mu N = -kT log(d) + Omega + mu N, where Omega is
+        ! is the grand potential. This routine evalues Omega and mu N, which can then be combined
+        ! with the estimate for -k T log(d) during post processing.
+
+        ! In:
+        !    sys: system begin studied.
+        !    mu: chemical potential.
+        !    beta: inverse temperature.
+
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        real(p), intent(in) :: mu, beta
+        real(p) :: correction
+
+        real(p) :: omega
+        integer :: iorb
+
+        omega = 0.0_p
+
+        ! The grand potential omega = -kT log(prod_i(1+e^{-beta (e_i-mu)})).
+        do iorb = 1, sys%basis%nbasis, 2
+            omega = omega + log(1.0_p+exp(-beta*(sys%basis%basis_fns(iorb)%sp_eigv-mu)))
+        end do
+
+        if (sys%ms == 0) omega = omega * 2.0
+
+        correction = (-1.0/beta)*omega + mu*sys%nel
+
+    end function free_energy_correction
 
 end module canonical_energy_estimates
