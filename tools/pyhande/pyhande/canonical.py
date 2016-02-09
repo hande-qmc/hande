@@ -82,6 +82,12 @@ results : :class:`pandas.DataFrame`
     else:
         # Hope to find it in the input file...
         results['Beta'] = pyhande.legacy.extract_input(metadata, 'beta')
+    if 'chem_pot' in metadata:
+        # New, richer JSON-based metadata.
+        results['mu'] = [metadata['chem_pot']]
+    else:
+        # Hope to find it in the input file...
+        results['mut'] = pyhande.legacy.extract_input(metadata, 'chem_pot')
     # Free estimates contain no denominator so the error is
     # just the standard error.
     results['<H>_0'] = [means['<H>_0']]
