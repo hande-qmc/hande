@@ -4,6 +4,9 @@ implicit none
 
 ! Type containing data for excitation generators
 type excit_gen_data_t
+    ! Excitation generator to use, duplicated from qmc_in.
+    integer :: excit_gen
+
     ! Probability of attempting single or double excitations.
     real(p) :: pattempt_single, pattempt_double
 
@@ -25,5 +28,23 @@ type excit_gen_data_t
     ! k_i+k_j...
     integer(i0), allocatable :: ueg_ternary_conserve(:,:,:,:)
 end type excit_gen_data_t
+
+contains
+
+    subroutine dealloc_excit_gen_data_t(excit_gen_data)
+
+        ! Deallocate the excitation generator data.
+
+        ! In/Out:
+        !   excit_gen_data: excit_gen_data_t to be deallocated.
+
+        ! It is a bit superfluous to have this subroutine for one deallocation, but it will be more
+        ! useful in future.
+
+        type(excit_gen_data_t), intent(inout) :: excit_gen_data
+
+        if (allocated(excit_gen_data%ueg_ternary_conserve)) deallocate(excit_gen_data%ueg_ternary_conserve)
+
+    end subroutine dealloc_excit_gen_data_t
 
 end module excit_gens

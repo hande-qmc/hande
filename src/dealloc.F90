@@ -18,6 +18,7 @@ contains
         use spawn_data, only: dealloc_spawn_t
         use reference_determinant, only: dealloc_reference_t
         use load_balancing, only: dealloc_parallel_t
+        use excit_gens, only: dealloc_excit_gen_data_t
 
         type(qmc_state_t), intent(inout) :: qs
 
@@ -26,13 +27,12 @@ contains
 
         if (allocated(qs%trial%wfn_dat)) deallocate(qs%trial%wfn_dat)
 
-        if (allocated(qs%excit_gen_data%ueg_ternary_conserve)) deallocate(qs%excit_gen_data%ueg_ternary_conserve)
-
         call dealloc_particle_t(qs%psip_list)
         call dealloc_spawn_t(qs%spawn_store%spawn)
         call dealloc_spawn_t(qs%spawn_store%spawn_recv)
         call dealloc_reference_t(qs%ref)
         call dealloc_parallel_t(qs%par_info)
+        call dealloc_excit_gen_data_t(qs%excit_gen_data)
 
     end subroutine dealloc_qmc_state_t
 

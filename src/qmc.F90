@@ -51,6 +51,7 @@ contains
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
                             reference_t, neel_singlet
         use dmqmc_data, only: dmqmc_in_t
+        use excit_gens, only: dealloc_excit_gen_data_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -133,6 +134,7 @@ contains
         call init_annihilation_flags(qmc_in, fciqmc_in_loc, dmqmc_in_loc, annihilation_flags)
         call init_trial(sys, fciqmc_in_loc, qmc_state%trial)
         call init_estimators(sys, qmc_in, restart_in%read_restart.and.fciqmc_in_loc%non_blocking_comm, qmc_state)
+        if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
 
     end subroutine init_qmc
@@ -677,6 +679,9 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(reference_t), intent(in) :: ref
         type(excit_gen_data_t), intent(out) :: excit_gen_data
+
+        ! Set type of excitation generator to use
+        excit_gen_data%excit_gen = qmc_in%excit_gen
 
         ! If not set at input, set probability of selecting single or double
         ! excitations based upon the reference determinant and assume other
