@@ -97,16 +97,27 @@ results : :class:`pandas.DataFrame`
     results['V_0'] = [means['V_0']]
     results['V_0_error'] = [np.sqrt(covariances['V_0']['V_0']/nsamples)]
     if 'N_ACC/N_ATT' in means:
-        results['N_acc/N_att'] = [means['N_ACC/N_ATT']]
-        results['N_acc/N_att_error'] = (
+        results['N_ACC/N_ATT'] = [means['N_ACC/N_ATT']]
+        results['N_ACC/N_ATT_error'] = (
                 [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/nsamples)])
-        if (metadata['fermi_temperature']):
+        if (metadata['fermi_temperature'] == 'true'):
             beta = results['Beta'][0] / metadata['system']['ueg']['E_fermi']
+        else:
+            beta = results['Beta'][0]
         correction = [metadata['free_energy_corr']]
         results['F_0'] = (
-                (-1.0/beta)*np.log(results['N_acc/N_att']) + correction)
+                (-1.0/beta)*np.log(results['N_ACC/N_ATT']) + correction)
+        # Normal error estimate for natural logarithm.
         results['F_0_error'] = (
-                    results['N_acc/N_att_error']/(beta*results['N_acc/N_att']))
+                    results['N_ACC/N_ATT_error']/(beta*results['N_ACC/N_ATT']))
+        results['S_0'] = beta * (results['T_0']-results['F_0'])
+        # U and F are correlated so DS = ((DT_0^2 + DF^2 + 2 COV(T_0,F))/T)^0.5
+        # COV(x,f(y)) = 1/(N*N-1) sum_{i<j}(x_i-X)(y_i-Y)df/dy|y=Y
+        # df/dy = -kT/(N_ACC/N_ATT)
+        results['S_0_error'] = (beta*np.sqrt(results['T_0_error']**2.0 +
+                                results['F_0_error']**2.0 -
+                                2.0*covariances['N_ACC/N_ATT']['T_0'] /
+                                (nsamples*results['N_ACC/N_ATT']*beta)))
 
     # Take care of the correlation between numerator and denominator
     # in Hartree-Fock estimates.
