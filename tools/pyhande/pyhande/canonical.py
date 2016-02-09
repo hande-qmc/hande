@@ -87,7 +87,7 @@ results : :class:`pandas.DataFrame`
         results['mu'] = [metadata['chem_pot']]
     else:
         # Hope to find it in the input file...
-        results['mut'] = pyhande.legacy.extract_input(metadata, 'chem_pot')
+        results['mu'] = pyhande.legacy.extract_input(metadata, 'chem_pot')
     # Free estimates contain no denominator so the error is
     # just the standard error.
     results['<H>_0'] = [means['<H>_0']]
@@ -99,6 +99,17 @@ results : :class:`pandas.DataFrame`
     results['N_acc/N_att'] = [means['N_ACC/N_ATT']]
     results['N_acc/N_att_error'] = (
                   [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/nsamples)])
+    if 'N_ACC/N_ATT' in means:
+        results['N_acc/N_att'] = [means['N_ACC/N_ATT']]
+        results['N_acc/N_att_error'] = (
+                [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/nsamples)])
+        if (metadata['fermi_temperature']):
+            beta = results['Beta'][0] / metadata['system']['ueg']['E_fermi']
+        correction = [metadata['free_energy_corr']]
+        results['F_0'] = (
+                (-1.0/beta)*np.log(results['N_acc/N_att']) + correction)
+        results['F_0_error'] = (
+                    results['N_acc/N_att_error']/(beta*results['N_acc/N_att']))
 
     # Take care of the correlation between numerator and denominator
     # in Hartree-Fock estimates.
