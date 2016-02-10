@@ -768,7 +768,7 @@ contains
         use json_out
 
         use determinants, only: spin_orb_list
-        use system, only: sys_t
+        use system, only: sys_t, heisenberg, chung_landau
         use symmetry, only: symmetry_orb_list
 
         type(json_out_t), intent(inout) :: js
@@ -780,14 +780,16 @@ contains
         if (allocated(ref%occ_list0)) then
             call json_write_key(js, 'det', ref%occ_list0)
             if (present(sys)) then
-                call json_write_key(js, 'det_ms', spin_orb_list(sys%basis%basis_fns, ref%occ_list0))
+                if (sys%system /= heisenberg .and. sys%system /= chung_landau) &
+                    call json_write_key(js, 'det_ms', spin_orb_list(sys%basis%basis_fns, ref%occ_list0))
                 call json_write_key(js, 'det_symmetry', symmetry_orb_list(sys, ref%occ_list0))
             end if
         end if
         if (allocated(ref%hs_occ_list0)) then
             call json_write_key(js, 'hilbert_space_det', ref%hs_occ_list0)
             if (present(sys)) then
-                call json_write_key(js, 'hilbert_space_det_ms', spin_orb_list(sys%basis%basis_fns, ref%hs_occ_list0))
+                if (sys%system /= heisenberg .and. sys%system /= chung_landau) &
+                    call json_write_key(js, 'hilbert_space_det_ms', spin_orb_list(sys%basis%basis_fns, ref%hs_occ_list0))
                 call json_write_key(js, 'hilbert_space_det_symmetry', symmetry_orb_list(sys, ref%hs_occ_list0))
             end if
         end if

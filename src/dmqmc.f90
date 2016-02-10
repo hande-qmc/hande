@@ -131,7 +131,11 @@ contains
         ! and to initalise reduced density matrix quantities if necessary.
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
         ! Determine the chemical potential if doing the ip-dmqmc algorithm.
-        if (dmqmc_in%propagate_to_beta .and. dmqmc_in%grand_canonical_initialisation) mu = find_chem_pot(sys, qs%init_beta)
+        if (dmqmc_in%propagate_to_beta .and. dmqmc_in%grand_canonical_initialisation) then
+            mu = find_chem_pot(sys, qs%init_beta)
+        else
+            mu = 0.0_p
+        end if
 
         if (parent) then
             call json_object_init(js, tag=.true.)
