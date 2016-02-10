@@ -156,14 +156,14 @@ contains
         type(csrp_t), intent(in), optional :: hamil_csr
         logical :: sparse_hamil
 
-        integer :: ndets
-
 #ifdef DISABLE_LANCZOS
         call stop_all('lanczos_diagonalisation','Lanczos diagonalisation disabled at compile-time.')
         ! Avoid compile-time warnings about unset intent(out) variables...
         nfound = 0
         eigv = huge(0.0_p)
 #else
+
+        integer :: ndets
 
         integer, parameter :: lohi = -1
         integer :: mev
