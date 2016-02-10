@@ -154,9 +154,6 @@ contains
         real(p), intent(out) :: eigv(:)
         real(p), intent(in), optional :: hamil(:,:)
         type(csrp_t), intent(in), optional :: hamil_csr
-        logical :: sparse_hamil
-
-        integer :: ndets
 
 #ifdef DISABLE_LANCZOS
         call stop_all('lanczos_diagonalisation','Lanczos diagonalisation disabled at compile-time.')
@@ -164,6 +161,9 @@ contains
         nfound = 0
         eigv = huge(0.0_p)
 #else
+
+        logical :: sparse_hamil
+        integer :: ndets
 
         integer, parameter :: lohi = -1
         integer :: mev
@@ -275,8 +275,6 @@ contains
 #ifdef SINGLE_PRECISION
         deallocate(evec_copy, stat=ierr)
         call check_deallocate('evec_copy',ierr)
-#endif
-! end ifdef DISABLE_LANCZOS
 #endif
 
     contains
@@ -427,6 +425,9 @@ contains
             end do
 
         end subroutine HPsi_direct
+
+! end ifdef DISABLE_LANCZOS
+#endif
 
     end subroutine lanczos_diagonalisation
 
