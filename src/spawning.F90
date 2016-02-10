@@ -32,7 +32,7 @@ contains
 !--- Spawning wrappers ---
 
     subroutine spawn_standard(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                              gen_excit_ptr, weights, nspawn, connection)
+                              gen_excit_ptr, weights, nspawn, nspawn_dummy, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -60,6 +60,8 @@ contains
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
+        !    nspawn_dummy: unused argument for compatability with spawner_ptr
+        !        interface for both real and complex systems.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -79,11 +81,13 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn, nspawn_dummy
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
         logical :: allowed
+
+        nspawn_dummy = 0_int_p
 
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
@@ -94,7 +98,7 @@ contains
     end subroutine spawn_standard
 
     subroutine spawn_importance_sampling(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                         gen_excit_ptr, weights, nspawn, connection)
+                                         gen_excit_ptr, weights, nspawn, nspawn_dummy, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -126,6 +130,8 @@ contains
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
+        !    nspawn_dummy: unused argument for compatability with spawner_ptr
+        !        interface for both real and complex systems.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -145,11 +151,13 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn, nspawn_dummy
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
         logical :: allowed
+
+        nspawn_dummy = 0_int_p
 
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
@@ -163,7 +171,7 @@ contains
     end subroutine spawn_importance_sampling
 
     subroutine spawn_lattice_split_gen(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                       gen_excit_ptr, weights, nspawn, connection)
+                                       gen_excit_ptr, weights, nspawn, nspawn_dummy, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -205,6 +213,8 @@ contains
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
+        !    nspawn_dummy: unused argument for compatability with spawner_ptr
+        !        interface for both real and complex systems.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -225,11 +235,13 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn, nspawn_dummy
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, abs_hmatel, hmatel
         logical :: allowed
+
+        nspawn_dummy = 0_int_p
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
@@ -251,7 +263,7 @@ contains
     end subroutine spawn_lattice_split_gen
 
     subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                                           gen_excit_ptr, weights, nspawn, connection)
+                                                           gen_excit_ptr, weights, nspawn, nspawn_dummy, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -290,6 +302,8 @@ contains
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
+        !    nspawn_dummy: unused argument for compatability with spawner_ptr
+        !        interface for both real and complex systems.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -310,11 +324,13 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn, nspawn_dummy
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, tilde_hmatel, hmatel
         logical :: allowed
+
+        nspawn_dummy = 0_int_p
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
@@ -343,7 +359,7 @@ contains
     end subroutine spawn_lattice_split_gen_importance_sampling
 
     subroutine spawn_null(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, weights, &
-                          nspawn, connection)
+                          nspawn, nspawn_dummy, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
@@ -368,6 +384,8 @@ contains
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
+        !    nspawn_dummy: unused argument for compatability with spawner_ptr
+        !        interface for both real and complex systems.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -387,8 +405,10 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn
+        integer(int_p), intent(out) :: nspawn, nspawn_dummy
         type(excit_t), intent(out) :: connection
+
+        nspawn_dummy = 0_int_p
 
         ! Just some null operations to avoid -Wall -Werror causing errors.
         connection%nexcit = huge(0)
@@ -399,7 +419,7 @@ contains
     end subroutine spawn_null
 
     subroutine spawn_complex(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                              gen_excit_ptr, weights, nspawn, connection, nspawn_im)
+                              gen_excit_ptr, weights, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -425,7 +445,11 @@ contains
         !        a complete excitation.
         !    weights: importance sampling weights.
         ! Out:
-        !    nspawn: number of particles spawned, in the encoded representation.
+        !    nspawn: number of particles spawned through real component of hmatel,
+        !        in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
+        !    nspawn_im: number of particles spawned through imaginary component of
+        !        hmatel, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
@@ -447,8 +471,7 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn
-        integer(int_p), intent(out) :: nspawn_im
+        integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel_dummy
@@ -464,7 +487,7 @@ contains
         else if (connection%nexcit == 2) then
             hmatel = slater_condon2_mol_excit_complex(sys, connection%from_orb(1), connection%from_orb(2),&
                                                       connection%to_orb(1), connection%to_orb(2), connection%perm)
-        else 
+        else
             hmatel = cmplx(0.0_p, 0.0_p, p)
         end if
 

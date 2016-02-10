@@ -50,7 +50,7 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel = slater_condon0_mol_complex(sys, f1)
+                hmatel = cmplx(slater_condon0_mol_complex(sys, f1), 0.0_p, p)
 
             case(1)
 
@@ -88,7 +88,8 @@ contains
         use molecular_integrals, only: get_one_body_int_mol_nonzero, get_two_body_int_mol_nonzero
         use system, only: sys_t
 
-        complex(p) :: hmatel
+        real(p) :: hmatel
+        complex(p) :: hmatel_comp
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f(sys%basis%string_len)
 
@@ -97,7 +98,13 @@ contains
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(sys%basis, f, occ_list)
 
-        hmatel = slater_condon0_mol_orb_list_complex(sys, occ_list)
+        hmatel_comp = slater_condon0_mol_orb_list_complex(sys, occ_list)
+
+        ! As Hamiltonian should be Hermitian < D | H | D > must be real, so for easier compatability..
+        hmatel = real(hmatel_comp, p)
+        ! If wanted to check this could try to write test; as inside pure procedure more
+        ! trouble than worth. Further optimisation could remove accretion of imaginary
+        ! component in slater_condon_mol_orb_list_complex.
 
     end function slater_condon0_mol_complex
 

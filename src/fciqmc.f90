@@ -55,7 +55,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
-        use system, only: sys_t, sys_t_jsoni, read_in
+        use system, only: sys_t, sys_t_json, read_in
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5, dump_restart_file_wrapper
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn, &
                               write_memcheck_report
@@ -83,7 +83,7 @@ contains
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
 
-        integer :: idet, ireport, icycle, iparticle, ideterm, ierr
+        integer :: idet, ireport, icycle, iparticle, ideterm, ierr, ispace
         integer :: iter, semi_stoch_iter
         integer(int_64) :: nattempts
         real(dp), allocatable :: nparticles_old(:)
@@ -93,7 +93,7 @@ contains
         integer :: nattempts_current_det, nspawn_events
         type(excit_t) :: connection
         real(p) :: hmatel
-        real(p) :: real_population(2), weighted_population
+        real(p) :: real_population(2), weighted_population(2)
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
@@ -223,8 +223,8 @@ contains
                     ! Extract the real sign from the encoded sign.
                     do ispace = 1, qs%psip_list%nspaces
                         real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
+                        weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
                     end do
-                    weighted_population = importance_sampling_weight(qs%trial, cdet, real_population)
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array.
@@ -234,11 +234,11 @@ contains
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
                                                 qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
 
                     ! Is this determinant an initiator?
-                    call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), cdet%initiator_flag)
+                    call set_parent_flag(real_population(1), qmc_in%initiator_pop, determ%flags(idet), cdet%initiator_flag)
 
                     do ispace  = 1, qs%psip_list%nspaces
 
@@ -247,20 +247,14 @@ contains
                         do iparticle = 1, nattempts_current_det
 
                             ! Attempt to spawn.
-                            if (complex_mode) then
-                                call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                                cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
-                                                nspawned, connection, nspawned_im)
+                            call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
+                                            cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
+                                            nspawned, nspawned_im, connection)
+                            if (complex_mode .and. ispace == 2) then
                                 ! If imaginary parent have to factor into resulting signs/reality.
-                                if (ispace == 2) then
-                                    scratch = nspawned_im
-                                    nspawned_im = nspawned
-                                    nspawned = -scratch
-                                end if
-                            else
-                                call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                                cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
-                                                nspawned, connection)
+                                scratch = nspawned_im
+                                nspawned_im = nspawned
+                                nspawned = -scratch
                             end if
 
                             ! Spawn if attempt was successful.
@@ -283,10 +277,11 @@ contains
                                 if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
                                     call accumulate_bloom_stats(bloom_stats, nspawned)
                             end if
-                            
                             if (nspawned_im /= 0_int_p) then
                                 call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, 2, &
                                                                      qs%spawn_store%spawn)
+                                if (abs(nspawned_im) >= bloom_stats%nparticles_encoded) &
+                                    call accumulate_bloom_stats(bloom_stats, nspawned_im)
                             end if
                         end do
 
@@ -432,7 +427,7 @@ contains
         type(excit_t) :: connection
         real(p) :: hmatel
         integer :: idet, iparticle, nattempts_current_det
-        integer(int_p) :: nspawned
+        integer(int_p) :: nspawned, dummy
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop
         real(dp) :: list_pop
@@ -468,7 +463,7 @@ contains
 
                 ! Attempt to spawn.
                 call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, qs%psip_list%pop_real_factor, cdet, int_pop(1), &
-                                 gen_excit_ptr, qs%trial%wfn_dat, nspawned, connection)
+                                 gen_excit_ptr, qs%trial%wfn_dat, nspawned, dummy, connection)
 
                 ! Spawn if attempt was successful.
                 if (nspawned /= 0) then

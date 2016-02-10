@@ -75,7 +75,7 @@ contains
         real(p), allocatable :: real_population(:)
         type(det_info_t) :: cdet
 
-        integer(int_p) :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath, dummy
         integer :: nspawn_events
         type(excit_t) :: connection
         type(dSFMT_t) :: rng
@@ -163,7 +163,8 @@ contains
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
                     call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_population(1),  &
-                                                qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
+                                                qs%estimators%D0_population, qs%estimators%proj_energy, &
+                                                connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(qs%psip_list%pops(1,idet)),&
                                              int(qs%psip_list%pops(2,idet)), cdet%data,  &
@@ -185,7 +186,8 @@ contains
 
                         ! Attempt to spawn Hamiltonian walkers..
                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                         cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, qs%trial%wfn_dat, nspawned, connection)
+                                         cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, qs%trial%wfn_dat, &
+                                         nspawned, dummy, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
@@ -198,7 +200,7 @@ contains
                         ! [todo] - JSS: real populations for HFS spawner.
                         call spawner_hfs_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
                                              cdet, qs%psip_list%pops(1,idet), gen_excit_hfs_ptr, qs%trial%wfn_dat, nspawned, &
-                                             connection)
+                                             dummy, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)
@@ -214,7 +216,8 @@ contains
                         ! Attempt to spawn Hellmann--Feynman walkers from
                         ! Hellmann--Feynman walkers.
                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                         cdet, qs%psip_list%pops(2,idet), gen_excit_ptr, qs%trial%wfn_dat, nspawned, connection)
+                                         cdet, qs%psip_list%pops(2,idet), gen_excit_ptr, qs%trial%wfn_dat, nspawned, &
+                                         dummy, connection)
                         ! Spawn if attempt was successful.
                         if (nspawned /= 0_int_p) then
                             associate(spawn=>qs%spawn_store%spawn)

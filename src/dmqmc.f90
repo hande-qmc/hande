@@ -83,7 +83,7 @@ contains
         integer(int_64) :: nattempts
         integer :: nel_temp, nattempts_current_det
         type(det_info_t) :: cdet1, cdet2
-        integer(int_p) :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath, dummy
         type(excit_t) :: connection
         integer :: spawning_end, nspawn_events
         logical :: soft_exit, write_restart_shift, update_tau
@@ -286,7 +286,7 @@ contains
                                     ! Attempt to spawn.
                                     call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                                                      qs%psip_list%pop_real_factor, cdet1, qs%psip_list%pops(ireplica,idet), &
-                                                     gen_excit_ptr, weighted_sampling%probs, nspawned, connection)
+                                                     gen_excit_ptr, weighted_sampling%probs, nspawned, dummy, connection)
                                     ! Spawn if attempt was successful.
                                     if (nspawned /= 0_int_p) then
                                         call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet1, connection, nspawned, &
@@ -300,7 +300,7 @@ contains
                                         spawning_end = 2
                                         call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, &
                                                          qs%psip_list%pop_real_factor, cdet2, qs%psip_list%pops(ireplica,idet), &
-                                                         gen_excit_ptr, weighted_sampling%probs, nspawned, connection)
+                                                         gen_excit_ptr, weighted_sampling%probs, nspawned, dummy, connection)
                                         if (nspawned /= 0_int_p) then
                                             call create_spawned_particle_dm_ptr(sys%basis, qs%ref, cdet2, connection, nspawned, &
                                                                                 spawning_end, ireplica, qs%spawn_store%spawn)
