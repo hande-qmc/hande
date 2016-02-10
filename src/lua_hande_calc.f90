@@ -152,7 +152,6 @@ contains
         use flu_binding, only: flu_State, flu_copyptr
         use aot_table_module, only: aot_table_top, aot_table_close
 
-        use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
