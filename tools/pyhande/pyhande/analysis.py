@@ -5,9 +5,11 @@ import numpy
 import pandas as pd
 import sys
 
-sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../pyblock'))
-import pyblock.error
-import pyblock.pd_utils
+try:
+    import pyblock
+except ImportError:
+    sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../pyblock'))
+    import pyblock
 
 def projected_energy(reblock_data, covariance, data_length,
                      sum_key='\sum H_0j N_j', ref_key='N_0',
