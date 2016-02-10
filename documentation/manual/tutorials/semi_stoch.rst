@@ -48,14 +48,10 @@ iteration 10000, we modify the above input to the following:
 .. literalinclude:: calcs/semi_stoch/hubbard_semi_stoch_high.lua
     :language: lua
 
-Here, the ``semi-stoch`` table contains four keywords. The use of ``size`` and
+Here, the ``semi-stoch`` table contains three keywords. The use of ``size`` and
 ``start_iteration`` keywords is hopefully clear. The ``space`` keyword determines
 which method is used to generate the deterministic space - in this case it done
-by choosing the determiniants with the highest weights. The ``separate_annihilation``
-keyword is somewhat technical - setting it to false avoids the use of an extra MPI
-communication per iteration when using semi-stochastic. While this can be a benefit,
-it can slow other areas of annihilation down substantially in certain cases, and so
-we advise the inexperienced user against this.
+by choosing the determiniants with the highest weights.
 
 This results in the following simulation:
 

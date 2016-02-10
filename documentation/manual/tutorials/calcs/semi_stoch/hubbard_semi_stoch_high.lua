@@ -24,7 +24,6 @@ fciqmc {
     },
     semi_stoch = {
         size = 10000,
-        separate_annihilation = false,
         start_iteration = 20000,
         space = "high",
     },
