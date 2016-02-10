@@ -394,7 +394,8 @@ type particle_t
     real(dp), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
     ! Walker information: main list.
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
-    ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
+    ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling or
+    ! complex FCIQMC).
     integer :: nspaces = 1
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.

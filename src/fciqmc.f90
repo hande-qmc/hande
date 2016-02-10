@@ -55,7 +55,7 @@ contains
         use dSFMT_interface, only: dSFMT_t, dSFMT_init, dSFMT_end
         use semi_stoch, only: semi_stoch_t, check_if_determ, determ_projection
         use semi_stoch, only: dealloc_semi_stoch_t, init_semi_stoch_t, init_semi_stoch_t_flags, set_determ_info
-        use system, only: sys_t, sys_t_json
+        use system, only: sys_t, sys_t_jsoni, read_in
         use restart_hdf5, only: init_restart_info_t, restart_info_t, dump_restart_hdf5, dump_restart_file_wrapper
         use spawn_data, only: receive_spawned_walkers, non_blocking_send, annihilate_wrapper_non_blocking_spawn, &
                               write_memcheck_report
@@ -89,11 +89,11 @@ contains
         real(dp), allocatable :: nparticles_old(:)
 
         integer(i0) :: f_child(sys%basis%string_len)
-        integer(int_p) :: nspawned, ndeath
+        integer(int_p) :: nspawned, ndeath, nspawned_im, scratch
         integer :: nattempts_current_det, nspawn_events
         type(excit_t) :: connection
         real(p) :: hmatel
-        real(p) :: real_population, weighted_population
+        real(p) :: real_population(2), weighted_population
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
@@ -105,6 +105,7 @@ contains
         real :: t1, t2
 
         logical :: update_tau, restarting
+        logical :: complex_mode
 
         if (parent) then
             write (6,'(1X,"FCIQMC")')
@@ -159,6 +160,15 @@ contains
         ! In case this is not set.
         nspawn_events = 0
 
+        ! Hacky workaround to check if using complex for now.
+        if (sys%system == read_in) then
+            if (sys%read_in%comp) complex_mode = .true.
+        else
+            complex_mode = .false.
+            ! Set this so don't need extra checks.
+            nspawned_im = 0_int_p
+        end if
+
         ! Some initial semi-stochastic parameters.
         ! Turn semi-stochastic on immediately unless asked otherwise.
         semi_stoch_iter = max(semi_stoch_in%start_iter, qs%mc_cycles_done+1)
@@ -211,12 +221,14 @@ contains
                     call decoder_ptr(sys, cdet%f, cdet)
 
                     ! Extract the real sign from the encoded sign.
-                    real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor
+                    do ispace = 1, qs%psip_list%nspaces
+                        real_population(ispace) = real(qs%psip_list%pops(ispace,idet),p)/qs%psip_list%pop_real_factor
+                    end do
                     weighted_population = importance_sampling_weight(qs%trial, cdet, real_population)
 
                     ! If this is a deterministic state then copy its population
                     ! across to the determ%vector array.
-                    call set_determ_info(idet, real_population, ideterm, determ, determ_parent)
+                    call set_determ_info(idet, real_population(1), ideterm, determ, determ_parent)
 
                     ! It is much easier to evaluate the projected energy at the
                     ! start of the i-FCIQMC cycle than at the end, as we're
@@ -228,34 +240,55 @@ contains
                     ! Is this determinant an initiator?
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), cdet%initiator_flag)
 
-                    nattempts_current_det = decide_nattempts(rng, real_population)
+                    do ispace  = 1, qs%psip_list%nspaces
 
-                    do iparticle = 1, nattempts_current_det
+                        nattempts_current_det = decide_nattempts(rng, real_population(ispace))
 
-                        ! Attempt to spawn.
-                        call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
-                                        cdet, qs%psip_list%pops(1,idet), gen_excit_ptr, qs%trial%wfn_dat, nspawned, connection)
+                        do iparticle = 1, nattempts_current_det
 
-                        ! Spawn if attempt was successful.
-                        if (nspawned /= 0_int_p) then
-                            if (determ_parent) then
-                                call create_excited_det(sys%basis, cdet%f, connection, f_child)
-                                determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
-                                ! If the spawning is both from and to the
-                                ! deterministic space, cancel it.
-                                if (.not. determ_child) then
-                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
-                                                                     1, qs%spawn_store%spawn, f_child)
-                                else
-                                    nspawned = 0_int_p
+                            ! Attempt to spawn.
+                            if (complex_mode) then
+                                call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
+                                                cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
+                                                nspawned, connection, nspawned_im)
+                                ! If imaginary parent have to factor into resulting signs/reality.
+                                if (ispace == 2) then
+                                    scratch = nspawned_im
+                                    nspawned_im = nspawned
+                                    nspawned = -scratch
                                 end if
                             else
-                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
-                                                                 qs%spawn_store%spawn)
+                                call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
+                                                cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
+                                                nspawned, connection)
                             end if
-                            if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
-                                call accumulate_bloom_stats(bloom_stats, nspawned)
-                        end if
+
+                            ! Spawn if attempt was successful.
+                            if (nspawned /= 0_int_p) then
+                                if (determ_parent) then
+                                    call create_excited_det(sys%basis, cdet%f, connection, f_child)
+                                    determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
+                                    ! If the spawning is both from and to the
+                                    ! deterministic space, cancel it.
+                                    if (.not. determ_child) then
+                                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
+                                                                         1, qs%spawn_store%spawn, f_child)
+                                    else
+                                        nspawned = 0_int_p
+                                    end if
+                                else
+                                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, &
+                                                                     qs%spawn_store%spawn)
+                                end if
+                                if (abs(nspawned) >= bloom_stats%nparticles_encoded) &
+                                    call accumulate_bloom_stats(bloom_stats, nspawned)
+                            end if
+                            
+                            if (nspawned_im /= 0_int_p) then
+                                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, 2, &
+                                                                     qs%spawn_store%spawn)
+                            end if
+                        end do
 
                     end do
 

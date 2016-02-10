@@ -99,7 +99,6 @@ contains
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
 
-        if (sys%read_in%comp) call stop_all(this, 'Complex FCIQMC not yet implemented')
 
     end subroutine check_fciqmc_opts
 

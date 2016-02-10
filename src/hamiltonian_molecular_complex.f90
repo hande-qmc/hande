@@ -9,7 +9,7 @@ implicit none
 
 private
 public :: get_hmatel_mol_comp, slater_condon1_mol_excit_complex, slater_condon2_mol_excit_complex
-
+public :: slater_condon0_mol_complex
 contains
 
     pure function get_hmatel_mol_comp(sys, f1, f2) result(hmatel)

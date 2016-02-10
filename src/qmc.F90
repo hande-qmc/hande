@@ -47,7 +47,7 @@ contains
         use energy_evaluation, only: nparticles_start_ind
         use load_balancing, only: init_parallel_t
         use particle_t_utils, only: init_particle_t
-        use system, only: sys_t
+        use system, only: sys_t, read_in
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, neel_singlet
@@ -95,6 +95,8 @@ contains
             qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (present(dmqmc_in)) then
             if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+        else if (sys%system == read_in) then
+            if (sys%read_in%comp) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         end if
         ! Each determinant occupies string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
@@ -187,6 +189,7 @@ contains
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol
+        use hamiltonian_molecular_complex, only: slater_condon0_mol_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
@@ -301,9 +304,15 @@ contains
             end if
 
         case(read_in)
-
-            update_proj_energy_ptr => update_proj_energy_mol
-            sc0_ptr => slater_condon0_mol
+            if (sys%read_in%comp) then
+                update_proj_energy_ptr => update_proj_energy_mol
+                sc0_ptr => slater_condon0_mol_complex
+                energy_diff_ptr => null()
+            else
+                update_proj_energy_ptr => update_proj_energy_mol
+                sc0_ptr => slater_condon0_mol
+                energy_diff_ptr => double_counting_correction_mol
+            end if
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
