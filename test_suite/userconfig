@@ -2,7 +2,7 @@
 exe = ../bin/hande.x
 inputs_args = ('*.in', '')
 vcs = git
-extract_fn = ../tools/ pyhande.testcode.testcode_data
+extract_fn = ../tools/pyhande pyhande.testcode.testcode_data
 extract_program = ../tools/tests/extract_test_data.py
 ignore_fields = time R_spawn '# states' '# spawn_events'
 skip_program = grep
