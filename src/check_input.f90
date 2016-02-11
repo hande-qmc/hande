@@ -95,8 +95,6 @@ contains
                 'Flipping the reference state will give a state which has a different value of Ms and so cannot be used here.')
         end if
 
-        if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be non-negative.')
-
     end subroutine check_fciqmc_opts
 
     subroutine check_qmc_opts(qmc_in, need_length, restarting)
@@ -161,8 +159,6 @@ contains
             if (fci_in%lanczos_string_len <= 0) call stop_all(this,'Lanczos basis not positive.')
             if (fci_in%nlanczos_eigv <= 0) call stop_all(this,'# lanczos eigenvalues not positive.')
         end if
-
-        if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be non-negative.')
 
     end subroutine check_fci_opts
 
@@ -281,8 +277,6 @@ contains
             call stop_all(this, 'metropolis_attempts must be greater than zero.')
         end if
 
-        if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be positive.')
-
     end subroutine check_dmqmc_opts
 
     subroutine check_ccmc_opts(sys, ccmc_in)
@@ -311,8 +305,6 @@ contains
         if (ccmc_in%cluster_multispawn_threshold <= 0) then
             call stop_all(this, "cluster_multispawn_threshold must be positive")
         end if
-
-        if (sys%symmetry < 0) call stop_all(this, 'Symmetry must be non-negative.')
 
     end subroutine check_ccmc_opts
 

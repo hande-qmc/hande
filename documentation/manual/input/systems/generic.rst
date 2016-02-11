@@ -46,9 +46,8 @@ Options
 
     Set the symmetry of the system.  This is the index of a specific irreducible
     representation from the FCIDUMP file; see the output produced by creating a system for
-    possible values. A negative value implies no symmetry is considered which is only
-    useful for **canonical_energy** calculations for the UEG which do not require symmetry
-    tables.
+    possible values.  The symmetry can be left unspecified by setting it to zero, in which
+    case the symmetry used is that of a determinant selected using the Aufbau principle.
 ``Lz``
     type: boolean.
 

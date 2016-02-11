@@ -328,7 +328,7 @@ contains
             if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
-            if (sys%symmetry >= 0) call init_momentum_symmetry(sys)
+            call init_momentum_symmetry(sys)
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -702,7 +702,7 @@ contains
             if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
-            if (sys%symmetry >= 0) call init_momentum_symmetry(sys)
+            call init_momentum_symmetry(sys)
             call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
         end if
 
@@ -738,7 +738,6 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t, ringium, init_system
         use basis, only: init_model_basis_fns
-        use momentum_symmetry, only: init_momentum_symmetry
         use ringium_system, only: init_symmetry_ringium
         use check_input, only: check_sys
         use parallel, only: parent
