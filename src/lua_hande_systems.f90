@@ -437,8 +437,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'finite', 'ms', 'sym']
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'finite', 'ms']
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
 
@@ -464,16 +464,7 @@ contains
             call init_real_space(sys)
         end if
 
-        if (system_type == chung_landau) then
-            call warn_unused_args(lua_state, keys(:size(keys)-1), opts)
-        else
-            if (parent) then
-                ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
-                if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
-                    call stop_all('real_lattice_wrapper', 'Symmetry out of range.')
-            end if
-            call warn_unused_args(lua_state, keys, opts)
-        end if
+        call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         call push_sys(lua_state, sys)
