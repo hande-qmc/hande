@@ -475,6 +475,12 @@ type estimators_t
     ! The total number of successful spawning events, across all processors.
     integer :: tot_nspawn_events = 0
 
+    ! If performing calculations with real and imaginary walkers must be able to
+    ! accumulate complex values. Have to be converted to real values for mpi, but
+    ! makes manipulation much easier later on.
+    complex(p) :: proj_energy_comp
+    complex(p) :: D0_population_comp
+
     ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
     ! Signed population of Hellmann--Feynman particles
     !     \sum_i sign(N_i) \tilde{N}_i,

@@ -96,7 +96,9 @@ contains
         else if (present(dmqmc_in)) then
             if (dmqmc_in%replica_tricks) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
         else if (sys%system == read_in) then
-            if (sys%read_in%comp) qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+            if (sys%read_in%comp) then
+                qmc_state%psip_list%nspaces = qmc_state%psip_list%nspaces + 1
+            end if
         end if
         ! Each determinant occupies string_len kind=i0 integers,
         ! qmc_state%psip_list%nspaces kind=int_p integers, qmc_state%psip_list%nspaces kind=p reals and one
@@ -305,7 +307,7 @@ contains
 
         case(read_in)
             if (sys%read_in%comp) then
-                update_proj_energy_ptr => update_proj_energy_mol
+                update_proj_energy_ptr => null()
                 sc0_ptr => slater_condon0_mol_complex
                 energy_diff_ptr => null()
             else

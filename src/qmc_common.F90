@@ -835,7 +835,8 @@ contains
 
     subroutine end_report_loop(qmc_in, iteration, update_tau, qs, ntot_particles,              &
                                 nspawn_events, semi_stoch_shift_it, semi_stoch_start_it, soft_exit, &
-                                load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, error)
+                                load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, &
+                                comp, error)
 
         ! In:
         !    qmc_in: input optons relating to QMC methods.
@@ -863,6 +864,7 @@ contains
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
         !    load_bal_in: input options for load balancing.
+        !    comp: true if doing qmc calculation with real and imaginary walkers.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    error: true if an error has occured and we need to quit.
@@ -881,7 +883,7 @@ contains
         logical, intent(inout) :: update_tau
         type(qmc_state_t), intent(inout) :: qs
         integer, intent(in) :: nspawn_events
-        logical, optional, intent(in) :: update_estimators
+        logical, optional, intent(in) :: update_estimators, comp
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
         real(dp), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
         integer, intent(in) :: semi_stoch_shift_it
@@ -892,7 +894,7 @@ contains
         logical, optional, intent(in) :: doing_lb, nb_comm
         logical, optional, intent(inout) :: error
 
-        logical :: update, vary_shift_before, nb_comm_local, comms_found
+        logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
@@ -911,16 +913,23 @@ contains
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
+        ! Check if complex parameter passed to function, and if not set to
+        ! value that will have no effect.
+        if (present(comp)) then
+            comp_param = comp
+        else
+            comp_param = .false.
+        end if
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
             call update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles, load_bal_in, doing_lb, &
-                                          comms_found, error, update_tau, bloom_stats)
+                                      comms_found, error, update_tau, bloom_stats, comp_param)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
             call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, error, update_tau, &
-                                          bloom_stats, qs%par_info%report_comm%nb_spawn(2))
+                                          bloom_stats, qs%par_info%report_comm%nb_spawn(2), comp_param)
             ! Receive previous iterations report loop quantities.
             call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
                                                qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, error, &

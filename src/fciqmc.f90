@@ -65,6 +65,7 @@ contains
                             fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
+        use energy_evaluation, only: update_proj_energy_mol_complex
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -89,7 +90,8 @@ contains
         real(dp), allocatable :: nparticles_old(:)
 
         integer(i0) :: f_child(sys%basis%string_len)
-        integer(int_p) :: nspawned, ndeath, nspawned_im, scratch
+        integer(int_p) :: nspawned, nspawned_im, scratch
+        integer(int_p) ::  ndeath, ndeath_im
         integer :: nattempts_current_det, nspawn_events
         type(excit_t) :: connection
         real(p) :: hmatel
@@ -105,7 +107,7 @@ contains
         real :: t1, t2
 
         logical :: update_tau, restarting
-        logical :: complex_mode
+        complex(p) :: hmatel_comp
 
         if (parent) then
             write (6,'(1X,"FCIQMC")')
@@ -159,15 +161,6 @@ contains
 
         ! In case this is not set.
         nspawn_events = 0
-
-        ! Hacky workaround to check if using complex for now.
-        if (sys%system == read_in) then
-            if (sys%read_in%comp) complex_mode = .true.
-        else
-            complex_mode = .false.
-            ! Set this so don't need extra checks.
-            nspawned_im = 0_int_p
-        end if
 
         ! Some initial semi-stochastic parameters.
         ! Turn semi-stochastic on immediately unless asked otherwise.
@@ -234,9 +227,15 @@ contains
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
-                                                qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
-
+                    if (sys%read_in%comp) then
+                        call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                                                    cmplx(weighted_population(1), weighted_population(2), p), &
+                                                    qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
+                                                    connection, hmatel_comp)
+                    else
+                        call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
+                                                    qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
+                    end if
                     ! Is this determinant an initiator?
                     call set_parent_flag(real_population(1), qmc_in%initiator_pop, determ%flags(idet), cdet%initiator_flag)
 
@@ -250,7 +249,7 @@ contains
                             call spawner_ptr(rng, sys, qs, qs%spawn_store%spawn%cutoff, qs%psip_list%pop_real_factor, &
                                             cdet, qs%psip_list%pops(ispace, idet), gen_excit_ptr, qs%trial%wfn_dat, &
                                             nspawned, nspawned_im, connection)
-                            if (complex_mode .and. ispace == 2) then
+                            if (sys%read_in%comp .and. ispace == 2) then
                                 ! If imaginary parent have to factor into resulting signs/reality.
                                 scratch = nspawned_im
                                 nspawned_im = nspawned
@@ -288,9 +287,15 @@ contains
                     end do
 
                     ! Clone or die.
-                    if (.not. determ_parent) call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
-                                                        qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
-
+                    if (.not. determ_parent) then
+                        call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                                       qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
+                        if (sys%read_in%comp) then
+                            call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                                           qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
+                            ndeath = ndeath + ndeath_im
+                        end if
+                    end if
                 end do
 
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
@@ -312,8 +317,8 @@ contains
                         if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
-
-                        call end_mc_cycle(nspawn_events, ndeath, pl%pop_real_factor, nattempts, qs%spawn_store%rspawn)
+                        ! As in real case ndeath_im is 0_int_p can just call this in either case without a problem.
+                        call end_mc_cycle(nspawn_events, ndeath + ndeath_im, pl%pop_real_factor, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate
 
@@ -326,7 +331,8 @@ contains
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
                                  load_bal_in, bloom_stats=bloom_stats, doing_lb=fciqmc_in%doing_load_balancing, &
-                                 nb_comm=fciqmc_in%non_blocking_comm, error=error)
+                                 nb_comm=fciqmc_in%non_blocking_comm, comp=sys%read_in%comp, &
+                                 error=error)
             if (error) exit
 
             if (update_tau) call rescale_tau(qs%tau)
