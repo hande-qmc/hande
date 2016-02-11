@@ -294,6 +294,7 @@ contains
         use momentum_symmetry, only: init_momentum_symmetry
         use check_input, only: check_sys
         use parallel, only: parent
+        use errors, only: stop_all
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -329,6 +330,12 @@ contains
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
             call init_momentum_symmetry(sys)
+        end if
+
+        if (parent) then
+            ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
+            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+                call stop_all('lua_hubbard_k', 'Symmetry out of range.')
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -418,6 +425,7 @@ contains
         use real_lattice, only: init_real_space
         use check_input, only: check_sys
         use parallel, only: parent
+        use errors, only: stop_all
 
         integer(c_int) :: nreturn
         type(c_ptr) :: L
@@ -459,6 +467,11 @@ contains
         if (system_type == chung_landau) then
             call warn_unused_args(lua_state, keys(:size(keys)-1), opts)
         else
+            if (parent) then
+                ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
+                if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+                    call stop_all('real_lattice_wrapper', 'Symmetry out of range.')
+            end if
             call warn_unused_args(lua_state, keys, opts)
         end if
         call aot_table_close(lua_state, opts)
@@ -499,6 +512,7 @@ contains
         use system, only: sys_t, read_in, init_system
         use check_input, only: check_sys
         use parallel, only: parent
+        use errors, only: stop_all
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -538,6 +552,12 @@ contains
             call read_in_integrals(sys, cas_info=sys%cas)
             call init_generic_system_basis(sys)
             call print_pg_symmetry_info(sys)
+        end if
+
+        if (parent) then
+            ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
+            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+                call stop_all('lua_read_in', 'Symmetry out of range.')
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -658,6 +678,7 @@ contains
         use ueg_system, only: init_ueg_proc_pointers
         use check_input, only: check_sys
         use parallel, only: parent
+        use errors, only: stop_all
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -704,6 +725,12 @@ contains
             call init_generic_system_basis(sys)
             call init_momentum_symmetry(sys)
             call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
+        end if
+
+        if (parent) then
+            ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
+            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+                call stop_all('lua_ueg', 'Symmetry out of range.')
         end if
 
         call warn_unused_args(lua_state, keys, opts)

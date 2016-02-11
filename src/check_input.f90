@@ -44,7 +44,7 @@ contains
                 call stop_all(this, 'Cannot set a staggered field for this lattice because it is frustrated.')
             if (abs(sys%heisenberg%staggered_magnetic_field) > depsilon .and. abs(sys%heisenberg%magnetic_field) > depsilon) &
                 call stop_all(this, 'Cannot set a uniform and a staggered field at the same time.')
-                        else if (sys%system == hub_k .or. sys%system == hub_real) then
+        else if (sys%system == hub_k .or. sys%system == hub_real) then
             if (sys%nel > 2*sys%lattice%nsites) call stop_all(this, 'More than two electrons per site.')
         end if
 
