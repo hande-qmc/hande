@@ -602,7 +602,8 @@ contains
         !       non-blocking calculations.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
-        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
+        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send, &
+                                    update_proj_energy_mol_complex
         use excitations, only: excit_t, get_excitation
         use fciqmc_data, only: write_fciqmc_report
         use importance_sampling, only: importance_sampling_weight
@@ -611,17 +612,19 @@ contains
         use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
         use system, only: sys_t
 
+
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
         logical, optional, intent(in) :: nb_comm
         integer, optional, intent(in) :: spawn_elsewhere
 
-        integer :: idet
+        integer :: idet, ispace
         real(dp) :: ntot_particles(qs%psip_list%nspaces)
-        real(p) :: real_population(qs%psip_list%nspaces), weighted_population
+        real(p) :: real_population(qs%psip_list%nspaces), weighted_population(qs%psip_list%nspaces)
         type(det_info_t) :: cdet
         real(p) :: hmatel
+        complex(p) :: hmatel_comp
         type(excit_t) :: D0_excit
         logical :: nb_comm_local
 #ifdef PARALLEL
@@ -634,18 +637,30 @@ contains
         ! update_proj_energy.
         qs%estimators%proj_energy = 0.0_p
         qs%estimators%D0_population = 0.0_p
+        qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+        qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         call alloc_det_info_t(sys, cdet)
         do idet = 1, qs%psip_list%nstates
             cdet%f = qs%psip_list%states(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
             cdet%data => qs%psip_list%dat(:,idet)
             real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
-            weighted_population = importance_sampling_weight(qs%trial, cdet, real_population(1))
+            do ispace = 1, qs%psip_list%nspaces
+                weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
+            end do
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                        qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, hmatel)
+            if (sys%read_in%comp) then
+                call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                            cmplx(weighted_population(1), weighted_population(2), p), &
+                            qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
+                            D0_excit, hmatel_comp)
+            else
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
+                                        qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, &
+                                        hmatel)
+            end if
         end do
         call dealloc_det_info_t(cdet)
 
@@ -686,7 +701,7 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            call write_fciqmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false.)
+            call write_fciqmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., comp=sys%read_in%comp)
         end if
 
     end subroutine initial_fciqmc_status
@@ -709,6 +724,8 @@ contains
         qs%estimators%proj_energy = 0.0_p
         qs%spawn_store%rspawn = 0.0_p
         qs%estimators%D0_population = 0.0_p
+        qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+        qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
 
     end subroutine init_report_loop
 

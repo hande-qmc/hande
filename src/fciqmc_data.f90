@@ -57,7 +57,7 @@ contains
 
     !--- Output procedures ---
 
-    subroutine write_fciqmc_report_header(ntypes, dmqmc_in, max_excit)
+    subroutine write_fciqmc_report_header(ntypes, dmqmc_in, max_excit, comp)
 
         ! In:
         !    ntypes: number of particle types being sampled.
@@ -75,9 +75,17 @@ contains
         integer, intent(in) :: ntypes
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
         integer, optional, intent(in) :: max_excit
+        logical, optional, intent(in) :: comp
+        logical :: comp_set
 
         integer :: i, j
         character(16) :: excit_header
+
+        if (present(comp)) then
+            comp_set = comp
+        else
+            comp_set = .false.
+        end if
 
         ! Data table info.
         write (6,'(1X,"Information printed out every QMC report loop:",/)')
@@ -195,7 +203,10 @@ contains
             end if
 
             write (6, '(3X,a11,6X)', advance='no') '# particles'
-
+        else if (comp_set) then
+            write (6,'(1X,a13,(2X,a17),2(2X,a20),2(2X,a17))', advance='no') &
+                     "# iterations ", "Shift            ", "Re{\sum H_0j N_j}  ", "Im{\sum H_0j N_j}  ", "Re{N_0}  ", "Im{N_0}  "
+            write (6,'(4X,a9,8X)', advance='no') "# H psips"
         else
             write (6,'(1X,a13,3(2X,a17))', advance='no') &
                      "# iterations ", "Shift            ", "\sum H_0j N_j    ", "N_0              "
@@ -212,7 +223,7 @@ contains
     end subroutine write_fciqmc_report_header
 
     subroutine write_fciqmc_report(qmc_in, qs, ireport, ntot_particles, elapsed_time, comment, non_blocking_comm, &
-                                   dmqmc_in, dmqmc_estimates)
+                                   dmqmc_in, dmqmc_estimates, comp)
 
         ! Write the report line at the end of a report loop.
 
@@ -227,6 +238,8 @@ contains
         ! In (optional):
         !    dmqmc_in: input options relating to DMQMC.
         !    dmqmc_estimates: type containing all DMQMC estimates to be printed.
+        !    comp: if true, doing calculation with real and imaginary walkers
+        !       so need to print extra parameters.
 
         use calc, only: doing_calc, dmqmc_calc, hfs_fciqmc_calc, doing_dmqmc_calc
         use calc, only: dmqmc_energy, dmqmc_energy_squared, dmqmc_full_r2, dmqmc_rdm_r2
@@ -243,9 +256,11 @@ contains
         real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
+        logical, intent(in), optional :: comp
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in
         type(dmqmc_estimates_t), optional, intent(in) :: dmqmc_estimates
 
+        logical :: comp_set
         integer :: mc_cycles, i, j, ntypes
 
         ntypes = size(ntot_particles)
@@ -256,6 +271,12 @@ contains
             mc_cycles = ireport*qmc_in%ncycles
         else
             mc_cycles = (ireport-1)*qmc_in%ncycles
+        end if
+
+        if (present(comp)) then
+            comp_set = comp
+        else
+            comp_set = .false.
         end if
 
         if (comment) then
@@ -355,6 +376,12 @@ contains
                                              qs%shift(2), qs%estimators%proj_hf_O_hpsip, qs%estimators%proj_hf_H_hfpsip, &
                                              qs%estimators%D0_hf_population, &
                                              ntot_particles
+        else if (comp_set) then
+            write (6,'(i10,2X,es17.10,2X,2(es20.10,2X),2(es17.10,2X),2X,es17.10)', advance='no') &
+                                         qs%mc_cycles_done+mc_cycles, qs%shift(1),   &
+                                         real(qs%estimators%proj_energy_comp, p), aimag(qs%estimators%proj_energy_comp), &
+                                         real(qs%estimators%D0_population_comp, p), aimag(qs%estimators%D0_population_comp), &
+                                         ntot_particles(1) + ntot_particles(2)
         else
             write (6,'(i10,2X,2(es17.10,2X),es17.10,4X,es17.10)', advance='no') &
                                              qs%mc_cycles_done+mc_cycles, qs%shift(1),   &
