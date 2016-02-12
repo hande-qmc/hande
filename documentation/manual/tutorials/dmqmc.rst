@@ -34,7 +34,7 @@ To do this we set ``beta_loops`` to 1 in the input file and run the code as:
 
 .. code-block:: bash
 
-    $ aprun -B hande.x heisenberg_dmqmc_excit_dist.lua > heisenberg_dmqmc.out
+    $ aprun -B hande.x heisenberg_dmqmc.lua > heisenberg_dmqmc.out
 
 We find that for this system the population on the diagonal does indeed decay to zero
 rapidly:
@@ -90,10 +90,14 @@ For this system we do
 
 .. code-block:: bash
 
-    $ aprun -B hande.x heisenberg_find_weights.lua > heisenberg_find_weights.out
+    $ aprun -B hande.x heisenberg_find_weights.lua > heisenberg_reweighted.out
 
-Copying the final iteration's weights from the output file we can check the effect of
-importance sampling by doing running the following input file:
+Here we first run a simulation for 10 beta loops to find the weights and then use the last
+iteration's weights as input to the production calculation. This procedure can simplified
+using lua as seen in the input file.
+
+To see what is going on we can copy the weights from the output file and run for a single
+iteration and again examine the excitation distribution
 
 .. code-block:: bash
 
@@ -114,19 +118,13 @@ and we find that the psips are now more equally distributed among excitation lev
     plt.legend(numpoints=1, loc='best')
     plt.ylabel('Weight of psips')
 
-We are now in a position to run a production calculation by setting the number of beta
-loops to the desired value.
+
+The results of the full reweighted calculation can be analysed using the
+``finite_temperature_analysis.py`` script provided in the ``tools/dmqmc`` subdirectory:
 
 .. code-block:: bash
 
-    $ aprun -B hande.x heisenberg_reweight.lua > heisenberg_reweight.out
-
-The results can be analysed using the ``finite_temperature_analysis.py`` script provided
-in the ``tools/dmqmc`` subdirectory:
-
-.. code-block:: bash
-
-    $ finite_temp_analysis.py heisenberg_reweight.out  > heisenberg_reweight_block.out
+    $ finite_temp_analysis.py heisenberg_reweighted.out  > heisenberg_reweighted_block.out
 
 Finally, we can plot the results of the internal energy, :math:`U`, as a function of
 temperature:
@@ -135,7 +133,7 @@ temperature:
 
     import pandas as pd
     import matplotlib.pyplot as plt
-    data = pd.read_csv('calcs/dmqmc/heisenberg_reweight_block.out', sep=r'\s+')
+    data = pd.read_csv('calcs/dmqmc/heisenberg_reweighted_block.out', sep=r'\s+')
     data = data[::20]
     plt.errorbar(data['Beta'], data['Tr[Hp]/Tr[p]']/36., yerr=data['Tr[Hp]/Tr[p]_error']/36., fmt='s')
     plt.xlabel(r'$\beta J$')
