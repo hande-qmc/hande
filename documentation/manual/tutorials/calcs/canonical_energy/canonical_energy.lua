@@ -4,7 +4,6 @@ sys = ueg {
     dim = 3,
     cutoff = 10,
     rs = 1,
-    chem_pot = 2.91602409282,
 }
 
 canonical_energy {
@@ -12,8 +11,7 @@ canonical_energy {
     canonical_energy = {
         beta = 1,
         nattempts = 10000,
-        ncycles = 100,
-        rng_seed = 7,
+        ncycles = 1000,
         fermi_temperature = true,
     },
 }
