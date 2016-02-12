@@ -75,14 +75,14 @@ This is justified as typically the majority of the weight contributing to most p
 significant observables originates from the determinants at lower excitation levels which
 we wish to sample more regularly.
 
-Practically this amounts to first running a calculation with the :ref:`find_weights`
+Practically this amounts to first running a calculation with the `find_weights`
 option. This will output the importance sampling weights necessary as input for the
-production calculation. It is worthwhile to run the calculation for a few :ref:`beta_loops`
+production calculation. It is worthwhile to run the calculation for a few `beta_loops`
 to ensure the weights are fluctuating too much, and also check they don't fluctuate too
-much with the :ref:`target_population`. The algorithm currently tries to ensure that the
+much with the `target_population`. The algorithm currently tries to ensure that the
 number of walkers on each excitation level is roughly constant once the ground state is
 thought to have  been to be reached. The iteration number where this is deemed to have
-been reached is controlled by the :ref:`find_weights_start` option.
+been reached is controlled by the `find_weights_start` option.
 
 For this system we do
 
@@ -207,6 +207,6 @@ where again only estimates at the final iteration are physical, i.e., when
 :math:`\tau=\beta`. Note that the estimates do not contain a Madelung constant.
 
 The initiator approximation can significantly extend the range of applicability of dmqmc
-but is somewhat experimental. See the options, inparticular :ref:`initiator_level` in the
+but is somewhat experimental. See the options, inparticular `initiator_level` in the
 manual for more discussion. The user should ensure results are meaningful by comparing
 answers at various walker populations.
