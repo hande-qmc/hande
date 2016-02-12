@@ -560,7 +560,7 @@ contains
                                            cumulative_abs_nint_pops, tot_abs_nint_pop)
 
                 associate(bs=>bloom_stats, nstates_active=>qs%psip_list%nstates)
-                    bloom_threshold = ceiling(max(nattempts, int(nstates_active,int_64))*bs%prop)*real(bs%encoding_factor,p)
+                    bloom_threshold = nparticles_old(1)*bs%prop*bs%encoding_factor
                 end associate
 
                 ! Two options for evolution:
