@@ -60,11 +60,13 @@ Options
 ``sym``
     type: integer.
 
-    Required.
+    Optional.
 
     Set the symmetry (i.e. crystal momentum) of the system.  This is the index of
     a specific wavevector; see the output produced by creating a system for possible
-    values and their corresponding wavevectors.
+    values and their corresponding wavevectors.  If not specified (and no reference
+    determinant supplied for a calculation) the symmetry used is that of a determinant
+    selected using the Aufbau principle.
 ``U``
     type: float.
 

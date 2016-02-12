@@ -42,12 +42,12 @@ Options
 ``sym``
     type: integer.
 
-    Required.
+    Optional.
 
     Set the symmetry of the system.  This is the index of a specific irreducible
     representation from the FCIDUMP file; see the output produced by creating a system for
-    possible values.  The symmetry can be left unspecified by setting it to zero, in which
-    case the symmetry used is that of a determinant selected using the Aufbau principle.
+    possible values.  If not specified (and no reference determinant supplied for a calculation)
+    the symmetry used is that of a determinant selected using the Aufbau principle.
 ``Lz``
     type: boolean.
 

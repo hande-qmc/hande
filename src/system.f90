@@ -325,7 +325,7 @@ type sys_t
     integer :: nvirt_alpha, nvirt_beta
 
     ! The specific symmetry sector to be used.
-    integer :: symmetry = huge(1)
+    integer :: symmetry = 0
 
     ! Number of symmetries.  These are specified for orbitals.
     integer :: nsym = 1
