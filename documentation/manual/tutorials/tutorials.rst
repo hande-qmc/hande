@@ -35,4 +35,4 @@ We recommend working through the FCIQMC tutorial before the iFCIQMC, CCMC or DMQ
     ifciqmc
     ccmc
     dmqmc
-    kinetic
+    canonical
