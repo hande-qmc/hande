@@ -14,7 +14,7 @@ through the ``real_amplitudes`` keyword:
 .. literalinclude:: calcs/fciqmc/hubbard_fciqmc_real.lua
     :language: lua
 
-which results in the following simulation:
+and which results in the following simulation:
 
 .. plot::
 
@@ -32,12 +32,29 @@ in such simulations. It does so by choosing a certain subspace, which is
 deemed to be most important (in that most of the wave function amplitude
 resides in this subspace), and performing projection exactly within it.
 Projection outside the subspace is performed by the usual FCIQMC stochastic spawning.
+
+.. [review] - JSS: insert some discussion about the memory implications and, as a result, the size of the deterministic space that is realistic?
+.. [review] - JSS: is it always best to use as large a subspace as possible or is there a speed/memory/etc tradeoff?
+.. [review] - JSS: This is done -> One way of doing this.  Hopefully CAS will be available soon!
+
 Thus, we simply need to specify what subspace to use for the exact projection.
 This is done in HANDE using the scheme of [Blunt15]_, where the subspace is
 formed from the determinants on which the largest number of psips reside. We
 therefore simply need to tell HANDE what iteration to start using the
 semi-stochastic adaptation, and how many determinants to form the deterministic
 subspace from.
+
+..
+
+    [review] -  JSS: I think the above could do with some expansion:
+
+       + semi-stochastic does not (seem to?) improve initiator convergence in many cases
+       + semi-stochastic is slower, so may as well run without it whilst converging.
+
+   Is this a fair summmary?
+
+.. [review] - JSS: state why not critical and why 10000 is appropriate size of subspace.
+.. [review] - JSS: would an option to turn the semi-stochastic on after the shift is turned on be useful?
 
 Looking at the above simulation, it appears that the energy has converged by
 iteration 20000. This is not a guarantee that the wave function is also
@@ -50,8 +67,8 @@ iteration 10000, we modify the above input to the following:
 
 Here, the ``semi-stoch`` table contains three keywords. The use of ``size`` and
 ``start_iteration`` keywords is hopefully clear. The ``space`` keyword determines
-which method is used to generate the deterministic space - in this case it done
-by choosing the determiniants with the highest weights.
+which method is used to generate the deterministic space - in this case by choosing the
+determiniants with the highest weights.
 
 This results in the following simulation:
 
@@ -83,20 +100,25 @@ which results in:
 .. literalinclude:: calcs/semi_stoch/hubbard_semi_stoch_high.block
 
 Compared to the equivalent non-semi-stochastic simulation performed in the
-:ref:`fciqmc_tutorial` tutorial, the error bars on the shift and projected
+:ref:`FCIQMC tutorial <fciqmc_tutorial>` tutorial, the error bars on the shift and projected
 energy estimators have reduced from :math:`4 \times 10^{-5}` and
 :math:`3 \times 10^{-6}` to :math:`2 \times 10^{-5}` and :math:`8 \times 10^{-7}`,
 respectively.
+
+.. [review] - JSS: But simulation took much longer.  The reduction means it is still worth it though compared to using stochastic propagation, right?
 
 Note that if you do not specify a ``start_iteration`` value in the ``semi_stoch``
 table of the input file, then the semi-stochastic adaptation will be turned
 on from the first iteration. This should not be done when starting a new
 simulation, because wave functions in HANDE are initialised as single determinants.
-However, if restarting a simulation from a HDF5 file then this is a sensible approach -
+However, if restarting a simulation from an HDF5 file then this is a sensible approach -
 the simulation will begin from the wave function stored in the HDF5 file, and the
 deterministic space will be chosen from the most populated determinants in this
 wave function. An input file for such a restarted simulation would contain the
 following ``semi_stoch`` and ``restart`` tables within the ``fciqmc`` table:
+
+
+.. [review] - JSS: just place partial input files directly in the source and use literalinclude just for files which are to be run or are outputs.
 
 .. literalinclude:: calcs/semi_stoch/hubbard_semi_stoch_restart.lua
     :language: lua
@@ -116,18 +138,24 @@ deterministic space from the 10000 most populated determinants at iteration 2000
 and to then print this space to a file, one should use the ``write`` keyword in the
 ``semi-stoch`` table:
 
+.. [review] - JSS: just place partial input files directly in the source and use literalinclude just for files which are to be run or are outputs.
+
 .. literalinclude:: calcs/semi_stoch/hubbard_semi_stoch_write.lua
     :language: lua
 
 Here, the value of the ``write`` keyword, :math:`0`, is an index used in the
 name of the resulting file.
 
+.. [review] - JSS: note write can also be a boolean.
+
 When restarting the simulation, one can then specify the ``space`` option to
 read a semi-stochastic HDF5 file, using:
+
+.. [review] - JSS: just place partial input files directly in the source and use literalinclude just for files which are to be run or are outputs.
 
 .. literalinclude:: calcs/semi_stoch/hubbard_semi_stoch_read.lua
     :language: lua
 
-The deterministic space file is a HDF5 file. As such, both writing and reading
-of such files requires :ref:`compilation` of HANDE with HDF5 enabled, which is the
+The deterministic space file is an HDF5 file. As such, both writing and reading
+of such files requires :ref:`compilation <compilation>` of HANDE with HDF5 enabled, which is the
 default compilation behaviour.
