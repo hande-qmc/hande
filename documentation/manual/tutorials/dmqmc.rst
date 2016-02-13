@@ -13,7 +13,7 @@ boundary conditions. The input file for this system is given as
 
 .. literalinclude:: calcs/dmqmc/heisenberg_dmqmc.lua
 
-and is largely analagous to that found in the :ref:`FCIQMC tutorial <fciqmc_tutorial>`. We
+and is largely analogous to that found in the :ref:`FCIQMC tutorial <fciqmc_tutorial>`. We
 refer the reader to the discussion there and the manual for system specific input options.
 Note that ``init_pop`` here controls the population with which the density matrix at
 :math:`\tau=0` is sampled. Typically the shift is allowed to vary from the beginning of
@@ -54,7 +54,7 @@ rapidly:
 
 The source of this problem can be investigated by analysing the distribution of psips on
 different excitation levels of the density matrix where we see the weight redistributes
-from the diagonal to highly excited determinants. This was calculated in aticipation of
+from the diagonal to highly excited determinants. This was calculated in anticipation of
 this result using the ``excit_dist`` option in the operators table:
 
 .. plot::
@@ -75,17 +75,17 @@ this result using the ``excit_dist`` option in the operators table:
 
 To overcome this [Blunt14]_ invented an importance sampling scheme to encourage psips to
 stay on or near the diagonal by penalising spawning moves away from excitation levels.
-This is justified as typically the majority of the weight contributing to most physically
+This is sensible as typically the majority of the weight contributing to most physically
 significant observables originates from the determinants at lower excitation levels which
 we wish to sample more regularly.
 
 Practically this amounts to first running a calculation with the ``find_weights``
-option. This will output the importance sampling weights necessary as input for the
+option. This will output importance sampling weights which are appropriate as input for the
 production calculation. It is worthwhile to run the calculation for a few ``beta_loops``
-to ensure the weights are fluctuating too much, and also check they don't fluctuate too
+to ensure the weights are not fluctuating too much, and also check they don't fluctuate too
 much with the ``target_population``. The algorithm currently tries to ensure that the
 number of walkers on each excitation level is roughly constant once the ground state is
-thought to have  been to be reached. The iteration number where this is deemed to have
+thought to have been to be reached. The iteration number where this is deemed to have
 been reached is controlled by the ``find_weights_start`` option.
 
 For this system we do
@@ -185,14 +185,14 @@ interpreted as fractions of the Fermi temperature (here :math:`\Theta = 0.5`.
 ``all_sym_sectors`` ensures all momentum symmetry sectors are averaged over. To average
 over spin polarisation the ``all_spin_sectors`` option must be specified.
 
-Moving on through the ipdmqmc table we've set the the ``initial_matrix`` to be the free
+Moving on through the ipdmqmc table we've set the ``initial_matrix`` to be the free
 electron density matrix, i.e., Fermi-Dirac like. Additionally we're using the
 ``grand_canonical_initialisation`` option to initialise this density matrix (see
 [Malone15]_). This is the recommended method to initialise the density matrix; the
 Metropolis algorithm should only be used for testing.
 
 Finally we will use the asymmetric form of the original IP-DMQMC algorithm by specifying
-symmetric=false. The symmetric algorithm is somewhat experimental but can lead to better
+``symmetric`` to be false. The symmetric algorithm is somewhat experimental but can lead to better
 estimates for quantities other that the internal energy especially at lower temperatures.
 
 .. [review] - JSS: brief explanation why symmetric helps and reference to the preprint (once available).
@@ -227,8 +227,7 @@ where again only estimates at the final iteration are physical, i.e., when
 :math:`\tau=\beta`. Note that the estimates do not contain a Madelung constant.
 
 .. [review] - JSS: citation to preprint once available.
-
-The initiator approximation can significantly extend the range of applicability of dmqmc
+The initiator approximation can significantly extend the range of applicability of DMQMC
 but is somewhat experimental. See the options, in particular ``initiator_level`` in the
 manual for more discussion. The user should ensure results are meaningful by comparing
 answers at various walker populations.
