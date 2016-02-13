@@ -90,26 +90,6 @@ Given the large population, we will run this calculation in parallel using MPI:
 
     $ mpiexec hande.x hubbard_plateau.lua > hubbard_plateau.out
 
-.. note::
-
-    The exact command to launch HANDE with MPI depends upon the exact configuration of
-    MPI.  The command may be different (e.g. ``mpirun`` instead of ``mpiexec``) and might
-    require the number of processors to be passed as an argument.  For example, with
-    OpenMPI on Debian and Ubuntu, one would use:
-
-    .. code-block:: bash
-
-        $ mpiexec -n 4 hande.x hubbard_plateau.lua > hubbard_plateau.out
-
-    or equivalently
-
-    .. code-block:: bash
-
-        $ mpirun -n 4 hande.x hubbard_plateau.lua > hubbard_plateau.out
-
-    to run on 4 cores.  Please consult local documentation, particularly if running on HPC
-    facilities for details on how to run MPI jobs.
-
 The parallel scaling of HANDE depends upon the system being studied and quality of the
 hardware being used.  Typically using a minimum population per core of :math:`\sim 10^5`
 (assuming perfect load balancing, which can rarely be achieved) results in an acceptable
