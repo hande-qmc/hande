@@ -50,10 +50,12 @@ rapidly:
     plt.xlabel(r'$\beta J$')
     plt.ylabel('# psips on diagonal')
 
+.. [review] - JSS: define excitation level to be difference between bra and ket.
+
 The source of this problem can be investigated by analysing the distribution of psips on
 different excitation levels of the density matrix where we see the weight redistributes
 from the diagonal to highly excited determinants. This was calculated in aticipation of
-this result using the excit_dist option in the operators table:
+this result using the ``excit_dist`` option in the operators table:
 
 .. plot::
 
@@ -69,27 +71,33 @@ this result using the excit_dist option in the operators table:
     plt.ylabel('Weight of psips')
 
 
+.. [review] - JSS: 'encourage' makes it sound like there's a bias where really it's a reweighting scheme.
+
 To overcome this [Blunt14]_ invented an importance sampling scheme to encourage psips to
 stay on or near the diagonal by penalising spawning moves away from excitation levels.
 This is justified as typically the majority of the weight contributing to most physically
 significant observables originates from the determinants at lower excitation levels which
 we wish to sample more regularly.
 
-Practically this amounts to first running a calculation with the `find_weights`
+Practically this amounts to first running a calculation with the ``find_weights``
 option. This will output the importance sampling weights necessary as input for the
-production calculation. It is worthwhile to run the calculation for a few `beta_loops`
+production calculation. It is worthwhile to run the calculation for a few ``beta_loops``
 to ensure the weights are fluctuating too much, and also check they don't fluctuate too
-much with the `target_population`. The algorithm currently tries to ensure that the
+much with the ``target_population``. The algorithm currently tries to ensure that the
 number of walkers on each excitation level is roughly constant once the ground state is
 thought to have  been to be reached. The iteration number where this is deemed to have
-been reached is controlled by the `find_weights_start` option.
+been reached is controlled by the ``find_weights_start`` option.
 
 For this system we do
+
+.. [review] - JSS: heisenberg_find_weights.out is a gzipped file (despite the name).
 
 .. code-block:: bash
 
     $ aprun -N 1 hande.x heisenberg_find_weights.lua > heisenberg_find_weights.out
 
+.. [review] - JSS: Copying?!  By hand?!  Eek!  Perhaps we should make this easier -- print out a lua table?
+.. [review] - JSS: The weights vary somewhat each beta loop.  How important are the exact values?
 
 Copying the final iteration's weights from the output file we can check the effect of
 importance sampling by doing running the following input file:
@@ -97,7 +105,6 @@ importance sampling by doing running the following input file:
 .. code-block:: bash
 
     $ aprun -N 1 hande.x heisenberg_reweight.lua > heisenberg_reweight_single.out
-
 
 and we find that the psips are now more equally distributed among excitation levels:
 
@@ -117,7 +124,6 @@ and we find that the psips are now more equally distributed among excitation lev
 We are now in a position to run a production calculation by setting the number of beta
 loops to the desired value.
 
-
 .. code-block:: bash
 
     $ aprun -N 1 hande.x heisenberg_reweight.lua > heisenberg_reweight.out
@@ -125,9 +131,14 @@ loops to the desired value.
 The results can be analysed using the finite_temperature_analysis.py script provided in
 tool/dmqmc:
 
+.. [review] - JSS: not reblocked so block in the output name is a little misleading.
+.. [review] - JSS: see also note about output formats for canonical energy script.
+
 .. code-block:: bash
 
-    $ ./finite_temp_analysis.py heisenberg_reweight.out  > heisenberg_reweight_block.out
+    $ finite_temp_analysis.py heisenberg_reweight.out  > heisenberg_reweight_block.out
+
+.. [review] - JSS: explain 1/36 due to number of sites.  :math:`u = U/N` rather than :math:`U`?
 
 Finally, we can plot the results of the internal energy (:math:`U`) as a function of
 temperature:
@@ -153,6 +164,8 @@ which enables us to start from a (temperature dependent) mean-field distribution
 :math:`\tau=0` ensuring low energy determinants are initially sampled. See [Malone15]_ for
 details.
 
+.. [review] - JSS: would encourage guidance to use IP-DMQMC over DMQMC by default for systems with a reasonable mean-field ground state?
+
 Most of the running details for IP-DMQMC are the same as for DMQMC, however there are some
 additional considerations. This is best demonstrated by running a simulation. We will
 focus on a 7-electron, spin polarised system in 319 plane waves at :math:`r_s=1`.
@@ -160,6 +173,8 @@ focus on a 7-electron, spin polarised system in 319 plane waves at :math:`r_s=1`
 Looking at the input file
 
 .. literalinclude:: calcs/dmqmc/ipdmqmc_ueg.lua
+
+.. [review] - JSS: init_beta below but initial_beta in the input file.  Also, why init_beta/initial_beta?  It's not the most intuitive name...
 
 we see most of the same options are present as for dmqmc. Note that unlike DMQMC where
 estimates for the whole temperature range are gathered in a single simulation, in IP-DMQMC
@@ -173,24 +188,28 @@ over spin polarisation the ``all_spin_sectors`` option must be specified.
 Moving on through the ipdmqmc table we've set the the ``initial_matrix`` to be the free
 electron density matrix, i.e., Fermi-Dirac like. Additionally we're using the
 ``grand_canonical_initialisation`` option to initialise this density matrix (see
-[Malone15]_). This is the recommended method to initialise the density matrix, the
+[Malone15]_). This is the recommended method to initialise the density matrix; the
 Metropolis algorithm should only be used for testing.
 
-Finally we will use the asymmetric form of the original ip-dmqmc algorithm by specifying
+Finally we will use the asymmetric form of the original IP-DMQMC algorithm by specifying
 symmetric=false. The symmetric algorithm is somewhat experimental but can lead to better
 estimates for quantities other that the internal energy especially at lower temperatures.
+
+.. [review] - JSS: brief explanation why symmetric helps and reference to the preprint (once available).
 
 Running the code
 
 .. code-block:: bash
 
-    ./hande.x ipdmqmc_ueg.lua > ipdmqmc_ueg.out
+    $ hande.x ipdmqmc_ueg.lua > ipdmqmc_ueg.out
 
 and analysing the :download:`output <calcs/dmqmc/ipdmqmc_ueg.out>`:
 
+.. [review] - JSS: similar note about analysed output.
+
 .. code-block:: bash
 
-    ./finite_temp_analysis.py ipdmqmc_ueg.out > ipdmqmc_ueg_block.out
+    $ finite_temp_analysis.py ipdmqmc_ueg.out > ipdmqmc_ueg_block.out
 
 we find
 
@@ -207,7 +226,9 @@ we find
 where again only estimates at the final iteration are physical, i.e., when
 :math:`\tau=\beta`. Note that the estimates do not contain a Madelung constant.
 
+.. [review] - JSS: citation to preprint once available.
+
 The initiator approximation can significantly extend the range of applicability of dmqmc
-but is somewhat experimental. See the options, inparticular `initiator_level` in the
+but is somewhat experimental. See the options, in particular ``initiator_level`` in the
 manual for more discussion. The user should ensure results are meaningful by comparing
 answers at various walker populations.
