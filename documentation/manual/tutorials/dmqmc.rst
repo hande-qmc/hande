@@ -133,8 +133,8 @@ loops to the desired value.
 
     $ aprun -N 1 hande.x heisenberg_reweight.lua > heisenberg_reweight.out
 
-The results can be analysed using the finite_temperature_analysis.py script provided in
-tool/dmqmc:
+The results can be analysed using the ``finite_temperature_analysis.py`` script provided
+in the ``tools/dmqmc`` subdirectory:
 
 .. code-block:: bash
 
