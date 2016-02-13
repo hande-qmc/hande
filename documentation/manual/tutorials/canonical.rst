@@ -39,4 +39,4 @@ Inspecting the output we see
 .. literalinclude:: calcs/canonical_energy/canonical_energy_res.out
 
 and in particular, we can compare the values of :math:`\langle H \rangle_0` and
-:math:`\langle H\rangle_{HF}` to the value of 32.95(4) Ha from the ip-dmqmc tutorial.
+:math:`\langle H\rangle_{HF}` to the value of 32.92(2) Ha from the ip-dmqmc tutorial.
