@@ -54,6 +54,7 @@ type hamil_t
     type(csrp_t) :: smat ! Sparse complex not implemented.
     ! [reply] - CJCS: Ruth has pointed out to me what you actually meant and I've
     ! [reply] - CJCS: changed accordingly; I think smat can probably stay as well.
+    ! [reply] - JSS: to be picky: cmplx is much easier to understand than comp.
     logical :: comp = .false.
     logical :: sparse = .false.
 end type hamil_t
