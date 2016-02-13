@@ -51,11 +51,12 @@ rapidly:
     plt.ylabel('# psips on diagonal')
 
 The source of this problem can be investigated by analysing the distribution of psips on
-different excitation levels of the density matrix where we see the weight redistributes
-from the diagonal to highly excited determinants. Here the excitation level defines the
-difference between the bra and ket of a density matrix element i.e., number of spin flips
-or number of particle-hole pairs for electronic systems. This was calculated in
-anticipation of this result using the ``excit_dist`` option in the operators table:
+different excitation levels of the density matrix, which was calculated in anticipation of
+this result using the ``excit_dist`` option in the operators table.  Here the excitation
+level is defined as the difference between the bra and ket of a density matrix element
+i.e., number of spin flips or number of particle-hole pairs for electronic systems.
+We see the majority of the total weight is redistributed from the diagonal to highly
+excited determinants.
 
 .. plot::
 
@@ -70,11 +71,7 @@ anticipation of this result using the ``excit_dist`` option in the operators tab
     plt.legend(numpoints=1, loc='best')
     plt.ylabel('Weight of psips')
 
-
-.. [review] - JSS: 'encourage' makes it sound like there's a bias where really it's a reweighting scheme.
-.. [reply] - FDM: I didn't read it like that. What do you think would be better?
-
-To overcome this [Blunt14]_ invented an importance sampling scheme to encourage psips to
+To overcome this [Blunt14]_ invented an unbiased importance sampling scheme to encourage psips to
 stay on or near the diagonal by penalising spawning moves away from excitation levels.
 This is sensible as typically the majority of the weight contributing to most physically
 significant observables originates from the determinants at lower excitation levels which
@@ -139,19 +136,11 @@ loops to the desired value.
 The results can be analysed using the finite_temperature_analysis.py script provided in
 tool/dmqmc:
 
-.. [review] - JSS: not reblocked so block in the output name is a little misleading.
-.. [review] - JSS: see also note about output formats for canonical energy script.
-.. [reply] - FDM: just habit/no better name to describe data, I think finite_temp_analysis.py is due an overhaul anyway,
-                  but not right now.
-
 .. code-block:: bash
 
     $ finite_temp_analysis.py heisenberg_reweight.out  > heisenberg_reweight_block.out
 
-.. [review] - JSS: explain 1/36 due to number of sites.  :math:`u = U/N` rather than :math:`U`?
-.. [reply] - FDM: Thought the y label killed two birds here?
-
-Finally, we can plot the results of the internal energy (:math:`U`) as a function of
+Finally, we can plot the results of the internal energy, :math:`U`, as a function of
 temperature:
 
 .. plot::
@@ -175,10 +164,6 @@ which enables us to start from a (temperature dependent) mean-field distribution
 :math:`\tau=0` ensuring low energy determinants are initially sampled. See [Malone15]_ for
 details. For systems with a good mean-field ground state the user should consider using
 IP-DMQMC.
-
-.. [review] - JSS: would encourage guidance to use IP-DMQMC over DMQMC by default for systems with a reasonable mean-field ground state?
-.. [reply] - FDM: Certainly for the UEG, not so sure about everything else it's sort of
-.. [reply] - FDM: a tricky issue since there's the added cost of running for mutliple temperatures. Maybe.
 
 Most of the running details for IP-DMQMC are the same as for DMQMC, however there are some
 additional considerations. This is best demonstrated by running a simulation. We will
