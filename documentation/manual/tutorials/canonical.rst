@@ -1,6 +1,7 @@
 .. _canonical_energy_tutorial:
 
 .. [review] - JSS: appropriate name?
+.. [reply]  - FDM: ?
 
 Canonical Energies
 ==================
@@ -9,8 +10,7 @@ In this tutorial we will discuss how estimates for various expectation values of
 partitions of the Hamiltonian can be evaluated in the canonical ensemble at finite
 temperatures. These estimates are useful for basis set extrapolation as well as
 comparison to the fully interacting results and are non-trivial to evaluate analytically.
-
-.. [review] - JSS: reference the IP-DMQMC paper for algorithm details?
+See [Malone15]_ for details.
 
 The input file is fairly simple:
 
@@ -26,6 +26,8 @@ compared to the IP-DMQMC simulation in the :ref:`DMQMC tutorial <dmqmc_tutorial>
 Running the input file we find
 
 .. [review] - JSS: is this ever expensive enough to require running in parallel?
+.. [reply]  - FDM: mmm not necessarily, it is essentially embarrassingly parallel
+.. [reply]  - (although not how I've implemented it) so you can get answers way quicker, but theres's no requirement.
 
 .. code-block:: bash
 
@@ -37,6 +39,7 @@ energy - precise definitions of everything can be found in the output file. Anal
 data
 
 .. [review] - JSS: any issue with correlated data?  Each iteration is independent right?  (So multiple calculations can be concatenated?)
+.. [reply] - FDM: Completely independent you can combine multiple calculations.
 
 .. code-block:: bash
 
@@ -45,6 +48,7 @@ data
 Inspecting the output we see
 
 .. [review] - JSS: not really for the tutorial, but is it worth adding options to analyse_canonical.py (and other DMQMC tools) for pretty-printing the statistics, or CSV output, as in reblock_hande.py?
+.. [reply] - FDM: Probably, I don't like reading csv files though.
 
 .. literalinclude:: calcs/canonical_energy/canonical_energy_res.out
 
