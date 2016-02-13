@@ -50,12 +50,12 @@ rapidly:
     plt.xlabel(r'$\beta J$')
     plt.ylabel('# psips on diagonal')
 
-.. [review] - JSS: define excitation level to be difference between bra and ket.
-
 The source of this problem can be investigated by analysing the distribution of psips on
 different excitation levels of the density matrix where we see the weight redistributes
-from the diagonal to highly excited determinants. This was calculated in anticipation of
-this result using the ``excit_dist`` option in the operators table:
+from the diagonal to highly excited determinants. Here the excitation level defines the
+difference between the bra and ket of a density matrix element i.e., number of spin flips
+or number of particle-hole pairs for electronic systems. This was calculated in
+anticipation of this result using the ``excit_dist`` option in the operators table:
 
 .. plot::
 
@@ -72,6 +72,7 @@ this result using the ``excit_dist`` option in the operators table:
 
 
 .. [review] - JSS: 'encourage' makes it sound like there's a bias where really it's a reweighting scheme.
+.. [reply] - FDM: I didn't read it like that. What do you think would be better?
 
 To overcome this [Blunt14]_ invented an importance sampling scheme to encourage psips to
 stay on or near the diagonal by penalising spawning moves away from excitation levels.
@@ -90,14 +91,21 @@ been reached is controlled by the ``find_weights_start`` option.
 
 For this system we do
 
-.. [review] - JSS: heisenberg_find_weights.out is a gzipped file (despite the name).
-
 .. code-block:: bash
 
     $ aprun -N 1 hande.x heisenberg_find_weights.lua > heisenberg_find_weights.out
 
 .. [review] - JSS: Copying?!  By hand?!  Eek!  Perhaps we should make this easier -- print out a lua table?
 .. [review] - JSS: The weights vary somewhat each beta loop.  How important are the exact values?
+.. [reply]  - FDM: I have a very hacky grep/cut/tr/sed combo submission script which takes care
+            of this. Ideally I think it would be best to either get it to return a table so we could
+            string calculations together using lua, or just stop varying the weights after a number of
+            iterations and then run the rest of the simulation with those weights. I don't currently
+            know enough about lua to do this but am interested in looking at importance soon given
+            that it seems to help things a lot for the ueg.
+            Not sure about the weight flucutations - need to ask Nick. I doubt the exact
+            values are very important since it's importance sampling and everything is
+            undone in the end.
 
 Copying the final iteration's weights from the output file we can check the effect of
 importance sampling by doing running the following input file:
@@ -133,12 +141,15 @@ tool/dmqmc:
 
 .. [review] - JSS: not reblocked so block in the output name is a little misleading.
 .. [review] - JSS: see also note about output formats for canonical energy script.
+.. [reply] - FDM: just habit/no better name to describe data, I think finite_temp_analysis.py is due an overhaul anyway,
+                  but not right now.
 
 .. code-block:: bash
 
     $ finite_temp_analysis.py heisenberg_reweight.out  > heisenberg_reweight_block.out
 
 .. [review] - JSS: explain 1/36 due to number of sites.  :math:`u = U/N` rather than :math:`U`?
+.. [reply] - FDM: Thought the y label killed two birds here?
 
 Finally, we can plot the results of the internal energy (:math:`U`) as a function of
 temperature:
@@ -162,9 +173,12 @@ extreme example of this is the uniform electron gas (UEG) especially at higher d
 (low :math:`r_s`). This issue is largely overcome by switching to the interaction picture
 which enables us to start from a (temperature dependent) mean-field distribution at
 :math:`\tau=0` ensuring low energy determinants are initially sampled. See [Malone15]_ for
-details.
+details. For systems with a good mean-field ground state the user should consider using
+IP-DMQMC.
 
 .. [review] - JSS: would encourage guidance to use IP-DMQMC over DMQMC by default for systems with a reasonable mean-field ground state?
+.. [reply] - FDM: Certainly for the UEG, not so sure about everything else it's sort of
+.. [reply] - FDM: a tricky issue since there's the added cost of running for mutliple temperatures. Maybe.
 
 Most of the running details for IP-DMQMC are the same as for DMQMC, however there are some
 additional considerations. This is best demonstrated by running a simulation. We will
@@ -175,10 +189,13 @@ Looking at the input file
 .. literalinclude:: calcs/dmqmc/ipdmqmc_ueg.lua
 
 .. [review] - JSS: init_beta below but initial_beta in the input file.  Also, why init_beta/initial_beta?  It's not the most intuitive name...
+.. [reply] -  FDM: Originally I think it was for the initial density matrix.
+.. [reply] - I did consider changing this a while ago to target_beta or something but never did.
+.. [reply] - I will change it - does this require running the calculations again post merge of branch or would a note in the tutorial suffice?
 
 we see most of the same options are present as for dmqmc. Note that unlike DMQMC where
 estimates for the whole temperature range are gathered in a single simulation, in IP-DMQMC
-only one temperature value is (directly) accessible, specified by the ``init_beta``
+only one temperature value is (directly) accessible, specified by the ``initial_beta``
 option. We've also set the energy scale to be determined by the Fermi energy of the
 corresponding (thermodynamic limit) free electron gas so that the temperatures are
 interpreted as fractions of the Fermi temperature (here :math:`\Theta = 0.5`.
@@ -194,8 +211,10 @@ Metropolis algorithm should only be used for testing.
 Finally we will use the asymmetric form of the original IP-DMQMC algorithm by specifying
 ``symmetric`` to be false. The symmetric algorithm is somewhat experimental but can lead to better
 estimates for quantities other that the internal energy especially at lower temperatures.
-
-.. [review] - JSS: brief explanation why symmetric helps and reference to the preprint (once available).
+This is thought to be due to sampling issues at low temperatures where the initial mean field
+guess becomes significantly different (in terms of energy scales) to the fully interacting theory.
+Symmetrising the equations allows psips to move along rows and which improves sampling.
+See []_.
 
 Running the code
 
@@ -204,8 +223,6 @@ Running the code
     $ hande.x ipdmqmc_ueg.lua > ipdmqmc_ueg.out
 
 and analysing the :download:`output <calcs/dmqmc/ipdmqmc_ueg.out>`:
-
-.. [review] - JSS: similar note about analysed output.
 
 .. code-block:: bash
 
@@ -226,8 +243,7 @@ we find
 where again only estimates at the final iteration are physical, i.e., when
 :math:`\tau=\beta`. Note that the estimates do not contain a Madelung constant.
 
-.. [review] - JSS: citation to preprint once available.
 The initiator approximation can significantly extend the range of applicability of DMQMC
 but is somewhat experimental. See the options, in particular ``initiator_level`` in the
 manual for more discussion. The user should ensure results are meaningful by comparing
-answers at various walker populations.
+answers at various walker populations. See []_ for further discussion.
