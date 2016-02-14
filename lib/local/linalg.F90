@@ -10,26 +10,31 @@ public :: syev, heev, geev, psyev, pheev
 interface syev
     module procedure ssyev_f90
     module procedure dsyev_f90
+    module procedure syev_wrapper
 end interface
 
 interface heev
     module procedure cheev_f90
     module procedure zheev_f90
+    module procedure heev_wrapper
 end interface
 
 interface geev
     module procedure sgeev_f90
     module procedure dgeev_f90
+    module procedure geev_wrapper
 end interface geev
 
 interface psyev
     module procedure pssyev_f90
     module procedure pdsyev_f90
+    module procedure psyev_wrapper
 end interface psyev
 
 interface pheev
     module procedure pcheev_f90
     module procedure pzheev_f90
+    module procedure pheev_wrapper
 end interface pheev
 
 contains
@@ -69,6 +74,35 @@ contains
         call dsyev(job, uplo, N, A, lda, W, work, lwork, info)
 
     end subroutine dsyev_f90
+
+    subroutine syev_wrapper(job, uplo, N, A, lda, W, info)
+
+        ! Wrapper around ssyev/dsyev which automates using optimal workspace.
+
+        use const, only: p
+        use checking, only: check_allocate, check_deallocate
+
+        character, intent(in) :: job, uplo
+        integer, intent(in) :: N
+        real(p), intent(inout) :: A(lda,*)
+        integer, intent(in) :: lda
+        real(p), intent(out) :: W(:)
+        integer, intent(out) :: info
+
+        real(p), allocatable :: work(:)
+        integer :: lwork, i, ierr
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call syev(job, uplo, N, A, lda, W, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work)
+            call check_deallocate('work',ierr)
+        end do
+
+    end subroutine syev_wrapper
 
     subroutine cheev_f90(job, uplo, N, A, lda, W, work, lwork, rwork, info)
 
@@ -110,6 +144,36 @@ contains
 
     end subroutine zheev_f90
 
+    subroutine heev_wrapper(job, uplo, N, A, lda, W, rwork, info)
+
+        ! Wrapper around cheev/zheev which automates using optimal workspace.
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p
+
+        character, intent(in) ::  job, uplo
+        integer, intent(in) :: N
+        complex(p), intent(inout) :: A(lda,*)
+        integer, intent(in) :: lda
+        real(p), intent(out) :: W(N)
+        real(p), intent(out) :: rwork(:)
+        integer, intent(out) :: info
+
+        complex(p), allocatable :: work(:)
+        integer :: lwork, i, ierr
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work',abs(lwork),ierr)
+            call zheev(job, uplo, N, A, lda, W, work, lwork, rwork, info)
+            lwork = nint(real(work(1)))
+            deallocate(work)
+            call check_deallocate('work',ierr)
+        end do
+
+    end subroutine heev_wrapper
+
     subroutine sgeev_f90(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
 
         ! See LAPACK sgeev procedure for details.
@@ -147,6 +211,37 @@ contains
         call dgeev(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
 
     end subroutine dgeev_f90
+
+    subroutine geev_wrapper(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, info)
+
+        ! Wrapper around sgeev/dgeev which automates using optimal workspace.
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p
+
+        character, intent(in) :: jobvl, jobvr
+        integer, intent(in) :: N
+        real(p), intent(inout) :: A(lda,*)
+        integer, intent(in) :: LDA
+        real(p), intent(out) :: WR(:), WI(:)
+        integer, intent(in) :: ldvl, ldvr
+        real(p), intent(out) :: VL(ldvl,*), VR(ldvr,*)
+        integer, intent(out) :: info
+
+        real(p), allocatable :: work(:)
+        integer :: lwork, i, ierr
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call dgeev(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work)
+            call check_deallocate('work',ierr)
+        end do
+
+    end subroutine geev_wrapper
 
     subroutine pssyev_f90(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, info)
 
@@ -191,6 +286,36 @@ contains
 #endif
 
     end subroutine pdsyev_f90
+
+    subroutine psyev_wrapper(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, info)
+
+        ! Wrapper around pssyev/pdsyev which automates using optimal workspace.
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p
+
+        character, intent(in) :: job, uplo
+        integer, intent(in) :: N
+        real(p), intent(inout) :: A(:,:)
+        integer, intent(in) :: IA, JA, desca(:)
+        real(p), intent(out) :: W(:), Z(:,:)
+        integer, intent(in) :: IZ, JZ, descz(:)
+        integer, intent(out) :: info
+
+        real(p), allocatable :: work(:)
+        integer :: lwork, i, ierr
+
+        lwork = -1
+        do i = 1, 2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call psyev(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, info)
+            lwork = nint(work(1))
+            deallocate(work, stat=ierr)
+            call check_deallocate('work',ierr)
+        end do
+
+    end subroutine psyev_wrapper
 
     subroutine pcheev_f90(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, rwork, lrwork, info)
 
@@ -241,5 +366,38 @@ contains
 #endif
 
     end subroutine pzheev_f90
+
+    subroutine pheev_wrapper(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, rwork, lrwork, info)
+
+        ! Wrapper around pcheev/pzheev which automates using optimal workspace.
+
+        use checking, only: check_allocate, check_deallocate
+        use const, only: p
+
+        character, intent(in) :: job, uplo
+        integer, intent(in) :: N
+        complex(p), intent(inout) :: A(:,:)
+        integer, intent(in) :: IA, JA, desca(:)
+        real(p), intent(out) :: W(:)
+        complex(p), intent(out) :: Z(:,:)
+        integer, intent(in) :: IZ, JZ, descz(:)
+        real(p), intent(out) :: rwork(:)
+        integer, intent(in) :: lrwork
+        integer, intent(out) :: info
+
+        complex(p), allocatable :: work(:)
+        integer :: lwork, i, ierr
+
+        lwork = -1
+        do i = 1,2
+            allocate(work(abs(lwork)), stat=ierr)
+            call check_allocate('work', abs(lwork), ierr)
+            call pheev(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, rwork, lrwork, info)
+            lwork = nint(real(work(1)))
+            deallocate(work, stat=ierr)
+            call check_deallocate('work',ierr)
+        end do
+
+    end subroutine pheev_wrapper
 
 end module linalg

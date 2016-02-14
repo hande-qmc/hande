@@ -1111,8 +1111,7 @@ contains
         type(subsys_t) :: subsys_info(:)
 
         integer :: i, rdm_size
-        integer :: info, ierr, lwork
-        real(p), allocatable :: work(:)
+        integer :: info, ierr
         real(p), allocatable :: dm_tmp(:,:)
         real(p) :: eigv(2**subsys_info(1)%A_nsites)
         real(p) :: vn_entropy
@@ -1121,19 +1120,6 @@ contains
         rdm_size = 2**subsys_info(1)%A_nsites
         vn_entropy = 0.0_p
 
-        ! Find the optimal size of the workspace.
-        allocate(work(1), stat=ierr)
-        call check_allocate('work',1,ierr)
-        call syev('N', 'U', rdm_size, rdm, rdm_size, eigv, work, -1, info)
-
-        lwork = nint(work(1))
-        deallocate(work)
-        call check_deallocate('work',ierr)
-
-        ! Now perform the diagonalisation.
-        allocate(work(lwork), stat=ierr)
-        call check_allocate('work',lwork,ierr)
-
         ! The matrix input into the following diagonalisation routines will have
         ! their upper half (including the diagonal) destroyed. We might want
         ! reduced_desntiy_matrix later, so use some temporary space:
@@ -1141,7 +1127,7 @@ contains
         call check_allocate('dm_tmp',rdm_size**2,ierr)
         dm_tmp = rdm
 
-        call syev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
+        call syev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, info)
         thrown_away = .false.
         write(6,'(1X,"# Eigenvalues thrown away:",1X)',advance='no')
         do i = 1, ubound(eigv,1)
@@ -1186,13 +1172,11 @@ contains
         ! In:
         !     rdm: Reduced density matrix estimate.
 
-        use checking, only: check_allocate, check_deallocate
         use linalg, only: geev
 
         real(p), intent(in) :: rdm(:,:)
 
-        integer :: info, ierr, lwork
-        real(p), allocatable :: work(:)
+        integer :: info
         real(p) :: reigv(4), ieigv(4)
         real(p) :: concurrence
         real(p) :: rdm_spin_flip(4,4), rdm_spin_flip_tmp(4,4), VL(4,4), VR(4,4)
@@ -1209,18 +1193,7 @@ contains
         rdm_spin_flip_tmp = matmul(rdm, flip_spin_matrix)
         rdm_spin_flip = rdm_spin_flip_tmp
 
-        ! Find the optimal size of the workspace.
-        allocate(work(1), stat=ierr)
-        call check_allocate('work',1,ierr)
-        call geev('N', 'N', 4, rdm_spin_flip_tmp, 4, reigv, ieigv, VL, 1, VR, 1, work, -1, info)
-        lwork = nint(work(1))
-        deallocate(work)
-        call check_deallocate('work',ierr)
-
-        ! Now perform the diagonalisation.
-        allocate(work(lwork), stat=ierr)
-        call check_allocate('work',lwork,ierr)
-        call geev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, work, lwork, info)
+        call geev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, info)
         ! Calculate the concurrence. Take abs of eigenvalues so that this is
         ! equivalant to sqauring and then square-rooting.
         concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv)) 

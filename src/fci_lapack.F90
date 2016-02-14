@@ -146,7 +146,7 @@ contains
         type(hamil_t), intent(inout) :: hamil
         real(p), intent(out) :: eigv(:)
         real(p), allocatable :: rwork(:), eigvec(:,:)
-        complex(p), allocatable :: cwork(:), ceigvec(:,:)
+        complex(p), allocatable :: ceigvec(:,:)
         integer :: info, ierr, lwork, i, nwfn, ndets
         character(1) :: job
 
@@ -175,62 +175,25 @@ contains
 
         ! Find the optimal size of the workspace and then perform the diagonalisation.
         if (hamil%comp) then
-            allocate(cwork(1), stat=ierr)
-            call check_allocate('cwork',1,ierr)
             allocate(rwork(max(1,3*ndets-2)), stat = ierr)
             call check_allocate('rwork',max(1, 3*ndets - 2), ierr)
             if (nprocs == 1) then
-                call heev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, -1, rwork, info)
-            else
-                call pheev(job, 'U', ndets, hamil%cmat, 1, 1,       &
-                            proc_blacs_info%desc_m, eigv, ceigvec, 1, 1, &
-                            proc_blacs_info%desc_m, cwork, -1, rwork, size(rwork), info)
-            end if
-            lwork = nint(real(cwork(1)))
-            deallocate(cwork)
-            call check_deallocate('cwork',ierr)
-            allocate(cwork(lwork), stat=ierr)
-            call check_allocate('cwork',lwork,ierr)
-
-            if (nprocs == 1) then
-                call heev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, lwork, rwork, info)
+                call heev(job, 'U', ndets, hamil%cmat, ndets, eigv, rwork, info)
             else
                 call pheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
                             proc_blacs_info%desc_m, eigv, ceigvec, 1, 1, &
-                            proc_blacs_info%desc_m, cwork, lwork, rwork, size(rwork), info)
+                            proc_blacs_info%desc_m, rwork, size(rwork), info)
             end if
-            deallocate(cwork, stat=ierr)
-            call check_deallocate('cwork',ierr)
             deallocate(rwork, stat=ierr)
             call check_deallocate('rwork',ierr)
         else
-            allocate(rwork(1), stat=ierr)
-            call check_allocate('rwork',1,ierr)
             if (nprocs == 1) then
-                call syev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, -1, info)
-            else
-                call psyev(job, 'U', ndets, hamil%rmat, 1, 1,       &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, rwork, -1, info)
-            end if
-            lwork = nint(rwork(1))
-            deallocate(rwork)
-            call check_deallocate('rwork',ierr)
-
-            ! Now perform the diagonalisation.
-            allocate(rwork(lwork), stat=ierr)
-            call check_allocate('rwork',lwork,ierr)
-
-            if (nprocs == 1) then
-                call syev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, lwork, info)
+                call syev(job, 'U', ndets, hamil%rmat, ndets, eigv, info)
             else
                 call psyev(job, 'U', ndets, hamil%rmat, 1, 1,           &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                             proc_blacs_info%desc_m, rwork, lwork, info)
             end if
-
-            deallocate(rwork, stat=ierr)
-            call check_deallocate('rwork',ierr)
 
             ! [review] - JSS: don't analyse/print if complex (unless implemented).  Instead throw a warning and move on.
             ! [review] - JSS: Make similar change in lanczos.
@@ -289,7 +252,6 @@ contains
         !    rdm_eigv: The eigenvalues of the calculated RDM.
 
         use basis_types, only: basis_t
-        use checking, only: check_allocate, check_deallocate
         use linalg, only: syev
         use dmqmc_data, only: subsys_t
         use dmqmc_procedures, only: decode_dm_bitstring
@@ -304,9 +266,8 @@ contains
 
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(2*basis%string_len)
-        integer :: i, j, rdm_size, info, ierr, lwork
+        integer :: i, j, rdm_size, info
         integer(i0) :: rdm_f1(subsys_info(1)%string_len), rdm_f2(subsys_info(1)%string_len)
-        real(p), allocatable :: work(:)
         real(p) :: rdm_element
 
         write(6,'(1x,a36)') "Setting up reduced density matrix..."
@@ -342,19 +303,7 @@ contains
         write(6,'(1x,a39,/)') "Diagonalising reduced density matrix..."
 
         rdm_size = size(rdm, 1)
-        ! Find the optimal size of the workspace.
-        allocate(work(1), stat=ierr)
-        call check_allocate('work',1,ierr)
-        call syev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, -1, info)
-        lwork = nint(work(1))
-        deallocate(work)
-        call check_deallocate('work',ierr)
-
-        ! Perform the diagonalisation.
-        allocate(work(lwork), stat=ierr)
-        call check_allocate('work',lwork,ierr)
-
-        call syev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, lwork, info)
+        call syev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, info)
 
     end subroutine get_rdm_eigenvalues
 
