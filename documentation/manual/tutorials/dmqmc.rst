@@ -34,7 +34,7 @@ To do this we set ``beta_loops`` to 1 in the input file and run the code as:
 
 .. code-block:: bash
 
-    $ aprun -N 1 hande.x heisenberg_dmqmc_excit_dist.lua > heisenberg_dmqmc.out
+    $ aprun -B 1 hande.x heisenberg_dmqmc_excit_dist.lua > heisenberg_dmqmc.out
 
 We find that for this system the population on the diagonal does indeed decay to zero
 rapidly:
@@ -90,26 +90,14 @@ For this system we do
 
 .. code-block:: bash
 
-    $ aprun -N 1 hande.x heisenberg_find_weights.lua > heisenberg_find_weights.out
-
-.. [review] - JSS: Copying?!  By hand?!  Eek!  Perhaps we should make this easier -- print out a lua table?
-.. [review] - JSS: The weights vary somewhat each beta loop.  How important are the exact values?
-.. [reply]  - FDM: I have a very hacky grep/cut/tr/sed combo submission script which takes care
-            of this. Ideally I think it would be best to either get it to return a table so we could
-            string calculations together using lua, or just stop varying the weights after a number of
-            iterations and then run the rest of the simulation with those weights. I don't currently
-            know enough about lua to do this but am interested in looking at importance soon given
-            that it seems to help things a lot for the ueg.
-            Not sure about the weight flucutations - need to ask Nick. I doubt the exact
-            values are very important since it's importance sampling and everything is
-            undone in the end.
+    $ aprun -B 1 hande.x heisenberg_find_weights.lua > heisenberg_find_weights.out
 
 Copying the final iteration's weights from the output file we can check the effect of
 importance sampling by doing running the following input file:
 
 .. code-block:: bash
 
-    $ aprun -N 1 hande.x heisenberg_reweight.lua > heisenberg_reweight_single.out
+    $ aprun -B 1 hande.x heisenberg_reweight.lua > heisenberg_reweight_single.out
 
 and we find that the psips are now more equally distributed among excitation levels:
 
@@ -131,7 +119,7 @@ loops to the desired value.
 
 .. code-block:: bash
 
-    $ aprun -N 1 hande.x heisenberg_reweight.lua > heisenberg_reweight.out
+    $ aprun -B 1 hande.x heisenberg_reweight.lua > heisenberg_reweight.out
 
 The results can be analysed using the ``finite_temperature_analysis.py`` script provided
 in the ``tools/dmqmc`` subdirectory:
