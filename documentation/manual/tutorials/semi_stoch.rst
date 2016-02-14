@@ -60,21 +60,6 @@ Note that because semi-stochastic does not usually reduce iteration time much
 semi-stochastic from the first iteration. We are only concerned with reduction
 in stochastic error from the point where data will be averaged later.
 
-..
-
-    [review] -  JSS:
-
-       + semi-stochastic is slower, so may as well run without it whilst converging.
-
-   Is this a fair summmary?
-
-   NSB: It's not true, for most cases, that semi-stochastic is slower. But I've added a
-   NSB: point above about convergence speed being about the same speed.
-
-.. [review] - JSS: would an option to turn the semi-stochastic on after the shift is turned on be useful?
-.. [review] - NSB: Maybe, but the population used isn't so critical, I think. It's mainly making
-.. [review] - NSB: sure that the wave function is (mostly) converged.
-
 Looking at the above simulation, it appears that the energy has converged by
 iteration :math:`2 \times 10^4`. This is not a guarantee that the wave function is
 also fully converged, but full convergence is not critical -- so long as the most
@@ -129,9 +114,6 @@ Compared to the equivalent non-semi-stochastic simulation performed in the
 energy estimators have reduced from :math:`4 \times 10^{-5}` and
 :math:`3 \times 10^{-6}` to :math:`2 \times 10^{-5}` and :math:`8 \times 10^{-7}`,
 respectively.
-
-.. [review] - JSS: But simulation took much longer.  The reduction means it is still worth it though compared to using stochastic propagation, right?
-.. [review] - NSB: I think it was actually much quicker! Although using a different number of processors and different machine.
 
 Note that if you do not specify a ``start_iteration`` value in the ``semi_stoch``
 table of the input file, then the semi-stochastic adaptation will be turned
