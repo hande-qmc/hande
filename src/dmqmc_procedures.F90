@@ -108,6 +108,8 @@ contains
             allocate(weighted_sampling%sampling_probs(sys%max_number_excitations), stat=ierr)
             if (allocated(dmqmc_in%sampling_probs)) then
                 weighted_sampling%sampling_probs(:size(dmqmc_in%sampling_probs)) = dmqmc_in%sampling_probs
+            else
+                weighted_sampling%sampling_probs(:sys%max_number_excitations) = 1.0_p
             end if
             call check_allocate('weighted_sampling%sampling_probs',sys%max_number_excitations,ierr)
             if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) then
