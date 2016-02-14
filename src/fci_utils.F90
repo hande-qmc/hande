@@ -254,26 +254,25 @@ contains
                 'Sparse distributed matrices are not currently implemented.  &
                 &If this is disagreeable to you, please contribute patches resolving this situation.')
         end if
-        if (hamil%comp .and. present(proc_blacs_info)) then
-            call stop_all('generate_hamil', &
-                'Complex distributed matrices are not currently implemented.  &
-                &If this is disagreeable to you, please contribute patches resolving this situation.')
-        end if
         if (hamil%comp .and. hamil%sparse) then
             call stop_all('generate_hamil', &
                 'Complex sparse matrices are not currently implemented.  &
                 &If this is disagreeable to you, please contribute patches resolving this situation.')
         end if
-        if (hamil%comp) then
-            allocate(hamil%cmat(ndets, ndets), stat=ierr)
-            call check_allocate('hamil_comp%cmat', ndets**2, ierr)
-        else if (.not. hamil%sparse) then
+
+        if (.not.hamil%sparse) then
+            ilocal = ndets
+            jlocal = ndets
             if (present(proc_blacs_info)) then
-                allocate(hamil%rmat(proc_blacs_info%nrows,proc_blacs_info%ncols), stat=ierr)
-                call check_allocate('hamil%rmat', proc_blacs_info%nrows*proc_blacs_info%ncols, ierr)
+                ilocal = proc_blacs_info%nrows
+                jlocal = proc_blacs_info%ncols
+            end if
+            if (hamil%comp) then
+                allocate(hamil%cmat(ilocal, jlocal), stat=ierr)
+                call check_allocate('hamil_comp%cmat', ilocal*jlocal, ierr)
             else
-                allocate(hamil%rmat(ndets, ndets), stat=ierr)
-                call check_allocate('hamil%rmat', ndets**2, ierr)
+                allocate(hamil%rmat(ilocal, jlocal), stat=ierr)
+                call check_allocate('hamil_comp%rmat', ilocal*jlocal, ierr)
             end if
         end if
 
@@ -301,7 +300,11 @@ contains
                         do jj = 1, min(proc_blacs_info%block_size, proc_blacs_info%ncols - j + 1)
                             jlocal = j - 1 + jj
                             jglobal = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*proc_blacs_info%block_size + jj
-                            hamil%rmat(ilocal, jlocal) = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
+                            if (hamil%comp) then
+                                hamil%cmat(ilocal, jlocal) = get_hmatel_complex(sys, dets(:,iglobal), dets(:,jglobal))
+                            else
+                                hamil%rmat(ilocal, jlocal) = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
+                            end if
                         end do
                     end do
                 end do
@@ -359,19 +362,15 @@ contains
                 if (present(full_mat)) then
                     if (full_mat) ii = 1
                 end if
-                if (hamil%comp) then
-                    !$omp do private(j) schedule(dynamic, 200)
-                    do j = ii, ndets
+                !$omp do private(j) schedule(dynamic, 200)
+                do j = ii, ndets
+                    if (hamil%comp) then
                         hamil%cmat(i,j) = get_hmatel_complex(sys,dets(:,i),dets(:,j))
-                    end do
-                    !$omp end do
-                else
-                    !$omp do private(j) schedule(dynamic, 200)
-                    do j = ii, ndets
+                    else
                         hamil%rmat(i,j) = get_hmatel(sys,dets(:,i),dets(:,j))
-                    end do
-                    !$omp end do
-                end if
+                    end if
+                end do
+                !$omp end do
             end do
             !$omp end parallel
         end if
