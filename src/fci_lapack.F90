@@ -132,6 +132,7 @@ contains
         !        Hamiltonian matrix.
 
         use checking, only: check_allocate, check_deallocate
+        use linalg, only: syev, heev, psyev, pheev
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
 
@@ -145,7 +146,7 @@ contains
         type(hamil_t), intent(inout) :: hamil
         real(p), intent(out) :: eigv(:)
         real(p), allocatable :: rwork(:), eigvec(:,:)
-        complex(p), allocatable :: cwork(:)
+        complex(p), allocatable :: cwork(:), ceigvec(:,:)
         integer :: info, ierr, lwork, i, nwfn, ndets
         character(1) :: job
 
@@ -163,63 +164,40 @@ contains
         end if
 
         if (nprocs > 1) then
-            allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
-            call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
+            if (hamil%comp) then
+                allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+                call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
+            else
+                allocate(ceigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+                call check_allocate('ceigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
+            end if
         end if
 
-        ! Find the optimal size of the workspace.
-
+        ! Find the optimal size of the workspace and then perform the diagonalisation.
         if (hamil%comp) then
             allocate(cwork(1), stat=ierr)
             call check_allocate('cwork',1,ierr)
             allocate(rwork(max(1,3*ndets-2)), stat = ierr)
             call check_allocate('rwork',max(1, 3*ndets - 2), ierr)
             if (nprocs == 1) then
-#ifdef SINGLE_PRECISION
-                call cheev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, -1, rwork, info)
-#else
-                call zheev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, -1, rwork, info)
-#endif
+                call heev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, -1, rwork, info)
             else
-#ifdef PARALLEL
-#ifdef SINGLE_PRECISION
-                call pcheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, cwork, -1, rwork, info)
-#else
-                call pzheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, cwork, -1, rwork, info)
-#endif
-#endif
+                call pheev(job, 'U', ndets, hamil%cmat, 1, 1,       &
+                            proc_blacs_info%desc_m, eigv, ceigvec, 1, 1, &
+                            proc_blacs_info%desc_m, cwork, -1, rwork, size(rwork), info)
             end if
             lwork = nint(real(cwork(1)))
             deallocate(cwork)
             call check_deallocate('cwork',ierr)
-            ! Now perform the diagonalisation.
             allocate(cwork(lwork), stat=ierr)
             call check_allocate('cwork',lwork,ierr)
 
             if (nprocs == 1) then
-                ! Use lapack.
-#ifdef SINGLE_PRECISION
-                call cheev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, lwork, rwork, info)
-#else
-                call zheev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, lwork, rwork, info)
-#endif
+                call heev(job, 'U', ndets, hamil%cmat, ndets, eigv, cwork, lwork, rwork, info)
             else
-#ifdef PARALLEL
-                ! Use scalapack to do the diagonalisation in parallel.
-#ifdef SINGLE_PRECISION
-                call pcheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, cwork, lwork, rwork, info)
-#else
-                call pzheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, cwork, lwork, rwork, info)
-#endif
-#endif
+                call pheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, ceigvec, 1, 1, &
+                            proc_blacs_info%desc_m, cwork, lwork, rwork, size(rwork), info)
             end if
             deallocate(cwork, stat=ierr)
             call check_deallocate('cwork',ierr)
@@ -229,23 +207,11 @@ contains
             allocate(rwork(1), stat=ierr)
             call check_allocate('rwork',1,ierr)
             if (nprocs == 1) then
-#ifdef SINGLE_PRECISION
-                call ssyev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, -1, info)
-#else
-                call dsyev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, -1, info)
-#endif
+                call syev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, -1, info)
             else
-#ifdef PARALLEL
-#ifdef SINGLE_PRECISION
-                call pssyev(job, 'U', ndets, hamil%rmat, 1, 1,               &
+                call psyev(job, 'U', ndets, hamil%rmat, 1, 1,       &
                         proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                         proc_blacs_info%desc_m, rwork, -1, info)
-#else
-                call pdsyev(job, 'U', ndets, hamil%rmat, 1, 1,               &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, rwork, -1, info)
-#endif
-#endif
             end if
             lwork = nint(rwork(1))
             deallocate(rwork)
@@ -256,29 +222,18 @@ contains
             call check_allocate('rwork',lwork,ierr)
 
             if (nprocs == 1) then
-                ! Use lapack.
-#ifdef SINGLE_PRECISION
-                call ssyev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, lwork, info)
-#else
-                call dsyev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, lwork, info)
-#endif
+                call syev(job, 'U', ndets, hamil%rmat, ndets, eigv, rwork, lwork, info)
             else
-#ifdef PARALLEL
-                ! Use scalapack to do the diagonalisation in parallel.
-#ifdef SINGLE_PRECISION
-                call pssyev(job, 'U', ndets, hamil%rmat, 1, 1,               &
+                call psyev(job, 'U', ndets, hamil%rmat, 1, 1,           &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                             proc_blacs_info%desc_m, rwork, lwork, info)
-#else
-                call pdsyev(job, 'U', ndets, hamil%rmat, 1, 1,               &
-                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, rwork, lwork, info)
-#endif
-#endif
             end if
 
             deallocate(rwork, stat=ierr)
             call check_deallocate('rwork',ierr)
+
+            ! [review] - JSS: don't analyse/print if complex (unless implemented).  Instead throw a warning and move on.
+            ! [review] - JSS: Make similar change in lanczos.
             nwfn = fci_in%analyse_fci_wfn
             if (nwfn < 0) nwfn = ndets
             do i = 1, nwfn
@@ -299,12 +254,15 @@ contains
             end do
         end if
 
-
-
-
         if (nprocs > 1) then
-            deallocate(eigvec, stat=ierr)
-            call check_deallocate('eigvec',ierr)
+            if (allocated(eigvec)) then
+                deallocate(eigvec, stat=ierr)
+                call check_deallocate('eigvec',ierr)
+            end if
+            if (allocated(ceigvec)) then
+                deallocate(ceigvec, stat=ierr)
+                call check_deallocate('ceigvec',ierr)
+            end if
         end if
 
     end subroutine lapack_diagonalisation
