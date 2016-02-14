@@ -290,6 +290,7 @@ contains
 
         use basis_types, only: basis_t
         use checking, only: check_allocate, check_deallocate
+        use linalg, only: syev
         use dmqmc_data, only: subsys_t
         use dmqmc_procedures, only: decode_dm_bitstring
 
@@ -344,11 +345,7 @@ contains
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
-#ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, -1, info)
-#else
-        call dsyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, -1, info)
-#endif
+        call syev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, -1, info)
         lwork = nint(work(1))
         deallocate(work)
         call check_deallocate('work',ierr)
@@ -357,11 +354,7 @@ contains
         allocate(work(lwork), stat=ierr)
         call check_allocate('work',lwork,ierr)
 
-#ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, lwork, info)
-#else
-        call dsyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, lwork, info)
-#endif
+        call syev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, lwork, info)
 
     end subroutine get_rdm_eigenvalues
 

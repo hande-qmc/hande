@@ -1104,6 +1104,7 @@ contains
         !     rdm: Reduced density matrix estimate.
 
         use checking, only: check_allocate, check_deallocate
+        use linalg, only: syev
         use dmqmc_data, only: subsys_t
 
         real(p), intent(inout) :: rdm(:,:)
@@ -1123,11 +1124,7 @@ contains
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
-#ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, rdm, rdm_size, eigv, work, -1, info)
-#else
-        call dsyev('N', 'U', rdm_size, rdm, rdm_size, eigv, work, -1, info)
-#endif
+        call syev('N', 'U', rdm_size, rdm, rdm_size, eigv, work, -1, info)
 
         lwork = nint(work(1))
         deallocate(work)
@@ -1144,11 +1141,7 @@ contains
         call check_allocate('dm_tmp',rdm_size**2,ierr)
         dm_tmp = rdm
 
-#ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
-#else
-        call dsyev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
-#endif
+        call syev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, work, lwork, info)
         thrown_away = .false.
         write(6,'(1X,"# Eigenvalues thrown away:",1X)',advance='no')
         do i = 1, ubound(eigv,1)
