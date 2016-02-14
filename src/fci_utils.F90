@@ -392,6 +392,7 @@ contains
         use checking, only: check_allocate, check_deallocate
         use const, only: p, depsilon
         use errors, only: stop_all
+        use linalg, only: plaprnt
         use parallel, only: blacs_info, nprocs
         use utils, only: get_free_unit
 
@@ -404,32 +405,28 @@ contains
 
         integer :: iunit, i, j, ierr
         real(p), allocatable :: work_print(:)
+        complex(p), allocatable :: cwork_print(:)
 
         iunit = get_free_unit()
         open(iunit, file=hamiltonian_file, status='unknown')
         if (nprocs > 1 .and. (.not.hamil%comp)) then
             if (.not.present(proc_blacs_info)) call stop_all('write_hamil', 'proc_blacs_info not supplied.')
             ! Note that this uses a different format to the serial case...
-            allocate(work_print(proc_blacs_info%block_size**2), stat=ierr)
-            call check_allocate('work_print', proc_blacs_info%block_size**2, ierr)
-#ifdef PARALLEL
-#ifdef SINGLE_PRECISION
-            call pslaprnt(ndets, ndets, hamil%rmat, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil%rmat', iunit, work_print)
-#else
-            call pdlaprnt(ndets, ndets, hamil%rmat, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil%rmat', iunit, work_print)
-#endif
-#endif
-            deallocate(work_print)
-            call check_deallocate('work_print', ierr)
+            if (hamil%comp) then
+                allocate(cwork_print(proc_blacs_info%block_size**2), stat=ierr)
+                call check_allocate('cwork_print', proc_blacs_info%block_size**2, ierr)
+                call plaprnt(ndets, ndets, hamil%cmat, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil%rmat', iunit, cwork_print)
+                deallocate(cwork_print)
+                call check_deallocate('cwork_print', ierr)
+            else
+                allocate(work_print(proc_blacs_info%block_size**2), stat=ierr)
+                call check_allocate('work_print', proc_blacs_info%block_size**2, ierr)
+                call plaprnt(ndets, ndets, hamil%rmat, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil%cmat', iunit, work_print)
+                deallocate(work_print)
+                call check_deallocate('work_print', ierr)
+            end if
         else
-            if (.not. hamil%comp .and. .not. hamil%sparse) then
-                do i=1, ndets
-                    write (iunit,*) i,i,hamil%rmat(i,i)
-                    do j=i+1, ndets
-                        if (abs(hamil%rmat(i,j)) > depsilon) write (iunit,*) i,j,hamil%rmat(i,j)
-                    end do
-                end do
-            else if (hamil%sparse) then
+            if (hamil%sparse) then
                 j = 1
                 do i = 1, size(hamil%smat%mat)
                     if (abs(hamil%smat%mat(i)) > depsilon) then
@@ -437,16 +434,31 @@ contains
                         write (iunit,*) j, hamil%smat%col_ind(i), hamil%smat%mat(i)
                     end if
                 end do
-            else if (hamil%comp) then
+            else
                 do i=1, ndets
-                    write (iunit,*) i,i,hamil%cmat(i,i)
+                    call write_hamil_entry(hamil, i, i, iunit)
                     do j=i+1, ndets
-                        if (abs(hamil%cmat(i,j)) > depsilon) write (iunit,*) i,j,hamil%cmat(i,j)
+                        call write_hamil_entry(hamil, i, j, iunit)
                     end do
                 end do
             end if
         end if
         close(iunit, status='keep')
+
+        contains
+
+            subroutine write_hamil_entry(hamil, i, j, iunit)
+
+                type(hamil_t), intent(in) :: hamil
+                integer, intent(in) :: i, j, iunit
+
+                if (hamil%comp) then
+                    if (i==j .or. abs(hamil%cmat(i,j)) > depsilon) write (iunit,*) i, j, hamil%cmat(i,j)
+                else
+                    if (i==j .or. abs(hamil%rmat(i,j)) > depsilon) write (iunit,*) i, j, hamil%rmat(i,j)
+                end if
+
+            end subroutine write_hamil_entry
 
     end subroutine write_hamil
 

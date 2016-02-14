@@ -5,7 +5,7 @@ module linalg
 implicit none
 
 private
-public :: syev, heev, geev, psyev, pheev
+public :: syev, heev, geev, psyev, pheev, plaprnt
 
 interface syev
     module procedure ssyev_f90
@@ -36,6 +36,13 @@ interface pheev
     module procedure pzheev_f90
     module procedure pheev_wrapper
 end interface pheev
+
+interface plaprnt
+    module procedure pslaprnt_f90
+    module procedure pdlaprnt_f90
+    module procedure pclaprnt_f90
+    module procedure pzlaprnt_f90
+end interface plaprnt
 
 contains
 
@@ -399,5 +406,73 @@ contains
         end do
 
     end subroutine pheev_wrapper
+
+    subroutine pslaprnt_f90(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+
+        ! See ScaLAPACK's pslaprnt for details.
+
+        use const, only: sp
+
+        integer, intent(in) :: M, N, IA, JA, desca(:), irprnt, icprnt, nout
+        character(*), intent(in) :: cmatnm
+        real(sp), intent(in) :: A(:,:)
+        real(sp), intent(out) :: work(:)
+
+#ifdef PARALLEL
+        call pslaprnt(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+#endif
+
+    end subroutine pslaprnt_f90
+
+    subroutine pdlaprnt_f90(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+
+        ! See ScaLAPACK's pdlaprnt for details.
+
+        use const, only: dp
+
+        integer, intent(in) :: M, N, IA, JA, desca(:), irprnt, icprnt, nout
+        character(*), intent(in) :: cmatnm
+        real(dp), intent(in) :: A(:,:)
+        real(dp), intent(out) :: work(:)
+
+#ifdef PARALLEL
+        call pdlaprnt(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+#endif
+
+    end subroutine pdlaprnt_f90
+
+    subroutine pclaprnt_f90(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+
+        ! See ScaLAPACK's pclaprnt for details.
+
+        use const, only: sp
+
+        integer, intent(in) :: M, N, IA, JA, desca(:), irprnt, icprnt, nout
+        character(*), intent(in) :: cmatnm
+        complex(sp), intent(in) :: A(:,:)
+        complex(sp), intent(out) :: work(:)
+
+#ifdef PARALLEL
+        call pclaprnt(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+#endif
+
+    end subroutine pclaprnt_f90
+
+    subroutine pzlaprnt_f90(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+
+        ! See ScaLAPACK's pzlaprnt for details.
+
+        use const, only: dp
+
+        integer, intent(in) :: M, N, IA, JA, desca(:), irprnt, icprnt, nout
+        character(*), intent(in) :: cmatnm
+        complex(dp), intent(in) :: A(:,:)
+        complex(dp), intent(out) :: work(:)
+
+#ifdef PARALLEL
+        call pzlaprnt(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+#endif
+
+    end subroutine pzlaprnt_f90
 
 end module linalg
