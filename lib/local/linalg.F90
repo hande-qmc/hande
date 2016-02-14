@@ -5,7 +5,7 @@ module linalg
 implicit none
 
 private
-public :: syev, heev, psyev, pheev, pzheev_f90
+public :: syev, heev, geev, psyev, pheev
 
 interface syev
     module procedure ssyev_f90
@@ -16,6 +16,11 @@ interface heev
     module procedure cheev_f90
     module procedure zheev_f90
 end interface
+
+interface geev
+    module procedure sgeev_f90
+    module procedure dgeev_f90
+end interface geev
 
 interface psyev
     module procedure pssyev_f90
@@ -104,6 +109,44 @@ contains
         call zheev(job, uplo, N, A, lda, W, work, lwork, rwork, info)
 
     end subroutine zheev_f90
+
+    subroutine sgeev_f90(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
+
+        ! See LAPACK sgeev procedure for details.
+
+        use const, only: sp
+
+        character, intent(in) :: jobvl, jobvr
+        integer, intent(in) :: N
+        real(sp), intent(inout) :: A(lda,*)
+        integer, intent(in) :: LDA
+        real(sp), intent(out) :: WR(:), WI(:)
+        integer, intent(in) :: ldvl, ldvr, lwork
+        real(sp), intent(out) :: VL(ldvl,*), VR(ldvr,*), WORK(:)
+        integer, intent(out) :: info
+
+        call sgeev(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
+
+    end subroutine sgeev_f90
+
+    subroutine dgeev_f90(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
+
+        ! See LAPACK dgeev procedure for details.
+
+        use const, only: dp
+
+        character, intent(in) :: jobvl, jobvr
+        integer, intent(in) :: N
+        real(dp), intent(inout) :: A(lda,*)
+        integer, intent(in) :: LDA
+        real(dp), intent(out) :: WR(:), WI(:)
+        integer, intent(in) :: ldvl, ldvr, lwork
+        real(dp), intent(out) :: VL(ldvl,*), VR(ldvr,*), WORK(:)
+        integer, intent(out) :: info
+
+        call dgeev(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
+
+    end subroutine dgeev_f90
 
     subroutine pssyev_f90(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, info)
 

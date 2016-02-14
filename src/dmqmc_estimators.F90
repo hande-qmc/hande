@@ -1187,6 +1187,7 @@ contains
         !     rdm: Reduced density matrix estimate.
 
         use checking, only: check_allocate, check_deallocate
+        use linalg, only: geev
 
         real(p), intent(in) :: rdm(:,:)
 
@@ -1211,11 +1212,7 @@ contains
         ! Find the optimal size of the workspace.
         allocate(work(1), stat=ierr)
         call check_allocate('work',1,ierr)
-#ifdef SINGLE_PRECISION
-        call sgeev('N', 'N', 4, rdm_spin_flip_tmp, 4, reigv, ieigv, VL, 1, VR, 1, work, -1, info)
-#else
-        call dgeev('N', 'N', 4, rdm_spin_flip_tmp, 4, reigv, ieigv, VL, 1, VR, 1,  work, -1, info)
-#endif
+        call geev('N', 'N', 4, rdm_spin_flip_tmp, 4, reigv, ieigv, VL, 1, VR, 1, work, -1, info)
         lwork = nint(work(1))
         deallocate(work)
         call check_deallocate('work',ierr)
@@ -1223,11 +1220,7 @@ contains
         ! Now perform the diagonalisation.
         allocate(work(lwork), stat=ierr)
         call check_allocate('work',lwork,ierr)
-#ifdef SINGLE_PRECISION
-        call sgeev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, work, lwork, info)
-#else
-        call dgeev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, work, lwork, info)
-#endif
+        call geev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, work, lwork, info)
         ! Calculate the concurrence. Take abs of eigenvalues so that this is
         ! equivalant to sqauring and then square-rooting.
         concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv)) 
