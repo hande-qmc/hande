@@ -127,7 +127,7 @@ opt_block: :class:`pandas.DataFrame`
         if len(info) == 1:
             indices.append(','.join(calc))
         else:
-            indices.extend('%s %i'%(','.join(calc),i) for i in range(len(info)))
+            indices.extend((','.join(calc),i) for i in range(len(info)))
 
     opt_blocks = [info.opt_block for info in infos]
     if verbose < v_rec_stats:
