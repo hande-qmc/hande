@@ -55,6 +55,9 @@ type hamil_t
     ! [reply] - CJCS: Ruth has pointed out to me what you actually meant and I've
     ! [reply] - CJCS: changed accordingly; I think smat can probably stay as well.
     ! [reply] - JSS: to be picky: cmplx is much easier to understand than comp.
+    ! [reply] - CJCS: Was considering cmplx but thought might not be any better as 
+    ! [reply] - CJCS: it's the function to generate a complex value in fortran (and
+    ! [reply] - CJCS: so still gets highlighted, at least for me)?
     logical :: comp = .false.
     logical :: sparse = .false.
 end type hamil_t

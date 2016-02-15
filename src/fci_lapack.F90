@@ -186,6 +186,9 @@ contains
             end if
             deallocate(rwork, stat=ierr)
             call check_deallocate('rwork',ierr)
+            if (fci_in%analyse_fci_wfn /= 0) then
+                write(6,'(1x,a36)') "Complex wavefunction analysis and printing not implemented. Skipping."
+            end if
         else
             if (nprocs == 1) then
                 call syev(job, 'U', ndets, hamil%rmat, ndets, eigv, info)

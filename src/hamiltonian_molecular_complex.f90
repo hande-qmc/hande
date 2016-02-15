@@ -351,40 +351,4 @@ contains
 
     end function slater_condon2_mol_excit_complex
 
-    pure function double_counting_correction_mol_complex(sys, occ_list) result(double_count)
-
-        ! Work out the double counting correction between the Hartree-Fock
-        ! energy and the sum of the Hartree-Fock orbitals.
-
-        ! In:
-        !    sys: system being studied.
-        !    occ_list: list of occupied orbitals in determinant.
-        ! Returns:
-        !    double_count: double counting correction,
-        !    i.e. <D|H|D> - \sum_{i_occ} epsilon_i.
-
-        use system, only: sys_t
-        use determinants, only: sum_sp_eigenvalues
-
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: occ_list(:)
-
-        complex(p) :: sc0
-        real(p) sum_hf, double_count
-
-        ! [review] - JSS: Calls the complex version but then ignores the imaginary part (which must be zero due to Hermiticity).
-        ! [review] - JSS: Was this deliberate?
-        ! [reply] - CJCS: No; I didn't understand what this function does so decided not to touch it.
-        ! [reply] - CJCS: Asking around this function is mainly used for ipDMQMC; assuming it's not needed
-        ! [reply] - CJCS: and can be deleted? Unless we intend to implement complex DMQMC in the near future,
-        ! [reply] - CJCS: but even then it can be reverse engineered from the real version easily.
-        ! [reply] - JSS: yes, would delete so to force any implementation of complex IP-DMQMC to actually test this properly rather
-        ! [reply] - JSS: than assume it has been tested before and works...
-        sc0 = slater_condon0_mol_orb_list_complex(sys, occ_list)
-        sum_hf = sum_sp_eigenvalues(sys, occ_list) + sys%read_in%Ecore
-
-        double_count = real(sc0, p)-sum_hf
-
-    end function double_counting_correction_mol_complex
-
 end module hamiltonian_molecular_complex
