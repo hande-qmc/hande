@@ -452,6 +452,9 @@ contains
         call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
         call aot_get_val(sys%real_lattice%finite_cluster, err, lua_state, opts, 'finite')
 
+        ! Only one symmetry sector, so we can set it here (needed for dmqmc initialisation)
+        sys%symmetry = 1
+
         new_basis = aot_exists(lua_state, opts, 'lattice') .or. new
 
         if (new_basis) then
