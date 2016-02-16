@@ -53,9 +53,8 @@ contains
         use const, only: sp
 
         character, intent(in) :: job, uplo
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         real(sp), intent(inout) :: A(lda,*)
-        integer, intent(in) :: lda
         real(sp), intent(out) :: W(:), work(:)
         integer, intent(in) :: lwork
         integer, intent(out) :: info
@@ -71,9 +70,8 @@ contains
         use const, only: dp
 
         character, intent(in) :: job, uplo
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         real(dp), intent(inout) :: A(lda,*)
-        integer, intent(in) :: lda
         real(dp), intent(out) :: W(:), work(:)
         integer, intent(in) :: lwork
         integer, intent(out) :: info
@@ -90,9 +88,8 @@ contains
         use checking, only: check_allocate, check_deallocate
 
         character, intent(in) :: job, uplo
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         real(p), intent(inout) :: A(lda,*)
-        integer, intent(in) :: lda
         real(p), intent(out) :: W(:)
         integer, intent(out) :: info
 
@@ -118,9 +115,8 @@ contains
         use const, only: sp
 
         character, intent(in) ::  job, uplo
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         complex(sp), intent(inout) :: A(lda,*)
-        integer, intent(in) :: lda
         real(sp), intent(out) :: W(N)
         complex(sp), intent(out) :: work(:)
         integer, intent(in) :: lwork
@@ -138,9 +134,8 @@ contains
         use const, only: dp
 
         character, intent(in) ::  job, uplo
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         complex(dp), intent(inout) :: A(lda,*)
-        integer, intent(in) :: lda
         real(dp), intent(out) :: W(N)
         complex(dp), intent(out) :: work(:)
         integer, intent(in) :: lwork
@@ -159,9 +154,8 @@ contains
         use const, only: p
 
         character, intent(in) ::  job, uplo
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         complex(p), intent(inout) :: A(lda,*)
-        integer, intent(in) :: lda
         real(p), intent(out) :: W(N)
         real(p), intent(out) :: rwork(:)
         integer, intent(out) :: info
@@ -188,9 +182,8 @@ contains
         use const, only: sp
 
         character, intent(in) :: jobvl, jobvr
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         real(sp), intent(inout) :: A(lda,*)
-        integer, intent(in) :: LDA
         real(sp), intent(out) :: WR(:), WI(:)
         integer, intent(in) :: ldvl, ldvr, lwork
         real(sp), intent(out) :: VL(ldvl,*), VR(ldvr,*), WORK(:)
@@ -207,9 +200,8 @@ contains
         use const, only: dp
 
         character, intent(in) :: jobvl, jobvr
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         real(dp), intent(inout) :: A(lda,*)
-        integer, intent(in) :: LDA
         real(dp), intent(out) :: WR(:), WI(:)
         integer, intent(in) :: ldvl, ldvr, lwork
         real(dp), intent(out) :: VL(ldvl,*), VR(ldvr,*), WORK(:)
@@ -227,9 +219,8 @@ contains
         use const, only: p
 
         character, intent(in) :: jobvl, jobvr
-        integer, intent(in) :: N
+        integer, intent(in) :: N, lda
         real(p), intent(inout) :: A(lda,*)
-        integer, intent(in) :: LDA
         real(p), intent(out) :: WR(:), WI(:)
         integer, intent(in) :: ldvl, ldvr
         real(p), intent(out) :: VL(ldvl,*), VR(ldvr,*)
