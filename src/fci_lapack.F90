@@ -195,7 +195,7 @@ contains
             else
                 call psyev(job, 'U', ndets, hamil%rmat, 1, 1,           &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                            proc_blacs_info%desc_m, rwork, lwork, info)
+                            proc_blacs_info%desc_m, info)
             end if
 
             ! [review] - JSS: don't analyse/print if complex (unless implemented).  Instead throw a warning and move on.
