@@ -150,7 +150,11 @@ opt_block: :class:`pandas.DataFrame`
         if info.no_opt_block and verbose > v_silent:
             fnames = ''
             if (len(indices) > 1):
-                fnames = ' in ' + calc.replace(',',' ')
+                try:
+                    fnames = ' in ' + calc.replace(',',' ')
+                except AttributeError:
+                    # if there is more than one calculation in the file calc is a tuple 
+                    fnames = ' in ' + calc[0] + ' ' + str(calc[1])
             print('WARNING: could not find optimal block size%s.' % (fnames))
             print('Insufficient statistics collected for the following '
                   'variables: %s.' % (', '.join(info.no_opt_block)))
@@ -159,7 +163,7 @@ opt_block: :class:`pandas.DataFrame`
         for info in infos:
             pyblock.pd_utils.plot_reblocking(info.reblock, reblock_plot)
 
-    return info
+    return infos
 
 def parse_args(args):
     '''Parse command-line arguments.
