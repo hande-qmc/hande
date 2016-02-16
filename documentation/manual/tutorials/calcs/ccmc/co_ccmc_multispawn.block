@@ -1,0 +1,4 @@
+Recommended statistics from optimal block size:
+
+                               # H psips \sum H_0j N_j       N_0       Shift Proj. Energy
+ccmc/co_ccmc_multispawn.out  1066160(30)     -11191(1)  36178(7)  -0.3091(1)  -0.30933(3)

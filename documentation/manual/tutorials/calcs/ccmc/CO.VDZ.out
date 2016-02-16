@@ -1,0 +1,309 @@
+    -----------------------------------------------------------------------
+          Psi4: An Open-Source Ab Initio Electronic Structure Package
+                              Psi4 (no tag) Driver
+
+    J. M. Turney, A. C. Simmonett, R. M. Parrish, E. G. Hohenstein,
+    F. A. Evangelista, J. T. Fermann, B. J. Mintz, L. A. Burns, J. J. Wilke,
+    M. L. Abrams, N. J. Russ, M. L. Leininger, C. L. Janssen, E. T. Seidl,
+    W. D. Allen, H. F. Schaefer, R. A. King, E. F. Valeev, C. D. Sherrill,
+    and T. D. Crawford, WIREs Comput. Mol. Sci. 2, 556-565 (2012)
+    (doi: 10.1002/wcms.93)
+
+                         Additional Contributions by
+    A. E. DePrince, M. Saitow, U. Bozkaya, A. Yu. Sokolov
+    -----------------------------------------------------------------------
+
+
+    Psi4 started on: Thu Jan 28 15:07:52 2016
+
+    Process ID:  14550
+    PSI4DATADIR: /home/ajwt3/code/psi4/share/psi
+    Memory level set to 256.000 MB
+
+  ==> Input File <==
+
+--------------------------------------------------------------------------
+molecule CO {
+    C
+    O 1 1.12832
+}
+
+plugin_load("fcidump/fcidump.so")
+
+set basis cc-pVDZ
+set reference rhf
+set e_convergence 1e-12
+set d_convergence 1e-12
+set ints_tolerance 0.0
+
+set fcidump integrals_file CO.ccpvdz.fcidump
+
+scf()
+
+plugin("fcidump.so")
+--------------------------------------------------------------------------
+fcidump/fcidump.so loaded.
+
+*** tstart() called on carpathia
+*** at Thu Jan 28 15:07:52 2016
+
+    There are an even number of electrons - assuming singlet.
+    Specify the multiplicity with the MULTP option in the
+    input if this is incorrect
+
+
+         ---------------------------------------------------------
+                                   SCF
+            by Justin Turney, Rob Parrish, and Andy Simmonett
+                              RHF Reference
+                        1 Threads,    256 MiB Core
+         ---------------------------------------------------------
+
+  ==> Geometry <==
+
+    Molecular point group: c2v
+    Full point group: C_inf_v
+
+    Geometry (in Angstrom), charge = 0, multiplicity = 1:
+
+       Center              X                  Y                   Z       
+    ------------   -----------------  -----------------  -----------------
+           C          0.000000000000     0.000000000000    -0.644666444202
+           O          0.000000000000     0.000000000000     0.483653555798
+
+  Running in c2v symmetry.
+
+  Rotational constants: A = ************  B =      1.93129  C =      1.93129 [cm^-1]
+  Rotational constants: A = ************  B =  57898.67146  C =  57898.67146 [MHz]
+  Nuclear repulsion =   22.511792764747590
+
+  Charge       = 0
+  Multiplicity = 1
+  Electrons    = 14
+  Nalpha       = 7
+  Nbeta        = 7
+
+  ==> Algorithm <==
+
+  SCF Algorithm Type is PK.
+  DIIS enabled.
+  MOM disabled.
+  Fractional occupation disabled.
+  Guess Type is CORE.
+  Energy threshold   = 1.00e-12
+  Density threshold  = 1.00e-12
+  Integral threshold = 0.00e+00
+
+  ==> Primary Basis <==
+
+  Basis Set: CC-PVDZ
+    Number of shells: 12
+    Number of basis function: 28
+    Number of Cartesian functions: 30
+    Spherical Harmonics?: true
+    Max angular momentum: 2
+
+  ==> Pre-Iterations <==
+
+   -------------------------------------------------------
+    Irrep   Nso     Nmo     Nalpha   Nbeta   Ndocc  Nsocc
+   -------------------------------------------------------
+     A1        14      14       0       0       0       0
+     A2         2       2       0       0       0       0
+     B1         6       6       0       0       0       0
+     B2         6       6       0       0       0       0
+   -------------------------------------------------------
+    Total      28      28       7       7       7       0
+   -------------------------------------------------------
+
+  Starting with a DF guess...
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+  ==> Integral Setup <==
+
+  ==> DFJK: Density-Fitted J/K Matrices <==
+
+    J tasked:                  Yes
+    K tasked:                  Yes
+    wK tasked:                  No
+    OpenMP threads:              1
+    Integrals threads:           1
+    Memory (MB):               183
+    Algorithm:                Core
+    Integral Cache:           NONE
+    Schwarz Cutoff:          0E+00
+    Fitting Condition:       1E-12
+
+   => Auxiliary Basis Set <=
+
+  Basis Set: 
+    Number of shells: 48
+    Number of basis function: 140
+    Number of Cartesian functions: 162
+    Spherical Harmonics?: true
+    Max angular momentum: 3
+
+  Minimum eigenvalue in the overlap matrix is 2.1735009961E-02.
+  Using Symmetric Orthogonalization.
+  SCF Guess: Core (One-Electron) Hamiltonian.
+
+  ==> Iterations <==
+
+                           Total Energy        Delta E     RMS |[F,P]|
+
+   @DF-RHF iter   1:  -102.19397637476510   -1.02194e+02   1.88773e-01 
+   @DF-RHF iter   2:   -99.73526483520695    2.45871e+00   2.04796e-01 DIIS
+   @DF-RHF iter   3:  -112.38405077667963   -1.26488e+01   4.97637e-02 DIIS
+   @DF-RHF iter   4:  -112.73271701812402   -3.48666e-01   1.14665e-02 DIIS
+   @DF-RHF iter   5:  -112.74693650926949   -1.42195e-02   4.27375e-03 DIIS
+   @DF-RHF iter   6:  -112.74829991628619   -1.36341e-03   2.66660e-03 DIIS
+   @DF-RHF iter   7:  -112.74898873512302   -6.88819e-04   6.05155e-04 DIIS
+   @DF-RHF iter   8:  -112.74903715569812   -4.84206e-05   4.64712e-05 DIIS
+   @DF-RHF iter   9:  -112.74903771027815   -5.54580e-07   1.14548e-05 DIIS
+   @DF-RHF iter  10:  -112.74903772649506   -1.62169e-08   2.41428e-06 DIIS
+   @DF-RHF iter  11:  -112.74903772721439   -7.19325e-10   3.32000e-07 DIIS
+   @DF-RHF iter  12:  -112.74903772722678   -1.23919e-11   9.82743e-09 DIIS
+   @DF-RHF iter  13:  -112.74903772722678    0.00000e+00   6.42924e-10 DIIS
+   @DF-RHF iter  14:  -112.74903772722678    0.00000e+00   7.62157e-11 DIIS
+   @DF-RHF iter  15:  -112.74903772722686   -8.52651e-14   1.00149e-11 DIIS
+   @DF-RHF iter  16:  -112.74903772722675    1.13687e-13   1.02275e-12 DIIS
+   @DF-RHF iter  17:  -112.74903772722681   -5.68434e-14   2.44536e-13 DIIS
+
+  DF guess converged.
+
+  ==> Integral Setup <==
+
+ MINTS: Wrapper to libmints.
+   by Justin Turney
+
+   Calculation information:
+      Number of atoms:                   2
+      Number of AO shells:              12
+      Number of SO shells:              12
+      Number of primitives:             44
+      Number of atomic orbitals:        30
+      Number of basis functions:        28
+
+      Number of irreps:                  4
+      Integral cutoff                 0.00e+00
+      Number of functions per irrep: [  14    2    6    6 ]
+
+ OEINTS: Overlap, kinetic, potential, dipole, and quadrupole integrals
+         stored in file 35.
+
+      Computing two-electron integrals...done
+      Computed 19395 non-zero two-electron integrals.
+        Stored in file 33.
+
+	Batch   1 pq = [       0,     150] index = [             0,11325]
+  ==> DiskJK: Disk-Based J/K Matrices <==
+
+    J tasked:                  Yes
+    K tasked:                  Yes
+    wK tasked:                  No
+    Memory (MB):               183
+    Schwarz Cutoff:          0E+00
+
+   @RHF iter  18:  -112.74928139334520   -2.43666e-04   3.92091e-05 DIIS
+   @RHF iter  19:  -112.74928158440244   -1.91057e-07   9.38093e-06 DIIS
+   @RHF iter  20:  -112.74928159325961   -8.85717e-09   4.22827e-06 DIIS
+   @RHF iter  21:  -112.74928159509005   -1.83044e-09   1.74946e-06 DIIS
+   @RHF iter  22:  -112.74928159540556   -3.15509e-10   1.64339e-07 DIIS
+   @RHF iter  23:  -112.74928159541051   -4.94538e-12   2.88736e-08 DIIS
+   @RHF iter  24:  -112.74928159541057   -5.68434e-14   9.18608e-09 DIIS
+   @RHF iter  25:  -112.74928159541065   -8.52651e-14   9.20917e-10 DIIS
+   @RHF iter  26:  -112.74928159541071   -5.68434e-14   9.08651e-11 DIIS
+   @RHF iter  27:  -112.74928159541065    5.68434e-14   8.03388e-12 DIIS
+   @RHF iter  28:  -112.74928159541057    8.52651e-14   8.40791e-13 DIIS
+
+  ==> Post-Iterations <==
+
+    Orbital Energies (a.u.)
+    -----------------------
+
+    Doubly Occupied:                                                      
+
+       1A1   -20.669332     2A1   -11.366671     3A1    -1.522855  
+       4A1    -0.802097     1B1    -0.634366     1B2    -0.634366  
+       5A1    -0.548829  
+
+    Virtual:                                                              
+
+       2B2     0.154590     2B1     0.154590     6A1     0.382568  
+       3B2     0.672211     3B1     0.672211     7A1     0.726501  
+       8A1     1.018099     9A1     1.061862     4B2     1.224431  
+       4B1     1.224431    10A1     1.344242     1A2     1.344242  
+       5B1     1.558292     5B2     1.558292    11A1     1.938993  
+      12A1     2.342869     2A2     2.937083    13A1     2.937083  
+       6B2     3.426230     6B1     3.426230    14A1     3.871720  
+
+    Final Occupation by Irrep:
+             A1    A2    B1    B2 
+    DOCC [     5,    0,    1,    1 ]
+
+  Energy converged.
+
+  @RHF Final Energy:  -112.74928159541057
+
+   => Energetics <=
+
+    Nuclear Repulsion Energy =             22.5117927647475895
+    One-Electron Energy =                -198.1651173155403001
+    Two-Electron Energy =                  62.9040429553821525
+    DFT Exchange-Correlation Energy =       0.0000000000000000
+    Empirical Dispersion Energy =           0.0000000000000000
+    PCM Polarization Energy =               0.0000000000000000
+    EFP Energy =                            0.0000000000000000
+    Total Energy =                       -112.7492815954105652
+
+    Alert: EFP and PCM quantities not currently incorporated into SCF psivars.
+
+Properties will be evaluated at   0.000000,   0.000000,   0.000000 Bohr
+  ==> Properties <==
+
+
+Properties computed using the SCF density matrix
+
+  Nuclear Dipole Moment: (a.u.)
+     X:     0.0000      Y:     0.0000      Z:     0.0023
+
+  Electronic Dipole Moment: (a.u.)
+     X:     0.0000      Y:     0.0000      Z:    -0.0945
+
+  Dipole Moment: (a.u.)
+     X:     0.0000      Y:     0.0000      Z:    -0.0921     Total:     0.0921
+
+  Dipole Moment: (Debye)
+     X:     0.0000      Y:     0.0000      Z:    -0.2342     Total:     0.2342
+
+
+  Saving occupied orbitals to File 180.
+
+*** tstop() called on carpathia at Thu Jan 28 15:07:53 2016
+Module time:
+	user time   =       0.32 seconds =       0.01 minutes
+	system time =       0.01 seconds =       0.00 minutes
+	total time  =          1 seconds =       0.02 minutes
+Total time:
+	user time   =       0.32 seconds =       0.01 minutes
+	system time =       0.01 seconds =       0.00 minutes
+	total time  =          1 seconds =       0.02 minutes
+Reading options from the FCIDUMP block
+Calling plugin fcidump.so.
+Generating FCIDUMP.
+Found RHF
+	Presorting SO-basis two-electron integrals.
+	Sorting File: SO Ints (nn|nn) nbuckets = 1
+	Transforming the one-electron integrals and constructing Fock matrices
+	Starting first half-transformation.
+	Sorting half-transformed integrals.
+	First half integral transformation complete.
+	Starting second half-transformation.
+	Two-electron integral transformation complete.
+    Transformation complete.
+  Generating fort.55 integral file..
+.Done generating FCIDUMP.
+
+*** PSI4 exiting successfully. Buy a developer a beer!

@@ -7,6 +7,7 @@ Bibliography
 .. [Booth10] G.H. Booth, A novel Quantum Monte Carlo method for molecular systems, PhD thesis, University of Cambridge (2010).
 .. [Cleland10] D. Cleland, G.H. Booth, A. Alavi, Communications: Survival of the fittest: accelerating convergence in full configuration-interaction quantum Monte Carlo. The Journal of Chemical Physics. 132, 041103 (2010). 
 .. [Flyvbjerg89] H. Flyvbjerg, H. G. Petersen, Error estimates on averages of correlated data, J. Chem. Phys. 91, 461 (1989). 
+.. [Franklin16] R.S.T. Franklin, J.S. Spencer, A. Zoccante and A.J.W Thom, Linked coupled cluster Monte Carlo, J Chem. Phys. 144, 044111 (2016).
 .. [Knowles89] P.J. Knowles, N.C. Handy, A determinant based full configuration interaction program, Comput. Phys. Comm. 54, 75 (1989).
 .. [Lee11] R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N. D. Drummond, Strategies for improving the efficiency of quantum Monte Carlo calculations", Phys. Rev. E. 83, 066706 (2011).
 .. [Loos13] P.F. Loos, P.M.W. Gill, Uniform electron gases. I. Electrons on a ring. J. Chem. Phys. 138, 164124 (2013).

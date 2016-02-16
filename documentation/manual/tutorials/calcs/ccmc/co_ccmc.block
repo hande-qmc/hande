@@ -1,0 +1,4 @@
+Recommended statistics from optimal block size:
+
+                   # H psips \sum H_0j N_j        N_0       Shift Proj. Energy
+ccmc/co_ccmc.out  1006334(8)     -11311(3)  36580(10)  -0.3093(4)  -0.30923(4)
