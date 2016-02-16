@@ -34,7 +34,7 @@ To do this we set ``beta_loops`` to 1 in the input file and run the code as:
 
 .. code-block:: bash
 
-    $ aprun -B 1 hande.x heisenberg_dmqmc_excit_dist.lua > heisenberg_dmqmc.out
+    $ aprun -B hande.x heisenberg_dmqmc_excit_dist.lua > heisenberg_dmqmc.out
 
 We find that for this system the population on the diagonal does indeed decay to zero
 rapidly:
@@ -90,14 +90,14 @@ For this system we do
 
 .. code-block:: bash
 
-    $ aprun -B 1 hande.x heisenberg_find_weights.lua > heisenberg_find_weights.out
+    $ aprun -B hande.x heisenberg_find_weights.lua > heisenberg_find_weights.out
 
 Copying the final iteration's weights from the output file we can check the effect of
 importance sampling by doing running the following input file:
 
 .. code-block:: bash
 
-    $ aprun -B 1 hande.x heisenberg_reweight.lua > heisenberg_reweight_single.out
+    $ aprun -B hande.x heisenberg_reweight.lua > heisenberg_reweight_single.out
 
 and we find that the psips are now more equally distributed among excitation levels:
 
@@ -119,7 +119,7 @@ loops to the desired value.
 
 .. code-block:: bash
 
-    $ aprun -B 1 hande.x heisenberg_reweight.lua > heisenberg_reweight.out
+    $ aprun -B hande.x heisenberg_reweight.lua > heisenberg_reweight.out
 
 The results can be analysed using the ``finite_temperature_analysis.py`` script provided
 in the ``tools/dmqmc`` subdirectory:
