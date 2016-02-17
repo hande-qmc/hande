@@ -3,6 +3,8 @@
 Coupled Cluster Monte Carlo
 ===========================
 
+.. [review] - JSS: also iCCMC paper.
+
 In this tutorial we will run CCMC on the carbon monoxide molecule in a cc-pVDZ
 basis.  For details of the theory see [Thom10]_.
 
@@ -29,6 +31,15 @@ The system definition is exactly the same as for FCIQMC:
 Note that we have not specified an overall symmetry.  In this case HANDE uses
 the Aufbau principle to select a reference determinant.
 
+.. [review] - JSS:
+
+    well, you could do FCC (which is very expensive) or CISD/CISDT/...  (which is pretty
+    rubbish), so I'd say the most signicant difference is that it's standard to use
+    truncation with CC (rather than required for CC and not possible in the FCIQMC
+    algorithm).
+
+    reference.ex_level -> ex_level, as we don't use table.<variable_name> elsewhere.
+
 A CCMC calculation can be run in a very similar way to FCIQMC.  As for FCIQMC we
 can substantially reduce stochastic error by using real amplitudes, which we do
 for all calculations presented here.  The most significant difference from an
@@ -40,6 +51,8 @@ further here.  The CCSDTMC calculation can be run using an input file such as:
 
 .. literalinclude:: calcs/ccmc/co_ccmc.lua
     :language: lua
+
+.. [review] - JSS: perhaps here is a good place to mention sign problem is similar to FCIQMC
 
 Note the much larger initial population compared to an FCIQMC calculation; if
 this is too low the correct wavefunction will not be obtained.
@@ -55,6 +68,8 @@ the population has a similar form to FCIQMC:
     plt.plot(qmc_data['iterations'], qmc_data['# H psips'])
     plt.xlabel('iteration')
     plt.ylabel('# particles')
+
+.. [review] - JSS: shoulder and/or plateau plot, zoom in before shift is turned on?
 
 and the shift and projected energy vary about the correlation energy:
 
@@ -72,6 +87,8 @@ and the shift and projected energy vary about the correlation energy:
 The output of the calculation can be analysed in exactly the same way as for
 FCIQMC:
 
+.. [review] - JSS: --start 100000 is used in calcs/Makefile?
+
 .. code-block:: bash
 
     $ reblock_hande.py --quiet --start 50000 co_ccmc.out
@@ -79,6 +96,8 @@ FCIQMC:
 giving
 
 .. literalinclude:: calcs/ccmc/co_ccmc.block
+
+.. [review] - JSS: when can blooms cause errors?  I've only seen them cause calculations to be unstable.
 
 Due to the sampling of the wavefunction in CCMC, it is more prone to "blooming"
 events where many particles are created in a single spawning event than is
