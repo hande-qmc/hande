@@ -167,7 +167,7 @@ contains
         do i = 1, 2
             allocate(work(abs(lwork)), stat=ierr)
             call check_allocate('work',abs(lwork),ierr)
-            call zheev(job, uplo, N, A, lda, W, work, lwork, rwork, info)
+            call heev(job, uplo, N, A, lda, W, work, lwork, rwork, info)
             lwork = nint(real(work(1)))
             deallocate(work)
             call check_deallocate('work',ierr)
