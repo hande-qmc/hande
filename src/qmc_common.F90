@@ -378,7 +378,7 @@ contains
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 
 #ifdef PARALLEL
-        real(dp) :: load_data(size(nparticles), nprocs)
+        real(p) :: load_data(size(nparticles), nprocs)
         integer :: load_data_int(nprocs)
         integer :: i, ierr
         real(p) :: barrier_this_proc
