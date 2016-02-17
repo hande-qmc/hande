@@ -233,7 +233,7 @@ contains
         do i = 1, 2
             allocate(work(abs(lwork)), stat=ierr)
             call check_allocate('work', abs(lwork), ierr)
-            call dgeev(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
+            call geev(jobvl, jobvr, N, A, lda, WR, WI, VL, ldvl, VR, ldvr, work, lwork, info)
             lwork = nint(work(1))
             deallocate(work)
             call check_deallocate('work',ierr)
