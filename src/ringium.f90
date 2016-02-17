@@ -53,7 +53,8 @@ contains
         real(p) :: intgrl
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a, b
-        real(p) :: x1, x2
+
+        real(dp) :: x1, x2
 
         ! According to J Chem Phys 138, 164124 (2103)
         ! <ij||ab> = delta_(i+j,a+b) 1/(pi*R) (digamma(a-j+0.5)-digamma(a-i+0.5))
@@ -92,7 +93,8 @@ contains
         real(p) :: intgrl
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: i, j, a
-        real(p) :: x1, x2
+
+        real(dp) :: x1, x2
 
         ! According to J Chem Phys 138, 164124 (2103)
         ! <ij||ab> = delta_(i+j,a+b) 1/(pi*R) (digamma(a-j+0.5)-digamma(a-i+0.5))
