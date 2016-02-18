@@ -71,9 +71,21 @@ results : :class:`pandas.DataFrame`
     data['U_0'] = data['T_0'] + data['V_0']
     data[r'Tr(H\rho_HF)'] = data[r'Tr(T\rho_HF)'] + data[r'Tr(V\rho_HF)']
 
-    means = data.mean()
-    covariances = data.cov()
-    nsamples = len(data['T_0'])
+    # Work out weights given that number of configurations generated differes
+    # between cycles.
+    w = data['N_ACC/N_ATT'] * metadata['nattempts']
+    # number of configurations generated per cycle.
+    nsamples = sum(w)
+    w = w / nsamples
+    w2 = sum(w**2.0)
+    # Weighted estimate for the means.
+    means = (
+        pd.Series(np.average(data, axis=0, weights=w), index=list(data.keys()))
+    )
+    # Weighted estimate for the covariance.
+    xm = data.sub(means, axis=1)
+    covariances = 1.0/(1.0-w2) * xm.mul(w, axis=0).T.dot(xm)
+
 
     results = pd.DataFrame()
     if 'beta' in metadata:
@@ -88,6 +100,7 @@ results : :class:`pandas.DataFrame`
     else:
         # Hope to find it in the input file...
         results['mu'] = pyhande.legacy.extract_input(metadata, 'chem_pot')
+    nsamples = metadata['ncycles']
     # Free estimates contain no denominator so the error is
     # just the standard error.
     results['U_0'] = [means['U_0']]
@@ -96,28 +109,31 @@ results : :class:`pandas.DataFrame`
     results['T_0_error'] = [np.sqrt(covariances['T_0']['T_0']/nsamples)]
     results['V_0'] = [means['V_0']]
     results['V_0_error'] = [np.sqrt(covariances['V_0']['V_0']/nsamples)]
-    if 'N_ACC/N_ATT' in means:
-        results['N_ACC/N_ATT'] = [means['N_ACC/N_ATT']]
-        results['N_ACC/N_ATT_error'] = (
-                [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/nsamples)])
-        if (metadata['fermi_temperature'] == 'true'):
-            beta = results['Beta'][0] / metadata['system']['ueg']['E_fermi']
-        else:
-            beta = results['Beta'][0]
-        correction = [metadata['free_energy_corr']]
-        results['F_0'] = (
-                (-1.0/beta)*np.log(results['N_ACC/N_ATT']) + correction)
-        # Normal error estimate for natural logarithm.
-        results['F_0_error'] = (
-                    results['N_ACC/N_ATT_error']/(beta*results['N_ACC/N_ATT']))
-        results['S_0'] = beta * (results['T_0']-results['F_0'])
-        # U and F are correlated so DS = ((DT_0^2 + DF^2 + 2 COV(T_0,F))/T)^0.5
-        # COV(x,f(y)) = 1/(N*N-1) sum_{i<j}(x_i-X)(y_i-Y)df/dy|y=Y
-        # df/dy = -kT/(N_ACC/N_ATT)
-        results['S_0_error'] = (beta*np.sqrt(results['T_0_error']**2.0 +
-                                results['F_0_error']**2.0 -
-                                2.0*covariances['N_ACC/N_ATT']['T_0'] /
-                                (nsamples*results['N_ACC/N_ATT']*beta)))
+    results['N_ACC/N_ATT'] = [means['N_ACC/N_ATT']]
+    results['N_ACC/N_ATT_error'] = (
+            [np.sqrt(covariances['N_ACC/N_ATT']['N_ACC/N_ATT']/nsamples)]
+    )
+    if (metadata['fermi_temperature']):
+        beta = results['Beta'][0] / metadata['system']['ueg']['E_fermi']
+    else:
+        beta = results['Beta'][0]
+    correction = [metadata['free_energy_corr']]
+    print (correction, beta, metadata['fermi_temperature'])
+    results['F_0'] = (
+            (-1.0/beta)*np.log(results['N_ACC/N_ATT']) + correction
+    )
+    # Normal error estimate for natural logarithm.
+    results['F_0_error'] = (
+                results['N_ACC/N_ATT_error']/(beta*results['N_ACC/N_ATT']
+    ))
+    results['S_0'] = beta * (results['T_0']-results['F_0'])
+    # T_0 and F are correlated so DS = ((DT_0^2 + DF^2 + 2 COV(T_0,F))/T)^0.5
+    # COV(x,f(y)) = 1/(N*N-1) sum_{i<j}(x_i-X)(y_i-Y)df/dy|y=Y
+    # df/dy = -kT/(N_ACC/N_ATT)
+    results['S_0_error'] = (beta*np.sqrt(results['T_0_error']**2.0 +
+                            results['F_0_error']**2.0 -
+                            2.0*covariances['N_ACC/N_ATT']['T_0'] /
+                            (nsamples*results['N_ACC/N_ATT']*beta)))
 
     # Take care of the correlation between numerator and denominator
     # in Hartree-Fock estimates.
