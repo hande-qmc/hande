@@ -107,11 +107,11 @@ contains
             if (sys%Ms == huge(1)) sys%Ms = ref_ms
             if (sys%symmetry == huge(1)) sys%symmetry = ref_sym
             spin_flip = sys%Ms /= ref_ms
-        else if (sys%symmetry == huge(1) .and. sys%nsym == 1) then
+        else if (sys%nsym == 1) then
             ! Only one option, so don't force it to be set.
             sys%symmetry = sys%sym0
-        else if (sys%Ms == huge(1) .or. (sys%symmetry == huge(1))) then
-            call stop_all('init_fci', 'Spin and/or symmetry of Hilbert space not defined.')
+        else if (sys%Ms == huge(1)) then
+            call stop_all('init_fci', 'Spin of Hilbert space not defined.')
         end if
 
         call set_spin_polarisation(sys%basis%nbasis, sys)

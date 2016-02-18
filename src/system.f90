@@ -324,10 +324,8 @@ type sys_t
     ! # number of virtual alpha, beta spin-orbitals
     integer :: nvirt_alpha, nvirt_beta
 
-    ! The specific symmetry sector to be used. A negative value implies that no symmetry
-    ! is to be used. This is necessary when dealing the the uniform electron gas in very
-    ! large basis sets and is only useful for canonical energy calculations.
-    integer :: symmetry = huge(1)
+    ! The specific symmetry sector to be used.
+    integer :: symmetry = 0
 
     ! Number of symmetries.  These are specified for orbitals.
     integer :: nsym = 1

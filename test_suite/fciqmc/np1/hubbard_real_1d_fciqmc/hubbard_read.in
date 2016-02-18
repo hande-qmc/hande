@@ -2,7 +2,6 @@ sys = hubbard_real {
     electrons = 3,
     lattice = { {3} },
     ms = 1,
-    sym = 1,
     U = 50,
     t = 1,
 }

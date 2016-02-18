@@ -294,6 +294,7 @@ contains
         use momentum_symmetry, only: init_momentum_symmetry
         use check_input, only: check_sys
         use parallel, only: parent
+        use errors, only: stop_all
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -328,7 +329,13 @@ contains
             if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
-            if (sys%symmetry >= 0) call init_momentum_symmetry(sys)
+            call init_momentum_symmetry(sys)
+        end if
+
+        if (parent) then
+            ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
+            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+                call stop_all('lua_hubbard_k', 'Symmetry out of range.')
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -418,6 +425,7 @@ contains
         use real_lattice, only: init_real_space
         use check_input, only: check_sys
         use parallel, only: parent
+        use errors, only: stop_all
 
         integer(c_int) :: nreturn
         type(c_ptr) :: L
@@ -429,8 +437,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'finite', 'ms', 'sym']
+        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'finite', 'ms']
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
 
@@ -444,6 +452,9 @@ contains
         call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
         call aot_get_val(sys%real_lattice%finite_cluster, err, lua_state, opts, 'finite')
 
+        ! Only one symmetry sector, so we can set it here (needed for dmqmc initialisation)
+        sys%symmetry = 1
+
         new_basis = aot_exists(lua_state, opts, 'lattice') .or. new
 
         if (new_basis) then
@@ -456,11 +467,7 @@ contains
             call init_real_space(sys)
         end if
 
-        if (system_type == chung_landau) then
-            call warn_unused_args(lua_state, keys(:size(keys)-1), opts)
-        else
-            call warn_unused_args(lua_state, keys, opts)
-        end if
+        call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         call push_sys(lua_state, sys)
@@ -499,6 +506,7 @@ contains
         use system, only: sys_t, read_in, init_system
         use check_input, only: check_sys
         use parallel, only: parent
+        use errors, only: stop_all
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -538,6 +546,12 @@ contains
             call read_in_integrals(sys, cas_info=sys%cas)
             call init_generic_system_basis(sys)
             call print_pg_symmetry_info(sys)
+        end if
+
+        if (parent) then
+            ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
+            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+                call stop_all('lua_read_in', 'Symmetry out of range.')
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -658,6 +672,7 @@ contains
         use ueg_system, only: init_ueg_proc_pointers
         use check_input, only: check_sys
         use parallel, only: parent
+        use errors, only: stop_all
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -702,8 +717,14 @@ contains
             if (parent) call check_sys(sys)
             call init_model_basis_fns(sys)
             call init_generic_system_basis(sys)
-            if (sys%symmetry >= 0) call init_momentum_symmetry(sys)
+            call init_momentum_symmetry(sys)
             call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
+        end if
+
+        if (parent) then
+            ! This check can't go with the rest of check_sys as it has to happen after the basis is initialised.
+            if (sys%symmetry /= 0 .and. (sys%symmetry > sys%sym_max .or. sys%symmetry < sys%sym0)) &
+                call stop_all('lua_ueg', 'Symmetry out of range.')
         end if
 
         call warn_unused_args(lua_state, keys, opts)
@@ -738,7 +759,6 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t, ringium, init_system
         use basis, only: init_model_basis_fns
-        use momentum_symmetry, only: init_momentum_symmetry
         use ringium_system, only: init_symmetry_ringium
         use check_input, only: check_sys
         use parallel, only: parent
