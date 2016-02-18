@@ -1142,7 +1142,7 @@ contains
                 cluster%excitation_level = get_excitation_level(f0, cdet%f)
                 ! To contribute the cluster must be within a double excitation of
                 ! the maximum excitation included in the CC wavefunction.
-                if (cluster%excitation_level > ex_level+2) allowed = .false.
+                allowed = cluster%excitation_level < ex_level+2
             end if
 
             if (allowed.or.linked_ccmc) then
