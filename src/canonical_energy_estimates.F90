@@ -223,7 +223,7 @@ contains
             if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,4(es17.10,5X))') ireport, estimators(ke_idx), &
                                                              estimators(pe_idx), estimators(hf_ke_idx), &
                                                              estimators(hf_pe_idx), estimators(hf_part_idx), &
-                                                             real(estimators(naccept_idx),p)/nattempts
+                                                             real(estimators(naccept_idx),p)/(nattempts*nprocs)
             comms_found = abs(estimators(comms_found_idx)) > depsilon
             call calc_interact(comms_found, soft_exit)
             if (soft_exit) exit
