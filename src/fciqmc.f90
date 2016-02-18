@@ -173,7 +173,6 @@ contains
 
         ! Main fciqmc loop.
         if (parent) call write_fciqmc_report_header(qs%psip_list%nspaces, comp = sys%read_in%comp)
-            
         if (fciqmc_in%non_blocking_comm) then
             call init_non_blocking_comm(qs%spawn_store%spawn, req_data_s, send_counts, qs%spawn_store%spawn_recv, &
                                         restart_in%read_restart)
@@ -421,6 +420,7 @@ contains
         use qmc_data, only: qmc_in_t, qmc_state_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
+        use energy_evaluation, only: update_proj_energy_mol_complex
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -437,6 +437,7 @@ contains
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop
         real(dp) :: list_pop
+        complex(p) :: hmatel_comp
 
         allocate(cdet%f(sys%basis%tensor_label_len))
         allocate(cdet%data(1))
@@ -455,9 +456,16 @@ contains
             ! start of the i-FCIQMC cycle than at the end, as we're
             ! already looping over the determinants.
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators%D0_population, &
-                                        qs%estimators%proj_energy, connection, hmatel)
 
+            if (sys%read_in%comp) then
+                call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                                            cmplx(real_pop, 0.0, p), &
+                                            qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
+                                            connection, hmatel_comp)
+            else
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators%D0_population, &
+                                            qs%estimators%proj_energy, connection, hmatel)
+            end if
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, cdet%initiator_flag)

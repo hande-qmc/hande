@@ -259,10 +259,17 @@ contains
         logical, intent(in), optional :: comms_found, error, comp
 
         integer :: offset
+        logical :: comp_param
 
         rep_loop_loc = 0.0_dp
 
-        if (comp) then
+        if (present(comp)) then
+            comp_param = comp
+        else
+            comp_param = .false.
+        end if
+
+        if (comp_param) then
             rep_loop_loc(proj_energy_ind) = real(qs%estimators%proj_energy_comp, p)
             rep_loop_loc(D0_pop_ind) = real(qs%estimators%D0_population_comp, p)
             rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators%proj_energy_comp)
@@ -443,7 +450,7 @@ contains
                     qs%shift = qmc_in%vary_shift_from
                 end if
             end if
-        else if (comp_param .and. ((ntot_particles(1) + ntot_particles(2)) > qs%target_particles) .and. .not.qs%vary_shift(1)) then
+        else if (((ntot_particles(1) + ntot_particles(2)) > qs%target_particles) .and. .not.qs%vary_shift(1)) then
             qs%vary_shift(1) = .true.
             qs%vary_shift(2) = .true.
             qs%shift(1) = qmc_in%vary_shift_from
@@ -805,13 +812,13 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum: running total of N_0, the population on the reference
+        !    D0_pop_sum_comp: running total of N_0, the population on the reference
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
+        !    proj_energy_sum_comp: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
         !        Updated only if <D_i|H|D_0> is non-zero.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
-        !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
+        !    hmatel_comp: <D_i|H|D_0>, the Hamiltonian matrix element between the
         !       determinant and the reference determinant.
 
         ! NOTE: it is the programmer's responsibility to ensure D0_pop_sum and
@@ -834,7 +841,7 @@ contains
 
         integer :: ij_sym, ab_sym
 
-        hmatel = 0.0_p
+        hmatel = cmplx(0.0, 0.0, p)
 
         select case(excitation%nexcit)
         case (0)
