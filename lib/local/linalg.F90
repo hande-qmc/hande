@@ -5,36 +5,32 @@ module linalg
 implicit none
 
 private
-public :: syev, heev, geev, psyev, pheev, plaprnt
+public :: syev, heev, geev, psyev, pheev, plaprnt, syev_wrapper, &
+            heev_wrapper, geev_wrapper, psyev_wrapper, pheev_wrapper
 
 interface syev
     module procedure ssyev_f90
     module procedure dsyev_f90
-    module procedure syev_wrapper
 end interface
 
 interface heev
     module procedure cheev_f90
     module procedure zheev_f90
-    module procedure heev_wrapper
 end interface
 
 interface geev
     module procedure sgeev_f90
     module procedure dgeev_f90
-    module procedure geev_wrapper
 end interface geev
 
 interface psyev
     module procedure pssyev_f90
     module procedure pdsyev_f90
-    module procedure psyev_wrapper
 end interface psyev
 
 interface pheev
     module procedure pcheev_f90
     module procedure pzheev_f90
-    module procedure pheev_wrapper
 end interface pheev
 
 interface plaprnt

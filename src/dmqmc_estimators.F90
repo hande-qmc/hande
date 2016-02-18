@@ -1104,7 +1104,7 @@ contains
         !     rdm: Reduced density matrix estimate.
 
         use checking, only: check_allocate, check_deallocate
-        use linalg, only: syev
+        use linalg, only: syev_wrapper
         use dmqmc_data, only: subsys_t
 
         real(p), intent(inout) :: rdm(:,:)
@@ -1127,7 +1127,7 @@ contains
         call check_allocate('dm_tmp',rdm_size**2,ierr)
         dm_tmp = rdm
 
-        call syev('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, info)
+        call syev_wrapper('N', 'U', rdm_size, dm_tmp, rdm_size, eigv, info)
         thrown_away = .false.
         write(6,'(1X,"# Eigenvalues thrown away:",1X)',advance='no')
         do i = 1, ubound(eigv,1)
@@ -1172,7 +1172,7 @@ contains
         ! In:
         !     rdm: Reduced density matrix estimate.
 
-        use linalg, only: geev
+        use linalg, only: geev_wrapper
 
         real(p), intent(in) :: rdm(:,:)
 
@@ -1193,7 +1193,7 @@ contains
         rdm_spin_flip_tmp = matmul(rdm, flip_spin_matrix)
         rdm_spin_flip = rdm_spin_flip_tmp
 
-        call geev('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, info)
+        call geev_wrapper('N', 'N', 4, rdm_spin_flip, 4, reigv, ieigv, VL, 1, VR, 1, info)
         ! Calculate the concurrence. Take abs of eigenvalues so that this is
         ! equivalant to sqauring and then square-rooting.
         concurrence = 2.0_p*maxval(abs(reigv)) - sum(abs(reigv)) 

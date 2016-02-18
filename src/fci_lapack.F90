@@ -132,7 +132,7 @@ contains
         !        Hamiltonian matrix.
 
         use checking, only: check_allocate, check_deallocate
-        use linalg, only: syev, heev, psyev, pheev
+        use linalg, only: syev_wrapper, heev_wrapper, psyev_wrapper, pheev_wrapper
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
 
@@ -178,9 +178,9 @@ contains
             allocate(rwork(max(1,3*ndets-2)), stat = ierr)
             call check_allocate('rwork',max(1, 3*ndets - 2), ierr)
             if (nprocs == 1) then
-                call heev(job, 'U', ndets, hamil%cmat, ndets, eigv, rwork, info)
+                call heev_wrapper(job, 'U', ndets, hamil%cmat, ndets, eigv, rwork, info)
             else
-                call pheev(job, 'U', ndets, hamil%cmat, 1, 1,               &
+                call pheev_wrapper(job, 'U', ndets, hamil%cmat, 1, 1,               &
                             proc_blacs_info%desc_m, eigv, ceigvec, 1, 1, &
                             proc_blacs_info%desc_m, rwork, size(rwork), info)
             end if
@@ -191,15 +191,12 @@ contains
             end if
         else
             if (nprocs == 1) then
-                call syev(job, 'U', ndets, hamil%rmat, ndets, eigv, info)
+                call syev_wrapper(job, 'U', ndets, hamil%rmat, ndets, eigv, info)
             else
-                call psyev(job, 'U', ndets, hamil%rmat, 1, 1,           &
+                call psyev_wrapper(job, 'U', ndets, hamil%rmat, 1, 1,           &
                             proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
                             proc_blacs_info%desc_m, info)
             end if
-
-            ! [review] - JSS: don't analyse/print if complex (unless implemented).  Instead throw a warning and move on.
-            ! [review] - JSS: Make similar change in lanczos.
             nwfn = fci_in%analyse_fci_wfn
             if (nwfn < 0) nwfn = ndets
             do i = 1, nwfn
@@ -255,7 +252,7 @@ contains
         !    rdm_eigv: The eigenvalues of the calculated RDM.
 
         use basis_types, only: basis_t
-        use linalg, only: syev
+        use linalg, only: syev_wrapper
         use dmqmc_data, only: subsys_t
         use dmqmc_procedures, only: decode_dm_bitstring
 
@@ -306,7 +303,7 @@ contains
         write(6,'(1x,a39,/)') "Diagonalising reduced density matrix..."
 
         rdm_size = size(rdm, 1)
-        call syev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, info)
+        call syev_wrapper('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, info)
 
     end subroutine get_rdm_eigenvalues
 
