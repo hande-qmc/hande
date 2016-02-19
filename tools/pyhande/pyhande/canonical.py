@@ -86,7 +86,6 @@ results : :class:`pandas.DataFrame`
     xm = data.sub(means, axis=1)
     covariances = 1.0/(1.0-w2) * xm.mul(w, axis=0).T.dot(xm)
 
-
     results = pd.DataFrame()
     if 'beta' in metadata:
         # New, richer JSON-based metadata.
@@ -100,7 +99,7 @@ results : :class:`pandas.DataFrame`
     else:
         # Hope to find it in the input file...
         results['mu'] = pyhande.legacy.extract_input(metadata, 'chem_pot')
-    nsamples = metadata['ncycles']
+    nsamples = metadata['ncycles'] # For standard error.
     # Free estimates contain no denominator so the error is
     # just the standard error.
     results['U_0'] = [means['U_0']]
@@ -138,6 +137,7 @@ results : :class:`pandas.DataFrame`
     # Take care of the correlation between numerator and denominator
     # in Hartree-Fock estimates.
     results = (
-            results.join(analyse_hf_observables(means, covariances, nsamples)))
+            results.join(analyse_hf_observables(means, covariances, nsamples))
+    )
 
     return results
