@@ -49,7 +49,10 @@ end type fci_in_t
 
 
 type hamil_t
+    ! [review] - AJWT: To the layman, what is rmat?
     real(p), allocatable :: rmat(:,:)
+    ! [review] - AJWT: And indeed cmat?  [later] I see that they're the matrices
+    ! [review] - AJWT: themselves - perhaps note that only one is used at once
     complex(p), allocatable :: cmat(:,:)
     type(csrp_t) :: smat ! Sparse complex not implemented.
     ! [reply] - CJCS: Ruth has pointed out to me what you actually meant and I've

@@ -144,6 +144,9 @@ contains
 
     end function slater_condon0_mol_orb_list_complex
 
+
+! [review] - AJWT: Is the duplication between this function and the below
+! [review] - AJWT: necessary?  Could this one not just call the one below?
     pure function slater_condon1_mol_complex(sys, occ_list, i, a, perm) result(hmatel)
 
         ! In:
@@ -257,6 +260,9 @@ contains
 
     end function slater_condon1_mol_excit_complex
 
+![review] - AJWT: Again I'm confused by the duplication between this and the one
+![review] - AJWT: below.  Also why does this use complex lookups, and the other
+![review] - AJWT: use individual?  Also this doesn't actually check the sym.
     pure function slater_condon2_mol_complex(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
