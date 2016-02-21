@@ -1177,7 +1177,7 @@ contains
             call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, error, update_tau, &
                                           bloom_stats, qs%par_info%report_comm%nb_spawn(2), comp_param)
             ! Receive previous iterations report loop quantities.
-            call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
+            call update_energy_estimators_recv(qmc_in, qs, qs%par_info%report_comm%request, ntot_particles, &
                                                qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, error, &
                                                update_tau, bloom_stats, comp=comp_param)
             ! Send current report loop quantities.

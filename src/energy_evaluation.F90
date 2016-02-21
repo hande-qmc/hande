@@ -216,14 +216,13 @@ contains
 
     end subroutine update_energy_estimators_send
 
-    subroutine update_energy_estimators_recv(qmc_in, qs, ntypes, rep_request_s, ntot_particles_old, nparticles_proc, &
+    subroutine update_energy_estimators_recv(qmc_in, qs, rep_request_s, ntot_particles_old, nparticles_proc, &
                                              load_bal_in, doing_lb, comms_found, error, update_tau, bloom_stats, comp)
 
         ! Receive report loop quantities from all other processors and reduce.
 
         ! In:
         !    qmc_in: input options relating to QMC methods.
-        !    ntypes: number of particle types/spaces being sampled.
         !    load_bal_in: input options for load balancing.
         ! In/Out:
         !    qs: qmc_state_t object containing estimators that are upadted.
@@ -253,7 +252,6 @@ contains
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout) :: qs
-        integer, intent(in) :: ntypes ! [todo] - remove and use qs%psip_list%nspaces.
         integer, intent(inout) :: rep_request_s(:)
         real(dp), intent(inout) :: ntot_particles_old(:)
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -296,7 +294,7 @@ contains
             rep_info_sum(i) = sum(rep_loop_reduce(i::data_size))
         end do
         associate(real_start_ind => proc_data_info(1,nparticles_indx))
-            forall (i=real_start_ind:real_start_ind+ntypes-1,j=0:nprocs-1) &
+            forall (i=real_start_ind:real_start_ind+qs%psip_list%nspaces-1,j=0:nprocs-1) &
                     rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
         end associate
 
