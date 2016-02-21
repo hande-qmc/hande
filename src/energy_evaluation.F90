@@ -36,20 +36,24 @@ enum, bind(c)
     enumerator :: rdm_trace_ind
     enumerator :: nattempts_ind
     enumerator :: reblock_done_ind
-! [review] - AJWT: Using this index for two things leaves potential woe for the
-! [review] - AJWT: future.  What about an additional parameter n_sing_val or such
-! [review] - AJWT: which you set equal to this, and use as the end of the single
-! [review] - AJWT: valued data?  
-    enumerator :: error_ind ! Also used to mark end of single-element data.  Ensure last entry in enum.
+    enumerator :: error_ind
 end enum
+
+! Index of last single-data entry in estimator buffer.
+! WARNING: ensure this is the last entry in the enum above.
+integer, parameter :: est_buf_data_size = error_ind
 
 ! Per-processor data - leave order unchanged and keep at end of enum.
 ! This data is sent all-to-all via a MPI_SUM and setting slots correspond to other processors to 0 initially.
 ! Note this means that (bar the next entry) the real start of subsequent entries are shifted.
 enum, bind(c)
     enumerator :: bloom_max_indx = 1 ! Keep this first.
-    enumerator :: nparticles_indx ! Also used to mark end of per-processor data.  Ensure last entry in enum.
+    enumerator :: nparticles_indx
 end enum
+
+! Index of last data
+! WARNING: ensure this is the last entry in the enum above.
+integer, parameter :: est_buf_n_per_proc = nparticles_indx
 
 contains
 
@@ -58,10 +62,10 @@ contains
     ! In order to avoid doing repeated MPI calls, we place information that must be summed over processors into one
     ! buffer and sum that buffer in one call.  The buffer (typically with a name beginning with rep_loop) contains:
 
-    ! buffer(1:error_ind)
+    ! buffer(1:est_buf_data_size)
     !   single-valued data given by the (descriptive) name in the enumerator
     !   above.
-    ! buffer(error_ind+1:)
+    ! buffer(est_buf_data_size+1:)
     !   per-processor quantities which are broadcast to all other processors.  This is done by setting values for all
     !   bar the current processor to 0 and then performing MPI_SUM.  The (small) additional extra amount of data is more
     !   than compensated for by avoiding the latency of multiple MPI calls.  The start and length of each entry can be found
@@ -69,13 +73,13 @@ contains
     !   comm_processor_indx.
 
     ! To add a data item to the buffer:
-    ! 1. add it (before error_ind) to the enum above.
+    ! 1. add it (preferably before error_ind and, if not, update est_buf_data_size) to the enum above.
     ! 2. set the buffer (with appropriate index) in local_energy_estimators.
     ! 3. set the variable to the summed version after the comm call (i.e. in
     !    communicated_energy_estimators).
 
     ! To add a per-processor quantity:
-    ! 1. add it to per-processor enum after bloom_max_indx and before nparticles_indx.
+    ! 1. add it to per-processor enum after bloom_max_indx and preferably before nparticles_indx (if not, update est_buf_n_per_proc).
     ! 2. set the entry corresponding to the new enum value in comm_processor_indx for length.
     ! 3. follow steps 2 and 3 as above, possibly with custom handling to further sum over all processors.
 
@@ -89,7 +93,7 @@ contains
         ! In:
         !    nspaces: number of spaces being sampled.
         ! Out:
-        !    proc_data_info(2,nparticles_indx): one entry for each per-processor quantity containing the
+        !    proc_data_info(2,est_buf_n_per_proc): one entry for each per-processor quantity containing the
         !       start position of that entry in the comms buffer (proc_data_info(1,indx)) and length of
         !       that entry (proc_data_info(2,indx).
         !    ntot_proc_data: total amount of per-processor information in the comms buffer.
@@ -106,13 +110,12 @@ contains
         proc_data_info(2,nparticles_indx) = nspaces*nprocs
 
         ! Start positions.  bloom_max is the first per-processor item.
-        proc_data_info(1,bloom_max_indx) = error_ind+1
-        do i = bloom_max_indx+1, nparticles_indx
+        proc_data_info(1,bloom_max_indx) = est_buf_data_size+1
+        do i = bloom_max_indx+1, est_buf_n_per_proc
             proc_data_info(1,i) = sum(proc_data_info(:,i-1))
         end do
 
-        ! nparticles is (by implementation) the last entry.
-        ntot_proc_data = sum(proc_data_info(2,:nparticles_indx))
+        ntot_proc_data = sum(proc_data_info(2,:est_buf_n_per_proc))
 
     end subroutine comm_processor_indx
 
@@ -169,11 +172,11 @@ contains
 
         real(dp), allocatable :: rep_loop_loc(:)
         real(dp), allocatable :: rep_loop_sum(:)
-        integer :: proc_data_info(2,nparticles_indx), ntot_proc_data, ierr
+        integer :: proc_data_info(2,est_buf_n_per_proc), ntot_proc_data, ierr
 
         call comm_processor_indx(qs%psip_list%nspaces, proc_data_info, ntot_proc_data)
-        allocate(rep_loop_loc(ntot_proc_data+error_ind))
-        allocate(rep_loop_sum(ntot_proc_data+error_ind))
+        allocate(rep_loop_loc(ntot_proc_data+est_buf_data_size))
+        allocate(rep_loop_sum(ntot_proc_data+est_buf_data_size))
 
         call local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, error, update_tau, &
                                     bloom_stats, comp = comp)
@@ -267,15 +270,15 @@ contains
         integer :: rep_request_r(0:nprocs-1)
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
-        integer :: i, j, data_size, proc_data_info(2,nparticles_indx), ntot_proc_data
+        integer :: i, j, data_size, proc_data_info(2,est_buf_n_per_proc), ntot_proc_data
         logical :: comp_loc
 
         comp_loc = .false.
         if (present(comp)) comp_loc = comp
 
         call comm_processor_indx(qs%psip_list%nspaces, proc_data_info, ntot_proc_data)
-        allocate(rep_info_sum(ntot_proc_data+error_ind))
-        allocate(rep_loop_reduce(nprocs*(ntot_proc_data+error_ind)))
+        allocate(rep_info_sum(ntot_proc_data+est_buf_data_size))
+        allocate(rep_loop_reduce(nprocs*(ntot_proc_data+est_buf_data_size)))
 
         data_size = size(rep_info_sum)
 #ifdef PARALLEL
@@ -337,7 +340,7 @@ contains
         logical, intent(in), optional :: update_tau
         integer, intent(in) , optional :: spawn_elsewhere
         logical, intent(in), optional :: comms_found, error, comp
-        integer :: ntot_proc_data, proc_data_info(2,nparticles_indx)
+        integer :: ntot_proc_data, proc_data_info(2,est_buf_n_per_proc)
         logical :: comp_param
 
         rep_loop_loc = 0.0_dp
@@ -457,7 +460,7 @@ contains
         real(dp) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop
         real(p) :: pop_av
         real(dp) :: nparticles_wfn
-        integer :: i, proc_data_info(2,nparticles_indx), ntot_proc_data
+        integer :: i, proc_data_info(2,est_buf_n_per_proc), ntot_proc_data
         logical :: comp_param, vary_shift_reference_loc
 
         comp_param = .false.
