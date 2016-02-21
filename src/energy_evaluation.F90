@@ -36,11 +36,19 @@ enum, bind(c)
     enumerator :: rdm_trace_ind
     enumerator :: nattempts_ind
     enumerator :: reblock_done_ind
-    enumerator :: error_ind ! Also used to mark end of single-element data.  Ensure last entry before per-processor entries.
-    ! Per-processor data - leave order unchanged and keep at end of enum.
-    ! This data is sent all-to-all via a MPI_SUM and setting slots correspond to other processors to 0 initially.
-    ! Note this means that (bar the next entry) the real start of subsequent entries are shifted.
-    enumerator :: nparticles_start_ind ! broadcast # particles on each processor to each processor (slots: nspaces/processor)
+! [review] - AJWT: Using this index for two things leaves potential woe for the
+! [review] - AJWT: future.  What about an additional parameter n_sing_val or such
+! [review] - AJWT: which you set equal to this, and use as the end of the single
+! [review] - AJWT: valued data?  
+    enumerator :: error_ind ! Also used to mark end of single-element data.  Ensure last entry in enum.
+end enum
+
+! Per-processor data - leave order unchanged and keep at end of enum.
+! This data is sent all-to-all via a MPI_SUM and setting slots correspond to other processors to 0 initially.
+! Note this means that (bar the next entry) the real start of subsequent entries are shifted.
+enum, bind(c)
+    enumerator :: bloom_max_indx = 1 ! Keep this first.
+    enumerator :: nparticles_indx ! Also used to mark end of per-processor data.  Ensure last entry in enum.
 end enum
 
 contains
@@ -56,7 +64,9 @@ contains
     ! buffer(error_ind+1:)
     !   per-processor quantities which are broadcast to all other processors.  This is done by setting values for all
     !   bar the current processor to 0 and then performing MPI_SUM.  The (small) additional extra amount of data is more
-    !   than compensated for by avoiding the latency of multiple MPI calls.
+    !   than compensated for by avoiding the latency of multiple MPI calls.  The start and length of each entry can be found
+    !   from proc_data_info(:,indx), where indx is an entry in the per-processor enum above and proc_data_info is produced by
+    !   comm_processor_indx.
 
     ! To add a data item to the buffer:
     ! 1. add it (before error_ind) to the enum above.
@@ -65,15 +75,46 @@ contains
     !    communicated_energy_estimators).
 
     ! To add a per-processor quantity:
-    ! 1. add it to enum (preferably before nparticles_start_ind -- it's easiest to group items together based on how
-    !    many slots per processor they require).
-    ! 2. Follow steps 2 and 3 as above, taking care of the offset in the buffer due to per-procssor quantities
-    !    preceeding the new item in the enum.
-    ! 3. Check array dimensions in init_parallel_t, update_energy_estimators, update_energy_estimators_recv are correct (probably
-    !    need to be increased).
-    ! 4. adjust the offset used to access the buffer for all per-processor quantities following the new item in the enum.
+    ! 1. add it to per-processor enum after bloom_max_indx and before nparticles_indx.
+    ! 2. set the entry corresponding to the new enum value in comm_processor_indx for length.
+    ! 3. follow steps 2 and 3 as above, possibly with custom handling to further sum over all processors.
 
     ! All other elements are set to zero.
+
+    pure subroutine comm_processor_indx(nspaces, proc_data_info, ntot_proc_data)
+
+        ! Work out the start position and length for each per-processor quantity in the comms buffer.
+        ! This is sufficiently cheap that it can just be called whenever the information is required.
+
+        ! In:
+        !    nspaces: number of spaces being sampled.
+        ! Out:
+        !    proc_data_info(2,nparticles_indx): one entry for each per-processor quantity containing the
+        !       start position of that entry in the comms buffer (proc_data_info(1,indx)) and length of
+        !       that entry (proc_data_info(2,indx).
+        !    ntot_proc_data: total amount of per-processor information in the comms buffer.
+
+        use parallel, only: nprocs
+
+        integer, intent(in) :: nspaces
+        integer, intent(out) :: proc_data_info(:,:), ntot_proc_data
+        integer :: i
+
+        ! bloom_max requires 1 entry per processor.
+        proc_data_info(2,bloom_max_indx) = nprocs
+        ! nparticles requires nspaces entries per processor.
+        proc_data_info(2,nparticles_indx) = nspaces*nprocs
+
+        ! Start positions.  bloom_max is the first per-processor item.
+        proc_data_info(1,bloom_max_indx) = error_ind+1
+        do i = bloom_max_indx+1, nparticles_indx
+            proc_data_info(1,i) = sum(proc_data_info(:,i-1))
+        end do
+
+        ! nparticles is (by implementation) the last entry.
+        ntot_proc_data = sum(proc_data_info(2,:nparticles_indx))
+
+    end subroutine comm_processor_indx
 
     subroutine update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles_old, load_bal_in, doing_lb, &
                                         comms_found, error, update_tau, bloom_stats, vary_shift_reference, comp)
@@ -126,9 +167,13 @@ contains
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, intent(in), optional :: vary_shift_reference
 
-        real(dp) :: rep_loop_loc((qs%psip_list%nspaces+1)*nprocs+error_ind)
-        real(dp) :: rep_loop_sum((qs%psip_list%nspaces+1)*nprocs+error_ind)
-        integer :: ierr
+        real(dp), allocatable :: rep_loop_loc(:)
+        real(dp), allocatable :: rep_loop_sum(:)
+        integer :: proc_data_info(2,nparticles_indx), ntot_proc_data, ierr
+
+        call comm_processor_indx(qs%psip_list%nspaces, proc_data_info, ntot_proc_data)
+        allocate(rep_loop_loc(ntot_proc_data+error_ind))
+        allocate(rep_loop_sum(ntot_proc_data+error_ind))
 
         call local_energy_estimators(qs, rep_loop_loc, nspawn_events, comms_found, error, update_tau, &
                                     bloom_stats, comp = comp)
@@ -208,7 +253,7 @@ contains
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout) :: qs
-        integer, intent(in) :: ntypes
+        integer, intent(in) :: ntypes ! [todo] - remove and use qs%psip_list%nspaces.
         integer, intent(inout) :: rep_request_s(:)
         real(dp), intent(inout) :: ntot_particles_old(:)
         type(load_bal_in_t), intent(in) :: load_bal_in
@@ -218,17 +263,21 @@ contains
         logical, intent(out), optional :: update_tau
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
 
-        real(dp) :: rep_info_sum(nprocs*(ntypes+1)+error_ind)
-        real(dp) :: rep_loop_reduce(nprocs*(nprocs*(ntypes+1)+error_ind))
+        real(dp), allocatable :: rep_info_sum(:)
+        real(dp), allocatable :: rep_loop_reduce(:)
 #ifdef PARALLEL
         integer :: rep_request_r(0:nprocs-1)
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
-        integer :: i, j, data_size
+        integer :: i, j, data_size, proc_data_info(2,nparticles_indx), ntot_proc_data
         logical :: comp_loc
 
         comp_loc = .false.
         if (present(comp)) comp_loc = comp
+
+        call comm_processor_indx(qs%psip_list%nspaces, proc_data_info, ntot_proc_data)
+        allocate(rep_info_sum(ntot_proc_data+error_ind))
+        allocate(rep_loop_reduce(nprocs*(ntot_proc_data+error_ind)))
 
         data_size = size(rep_info_sum)
 #ifdef PARALLEL
@@ -243,10 +292,10 @@ contains
         ! Each processor sent its buffer (see comments at top of this section of
         ! procedures for format), which are now concatenated together in
         ! rep_loop_reduce.
-        do i = 1, nparticles_start_ind-1
+        do i = 1, proc_data_info(1,nparticles_indx)-1
             rep_info_sum(i) = sum(rep_loop_reduce(i::data_size))
         end do
-        associate(real_start_ind => (nparticles_start_ind - 1 + nprocs))
+        associate(real_start_ind => proc_data_info(1,nparticles_indx))
             forall (i=real_start_ind:real_start_ind+ntypes-1,j=0:nprocs-1) &
                     rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
         end associate
@@ -290,7 +339,7 @@ contains
         logical, intent(in), optional :: update_tau
         integer, intent(in) , optional :: spawn_elsewhere
         logical, intent(in), optional :: comms_found, error, comp
-
+        integer :: ntot_proc_data, proc_data_info(2,nparticles_indx)
         logical :: comp_param
 
         rep_loop_loc = 0.0_dp
@@ -347,7 +396,8 @@ contains
         if (qs%reblock_done) rep_loop_loc(reblock_done_ind) = 1.0_p
 
         ! Multi-dimensional and per-processor data.
-        associate(offset => (nparticles_start_ind - 1 + nprocs) + iproc*qs%psip_list%nspaces)
+        call comm_processor_indx(qs%psip_list%nspaces, proc_data_info, ntot_proc_data)
+        associate(offset => proc_data_info(1,nparticles_indx) + iproc*qs%psip_list%nspaces)
             if (present(spawn_elsewhere)) then
                 rep_loop_loc(offset:offset+qs%psip_list%nspaces-1) = qs%psip_list%nparticles + spawn_elsewhere
             else
@@ -408,7 +458,8 @@ contains
 
         real(dp) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop
         real(p) :: pop_av
-        integer :: i, ntypes
+        real(dp) :: nparticles_wfn
+        integer :: i, proc_data_info(2,nparticles_indx), ntot_proc_data
         logical :: comp_param, vary_shift_reference_loc
 
         comp_param = .false.
@@ -417,7 +468,7 @@ contains
         vary_shift_reference_loc = .false.
         if (present(vary_shift_reference)) vary_shift_reference_loc = vary_shift_reference
 
-        ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
+        call comm_processor_indx(qs%psip_list%nspaces, proc_data_info, ntot_proc_data)
 
         qs%estimators(1)%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
                                                 rep_loop_sum(proj_energy_imag_ind), p)
@@ -455,7 +506,7 @@ contains
             bloom_stats%tot_bloom_curr = real(rep_loop_sum(bloom_tot_ind), p)
             bloom_stats%nblooms_curr = nint(rep_loop_sum(bloom_num_ind), int_64)
             ! Also add to running totals.
-            bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr 
+            bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr
             bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
         end if
         new_hf_signed_pop = rep_loop_sum(hf_signed_pop_ind)
@@ -477,9 +528,9 @@ contains
 
         qs%reblock_done = abs(rep_loop_sum(reblock_done_ind)) > depsilon
 
-        associate(real_start_ind => (nparticles_start_ind - 1 + nprocs))
-            do i = 1, ntypes
-                nparticles_proc(i,:nprocs) = rep_loop_sum(real_start_ind+i-1::ntypes)
+        associate(nparticle_start=>proc_data_info(1,nparticles_indx))
+            do i = 1, qs%psip_list%nspaces
+                nparticles_proc(i,:nprocs) = rep_loop_sum(nparticle_start+i-1::qs%psip_list%nspaces)
                 ntot_particles(i) = sum(nparticles_proc(i,:nprocs))
             end do
         end associate
@@ -514,7 +565,7 @@ contains
                                      qs%estimators(1)%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         else if (comp_param) then
-            do i = 1, ntypes, 2
+            do i = 1, qs%psip_list%nspaces, 2
                 if (qs%vary_shift(i)) then
                     call update_shift(qmc_in, qs, qs%shift(i), ntot_particles_old(i) + ntot_particles_old(i+1), &
                                         ntot_particles(i) + ntot_particles(i+1), qmc_in%ncycles)
@@ -522,7 +573,7 @@ contains
                 end if
             end do
         else
-            do i = 1, ntypes
+            do i = 1, qs%psip_list%nspaces
                 if (qs%vary_shift(i)) then
                     if (vary_shift_reference_loc) then
                         call update_shift(qmc_in, qs, qs%shift(i), real(qs%estimators(i)%D0_population_old, dp), &
@@ -541,7 +592,7 @@ contains
 
         associate (est=>qs%estimators)
             if (comp_param) then
-                do i = 1, ntypes, 2
+                do i = 1, qs%psip_list%nspaces, 2
                     if (.not. qs%vary_shift(i) .and. sum(ntot_particles(i:i+1)) > qs%target_particles) then
                         qs%vary_shift(i) = .true.
                         if (qmc_in%vary_shift_from_proje) then
@@ -565,7 +616,7 @@ contains
                     end if
                 end if
             else
-                do i = 1, ntypes
+                do i = 1, qs%psip_list%nspaces 
                     if (.not. qs%vary_shift(i)) then
                         if ((ntot_particles(i) > qs%target_particles .and. .not. qmc_in%target_reference) .or. &
                             (est(i)%D0_population > qs%target_particles .and. qmc_in%target_reference)) then

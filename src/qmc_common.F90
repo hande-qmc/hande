@@ -1108,8 +1108,7 @@ contains
         !    error: true if an error has occured and we need to quit.
 
         use energy_evaluation, only: update_energy_estimators, local_energy_estimators,         &
-                                     update_energy_estimators_recv, update_energy_estimators_send, &
-                                     nparticles_start_ind
+                                     update_energy_estimators_recv, update_energy_estimators_send
         use interact, only: calc_interact, check_interact, check_comms_file
         use parallel
         use system, only: sys_t
