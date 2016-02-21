@@ -49,18 +49,11 @@ end type fci_in_t
 
 
 type hamil_t
-    ! [review] - AJWT: To the layman, what is rmat?
+    ! Matrix to store hamiltonian for systems with purely real hamiltonian elements.
     real(p), allocatable :: rmat(:,:)
-    ! [review] - AJWT: And indeed cmat?  [later] I see that they're the matrices
-    ! [review] - AJWT: themselves - perhaps note that only one is used at once
+    ! Matrix to store hamiltonian for systems with complex hamiltonian elements.
     complex(p), allocatable :: cmat(:,:)
     type(csrp_t) :: smat ! Sparse complex not implemented.
-    ! [reply] - CJCS: Ruth has pointed out to me what you actually meant and I've
-    ! [reply] - CJCS: changed accordingly; I think smat can probably stay as well.
-    ! [reply] - JSS: to be picky: cmplx is much easier to understand than comp.
-    ! [reply] - CJCS: Was considering cmplx but thought might not be any better as
-    ! [reply] - CJCS: it's the function to generate a complex value in fortran (and
-    ! [reply] - CJCS: so still gets highlighted, at least for me)?
     logical :: comp = .false.
     logical :: sparse = .false.
 end type hamil_t
