@@ -254,10 +254,11 @@ contains
                     re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), a, occ_list(iel), basis_fns)
                     hmatel = hmatel + cmplx(re, im, p)
-                    if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) &
+                    if (basis_fns(occ_list(iel))%Ms == basis_fns(i)%Ms) then
                         re = get_two_body_int_mol_nonzero(coulomb_ints, i, occ_list(iel), occ_list(iel), a, basis_fns)
                         im = get_two_body_int_mol_nonzero(coulomb_ints_im, i, occ_list(iel), occ_list(iel), a, basis_fns)
                         hmatel = hmatel - cmplx(re, im, p)
+                    end if
                 end if
             end do
         end associate
@@ -351,7 +352,7 @@ contains
 
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = 0.0_p
+        hmatel = cmplx(0.0, 0.0)
 
         if (sys%basis%basis_fns(i)%Ms == sys%basis%basis_fns(a)%Ms) then
             re = get_two_body_int_mol_nonzero(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns)
