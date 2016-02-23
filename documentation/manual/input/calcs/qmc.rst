@@ -172,17 +172,17 @@ algorithms and control the core settings in the algorithms.
 
     Possible values: 'renorm', 'no_renorm'.
 
-    ============  =================     =========
-    System        Implemented           Default
-    ============  =================     =========
-    chung_landau  renorm, no_renorm     renorm
-    heisenberg    renorm, no_renorm     renorm
-    hubbard_k     renorm, no_renorm     renorm
-    hubbard_real  renorm, no_renorm     renorm
-    ueg           no_renorm             no_renorm
-    ringium       no_renorm             no_renorm
-    read_in       renorm, no_renorm     renorm
-    ============  =================     =========
+    ============  =================                    =========
+    System        Implemented                          Default
+    ============  =================                    =========
+    chung_landau  renorm, no_renorm                    renorm
+    heisenberg    renorm, no_renorm                    renorm
+    hubbard_k     renorm, no_renorm                    renorm
+    hubbard_real  renorm, no_renorm                    renorm
+    ueg           no_renorm, cauchy_schwarz            no_renorm
+    ringium       no_renorm                            no_renorm
+    read_in       renorm, no_renorm                    renorm
+    ============  =================                    =========
 
     The type of excitation generator to use.  Note that not all types are implemented for
     all systems, usually because a specific type is not suitable for (large) production
@@ -198,6 +198,10 @@ algorithms and control the core settings in the algorithms.
     consequently much faster.  In general, 'renorm' is a good choice for small basis sets
     and 'no_renorm' is a good choice for large basis sets, especially with a small number
     of electrons (such that forbidden excitations are rarely generated).
+
+    The 'cauchy_schwarz' excitation generator generates excitations using an upper bound for
+    the value of the Hamiltonian matrix element.  This involves some precalcalated alias
+    tables, but should reduce both noise and shoulder heights.  Only available for the UEG.
 
 ``pattempt_single``
     type: float.
