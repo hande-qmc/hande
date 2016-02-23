@@ -101,33 +101,36 @@ opt_block: :class:`pandas.DataFrame`
     infos = []
     indices = []
     for calc in files:
-        info = pyhande.lazy.std_analysis(calc, start_iteration,
-                                         extract_psips=True)
-        for (i, i_info) in enumerate(info):
-            if verbose >= v_analysis:
-                msg = 'Analysing file(s): %s.' % (' '.join(calc))
-                if len(info) > 1:
-                    msg += '\nCalculation: %i' % (i,)
-                print(msg)
-            if verbose >= v_meta:
-                md = i_info.metadata
-                calc_type = md.pop('calc_type')
-                calc_input = md.pop('input')
-                print('calc_type: %s.\n' % (calc_type))
-                pprint.pprint(md)
-                if verbose >= v_input:
-                    print('\nFull input options:\n%s' % '\n'.join(calc_input))
-                print('')
-            if verbose >= v_analysis:
-                print(df_to_x(i_info.reblock, out_method, float_fmt, float_str,
-                              width))
-                print('')
+        try:
+            info = pyhande.lazy.std_analysis(calc, start_iteration,
+                                             extract_psips=True)
+            for (i, i_info) in enumerate(info):
+                if verbose >= v_analysis:
+                    msg = 'Analysing file(s): %s.' % (' '.join(calc))
+                    if len(info) > 1:
+                        msg += '\nCalculation: %i' % (i,)
+                    print(msg)
+                if verbose >= v_meta:
+                    md = i_info.metadata
+                    calc_type = md.pop('calc_type')
+                    calc_input = md.pop('input')
+                    print('calc_type: %s.\n' % (calc_type))
+                    pprint.pprint(md)
+                    if verbose >= v_input:
+                        print('\nFull input options:\n%s' % '\n'.join(calc_input))
+                    print('')
+                if verbose >= v_analysis:
+                    print(df_to_x(i_info.reblock, out_method, float_fmt, float_str,
+                                  width))
+                    print('')
+            infos.extend(info)
+            if len(info) == 1:
+                indices.append(','.join(calc))
+            else:
+                indices.extend((','.join(calc),i) for i in range(len(info)))
+        except ValueError:
+            print('WARNING: No data found in file '+' '.join(calc)+'.')
 
-        infos.extend(info)
-        if len(info) == 1:
-            indices.append(','.join(calc))
-        else:
-            indices.extend((','.join(calc),i) for i in range(len(info)))
 
     opt_blocks = [info.opt_block for info in infos]
     if verbose < v_rec_stats:

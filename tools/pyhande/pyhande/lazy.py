@@ -105,7 +105,7 @@ Umrigar93
             prev_iteration = data[i]['iterations'].iloc[-1]
         calcs.append(pd.concat(xcalc))
     else:
-        data = [pd.DataFrame()] # throw an error in a moment...
+        raise ValueError('No data found in '+' '.join(datafiles))
 
     tuple_fields = ('metadata data data_len reblock covariance opt_block '
                    'no_opt_block'.split())
