@@ -99,10 +99,6 @@ contains
         select case(sys%system)
         case(read_in)
             hmatel = get_hmatel_mol_comp(sys, f1, f2)
-        ! [review] - AJWT: Although we can't die if system is not good, we could
-        ! [review] - AJWT: return something like a NaN.
-        ! [reply] - CJCS: Shall we add a default case to the real function as
-        ! [reply] - CJCS: well?
         end select
 
     end function get_hmatel_complex
