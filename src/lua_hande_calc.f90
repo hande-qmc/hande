@@ -218,7 +218,6 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
         use qmc_data, only: qmc_in_t, restart_in_t, reference_t, qmc_state_t
-        use qmc, only: init_proc_pointers
         use system, only: sys_t
 
         use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
@@ -297,7 +296,6 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
-        use qmc, only: init_proc_pointers
         use system, only: sys_t
 
         use calc, only: calc_type, fciqmc_calc
@@ -343,7 +341,6 @@ contains
         call aot_table_close(lua_state, opts)
 
         calc_type = fciqmc_calc
-        call init_proc_pointers(sys, qmc_in, reference, fciqmc_in=fciqmc_in)
         allocate(qmc_state_out)
         if (have_restart_state) then
             call do_fciqmc(sys, qmc_in, fciqmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, &
@@ -387,7 +384,6 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
-        use qmc, only: init_proc_pointers
         use system, only: sys_t
 
         use calc, only: calc_type, ccmc_calc
@@ -429,7 +425,6 @@ contains
         call aot_table_close(lua_state, opts)
 
         calc_type = ccmc_calc
-        call init_proc_pointers(sys, qmc_in, reference)
         allocate(qmc_state_out)
         if (have_restart_state) then
             call do_ccmc(sys, qmc_in, ccmc_in, semi_stoch_in, restart_in, load_bal_in, reference, qmc_state_out, qmc_state_restart)
@@ -474,7 +469,6 @@ contains
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
-        use qmc, only: init_proc_pointers
         use system, only: sys_t, heisenberg, read_in, ueg
 
         use calc, only: calc_type, dmqmc_calc, doing_dmqmc_calc, dmqmc_energy_squared
@@ -536,7 +530,6 @@ contains
         call aot_table_close(lua_state, opts)
 
         calc_type = dmqmc_calc
-        call init_proc_pointers(sys, qmc_in, reference, dmqmc_in)
         allocate(qmc_state_out)
         if (have_restart_state) then
             call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, &
