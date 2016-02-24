@@ -12,7 +12,7 @@ and to enable multiple interactions with a running calculation.
 HANDE.COMM is a lua script, in a similar fashion to the input file, but has a much more
 restricted range of options.  Options which can be set or modified are:
 
-softexit
+``softexit``
     type: boolean.
 
     End the calculation immediately but still perform any post-processing (e.g. dumping
@@ -23,17 +23,17 @@ softexit
     The send_softexit.py script in the tools subdirectory is useful for running
     HANDE on a queueing system as it writes **softexit = true** to HANDE.COMM a certain amount
     of time before the walltime is reached.
-tau
+``tau``
     type: float.
 
     Change the timestep to be used.
-target_population
+``target_population``
     type: integer.
 
     Change the number of particles to be reached before the calculation starts varying the
-    shift.  Meaningless if the calculation has already started varying the shift.  If
-    negative then the shift is immediately allowed to vary.
-shift
+    shift.  Meaningless if the calculation has already started varying the shift.  If smaller
+    than the current population (or negative) then the shift is immediately allowed to vary.
+``shift``
     type: float or 1D vector of floats.
 
     Adjust the current value of the shift.  If the calculation has already entered

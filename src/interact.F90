@@ -152,7 +152,6 @@ contains
                         end if
                     end if
                     call aot_get_val(qs%target_particles, ierr, lua_state, key='target_population')
-                    if (qs%target_particles < 0 .and. present(qs)) qs%vary_shift = .true.
                 end if
 
                 call flu_close(lua_state)

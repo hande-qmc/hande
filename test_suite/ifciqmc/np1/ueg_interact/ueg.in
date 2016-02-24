@@ -1,0 +1,43 @@
+sys = ueg {
+    electrons = 6,
+    ms = 0,
+    sym = 15,
+    dim = 3,
+    cutoff = 2,
+    rs = 2.0,
+}
+
+qmc = {
+    tau = 0.02,
+    rng_seed = 122,
+    init_pop = 10,
+    mc_cycles = 10,
+    nreports = 200,
+    target_population = 50000,
+    state_size = 50000,
+    spawned_state_size = 5000,
+    initiator = true,
+    vary_shift_from = 'proje',
+}
+ref = {
+    det = {1, 2, 3, 10, 11, 14},
+}
+
+qs = fciqmc {
+    sys = sys,
+    qmc = qmc,
+    reference = ref,
+}
+
+f = io.open('HANDE.COMM', 'w')
+f:write('target_population = -1')
+f:close()
+
+qmc.nreports = 50
+
+fciqmc {
+    sys = sys,
+    qmc = qmc,
+    reference = ref,
+    qmc_state = qs,
+}
