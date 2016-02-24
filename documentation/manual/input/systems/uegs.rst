@@ -90,6 +90,12 @@ Options
     Apply a twist to the wavevector grid.  The twist is an :math:`N`-dimensional vector in
     units of :math:`2\pi`.  The twist angle should be within the first Brillouin zone, and
     hence the components should be between -0.5 and +0.5.
+``verbose``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Print out the single-particle basis set.
 
 Ringium
 -------
@@ -145,3 +151,9 @@ Options
 
     Note that this is in units of :math:`\frac{\hbar}{2}` and must have opposite
     parity to the number of electrons.
+``verbose``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Print out the single-particle basis set.

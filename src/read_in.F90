@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine read_in_integrals(sys, store_info, cas_info)
+    subroutine read_in_integrals(sys, store_info, cas_info, verbose)
 
         ! Read in a FCIDUMP file, which contains the kinetic and coulomb
         ! integrals, one-particle eigenvalues and other system information.
@@ -24,12 +24,14 @@ contains
         !        space.  Defailt: (N,M), where N is the total number of
         !        electrons and M is the number of active *spatial* orbitals.
         !        The default thus uses the entire space available.
+        !    verbose (optional): print out information for each single-particle
+        !         state.  Default: true.
         ! In/Out:
         !    sys: system to be studied.  The nel, nvirt, read_in%uhf, and
         !        read_in%Ecore components are set using information from the
         !        integral dump file.
 
-        use basis, only: write_basis_fn, write_basis_fn_header
+        use basis, only: write_basis_fn, write_basis_fn_header, write_basis_fn_title
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
@@ -45,9 +47,9 @@ contains
         use, intrinsic :: iso_fortran_env
 
         type(sys_t), intent(inout) :: sys
-        logical, intent(in), optional :: store_info
+        logical, intent(in), optional :: store_info, verbose
         integer, optional :: cas_info(2)
-        logical :: t_store
+        logical :: t_store, t_verbose
         integer :: cas(2)
 
         ! System data
@@ -85,11 +87,10 @@ contains
         syml = 0
         symlz = 0
 
-        if (present(store_info)) then
-            t_store = store_info
-        else
-            t_store = .true.
-        end if
+        t_store = .true.
+        if (present(store_info)) t_store = store_info
+        t_verbose = .true.
+        if (present(verbose)) t_verbose = verbose
 
         ! FCIDUMP file format is as follows:
 
@@ -746,7 +747,7 @@ contains
             call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
         end if
 
-        if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent) then
+        if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
             ! We froze some orbitals...
             ! Print out entire original basis.
             call write_basis_fn_header(sys)
@@ -759,12 +760,14 @@ contains
 
         call dealloc_basis_fn_t_array(all_basis_fns)
 
-        if (parent) then
+        if (parent .and. t_verbose) then
             call write_basis_fn_header(sys)
             do i = 1, sys%basis%nbasis
                 call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+        else
+            call write_basis_fn_title()
         end if
 
         if (t_store .and. sys%read_in%dipole_int_file /= '') then

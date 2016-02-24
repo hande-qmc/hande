@@ -73,6 +73,22 @@ contains
 
     end subroutine init_basis_fn
 
+    subroutine write_basis_fn_title(iunit)
+
+        ! Write out basis section header.
+
+        ! In:
+        !    iunit (optional): unit to write to.  Default: 6.
+
+        integer, intent(in), optional :: iunit
+        integer :: io
+
+        io = 6
+        if (present(iunit)) io = iunit
+        write (io,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
+
+    end subroutine write_basis_fn_title
+
     subroutine write_basis_fn_header(sys, iunit, print_full)
 
         ! Print out header for a table of basis functions.
@@ -111,8 +127,7 @@ contains
             print_long = .true.
         end if
 
-        ! Title
-        write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
+        call write_basis_fn_title(iunit)
 
         ! Describe information.
         if (sys%system /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
@@ -239,7 +254,7 @@ contains
 
     end subroutine write_basis_fn
 
-    subroutine init_model_basis_fns(sys, store_info)
+    subroutine init_model_basis_fns(sys, store_info, verbose)
 
         ! Produce the basis functions for model Hamiltonian systems.
         !
@@ -249,6 +264,8 @@ contains
         ! In:
         !    store_info (optional): if true (default) then store the data read
         !         in.  Otherwise the basis set is simply printed out.
+        !    verbose (optional): print out information for each single-particle
+        !         state.  Default: true.
         !
         ! The number of wavevectors is equal to the number of sites in the
         ! crystal cell (ie the number of k-points used to sample the FBZ of the
@@ -264,11 +281,11 @@ contains
         use parallel, only: parent
 
         type(sys_t), intent(inout) :: sys
-        logical, intent(in), optional :: store_info
+        logical, intent(in), optional :: store_info, verbose
 
         character(*), parameter :: this = 'init_model_basis_fns'
 
-        logical :: t_store
+        logical :: t_store, t_verbose
 
         integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
         integer :: i, j, k, ibasis, ierr, nspatial
@@ -276,11 +293,10 @@ contains
         type(basis_fn_t), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
 
-        if (present(store_info)) then
-            t_store = store_info
-        else
-            t_store = .true.
-        end if
+        t_store = .true.
+        if (present(store_info)) t_store = store_info
+        t_verbose = .true.
+        if (present(verbose)) t_verbose = verbose
 
         ! Find basis functions.
 
@@ -464,12 +480,14 @@ contains
         deallocate(basis_fns_ranking, stat=ierr)
         call check_deallocate('basis_fns_ranking',ierr)
 
-        if (parent) then
+        if (parent .and. t_verbose) then
             call write_basis_fn_header(sys)
             do i = 1, sys%basis%nbasis
                 call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'()')
+        else if (parent) then
+            call write_basis_fn_title()
         end if
 
         if (.not.t_store) then
