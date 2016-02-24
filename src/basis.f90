@@ -113,11 +113,8 @@ contains
         integer :: io, i
         logical :: print_long
 
-        if (present(iunit)) then
-            io = iunit
-        else
-            io = 6
-        end if
+        io = 6
+        if (present(iunit)) io = iunit
 
         ! If print_full is false, then the spin and single-particle eigenvalues
         ! are also printed out.
@@ -134,45 +131,45 @@ contains
 
         select case(sys%system)
         case(hub_real,heisenberg, chung_landau)
-            write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
-            write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
+            write (io,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
+            write (io,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
         case(hub_k,ueg)
-            write (6,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
+            write (io,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
             if (any(abs(sys%k_lattice%ktwist) > 0.0_p)) then
-                write (6,'(1X,a26)', advance='no') 'Applying a twist angle of:'
-                write (6,'(1X,"(",f6.4)', advance='no') sys%k_lattice%ktwist(1)
+                write (io,'(1X,a26)', advance='no') 'Applying a twist angle of:'
+                write (io,'(1X,"(",f6.4)', advance='no') sys%k_lattice%ktwist(1)
                 do i = 2, sys%lattice%ndim
-                    write (6,'(",",f6.4)', advance='no') sys%k_lattice%ktwist(i)
+                    write (io,'(",",f6.4)', advance='no') sys%k_lattice%ktwist(i)
                 end do
-                write (6,'(").")')
+                write (io,'(").")')
             end if
-            write (6,'()')
-            write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
+            write (io,'()')
+            write (io,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
         case(read_in)
-            write (6,'(/,1X,a5,2X,a7,1X,a8,1X,a9,1X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
+            write (io,'(/,1X,a5,2X,a7,1X,a8,1X,a9,1X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
         case(ringium)
-            write (6,'(1X,a25,/)') 'Lz given in units of 1/2.'
-            write (6,'(1X,a5,4x,a2,4x)', advance='no') 'index', 'lz'
+            write (io,'(1X,a25,/)') 'Lz given in units of 1/2.'
+            write (io,'(1X,a5,4x,a2,4x)', advance='no') 'index', 'lz'
         end select
 
         if (sys%system /= read_in) then
             do i = 1, sys%lattice%ndim
-                write (6,'(4X)', advance='no')
+                write (io,'(4X)', advance='no')
             end do
         end if
 
         if (print_long) then
             if (sys%system /= heisenberg .and. sys%system /= chung_landau) &
-                write (6,'(a2)', advance='no') 'ms'
+                write (io,'(a2)', advance='no') 'ms'
 
             select case(sys%system)
             case(hub_real, heisenberg, chung_landau)
-                write(6,'()')
+                write(io,'()')
             case default
-                write(6,'(5X,a7)') '<i|h|i>'
+                write(io,'(5X,a7)') '<i|h|i>'
             end select
         else
-            write (6,'()')
+            write (io,'()')
         end if
 
     end subroutine write_basis_fn_header
