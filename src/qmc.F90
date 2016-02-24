@@ -74,6 +74,8 @@ contains
 
         if (restart_in%read_restart) call init_restart_info_t(ri, read_id=restart_in%read_id)
 
+        call init_proc_pointers(sys, qmc_in, reference_in, dmqmc_in, fciqmc_in)
+
         ! Note it is not possible to override a reference if restarting.
         if (restart_in%read_restart) then
             call init_reference_restart(sys, reference_in, ri, qmc_state%ref)
