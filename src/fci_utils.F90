@@ -3,6 +3,8 @@ module fci_utils
 ! Utility/common procedures and data structures for FCI code.
 
 use dmqmc_data, only: subsys_t
+use const, only: p
+use csr, only: csrp_t
 
 implicit none
 
@@ -44,6 +46,17 @@ type fci_in_t
     ! Generate Hamiltonian on the fly (warning: very slow!)
     logical :: direct_lanczos = .false.
 end type fci_in_t
+
+
+type hamil_t
+    ! Matrix to store hamiltonian for systems with purely real hamiltonian elements.
+    real(p), allocatable :: rmat(:,:)
+    ! Matrix to store hamiltonian for systems with complex hamiltonian elements.
+    complex(p), allocatable :: cmat(:,:)
+    type(csrp_t) :: smat ! Sparse complex not implemented.
+    logical :: comp = .false.
+    logical :: sparse = .false.
+end type hamil_t
 
 contains
 
@@ -188,7 +201,7 @@ contains
 
     end subroutine fci_json
 
-    subroutine generate_hamil(sys, ndets, dets, hamil, hamil_csr, proc_blacs_info, full_mat)
+    subroutine generate_hamil(sys, ndets, dets, hamil, proc_blacs_info, full_mat, use_sparse_hamil)
 
         ! Generate a symmetry block of the Hamiltonian matrix, H = < D_i | H | D_j >.
         ! The list of determinants, {D_i}, is grouped by symmetry and contains
@@ -201,13 +214,12 @@ contains
         !    proc_blacs_info (optional): BLACS distribution (and related info) of the Hamiltonian matrix.
         !    full_mat (optional): if present and true generate the full matrix rather than
         !        just storing one triangle.
+        !    use_sparse_hamil (optional): if present and true generate a sparse matrix format, as
+        !        described in csr.
         ! Out:
-        !    hamil (optional): Hamiltonian matrix in a square array.
-        !    hamil_csr (optional): Hamiltonian matrix in a sparse (compressed sparse row)
-        !        format.
-
-        ! Note: either hamil or hamil_csr must be supplied.  If both are supplied then only
-        ! hamil is used.
+        !    hamil: hamil_t derived type, containing Hamiltonian matrix in a square array of appropriate
+        !        format for system and settings given (real, complex or sparse). In a complex system only
+        !        sparse format is not implemented.
 
         use checking, only: check_allocate, check_deallocate
         use csr, only: init_csrp, end_csrp, csrp_t
@@ -215,39 +227,51 @@ contains
         use errors, only: stop_all
         use parallel
 
-        use hamiltonian, only: get_hmatel
+        use hamiltonian, only: get_hmatel, get_hmatel_complex
+
         use real_lattice
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ndets
         integer(i0), intent(in) :: dets(:,:)
-        real(p), intent(out), allocatable, optional :: hamil(:,:)
-        type(csrp_t), intent(out), optional :: hamil_csr
+        type(hamil_t), intent(out) :: hamil
         type(blacs_info), intent(in), optional :: proc_blacs_info
-        logical, intent(in), optional :: full_mat
+        logical, intent(in), optional :: full_mat, use_sparse_hamil
         integer :: ierr
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
         logical :: sparse_mode
         real(p) :: hmatel
 
-        sparse_mode = present(hamil_csr) .and. .not.present(hamil)
-        if (.not.present(hamil) .and. .not.present(hamil_csr)) &
-            call stop_all('generate_hamil', 'Must supply either hamil or hamil_csr in argument list.')
-
+        hamil%comp = sys%read_in%comp
+        if (present(use_sparse_hamil)) then
+             hamil%sparse = use_sparse_hamil
+        end if
+        sparse_mode = hamil%sparse
         if (sparse_mode .and. present(proc_blacs_info)) then
             call stop_all('generate_hamil', &
                 'Sparse distributed matrices are not currently implemented.  &
                 &If this is disagreeable to you, please contribute patches resolving this situation.')
         end if
+        if (hamil%comp .and. hamil%sparse) then
+            call stop_all('generate_hamil', &
+                'Complex sparse matrices are not currently implemented.  &
+                &If this is disagreeable to you, please contribute patches resolving this situation.')
+        end if
 
-        if (present(hamil)) then
+        if (.not.hamil%sparse) then
+            ilocal = ndets
+            jlocal = ndets
             if (present(proc_blacs_info)) then
-                allocate(hamil(proc_blacs_info%nrows,proc_blacs_info%ncols), stat=ierr)
-                call check_allocate('hamil', proc_blacs_info%nrows*proc_blacs_info%ncols, ierr)
+                ilocal = proc_blacs_info%nrows
+                jlocal = proc_blacs_info%ncols
+            end if
+            if (hamil%comp) then
+                allocate(hamil%cmat(ilocal, jlocal), stat=ierr)
+                call check_allocate('hamil_comp%cmat', ilocal*jlocal, ierr)
             else
-                allocate(hamil(ndets, ndets), stat=ierr)
-                call check_allocate('hamil', ndets**2, ierr)
+                allocate(hamil%rmat(ilocal, jlocal), stat=ierr)
+                call check_allocate('hamil_comp%rmat', ilocal*jlocal, ierr)
             end if
         end if
 
@@ -275,7 +299,11 @@ contains
                         do jj = 1, min(proc_blacs_info%block_size, proc_blacs_info%ncols - j + 1)
                             jlocal = j - 1 + jj
                             jglobal = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*proc_blacs_info%block_size + jj
-                            hamil(ilocal, jlocal) = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
+                            if (hamil%comp) then
+                                hamil%cmat(ilocal, jlocal) = get_hmatel_complex(sys, dets(:,iglobal), dets(:,jglobal))
+                            else
+                                hamil%rmat(ilocal, jlocal) = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
+                            end if
                         end do
                     end do
                 end do
@@ -302,9 +330,9 @@ contains
                                 !$omp critical
                                 nnz = nnz + 1
                                 if (imode == 2) then
-                                    hamil_csr%mat(nnz) = hmatel
-                                    hamil_csr%col_ind(nnz) = j
-                                    if (hamil_csr%row_ptr(i) == 0) hamil_csr%row_ptr(i) = nnz
+                                    hamil%smat%mat(nnz) = hmatel
+                                    hamil%smat%col_ind(nnz) = j
+                                    if (hamil%smat%row_ptr(i) == 0) hamil%smat%row_ptr(i) = nnz
                                 end if
                                 !$omp end critical
                             end if
@@ -314,15 +342,15 @@ contains
                     !$omp end parallel
                     if (imode == 1) then
                         write (6,'(1X,a50,i8,/)') 'Number of non-zero elements in Hamiltonian matrix:', nnz
-                        call init_csrp(hamil_csr, ndets, nnz, .true.)
-                        hamil_csr%row_ptr(1:ndets) = 0
+                        call init_csrp(hamil%smat, ndets, nnz, .true.)
+                        hamil%smat%row_ptr(1:ndets) = 0
                     else
                         ! Any element not set in row_ptr means that the
                         ! corresponding row has no non-zero elements.
                         ! Set it to be identical to the next row (this avoids
                         ! looping over the zero-row).
                         do i = ndets, 1, -1
-                            if (hamil_csr%row_ptr(i) == 0) hamil_csr%row_ptr(i) = hamil_csr%row_ptr(i+1)
+                            if (hamil%smat%row_ptr(i) == 0) hamil%smat%row_ptr(i) = hamil%smat%row_ptr(i+1)
                         end do
                     end if
                 end do
@@ -335,7 +363,11 @@ contains
                 end if
                 !$omp do private(j) schedule(dynamic, 200)
                 do j = ii, ndets
-                    hamil(i,j) = get_hmatel(sys,dets(:,i),dets(:,j))
+                    if (hamil%comp) then
+                        hamil%cmat(i,j) = get_hmatel_complex(sys,dets(:,i),dets(:,j))
+                    else
+                        hamil%rmat(i,j) = get_hmatel(sys,dets(:,i),dets(:,j))
+                    end if
                 end do
                 !$omp end do
             end do
@@ -344,7 +376,7 @@ contains
 
     end subroutine generate_hamil
 
-    subroutine write_hamil(hamiltonian_file, ndets, proc_blacs_info, hamil, hamil_csr)
+    subroutine write_hamil(hamiltonian_file, ndets, proc_blacs_info, hamil)
 
         ! Write out the Hamiltonian matrix to file.
 
@@ -353,12 +385,13 @@ contains
         !    ndets: number of determinants in Hilbert space.
         !    proc_blacs_info (optional, required if nprocs>1): BLACS distribution
         !        (and related info) of the Hamiltonian matrix.
-        !    hamil (optional): Hamiltonian matrix in dense matrix format.
-        !    hamil_csr (optional): Hamiltonian matrix in sparse (CSR) matrix format.
+        !    hamil: hamil_t derived type containing hamiltonian matrix in appropriate
+        !        matrix format (real, complex or sparse matrix).
 
         use checking, only: check_allocate, check_deallocate
         use const, only: p, depsilon
         use errors, only: stop_all
+        use linalg, only: plaprnt
         use parallel, only: blacs_info, nprocs
         use utils, only: get_free_unit
 
@@ -367,47 +400,64 @@ contains
         character(*), intent(in) :: hamiltonian_file
         integer, intent(in) :: ndets
         type(blacs_info), intent(in), optional :: proc_blacs_info
-        real(p), intent(in), optional :: hamil(:,:)
-        type(csrp_t), intent(in), optional :: hamil_csr
+        type(hamil_t), intent(in) :: hamil
 
         integer :: iunit, i, j, ierr
         real(p), allocatable :: work_print(:)
+        complex(p), allocatable :: cwork_print(:)
 
         iunit = get_free_unit()
         open(iunit, file=hamiltonian_file, status='unknown')
-        if (nprocs > 1 .and. present(hamil)) then
+        if (nprocs > 1 .and. (.not.hamil%comp)) then
             if (.not.present(proc_blacs_info)) call stop_all('write_hamil', 'proc_blacs_info not supplied.')
             ! Note that this uses a different format to the serial case...
-            allocate(work_print(proc_blacs_info%block_size**2), stat=ierr)
-            call check_allocate('work_print', proc_blacs_info%block_size**2, ierr)
-#ifdef PARALLEL
-#ifdef SINGLE_PRECISION
-            call pslaprnt(ndets, ndets, hamil, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil', iunit, work_print)
-#else
-            call pdlaprnt(ndets, ndets, hamil, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil', iunit, work_print)
-#endif
-#endif
-            deallocate(work_print)
-            call check_deallocate('work_print', ierr)
+            if (hamil%comp) then
+                allocate(cwork_print(proc_blacs_info%block_size**2), stat=ierr)
+                call check_allocate('cwork_print', proc_blacs_info%block_size**2, ierr)
+                call plaprnt(ndets, ndets, hamil%cmat, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil%rmat', iunit, cwork_print)
+                deallocate(cwork_print)
+                call check_deallocate('cwork_print', ierr)
+            else
+                allocate(work_print(proc_blacs_info%block_size**2), stat=ierr)
+                call check_allocate('work_print', proc_blacs_info%block_size**2, ierr)
+                call plaprnt(ndets, ndets, hamil%rmat, 1, 1, proc_blacs_info%desc_m, 0, 0, 'hamil%cmat', iunit, work_print)
+                deallocate(work_print)
+                call check_deallocate('work_print', ierr)
+            end if
         else
-            if (present(hamil)) then
-                do i=1, ndets
-                    write (iunit,*) i,i,hamil(i,i)
-                    do j=i+1, ndets
-                        if (abs(hamil(i,j)) > depsilon) write (iunit,*) i,j,hamil(i,j)
-                    end do
-                end do
-            else if (present(hamil_csr)) then
+            if (hamil%sparse) then
                 j = 1
-                do i = 1, size(hamil_csr%mat)
-                    if (abs(hamil_csr%mat(i)) > depsilon) then
-                        if (hamil_csr%row_ptr(j+1) <= i) j = j+1
-                        write (iunit,*) j, hamil_csr%col_ind(i), hamil_csr%mat(i)
+                do i = 1, size(hamil%smat%mat)
+                    if (abs(hamil%smat%mat(i)) > depsilon) then
+                        if (hamil%smat%row_ptr(j+1) <= i) j = j+1
+                        write (iunit,*) j, hamil%smat%col_ind(i), hamil%smat%mat(i)
                     end if
+                end do
+            else
+                do i=1, ndets
+                    call write_hamil_entry(hamil, i, i, iunit)
+                    do j=i+1, ndets
+                        call write_hamil_entry(hamil, i, j, iunit)
+                    end do
                 end do
             end if
         end if
         close(iunit, status='keep')
+
+        contains
+
+            subroutine write_hamil_entry(hamil, i, j, iunit)
+
+                type(hamil_t), intent(in) :: hamil
+                integer, intent(in) :: i, j, iunit
+
+                if (hamil%comp) then
+                    if (i==j .or. abs(hamil%cmat(i,j)) > depsilon) write (iunit,*) i, j, hamil%cmat(i,j)
+                else
+                    if (i==j .or. abs(hamil%rmat(i,j)) > depsilon) write (iunit,*) i, j, hamil%rmat(i,j)
+                end if
+
+            end subroutine write_hamil_entry
 
     end subroutine write_hamil
 

@@ -492,6 +492,7 @@ contains
         !        Lz = true/false
         !        sym = S,
         !        CAS = {cas1, cas2}
+        !        complex = true/false,
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -517,8 +518,8 @@ contains
         logical :: new, new_basis
         integer :: err
 
-        character(15), parameter :: keys(9) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms', 'CAS']
+        character(15), parameter :: keys(10) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS', 'complex']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -534,6 +535,7 @@ contains
         call aot_get_val(sys%read_in%fcidump, err, lua_state, opts, 'int_file')
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
         call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
+        call aot_get_val(sys%read_in%comp, err, lua_state, opts, 'complex')
 
         new_basis = new .or. aot_exists(lua_state, opts, 'int_file') &
                         .or. aot_exists(lua_state, opts, 'CAS')

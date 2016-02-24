@@ -55,14 +55,16 @@ contains
         ! namelist, so have to hardcode the array sizes.
         ! It's reasonably safe to assume that we'll never use more than 1000
         ! orbitals!
-        integer :: norb, nelec, ms2, orbsym(1000), isym, syml(1000), symlz(1000)
+        integer :: norb, nelec, ms2, orbsym(1000), isym, syml(1000), symlz(1000), nprop(3), propbitlen
 
         ! all basis functions, including inactive ones.
         type(basis_fn_t), allocatable :: all_basis_fns(:)
 
         ! Integrals
         integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb, ti
-        real(p) :: x
+        real(p) :: x, y, im_core
+        complex(p) :: compint
+
 
         ! reading in...
         integer :: ir, ios, ierr
@@ -75,7 +77,7 @@ contains
         integer :: int_err, max_err_msg, tmp
         character(1024) :: err_msg
 
-        namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz
+        namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz, nprop, propbitlen
 
         ! avoid annoying compiler warnings over unused variables in FCI namelist
         ! that are present for NECI compatibility.
@@ -116,7 +118,9 @@ contains
         !    Set to -1 if L is not a good quantum number.
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
-
+        !  * NPROP: Dimensions of supercell used in translationally symmetric systems.
+        !  * PROPBITLEN: Length in bits of each property (?) in translationally symmetric
+        !    systems. Translational symmetry not yet implemented.
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
         !    nuclear-nuclear and other non-electron contributions to the
@@ -240,7 +244,13 @@ contains
         if (parent) then
             do
                 ! loop over lines.
-                read (ir,*, iostat=ios) x, i, a, j, b
+                if (sys%read_in%comp) then
+                        read (ir,*, iostat=ios) compint, i, a, j, b
+                        ! if complex will have complex formatting but sp_eigv should still be real.
+                        x=real(compint,p)
+                else
+                    read (ir,*, iostat=ios) x, i, a, j, b
+                end if
                 if (ios == iostat_end) exit ! reached end of file
                 if (ios /= 0) call stop_all('read_in_integrals','&
                                              &Problem reading integrals file: '//trim(sys%read_in%fcidump))
@@ -251,7 +261,6 @@ contains
                     sp_eigv(i) = x
                 end if
             end do
-
             if (not_found_sp_eigv) &
                 call stop_all('read_in_integrals',sys%read_in%fcidump//' file does not contain &
                               &single-particle eigenvalues.  Please implement &
@@ -352,8 +361,16 @@ contains
         ! Initialise integral stores.
         if (t_store) then
             call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
-                                 sys%read_in%one_e_h_integrals)
-            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%coulomb_integrals)
+                                 .false., sys%read_in%one_e_h_integrals)
+            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
+                                 .false., sys%read_in%coulomb_integrals)
+            if (sys%read_in%comp) then
+                call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
+                    sys%read_in%pg_sym%nbasis_sym_spin, .true., &
+                    sys%read_in%one_e_h_integrals_imag)
+                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
+                                 sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
+            end if
         end if
 
         if (parent) then
@@ -389,9 +406,14 @@ contains
         ! memory.
 
         sys%read_in%Ecore = 0.0_p
+        im_core = 0.0_p
         if (t_store) then
             call zero_one_body_int_store(sys%read_in%one_e_h_integrals)
             call zero_two_body_int_store(sys%read_in%coulomb_integrals)
+            if (sys%read_in%comp) then
+                call zero_one_body_int_store(sys%read_in%one_e_h_integrals_imag)
+                call zero_two_body_int_store(sys%read_in%coulomb_integrals_imag)
+            end if
         end if
 
         ! Now, there is no guarantee that FCIDUMP files will include all
@@ -412,6 +434,12 @@ contains
 
         ! We similarly need to remember if we've seen <i|h|a> or <a|h|i> as we
         ! only store one of the pair.
+
+        ! If using complex orbitals, <ii|jj> =/= <ij|ji>, etc, so no longer
+        ! accept some permutations.
+        ! For complex have also assumed expressions above for E_core and <a|h'|b>
+        ! hold; if not the case then likely incorrect values obtained.
+
 
         ! Accumulate errors so we can print out (at most) max_err_msg errors from this file.
         int_err = 0
@@ -437,7 +465,14 @@ contains
             do
 
                 ! loop over lines.
-                read (ir,*, iostat=ios) x, i, a, j, b
+                if (sys%read_in%comp) then
+                    read (ir,*, iostat=ios) compint, i, a, j, b
+                    x=real(compint,p)
+                    y=aimag(compint)
+                else
+                    read (ir,*, iostat=ios) x, i, a, j, b
+                end if
+
                 if (ios == iostat_end) exit ! reached end of file
                 if (ios /= 0) call stop_all('read_in_integrals', &
                                             'Problem reading integrals file: '//trim(sys%read_in%fcidump))
@@ -470,7 +505,10 @@ contains
 
                         ! Nuclear energy.
                         sys%read_in%Ecore = sys%read_in%Ecore + x
-
+                        if (sys%read_in%comp) then
+                            ! Imaginary component should be 0 but just in case...
+                            im_core = im_core + y
+                        end if
                     else if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
 
                         ! \epsilon_i
@@ -486,6 +524,9 @@ contains
                                 ! If RHF need to include <i,up|h|i,up> and
                                 ! <i,down|h|i,down>.
                                 sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac
+                                if (sys%read_in%comp) then
+                                    im_core = im_core + y*rhf_fac
+                                end if
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
                                     x = x + get_one_body_int_mol(sys%read_in%one_e_h_integrals, ii, aa, &
@@ -493,6 +534,16 @@ contains
                                     call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
                                                                 int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
                                     int_err = int_err + ierr
+                                    if (sys%read_in%comp) then
+                                        y = y + get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, ii, aa, &
+                                                                     sys%basis%basis_fns, sys%read_in%pg_sym)
+                                        call store_one_body_int_mol(ii, aa, y, sys%basis%basis_fns, sys%read_in%pg_sym, &
+                                                                    int_err > max_err_msg, sys%read_in%one_e_h_integrals_imag, ierr)
+                                        int_err = int_err + ierr
+                                    end if
+
+
+
                                     seen_iha(tri_ind_reorder(ii,aa)) = .true.
                                 end if
                             end if
@@ -514,11 +565,18 @@ contains
                                 ! we only use a unique integral once, no matter
                                 ! which permutation(s) occur in the FCIDUMP
                                 ! file.
+                                ! For core orbitals, sum imaginary components;
+                                ! if overall core energy has non-negligible
+                                ! imaginary component raise error as something
+                                ! gone wrong.
                                 if (ii == aa .and. jj == bb .and. ii == jj) then
                                     if (.not.sys%read_in%uhf .and. mod(seen_ijij(tri_ind_reorder(i,j)),2) == 0) then
                                         ! RHF calculations: need to include <i,up i,down|i,up i,down>.
 
                                         sys%read_in%Ecore = sys%read_in%Ecore + x
+                                        if (sys%read_in%comp) then
+                                            im_core = im_core + y
+                                        end if
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
                                 else if (ii == aa .and. jj == bb .and. ii /= jj) then
@@ -530,11 +588,16 @@ contains
                                         !   <i,down j,up|i,down, j,up>
                                         !   <i,down j,down|i,down, j,down>
                                         sys%read_in%Ecore = sys%read_in%Ecore + x*rhf_fac**2
+                                        if (sys%read_in%comp) then
+                                            im_core = im_core + y*rhf_fac**2
+                                        end if
                                         seen_ijij(tri_ind_reorder(i,j)) = seen_ijij(tri_ind_reorder(i,j)) + 1
                                     end if
                                 else if (ii == bb .and. jj == aa .and. ii /= jj .or. &
-                                         ii == jj .and. aa == bb .and. ii /= aa) then
-                                    ! <ij|ji>, i/=j (or <ii|jj> version)
+                                         (ii == jj .and. aa == bb .and. ii /= aa .and. .not. sys%read_in%comp)) then
+                                    ! <ij|ji>, i/=j (or <ii|jj> version) can be treated together if real orbitals
+                                    ! but not if complex orbitals.
+                                    ! Only accept complex if is <ij|ji>
                                     if (ii == jj) then
                                         ti = tri_ind_reorder(i, a)
                                     else
@@ -545,6 +608,9 @@ contains
                                         !   <i,up j,up|j,up, i,up>
                                         !   <i,down j,down|j,down, i,down>
                                         sys%read_in%Ecore = sys%read_in%Ecore - rhf_fac*x
+                                        if (sys%read_in%comp) then
+                                            im_core = im_core - rhf_fac*y
+                                        end if
                                         seen_ijij(ti) = seen_ijij(ti) + 2
                                     end if
                                 end if
@@ -566,7 +632,7 @@ contains
                                     ! where i is a core orbital and a and b are
                                     ! active orbitals.
                                     if ((ii == core(1) .and. aa == core(1)) .or. (jj == core(1) .and. bb == core(1))) then
-                                        ! < i a | i b >
+                                        ! < i a | i b > or < a i | b i >
                                         if (mod(seen_iaib(core(1), tri_ind_reorder(active(1),active(2))),2) == 0) then
                                             ! Update <a|h|b> with contribution <ia|ib>.
                                             x = x*rhf_fac + &
@@ -576,19 +642,34 @@ contains
                                                                         sys%read_in%pg_sym, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
+                                            if (sys%read_in%comp) then
+                                                y = y*rhf_fac + &
+                                                    get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), &
+                                                                         active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
+                                                call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
+                                                                            sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                                            sys%read_in%one_e_h_integrals_imag, ierr)
+                                                int_err = int_err + ierr
+                                            end if
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 1
                                         end if
-                                    else
-                                        ! < i a | b i > (or a permutation thereof)
+                                    else if ((.not. sys%read_in%comp) .or. ((ii == core(1) .and. bb == core(2)) &
+                                                .or. (jj == core(1) .and. aa == core(2)))) then
+                                        ! < i a | b i > (or allowed permutation thereof)
                                         ! For systems with complex orbitals (but real integrals)
                                         ! it's possible for <ii|ba> to be nonzero, but <ia|bi>=0 so we test sym
+
+                                        ! For complex we can only accept <ia|bi> or <ai|ib>, which gives the second two
+                                        ! conditions above.
+                                        ! For real we can also accept <ii|ab>/<ii|ba> etc, which are all remaining cases
+                                        ! of core(1) == core(2) after the inital if statement. As such if real automatically
+                                        ! accept.
                                         if (seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) < 2 .and. &
                                             is_gamma_irrep_pg_sym(sys%read_in%pg_sym, &
                                                 cross_product_pg_sym(sys%read_in%pg_sym, &
                                                             pg_sym_conj(sys%read_in%pg_sym, sys%basis%basis_fns(active(1))%sym), &
                                                             sys%basis%basis_fns(active(2))%sym))) then
-
                                             ! Update <j|h|a> with contribution <ij|ai>.
                                             x = get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), active(2), &
                                                                      sys%basis%basis_fns, sys%read_in%pg_sym)  - x
@@ -596,6 +677,16 @@ contains
                                                                         sys%read_in%pg_sym, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
+                                            if (sys%read_in%comp) then
+                                                ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
+                                                ! and store_one_body... function ordering adjustments.
+                                                y = get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), active(2), &
+                                                                         sys%basis%basis_fns, sys%read_in%pg_sym)  - y
+                                                call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
+                                                                            sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                                            sys%read_in%one_e_h_integrals_imag, ierr)
+                                                int_err = int_err + ierr
+                                            end if
                                             seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) = &
                                                 seen_iaib(core(1), tri_ind_reorder(active(1),active(2))) + 2
                                         end if
@@ -606,6 +697,11 @@ contains
                                 call store_two_body_int_mol(ii, jj, aa, bb, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
                                                             int_err > max_err_msg, sys%read_in%coulomb_integrals, ierr)
                                 int_err = int_err + ierr
+                                if (sys%read_in%comp) then
+                                    call store_two_body_int_mol(ii, jj, aa, bb, y, sys%basis%basis_fns, sys%read_in%pg_sym, &
+                                                            int_err > max_err_msg, sys%read_in%coulomb_integrals_imag, ierr)
+                                    int_err = int_err + ierr
+                                end if
                             end select
                         end if
 
@@ -623,13 +719,19 @@ contains
                     write (6,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
             end if
 
+            ! If system is sensible, total Ecore including any CAS contribution will be purely real as is just the sum of Ecore and single
+            ! particle energies of core orbitals; if not then either these assumptions are wrong or something's up with the INTDUMP.
+            ! Either way will want to know.
+            if (abs(im_core) > depsilon) then
+                call stop_all('read_in_integrals' ,'Nonzero imaginary core energy found; check your CAS settings.')
+            end if
+
             deallocate(seen_iha, stat=ierr)
             call check_deallocate('seen_iha', ierr)
             deallocate(seen_ijij, stat=ierr)
             call check_deallocate('seen_ijij', ierr)
             deallocate(seen_iaib, stat=ierr)
             call check_deallocate('seen_iaib', ierr)
-
             close(ir, status='keep')
 
         end if
@@ -639,6 +741,10 @@ contains
 #endif
         call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
         call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
+        if (sys%read_in%comp) then
+            call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
+            call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
+        end if
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent) then
             ! We froze some orbitals...
@@ -847,7 +953,7 @@ contains
 
         ! Allocate integral store on *all* processors.
         if (allocated(store%integrals)) call end_one_body_t(store)
-        call init_one_body_t(uhf, op_sym, pg_sym%nbasis_sym_spin, store)
+        call init_one_body_t(uhf, op_sym, pg_sym%nbasis_sym_spin, .false., store)
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
@@ -908,6 +1014,7 @@ contains
             if (int_err > max_err_msg) &
                 write (6,'(1X,"Only the first",'//int_fmt(max_err_msg)//'," error messages are shown.",/)') max_err_msg
         end if
+
 
         ! And now send info everywhere...
 #ifdef PARALLEL

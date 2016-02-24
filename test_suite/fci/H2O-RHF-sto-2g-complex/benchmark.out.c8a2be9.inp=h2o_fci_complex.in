@@ -1,0 +1,296 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Feb  5 2016 at 14:48:23
+ Compiled using gfortran.mkl.mpi.(optimised)
+ VCS BASE repository version:
+     c8a2be96959e6ccdd676213683de8a813d19e659
+ Hostname:
+     sandstone
+ Working directory: 
+     /home/cs675/Code/hande/test_suite/fci/H2O-RHF-sto-2g-complex
+ Started running on 05/02/2016 at 14:50:40
+ Calculation UUID: df1006b1-a39b-4e5a-abc6-f081363a8c4f.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS defined.  Lanczos disabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 32.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+    complex = true,
+}
+
+fci {
+    sys = sys,
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms     <i|h|i>
+     1      1       0       1       0       1    -19.58287665
+     2      1       0       2       0      -1    -19.58287665
+     3      2       0       3       0       1     -1.22509635
+     4      2       0       4       0      -1     -1.22509635
+     5      3       2       1       0       1     -0.60072895
+     6      3       2       2       0      -1     -0.60072895
+     7      4       0       5       0       1     -0.40431730
+     8      4       0       6       0      -1     -0.40431730
+     9      5       3       1       0       1     -0.34766766
+    10      5       3       2       0      -1     -0.34766766
+    11      6       0       7       0       1      0.61070603
+    12      6       0       8       0      -1      0.61070603
+    13      7       2       3       0       1      0.78581546
+    14      7       2       4       0      -1      0.78581546
+
+ E_core =    9.009352032085
+ Number of electrons: 10
+ Number of basis functions: 14
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 4
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3
+  1  0  3  2
+  2  3  0  1
+  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0      8       4          4
+   1     0    1      0       0          0
+   2     0    2      4       2          2
+   3     0    3      2       1          1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 14,   
+         "nel": 10,   
+         "nvirt": 4,   
+         "Ms": 0,   
+         "nalpha": 5,   
+         "nbeta": 5,   
+         "nvirt_alpha": 2,   
+         "nvirt_beta": 2,   
+         "nsym": 3,   
+         "sym0": 0,   
+         "sym_max": 3,   
+         "nsym_tot": 4,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 3,   
+         "symmetry": 0,   
+         "max_number_excitations": 4,   
+         "chem_pot":  "nan",   
+         "read_in": {
+             "int_file":  "INTDUMP",   
+             "uhf": false,   
+             "Ecore": 9.00935203,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": true    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "nlanczos_eigv": 5,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": false    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         0              133
+         1               92
+         2              128
+         3               88
+
+ Symmetry of selected Hilbert subspace: 0.
+ Spin of selected Hilbert subspace: 0.
+
+ Performing exact diagonalisation...
+
+ LAPACK diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1   -72.786196191345
+      2   -72.317128060987
+      3   -72.213262188978
+      4   -71.994259711124
+      5   -71.817902982165
+      6   -71.701795906183
+      7   -71.671493218227
+      8   -71.628202704191
+      9   -71.603731685495
+     10   -71.467811643026
+     11   -71.386192490632
+     12   -71.383512216886
+     13   -71.350950138370
+     14   -71.287067898141
+     15   -71.254940315395
+     16   -71.236465062077
+     17   -71.197527083197
+     18   -71.041087150113
+     19   -71.005789524431
+     20   -70.971076098059
+     21   -70.952786560735
+     22   -70.903031685292
+     23   -70.865225609750
+     24   -70.811761251784
+     25   -70.725768751573
+     26   -70.718800631960
+     27   -70.691065098522
+     28   -70.648088516094
+     29   -70.584652609743
+     30   -70.566766998652
+     31   -70.540283753852
+     32   -70.438375147765
+     33   -70.435936506044
+     34   -70.386117469765
+     35   -70.347936260713
+     36   -70.341526118744
+     37   -70.252113335644
+     38   -70.183334222065
+     39   -70.183030215603
+     40   -70.088377226340
+     41   -70.057199810556
+     42   -70.026520866520
+     43   -70.026489446278
+     44   -69.981204287247
+     45   -69.888276430751
+     46   -69.847750242971
+     47   -69.819627159431
+     48   -69.800300365407
+     49   -69.771121450788
+     50   -69.669328176201
+     51   -69.649302739931
+     52   -69.592140847689
+     53   -69.506041721792
+     54   -69.434705778351
+     55   -69.385614214131
+     56   -69.267332658298
+     57   -69.212887094183
+     58   -69.159778560422
+     59   -69.059710379944
+     60   -69.051575176982
+     61   -68.874627401078
+     62   -68.743176923370
+     63   -68.532027452798
+     64   -68.371646006281
+     65   -68.155836419208
+     66   -53.523965101974
+     67   -53.486418959700
+     68   -52.905553870292
+     69   -52.868013990067
+     70   -52.853920821301
+     71   -52.797237367705
+     72   -52.582616832343
+     73   -52.548783017258
+     74   -52.503948467371
+     75   -52.462416555543
+     76   -52.411477128858
+     77   -52.372260066530
+     78   -52.112588821181
+     79   -51.984395481459
+     80   -51.976140514833
+     81   -51.918454214733
+     82   -51.883096304434
+     83   -51.846945993116
+     84   -51.837188752548
+     85   -51.808023320000
+     86   -51.805492890812
+     87   -51.773597610346
+     88   -51.711756466736
+     89   -51.659977602825
+     90   -51.654193706612
+     91   -51.568606228763
+     92   -51.561294179718
+     93   -51.516477736345
+     94   -51.302246329572
+     95   -51.266433198037
+     96   -51.191336531187
+     97   -51.141763816054
+     98   -51.119426359427
+     99   -51.051032658022
+    100   -51.005296463504
+    101   -50.971962980346
+    102   -50.882483078642
+    103   -50.834163135702
+    104   -50.829565989711
+    105   -50.783434304551
+    106   -50.760621388086
+    107   -50.736822232669
+    108   -50.639233151424
+    109   -50.602092296212
+    110   -50.181837520837
+    111   -50.111655298909
+    112   -50.102708394864
+    113   -50.033251835834
+    114   -49.970942948766
+    115   -49.900152825018
+    116   -49.889170749073
+    117   -49.749354272447
+    118   -49.235774573040
+    119   -49.202378299662
+    120   -30.789839577307
+    121   -30.334967493414
+    122   -29.618846533515
+    123   -29.561398067479
+    124   -29.541771348449
+    125   -29.446474263828
+    126   -28.749798613657
+    127   -28.690314036630
+    128   -28.249485522958
+    129   -28.177189185954
+    130   -28.081565140218
+    131   -27.598179294949
+    132   -27.244579951442
+    133   -26.558191164396
+
+ ================================================================
+ Finished running on 05/02/2016 at 14:50:41
+ Wall time (seconds):                           0.01
+ CPU time (per processor, seconds):             0.01
+ ================================================================
+

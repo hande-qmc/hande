@@ -16,7 +16,7 @@ implicit none
 contains
 
     subroutine init_simple_fciqmc(sys, qmc_in, reference, qs, sparse_hamil, restart, ndets, dets, ref_det, psip_list, spawn, &
-                                  hamil, hamil_csr)
+                                  hamil)
 
         ! Initialisation for the simple fciqmc algorithm.
         ! Setup the list of determinants in the space, calculate the relevant
@@ -41,8 +41,9 @@ contains
         !       output.
         !    spawn: spawn_t object for holding the spawned psips.  Allocated on
         !       output, with one slot for each determinant in thie Hilbert space.
-        !    hamil, hamil_csr: Hamiltonian matrix.  hamil_csr is set if sparse_hamil
-        !       is true, otherwise hamil is used.
+        !    hamil: derived type containing the Hamiltonian matrix. Depending on
+        !       system will contain real or complex matrix. If real and sparse_hamil
+        !       is true will contain CSR format hamiltonian.
 
         use csr, only: csrp_t
         use parallel, only: nprocs
@@ -50,10 +51,10 @@ contains
         use utils, only: int_fmt
 
         use determinant_enumeration
-        use fci_utils, only: generate_hamil
+        use fci_utils, only: generate_hamil, hamil_t
         use qmc_data, only: qmc_in_t, reference_t, particle_t, qmc_state_t
         use spawn_data, only: spawn_t
-        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation
+        use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation, read_in
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -63,8 +64,7 @@ contains
         integer, intent(out) :: ref_det
         type(particle_t), intent(out) :: psip_list
         type(spawn_t), intent(out) :: spawn
-        real(p), allocatable, intent(out) :: hamil(:,:)
-        type(csrp_t), intent(out) :: hamil_csr
+        type(hamil_t), intent(out) :: hamil
 
         integer, allocatable :: sym_space_size(:)
         integer :: ndets
@@ -75,6 +75,9 @@ contains
         type(sys_t) :: sys_bak
 
         if (nprocs > 1) call stop_all('init_simple_fciqmc','Not a parallel algorithm.')
+        if (sys%system == read_in) then
+            if (sys%read_in%comp) call stop_all('init_simple_fciqmc', 'Complex simple fciqmc not currently implemented.')
+        end if
 
         ! Find and set information about the space.
         call copy_sys_spin_info(sys, sys_bak)
@@ -96,11 +99,7 @@ contains
 
 
         ! Set up hamiltonian matrix.
-        if (sparse_hamil) then
-            call generate_hamil(sys, ndets, dets, hamil_csr=hamil_csr, full_mat=.true.)
-        else
-            call generate_hamil(sys, ndets, dets, hamil, full_mat=.true.)
-        end if
+        call generate_hamil(sys, ndets, dets, hamil, full_mat=.true., use_sparse_hamil=sparse_hamil)
 
         write (6,'(1X,a13,/,1X,13("-"),/)') 'Simple FCIQMC'
         write (6,'(1X,a53,1X)') 'Using a simple (but correct) serial FCIQMC algorithm.'
@@ -145,10 +144,10 @@ contains
                 reference%H00 = huge(1.0_p)
                 do i = 1, ndets
                     ! mat(k) is M_{ij}, so row_ptr(i) <= k < row_ptr(i+1) and col_ind(k) = j
-                    do j = hamil_csr%row_ptr(i), hamil_csr%row_ptr(i+1)-1
-                        if (hamil_csr%col_ind(j) == i) then
-                            if (hamil_csr%mat(j) < reference%H00) then
-                                reference%H00 = hamil_csr%mat(j)
+                    do j = hamil%smat%row_ptr(i), hamil%smat%row_ptr(i+1)-1
+                        if (hamil%smat%col_ind(j) == i) then
+                            if (hamil%smat%mat(j) < reference%H00) then
+                                reference%H00 = hamil%smat%mat(j)
                                 ref_det = i
                             end if
                         end if
@@ -156,11 +155,11 @@ contains
                 end do
             else
                 ref_det = 1
-                reference%H00 = hamil(1,1)
+                reference%H00 = hamil%rmat(1,1)
                 do i = 2, ndets
-                    if (hamil(i,i) < reference%H00) then
+                    if (hamil%rmat(i,i) < reference%H00) then
                         ref_det = i
-                        reference%H00 = hamil(ref_det,ref_det)
+                        reference%H00 = hamil%rmat(ref_det,ref_det)
                     end if
                 end do
             end if
@@ -217,6 +216,7 @@ contains
         use system, only: sys_t, sys_t_json
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
         use check_input, only: check_qmc_opts
+        use fci_utils, only: hamil_t
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -239,8 +239,7 @@ contains
         type(spawn_t) :: spawn
         logical :: write_restart_shift, restarting
         type(restart_info_t) :: ri, ri_shift
-        real(p), allocatable :: hamil(:,:)
-        type(csrp_t) :: hamil_csr
+        type(hamil_t) :: hamil
         type(json_out_t) :: js
 
         ! Check input options
@@ -248,7 +247,7 @@ contains
         call check_qmc_opts(qmc_in, .false., restarting)
 
         call init_simple_fciqmc(sys, qmc_in, reference, qs, sparse_hamil, restart_in%read_restart, ndets, dets, ref_det, &
-                                psip_list, spawn, hamil, hamil_csr)
+                                psip_list, spawn, hamil)
 
         if (present(qmc_state_restart)) qs = qmc_state_restart
 
@@ -295,13 +294,13 @@ contains
                     if (sparse_hamil) then
                         Hii = 0.0_p
                         H0i = 0.0_p
-                        do j = hamil_csr%row_ptr(idet), hamil_csr%row_ptr(idet+1)-1
-                            if (hamil_csr%col_ind(j) == idet) Hii = hamil_csr%mat(j)
-                            if (hamil_csr%col_ind(j) == ref_det) H0i = hamil_csr%mat(j)
+                        do j = hamil%smat%row_ptr(idet), hamil%smat%row_ptr(idet+1)-1
+                            if (hamil%smat%col_ind(j) == idet) Hii = hamil%smat%mat(j)
+                            if (hamil%smat%col_ind(j) == ref_det) H0i = hamil%smat%mat(j)
                         end do
                     else
-                        H0i = hamil(idet,ref_det)
-                        Hii = hamil(idet,idet)
+                        H0i = hamil%rmat(idet,ref_det)
+                        Hii = hamil%rmat(idet,idet)
                     end if
 
                     ! It is much easier to evaluate the projected energy at the
@@ -309,17 +308,17 @@ contains
                     call simple_update_proj_energy(ref_det == idet, H0i, psip_list%pops(1,idet), qs)
 
                     ! Attempt to spawn from each particle onto all connected determinants.
-                    if (sparse_hamil .and. allocated(hamil_csr%mat)) then
-                        associate(hstart=>hamil_csr%row_ptr(idet), hend=>hamil_csr%row_ptr(idet+1)-1)
+                    if (sparse_hamil) then
+                        associate(hstart=>hamil%smat%row_ptr(idet), hend=>hamil%smat%row_ptr(idet+1)-1)
                             do ipart = 1, abs(psip_list%pops(1,idet))
                                 call attempt_spawn(rng, spawn, qs%tau, idet, &
-                                                   psip_list%pops(1,idet), hamil_csr%mat(hstart:hend), &
-                                                   hamil_csr%col_ind(hstart:hend))
+                                                   psip_list%pops(1,idet), hamil%smat%mat(hstart:hend), &
+                                                   hamil%smat%col_ind(hstart:hend))
                             end do
                         end associate
                     else
                         do ipart = 1, abs(psip_list%pops(1,idet))
-                            call attempt_spawn(rng, spawn, qs%tau, idet, psip_list%pops(1,idet), hamil(:,idet))
+                            call attempt_spawn(rng, spawn, qs%tau, idet, psip_list%pops(1,idet), hamil%rmat(:,idet))
                         end do
                     end if
 

@@ -20,7 +20,7 @@ contains
         !        truncated Hilbert space.
 
         use dmqmc_procedures, only: setup_rdm_arrays
-        use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil
+        use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil, hamil_t
         use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: copy_reference_t
@@ -38,9 +38,10 @@ contains
         type(sys_t) :: sys_bak
         type(reference_t) :: ref
         integer(i0), allocatable :: dets(:,:)
-        real(p), allocatable :: eigv(:), rdm_eigv(:), rdm(:,:), hamil(:,:)
+        real(p), allocatable :: eigv(:), rdm_eigv(:), rdm(:,:)
         integer :: ndets, ierr, i, rdm_size
         type(blacs_info) :: proc_blacs_info
+        type(hamil_t) :: hamil
 
         if (parent) call check_fci_opts(sys, fci_in, .false.)
 
@@ -63,7 +64,9 @@ contains
                 proc_blacs_info = get_blacs_info(ndets, fci_in%block_size)
                 call generate_hamil(sys, ndets, dets, hamil, proc_blacs_info=proc_blacs_info)
             end if
-            if (fci_in%write_hamiltonian) call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
+            if (fci_in%write_hamiltonian) then
+                call write_hamil(fci_in%hamiltonian_file, ndets, proc_blacs_info, hamil)
+            end if
             call lapack_diagonalisation(sys, fci_in, dets, proc_blacs_info, hamil, eigv)
         end if
 
@@ -89,7 +92,7 @@ contains
                 rdm_size = size(rdm, 1)
                 allocate(rdm_eigv(rdm_size), stat=ierr)
                 call check_allocate('rdm_eigv',rdm_size,ierr)
-                call get_rdm_eigenvalues(sys%basis, fci_in%subsys_info, ndets, dets, hamil, rdm, rdm_eigv)
+                call get_rdm_eigenvalues(sys%basis, fci_in%subsys_info, ndets, dets, hamil%rmat, rdm, rdm_eigv)
 
                 write (6,'(1X,"RDM eigenvalues")')
                 write (6,'(1X,"^^^^^^^^^^^^^^^",/)')
@@ -120,7 +123,8 @@ contains
         !    proc_blacs_info: BLACS description of distribution of the Hamiltonian.
         !        Used only if running on multiple processors.
         ! In/Out:
-        !    hamil: Hamiltonian matrix of the system in the Hilbert space used.
+        !    hamil: hamil_t derived type containing Hamiltonian matrix of the system
+        !        in the Hilbert space used in appropriate format.
         !        On output contains the eigenvectors, if requested, or is
         !        otherwise destroyed.
         ! Out:
@@ -128,19 +132,21 @@ contains
         !        Hamiltonian matrix.
 
         use checking, only: check_allocate, check_deallocate
+        use linalg, only: syev_wrapper, heev_wrapper, psyev_wrapper, pheev_wrapper
         use parallel, only: parent, nprocs, blacs_info
         use system, only: sys_t
 
-        use fci_utils, only: fci_in_t
+        use fci_utils, only: fci_in_t, hamil_t
         use operators
 
         type(sys_t), intent(in) :: sys
         type(fci_in_t), intent(in) :: fci_in
         integer(i0), intent(in) :: dets(:,:)
         type(blacs_info), intent(in) :: proc_blacs_info
-        real(p), intent(inout) :: hamil(:,:)
+        type(hamil_t), intent(inout) :: hamil
         real(p), intent(out) :: eigv(:)
-        real(p), allocatable :: work(:), eigvec(:,:)
+        real(p), allocatable :: rwork(:), eigvec(:,:)
+        complex(p), allocatable :: ceigvec(:,:)
         integer :: info, ierr, lwork, i, nwfn, ndets
         character(1) :: job
 
@@ -158,88 +164,68 @@ contains
         end if
 
         if (nprocs > 1) then
-            allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
-            call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
-        end if
-
-        ! Find the optimal size of the workspace.
-        allocate(work(1), stat=ierr)
-        call check_allocate('work',1,ierr)
-        if (nprocs == 1) then
-#ifdef SINGLE_PRECISION
-            call ssyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
-#else
-            call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, -1, info)
-#endif
-        else
-#ifdef PARALLEL
-#ifdef SINGLE_PRECISION
-            call pssyev(job, 'U', ndets, hamil, 1, 1,               &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, -1, info)
-#else
-            call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, -1, info)
-#endif
-#endif
-        end if
-
-        lwork = nint(work(1))
-        deallocate(work)
-        call check_deallocate('work',ierr)
-
-        ! Now perform the diagonalisation.
-        allocate(work(lwork), stat=ierr)
-        call check_allocate('work',lwork,ierr)
-
-        if (nprocs == 1) then
-            ! Use lapack.
-#ifdef SINGLE_PRECISION
-            call ssyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
-#else
-            call dsyev(job, 'U', ndets, hamil, ndets, eigv, work, lwork, info)
-#endif
-        else
-#ifdef PARALLEL
-            ! Use scalapack to do the diagonalisation in parallel.
-#ifdef SINGLE_PRECISION
-            call pssyev(job, 'U', ndets, hamil, 1, 1,               &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, lwork, info)
-#else
-            call pdsyev(job, 'U', ndets, hamil, 1, 1,               &
-                        proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
-                        proc_blacs_info%desc_m, work, lwork, info)
-#endif
-#endif
-        end if
-
-        deallocate(work, stat=ierr)
-        call check_deallocate('work',ierr)
-
-        nwfn = fci_in%analyse_fci_wfn
-        if (nwfn < 0) nwfn = ndets
-        do i = 1, nwfn
-            if (nprocs == 1) then
-                call analyse_wavefunction(sys, hamil(:,i), dets, proc_blacs_info)
+            if (hamil%comp) then
+                allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+                call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
             else
-                call analyse_wavefunction(sys, eigvec(:,i), dets, proc_blacs_info)
+                allocate(ceigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+                call check_allocate('ceigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
             end if
-        end do
-        nwfn = fci_in%print_fci_wfn
-        if (nwfn < 0) nwfn = ndets
-        do i = 1, nwfn
+        end if
+
+        ! Find the optimal size of the workspace and then perform the diagonalisation.
+        if (hamil%comp) then
+            allocate(rwork(max(1,3*ndets-2)), stat = ierr)
+            call check_allocate('rwork',max(1, 3*ndets - 2), ierr)
             if (nprocs == 1) then
-                call print_wavefunction(fci_in%print_fci_wfn_file, hamil(:,i), dets, proc_blacs_info)
+                call heev_wrapper(job, 'U', ndets, hamil%cmat, ndets, eigv, rwork, info)
             else
-                call print_wavefunction(fci_in%print_fci_wfn_file, eigvec(:,i), dets, proc_blacs_info)
+                call pheev_wrapper(job, 'U', ndets, hamil%cmat, 1, 1,               &
+                            proc_blacs_info%desc_m, eigv, ceigvec, 1, 1, &
+                            proc_blacs_info%desc_m, rwork, size(rwork), info)
             end if
-        end do
+            deallocate(rwork, stat=ierr)
+            call check_deallocate('rwork',ierr)
+            if (fci_in%analyse_fci_wfn /= 0) then
+                write(6,'(1x,a36)') "Complex wavefunction analysis and printing not implemented. Skipping."
+            end if
+        else
+            if (nprocs == 1) then
+                call syev_wrapper(job, 'U', ndets, hamil%rmat, ndets, eigv, info)
+            else
+                call psyev_wrapper(job, 'U', ndets, hamil%rmat, 1, 1,           &
+                            proc_blacs_info%desc_m, eigv, eigvec, 1, 1, &
+                            proc_blacs_info%desc_m, info)
+            end if
+            nwfn = fci_in%analyse_fci_wfn
+            if (nwfn < 0) nwfn = ndets
+            do i = 1, nwfn
+                if (nprocs == 1) then
+                    call analyse_wavefunction(sys, hamil%rmat(:,i), dets, proc_blacs_info)
+                else
+                    call analyse_wavefunction(sys, eigvec(:,i), dets, proc_blacs_info)
+                end if
+            end do
+            nwfn = fci_in%print_fci_wfn
+            if (nwfn < 0) nwfn = ndets
+            do i = 1, nwfn
+                if (nprocs == 1) then
+                    call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, hamil%rmat(:,i))
+                else
+                    call print_wavefunction(fci_in%print_fci_wfn_file, dets, proc_blacs_info, eigvec(:,i))
+                end if
+            end do
+        end if
 
         if (nprocs > 1) then
-            deallocate(eigvec, stat=ierr)
-            call check_deallocate('eigvec',ierr)
+            if (allocated(eigvec)) then
+                deallocate(eigvec, stat=ierr)
+                call check_deallocate('eigvec',ierr)
+            end if
+            if (allocated(ceigvec)) then
+                deallocate(ceigvec, stat=ierr)
+                call check_deallocate('ceigvec',ierr)
+            end if
         end if
 
     end subroutine lapack_diagonalisation
@@ -266,7 +252,7 @@ contains
         !    rdm_eigv: The eigenvalues of the calculated RDM.
 
         use basis_types, only: basis_t
-        use checking, only: check_allocate, check_deallocate
+        use linalg, only: syev_wrapper
         use dmqmc_data, only: subsys_t
         use dmqmc_procedures, only: decode_dm_bitstring
 
@@ -280,9 +266,8 @@ contains
 
         integer(i0) :: f1(basis%string_len), f2(basis%string_len)
         integer(i0) :: f3(2*basis%string_len)
-        integer :: i, j, rdm_size, info, ierr, lwork
+        integer :: i, j, rdm_size, info
         integer(i0) :: rdm_f1(subsys_info(1)%string_len), rdm_f2(subsys_info(1)%string_len)
-        real(p), allocatable :: work(:)
         real(p) :: rdm_element
 
         write(6,'(1x,a36)') "Setting up reduced density matrix..."
@@ -318,27 +303,7 @@ contains
         write(6,'(1x,a39,/)') "Diagonalising reduced density matrix..."
 
         rdm_size = size(rdm, 1)
-        ! Find the optimal size of the workspace.
-        allocate(work(1), stat=ierr)
-        call check_allocate('work',1,ierr)
-#ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, -1, info)
-#else
-        call dsyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, -1, info)
-#endif
-        lwork = nint(work(1))
-        deallocate(work)
-        call check_deallocate('work',ierr)
-
-        ! Perform the diagonalisation.
-        allocate(work(lwork), stat=ierr)
-        call check_allocate('work',lwork,ierr)
-
-#ifdef SINGLE_PRECISION
-        call ssyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, lwork, info)
-#else
-        call dsyev('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, work, lwork, info)
-#endif
+        call syev_wrapper('N', 'U', rdm_size, rdm, rdm_size, rdm_eigv, info)
 
     end subroutine get_rdm_eigenvalues
 

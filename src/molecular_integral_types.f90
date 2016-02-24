@@ -29,6 +29,8 @@ type one_body_t
     integer :: op_sym
     ! From a UHF calculation?
     logical :: uhf
+    ! Imaginary component of integrals?
+    logical :: imag = .false.
 end type one_body_t
 
 ! Store for two-body integrals, <ij|o|ab>, where i,j,a,b are spin basis functions and
@@ -71,6 +73,10 @@ type two_body_t
     integer :: op_sym
     ! From a UHF calculation?
     logical :: uhf
+    ! From complex calculation?
+    logical :: comp = .false.
+    ! Imaginary component of integrals?
+    logical :: imag = .false.
 end type
 
 end module molecular_integral_types

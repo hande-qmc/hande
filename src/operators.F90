@@ -443,7 +443,7 @@ contains
 
     end subroutine analyse_wavefunction
 
-    subroutine print_wavefunction(filename, wfn, dets, proc_blacs_info)
+    subroutine print_wavefunction(filename, dets, proc_blacs_info, wfn)
 
         ! Print out an exact wavefunction.
 
