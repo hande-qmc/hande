@@ -73,6 +73,22 @@ contains
 
     end subroutine init_basis_fn
 
+    subroutine write_basis_fn_title(iunit)
+
+        ! Write out basis section header.
+
+        ! In:
+        !    iunit (optional): unit to write to.  Default: 6.
+
+        integer, intent(in), optional :: iunit
+        integer :: io
+
+        io = 6
+        if (present(iunit)) io = iunit
+        write (io,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
+
+    end subroutine write_basis_fn_title
+
     subroutine write_basis_fn_header(sys, iunit, print_full)
 
         ! Print out header for a table of basis functions.
@@ -97,11 +113,8 @@ contains
         integer :: io, i
         logical :: print_long
 
-        if (present(iunit)) then
-            io = iunit
-        else
-            io = 6
-        end if
+        io = 6
+        if (present(iunit)) io = iunit
 
         ! If print_full is false, then the spin and single-particle eigenvalues
         ! are also printed out.
@@ -111,53 +124,52 @@ contains
             print_long = .true.
         end if
 
-        ! Title
-        write (6,'(1X,a15,/,1X,15("-"),/)') 'Basis functions'
+        call write_basis_fn_title(iunit)
 
         ! Describe information.
         if (sys%system /= heisenberg) write (6,'(1X,a27)') 'Spin given in units of 1/2.'
 
         select case(sys%system)
         case(hub_real,heisenberg, chung_landau)
-            write (6,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
-            write (6,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
+            write (io,'(1X,a63,/)') 'Site positions given in terms of the primitive lattice vectors.'
+            write (io,'(1X,a5,3X,a4,3X)', advance='no') 'index','site'
         case(hub_k,ueg)
-            write (6,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
+            write (io,'(1X,a78)') 'k-points given in terms of the reciprocal lattice vectors of the crystal cell.'
             if (any(abs(sys%k_lattice%ktwist) > 0.0_p)) then
-                write (6,'(1X,a26)', advance='no') 'Applying a twist angle of:'
-                write (6,'(1X,"(",f6.4)', advance='no') sys%k_lattice%ktwist(1)
+                write (io,'(1X,a26)', advance='no') 'Applying a twist angle of:'
+                write (io,'(1X,"(",f6.4)', advance='no') sys%k_lattice%ktwist(1)
                 do i = 2, sys%lattice%ndim
-                    write (6,'(",",f6.4)', advance='no') sys%k_lattice%ktwist(i)
+                    write (io,'(",",f6.4)', advance='no') sys%k_lattice%ktwist(i)
                 end do
-                write (6,'(").")')
+                write (io,'(").")')
             end if
-            write (6,'()')
-            write (6,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
+            write (io,'()')
+            write (io,'(1X,a5,3X,a7)', advance='no') 'index','k-point'
         case(read_in)
-            write (6,'(/,1X,a5,2X,a7,1X,a8,1X,a9,1X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
+            write (io,'(/,1X,a5,2X,a7,1X,a8,1X,a9,1X,a2,5X)', advance='no') 'index','spatial','symmetry','sym_index','lz'
         case(ringium)
-            write (6,'(1X,a25,/)') 'Lz given in units of 1/2.'
-            write (6,'(1X,a5,4x,a2,4x)', advance='no') 'index', 'lz'
+            write (io,'(1X,a25,/)') 'Lz given in units of 1/2.'
+            write (io,'(1X,a5,4x,a2,4x)', advance='no') 'index', 'lz'
         end select
 
         if (sys%system /= read_in) then
             do i = 1, sys%lattice%ndim
-                write (6,'(4X)', advance='no')
+                write (io,'(4X)', advance='no')
             end do
         end if
 
         if (print_long) then
             if (sys%system /= heisenberg .and. sys%system /= chung_landau) &
-                write (6,'(a2)', advance='no') 'ms'
+                write (io,'(a2)', advance='no') 'ms'
 
             select case(sys%system)
             case(hub_real, heisenberg, chung_landau)
-                write(6,'()')
+                write(io,'()')
             case default
-                write(6,'(5X,a7)') '<i|h|i>'
+                write(io,'(5X,a7)') '<i|h|i>'
             end select
         else
-            write (6,'()')
+            write (io,'()')
         end if
 
     end subroutine write_basis_fn_header
@@ -230,7 +242,7 @@ contains
             select case (sys%system)
             case(heisenberg, chung_landau, hub_real)
             case default
-                write (io,'(4X,f12.8)', advance='no') b%sp_eigv
+                write (io,'(4X,es18.8)', advance='no') b%sp_eigv
             end select
         end if
         if (present(new_line)) then
@@ -239,7 +251,7 @@ contains
 
     end subroutine write_basis_fn
 
-    subroutine init_model_basis_fns(sys, store_info)
+    subroutine init_model_basis_fns(sys, store_info, verbose)
 
         ! Produce the basis functions for model Hamiltonian systems.
         !
@@ -249,6 +261,8 @@ contains
         ! In:
         !    store_info (optional): if true (default) then store the data read
         !         in.  Otherwise the basis set is simply printed out.
+        !    verbose (optional): print out information for each single-particle
+        !         state.  Default: true.
         !
         ! The number of wavevectors is equal to the number of sites in the
         ! crystal cell (ie the number of k-points used to sample the FBZ of the
@@ -264,11 +278,11 @@ contains
         use parallel, only: parent
 
         type(sys_t), intent(inout) :: sys
-        logical, intent(in), optional :: store_info
+        logical, intent(in), optional :: store_info, verbose
 
         character(*), parameter :: this = 'init_model_basis_fns'
 
-        logical :: t_store
+        logical :: t_store, t_verbose
 
         integer :: limits(3,3), nmax(3), kp(3) ! Support a maximum of 3 dimensions.
         integer :: i, j, k, ibasis, ierr, nspatial
@@ -276,11 +290,10 @@ contains
         type(basis_fn_t), pointer :: basis_fn_p
         integer, allocatable :: basis_fns_ranking(:)
 
-        if (present(store_info)) then
-            t_store = store_info
-        else
-            t_store = .true.
-        end if
+        t_store = .true.
+        if (present(store_info)) t_store = store_info
+        t_verbose = .true.
+        if (present(verbose)) t_verbose = verbose
 
         ! Find basis functions.
 
@@ -464,12 +477,14 @@ contains
         deallocate(basis_fns_ranking, stat=ierr)
         call check_deallocate('basis_fns_ranking',ierr)
 
-        if (parent) then
+        if (parent .and. t_verbose) then
             call write_basis_fn_header(sys)
             do i = 1, sys%basis%nbasis
                 call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'()')
+        else if (parent) then
+            call write_basis_fn_title()
         end if
 
         if (.not.t_store) then

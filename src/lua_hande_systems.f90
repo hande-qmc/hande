@@ -114,7 +114,7 @@ contains
 
     end subroutine push_sys
 
-    subroutine set_common_sys_options(lua_state, sys, opts)
+    subroutine set_common_sys_options(lua_state, sys, verbose, opts)
 
         ! Parse system settings common to all (or almost all) system definitions.
 
@@ -124,6 +124,8 @@ contains
         !    lua_state: flu/Lua state which has the opts table at the top of the stack.
         !    sys: system (sys_t) object.  On exit the electron number is set, along with symmetry
         !         and spin indices (currently in calc).
+        ! Out:
+        !    verbose: set verbosity of output for basis information.
 
         use aot_table_module, only: aot_get_val
         use aot_vector_module, only: aot_get_val
@@ -135,6 +137,7 @@ contains
 
         type(flu_State), intent(inout) :: lua_state
         type(sys_t), intent(inout) :: sys
+        logical, intent(out) :: verbose
         integer, intent(in) :: opts
 
         integer, allocatable :: cas(:), err_arr(:)
@@ -144,6 +147,7 @@ contains
         call aot_get_val(sys%nel, err, lua_state, opts, 'nel')
         call aot_get_val(sys%Ms, err, lua_state, opts, 'ms')
         call aot_get_val(sys%symmetry, err, lua_state, opts, 'sym')
+        call aot_get_val(verbose, err, lua_state, opts, 'verbose', default=.true.)
 
         call aot_get_val(cas, err_arr, 2, lua_state, opts, key='CAS')
         ! AOTUS returns a vector of size 0 to denote a non-existent vector.
@@ -302,10 +306,10 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
-        logical :: new, new_basis
+        logical :: new, new_basis, verbose
         integer :: err
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'ms', 'sym', 'twist']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'ms', 'sym', 'twist', 'verbose']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -315,7 +319,7 @@ contains
 
         sys%system = hub_k
 
-        call set_common_sys_options(lua_state, sys, opts)
+        call set_common_sys_options(lua_state, sys, verbose, opts)
         call aot_get_val(sys%hubbard%u, err, lua_state, opts, 'U')
         call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
         call get_ktwist(lua_state, sys, opts)
@@ -327,7 +331,7 @@ contains
             ! [todo] - deallocate existing basis info and start afresh.
             call init_system(sys)
             if (parent) call check_sys(sys)
-            call init_model_basis_fns(sys)
+            call init_model_basis_fns(sys, verbose=verbose)
             call init_generic_system_basis(sys)
             call init_momentum_symmetry(sys)
         end if
@@ -434,11 +438,11 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
-        logical :: new, new_basis
+        logical :: new, new_basis, verbose
         integer :: err
 
-        character(10), parameter :: keys(8) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
-                                                                'finite', 'ms']
+        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
+                                                                'finite', 'ms', 'verbose']
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
 
@@ -447,7 +451,7 @@ contains
 
         sys%system = system_type
 
-        call set_common_sys_options(lua_state, sys, opts)
+        call set_common_sys_options(lua_state, sys, verbose, opts)
         call aot_get_val(sys%hubbard%u, err, lua_state, opts, 'U')
         call aot_get_val(sys%hubbard%t, err, lua_state, opts, 't')
         call aot_get_val(sys%real_lattice%finite_cluster, err, lua_state, opts, 'finite')
@@ -462,7 +466,7 @@ contains
             ! [todo] - deallocate existing basis info and start afresh.
             call init_system(sys)
             if (parent) call check_sys(sys)
-            call init_model_basis_fns(sys)
+            call init_model_basis_fns(sys, verbose=verbose)
             call init_generic_system_basis(sys)
             call init_real_space(sys)
         end if
@@ -500,7 +504,6 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use basis, only: init_model_basis_fns
         use lua_hande_utils, only: warn_unused_args
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
@@ -515,11 +518,11 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
-        logical :: new, new_basis
+        logical :: new, new_basis, verbose
         integer :: err
 
-        character(15), parameter :: keys(10) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms', 'CAS', 'complex']
+        character(15), parameter :: keys(11) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS', 'complex', 'verbose']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -530,7 +533,7 @@ contains
         sys%system = read_in
 
         ! Parse table for options...
-        call set_common_sys_options(lua_state, sys, opts)
+        call set_common_sys_options(lua_state, sys, verbose, opts)
 
         call aot_get_val(sys%read_in%fcidump, err, lua_state, opts, 'int_file')
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
@@ -545,7 +548,7 @@ contains
 
             call init_system(sys)
             if (parent) call check_sys(sys)
-            call read_in_integrals(sys, cas_info=sys%cas)
+            call read_in_integrals(sys, cas_info=sys%cas, verbose=verbose)
             call init_generic_system_basis(sys)
             call print_pg_symmetry_info(sys)
         end if
@@ -601,11 +604,11 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
-        logical :: new, new_basis
+        logical :: new, new_basis, verbose
         integer :: err
 
-        character(24), parameter :: keys(8) = [character(24) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
-                                                                'staggered_magnetic_field', 'triangular', 'finite']
+        character(24), parameter :: keys(9) = [character(24) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
+                                                                'staggered_magnetic_field', 'triangular', 'finite', 'verbose']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -615,7 +618,7 @@ contains
 
         sys%system = heisenberg
 
-        call set_common_sys_options(lua_state, sys, opts)
+        call set_common_sys_options(lua_state, sys, verbose, opts)
         call aot_get_val(sys%heisenberg%J, err, lua_state, opts, 'J')
         call aot_get_val(sys%heisenberg%magnetic_field, err, lua_state, opts, 'magnetic_field')
         call aot_get_val(sys%heisenberg%staggered_magnetic_field, err, lua_state, opts, 'staggered_magnetic_field')
@@ -629,7 +632,7 @@ contains
             ! [todo] - deallocate existing basis info and start afresh.
             call init_system(sys)
             if (parent) call check_sys(sys)
-            call init_model_basis_fns(sys)
+            call init_model_basis_fns(sys, verbose=verbose)
             call init_generic_system_basis(sys)
             call init_real_space(sys)
         end if
@@ -682,11 +685,11 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
-        logical :: new_basis, new
+        logical :: new_basis, new, verbose
         integer :: err
 
-        character(10), parameter :: keys(9) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
-                                               'ms', 'sym', 'twist']
+        character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
+                                               'ms', 'sym', 'twist', 'verbose']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -698,7 +701,7 @@ contains
         sys%lattice%ndim = 3
 
         ! Parse table for options...
-        call set_common_sys_options(lua_state, sys, opts)
+        call set_common_sys_options(lua_state, sys, verbose, opts)
 
         new_basis = aot_exists(lua_state, opts, 'cutoff') .or. &
                     aot_exists(lua_state, opts, 'dim')    .or. &
@@ -717,7 +720,7 @@ contains
 
             call init_system(sys)
             if (parent) call check_sys(sys)
-            call init_model_basis_fns(sys)
+            call init_model_basis_fns(sys, verbose=verbose)
             call init_generic_system_basis(sys)
             call init_momentum_symmetry(sys)
             call init_ueg_proc_pointers(sys%lattice%ndim, sys%ueg)
@@ -771,10 +774,10 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
-        logical :: new_basis, new
+        logical :: new_basis, new, verbose
         integer :: err
 
-        character(10), parameter :: keys(6) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'sym']
+        character(10), parameter :: keys(7) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'sym', 'verbose']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -786,7 +789,7 @@ contains
         sys%lattice%ndim = 1
 
         ! Parse table for options...
-        call set_common_sys_options(lua_state, sys, opts)
+        call set_common_sys_options(lua_state, sys, verbose, opts)
         ! Enforce spin polarisation
         sys%ms = sys%nel
 
@@ -803,7 +806,7 @@ contains
 
             call init_system(sys)
             if (parent) call check_sys(sys)
-            call init_model_basis_fns(sys)
+            call init_model_basis_fns(sys, verbose=verbose)
             call init_generic_system_basis(sys)
             call init_symmetry_ringium(sys)
         end if

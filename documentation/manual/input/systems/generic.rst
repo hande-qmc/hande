@@ -79,6 +79,12 @@ Options
     among :math:`2M` spin orbitals.  Any additional electrons are 'frozen' (i.e. forced to
     be in the lowest spin orbitals) and any additional high-energy spin orbitals are
     removed from the basis set.
+``verbose``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Print out the single-particle basis set.
 
 ``complex``
     type: boolean.

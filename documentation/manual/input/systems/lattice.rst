@@ -87,6 +87,12 @@ Options
     Apply a twist to the wavevector grid.  The twist is an *ndim*-dimensional vector in
     units of :math:`2\pi`.  The twist angle should be within the first Brillouin zone, and
     hence the components should be between -0.5 and +0.5.
+``verbose``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Print out the single-particle basis set.
 
 Hubbard model (real-space)
 --------------------------
@@ -155,6 +161,12 @@ Options
 
     If false then periodic boundary conditions are applied to the unit cell, otherwise the
     system specified by the lattice is treated as an isolated set of sites.
+``verbose``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Print out the single-particle basis set.
 
 Heisenberg model
 ----------------
@@ -243,6 +255,12 @@ Options
     If true, then a triangular lattice of sites on which the spins reside is used,
     requiring a 2D lattice.  The default is to use a :math:`N`-dimensional cubic
     arrangement of sites.
+``verbose``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Print out the single-particle basis set.
 
 Chung-Landau model
 ------------------
@@ -306,6 +324,12 @@ Options
 
     If false then periodic boundary conditions are applied to the unit cell, otherwise the
     system specified by the lattice is treated as an isolated set of sites.
+``verbose``
+    type: boolean.
+
+    Optional.  Default: true.
+
+    Print out the single-particle basis set.
 
 Specifying the lattice
 ----------------------
