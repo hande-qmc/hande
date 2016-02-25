@@ -766,7 +766,7 @@ contains
                 call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, new_line=.true.)
             end do
             write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
-        else
+        else if (parent) then
             call write_basis_fn_title()
         end if
 
