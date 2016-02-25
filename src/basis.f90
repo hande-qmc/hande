@@ -242,7 +242,7 @@ contains
             select case (sys%system)
             case(heisenberg, chung_landau, hub_real)
             case default
-                write (io,'(4X,f12.8)', advance='no') b%sp_eigv
+                write (io,'(4X,es18.8)', advance='no') b%sp_eigv
             end select
         end if
         if (present(new_line)) then
