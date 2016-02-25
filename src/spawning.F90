@@ -479,7 +479,7 @@ contains
         complex(p) :: hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_state%pattempt_single, cdet, pgen, connection, hmatel_dummy, allowed)
+        call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel_dummy, allowed)
         ! 2. Obtain complex matrix element.
         if (connection%nexcit == 1) then
             hmatel = slater_condon1_mol_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1),&
