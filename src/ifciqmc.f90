@@ -17,7 +17,7 @@ contains
         !
         ! In:
         !    parent_population: current population of walkers on the parent
-        !                       determinant.
+        !                       determinant in each space.
         !    initiator_pop: the population above which a determinant is an initiator.
         !    determ_flag: 0 if determinant is deterministic and 1 otherwise.
         ! Out:
@@ -26,9 +26,10 @@ contains
         real(p), intent(in) :: parent_population, initiator_pop
         integer, intent(in) :: determ_flag
         integer, intent(out) :: parent_flag
+        integer :: i
 
         if (abs(parent_population) > initiator_pop) then
-            ! Has a high enough population to be an initiator.
+            ! Has a high enough population to be an initiator in this space.
             parent_flag = 0
         else if (determ_flag == 0) then
             ! Is a deterministic state (which must always be an initiator).

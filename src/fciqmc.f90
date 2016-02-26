@@ -432,10 +432,10 @@ contains
 
         type(excit_t) :: connection
         real(p) :: hmatel
-        integer :: idet, iparticle, nattempts_current_det
-        integer(int_p) :: nspawned, dummy
+        integer :: idet, iparticle, nattempts_current_det, ispace, scratch
+        integer(int_p) :: nspawned, nspawned_im
         integer(int_p) :: int_pop(spawn_recv%ntypes)
-        real(p) :: real_pop
+        real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
         complex(p) :: hmatel_comp
 
@@ -445,7 +445,8 @@ contains
         do idet = 1, spawn_recv%head(0,0) ! loop over walkers/dets
 
             int_pop = int(spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet), int_p)
-            real_pop = real(int_pop(1),p) / qs%psip_list%pop_real_factor
+
+            real_pop = real(int_pop,p) / qs%psip_list%pop_real_factor
             cdet%f = int(spawn_recv%sdata(:sys%basis%tensor_label_len,idet),i0)
             ! Need to generate spawned walker data to perform evolution.
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
@@ -459,38 +460,51 @@ contains
 
             if (sys%read_in%comp) then
                 call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-                                            cmplx(real_pop, 0.0, p), &
+                                            cmplx(real_pop(1), real_pop(2), p), &
                                             qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
                                             connection, hmatel_comp)
             else
-                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators%D0_population, &
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop(1), qs%estimators%D0_population, &
                                             qs%estimators%proj_energy, connection, hmatel)
             end if
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
-            call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, cdet%initiator_flag)
+            call set_parent_flag(real_pop(1), qmc_in%initiator_pop, 1, cdet%initiator_flag)
 
-            nattempts_current_det = decide_nattempts(rng, real_pop)
+            do ispace = 1, qs%psip_list%nspaces
 
-            ! Possibly redundant if only one walker spawned at each spawning event.
-            do iparticle = 1, nattempts_current_det
+                nattempts_current_det = decide_nattempts(rng, real_pop(ispace))
 
-                ! Attempt to spawn.
-                call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, qs%psip_list%pop_real_factor, cdet, int_pop(1), &
-                                 gen_excit_ptr, qs%trial%wfn_dat, nspawned, dummy, connection)
+                ! Possibly redundant if only one walker spawned at each spawning event.
+                do iparticle = 1, nattempts_current_det
 
-                ! Spawn if attempt was successful.
-                if (nspawned /= 0) then
-                    call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send)
-                end if
+                    ! Attempt to spawn.
+                    call spawner_ptr(rng, sys, qs, spawn_to_send%cutoff, qs%psip_list%pop_real_factor, cdet, int_pop(ispace), &
+                                     gen_excit_ptr, qs%trial%wfn_dat, nspawned, nspawned_im, connection)
 
+                    if (sys%read_in%comp .and. ispace == 2) then
+                        ! If imaginary parent have to factor into resulting signs/reality.
+                        scratch = nspawned_im
+                        nspawned_im = nspawned
+                        nspawned = -scratch
+                    end if
+                    ! Spawn if attempt was successful.
+                    if (nspawned /= 0) then
+                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, 1, spawn_to_send)
+                    end if
+                    if (nspawned_im /= 0) then
+                        call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned_im, 2, spawn_to_send)
+                    end if
+
+                end do
+
+                ! Clone or die.
+                ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
+                call stochastic_death(rng, qs, cdet%data(1), qs%shift(1), int_pop(ispace), list_pop, ndeath)
+
+                ! Update population of walkers on current determinant.
+                spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop
             end do
-
-            ! Clone or die.
-            ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-            call stochastic_death(rng, qs, cdet%data(1), qs%shift(1), int_pop(1), list_pop, ndeath)
-            ! Update population of walkers on current determinant.
-            spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop
 
         end do
 
