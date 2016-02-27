@@ -2,14 +2,15 @@
 
 # deterministic methods
 [fci/*/]
+[fci/*fci_rdm/]
+max_nprocs = 1
+[fci/*complex/]
 [lanczos/*/]
-#Lanczos jobs are fragile and don't like too many processors for small test jobs
+# Lanczos jobs are fragile and don't like too many processors for small test jobs
 max_nprocs = 2
 [lanczos/*sparse/]
 max_nprocs = 1
 [lanczos/*direct/]
-max_nprocs = 1
-[fci/*fci_rdm/]
 max_nprocs = 1
 
 # Toy FCIQMC algorithm
