@@ -8,6 +8,7 @@ module molecular_integrals
 
 use const, only: p
 use molecular_integral_types
+use const, only: int_64
 
 implicit none
 
@@ -17,7 +18,7 @@ type, private :: int_indx
     integer :: spin_channel     !If alpha and beta spin-orbitals differ, we store
                                 ! different combinations of these in different spin channels
                                 ! 1=bbbb, 2=aaaa, 3=baba, 4=ababa
-    integer :: indx             ! The index within the spin channel
+    integer(int_64) :: indx     ! The index within the spin channel
     logical :: conjugate        ! Indicates if we need to take the complex conjugate of the integral
 end type int_indx
 
@@ -150,13 +151,14 @@ contains
         !    interals.  Note that the integral store is *not* zeroed.
 
         use checking, only: check_allocate
+        use const, only: int_64
 
         logical, intent(in) :: uhf, comp, imag
         integer, intent(in) :: nbasis, op_sym
         type(two_body_t), intent(out) :: store
 
-        integer :: ierr, ispin
-        integer :: nspin, npairs, nintgrls
+        integer :: ierr, ispin, nspin
+        integer(int_64):: npairs, nintgrls
 
         store%op_sym = op_sym
         store%uhf = uhf
@@ -510,13 +512,15 @@ contains
 
         use basis_types, only: basis_fn_t
         use utils, only: tri_ind
+        use const, only: int_64
 
         type(int_indx) :: indx
         type(basis_fn_t), intent(in) :: basis_fns(:)
         logical, intent(in) :: uhf
         integer, intent(in) :: i, j, a, b
 
-        integer :: ia, jb, ii, jj, aa, bb
+        integer(int_64) :: ia, jb
+        integer :: ii, jj, aa, bb
 
         ! Use permutation symmetry to find unique indices corresponding to the
         ! desired integral.
@@ -619,6 +623,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use utils, only: tri_ind, tri_ind_reorder
+        use const, only: int_64
 
         type(int_indx) :: indx
         type(basis_fn_t), intent(in) :: basis_fns(:)
@@ -626,7 +631,8 @@ contains
         integer, intent(in) :: i, j, a, b
         integer :: orbs(4), oldorbs(4)
 
-        integer :: ia, jb, ii, jj, aa, bb
+        integer(int_64) :: ia, jb
+        integer :: ii, jj, aa, bb
         logical :: conj, eswap
 
         integer :: maxv, scratch(2)
