@@ -270,3 +270,7 @@ is not possible.  Issues and, where known, workarounds we have found are:
   * recompile HDF5 with ``-assume nostd_value``.
   * recompile HDF5 with an earlier version of the Intel compilers.
   * recompile HANDE with HDF5 support disabled.
+
+* Compiling with GCC and linking the Intel MKL library leads to segmentation faults or
+  incorrect answers for FCI calculation on systems with complex-valued integrals when
+  run in parallel.  Either use a different ScaLAPACK library, or use the Intel compilers.
