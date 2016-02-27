@@ -147,7 +147,7 @@ contains
         real(p), intent(out) :: eigv(:)
         real(p), allocatable :: rwork(:), eigvec(:,:)
         complex(p), allocatable :: ceigvec(:,:)
-        integer :: info, ierr, lwork, i, nwfn, ndets
+        integer :: info, ierr, i, nwfn, ndets
         character(1) :: job
 
         ndets = ubound(dets, dim=2)
