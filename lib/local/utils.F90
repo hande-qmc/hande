@@ -521,14 +521,14 @@ contains
         !    A combined (1-indexed) index for the corresponding element in
         !    a lower triangular array.
 
-        use const, only: int_32
-        integer(int_32) :: indx
-        integer(int_32) :: tmp
-        integer, intent(in) :: i, j
+        use const, only: int_32, int_64
+        integer(int_64) :: indx
+        integer(int_64) :: tmp
+        integer(int_32), intent(in) :: i, j
 
-        !The unsigned integer is there to avoid overflow with >2^30 integrals.
-        tmp=i
-        tmp=i*(i-1)
+        !The 64-bit is there to avoid overflow with >2^30 integrals.
+        tmp = i
+        tmp = tmp * (i-1)
         indx = tmp/2 + j
 
     end function tri_ind_int_32
