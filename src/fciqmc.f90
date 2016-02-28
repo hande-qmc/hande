@@ -95,7 +95,7 @@ contains
         integer :: nattempts_current_det, nspawn_events
         type(excit_t) :: connection
         real(p) :: hmatel
-        real(p) :: real_population(2), weighted_population(2)
+        real(p), allocatable :: real_population(:), weighted_population(:)
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
@@ -145,6 +145,10 @@ contains
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
+        allocate(real_population(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('real_population', qs%psip_list%nspaces, ierr)
+        allocate(weighted_population(qs%psip_list%nspaces), stat=ierr)
+        call check_allocate('weighted_population', qs%psip_list%nspaces, ierr)
 
         call dSFMT_init(qmc_in%seed+iproc, 50000, rng)
 
@@ -236,7 +240,7 @@ contains
                                                     qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
                     end if
                     ! Is this determinant an initiator?
-                    call set_parent_flag(real_population(1), qmc_in%initiator_pop, determ%flags(idet), cdet%initiator_flag)
+                    call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), cdet%initiator_flag)
 
                     do ispace  = 1, qs%psip_list%nspaces
 
@@ -469,7 +473,7 @@ contains
             end if
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
-            call set_parent_flag(real_pop(1), qmc_in%initiator_pop, 1, cdet%initiator_flag)
+            call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, cdet%initiator_flag)
 
             do ispace = 1, qs%psip_list%nspaces
 

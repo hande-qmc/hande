@@ -23,22 +23,24 @@ contains
         ! Out:
         !    parent_flag: set to 0 if the determinant is an initiator and 1 otherwise.
 
-        real(p), intent(in) :: parent_population, initiator_pop
+        real(p), intent(in) :: parent_population(:), initiator_pop
         integer, intent(in) :: determ_flag
         integer, intent(out) :: parent_flag
         integer :: i
 
-        if (abs(parent_population) > initiator_pop) then
-            ! Has a high enough population to be an initiator in this space.
-            parent_flag = 0
-        else if (determ_flag == 0) then
-            ! Is a deterministic state (which must always be an initiator).
-            parent_flag = 0
-        else
-            ! Isn't an initiator.
-            parent_flag = 1
-        end if
-
+        parent_flag = 0_int_p
+        do i = 1, size(parent_population)
+            if (abs(parent_population(i)) > initiator_pop) then
+                ! Has a high enough population to be an initiator in this space.
+                parent_flag = parent_flag
+            else if (determ_flag == 0) then
+                ! Is a deterministic state (which must always be an initiator).
+                parent_flag = parent_flag
+            else
+                ! Isn't an initiator.
+                parent_flag = parent_flag + i
+            end if
+        end do
     end subroutine set_parent_flag
 
 end module ifciqmc
