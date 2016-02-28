@@ -462,6 +462,8 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use hamiltonian_molecular_complex, only: slater_condon1_mol_excit_complex, slater_condon2_mol_excit_complex
 
+        use errors, only: stop_all
+
         type(dSFMT_t), intent(inout) :: rng
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qmc_state
@@ -481,7 +483,16 @@ contains
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel_dummy, allowed)
         ! 2. Obtain complex matrix element.
-        if (connection%nexcit == 1) then
+        if (.not.allowed) then
+            hmatel = cmplx(0.0, 0.0, p)
+        else if (connection%nexcit == 1) then
+            if (connection%to_orb(1) == 0) then
+                print *, connection%from_orb(1), pgen, hmatel_dummy, allowed
+                call stop_all('spawn_complex', 'Spawn target orb index 0.')
+            else if (connection%from_orb(1) == 0) then
+                print *, connection%to_orb(1), pgen, hmatel_dummy, allowed
+                call stop_all('spawn_complex', 'Spawn origin orb index 0.')
+            end if
             hmatel = slater_condon1_mol_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1),&
                                                 connection%perm)
         else if (connection%nexcit == 2) then
