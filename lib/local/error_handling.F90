@@ -54,7 +54,7 @@ contains
             if (print_backtrace) then
                 c_buf = c_loc(buffer)
                 btr_size = backtrace(c_buf, 100)
-                call backtrace_symbols_fd(c_buf, btr_size, error_unit)
+                call backtrace_symbols_fd(c_buf, btr_size, 2)
             end if
         end if
 
