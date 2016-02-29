@@ -20,13 +20,14 @@ end interface
 
 contains
 
-    subroutine stop_all(sub_name,error_msg)
+    subroutine stop_all(sub_name, error_msg, print_backtrace)
         ! Stop calculation due to an error.
         ! Exit with code 999.
         !
         ! In:
         !    sub_name:  calling subroutine name.
         !    error_msg: error message.
+        !    print_backtrace (optional): whether to print a backtrace.  Default: false.
 
         use, intrinsic :: iso_fortran_env, only: error_unit
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
@@ -36,6 +37,7 @@ contains
 #endif
 
         character(*), intent(in) :: sub_name,error_msg
+        logical, intent(in), optional :: print_backtrace
 
         ! It seems that giving STOP a string is far more portable.
         ! mpi_abort requires an integer though.
@@ -48,9 +50,13 @@ contains
         integer :: ierr
 #endif
 
-        c_buf = c_loc(buffer)
-        btr_size = backtrace(c_buf, 100)
-        call backtrace_symbols_fd(c_buf, btr_size, error_unit)
+        if (present(print_backtrace)) then
+            if (print_backtrace) then
+                c_buf = c_loc(buffer)
+                btr_size = backtrace(c_buf, 100)
+                call backtrace_symbols_fd(c_buf, btr_size, error_unit)
+            end if
+        end if
 
         write (error_unit,'(/a7)') 'ERROR.'
         write (error_unit,'(1X,a)') 'HANDE stops in subroutine: '//adjustl(sub_name)//'.'
