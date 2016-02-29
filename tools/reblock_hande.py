@@ -164,7 +164,7 @@ opt_block: :class:`pandas.DataFrame`
 
     if reblock_plot:
         for info in infos:
-            pyblock.pd_utils.plot_reblocking(info.reblock, reblock_plot)
+            pyblock.plot.plot_reblocking(info.reblock, reblock_plot)
 
     return infos
 
