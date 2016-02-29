@@ -8,7 +8,7 @@ use const, only: p, i0
 implicit none
 
 private
-public :: get_hmatel_mol_comp
+public :: get_hmatel_mol_comp, slater_condon1_mol_excit_complex, slater_condon2_mol_excit_complex
 
 contains
 
