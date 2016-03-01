@@ -874,22 +874,20 @@ module restart_hdf5
             ! Check whether the integer type used for determinants is the same as the current
             ! settings.
             call hdf5_read(orig_id, hdf5_path(gmetadata, di0_length), i0_length_restart)
-            if (i0_length /= i0_length_restart) then
-                ! Try to get determinant string length (needed to convert DET_SIZE) from file,
-                ! otherwise the user must supply a system object.
-                call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis), exists, ierr)
-                if (exists) call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
-                if (exists) then
-                    call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
-                    string_len = ceiling(real(nbasis)/i0_length)
-                else if (present(sys)) then
-                    string_len = sys%basis%string_len
-                    nbasis = sys%basis%nbasis
-                else
-                    call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
-                end if
-                allocate(f0(string_len))
+            ! Try to get determinant string length (needed to convert DET_SIZE) from file,
+            ! otherwise the user must supply a system object.
+            call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis), exists, ierr)
+            if (exists) call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
+            if (exists) then
+                call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
+                string_len = ceiling(real(nbasis)/i0_length)
+            else if (present(sys)) then
+                string_len = sys%basis%string_len
+                nbasis = sys%basis%nbasis
+            else if (i0_length /= i0_length_restart) then
+                call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
             end if
+            allocate(f0(string_len))
 
             ! Write out metadata to each new file.
             ! Can just copy it from the first old restart file as it is the same on all files...
