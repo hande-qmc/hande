@@ -724,7 +724,7 @@ module restart_hdf5
             !    ri: restart information.  ri%restart_stem, ri%read_id and ri%write_id are used.
             !        On output, ri%read_id is updated (if set) to point to the new id.
             ! In:
-            !    number of processors the restart files are to be split over (ie the number of
+            !    nprocs_target: number of processors the restart files are to be split over (ie the number of
             !        processors the user wishes to restart the calculation on).
             !    sys (optional): a sys_t object, used to get the basis size.  Only necessary if
             !        changing DET_SIZE for an old restart file.
@@ -1030,7 +1030,7 @@ module restart_hdf5
                         istate_proc = 0
                         do idet = 1, ndets
                             ! Get processor index (slot_pos is not relevant here as not redoing any load balancing).
-                            call assign_particle_processor(psip_read%states(:,idet), tensor_label_len, hash_seed, hash_shift, &
+                            call assign_particle_processor(psip_read%states(:,idet), tensor_label_len*i0_length, hash_seed, hash_shift, &
                                                            move_freq, nprocs_target, ip, slot_pos, pm_dummy%map, pm_dummy%nslots)
                             if (ip < iproc_target_start .or. ip > iproc_target_end) then
                                 ! Being handled by another processor.  Safely ignore.
