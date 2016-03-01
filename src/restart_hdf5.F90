@@ -1030,8 +1030,9 @@ module restart_hdf5
                         istate_proc = 0
                         do idet = 1, ndets
                             ! Get processor index (slot_pos is not relevant here as not redoing any load balancing).
-                            call assign_particle_processor(psip_read%states(:,idet), tensor_label_len*i0_length, hash_seed, hash_shift, &
-                                                           move_freq, nprocs_target, ip, slot_pos, pm_dummy%map, pm_dummy%nslots)
+                            call assign_particle_processor(psip_read%states(:,idet), tensor_label_len*i0_length, hash_seed, &
+                                                           hash_shift, move_freq, nprocs_target, ip, slot_pos, pm_dummy%map, &
+                                                           pm_dummy%nslots)
                             if (ip < iproc_target_start .or. ip > iproc_target_end) then
                                 ! Being handled by another processor.  Safely ignore.
                                 nmoved = nmoved + 1
