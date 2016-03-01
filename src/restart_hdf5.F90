@@ -877,7 +877,8 @@ module restart_hdf5
             if (i0_length /= i0_length_restart) then
                 ! Try to get determinant string length (needed to convert DET_SIZE) from file,
                 ! otherwise the user must supply a system object.
-                call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
+                call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis), exists, ierr)
+                if (exists) call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
                 if (exists) then
                     call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
                     string_len = ceiling(real(nbasis)/i0_length)
