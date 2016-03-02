@@ -57,8 +57,8 @@ module restart_hdf5
     !                Hilbert space reference determinant # reference determinant
     !                                  # defining Hilbert space (see comments in
     !                                  # fciqmc_data for details).
-    !      basis/
-    !            nbasis                # Number of basis functions
+    !  basis/
+    !      nbasis                      # Number of basis functions
     !
     !  rng/                            # Not used yet.
 
@@ -811,6 +811,13 @@ module restart_hdf5
             call hdf5_read(orig_id, hdf5_path(gmetadata,dnprocs), nprocs_read)
             call h5fclose_f(orig_id, ierr)
 
+            ! If the processor has nothing to do (i.e. for some reason the user
+            ! is running on X processors and redistributing to Y processors,
+            ! where X>Y) then we shouldn't actually do anything.  For
+            ! convenience, do basically the same but without writing (or reading
+            ! lots of data).
+            if (iproc_target_start > iproc_target_end) nprocs_read = 0
+
             ! Create filenames and HDF5 IDs for all old and new files.
             allocate(orig_names(0:nprocs_read-1))
             do i = 0, nprocs_read-1
@@ -876,10 +883,9 @@ module restart_hdf5
             call hdf5_read(orig_id, hdf5_path(gmetadata, di0_length), i0_length_restart)
             ! Try to get determinant string length (needed to convert DET_SIZE) from file,
             ! otherwise the user must supply a system object.
-            call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis), exists, ierr)
-            if (exists) call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
+            call h5lexists_f(orig_id, gbasis, exists, ierr)
             if (exists) then
-                call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
+                call hdf5_read(orig_id, hdf5_path(gbasis, dnbasis), nbasis)
                 string_len = ceiling(real(nbasis)/i0_length)
             else if (present(sys)) then
                 string_len = sys%basis%string_len
