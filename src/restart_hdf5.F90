@@ -724,7 +724,7 @@ module restart_hdf5
             !    ri: restart information.  ri%restart_stem, ri%read_id and ri%write_id are used.
             !        On output, ri%read_id is updated (if set) to point to the new id.
             ! In:
-            !    number of processors the restart files are to be split over (ie the number of
+            !    nprocs_target: number of processors the restart files are to be split over (ie the number of
             !        processors the user wishes to restart the calculation on).
             !    sys (optional): a sys_t object, used to get the basis size.  Only necessary if
             !        changing DET_SIZE for an old restart file.
@@ -874,20 +874,20 @@ module restart_hdf5
             ! Check whether the integer type used for determinants is the same as the current
             ! settings.
             call hdf5_read(orig_id, hdf5_path(gmetadata, di0_length), i0_length_restart)
-            if (i0_length /= i0_length_restart) then
-                ! Try to get determinant string length (needed to convert DET_SIZE) from file,
-                ! otherwise the user must supply a system object.
-                call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
-                if (exists) then
-                    call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
-                    string_len = ceiling(real(nbasis)/i0_length)
-                else if (present(sys)) then
-                    string_len = sys%basis%string_len
-                else
-                    call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
-                end if
-                allocate(f0(string_len))
+            ! Try to get determinant string length (needed to convert DET_SIZE) from file,
+            ! otherwise the user must supply a system object.
+            call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis), exists, ierr)
+            if (exists) call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
+            if (exists) then
+                call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
+                string_len = ceiling(real(nbasis)/i0_length)
+            else if (present(sys)) then
+                string_len = sys%basis%string_len
+                nbasis = sys%basis%nbasis
+            else if (i0_length /= i0_length_restart) then
+                call stop_all('redistribute_restart_hdf5','A system object must be supplied to change DET_SIZE.')
             end if
+            allocate(f0(string_len))
 
             ! Write out metadata to each new file.
             ! Can just copy it from the first old restart file as it is the same on all files...
@@ -1030,8 +1030,9 @@ module restart_hdf5
                         istate_proc = 0
                         do idet = 1, ndets
                             ! Get processor index (slot_pos is not relevant here as not redoing any load balancing).
-                            call assign_particle_processor(psip_read%states(:,idet), tensor_label_len, hash_seed, hash_shift, &
-                                                           move_freq, nprocs_target, ip, slot_pos, pm_dummy%map, pm_dummy%nslots)
+                            call assign_particle_processor(psip_read%states(:,idet), nbasis, hash_seed, &
+                                                           hash_shift, move_freq, nprocs_target, ip, slot_pos, pm_dummy%map, &
+                                                           pm_dummy%nslots)
                             if (ip < iproc_target_start .or. ip > iproc_target_end) then
                                 ! Being handled by another processor.  Safely ignore.
                                 nmoved = nmoved + 1
