@@ -38,7 +38,7 @@ contains
                 parent_flag = parent_flag
             else
                 ! Isn't an initiator.
-                parent_flag = parent_flag + i
+                parent_flag = ibset(parent_flag, i)
             end if
         end do
     end subroutine set_parent_flag
