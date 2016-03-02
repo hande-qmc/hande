@@ -57,8 +57,8 @@ module restart_hdf5
     !                Hilbert space reference determinant # reference determinant
     !                                  # defining Hilbert space (see comments in
     !                                  # fciqmc_data for details).
-    !      basis/
-    !            nbasis                # Number of basis functions
+    !  basis/
+    !      nbasis                      # Number of basis functions
     !
     !  rng/                            # Not used yet.
 
@@ -876,10 +876,9 @@ module restart_hdf5
             call hdf5_read(orig_id, hdf5_path(gmetadata, di0_length), i0_length_restart)
             ! Try to get determinant string length (needed to convert DET_SIZE) from file,
             ! otherwise the user must supply a system object.
-            call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis), exists, ierr)
-            if (exists) call h5lexists_f(orig_id, hdf5_path(gqmc, gbasis, dnbasis), exists, ierr)
+            call h5lexists_f(orig_id, gbasis, exists, ierr)
             if (exists) then
-                call hdf5_read(orig_id, hdf5_path(gqmc, gbasis, dnbasis), nbasis)
+                call hdf5_read(orig_id, hdf5_path(gbasis, dnbasis), nbasis)
                 string_len = ceiling(real(nbasis)/i0_length)
             else if (present(sys)) then
                 string_len = sys%basis%string_len
