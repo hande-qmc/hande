@@ -811,6 +811,13 @@ module restart_hdf5
             call hdf5_read(orig_id, hdf5_path(gmetadata,dnprocs), nprocs_read)
             call h5fclose_f(orig_id, ierr)
 
+            ! If the processor has nothing to do (i.e. for some reason the user
+            ! is running on X processors and redistributing to Y processors,
+            ! where X>Y) then we shouldn't actually do anything.  For
+            ! convenience, do basically the same but without writing (or reading
+            ! lots of data).
+            if (iproc_target_start > iproc_target_end) nprocs_read = 0
+
             ! Create filenames and HDF5 IDs for all old and new files.
             allocate(orig_names(0:nprocs_read-1))
             do i = 0, nprocs_read-1
