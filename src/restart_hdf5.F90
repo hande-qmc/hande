@@ -856,7 +856,11 @@ module restart_hdf5
 
             ! CARE: as an implementation detail, the CCMC code uses the number of
             ! Monte Carlo cycles (stored in dncycles) as the hash shift.
-            call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dncycles), hash_shift)
+            if (iand(calc_type_restart, ccmc_calc) /= 0) then
+                call hdf5_read(orig_id, hdf5_path(gqmc, gstate, dncycles), hash_shift)
+            else
+                hash_shift = 0
+            end if
 
             call h5lexists_f(orig_id, hdf5_path(gqmc, gstate, dhash_seed), exists, ierr)
             if (exists) then
