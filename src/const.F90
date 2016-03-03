@@ -90,4 +90,11 @@ real(p), parameter :: depsilon = 1.e-6_p ! MACHEPS is ~10^-7
 real(p), parameter :: depsilon = 1.e-12_p ! MACHEPS is ~10^-16 but we won't go quite that far...
 #endif
 
+! Flag to control additional debug output -- a bit all or nothing currently.
+#ifdef DEBUG
+logical, parameter :: debug = .true.
+#else
+logical, parameter :: debug = .false.
+#endif
+
 end module const

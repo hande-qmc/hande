@@ -173,6 +173,12 @@ POP_SIZE
     can be represented is :math:`2^{-11}=0.00049`. When using this option and POP_SIZE=64
     the largest amplitude is :math:`2^{32}=4.3\times10^9` and the smallest fractional part
     is :math:`2^{-31}=4.66\times10^{-10}`.
+DEBUG
+    Default: not defined.
+
+    If defined then add additional information in output (e.g. stack traces) that might be
+    useful for debugging.  Recommended for developers only.  The format and content of the
+    additional debug output should not be relied upon.
 DISABLE_LANCZOS
     Default: not defined.
 

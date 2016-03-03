@@ -31,6 +31,7 @@ contains
 
         use, intrinsic :: iso_fortran_env, only: error_unit
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use const, only: debug
 
 #ifdef PARALLEL
         use mpi
@@ -45,17 +46,18 @@ contains
         type(c_ptr), target :: buffer(100)
         type(c_ptr) :: c_buf
         integer(c_int) :: btr_size
+        logical :: print_backtrace_loc
 #ifdef PARALLEL
         integer, parameter :: error_code=999
         integer :: ierr
 #endif
 
-        if (present(print_backtrace)) then
-            if (print_backtrace) then
-                c_buf = c_loc(buffer)
-                btr_size = backtrace(c_buf, 100)
-                call backtrace_symbols_fd(c_buf, btr_size, 2)
-            end if
+        print_backtrace_loc = debug
+        if (present(print_backtrace)) print_backtrace_loc = print_backtrace
+        if (print_backtrace_loc) then
+            c_buf = c_loc(buffer)
+            btr_size = backtrace(c_buf, 100)
+            call backtrace_symbols_fd(c_buf, btr_size, 2)
         end if
 
         write (error_unit,'(/a7)') 'ERROR.'
