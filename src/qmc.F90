@@ -195,6 +195,7 @@ contains
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
+        use ifciqmc, only: set_parent_flag_real, set_parent_flag_complex
         use importance_sampling
         use operators
         use spawning
@@ -380,6 +381,11 @@ contains
             else
                 create_spawned_particle_ptr => create_spawned_particle_initiator
             end if
+            if (sys%read_in%comp) then
+                set_parent_flag_ptr => set_parent_flag_complex
+            else
+                set_parent_flag_ptr => set_parent_flag_real
+            end if
         else
             if (all(ras > 0)) then
                 create_spawned_particle_ptr => create_spawned_particle_ras
@@ -388,6 +394,7 @@ contains
             else
                 create_spawned_particle_ptr => create_spawned_particle
             end if
+            set_parent_flag_ptr => set_parent_flag_real
         end if
 
         ! 2: density-matrix
