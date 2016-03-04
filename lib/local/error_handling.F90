@@ -3,34 +3,66 @@ module errors
 
 implicit none
 
+interface
+    function backtrace(buffer, size) bind(c, name="backtrace")
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        type(c_ptr) :: buffer
+        integer(c_int), value :: size
+        integer(c_int) :: backtrace
+    end function backtrace
+
+    subroutine backtrace_symbols_fd(buffer, size, fd) bind(c, name="backtrace_symbols_fd")
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        type(c_ptr) :: buffer
+        integer(c_int), value :: size, fd
+    end subroutine backtrace_symbols_fd
+end interface
+
 contains
 
-    subroutine stop_all(sub_name,error_msg)
+    subroutine stop_all(sub_name, error_msg, print_backtrace)
         ! Stop calculation due to an error.
         ! Exit with code 999.
         !
         ! In:
         !    sub_name:  calling subroutine name.
         !    error_msg: error message.
+        !    print_backtrace (optional): whether to print a backtrace.  Default: false.
 
         use, intrinsic :: iso_fortran_env, only: error_unit
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
+        use const, only: debug
 
 #ifdef PARALLEL
         use mpi
 #endif
 
         character(*), intent(in) :: sub_name,error_msg
+        logical, intent(in), optional :: print_backtrace
 
         ! It seems that giving STOP a string is far more portable.
         ! mpi_abort requires an integer though.
         character(3), parameter :: error_str='999'
+        type(c_ptr), target :: buffer(100)
+        type(c_ptr) :: c_buf
+        integer(c_int) :: btr_size
+        logical :: print_backtrace_loc
 #ifdef PARALLEL
         integer, parameter :: error_code=999
         integer :: ierr
 #endif
 
+        print_backtrace_loc = debug
+        if (present(print_backtrace)) print_backtrace_loc = print_backtrace
+        if (print_backtrace_loc) then
+            c_buf = c_loc(buffer)
+            btr_size = backtrace(c_buf, 100)
+            call backtrace_symbols_fd(c_buf, btr_size, 2)
+        end if
+
         write (error_unit,'(/a7)') 'ERROR.'
         write (error_unit,'(1X,a)') 'HANDE stops in subroutine: '//adjustl(sub_name)//'.'
+
         write (error_unit,'(a9,a)') 'Reason: ',adjustl(error_msg)
         write (error_unit,'(1X,a10)') 'EXITING...'
 

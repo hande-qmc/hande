@@ -32,7 +32,7 @@ contains
 
         logical, intent(in) :: test
 
-        if (test) call stop_all('assert_statement','assertion is false')
+        if (.not. test) call stop_all('assert_statement','assertion is false', print_backtrace=.true.)
 
     end subroutine assert_statement
 
