@@ -8,4 +8,5 @@ Compiled from various email threads on (and before) the nascent hande-dev list. 
 
    git
    tests
+   debug
    faq
