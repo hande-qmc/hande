@@ -1,10 +1,10 @@
 sys = ueg {
-nel = 14, 
-ms = 0, 
+    nel = 14,
+    ms = 0,
     sym = 1,
     dim = 3,
-cutoff = 4, 
-rs = 1, 
+    cutoff = 4,
+    rs = 1,
 }
 
 dmqmc {
@@ -28,7 +28,7 @@ dmqmc {
         initiator_level = 0,
     },
     ipdmqmc = {
-target_beta = 4, 
+        target_beta = 4,
         initial_matrix = 'free_electron',
         grand_canonical_initialisation = true,
         symmetric = true,
