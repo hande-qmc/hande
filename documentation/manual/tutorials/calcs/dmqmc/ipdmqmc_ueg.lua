@@ -25,7 +25,7 @@ dmqmc {
         beta_loops = 100,
     },
     ipdmqmc = {
-        initial_beta = 1.0,
+        target_beta = 1.0,
         initial_matrix = 'free_electron',
         grand_canonical_initialisation = true,
         symmetric = false,

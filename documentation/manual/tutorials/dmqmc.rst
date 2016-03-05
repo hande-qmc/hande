@@ -161,14 +161,9 @@ Looking at the input file
 
 .. literalinclude:: calcs/dmqmc/ipdmqmc_ueg.lua
 
-.. [review] - JSS: init_beta below but initial_beta in the input file.  Also, why init_beta/initial_beta?  It's not the most intuitive name...
-.. [reply] -  FDM: Originally I think it was for the initial density matrix.
-.. [reply] - I did consider changing this a while ago to target_beta or something but never did.
-.. [reply] - I will change it - does this require running the calculations again post merge of branch or would a note in the tutorial suffice?
-
 we see most of the same options are present as for dmqmc. Note that unlike DMQMC where
 estimates for the whole temperature range are gathered in a single simulation, in IP-DMQMC
-only one temperature value is (directly) accessible, specified by the ``initial_beta``
+only one temperature value is (directly) accessible, specified by the ``target_beta``
 option. We've also set the energy scale to be determined by the Fermi energy of the
 corresponding (thermodynamic limit) free electron gas so that the temperatures are
 interpreted as fractions of the Fermi temperature (here :math:`\Theta = 0.5`.
