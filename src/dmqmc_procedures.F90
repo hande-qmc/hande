@@ -87,9 +87,9 @@ contains
         ! to set the appropriate beta = Beta / T_F.
         if (dmqmc_in%fermi_temperature) then
             qs%tau = qs%tau / sys%ueg%ef
-            qs%init_beta = dmqmc_in%init_beta / sys%ueg%ef
+            qs%target_beta = dmqmc_in%target_beta / sys%ueg%ef
         else
-            qs%init_beta = dmqmc_in%init_beta
+            qs%target_beta = dmqmc_in%target_beta
         end if
 
 

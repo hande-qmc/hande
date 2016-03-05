@@ -1204,7 +1204,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t, subsys_t, hartree_fock_dm, free_electron_dm
         use checking, only: check_allocate
         use parallel, only: parent
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use lua_hande_utils, only: warn_unused_args
         use system, only: heisenberg
 
@@ -1222,7 +1222,7 @@ contains
                                                                       'all_spin_sectors', 'beta_loops', 'sampling_weights',      &
                                                                       'find_weights', 'find_weights_start', 'symmetrize',        &
                                                                       'vary_weights', 'initiator_level']
-        character(30), parameter :: ip_keys(5)    = [character(30) :: 'initial_beta', 'initial_matrix',                          &
+        character(30), parameter :: ip_keys(6)    = [character(30) :: 'target_beta', 'initial_beta', 'initial_matrix',           &
                                                                       'grand_canonical_initialisation', 'metropolis_attempts',   &
                                                                       'symmetric']
         character(30), parameter :: op_keys(10)    = [character(30) :: 'renyi2', 'energy', 'energy2', 'staggered_magnetisation',  &
@@ -1267,7 +1267,11 @@ contains
         if (aot_exists(lua_state, opts, 'ipdmqmc')) then
             dmqmc_in%propagate_to_beta = .true.
             call aot_table_open(lua_state, opts, table, 'ipdmqmc')
-            call aot_get_val(dmqmc_in%init_beta, err, lua_state, table, 'initial_beta')
+            if (aot_exists(lua_state, table, 'initial_beta')) then
+                call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'initial_beta')
+                call warning('read_dmqmc_in', 'initial_beta is deprecated.  Please use target_beta instead.')
+            end if
+            call aot_get_val(dmqmc_in%target_beta, err, lua_state, table, 'target_beta')
             if (aot_exists(lua_state, table, 'initial_matrix')) then
                 call aot_get_val(str, err, lua_state, table, 'initial_matrix')
                 select case(trim(str))

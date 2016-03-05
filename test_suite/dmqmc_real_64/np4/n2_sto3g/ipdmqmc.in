@@ -24,7 +24,7 @@ dmqmc {
         beta_loops = 10,
     },
     ipdmqmc = {
-        initial_beta = 1.0,
+        target_beta = 1.0,
         metropolis_attempts = 100,
         symmetric  = false,
     },
