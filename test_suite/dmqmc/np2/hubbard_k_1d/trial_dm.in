@@ -21,7 +21,7 @@ dmqmc {
         beta_loops = 5,
     },
     ipdmqmc = {
-        initial_beta = 0.5,
+        target_beta = 0.5,
         initial_matrix = 'hartree_fock',
         metropolis_attempts = 1000,
         symmetric = false,
