@@ -538,7 +538,7 @@ type qmc_state_t
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
-    real(p) :: init_beta = 1.0
+    real(p) :: target_beta = 1.0
     ! Convenience handles.
     type(particle_t) :: psip_list
     type(spawned_particle_t) :: spawn_store

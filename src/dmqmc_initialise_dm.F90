@@ -119,7 +119,7 @@ contains
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
-                                                           qmc_state%ref%energy_shift, qmc_state%init_beta, &
+                                                           qmc_state%ref%energy_shift, qmc_state%target_beta, &
                                                            & qmc_in%initiator_approx, qmc_in%initiator_pop, rng, chem_pot)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &
@@ -463,7 +463,7 @@ contains
                     end if
                     ! Accept new det with probability p = min[1,exp(-\beta(E_new-E_old))]
                     E_new = trial_dm_ptr(sys, f_new)
-                    prob = exp(-1.0_p*qmc_state%init_beta*(E_new-E_old))
+                    prob = exp(-1.0_p*qmc_state%target_beta*(E_new-E_old))
                     r = get_rand_close_open(rng)
                     if (prob > r) then
                         call decode_det(sys%basis, f_new, occ_list)
@@ -567,7 +567,7 @@ contains
     end subroutine dmqmc_spin_cons_metropolis_move
 
     subroutine init_grand_canonical_ensemble(sys, dmqmc_in, npsips, pop_real_factor, spawn, energy_shift, &
-                                             init_beta, initiator_approx, initiator_pop, rng, chem_pot)
+                                             target_beta, initiator_approx, initiator_pop, rng, chem_pot)
 
         ! Initially distribute psips according to the grand canonical
         ! distribution function.
@@ -579,7 +579,7 @@ contains
         !    pop_real_factor: The factor by which populations are multiplied to
         !        enable non-integer populations.
         !    energy_shift: <D_0|H_new|D_0> - <D_0|H_old|D_0>.
-        !    init_beta: temperature at which we initialise the density matrix.
+        !    target_beta: temperature at which we initialise the density matrix.
         !    initiator_approx: using the initiator approximation?
         !    initiator_pop: population for element to be set to an initiator.
         !    chem_pot: chemical potential.
@@ -601,7 +601,7 @@ contains
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         integer(int_64), intent(in) :: npsips
         integer(int_p), intent(in) :: pop_real_factor
-        real(p), intent(in) :: energy_shift, init_beta
+        real(p), intent(in) :: energy_shift, target_beta
         logical, intent(in) :: initiator_approx
         real(p), intent(in) :: initiator_pop
         real(p), intent(in) :: chem_pot
@@ -633,7 +633,7 @@ contains
         ! an alpha spin orbital is equal to that of occupying a beta spin
         ! orbital.
         forall(iorb=1:sys%basis%nbasis:2) p_single(iorb/2+1) = 1.0_p / &
-                                          (1+exp(init_beta*(sys%basis%basis_fns(iorb)%sp_eigv-chem_pot)))
+                                          (1+exp(target_beta*(sys%basis%basis_fns(iorb)%sp_eigv-chem_pot)))
 
         ! In the grand canoical ensemble the probability of occupying a
         ! determinant, |D_i>, is given by \prod_i^N p_i, where the p_i's are the
@@ -662,7 +662,7 @@ contains
             ! Create the determinant.
             if (dmqmc_in%all_sym_sectors .or. symmetry_orb_list(sys, occ_list) == sys%symmetry) then
                 if (dmqmc_in%initial_matrix /= free_electron_dm .and. dmqmc_in%metropolis_attempts == 0) nspawn = &
-                                & reweight_spawned_particle(sys, occ_list, init_beta, &
+                                & reweight_spawned_particle(sys, occ_list, target_beta, &
                                                             energy_shift, spawn%cutoff, pop_real_factor, rng)
                 call encode_det(sys%basis, occ_list, f)
                 if (initiator_approx) then

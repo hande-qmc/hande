@@ -269,10 +269,10 @@ contains
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
         end if
 
-        if (dmqmc_in%init_beta < depsilon .and. dmqmc_in%grand_canonical_initialisation) then
-            call stop_all(this, 'init_beta must be greater than zero if grand_canonical_initialisation is to be used.')
-        else if (dmqmc_in%init_beta < 0) then
-            call stop_all(this, 'init_beta must be non-negative.')
+        if (dmqmc_in%target_beta < depsilon .and. dmqmc_in%grand_canonical_initialisation) then
+            call stop_all(this, 'target_beta must be greater than zero if grand_canonical_initialisation is to be used.')
+        else if (dmqmc_in%target_beta < 0) then
+            call stop_all(this, 'target_beta must be non-negative.')
         end if
 
         if (dmqmc_in%metropolis_attempts < 0) then

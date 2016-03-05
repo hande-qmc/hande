@@ -178,10 +178,10 @@ type dmqmc_in_t
     integer :: initial_matrix = hartree_fock_dm
     ! Use the grand canonical partition function to inititally distribute the psips.
     logical :: grand_canonical_initialisation = .false.
-    ! Interpret input init_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
+    ! Interpret input target_beta as the inverse reduced temperature, i.e., Beta = 1\Theta = T_F/T.
     logical :: fermi_temperature = .false.
     ! Value of beta which we propagate the density matrix to.
-    real(p) :: init_beta = 1.0
+    real(p) :: target_beta = 1.0
     ! Number of metropolis attempts (per psip) we use when generating
     ! the trial density matrix.
     integer :: metropolis_attempts = 0
@@ -342,7 +342,7 @@ contains
         end if
         call json_write_key(js, 'finish_varying_weights', dmqmc%finish_varying_weights)
         call json_write_key(js, 'fermi_temperature', dmqmc%fermi_temperature)
-        call json_write_key(js, 'init_beta', dmqmc%init_beta, terminal=.true.)
+        call json_write_key(js, 'target_beta', dmqmc%target_beta, terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine dmqmc_in_t_json

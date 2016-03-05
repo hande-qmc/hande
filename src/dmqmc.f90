@@ -118,7 +118,7 @@ contains
         ! When using the propagate_to_beta option the number of iterations in imaginary
         ! time we want to do depends on what value of beta we are seeking. It's
         ! annoying to have to modify this in the input file, so just do it here.
-        if (dmqmc_in%propagate_to_beta) nreport = int(ceiling(dmqmc_in%init_beta/(qmc_in%ncycles*qmc_in%tau)))
+        if (dmqmc_in%propagate_to_beta) nreport = int(ceiling(dmqmc_in%target_beta/(qmc_in%ncycles*qmc_in%tau)))
         ! When we accumulate data throughout a run, we are actually accumulating
         ! results from the psips distribution from the previous iteration.
         ! For example, in the first iteration, the trace calculated will be that
@@ -132,7 +132,7 @@ contains
         call init_dmqmc(sys, qmc_in, dmqmc_in, qs%psip_list%nspaces, qs, dmqmc_estimates, weighted_sampling)
         ! Determine the chemical potential if doing the ip-dmqmc algorithm.
         if (dmqmc_in%propagate_to_beta .and. dmqmc_in%grand_canonical_initialisation) then
-            mu = find_chem_pot(sys, qs%init_beta)
+            mu = find_chem_pot(sys, qs%target_beta)
         else
             mu = 0.0_p
         end if
@@ -216,7 +216,7 @@ contains
                     ! Store (beta-tau)/2 for use in symmetric ip-dmqmc spawning probabilities.
                     if (dmqmc_in%propagate_to_beta .and. dmqmc_in%symmetric) &
                             & weighted_sampling%probs(sys%max_number_excitations+1) = &
-                            & 0.5*(qs%init_beta-(iteration-1)*qs%dmqmc_factor*qs%tau)
+                            & 0.5*(qs%target_beta-(iteration-1)*qs%dmqmc_factor*qs%tau)
 
                     do idet = 1, qs%psip_list%nstates ! loop over walkers/dets
 
