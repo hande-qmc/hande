@@ -71,7 +71,7 @@ contains
         do i = 1, dims(2)
             ! Must convert each determinant separately as there is a different
             ! amount of padding if the number of 32 bit integers is odd
-            dets(:,i) = transfer(dets_tmp(:,i), dets)
+            dets(:,i) = transfer(dets_tmp(:,i), dets, size(dets(:,i)))
         end do
 
         deallocate(dets_tmp)
@@ -145,7 +145,7 @@ contains
         call hdf5_read(id, dset, kinds, shape(f0_tmp), f0_tmp)
 
         f0 = 0
-        f0 = transfer(f0_tmp, f0)
+        f0 = transfer(f0_tmp, f0, size(f0))
 
         deallocate(f0_tmp)
 
@@ -228,7 +228,7 @@ contains
         do i = 1, dims(2)
             ! Must convert each determinant separately as there is a different
             ! amount of padding if the number of 32 bit integers is odd
-            dets(:,i) = transfer(dets_tmp(:,i), dets)
+            dets(:,i) = transfer(dets_tmp(:,i), dets, size(dets(:,i)))
         end do
 
         deallocate(dets_tmp)
@@ -265,7 +265,7 @@ contains
         call hdf5_read(id, dset, kinds, shape(f0_tmp), f0_tmp)
 
         f0 = 0
-        f0 = transfer(f0_tmp, f0)
+        f0 = transfer(f0_tmp, f0, size(f0))
 
         deallocate(f0_tmp)
 
