@@ -4,8 +4,6 @@ module molecular_integrals
 ! These integrals are previously calculated using a quantum chemistry package
 ! (e.g. PSI4, MOLPRO or QChem).
 
-! [todo] - (compile-time option) allocate arrays using shmem.
-
 use const, only: p
 use molecular_integral_types
 use const, only: int_64
@@ -154,6 +152,7 @@ contains
         use const, only: int_64
         use parallel, only: parent
         use system, only: sys_t
+        use shmem, only: allocate_shared
 
         logical, intent(in) :: imag
         integer, intent(in) :: op_sym
@@ -162,6 +161,7 @@ contains
 
         integer :: ierr, ispin, nspin, mem_reqd, iunit
         integer(int_64):: npairs, nintgrls
+        character(25) :: int_name
 
         iunit = 6
 
@@ -214,8 +214,8 @@ contains
         end if
 
         do ispin = 1, nspin
-            allocate(store%integrals(ispin)%v(nintgrls), stat=ierr)
-            call check_allocate('two_body_store_component', nintgrls, ierr)
+            write (int_name, '("two_body_store_component",i1)') ispin
+            call allocate_shared(store%integrals(ispin)%v, int_name, nintgrls)
         end do
 
     end subroutine init_two_body_t
@@ -229,14 +229,16 @@ contains
         !    integrals which are deallocated upon exit.
 
         use checking, only: check_deallocate
+        use shmem, only: deallocate_shared
 
         type(two_body_t), intent(inout) :: store
         integer :: ierr, ispin
+        character(25) :: int_name
 
         if (allocated(store%integrals)) then
             do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
-                deallocate(store%integrals(ispin)%v, stat=ierr)
-                call check_deallocate('two_body_store_component', ierr)
+                write (int_name, '("two_body_store_component",i1)') ispin
+                call deallocate_shared(store%integrals(ispin)%v, int_name)
             end do
             deallocate(store%integrals, stat=ierr)
             call check_deallocate('two_body_store', ierr)
