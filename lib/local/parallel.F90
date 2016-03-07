@@ -24,11 +24,24 @@ integer :: iproc
 integer :: nprocs
 
 ! Choose root processor to have rank 0.
+! This is used as id for the root both for world and node communicators.
 integer, parameter :: root = 0
 
 ! True if the processor is the root (i.e. iproc==root) processor.
 ! In particular, output should only be performed on the parent processor.
 logical :: parent
+
+!--- MPI-3 ---
+
+! Inter-node communicator
+! Set to MPI_COMM_NULL if MPI 3 is not available.
+integer :: node_comm
+
+! Intra-node communicator
+! **WARNING** - set to MPI_COMM_NULL unless on the 0-th (root) processor within a node.
+!             - the programmer must check this is not MPI_COMM_NULL before using it.
+! Set to MPI_COMM_WORLD if MPI 3 is not available.
+integer :: intra_node_comm
 
 !--- OpenMP ---
 
@@ -136,12 +149,28 @@ contains
         use errors
 
 #ifdef PARALLEL
-        integer :: ierr
+        integer :: ierr, node_rank, colour
 
         call mpi_init(ierr)
         if (ierr /= mpi_success) call stop_all('init_parallel','Error initialising MPI.')
         call mpi_comm_size(mpi_comm_world, nprocs, ierr)
         call mpi_comm_rank(mpi_comm_world, iproc, ierr)
+
+#ifdef DISABLE_MPI3
+        ! :-(
+        node_comm = MPI_COMM_NULL
+        intra_node_comm = MPI_COMM_WORLD
+#else
+        ! Get communicator for processors which can share memory.
+        call MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, iproc, MPI_INFO_NULL, node_comm, ierr)
+        ! Now create a communicator between the 0-th processor of each node.
+        ! No idea why there isn't a MPI_COMM_TYPE_* for this...
+        colour = MPI_UNDEFINED
+        call MPI_Comm_rank(node_comm, node_rank, ierr)
+        if (node_rank == root) colour = 0
+        call MPI_Comm_split(MPI_COMM_WORLD, colour, node_rank, intra_node_comm, ierr)
+#endif
+
 #else
         iproc = 0
         nprocs = 1
