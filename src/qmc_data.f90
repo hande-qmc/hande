@@ -754,7 +754,7 @@ contains
 
     end subroutine load_bal_in_t_json
 
-    subroutine reference_t_json(js, ref, sys, terminal)
+    subroutine reference_t_json(js, ref, sys, dmqmc_energy_shift, terminal)
 
         ! Serialise a reference_t object in JSON format.
 
@@ -763,6 +763,7 @@ contains
         ! In:
         !   reference: reference_t object containing the information about reference state (including any defaults set).
         !   sys (optional): system to which reference belongs.  If present, output the spin and symmetry information of the reference.
+        !   dmqmc_energy_shift (optional): if true, print out the 'energy shift' for IP-DMQMC.  Default: false.
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
@@ -774,7 +775,12 @@ contains
         type(json_out_t), intent(inout) :: js
         type(reference_t), intent(in) :: ref
         type(sys_t), intent(in), optional :: sys
-        logical, intent(in), optional :: terminal
+        logical, intent(in), optional :: dmqmc_energy_shift, terminal
+
+        logical :: print_energy_shift
+
+        print_energy_shift = .false.
+        if (present(dmqmc_energy_shift)) print_energy_shift = dmqmc_energy_shift
 
         call json_object_init(js, 'reference')
         if (allocated(ref%occ_list0)) then
@@ -794,8 +800,8 @@ contains
             end if
         end if
         call json_write_key(js, 'ex_level', ref%ex_level)
-        call json_write_key(js, 'H00', ref%H00)
-        call json_write_key(js, 'shift', ref%energy_shift, .true.)
+        call json_write_key(js, 'H00', ref%H00, .not.print_energy_shift)
+        if (print_energy_shift) call json_write_key(js, 'shift', ref%energy_shift, .true.)
         call json_object_end(js, terminal)
 
     end subroutine reference_t_json
