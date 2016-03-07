@@ -462,6 +462,7 @@ module restart_hdf5
             character(255) :: restart_file
             integer :: restart_version_restart, calc_type_restart, nprocs_restart
             integer :: i0_length_restart, nbasis_restart
+            character(36) :: uuid_restart
             integer :: ierr
             real(p), target :: tmp(1)
             logical :: exists, resort
@@ -488,6 +489,10 @@ module restart_hdf5
                 call hdf5_read(group_id, di0_length, i0_length_restart)
 
                 call hdf5_read(group_id, dcalc, calc_type_restart)
+
+                call hdf5_read(group_id, duuid, 36, uuid_restart)
+
+                if (parent) write (6,'(1x,"Restart file produced by calculation UUID",1x,a,/)') uuid_restart
 
                 ! [todo] - Allow restart files for one calculation types to be used to
                 ! [todo] - restart a (suitably compatible) different calculation.

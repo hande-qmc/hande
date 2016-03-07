@@ -57,6 +57,7 @@ module hdf5_helper
     end interface hdf5_write
 
     interface hdf5_read
+        module procedure read_string
         module procedure read_integer
         module procedure read_boolean
         module procedure read_array_1d_int_32
@@ -772,6 +773,37 @@ module hdf5_helper
         end subroutine write_ptr
 
         ! === Helper procedures: reading ===
+
+        subroutine read_string(id, dset, length, string)
+
+            ! Read a string from an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    length: length of the string to read
+            ! Out:
+            !    string: string read from HDF5 file.
+
+            use hdf5
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            integer, intent(in) :: length
+            character(*), intent(out) :: string
+
+            integer(hid_t) :: type_id, dset_id
+            integer :: ierr
+
+            ! Set up fortran string type of *this* length...
+            call h5tcopy_f(H5T_FORTRAN_S1, type_id, ierr)
+            call h5tset_size_f(type_id, int(length, SIZE_T), ierr)
+
+            call h5dopen_f(id, dset, dset_id, ierr)
+            call h5dread_f(dset_id, type_id, string, [0_HSIZE_T], ierr)
+            call h5dclose_f(dset_id, ierr)
+
+        end subroutine read_string
 
         subroutine read_integer(id, dset, val)
 
