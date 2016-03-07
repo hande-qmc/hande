@@ -1200,11 +1200,13 @@ contains
                                     &,/,1X,"and ", es11.4E3," in the remainder.")') real(nmain), real(nnext)
 
                     end if
+
                     ncurr = 1
                     do j = 1,nblocks
-                       call MPI_BCast(ints(ncurr), 1, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
+                       call MPI_BCast(ints(ncurr), 1, mpi_preal_block, data_proc, intra_node_comm, ierr)
                        ncurr = ncurr + optimal_block_size
                     end do
+
                     ! Finally broadcast the remaining values not included in previous block.
                     ! In some compilers (intel) passing array slices into mpi calls leads to
                     ! creation of a temporary array the size of the full integral list. To
@@ -1214,7 +1216,8 @@ contains
                     ! to MPI_BCast will enable array slicing without risk of array temporary
                     ! creation.
 
-                    if (nnext > 0) call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                    if (nnext > 0 .and. intra_node_comm /= MPI_COMM_NULL) &
+                        call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, intra_node_comm, ierr)
                     ! Finally tidy up mpi types.
                     call mpi_type_free(mpi_preal_block, ierr)
                     if (parent) then
@@ -1222,10 +1225,11 @@ contains
                         write(iunit,'(/,1X,21("-"),/)')
                     end if
                 end associate
-            else
-                call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+            else if (intra_node_comm /= MPI_COMM_NULL) then
+                call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, intra_node_comm, ierr)
             end if
         end do
+        if (node_comm /= MPI_COMM_NULL) call MPI_Barrier(node_comm, ierr)
 #else
         integer :: i
         ! A null operation so I can use -Werror when compiling
