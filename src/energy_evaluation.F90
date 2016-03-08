@@ -87,7 +87,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         integer, intent(in) :: nspawn_events
         type(qmc_state_t), intent(inout) :: qs
-        real(p), intent(inout) :: ntot_particles_old(qs%psip_list%nspaces)
+        real(dp), intent(inout) :: ntot_particles_old(qs%psip_list%nspaces)
         logical, optional, intent(in) :: doing_lb
         logical, intent(inout) :: comms_found
         logical, intent(inout), optional :: error
@@ -175,9 +175,9 @@ contains
         type(qmc_state_t), intent(inout) :: qs
         integer :: ntypes
         integer, intent(inout) :: rep_request_s(:)
-        real(p), intent(inout) :: ntot_particles_old(:)
+        real(dp), intent(inout) :: ntot_particles_old(:)
         type(load_bal_in_t), intent(in) :: load_bal_in
-        real(p), intent(out) :: nparticles_proc(:,:)
+        real(dp), intent(out) :: nparticles_proc(:,:)
         logical, optional, intent(in) :: doing_lb
         logical, intent(out), optional :: comms_found, error
         logical, intent(out), optional :: update_tau
@@ -322,15 +322,16 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout) :: qs
         real(dp), intent(in) :: rep_loop_sum(:)
-        real(p), intent(inout) :: ntot_particles_old(:)
-        real(p), intent(out) :: nparticles_proc(:,:)
+        real(dp), intent(inout) :: ntot_particles_old(:)
+        real(dp), intent(out) :: nparticles_proc(:,:)
         type(load_bal_in_t), intent(in) :: load_bal_in
         logical, optional, intent(in) :: doing_lb
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found, error
         logical, intent(out), optional :: update_tau
 
-        real(p) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop, pop_av
+        real(dp) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop
+        real(p) :: pop_av
         integer :: i, ntypes
 
         ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
@@ -371,7 +372,7 @@ contains
                 if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
                     pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
                     ! Check if there is at least one processor with load imbalance.
-                    call check_imbalance(nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
+                    call check_imbalance(real(nparticles_proc,p), pop_av, load_bal_in%percent, lb%needed)
                 end if
             end if
         end associate
@@ -441,7 +442,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         real(p), intent(inout) :: loc_shift
-        real(p), intent(in) :: nparticles_old, nparticles
+        real(dp), intent(in) :: nparticles_old, nparticles
         integer, intent(in) :: nupdate_steps
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
@@ -475,7 +476,7 @@ contains
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
-        real(p), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
+        real(dp), intent(in) :: nparticles_old, nparticles, nhf_particles_old, nhf_particles
         integer, intent(in) :: nupdate_steps
         real(p), intent(inout) :: hf_shift
 

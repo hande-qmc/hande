@@ -45,7 +45,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
         integer(int_p), intent(inout) :: population, ndeath
-        real(p), intent(inout) :: tot_population
+        real(dp), intent(inout) :: tot_population
 
         real(p) :: pd
         real(dp) :: r

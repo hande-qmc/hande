@@ -86,7 +86,7 @@ contains
         integer :: idet, ireport, icycle, iparticle, ideterm, ierr
         integer :: iter, semi_stoch_iter
         integer(int_64) :: nattempts
-        real(p), allocatable :: nparticles_old(:)
+        real(dp), allocatable :: nparticles_old(:)
 
         integer(i0) :: f_child(sys%basis%string_len)
         integer(int_p) :: nspawned, ndeath
@@ -334,9 +334,10 @@ contains
         call write_bloom_report(bloom_stats)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
             if (determ%doing_semi_stoch .and. determ%projection_mode == semi_stoch_separate_annihilation) then
-                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, determ%mpi_time)
+                call load_balancing_report(real(pl%nparticles,p), pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, &
+                                           determ%mpi_time)
             else
-                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time)
+                call load_balancing_report(real(pl%nparticles,p), pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time)
             end if
         end associate
         call write_memcheck_report(qs%spawn_store%spawn)
@@ -400,7 +401,7 @@ contains
         integer(int_p) :: nspawned
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop
-        real(p) :: list_pop
+        real(dp) :: list_pop
 
         allocate(cdet%f(sys%basis%tensor_label_len))
         allocate(cdet%data(1))

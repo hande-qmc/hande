@@ -278,14 +278,14 @@ contains
         ! taken this first load balancing into account. As a result the decision
         ! to attempt load balancing will be a bad one, so we potentially need to
         ! exit the subroutine now.
-        call check_imbalance(psip_list%nparticles_proc, pop_av, load_bal_in%percent, lb%needed)
+        call check_imbalance(real(psip_list%nparticles_proc,p), pop_av, load_bal_in%percent, lb%needed)
         if (.not. lb%needed) return
 
         up_thresh = pop_av + int(pop_av*load_bal_in%percent)
         low_thresh = pop_av - int(pop_av*load_bal_in%percent)
 
         ! Find donor/receiver processors.
-        call find_processors(psip_list%nparticles_proc(1,:nprocs), up_thresh, low_thresh, &
+        call find_processors(real(psip_list%nparticles_proc(1,:nprocs),p), up_thresh, low_thresh, &
                              proc_map%map, receivers, donors, donor_bins%nslots)
 
         ! Smaller list of donor slot populations.
@@ -296,7 +296,7 @@ contains
         call insertion_rank(donor_bins%pop, donor_bins%rank, 1.0e-8_p)
 
         if (load_bal_in%write_info .and. parent) &
-            call write_load_balancing_info(psip_list%nparticles_proc, donor_bins%pop)
+            call write_load_balancing_info(real(psip_list%nparticles_proc,p), donor_bins%pop)
 
         ! Attempt to modify proc map to get more even population distribution.
         call redistribute_slots(donor_bins, receivers, up_thresh, low_thresh, proc_map%map, &
@@ -307,7 +307,7 @@ contains
         spawn%proc_map = proc_map
 
         if (load_bal_in%write_info .and. parent) &
-            call write_load_balancing_info(psip_list%nparticles_proc, donor_bins%pop)
+            call write_load_balancing_info(real(psip_list%nparticles_proc,p), donor_bins%pop)
 
         deallocate(donors, stat=ierr)
         call check_deallocate('donors', ierr)
@@ -338,9 +338,9 @@ contains
         write (6, '(1X, "#",2X,"Load balancing info:")')
         write (6, '(1X, "# ",1X,a18,2X,a18,2X,a22,2X,a12,9X,a12)') "Max # of particles", "Min # of particles", &
                   "Average # of particles", "Max slot pop", "Min slot pop"
-        write (6, '(1X, "#",1X,3(es17.10,3X),4X,es17.10,4X,es17.10)') maxval(real(nparticles_proc(1,:))), &
-                  minval(real(nparticles_proc(1,:))), real(sum(nparticles_proc(1,:))/nprocs), &
-                  real(maxval(d_slot_pop)), real(minval(d_slot_pop))
+        write (6, '(1X, "#",1X,3(es17.10,3X),4X,es17.10,4X,es17.10)') maxval(nparticles_proc(1,:)), &
+                  minval(nparticles_proc(1,:)), sum(nparticles_proc(1,:))/nprocs, &
+                  maxval(d_slot_pop), minval(d_slot_pop)
 
     end subroutine write_load_balancing_info
 
@@ -451,7 +451,7 @@ contains
         type(dbin_t) :: donor_bins
         integer, intent(in) :: receivers(:)
         real(p), intent(in) :: up_thresh, low_thresh
-        real(p), intent(inout) :: procs_pop(0:)
+        real(dp), intent(inout) :: procs_pop(0:)
         integer, intent(inout) :: proc_map(0:)
 
         integer :: pos

@@ -283,7 +283,7 @@ module restart_hdf5
             type(restart_info_t), intent(in) :: ri
             type(qmc_state_t), intent(in) :: qs
             integer, intent(in) :: ncycles
-            real(p), intent(in) :: total_population(:)
+            real(dp), intent(in) :: total_population(:)
             integer, intent(in) :: nbasis
             logical, intent(in) :: nb_comm
 #ifndef DISABLE_HDF5
@@ -1179,12 +1179,12 @@ module restart_hdf5
             !         the shift turns on?  If true and a restart file is written out, then
             !         returned as false.
 
-            use const, only: p
+            use const, only: dp
             use qmc_data, only: qmc_state_t
 
             type(qmc_state_t), intent(in) :: qs
             logical, intent(inout) :: dump_restart_shift
-            real(p), intent(in) :: ntot_particles(qs%psip_list%nspaces)
+            real(dp), intent(in) :: ntot_particles(qs%psip_list%nspaces)
             integer, intent(in) :: ireport, ncycles, dump_freq, nbasis
             type(restart_info_t), intent(in) :: ri_freq, ri_shift
             logical, intent(in) :: nb_comm

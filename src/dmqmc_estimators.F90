@@ -150,7 +150,7 @@ contains
         type(dmqmc_estimates_t), intent(in) :: dmqmc_estimates
         integer, intent(in) :: min_ind(:), max_ind(:)
         integer, intent(in) :: nstates_active
-        real(p), intent(in) :: nparticles(:)
+        real(dp), intent(in) :: nparticles(:)
         integer, intent(in) :: nspawn_events
         real(p), intent(in) :: rspawn
         logical, intent(in) :: error
@@ -216,7 +216,7 @@ contains
         type(dmqmc_in_t), intent(in) :: dmqmc_in
         real(dp), intent(in) :: rep_loop_sum(:)
         integer, intent(in) :: min_ind(:), max_ind(:), ncycles
-        real(p), intent(out) :: tot_nparticles(:)
+        real(dp), intent(out) :: tot_nparticles(:)
         type(qmc_state_t), intent(inout) :: qs
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         logical, intent(out) :: error
@@ -323,8 +323,8 @@ contains
 
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout) :: qs
-        real(p), intent(in) :: loc_totnparticles(:)
-        real(p), intent(in) :: loc_totnparticles_old(:)
+        real(dp), intent(in) :: loc_totnparticles(:)
+        real(dp), intent(in) :: loc_totnparticles_old(:)
         integer :: ireplica
 
         do ireplica = 1, size(loc_totnparticles)

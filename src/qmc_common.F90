@@ -486,7 +486,7 @@ contains
         integer(int_p), intent(in) :: real_factor
         integer(int_p), intent(inout) :: pops(:,:)
         integer, intent(inout) :: nstates
-        real(p), intent(inout) :: nparticles(:)
+        real(dp), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
 
         real(p) :: nsent(size(nparticles))
@@ -617,7 +617,7 @@ contains
         integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet
-        real(p) :: ntot_particles(qs%psip_list%nspaces)
+        real(dp) :: ntot_particles(qs%psip_list%nspaces)
         real(p) :: real_population(qs%psip_list%nspaces), weighted_population
         type(det_info_t) :: cdet
         real(p) :: hmatel
@@ -880,7 +880,7 @@ contains
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
-        real(p), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
+        real(dp), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit

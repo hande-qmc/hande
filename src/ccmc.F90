@@ -255,7 +255,7 @@ module ccmc
 ! Note that we cannot separate the sampling the action of the Hamiltonian and the sampling
 ! of the wavefunction in linked CC in the same way that we can in unlinked CC.
 
-use const, only: i0, int_p, int_64, p
+use const, only: i0, int_p, int_64, p, dp
 
 implicit none
 
@@ -327,7 +327,7 @@ contains
         integer :: i, ireport, icycle, iter, semi_stoch_iter, it
         integer(int_64) :: iattempt, nattempts, nclusters, nstochastic_clusters, nsingle_excitors, nD0_select
         integer(int_64) :: nattempts_spawn
-        real(p), allocatable :: nparticles_old(:), nparticles_change(:)
+        real(dp), allocatable :: nparticles_old(:), nparticles_change(:)
         type(det_info_t), allocatable :: cdet(:)
         type(det_info_t), allocatable :: ldet(:), rdet(:)
 
@@ -799,7 +799,7 @@ contains
         if (parent) write (6,'()')
         call write_bloom_report(bloom_stats)
         call multispawn_stats_report(ms_stats)
-        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
+        call load_balancing_report(real(qs%psip_list%nparticles,p), qs%psip_list%nstates, qmc_in%use_mpi_barriers,&
                                    qs%spawn_store%spawn%mpi_time)
         call write_memcheck_report(qs%spawn_store%spawn)
 
@@ -1698,7 +1698,7 @@ contains
         real(p), intent(in) :: Hii, proj_energy
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(inout) :: population, ndeath
-        real(p), intent(inout) :: tot_population
+        real(dp), intent(inout) :: tot_population
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill, old_pop

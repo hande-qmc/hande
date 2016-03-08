@@ -70,7 +70,8 @@ contains
         integer :: idet, ireport, icycle, hf_initiator_flag, h_initiator_flag, ierr
         integer(int_p) :: iparticle
         integer(int_64) :: nattempts
-        real(p), allocatable :: nparticles_old(:), real_population(:)
+        real(dp), allocatable :: nparticles_old(:)
+        real(p), allocatable :: real_population(:)
         type(det_info_t) :: cdet
 
         integer(int_p) :: nspawned, ndeath
@@ -299,7 +300,7 @@ contains
         end do
 
         if (parent) write (6,'()')
-        call load_balancing_report(qs%psip_list%nparticles, qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
+        call load_balancing_report(real(qs%psip_list%nparticles,p), qs%psip_list%nstates, qmc_in%use_mpi_barriers, &
                                    qs%spawn_store%spawn%mpi_time)
 
         if (soft_exit .or. error) then
