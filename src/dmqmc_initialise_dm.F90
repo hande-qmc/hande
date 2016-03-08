@@ -182,7 +182,7 @@ contains
         ! Finally, count the total number of particles across all processes.
         if (dmqmc_in%all_spin_sectors) then
 #ifdef PARALLEL
-            call mpi_allreduce(nparticles_temp, psip_list%tot_nparticles, psip_list%nspaces, MPI_PREAL, MPI_SUM, &
+            call mpi_allreduce(nparticles_temp, psip_list%tot_nparticles, psip_list%nspaces, MPI_REAL8, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
             psip_list%tot_nparticles = nparticles_temp

@@ -390,8 +390,8 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, size(nparticles), mpi_preal, load_data, size(nparticles), &
-                            mpi_preal, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, size(nparticles), mpi_real8, load_data, size(nparticles), &
+                            mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 do i = 1, size(nparticles)
                     if (size(nparticles) > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
@@ -664,7 +664,7 @@ contains
         else
             call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_PREAL, &
+            call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
