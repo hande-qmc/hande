@@ -790,6 +790,7 @@ contains
                     call json_write_key(js, 'det_ms', spin_orb_list(sys%basis%basis_fns, ref%occ_list0))
                 call json_write_key(js, 'det_symmetry', symmetry_orb_list(sys, ref%occ_list0))
             end if
+            call json_write_key(js, 'H00', ref%H00)
         end if
         if (allocated(ref%hs_occ_list0)) then
             call json_write_key(js, 'hilbert_space_det', ref%hs_occ_list0)
@@ -799,8 +800,7 @@ contains
                 call json_write_key(js, 'hilbert_space_det_symmetry', symmetry_orb_list(sys, ref%hs_occ_list0))
             end if
         end if
-        call json_write_key(js, 'ex_level', ref%ex_level)
-        call json_write_key(js, 'H00', ref%H00, .not.print_energy_shift)
+        call json_write_key(js, 'ex_level', ref%ex_level, .not.print_energy_shift)
         if (print_energy_shift) call json_write_key(js, 'shift', ref%energy_shift, .true.)
         call json_object_end(js, terminal)
 

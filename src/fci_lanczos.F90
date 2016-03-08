@@ -180,9 +180,9 @@ contains
 
         if (parent) then
             if (fci_in%direct_lanczos) then
-                write (6,'(/,1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
+                write (6,'(1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
             else
-                write (6,'(/,1X,a37,/)') 'Performing Lanczos diagonalisation...'
+                write (6,'(1X,a37,/)') 'Performing Lanczos diagonalisation...'
             end if
         end if
 

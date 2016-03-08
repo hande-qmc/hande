@@ -153,7 +153,7 @@ contains
         ndets = ubound(dets, dim=2)
 
         if (parent) then
-            write (6,'(/,1X,a35,/)') 'Performing exact diagonalisation...'
+            write (6,'(1X,a35,/)') 'Performing exact diagonalisation...'
         end if
 
         if (fci_in%analyse_fci_wfn /= 0 .or. fci_in%print_fci_wfn /= 0 &

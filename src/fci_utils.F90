@@ -78,6 +78,7 @@ contains
 
         use determinants, only: spin_orb_list, encode_det, write_det
         use determinant_enumeration, only: enumerate_determinants, print_dets_list
+        use hamiltonian, only: get_hmatel
         use qmc_data, only: reference_t
         use reference_determinant, only: set_reference_det
         use symmetry, only: symmetry_orb_list
@@ -129,12 +130,16 @@ contains
 
         call set_spin_polarisation(sys%basis%nbasis, sys)
 
-        if (parent) call fci_json(sys, fci_in)
-
         if (.not.allocated(ref%occ_list0) .and. ref%ex_level /= sys%nel) then
             ! Provide a best guess at the reference determinant given symmetry and spin options.
             call set_reference_det(sys, ref%occ_list0, .true., sys%symmetry)
         end if
+        if (allocated(ref%occ_list0)) then
+            call encode_det(sys%basis, ref%occ_list0, f0)
+            ref%H00 = get_hmatel(sys, f0, f0)
+        end if
+
+        if (parent) call fci_json(sys, fci_in, ref)
 
         ! Construct space
         if (allocated(ref%occ_list0)) then
@@ -145,35 +150,28 @@ contains
             call enumerate_determinants(sys, .true., spin_flip, ref%ex_level, sym_space_size, ndets, dets)
             call enumerate_determinants(sys, .false., spin_flip, ref%ex_level, sym_space_size, ndets, dets, sys%symmetry)
         end if
-        if (fci_in%write_determinants .and. parent) call print_dets_list(sys, ndets, dets, fci_in%determinant_file)
 
-        ! Info (symmetry, spin, ex_level).
-        if (parent) then
-            write (6,'(1X,"Symmetry of selected Hilbert subspace:",'//int_fmt(sys%symmetry,1)//',".")') sys%symmetry
-            write (6,'(1X,"Spin of selected Hilbert subspace:",'//int_fmt(sys%Ms,1)//',".")') sys%Ms
-            if (ref%ex_level /= sys%nel) then
-                call encode_det(sys%basis, ref%occ_list0, f0)
-                write (6,'(1X,"Reference determinant, |D0> =",1X)',advance='no')
-                call write_det(sys%basis, sys%nel, f0, new_line=.true.)
-            end if
-        end if
+        if (fci_in%write_determinants .and. parent) call print_dets_list(sys, ndets, dets, fci_in%determinant_file)
 
     end subroutine init_fci
 
-    subroutine fci_json(sys, fci_in)
+    subroutine fci_json(sys, fci_in, ref)
 
-        ! Serialise a fci_in_t object in JSON format.
+        ! Serialise a FCI input (fci_in_t and reference_t) objects in JSON format.
 
         ! In:
         !   sys: system of interest.
         !   fci_in: fci_in_t object containing fci input values (including any defaults set).
+        !   ref: reference determinant information.
 
         use json_out
+        use qmc_data, only: reference_t, reference_t_json
         use dmqmc_data, only: subsys_t_json
         use system, only: sys_t, sys_t_json
 
         type(sys_t), intent(in) :: sys
         type(fci_in_t), intent(in) :: fci_in
+        type(reference_t), intent(in) :: ref
         type(json_out_t) :: js
 
         call json_object_init(js, tag=.true.)
@@ -195,7 +193,8 @@ contains
         call json_write_key(js, 'lanczos_string_len', fci_in%lanczos_string_len)
         call json_write_key(js, 'direct_lanczos', fci_in%direct_lanczos, .true.)
 
-        call json_object_end(js, terminal=.true.)
+        call json_object_end(js)
+        call reference_t_json(js, ref, sys, terminal=.true.)
         call json_object_end(js, terminal=.true., tag=.true.)
         write (js%io,'()')
 
