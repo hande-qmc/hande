@@ -64,7 +64,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
 
-        real(p) :: nparticles_temp(psip_list%nspaces)
+        real(dp) :: nparticles_temp(psip_list%nspaces)
         integer :: nel, ireplica, ialpha, ms
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
