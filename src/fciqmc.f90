@@ -61,9 +61,9 @@ contains
                               write_memcheck_report
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, empty_determ_space, &
-                            qmc_state_t, annihilation_flags_t, reference_t, semi_stoch_separate_annihilation,        &
-                            qmc_in_t_json, fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json, &
-                            reference_t_json
+                            qmc_state_t, annihilation_flags_t, semi_stoch_separate_annihilation, qmc_in_t_json,      &
+                            fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json
+        use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
 
         type(sys_t), intent(in) :: sys

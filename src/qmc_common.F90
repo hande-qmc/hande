@@ -553,8 +553,9 @@ contains
 
         use spawn_data, only: spawn_t
         use system, only: sys_t
-        use qmc_data, only: reference_t, semi_stoch_t, empty_determ_space, reuse_determ_space, particle_t
+        use qmc_data, only: semi_stoch_t, empty_determ_space, reuse_determ_space, particle_t
         use qmc_data, only: annihilation_flags_t, semi_stoch_in_t
+        use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(annihilation_flags_t), intent(in) :: annihilation_flags
@@ -801,11 +802,12 @@ contains
         ! to ensure this happens.
 
         use system, only: sys_t
-        use qmc_data, only: reference_t, load_bal_in_t, annihilation_flags_t, particle_t
+        use qmc_data, only: load_bal_in_t, annihilation_flags_t, particle_t
         use qmc_data, only: parallel_t, semi_stoch_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
         use load_balancing, only: do_load_balancing
+        use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
@@ -1018,7 +1020,8 @@ contains
 
         use annihilation, only: direct_annihilation
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: reference_t, semi_stoch_t, particle_t, annihilation_flags_t
+        use qmc_data, only: semi_stoch_t, particle_t, annihilation_flags_t
+        use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use system, only: sys_t
 

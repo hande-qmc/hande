@@ -59,7 +59,8 @@ contains
         use qmc, only: init_qmc
         use system, only: sys_t
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
-        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t, reference_t
+        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t
+        use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in

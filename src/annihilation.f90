@@ -37,7 +37,8 @@ contains
         use spawn_data, only: spawn_t, annihilate_wrapper_spawn_t, calc_events_spawn_t, memcheck_spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: reference_t, semi_stoch_t, particle_t, annihilation_flags_t, semi_stoch_separate_annihilation
+        use qmc_data, only: semi_stoch_t, particle_t, annihilation_flags_t, semi_stoch_separate_annihilation
+        use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
@@ -112,7 +113,8 @@ contains
         use spawn_data, only: annihilate_wrapper_non_blocking_spawn, spawn_t
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: particle_t, annihilation_flags_t
+        use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference
@@ -169,7 +171,8 @@ contains
         use sort, only: qsort
         use system, only: sys_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: particle_t, annihilation_flags_t
+        use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
 
         type(sys_t), intent(in) :: sys
@@ -232,7 +235,8 @@ contains
         use system, only: sys_t
         use spawn_data, only: spawn_t
         use dSFMT_interface, only: dSFMT_t
-        use qmc_data, only: reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: particle_t, annihilation_flags_t
+        use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(dSFMT_t), intent(inout) :: rng
@@ -685,7 +689,8 @@ contains
 
         use errors, only: stop_all
         use parallel, only: iproc
-        use qmc_data, only: particle_t, annihilation_flags_t, reference_t
+        use qmc_data, only: particle_t, annihilation_flags_t
+        use reference_determinant, only: reference_t
         use search, only: binary_search
         use spawn_data, only: spawn_t
         use system, only: sys_t
@@ -828,7 +833,8 @@ contains
         use heisenberg_estimators, only: neel_singlet_data
         use proc_pointers, only: sc0_ptr, op0_ptr, trial_dm_ptr
         use system, only: sys_t
-        use qmc_data, only: particle_t, annihilation_flags_t, reference_t, neel_singlet
+        use qmc_data, only: particle_t, annihilation_flags_t, neel_singlet
+        use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(particle_t), intent(inout) :: psip_list

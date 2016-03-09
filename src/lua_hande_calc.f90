@@ -34,7 +34,7 @@ contains
         use fci_utils, only: fci_in_t
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use system, only: sys_t
 
         integer(c_int) :: nresult
@@ -217,7 +217,8 @@ contains
         use simple_fciqmc, only: do_simple_fciqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, restart_in_t, qmc_state_t
+        use reference_determinant, only: reference_t
         use system, only: sys_t
 
         use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
@@ -295,7 +296,8 @@ contains
         use fciqmc, only: do_fciqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use reference_determinant, only: reference_t
         use system, only: sys_t
 
         use calc, only: calc_type, fciqmc_calc
@@ -383,7 +385,8 @@ contains
         use ccmc, only: do_ccmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use reference_determinant, only: reference_t
         use system, only: sys_t
 
         use calc, only: calc_type, ccmc_calc
@@ -468,7 +471,8 @@ contains
         use dmqmc, only: do_dmqmc
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, reference_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t
+        use reference_determinant, only: reference_t
         use system, only: sys_t, heisenberg, read_in, ueg
 
         use calc, only: calc_type, dmqmc_calc, doing_dmqmc_calc, dmqmc_energy_squared
@@ -1440,7 +1444,7 @@ contains
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
 
         use lua_hande_utils, only: warn_unused_args
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use system, only: sys_t
 
         type(flu_State), intent(inout) :: lua_state

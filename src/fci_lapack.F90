@@ -22,8 +22,7 @@ contains
         use dmqmc_procedures, only: setup_rdm_arrays
         use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil, hamil_t
         use hamiltonian, only: get_hmatel
-        use qmc_data, only: reference_t
-        use reference_determinant, only: copy_reference_t
+        use reference_determinant, only: reference_t, copy_reference_t
         use system, only: sys_t, copy_sys_spin_info, heisenberg
 
         use checking, only: check_allocate

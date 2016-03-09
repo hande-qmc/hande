@@ -79,8 +79,7 @@ contains
         use determinants, only: spin_orb_list, encode_det, write_det
         use determinant_enumeration, only: enumerate_determinants, print_dets_list
         use hamiltonian, only: get_hmatel
-        use qmc_data, only: reference_t
-        use reference_determinant, only: set_reference_det
+        use reference_determinant, only: reference_t, set_reference_det
         use symmetry, only: symmetry_orb_list
 
         use errors, only: stop_all
@@ -165,7 +164,7 @@ contains
         !   ref: reference determinant information.
 
         use json_out
-        use qmc_data, only: reference_t, reference_t_json
+        use reference_determinant, only: reference_t, reference_t_json
         use dmqmc_data, only: subsys_t_json
         use system, only: sys_t, sys_t_json
 

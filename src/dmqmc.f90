@@ -49,8 +49,9 @@ contains
         use restart_hdf5, only: restart_info_t, dump_restart_hdf5, init_restart_info_t
         use system
         use dSFMT_interface, only: dSFMT_t, dSFMT_end
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            qmc_in_t_json, restart_in_t_json, load_bal_in_t_json, reference_t_json
+        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
+                            qmc_in_t_json, restart_in_t_json, load_bal_in_t_json
+        use reference_determinant, only: reference_t, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
                               rdm_in_t_json, operators_in_t_json
         use check_input, only: check_qmc_opts, check_dmqmc_opts

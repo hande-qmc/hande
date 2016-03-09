@@ -48,8 +48,8 @@ contains
         use system, only: sys_t
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            reference_t, neel_singlet
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, neel_singlet
+        use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
 
@@ -159,9 +159,10 @@ contains
         use hfs_data
         use system
         use parallel, only: parent
-        use qmc_data, only: qmc_in_t, fciqmc_in_t, reference_t, single_basis, neel_singlet, neel_singlet_guiding, &
+        use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
                             excit_gen_renorm, excit_gen_no_renorm
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
+        use reference_determinant, only: reference_t
 
         ! Procedures to be pointed to.
         use death, only: stochastic_death
@@ -672,10 +673,11 @@ contains
         !   excit_gen_data: pre-computed data for fast excitation generation.
 
         use system, only: sys_t, ueg
-        use qmc_data, only: qmc_in_t, reference_t
+        use qmc_data, only: qmc_in_t
         use excit_gens, only: excit_gen_data_t
         use ueg_system, only: init_ternary_conserve
         use qmc_common, only: find_single_double_prob
+        use reference_determinant, only: reference_t
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -712,11 +714,10 @@ contains
         ! Out:
         !   reference: reference selected for the qmc calculation.
 
-        use qmc_data, only: reference_t
         use system, only: sys_t, ueg, read_in
         use proc_pointers, only: sc0_ptr, energy_diff_ptr, op0_ptr
         use calc, only: doing_calc, hfs_fciqmc_calc
-        use reference_determinant, only: copy_reference_t, set_reference_det
+        use reference_determinant, only: reference_t, copy_reference_t, set_reference_det
         use checking, only: check_allocate
         use determinants, only: encode_det
 
@@ -779,7 +780,7 @@ contains
         ! Out:
         !   reference: reference selected for the qmc calculation.
 
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use system, only: sys_t
         use restart_hdf5, only: restart_info_t, get_reference_hdf5
         use calc, only: doing_calc, hfs_fciqmc_calc
@@ -915,10 +916,11 @@ contains
         !   reference: reference determinant.  H00 is reset on exit if using neel singlet trial function.
         !   pl: main particle list.  On exit, the initial distribution is set.
 
-        use qmc_data, only: particle_t, reference_t, fciqmc_in_t, neel_singlet, single_basis
+        use qmc_data, only: particle_t, fciqmc_in_t, neel_singlet, single_basis
         use parallel, only: iproc, nprocs
         use system, only: sys_t, heisenberg
         use proc_pointers, only: sc0_ptr
+        use reference_determinant, only: reference_t
         use spawning, only: assign_particle_processor
         use determinants, only: encode_det
 

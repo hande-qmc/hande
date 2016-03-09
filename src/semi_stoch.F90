@@ -154,7 +154,7 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: int_fmt
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(semi_stoch_in_t), intent(in) :: ss_in
@@ -598,7 +598,8 @@ contains
         use parallel, only: iproc
         use search, only: binary_search
         use system, only: sys_t
-        use qmc_data, only: reference_t, particle_t, annihilation_flags_t
+        use qmc_data, only: particle_t, annihilation_flags_t
+        use reference_determinant, only: reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(particle_t), intent(inout) :: psip_list

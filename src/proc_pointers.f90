@@ -122,7 +122,7 @@ abstract interface
     subroutine i_create_spawned_particle(basis, reference, d, connection, nspawned, particle_indx, spawn, f)
         use basis_types, only: basis_t
         use spawn_data, only: spawn_t
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         import :: excit_t, det_info_t, int_p, i0
         implicit none
         type(basis_t), intent(in) :: basis
@@ -138,7 +138,7 @@ abstract interface
                                             particle_indx, spawn)
         use spawn_data, only: spawn_t
         use basis_types, only: basis_t
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         import :: excit_t, i0, int_p, det_info_t
         implicit none
         type(basis_t), intent(in) :: basis

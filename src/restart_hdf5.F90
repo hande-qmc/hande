@@ -666,7 +666,7 @@ module restart_hdf5
             use errors, only: stop_all
             use const
 
-            use qmc_data, only: reference_t
+            use reference_determinant, only: reference_t
 
             type(restart_info_t), intent(in) :: ri
             type(reference_t), intent(inout) :: reference

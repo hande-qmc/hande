@@ -6,6 +6,7 @@ use csr, only: csrp_t
 use parallel, only: parallel_timing_t
 use importance_sampling_data
 use excit_gens, only: excit_gen_data_t
+use reference_determinant, only: reference_t
 
 implicit none
 
@@ -275,36 +276,6 @@ type parallel_t
     ! non-blocking communications.
     type(nb_rep_t) :: report_comm
 end type parallel_t
-
-!--- Reference determinant ---
-
-type reference_t
-    ! Bit string of reference determinant.
-    integer(i0), allocatable :: f0(:)
-    ! List of occupied orbitals in reference determinant.
-    integer, allocatable :: occ_list0(:)
-    ! Bit string of reference determinant used to generate the Hilbert space.
-    ! This is usually identical to f0, but not necessarily (e.g. if we're doing
-    ! a spin-flip calculation).
-    integer(i0), allocatable :: hs_f0(:)
-    ! hs_f0:hs_occ_list0 as f0:occ_list0.
-    integer, allocatable :: hs_occ_list0(:)
-    ! CCMC/CIQMC: max number of excitations from the reference to include in
-    ! the calculation.
-    ! DMQMC: permit density matrix elements to be non-zero only if the two
-    ! determinants differ by at most ex_level excitations.
-    ! Set to the number of electrons in the system to use the full space.
-    integer :: ex_level = -1
-    ! Energy of reference determinant.
-    real(p) :: H00
-    ! Value of <D0|O|D0>, where O is the operator we are sampling.
-    ! (Applicable/set only if Hellmann--Feynman sampling is in operation.)
-    real(p) :: O00
-    ! Energy shift of the reference determinant i.e.
-    ! <D0|H_new|D0>-<D0|H_old|D0>, where H_old and H_new are two different
-    ! Hamiltonians. Used in ip-dmqmc when reweighing the initial density matrix.
-    real(p) :: energy_shift = 0.0_p
-end type reference_t
 
 ! --- semi-stochastic ---
 
@@ -753,57 +724,5 @@ contains
         call json_object_end(js, terminal)
 
     end subroutine load_bal_in_t_json
-
-    subroutine reference_t_json(js, ref, sys, dmqmc_energy_shift, terminal)
-
-        ! Serialise a reference_t object in JSON format.
-
-        ! In/Out:
-        !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
-        ! In:
-        !   reference: reference_t object containing the information about reference state (including any defaults set).
-        !   sys (optional): system to which reference belongs.  If present, output the spin and symmetry information of the reference.
-        !   dmqmc_energy_shift (optional): if true, print out the 'energy shift' for IP-DMQMC.  Default: false.
-        !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
-
-        use json_out
-
-        use determinants, only: spin_orb_list
-        use system, only: sys_t, heisenberg, chung_landau
-        use symmetry, only: symmetry_orb_list
-
-        type(json_out_t), intent(inout) :: js
-        type(reference_t), intent(in) :: ref
-        type(sys_t), intent(in), optional :: sys
-        logical, intent(in), optional :: dmqmc_energy_shift, terminal
-
-        logical :: print_energy_shift
-
-        print_energy_shift = .false.
-        if (present(dmqmc_energy_shift)) print_energy_shift = dmqmc_energy_shift
-
-        call json_object_init(js, 'reference')
-        if (allocated(ref%occ_list0)) then
-            call json_write_key(js, 'det', ref%occ_list0)
-            if (present(sys)) then
-                if (sys%system /= heisenberg .and. sys%system /= chung_landau) &
-                    call json_write_key(js, 'det_ms', spin_orb_list(sys%basis%basis_fns, ref%occ_list0))
-                call json_write_key(js, 'det_symmetry', symmetry_orb_list(sys, ref%occ_list0))
-            end if
-            call json_write_key(js, 'H00', ref%H00)
-        end if
-        if (allocated(ref%hs_occ_list0)) then
-            call json_write_key(js, 'hilbert_space_det', ref%hs_occ_list0)
-            if (present(sys)) then
-                if (sys%system /= heisenberg .and. sys%system /= chung_landau) &
-                    call json_write_key(js, 'hilbert_space_det_ms', spin_orb_list(sys%basis%basis_fns, ref%hs_occ_list0))
-                call json_write_key(js, 'hilbert_space_det_symmetry', symmetry_orb_list(sys, ref%hs_occ_list0))
-            end if
-        end if
-        call json_write_key(js, 'ex_level', ref%ex_level, .not.print_energy_shift)
-        if (print_energy_shift) call json_write_key(js, 'shift', ref%energy_shift, .true.)
-        call json_object_end(js, terminal)
-
-    end subroutine reference_t_json
 
 end module qmc_data
