@@ -334,10 +334,10 @@ contains
         call write_bloom_report(bloom_stats)
         associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn)
             if (determ%doing_semi_stoch .and. determ%projection_mode == semi_stoch_separate_annihilation) then
-                call load_balancing_report(real(pl%nparticles,p), pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, &
+                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time, &
                                            determ%mpi_time)
             else
-                call load_balancing_report(real(pl%nparticles,p), pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time)
+                call load_balancing_report(pl%nparticles, pl%nstates, qmc_in%use_mpi_barriers, spawn%mpi_time)
             end if
         end associate
         call write_memcheck_report(qs%spawn_store%spawn)

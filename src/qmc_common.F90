@@ -371,14 +371,14 @@ contains
         use parallel
         use utils, only: int_fmt
 
-        real(p), intent(in) :: nparticles(:)
+        real(dp), intent(in) :: nparticles(:)
         integer, intent(in) :: nstates_active
         logical, intent(in) :: use_mpi_barriers
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 
 #ifdef PARALLEL
-        real(p) :: load_data(size(nparticles), nprocs)
+        real(dp) :: load_data(size(nparticles), nprocs)
         integer :: load_data_int(nprocs)
         integer :: i, ierr
         real(p) :: barrier_this_proc
@@ -397,7 +397,7 @@ contains
                     if (size(nparticles) > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
                     write (6,'(1X,"Min # of particles on a processor:",6X,es13.6)') minval(load_data(i,:))
                     write (6,'(1X,"Max # of particles on a processor:",6X,es13.6)') maxval(load_data(i,:))
-                    write (6,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') real(sum(load_data(i,:)), p)/nprocs
+                    write (6,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') sum(load_data(i,:))/nprocs
                 end do
             end if
             call mpi_gather(nstates_active, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
@@ -424,18 +424,18 @@ contains
                 if (use_mpi_barriers) then
                     write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
                     write (6,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
-                    write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') real(sum(barrier_time), p)/nprocs
+                    write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') sum(barrier_time)/nprocs
                     write (6,'()')
                 end if
                 write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s")') minval(spawn_comms)
                 write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s")') maxval(spawn_comms)
-                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') real(sum(spawn_comms), p)/nprocs
+                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') sum(spawn_comms)/nprocs
                 write (6,'()')
                 if (present(determ_mpi_time)) then
                     write (6,'(1X,"Min time taken by semi-stochastic communication:",5X,f8.2,"s")') minval(determ_comms)
                     write (6,'(1X,"Max time taken by semi-stochastic communication:",5X,f8.2,"s")') maxval(determ_comms)
                     write (6,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') &
-                        real(sum(determ_comms), p)/nprocs
+                        sum(determ_comms)/nprocs
                     write (6,'()')
                 end if
             end if
