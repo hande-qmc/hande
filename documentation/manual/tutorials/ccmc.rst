@@ -3,10 +3,8 @@
 Coupled Cluster Monte Carlo
 ===========================
 
-.. [review] - JSS: also iCCMC paper.
-
 In this tutorial we will run CCMC on the carbon monoxide molecule in a cc-pVDZ
-basis.  For details of the theory see [Thom10]_.
+basis.  For details of the theory see [Thom10]_ and [Spencer15]_.
 
 This tutorial only presents the basic options available in a CCMC calculation;
 for the full range of options see the main :ref:`documentation <ccmc>`.
@@ -31,28 +29,18 @@ The system definition is exactly the same as for FCIQMC:
 Note that we have not specified an overall symmetry.  In this case HANDE uses
 the Aufbau principle to select a reference determinant.
 
-.. [review] - JSS:
-
-    well, you could do FCC (which is very expensive) or CISD/CISDT/...  (which is pretty
-    rubbish), so I'd say the most signicant difference is that it's standard to use
-    truncation with CC (rather than required for CC and not possible in the FCIQMC
-    algorithm).
-
-    reference.ex_level -> ex_level, as we don't use table.<variable_name> elsewhere.
-
 A CCMC calculation can be run in a very similar way to FCIQMC.  As for FCIQMC we
 can substantially reduce stochastic error by using real amplitudes, which we do
 for all calculations presented here.  The most significant difference from an
-FCIQMC input is the ``reference.ex_level`` option, used to specify the truncation
-used (i.e. 2 for CCSD, 3 for CCSDT, etc.).  The determination of a plateau and hence
-a suitable value for ``target_population`` is
-exactly analogous to :ref:`FCIQMC <fciqmc_tutorial>`; we will not discuss it
+FCIQMC input is that it is standard to use truncation with CCMC, specified by the
+``ex_level`` option, (i.e. 2 for CCSD, 3 for CCSDT, etc.).  The determination of
+a plateau and hence a suitable value for ``target_population`` is
+exactly analogous to :ref:`FCIQMC <fciqmc_tutorial>`, as the sign problem is
+similar between the two methods; we will not discuss it
 further here.  The CCSDTMC calculation can be run using an input file such as:
 
 .. literalinclude:: calcs/ccmc/co_ccmc.lua
     :language: lua
-
-.. [review] - JSS: perhaps here is a good place to mention sign problem is similar to FCIQMC
 
 Note the much larger initial population compared to an FCIQMC calculation; if
 this is too low the correct wavefunction will not be obtained.
@@ -68,8 +56,6 @@ the population has a similar form to FCIQMC:
     plt.plot(qmc_data['iterations'], qmc_data['# H psips'])
     plt.xlabel('iteration')
     plt.ylabel('# particles')
-
-.. [review] - JSS: shoulder and/or plateau plot, zoom in before shift is turned on?
 
 and the shift and projected energy vary about the correlation energy:
 
@@ -87,24 +73,20 @@ and the shift and projected energy vary about the correlation energy:
 The output of the calculation can be analysed in exactly the same way as for
 FCIQMC:
 
-.. [review] - JSS: --start 100000 is used in calcs/Makefile?
-
 .. code-block:: bash
 
-    $ reblock_hande.py --quiet --start 50000 co_ccmc.out
+    $ reblock_hande.py --quiet --start 100000 co_ccmc.out
 
 giving
 
 .. literalinclude:: calcs/ccmc/co_ccmc.block
 
-.. [review] - JSS: when can blooms cause errors?  I've only seen them cause calculations to be unstable.
-
 Due to the sampling of the wavefunction in CCMC, it is more prone to "blooming"
 events where many particles are created in a single spawning event than is
 FCIQMC.  Details of blooming during a calculation are reported at the end of the
-output.  It can be seen that significant blooming occurred.  This
-substantially increases the stochastic error, and in particularly
-severe cases can cause the result of the calculation to be incorrect.  These
+output.  It can be seen that significant blooming occurred.  This substantially
+increases the stochastic error, and in particularly severe cases can cause the
+calculation to not give a correct result due to the instability.  These
 events can be avoided by reducing the timestep, but the timestep
 required to eliminate them entirely is often prohibitively small.  Another way
 of reducing them is the use of the ``cluster_multispawn_threshold`` keyword,

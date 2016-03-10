@@ -7,7 +7,7 @@ sys = read_in {
 ccmc {
     sys = sys,
     qmc = {
-        tau = 1e-4,
+        tau = 1e-3,
         mc_cycles = 10,
         nreports = 1e5,
         state_size = -500,
