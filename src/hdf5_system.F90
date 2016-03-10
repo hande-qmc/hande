@@ -83,34 +83,38 @@ module hdf5_system
     contains
 
 #ifndef DISABLE_HDF5
-        subroutine init_system_hdf5(write_mode, filename, kinds, verbose)
+        subroutine init_system_hdf5(write_mode, sys, filename, kinds, verbose)
 
 
             use hdf5_helper, only: hdf5_kinds_t, hdf5_kinds_init
             use utils, only: get_unique_filename
-
+            use system, only: sys_t
 
             logical, intent(in) :: write_mode
+            type(sys_t), intent(in) :: sys
 
             type(hdf5_kinds_t), intent(out), optional :: kinds
             logical, intent(in), optional ::  verbose
 
-            character(*), intent(inout) :: filename
+            character(*), intent(out) :: filename
             integer :: fname_id
 
             logical :: verbose_loc, exists
-            integer :: id
-            character(4) :: stem
-            character(6) :: suffix
-
-            stem = 'STEM'
-            suffix = 'SUFFIX'
-            id = 1
 
 
             if (present(verbose)) verbose_loc = verbose
 
-            call get_unique_filename(stem, suffix, write_mode, id, filename, fname_id)
+
+            if (write_mode) then
+                if (sys%CAS(1) /= -1 .and. sys%CAS(2) /= -1) then
+                    write(filename, *) sys%read_in%fcidump, "-hdf5"
+                else
+                    write (filename, *) sys%read_in%fcidump, "-", sys%CAS(1), ",", sys%CAS(2), "CAS-hdf5"
+                end if
+            else
+                filename = sys%read_in%fcidump
+            end if
+
 
 
             if (present(kinds)) call hdf5_kinds_init(kinds)
@@ -160,7 +164,7 @@ module hdf5_system
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
-            call init_system_hdf5(.true., integral_filename, kinds)
+            call init_system_hdf5(.true., sys, integral_filename, kinds)
 
             call h5fcreate_f(integral_filename, H5F_ACC_TRUNC_F, file_id, ierr)
 
@@ -303,7 +307,7 @@ module hdf5_system
             use point_group_symmetry, only: init_pg_symmetry
             use checking, only: check_allocate
 
-            type(sys_t), intent(out) :: sys
+            type(sys_t), intent(inout) :: sys
 
 #ifndef DISABLE_HDF5
 
@@ -318,7 +322,7 @@ module hdf5_system
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
-            call init_system_hdf5(.false., filename, kinds)
+            call init_system_hdf5(.false., sys, filename, kinds)
 
             call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
             if (ierr /= 0) then
