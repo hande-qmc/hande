@@ -446,6 +446,7 @@ module restart_hdf5
             use qmc_data, only: qmc_state_t
             use sort, only: qsort
             use qmc_common, only: redistribute_particles
+            use parallel, only: parent
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
@@ -561,10 +562,10 @@ module restart_hdf5
                     call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
                 end if
 
-                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32)) &
+                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32) .and. parent) &
                     call warning('read_restart_hdf5', &
                                   'Converting populations from 64 to 32 bit integers.  Overflow may occur. '// &
-                                  'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
+                                  'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
 
                 call h5lexists_f(subgroup_id, dscaling, exists, ierr)
                 if (exists) then
@@ -1003,10 +1004,10 @@ module restart_hdf5
                     end do
 
                     ! Read.
-                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32)) &
+                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32) .and. parent) &
                         call warning('redistribute_restart_hdf5', &
                                       'Converting populations from 64 to 32 bit integers.  Overflow may occur. '// &
-                                      'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
+                                      'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
 
                     if (i0_length == i0_length_restart) then
                         call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states), psip_read%states)
