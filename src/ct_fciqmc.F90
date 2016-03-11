@@ -59,7 +59,7 @@ contains
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in)  :: R
 
-        dt = -(1.0_p/R)*log(get_rand_close_open(rng))
+        dt = -(1.0_p/R)*log(real(get_rand_close_open(rng),p))
 
     end function timestep
 

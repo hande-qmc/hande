@@ -560,7 +560,7 @@ contains
                                            cumulative_abs_nint_pops, tot_abs_nint_pop)
 
                 associate(bs=>bloom_stats, nstates_active=>qs%psip_list%nstates)
-                    bloom_threshold = nparticles_old(1)*bs%prop*bs%encoding_factor
+                    bloom_threshold = real(nparticles_old(1)*bs%prop*bs%encoding_factor, p)
                 end associate
 
                 ! Two options for evolution:
@@ -993,7 +993,8 @@ contains
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
-        real(p) :: rand, psize, cluster_population, excitor_pop
+        real(dp) :: rand
+        real(p) :: psize, cluster_population, excitor_pop
         integer :: i, pos, prev_pos
         integer(int_p) :: pop(max_size)
         logical :: hit, allowed, all_allowed
@@ -1021,7 +1022,7 @@ contains
         ! when creating composite clusters.
         ! NB within a processor those nattempts can be split amongst OpenMP
         ! threads though that doesn't affect this probability.
-        cluster%pselect = nattempts*nprocs
+        cluster%pselect = real(nattempts*nprocs, p)
 
         ! Select the cluster size, i.e. the number of excitors in a cluster.
         ! For a given truncation level, only clusters containing at most
@@ -1359,7 +1360,7 @@ contains
             ! This excitor can only be selected on this processor and only one excitor is
             ! selected in the cluster, so unlike selecting the reference or composite
             ! clusters, there are no additional factors of nprocs or 1/nprocs to include.
-            cluster%pselect = nattempts
+            cluster%pselect = real(nattempts, p)
 
             cluster%nexcitors = 1
 
@@ -2395,7 +2396,8 @@ contains
         integer, intent(in), optional :: part_number
 
         integer :: i, in_left, in_right, side
-        real(p) :: rand, population
+        real(dp) :: rand
+        real(p) :: population
 
         in_left = 0
         in_right = 0
@@ -2417,7 +2419,7 @@ contains
                 ! randomly to left or right
                 ppart = ppart * 0.5_p
                 rand = get_rand_close_open(rng)
-                if (rand < 0.5_p) then
+                if (rand < 0.5_dp) then
                     side = -1
                 else
                     side = 1

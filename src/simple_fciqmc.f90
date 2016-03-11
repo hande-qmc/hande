@@ -409,7 +409,7 @@ contains
         integer :: j, jdet
         integer(int_s) :: nspawn
         real(p) :: rate
-        real(p) :: r
+        real(dp) :: r
 
         ! Simulate spawning by attempting to spawn on all
         ! connected determinants.

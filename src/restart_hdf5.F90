@@ -303,7 +303,7 @@ module restart_hdf5
             ! Temporary variables so for copying data to which we can also call c_ptr on.
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
-            real(p), allocatable, target :: tmp_pop(:)
+            real(dp), allocatable, target :: tmp_pop(:)
             real(p), target :: tmp(1)
 
 

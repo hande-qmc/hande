@@ -81,7 +81,7 @@ type qmc_in_t
     real(p) :: initial_shift = 0.0_p
     ! Factor by which the changes in the population are damped when updating the
     ! shift.
-    real(p) :: shift_damping = 0.050_dp
+    real(p) :: shift_damping = 0.050_p
 
     ! Array sizes: main and spawned particle lists.
     ! If these are < 0, then the values represent the number of MB to be used.

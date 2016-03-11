@@ -94,9 +94,9 @@ contains
         ! Required to calculate amplitudes of the Neel singlet
         ! trial function for the Heisenberg model
 
-        use const, only: dp
+        use const, only: p
 
-        real(dp) :: combination
+        real(p) :: combination
         integer, intent(in) :: m, n
         integer :: m1, n1, i
 

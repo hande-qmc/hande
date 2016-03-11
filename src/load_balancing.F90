@@ -270,7 +270,7 @@ contains
         ! include walkers in the received list which have not been introduced
         ! yet.
         forall (i=1:nprocs) psip_list%nparticles_proc(1,i) = sum(slot_list, MASK=proc_map%map==i-1)
-        pop_av = sum(psip_list%nparticles_proc(1,:nprocs))/nprocs
+        pop_av = real(sum(psip_list%nparticles_proc(1,:nprocs))/nprocs,p)
 
         ! As stated above we only initially determine when to do load balancing
         ! based on the previous report loop's populations. This means that the
@@ -456,7 +456,7 @@ contains
 
         integer :: pos
         integer :: i, j
-        real(p) :: donor_pop, new_pop
+        real(dp) :: donor_pop, new_pop
 
         donor_pop = 0.0_dp
         new_pop = 0.0_dp

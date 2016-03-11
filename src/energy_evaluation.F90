@@ -336,23 +336,23 @@ contains
 
         ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
 
-        qs%estimators%proj_energy = rep_loop_sum(proj_energy_ind)
-        qs%estimators%D0_population = rep_loop_sum(D0_pop_ind)
-        qs%spawn_store%rspawn = rep_loop_sum(rspawn_ind)
+        qs%estimators%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
+        qs%estimators%D0_population = real(rep_loop_sum(D0_pop_ind), p)
+        qs%spawn_store%rspawn = real(rep_loop_sum(rspawn_ind), p)
         if (present(update_tau)) then
             update_tau = abs(rep_loop_sum(update_tau_ind)) > depsilon
         end if
         if (present(bloom_stats)) then
-            bloom_stats%tot_bloom_curr = rep_loop_sum(bloom_tot_ind)
+            bloom_stats%tot_bloom_curr = real(rep_loop_sum(bloom_tot_ind), p)
             bloom_stats%nblooms_curr = nint(rep_loop_sum(bloom_num_ind))
             ! Also add to running totals.
             bloom_stats%tot_bloom = bloom_stats%tot_bloom + bloom_stats%tot_bloom_curr 
             bloom_stats%nblooms = bloom_stats%nblooms + bloom_stats%nblooms_curr
         end if
         new_hf_signed_pop = rep_loop_sum(hf_signed_pop_ind)
-        qs%estimators%proj_hf_O_hpsip = rep_loop_sum(hf_proj_O_ind)
-        qs%estimators%proj_hf_H_hfpsip = rep_loop_sum(hf_proj_H_ind)
-        qs%estimators%D0_hf_population = rep_loop_sum(hf_D0_pop_ind)
+        qs%estimators%proj_hf_O_hpsip = real(rep_loop_sum(hf_proj_O_ind), p)
+        qs%estimators%proj_hf_H_hfpsip = real(rep_loop_sum(hf_proj_H_ind), p)
+        qs%estimators%D0_hf_population = real(rep_loop_sum(hf_D0_pop_ind), p)
         qs%estimators%tot_nstates = nint(rep_loop_sum(nocc_states_ind))
         qs%estimators%tot_nspawn_events = nint(rep_loop_sum(nspawned_ind))
         if (present(comms_found)) then
@@ -370,7 +370,7 @@ contains
         associate(lb=>qs%par_info%load)
             if (present(doing_lb)) then
                 if (doing_lb .and. ntot_particles(1) > load_bal_in%pop .and. lb%nattempts < load_bal_in%max_attempts) then
-                    pop_av = sum(nparticles_proc(1,:nprocs))/nprocs
+                    pop_av = real(sum(nparticles_proc(1,:nprocs))/nprocs, p)
                     ! Check if there is at least one processor with load imbalance.
                     call check_imbalance(real(nparticles_proc,p), pop_av, load_bal_in%percent, lb%needed)
                 end if
@@ -447,7 +447,7 @@ contains
 
         ! dmqmc_factor is included to account for a factor of 1/2 introduced into tau in
         ! DMQMC calculations. In all other calculation types, it is set to 1, and so can be ignored.
-        loc_shift = loc_shift - log(nparticles/nparticles_old)*qmc_in%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps)
+        loc_shift = loc_shift - real(log(nparticles/nparticles_old)*qmc_in%shift_damping/(qs%dmqmc_factor*qs%tau*nupdate_steps) ,p)
 
     end subroutine update_shift
 
@@ -490,8 +490,8 @@ contains
         ! The latter quantity is calculated in calculate_hf_signed fpop.
 
         hf_shift = hf_shift - &
-                 (qmc_in%shift_damping/(qs%tau*nupdate_steps)) &
-                 *(nhf_particles/nparticles - nhf_particles_old/nparticles_old)
+                 real((qmc_in%shift_damping/(qs%tau*nupdate_steps)) &
+                 *(nhf_particles/nparticles - nhf_particles_old/nparticles_old),p)
 
     end subroutine update_hf_shift
 

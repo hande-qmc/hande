@@ -221,25 +221,25 @@ contains
         type(dmqmc_estimates_t), intent(inout) :: dmqmc_estimates
         logical, intent(out) :: error
 
-        qs%spawn_store%rspawn = rep_loop_sum(rspawn_ind)
+        qs%spawn_store%rspawn = real(rep_loop_sum(rspawn_ind), p)
         error = abs(rep_loop_sum(error_ind)) > depsilon
         qs%estimators%tot_nstates = nint(rep_loop_sum(nocc_states_ind))
         qs%estimators%tot_nspawn_events = nint(rep_loop_sum(nspawned_ind))
         tot_nparticles = rep_loop_sum(min_ind(nparticles_ind):max_ind(nparticles_ind))
-        dmqmc_estimates%trace = rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind))
-        dmqmc_estimates%numerators = rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind))
+        dmqmc_estimates%trace = real(rep_loop_sum(min_ind(trace_ind):max_ind(trace_ind)), p)
+        dmqmc_estimates%numerators = real(rep_loop_sum(min_ind(operators_ind):max_ind(operators_ind)), p)
         if (dmqmc_in%calc_excit_dist) then
-            dmqmc_estimates%excit_dist = rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind))
+            dmqmc_estimates%excit_dist = real(rep_loop_sum(min_ind(excit_dist_ind):max_ind(excit_dist_ind)), p)
         end if
         if (dmqmc_in%rdm%calc_ground_rdm) then
-            dmqmc_estimates%ground_rdm%trace = rep_loop_sum(min_ind(ground_rdm_trace_ind))
+            dmqmc_estimates%ground_rdm%trace = real(rep_loop_sum(min_ind(ground_rdm_trace_ind)), p)
         end if
         if (dmqmc_in%rdm%calc_inst_rdm) then
-            dmqmc_estimates%inst_rdm%traces = reshape(rep_loop_sum(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)), &
-                                                      shape(dmqmc_estimates%inst_rdm%traces))
+            dmqmc_estimates%inst_rdm%traces = real(reshape(rep_loop_sum(min_ind(inst_rdm_trace_ind):max_ind(inst_rdm_trace_ind)), &
+                                                      shape(dmqmc_estimates%inst_rdm%traces)), p)
         end if
         if (doing_dmqmc_calc(dmqmc_rdm_r2)) then
-            dmqmc_estimates%inst_rdm%renyi_2 = rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind))
+            dmqmc_estimates%inst_rdm%renyi_2 = real(rep_loop_sum(min_ind(rdm_r2_ind):max_ind(rdm_r2_ind)), p)
         end if
 
         ! Average the spawning rate.
@@ -1024,8 +1024,8 @@ contains
         ! processor.
 #ifdef PARALLEL
 
-        real(dp), allocatable :: dm(:,:)
-        real(dp), allocatable :: dm_sum(:,:)
+        real(p), allocatable :: dm(:,:)
+        real(p), allocatable :: dm_sum(:,:)
         integer :: num_eigv, ierr
 
         num_eigv = 2**dmqmc_estimates%subsys_info(1)%A_nsites
@@ -1036,7 +1036,7 @@ contains
         call check_allocate('dm_sum',num_eigv**2,ierr)
 
         dm = dmqmc_estimates%ground_rdm%rdm
-        call mpi_allreduce(dm, dm_sum, size(dm), MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, ierr)
+        call mpi_allreduce(dm, dm_sum, size(dm), MPI_PREAL, MPI_SUM, MPI_COMM_WORLD, ierr)
         dmqmc_estimates%ground_rdm%rdm = dm_sum
 
         deallocate(dm)
