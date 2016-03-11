@@ -48,7 +48,7 @@ Options
 
     Optional.  No default.
 
-    If not specified, the entire Hilbert space is used.
+    If not specified, the entire Hilbert space is used.  See :ref:`reference_table`.
 
 fci options
 -----------

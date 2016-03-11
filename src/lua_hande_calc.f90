@@ -999,13 +999,14 @@ contains
         ! Read in an semi_stoch table (if it exists) to an semi_stoch_in object.
 
         ! semi_stoch = {
-        !     space = 'read'/'high',            -- required if semi_stoch table exists.
+        !     space = 'read'/'high'/'ci',       -- required if semi_stoch table exists.
         !     size = target_pop,                -- required if space == 'high'
         !     start_iteration = mc_cycles,
         !     shift_start_iteration = mc_cycle, -- overrides start_iteration
         !     separate_annihilation = true/false,
         !     write = true/false/id,
         !     read = id,
+        !     ci_space = { ... },               -- required if space == 'ci'.  Reference table.
         ! }
 
         ! In/Out:
@@ -1022,7 +1023,7 @@ contains
         use parallel, only: parent
         use errors, only: stop_all, warning
 
-        use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space, &
+        use qmc_data, only: qmc_in_t, semi_stoch_in_t, high_pop_determ_space, read_determ_space, ci_determ_space, &
                             semi_stoch_combined_annihilation, semi_stoch_separate_annihilation
         use lua_hande_utils, only: warn_unused_args, get_flag_and_id
 
@@ -1034,8 +1035,9 @@ contains
         integer :: semi_stoch_table, err
         character(len=10) :: str
         logical :: separate_annihilation
-        character(21), parameter :: keys(8) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
-                                                                'shift_start_iteration', 'write_determ_space', 'write', 'read']
+        character(21), parameter :: keys(9) = [character(21) :: 'space', 'size', 'start_iteration', 'separate_annihilation', &
+                                                                'shift_start_iteration', 'write_determ_space', 'write', 'read', &
+                                                                'ci_space']
 
         if (aot_exists(lua_state, opts, 'semi_stoch')) then
 
@@ -1054,6 +1056,11 @@ contains
                     semi_stoch_in%space_type = high_pop_determ_space
                     call aot_get_val(semi_stoch_in%target_size, err, lua_state, semi_stoch_table, 'size')
                     if (err /= 0 .and. parent) call stop_all('read_semi_stoch_in', 'Target space size not given.')
+                case('ci')
+                    semi_stoch_in%space_type = ci_determ_space
+                    call read_reference_t(lua_state, semi_stoch_table, semi_stoch_in%ci_space, ref_table_name='ci_space')
+                    if (semi_stoch_in%ci_space%ex_level < 0) &
+                        call stop_all('read_semi_stoch_in', 'Max excitation level not given for ci_space')
                 case default
                     if (parent) call stop_all('read_semi_stoch_in', 'Unknown semi stochastic space type')
                 end select

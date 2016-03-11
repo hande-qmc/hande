@@ -13,19 +13,30 @@ stochastic error in many cases.
 
     Required.
 
-    Possible values: 'read', 'high'.
+    Possible values: 'read', 'high', 'ci'.
 
     The type of deterministic space to use.  Using 'read' uses a deterministic space
     produced from a previous calculation and saved to file using the semi_stoch 
     ``write`` option (the ``write_determ_space`` can be used but is now deprecated).
     Using 'high' sets the deterministic space to consist of the states with
     the highest population when the semi-stochastic projection is enabled.
+    Using 'ci' sets the deterministic space to consist of a (small!) truncated
+    configuration interaction space relative to a reference determinant.
 ``size``
     type: integer.
 
     Required if ``space`` is 'high', otherwise ignored.
 
-    The number of states to include in the semi-stochastic space.
+    The number of states to include in the deterministic space.
+``ci_space``
+    type: reference table.  See :ref:`reference_table` for options.
+
+    Required if ``space`` is 'ci', otherwise ignored.  Must contain at least ``ex_level``.
+    The reference determinant, if not supplied, is identical to that given in the
+    calculation's ``reference`` option.
+    
+    Defines the deterministic space to contain all determinants in a small (truncated)
+    configuration interaction space.
 ``start_iteration``
     type: integer.
 
@@ -34,7 +45,7 @@ stochastic error in many cases.
     The number of iterations to perform, during which the action of the Hamiltonian is
     applied entirely stochastically, before semi-stochastic projection is enabled.  This
     allows for a period for the population to grow and the ground-state wavefunction to
-    emerge before the deterministic space is selected.
+    emerge before the deterministic space is selected if ``space`` is set to 'high'.
 ``shift_start_iteration``
     type: integer.
 

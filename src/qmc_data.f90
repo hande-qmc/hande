@@ -179,6 +179,10 @@ type semi_stoch_in_t
     ! integer gives the id (x) of the file to be written to.
     ! If unset (==huge(0)) then the lowest unused id will be searched for.
     integer :: write_id = huge(0)
+    ! Description of CI space used to generate the deterministic space if
+    ! space_type == ci_determ_space.
+    ! Only ref%ex_level and ref%occ_list are used.
+    type(reference_t) :: ci_space
 end type semi_stoch_in_t
 
 type ccmc_in_t
@@ -295,6 +299,9 @@ enum, bind(c)
     ! deterministic space which has already been created, and which should
     ! be stored in the dets array within the semi_stoch_t instance on input.
     enumerator :: reuse_determ_space
+    ! This option means we use a generated deterministic space from a (truncated)
+    ! CI space.
+    enumerator :: ci_determ_space
 end enum
 
 ! Array to hold the indices of deterministic states in the dets array, accessed
