@@ -147,14 +147,14 @@ contains
         !        load balancing before semi-stochastic communication.
 
         use checking, only: check_allocate, check_deallocate
-        use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, &
+        use qmc_data, only: empty_determ_space, high_pop_determ_space, read_determ_space, reuse_determ_space, ci_determ_space, &
                             semi_stoch_separate_annihilation, particle_t, annihilation_flags_t, semi_stoch_in_t
         use parallel
         use sort, only: qsort
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: int_fmt
-        use reference_determinant, only: reference_t
+        use reference_determinant, only: reference_t, copy_reference_t, dealloc_reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(semi_stoch_in_t), intent(in) :: ss_in
@@ -171,6 +171,7 @@ contains
         ! This is only needed during initialisation.
         integer(i0), allocatable :: dets_this_proc(:,:)
         logical :: print_info, write_determ
+        type(reference_t) :: ci_ref
 
         ! Only print information if the parent processor and if we are using a
         ! non-trivial deterministic space.
@@ -229,6 +230,16 @@ contains
             call read_determ_from_file(dets_this_proc, determ, spawn, sys, ss_in%read_id, print_info)
         else if (ss_in%space_type == reuse_determ_space) then
             call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc))
+        else if (ss_in%space_type == ci_determ_space) then
+            call copy_reference_t(reference, ci_ref)
+            ci_ref%ex_level = ss_in%ci_space%ex_level
+            if (allocated(ss_in%ci_space%hs_occ_list0)) then
+                ci_ref%occ_list0 = ss_in%ci_space%hs_occ_list0
+            else if (allocated(ss_in%ci_space%occ_list0)) then
+                ci_ref%occ_list0 = ss_in%ci_space%occ_list0
+            end if
+            call create_ci_determ_space(sys, ci_ref, spawn, determ, dets_this_proc)
+            call dealloc_reference_t(ci_ref)
         end if
 
         ! Let each process hold the number of deterministic states on each process.
@@ -1479,5 +1490,51 @@ contains
         end do
 
     end subroutine recreate_determ_space
+
+    subroutine create_ci_determ_space(sys, ss_ref, spawn, determ, dets_this_proc)
+
+        ! Create a deterministic space from a small CI space.
+
+        ! In:
+        !    sys: system being studied.
+        !    ss_ref: reference_t object defining the CI space.  Currently only occ_list0 and ex_level are used.
+        !    spawn: spawn_t object to which deterministic spawning will occur.
+        !    [todo] - complete once actions on determ and dets_this_proc are implemented.
+        ! In/Out:
+        !    determ:
+        ! Out:
+        !    dets_this_proc:
+
+        use checking, only: check_deallocate
+
+        use determinants, only: spin_orb_list
+        use determinant_enumeration, only: enumerate_determinants
+        use reference_determinant, only: reference_t
+        use spawn_data, only: spawn_t
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        type(reference_t), intent(in) :: ss_ref
+        type(spawn_t), intent(in) :: spawn
+        type(semi_stoch_t), intent(inout) :: determ
+        integer(i0), intent(out), allocatable :: dets_this_proc(:,:)
+
+        integer, allocatable :: sym_space_size(:)
+        integer :: ierr
+        logical :: spin_flip
+
+        spin_flip = spin_orb_list(sys%basis%basis_fns, ss_ref%occ_list0) /= sys%Ms
+
+        call enumerate_determinants(sys, .true., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ%dets, &
+                                    sys%symmetry, ss_ref%occ_list0, .false.)
+        call enumerate_determinants(sys, .false., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ%dets, &
+                                    sys%symmetry, ss_ref%occ_list0, .false.)
+
+        ! [todo] - filter out determinants only on this processor
+        ! [todo] - really shouldn't need to do an MPI call to combine dets_this_proc...
+        deallocate(determ%dets, stat=ierr)
+        call check_deallocate('determ%dets', ierr)
+
+    end subroutine create_ci_determ_space
 
 end module semi_stoch
