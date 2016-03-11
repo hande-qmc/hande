@@ -54,7 +54,7 @@ contains
         opts = aot_table_top(lua_state)
         lanczos = aot_exists(lua_state, opts, 'lanczos')
         call read_fci_in(lua_state, opts, sys%basis, fci_in, use_sparse_hamil)
-        call read_reference_t(lua_state, opts, sys, ref)
+        call read_reference_t(lua_state, opts, ref, sys)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
@@ -247,7 +247,7 @@ contains
         opts = aot_table_top(lua_state)
         call read_qmc_in(lua_state, opts, qmc_in, .true.)
         call read_restart_in(lua_state, opts, restart_in)
-        call read_reference_t(lua_state, opts, sys, reference)
+        call read_reference_t(lua_state, opts, reference, sys)
         call aot_get_val(use_sparse_hamil, err, lua_state, opts, 'sparse', default=.true.)
         call warn_unused_args(lua_state, keys, opts)
         call get_qmc_state(lua_state, have_qmc_state, qmc_state_restart)
@@ -335,7 +335,7 @@ contains
         call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         call read_restart_in(lua_state, opts, restart_in)
         call read_load_bal_in(lua_state, opts, load_bal_in)
-        call read_reference_t(lua_state, opts, sys, reference)
+        call read_reference_t(lua_state, opts, reference, sys)
 
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
 
@@ -422,7 +422,7 @@ contains
         !call read_semi_stoch_in(lua_state, opts, qmc_in, semi_stoch_in)
         call read_restart_in(lua_state, opts, restart_in)
         ! load balancing is not available in CCMC; must use default settings.
-        call read_reference_t(lua_state, opts, sys, reference)
+        call read_reference_t(lua_state, opts, reference, sys)
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
@@ -527,7 +527,7 @@ contains
 
         ! Now system initialisation is complete (boo), act on the other options.
         call read_restart_in(lua_state, opts, restart_in)
-        call read_reference_t(lua_state, opts, sys, reference)
+        call read_reference_t(lua_state, opts, reference, sys)
         call get_qmc_state(lua_state, have_restart_state, qmc_state_restart)
         ! load balancing not implemented in DMQMC--just use defaults.
         call warn_unused_args(lua_state, keys, opts)
@@ -1418,7 +1418,7 @@ contains
 
     end subroutine read_load_bal_in
 
-    subroutine read_reference_t(lua_state, opts, sys, ref)
+    subroutine read_reference_t(lua_state, opts, ref, sys, ref_table_name)
 
         ! Read in a reference table (if it exists) to a reference_t object.
 
@@ -1432,16 +1432,19 @@ contains
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
         !    opts: handle for the table containing the reference table.
-        !    sys: sys_t object describing the system of interest.
+        !    sys (optional): sys_t object describing the system of interest.  Used to default to
+        !        full space if present.
+        !    ref_table_name (optional): name of table holding reference info.  Default: reference.
         ! Out:
         !    ref: reference_t object contianing the input options describing the
         !        reference.  Note that ex_level is set to the number of electrons
         !        if not provided (incl. if the reference table is not present in
-        !        opts).
+        !        opts) and sys is present and -1 otherwise.
 
         use flu_binding, only: flu_State
         use aot_vector_module, only: aot_get_val
         use aot_table_module, only: aot_get_val, aot_exists, aot_table_open, aot_table_close
+        use errors, only: stop_all
 
         use lua_hande_utils, only: warn_unused_args
         use reference_determinant, only: reference_t
@@ -1449,19 +1452,29 @@ contains
 
         type(flu_State), intent(inout) :: lua_state
         integer, intent(in) :: opts
-        type(sys_t), intent(in) :: sys
         type(reference_t), intent(out) :: ref
+        type(sys_t), intent(in), optional :: sys
+        character(*), intent(in), optional :: ref_table_name
 
         integer :: ref_table, err
         integer, allocatable :: err_arr(:)
         character(17), parameter :: keys(3) = [character(17) :: 'det', 'hilbert_space_det', 'ex_level']
+        ! Avoid using allocatable strings here for old compiler support.
+        character(100) :: ref_name
 
-        ! Set to full space by default.
-        ref%ex_level = sys%nel
+        ! Set to full space/a problematic value by default.
+        ref%ex_level = -1
+        if (present(sys)) ref%ex_level = sys%nel
 
-        if (aot_exists(lua_state, opts, 'reference')) then
+        ref_name = 'reference'
+        if (present(ref_table_name)) then
+            if (len(ref_name) > len(ref_table_name)) call stop_all('read_reference_t', 'ref_name size too large.')
+            ref_name = ref_table_name
+        end if
 
-            call aot_table_open(lua_state, opts, ref_table, 'reference')
+        if (aot_exists(lua_state, opts, ref_name)) then
+
+            call aot_table_open(lua_state, opts, ref_table, ref_name)
 
             ! Optional arguments requiring special handling.
 
