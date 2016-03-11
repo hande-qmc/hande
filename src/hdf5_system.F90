@@ -1,8 +1,10 @@
 module hdf5_system
 
+
+
+
+
     implicit none
-
-
 
     integer, parameter :: sysdump_version = 0
 
@@ -11,9 +13,7 @@ module hdf5_system
                                 gsys = 'system',            &
                                 gbasis = 'basis',           &
                                 gread_in = 'read_in',       &
-                                gintegrals = 'integrals',   &
-                                gpg_sym = 'pg_sym'
-
+                                gintegrals = 'integrals'
 
     ! Dataspace names.
     character(*), parameter ::  dsysdump = 'sysdump version',   &
@@ -47,28 +47,7 @@ module hdf5_system
                                 dcoulomb_ints = 'coulomb_ints', &
                                 dcoulomb_ints_im =              &
                                               'coulomb_ints_im',&
-
-                                dgamma_sym = 'gamma_sym',       &
-                                dnbasis_sym = 'nbasis_sym',     &
-                                dnbasis_sym_spin =              &
-                                              'nbasis_sym_spin',&
-                                dsym_spin_basis_fns =           &
-                                           'sym_spin_basis_fns',&
-                                dpg_mask = 'pg_mask',           &
-                                dlz_mask = 'Lz_mask',           &
-                                dlz_offset = 'lz_offset',       &
-                                dlz_divisor = 'lz_divisor',     &
-
                                 dnbasis = 'nbasis',             &
-                                dstring_len = 'string_len',     &
-                                dtensor_label_len =             &
-                                             'tensor_label_len',&
-                                dalpha_mask = 'alpha_mask',     &
-                                dbeta_mask = 'beta_mask',       &
-                                dbit_lookup = 'bit_lookup',     &
-                                dbasis_lookup = 'basis_lookup', &
-                                dexcit_mask = 'excit_mask',     &
-
                                 dbasis_spat_ind =               &
                                         'basis_spatial_index',  &
                                 dbasis_sym = 'basis_symmetry',  &
@@ -257,30 +236,6 @@ module hdf5_system
 
                     call h5gclose_f(subsubgroup_id, ierr)
 
-                    ! Currently removed; can regenerate fairly painlessly with basis info.
-                    ! --- pg sym subsubgroup ---
-                    !call h5gcreate_f(subgroup_id, gpg_sym, subsubgroup_id, ierr)
-                    !call hdf5_write(subsubgroup_id, dgamma_sym, &
-                    !                sys%read_in%pg_sym%gamma_sym)
-                    !call hdf5_write(subsubgroup_id, dnbasis_sym, kinds, &
-                    !                shape(sys%read_in%pg_sym%nbasis_sym), &
-                    !                sys%read_in%pg_sym%nbasis_sym)
-                    !call hdf5_write(subsubgroup_id, dnbasis_sym_spin, kinds, &
-                    !                shape(sys%read_in%pg_sym%nbasis_sym_spin), &
-                    !                sys%read_in%pg_sym%nbasis_sym_spin)
-
-                    !call hdf5_write(subsubgroup_id, dsym_spin_basis_fns, kinds, &
-                    !                shape(sys%read_in%pg_sym%sym_spin_basis_fns), &
-                    !                sys%read_in%pg_sym%sym_spin_basis_fns)
-                    !call hdf5_write(subsubgroup_id, dpg_mask, &
-                    !                sys%read_in%pg_sym%pg_mask)
-                    !call hdf5_write(subsubgroup_id, dlz_mask, &
-                    !                sys%read_in%pg_sym%lz_mask)
-                    !call hdf5_write(subsubgroup_id, dlz_offset, &
-                    !                sys%read_in%pg_sym%lz_offset)
-                    !call hdf5_write(subsubgroup_id, dlz_divisor, &
-                    !                sys%read_in%pg_sym%lz_divisor)
-                    !call h5gclose_f(subsubgroup_id, ierr)
                 call h5gclose_f(subgroup_id, ierr)
 
             call h5gclose_f(group_id, ierr)
@@ -423,7 +378,6 @@ module hdf5_system
                 call init_basis_strings(sys%basis)
                 call init_determinants(sys, sys%nel)
                 call init_excitations(sys%basis)
-
 
                 call init_pg_symmetry(sys)
 
