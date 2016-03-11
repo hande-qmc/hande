@@ -96,7 +96,7 @@ module hdf5_system
             type(hdf5_kinds_t), intent(out), optional :: kinds
             logical, intent(in), optional ::  verbose
 
-            character(*), intent(out) :: filename
+            character(255), intent(out) :: filename
             integer :: fname_id
 
             logical :: verbose_loc, exists
@@ -106,13 +106,13 @@ module hdf5_system
 
 
             if (write_mode) then
-                if (sys%CAS(1) /= -1 .and. sys%CAS(2) /= -1) then
-                    write(filename, *) sys%read_in%fcidump, "-hdf5"
+                if (sys%CAS(1) == -1 .and. sys%CAS(2) == -1) then
+                    write (filename, "(a,a)") trim(sys%read_in%fcidump), ".H5"
                 else
-                    write (filename, *) sys%read_in%fcidump, "-", sys%CAS(1), ",", sys%CAS(2), "CAS-hdf5"
+                    write (filename, "(a,a,i2,a,i2,a)") trim(sys%read_in%fcidump), "-", sys%CAS(1), ",", sys%CAS(2), "CAS.H5"
                 end if
             else
-                filename = sys%read_in%fcidump
+                filename = trim(sys%read_in%fcidump)
             end if
 
 
@@ -176,8 +176,8 @@ module hdf5_system
                 call hdf5_write(group_id, duuid, GLOBAL_META%uuid)
 
                 ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
-                write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
-                call hdf5_write(group_id, ddate, date_str)
+                !write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
+                !call hdf5_write(group_id, ddate, date_str)
 
                 call hdf5_write(group_id, dsysdump, sysdump_version)
 
@@ -198,7 +198,7 @@ module hdf5_system
             call hdf5_write(group_id, dsym_max_tot, sys%sym_max_tot)
 
 
-            call hdf5_write(group_id, dcas, kinds, [nbasis], sys%CAS)
+            call hdf5_write(group_id, dcas, kinds, [2], sys%CAS)
 
             call hdf5_write(group_id, dmax_number_excitations,&
                                             sys%max_number_excitations)
@@ -243,11 +243,13 @@ module hdf5_system
                     call h5gcreate_f(subgroup_id, gintegrals, subsubgroup_id, ierr)
 
                     call write_1body_integrals(subsubgroup_id, done_body, kinds, &
+                            sys%read_in%pg_sym%nbasis_sym_spin, &
                             sys%read_in%one_e_h_integrals%integrals)
                     call write_coulomb_integrals(subsubgroup_id, dcoulomb_ints, kinds, &
                             sys%read_in%coulomb_integrals%integrals)
                     if (sys%read_in%comp) then
                         call write_1body_integrals(subsubgroup_id, done_body_im, kinds, &
+                                sys%read_in%pg_sym%nbasis_sym_spin, &
                                 sys%read_in%one_e_h_integrals_imag%integrals)
                         call write_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, kinds, &
                                 sys%read_in%coulomb_integrals_imag%integrals)
@@ -293,21 +295,27 @@ module hdf5_system
 #endif
         end subroutine dump_system_hdf5
 
-        subroutine read_system_hdf5(filename, sys)
+        subroutine read_system_hdf5(filename, sys, verbose)
 
 #ifndef DISABLE_HDF5
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read
-#else
-            use parallel, only: parent
 #endif
+            use parallel, only: parent
+
             use const
             use errors, only: stop_all, warning
             use system, only: sys_t
-            use point_group_symmetry, only: init_pg_symmetry
+            use point_group_symmetry, only: init_pg_symmetry, print_pg_symmetry_info
             use checking, only: check_allocate
+            use basis, only: write_basis_fn_header, write_basis_fn, write_basis_fn_title
+            use basis_types, only: init_basis_strings, print_basis_metadata
+            use determinants, only: init_determinants
+            use excitations, only: init_excitations
+
 
             type(sys_t), intent(inout) :: sys
+            logical, optional, intent(in) :: verbose
 
 #ifndef DISABLE_HDF5
 
@@ -316,9 +324,14 @@ module hdf5_system
             integer :: ierr, nbasis, sysdump_dump_version, cas(2)
             type(hdf5_kinds_t) :: kinds
             integer(hid_t) :: file_id, group_id, subgroup_id, subsubgroup_id
-            real :: ecore(1)
+            real(p) :: ecore(1)
 
-            logical :: exists, resort
+            integer :: i
+            logical :: exists, verbose_t
+
+            verbose_t = .true.
+            if (present(verbose)) verbose_t = verbose
+
 
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
@@ -383,7 +396,9 @@ module hdf5_system
 
                 call h5gclose_f(subgroup_id, ierr)
 
-            call hdf5_read(group_id, dcas, kinds, [nbasis], cas)
+            sys%nvirt = sys%basis%nbasis - sys%nel
+
+            call hdf5_read(group_id, dcas, kinds, [2], cas)
 
             if ((sys%CAS(1) /= -1 .or. sys%CAS(2) /= -1) .and. (sys%CAS(1) /= cas(1) &
                                             .or. sys%CAS(2) /= cas(2))) then
@@ -393,6 +408,7 @@ module hdf5_system
                         &HDF5 file.')
             end if
             sys%CAS = cas
+
 
                 ! --- read in subgroup ---
                 call h5gopen_f(group_id, gread_in, subgroup_id, ierr)
@@ -404,7 +420,26 @@ module hdf5_system
                 call hdf5_read(subgroup_id, duselz, sys%read_in%uselz)
                 call hdf5_read(subgroup_id, dcomp, sys%read_in%comp)
 
+                call init_basis_strings(sys%basis)
+                call init_determinants(sys, sys%nel)
+                call init_excitations(sys%basis)
+
+
                 call init_pg_symmetry(sys)
+
+                if (parent .and. verbose_t) then
+                    call write_basis_fn_header(sys)
+                    do i = 1, sys%basis%nbasis
+                        call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
+                                                new_line=.true.)
+                    end do
+                    write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+                else if (parent) then
+                    call write_basis_fn_title()
+                end if
+
+                call print_basis_metadata(sys%basis, sys%nel, .false.)
+                call print_pg_symmetry_info(sys)
 
                     ! ---integrals subsubgroup ---
                     call h5gopen_f(subgroup_id, gintegrals, subsubgroup_id, ierr)
@@ -449,7 +484,7 @@ module hdf5_system
 ! --- utility functions to aid reading out of specific data structures ---
 
 #ifndef DISABLE_HDF5
-        subroutine write_1body_integrals(id, dname, kinds, integs)
+        subroutine write_1body_integrals(id, dname, kinds, nbasis_sym_spin, integs)
             use hdf5
             use hdf5_helper, only: hdf5_write, hdf5_kinds_t
             use base_types, only: alloc_rp1d
@@ -458,6 +493,7 @@ module hdf5_system
             type(alloc_rp1d) :: integs(:,:)
             type(hdf5_kinds_t), intent(in) :: kinds
             integer(hid_t), intent(in) :: id
+            integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
 
             integer :: shpe(2), i, j
 
@@ -465,10 +501,10 @@ module hdf5_system
 
             shpe = shape(integs)
             do i = 1, shpe(1)
-                do j = 1, (shpe(2))
-                    write (dentr_name, *) dname, "ispin", i, "isym", j
+                do j = lbound(nbasis_sym_spin, dim=2), ubound(nbasis_sym_spin, dim=2)
+                    write (dentr_name, "(a,a,i2.2,a,i2.2)") trim(dname), "_ispin", i, "_isym", j
                     call hdf5_write(id, dentr_name, kinds, &
-                                shape(integs(i,j)%v), integs(i,j)%v)
+                                shape(integs(i,j + 1)%v), integs(i,j + 1)%v)
                 end do
             end do
         end subroutine write_1body_integrals
@@ -489,7 +525,7 @@ module hdf5_system
 
             shpe = shape(integs)
             do i = 1, shpe(1)
-                write (dentr_name, *) dname, "ispin", i
+                write (dentr_name, "(a,a,i2.2)") dname, "_ispin", i
                 call hdf5_write(id, dentr_name, kinds, &
                             shape(integs(i)%v), integs(i)%v)
             end do
@@ -514,9 +550,10 @@ module hdf5_system
             ! as requires other information (uhf, nbasis_sym_spin) to size info
             ! to be read in.
             use hdf5
-            use hdf5_helper, only: hdf5_read, hdf5_kinds_t
+            use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
             use molecular_integrals, only: init_one_body_t
             use molecular_integral_types, only: one_body_t
+            use checking, only: check_allocate
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dname
@@ -526,17 +563,25 @@ module hdf5_system
             integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
             type(one_body_t), intent(out) :: store
 
-            integer :: ispin, isym, shpe(2)
+            integer :: ispin, isym, s(1), nspin, ierr, dummy(2)
+            integer(hsize_t) :: dum(1)
             character(155) :: dentr_name
+
+            if (uhf) then
+                nspin = 2
+            else
+                nspin = 1
+            end if
 
             call init_one_body_t(uhf, op_sym, nbasis_sym_spin, imag, store)
 
-            shpe = shape(store%integrals)
-            do ispin = 1, shpe(1)
-                do isym = 1, shpe(2)
-                    write (dentr_name, *) dname, "ispin", ispin, "isym", isym
+            do ispin = 1, nspin
+                dummy = shape(nbasis_sym_spin)
+                do isym = 0, dummy(2) - 1
+                    write (dentr_name, "(a,a,i2.2,a,i2.2)") trim(dname), "_ispin", ispin, "_isym", isym
+                    s(1) = nbasis_sym_spin(ispin, isym) * (nbasis_sym_spin(ispin, isym) + 1) / 2
                     call hdf5_read(id, dentr_name, &
-                                kinds, shape(store%integrals(ispin, isym)%v),&
+                                kinds, s,&
                                 store%integrals(ispin, isym)%v)
                 end do
             end do
@@ -546,7 +591,7 @@ module hdf5_system
                                     op_sym, comp, imag, store)
 
             use hdf5
-            use hdf5_helper, only: hdf5_read, hdf5_kinds_t
+            use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
             use molecular_integrals, only: init_two_body_t
             use molecular_integral_types, only: two_body_t
 
@@ -558,6 +603,7 @@ module hdf5_system
             type(two_body_t), intent(out) :: store
 
             integer :: ispin, shpe(1)
+            integer(hsize_t) :: s(1)
             character(155) :: dentr_name
 
             call init_two_body_t(uhf, nbasis, op_sym, comp, imag, store)
@@ -565,7 +611,9 @@ module hdf5_system
             shpe = shape(store%integrals)
 
             do ispin = 1, shpe(1)
-                write (dentr_name, *) dname, "ispin", ispin
+
+                write (dentr_name, "(a,a,i2.2)") trim(dname), "_ispin", ispin
+                call dset_shape(id, dentr_name, s)
                 call hdf5_read(id, dentr_name, kinds, &
                         shape(store%integrals(ispin)%v), &
                         store%integrals(ispin)%v)

@@ -163,6 +163,9 @@ contains
         call flu_register(lua_state, 'ueg', lua_ueg)
         call flu_register(lua_state, 'ringium', lua_ringium)
 
+        ! Additional functionality
+        call flu_register(lua_state, 'dump_hdf5_system', lua_dump_hdf5_system)
+
         ! Calculations
         call flu_register(lua_state, 'fci', lua_fci)
         call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)

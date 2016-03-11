@@ -76,4 +76,38 @@ contains
 
     end function lua_redistribute_restart
 
+    function lua_dump_hdf5_system(L) result(nresult) bind(c)
+
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr
+
+        use aot_table_module, only: aot_table_top
+        use lua_hande_system, only: get_sys_t
+
+        use errors, only: stop_all
+        use parallel, only: nprocs
+        use system, only: sys_t
+
+        use hdf5_system, only: dump_system_hdf5
+
+        type(c_ptr), value :: L
+        integer(c_int) :: nresult
+
+        type(flu_State) :: lua_state
+        type(sys_t), pointer :: sys
+
+        integer :: opts, err
+
+        character(3), parameter :: keys(1) = [character(3) :: 'sys']
+        lua_state = flu_copyptr(L)
+
+        call get_sys_t(lua_state, sys)
+
+        call dump_system_hdf5(sys)
+
+        nresult = 0
+
+    end function
+
 end module lua_hande_fns

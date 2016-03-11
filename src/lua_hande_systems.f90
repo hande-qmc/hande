@@ -511,14 +511,15 @@ contains
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
+        use hdf5_system, only: read_system_hdf5
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts
-        logical :: new, new_basis, verbose
+        integer :: opts, ind
+        logical :: new, new_basis, verbose, hdf5
         integer :: err
 
         character(15), parameter :: keys(11) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
@@ -536,21 +537,36 @@ contains
         call set_common_sys_options(lua_state, sys, verbose, opts)
 
         call aot_get_val(sys%read_in%fcidump, err, lua_state, opts, 'int_file')
-        call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
-        call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
-        call aot_get_val(sys%read_in%comp, err, lua_state, opts, 'complex')
 
-        new_basis = new .or. aot_exists(lua_state, opts, 'int_file') &
-                        .or. aot_exists(lua_state, opts, 'CAS')
+        ind = index(sys%read_in%fcidump, ".H5", back = .true.)
 
-        if (new_basis) then
-            ! [todo] - deallocate existing basis info and start afresh.
+        hdf5 = .false.
 
-            call init_system(sys)
-            if (parent) call check_sys(sys)
-            call read_in_integrals(sys, cas_info=sys%cas, verbose=verbose)
-            call init_generic_system_basis(sys)
-            call print_pg_symmetry_info(sys)
+        if (ind /= 0) then
+            if (sys%read_in%fcidump(ind:) == ".H5") then
+                hdf5 = .true.
+                call init_system(sys)
+                if (parent) call check_sys(sys)
+                call read_system_hdf5(sys%read_in%fcidump, sys)
+            end if
+        end if
+        if (.not.hdf5) then
+            call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
+            call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
+            call aot_get_val(sys%read_in%comp, err, lua_state, opts, 'complex')
+
+            new_basis = new .or. aot_exists(lua_state, opts, 'int_file') &
+                            .or. aot_exists(lua_state, opts, 'CAS')
+
+            if (new_basis) then
+                ! [todo] - deallocate existing basis info and start afresh.
+
+                call init_system(sys)
+                if (parent) call check_sys(sys)
+                call read_in_integrals(sys, cas_info=sys%cas, verbose=verbose)
+                call init_generic_system_basis(sys)
+                call print_pg_symmetry_info(sys)
+            end if
         end if
 
         if (parent) then
