@@ -31,6 +31,10 @@ speed, etc.  Please see the testcode documentation for more details.
     parallelisation is done automatically by testcode.  Separate tests exist
     for both POP_SIZE=32 and POP_SIZE=64.
 
+    Similarly, the tests will not pass to default accuracy if using SINGLE_PRECISION.
+    There is a single_precision category, consisting of the tests which will pass with
+    a tolerance set to :math:`10^{-5}`.
+
     Currently there are no QMC tests suitable for OpenMP parallelisation due to
     difficulties with making the scheduler behave deterministically without
     affecting performance of production simulations.
