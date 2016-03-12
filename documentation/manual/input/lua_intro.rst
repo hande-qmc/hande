@@ -60,6 +60,12 @@ following calls are identical:
 All options are passed into HANDE by using a table as an associative array.  Each function
 exposed by HANDE to the lua script takes a single (nested) table.
 
+Lua handles multiple return values from functions in a convenient manner.  If
+a function call returns values that are then not set to a variable, the additional values
+are discarded.  If a function call returns fewer values than are the variables set to hold
+the results of the function call, the additional variables are set to ``nil``.  See (e.g.)
+http://www.lua.org/pil/5.1.html for more details.
+
 .. warning::
 
     lua, and by extension the HANDE input file, is case sensitive.

@@ -19,6 +19,7 @@ Density Matrix Quantum Monte Carlo
 
 Returns:
     a qmc_state object.
+    a lua table containing the sampling probabilities found if ``find_weights`` is set to ``true``.  This can be passed directly to the ``weights`` option of a subsequent DMQMC calculation and/or manipulated inside the lua script.  If ``find_weights`` is ``false``, only the qmc_state object is returned.
 
 ``dmqmc`` performs a density matrix quantum Monte Carlo (DMQMC) calculation on a system.
 
