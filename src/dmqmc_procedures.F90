@@ -782,11 +782,11 @@ contains
         if (parent) then
             ! Print out weights in a form which can be copied into an input
             ! file.
-            write(6, '(a31,2X)', advance = 'no') ' # Importance sampling weights:'
+            write(6, '(1X,"# Importance sampling weights: sampling_weights = {")', advance = 'no')
             do i = 1, max_number_excitations
-                write (6, '(es12.4,2X)', advance = 'no') weighted_sampling%sampling_probs(i)
+                write (6, '(es12.4,",",2X)', advance = 'no') weighted_sampling%sampling_probs(i)
             end do
-            write (6, '()', advance = 'yes')
+            write (6, '("},")', advance = 'yes')
         end if
 
     end subroutine output_and_alter_weights
