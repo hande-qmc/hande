@@ -136,3 +136,43 @@ For example, for :code:`qmc_state` objects:
     }
 
 and similarly for :code:`system` objects.
+
+Dump system information
+-----------------------
+
+When running a calculation using a system generated from a FCIDUMP, the :code:`system` object
+created by lua_read_in can be dumped in HDF5 format for reuse. This enables much faster
+initialisation for larger systems.
+
+.. code-block:: lua
+
+     sys = read_in {
+         int_file = "/home/cs675/Code/FCIDUMPs/FCIDUMP.Polyyne_1.0.3x1x1.24.PW600_SS",
+         nel = 24,
+         ms = 0,
+         sym = 0,
+     }
+
+     dump_hdf5_system {
+         sys = sys,
+     }
+
+     fciqmc {
+         sys = sys,
+         qmc = {
+             tau = 1e-5,
+             rng_seed = 23,
+             init_pop = 10,
+             mc_cycles = 20,
+             nreports = 100000,
+             target_population = 100000,
+             state_size = 150000,
+             spawned_state_size = 75000,
+         },
+     }
+
+This will produce a HDF5 file entitled INTDUMP.H5. Passing this as the argument to int_file
+will enable it to be used in future calculations.
+
+If a CAS is used to produce such a file it will be labelled as such; conversion between
+diferent CAS within this functionality is not currently supported.

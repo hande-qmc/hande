@@ -547,7 +547,7 @@ contains
                 hdf5 = .true.
                 call init_system(sys)
                 if (parent) call check_sys(sys)
-                call read_system_hdf5(sys%read_in%fcidump, sys)
+                call read_system_hdf5(sys)
             end if
         end if
         if (.not.hdf5) then

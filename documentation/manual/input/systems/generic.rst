@@ -61,6 +61,7 @@ Options
 
     Specify the FCIDUMP file containing the integrals and information relating to the
     single-particle basis.
+    Can also be an HDF5 file previously produced by HANDE from a FCIDUMP.
 ``dipole_int_file``
     type: string.
 
@@ -79,6 +80,8 @@ Options
     among :math:`2M` spin orbitals.  Any additional electrons are 'frozen' (i.e. forced to
     be in the lowest spin orbitals) and any additional high-energy spin orbitals are
     removed from the basis set.
+    If using HDF5 system initialisation must agree with CAS used to generate HDF5 file or be set
+    to default.
 ``verbose``
     type: boolean.
 
