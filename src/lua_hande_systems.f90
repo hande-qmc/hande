@@ -538,6 +538,8 @@ contains
 
         call aot_get_val(sys%read_in%fcidump, err, lua_state, opts, 'int_file')
 
+        call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
+
         ind = index(sys%read_in%fcidump, ".H5", back = .true.)
 
         hdf5 = .false.
@@ -551,7 +553,7 @@ contains
             end if
         end if
         if (.not.hdf5) then
-            call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
+
             call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
             call aot_get_val(sys%read_in%comp, err, lua_state, opts, 'complex')
 

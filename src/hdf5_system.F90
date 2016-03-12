@@ -370,12 +370,12 @@ module hdf5_system
             use errors, only: stop_all, warning
             use system, only: sys_t
             use point_group_symmetry, only: init_pg_symmetry, print_pg_symmetry_info
-            use checking, only: check_allocate
+            use checking, only: check_allocate, check_deallocate
             use basis, only: write_basis_fn_header, write_basis_fn, write_basis_fn_title
             use basis_types, only: init_basis_strings, print_basis_metadata
             use determinants, only: init_determinants
             use excitations, only: init_excitations
-
+            use read_in_system, only: read_in_one_body
 
             type(sys_t), intent(inout) :: sys
             logical, optional, intent(in) :: verbose
@@ -396,6 +396,7 @@ module hdf5_system
 
             integer :: i
             logical :: exists, verbose_t
+            integer, allocatable :: sp_fcidump_rank(:)
 
             verbose_t = .true.
             if (present(verbose)) verbose_t = verbose
@@ -545,10 +546,27 @@ module hdf5_system
             call h5fclose_f(file_id, ierr)
             call h5close_f(ierr)
 
+            if (sys%read_in%dipole_int_file /= '') then
+                if (sys%read_in%uhf) then
+                    allocate(sp_fcidump_rank(0:nbasis), stat=ierr)
+                    call check_allocate('sp_fcidump_rank', nbasis+1, ierr)
+                else
+                    allocate(sp_fcidump_rank(0:nbasis/2), stat=ierr)
+                    call check_allocate('sp_fcidump_rank', nbasis/2 + 1, ierr)
+                end if
+                do i = lbound(sp_fcidump_rank, dim=1), ubound(sp_fcidump_rank, dim=1)
+                    sp_fcidump_rank(i) = i
+                end do
+                call read_in_one_body(sys%read_in%dipole_int_file, sys%basis%nbasis, sys%basis%basis_fns, &
+                sys%read_in%pg_sym, sys%read_in%uhf, sp_fcidump_rank, sys%nel - sys%cas(1), &
+                sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)
+                deallocate(sp_fcidump_rank, stat=ierr)
+                call check_deallocate('sp_fcidump_rank', ierr)
+            end if
 #else
 
-            if (parent)  call warning('dump_system_hdf5', '# Not compiled with HDF5 support. Cannot write out &
-                                    sysdump file.')
+            if (parent)  call stop_all('dump_system_hdf5', '# Not compiled with HDF5 support. Cannot read out &
+                                    &sysdump file.')
 #endif
         end subroutine read_system_hdf5
 
