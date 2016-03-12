@@ -51,7 +51,7 @@ Options
 ``sym``
     type: integer.
 
-    Optional.
+    Required for deterministic calculations and highly recommended for Monte Carlo calculations.
 
     Set the symmetry (i.e. crystal momentum) of the system.  This is the index of
     a specific wavevector; see the output produced by creating a system for possible

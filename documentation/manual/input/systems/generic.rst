@@ -47,7 +47,7 @@ Options
 ``sym``
     type: integer.
 
-    Optional.
+    Required for deterministic calculations and highly recommended for Monte Carlo calculations.
 
     Set the symmetry of the system.  This is the index of a specific irreducible
     representation from the FCIDUMP file; see the output produced by creating a system for
