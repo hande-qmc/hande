@@ -19,7 +19,8 @@ This is trivial to do by using a lua loop as ``fciqmc`` is simply a function cal
     :language: lua
 
 The only difference between the above input and an FCIQMC calculation is the setting
-``initiator = true``.  As before, this can be run using:
+``initiator = true``.  As in the examples in the :ref:`FCIQMC tutorial <fciqmc_tutorial>`,
+this can be run using:
 
 .. code-block:: bash
 
@@ -66,7 +67,7 @@ for the FCIQMC calculation is sufficiently small:
     calcs = pyhande.lazy.std_analysis(['calcs/ifciqmc/hubbard_ifciqmc.out'], 30000, extract_psips=True)
     opt_blocks = [calc.opt_block for calc in calcs]
     estimates = pd.concat([opt.stack() for opt in opt_blocks], keys=range(len(opt_blocks)), axis=1).T
-    plt.errorbar(estimates[('# H psips', 'mean')],estimates[('Proj. Energy', 'mean')], 
+    plt.errorbar(estimates[('# H psips', 'mean')],estimates[('Proj. Energy', 'mean')],
                  xerr=estimates[('# H psips', 'standard error')],
                  yerr=estimates[('Proj. Energy', 'standard error')], label='iFCIQMC')
 
@@ -80,7 +81,6 @@ for the FCIQMC calculation is sufficiently small:
     plt.xlabel('# particles')
     plt.ylabel('Projected energy / $t$')
     plt.legend()
-
 
 The light blue region indicates the extent of the FCIQMC stochastic error, as
 calculated in the :ref:`FCIQMC tutorial <fciqmc_tutorial>`.  In this case, the initiator
@@ -105,7 +105,9 @@ each separate file is passed in as a separate argument on the command line.
 
     We highly recommend a visual inspection of the plot of the initiator error as
     a function of population as the convergence can be non-monotonic and, as a result,
-    requiring more than two populations give statistically equivalent results.
+    at least two calculations at different populations with statistically equivalent
+    results are required in order to confirm the error due to the initiator approximation
+    is smaller than the stochastic error.
 
 Finally, using real populations can, as with the :ref:`FCIQMC <fciqmc_tutorial>`, have
 a significant impact on the stochastic error.  Again, this is done by setting
@@ -125,3 +127,43 @@ followed by the blocking analysis on the :download:`output <calcs/ifciqmc/hubbar
 results in
 
 .. literalinclude:: calcs/ifciqmc/hubbard_ifciqmc_real.block
+
+Again, there is a general trend (though not entirely smooth) for the energy estimators to
+converge to the same energy as a function of total population.  It is interesting to take
+a close look at the convergence of the projected energy estimator:
+
+.. plot::
+
+    import pyhande
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    # Start averaging after the population has stabilised in all calculations.
+    for (out, title) in (('calcs/ifciqmc/hubbard_ifciqmc.out', 'iFCIQMC (integer)'),
+                         ('calcs/ifciqmc/hubbard_ifciqmc_real.out', 'iFCIQMC (real)')):
+        calcs = pyhande.lazy.std_analysis([out], 30000, extract_psips=True)
+        opt_blocks = [calc.opt_block for calc in calcs]
+        estimates = pd.concat([opt.stack() for opt in opt_blocks], keys=range(len(opt_blocks)), axis=1).T
+        estimates = estimates[estimates['# H psips']['mean'] > 10**4]
+        plt.errorbar(estimates[('# H psips', 'mean')],estimates[('Proj. Energy', 'mean')],
+                     xerr=estimates[('# H psips', 'standard error')],
+                     yerr=estimates[('Proj. Energy', 'standard error')], label=title)
+
+    fciqmc_calc = pyhande.lazy.std_analysis(['calcs/fciqmc/hubbard_fciqmc.out'], 30000)[0]
+    fciqmc_energy = fciqmc_calc.opt_block['mean']['Proj. Energy']
+    fciqmc_err = fciqmc_calc.opt_block['standard error']['Proj. Energy']
+    plt.axhline(fciqmc_energy, label='FCIQMC', color='b')
+    plt.axhspan(fciqmc_energy+fciqmc_err, fciqmc_energy-fciqmc_err, color='b', alpha=0.25)
+
+    plt.xscale('log')
+    plt.xlabel('# particles')
+    plt.ylabel('Projected energy / $t$')
+    plt.legend()
+    ax = plt.gca()
+    ax.get_yaxis().get_major_formatter().set_useOffset(False)
+
+The cluster of results around populations of :math:`5\times10^5` shows that it is vital to
+reduce the stochastic error before deciding the remaining initiator error is negligible.
+Further, it is interesting to note that the initiator approximation results in a much
+more efficient sampling of the Hilbert space: for a similar population (:math:`\sim10^6`),
+the iFCIQMC calculations have a **much** smaller stochastic error for a similar
+computational cost.

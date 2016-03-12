@@ -27,12 +27,18 @@ This file can be run using:
 
 The output file, :download:`hubbard_sym.out <calcs/fciqmc/hubbard_sym.out>`, contains
 a symmetry table which informs us that the wavevector :math:`(0,0)` corresponds to the
-index 1; this value should be specified in subsequent calculations.
+index 1; this value should be specified in subsequent calculations to ensure that the
+calculation is performed in the desired symmetry subspace.
 
-It is useful to know the size of the FCI Hilbert space.  Whilst the full space can be
-determined from simple combinatorics, the size of the subspace containing only
-determinants of the desired symmetry is less straightforward.  A fast way to determine it
-is use Monte Carlo sampling with an input file containing:
+It is useful to know the size of the FCI Hilbert space, i.e. the number of Slater
+determinants that can be formed from the single-particle basis given the number of
+electrons and total spin.  Whilst the full space can be determined from simple
+combinatorics, the size of the subspace containing only determinants of the desired
+symmetry is less straightforward and it is the latter number that is of interest as it
+only includes determinants that are connected via non-zero Hamiltonian matrix elements
+and hence can be accessed in a Monte Carlo calculation.  A fast way to determine the size
+of the accessible subspace is to use Monte Carlo sampling [Booth10]_ with an input file
+containing:
 
 .. literalinclude:: calcs/fciqmc/hubbard_hilbert.lua
     :language: lua
@@ -89,7 +95,7 @@ Given the large population, we will run this calculation in parallel using MPI:
     The exact command to launch HANDE with MPI depends upon the exact configuration of
     MPI.  The command may be different (e.g. ``mpirun`` instead of ``mpiexec``) and might
     require the number of processors to be passed as an argument.  For example, with
-    OpenMPI on Debian ad Ubuntu, one would use:
+    OpenMPI on Debian and Ubuntu, one would use:
 
     .. code-block:: bash
 
