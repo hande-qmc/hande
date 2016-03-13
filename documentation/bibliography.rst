@@ -12,13 +12,14 @@ Bibliography
 .. [Lee11] R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N. D. Drummond, Strategies for improving the efficiency of quantum Monte Carlo calculations", Phys. Rev. E. 83, 066706 (2011).
 .. [Loos13] P.F. Loos, P.M.W. Gill, Uniform electron gases. I. Electrons on a ring. J. Chem. Phys. 138, 164124 (2013).
 .. [Malone15] F.D. Malone, N.S. Blunt, J.J. Shepherd, D.K.K. Lee, J.S. Spencer, W.M.C. Foulkes, Interaction picture density matrix quantum Monte Carlo, J. Chem. Phys. 143, 044116 (2015).
+.. [Malone16] Fionn D. Malone, N.S. Blunt, Ethan W. Brown, D.K.K. Lee, J.S. Spencer, W.M.C. Foulkes, James J. Shepherd, Accurate exchange-correlation energies for the warm dense electron gas, arXiv:1602.05104 [cond-mat.str-el].
 .. [Malone16a] F.D. Malone, W.M.C. Foulkes, J.S. Spencer, Improved parallel algorithms for full configuration interaction quantum Monte Carlo, in preparation.
 .. [Overy2014] C. Overy, G.H. Booth, N.S. Blunt, J.J. Shepherd, D. Cleland, A. Alavi, Unbiased reduced density matrices and electronic properties from full configuration interaction quantum Monte Carlo, J. Chem. Phys. 141, 244117 (2014).
 .. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
 .. [Shepherd14] J.J. Shepherd, G.E. Scuseria, J.S. Spencer, Sign problem in full configuration interaction quantum Monte Carlo: Linear and sublinear representation regimes for the exact wave function, Phys. Rev. B 90, 155130 (2014).
 .. [Spencer12] J.S. Spencer, N.S. Blunt, W.M.C. Foulkes, The sign problem and population dynamics in the full configuration interaction quantum Monte Carlo method, J. Chem. Phys. 136, 054110 (2012).
 .. [Spencer14] J.S. Spencer, N.S. Blunt, W.A. Vigor, F.D. Malone, W.M.C. Foulkes, J.J. Shepherd, and A.J.W. Thom, The Highly Accurate N-DEterminant (HANDE) quantum Monte Carlo project: Open-source stochastic diagonalisation for quantum chemistry, arXiv:1407.5407 (2014).
-.. [Spencer15] J.S. Spencer, A.J.W. Thom, Developments in Stochastic Coupled Cluster Theory:  The initiator approximation and application to the Uniform Electron Gas, arXiv:1511.05752 [physics.chem-ph]
+.. [Spencer15] J.S. Spencer, A.J.W. Thom, Developments in Stochastic Coupled Cluster Theory:  The initiator approximation and application to the Uniform Electron Gas, J. Chem. Phys. 144, 084108 (2016), arXiv:1511.05752 [physics.chem-ph].
 .. [Thom10] A.J.W. Thom, Stochastic Coupled Cluster Theory, Phys. Rev. Lett. 105, 236004 (2010).
 .. [Umrigar93] C.J. Umrigar, M.P. Nightingale, K.J. Runge, A diffusion Monte Carlo algorithm with very small time-step errors, J. Chem. Phys. 99, 2865 (1993).
 .. [Vigor15] W.A. Vigor, J.S. Spencer, M.J. Bearpark, A.J.W. Thom. Minimising biases in full configuration interaction quantum Monte Carlo, J. Chem. Phys. 142, 104101 (2015).
