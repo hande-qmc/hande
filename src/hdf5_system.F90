@@ -165,6 +165,7 @@ module hdf5_system
 
             logical :: verbose_loc, exists
 
+            verbose_loc = .true.
             if (present(verbose)) verbose_loc = verbose
 
             if (write_mode) then
@@ -350,7 +351,7 @@ module hdf5_system
             use hdf5
             use hdf5_helper, only: hdf5_kinds_t, hdf5_read
 #endif
-            use parallel, only: parent
+            use parallel
 
             use const
             use errors, only: stop_all, warning
@@ -362,6 +363,7 @@ module hdf5_system
             use determinants, only: init_determinants
             use excitations, only: init_excitations
             use read_in_system, only: read_in_one_body
+            use molecular_integrals, only: init_one_body_t, init_two_body_t, broadcast_one_body_t, broadcast_two_body_t
 
             type(sys_t), intent(inout) :: sys
             logical, optional, intent(in) :: verbose
@@ -380,167 +382,245 @@ module hdf5_system
             ! reading reals.
             real(p) :: ecore(1)
 
-            integer :: i
+            integer :: i, norb
             logical :: exists, verbose_t
             integer, allocatable :: sp_fcidump_rank(:)
 
             verbose_t = .true.
             if (present(verbose)) verbose_t = verbose
 
-            ! Initialise HDF5 and open file.
-            call h5open_f(ierr)
-            call init_system_hdf5(.false., sys, filename, kinds)
+            if (parent) then
+                ! Initialise HDF5 and open file.
+                call h5open_f(ierr)
+                call init_system_hdf5(.false., sys, filename, kinds)
 
-            call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
-            if (ierr /= 0) then
-                call stop_all('read_system_hdf5', "Unable to open system file.")
-            endif
+                call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
+                if (ierr /= 0) then
+                    call stop_all('read_system_hdf5', "Unable to open system file.")
+                endif
 
-            ! --- metadata group ---
-            call h5gopen_f(file_id, gmetadata, group_id, ierr)
+                ! --- metadata group ---
+                call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
-                call hdf5_read(group_id, dsysdump, sysdump_dump_version)
+                    call hdf5_read(group_id, dsysdump, sysdump_dump_version)
 
-                if (sysdump_dump_version /= sysdump_version) then
-                    call stop_all('read_system_hdf5', "Reading between different &
-                        &sysdump versions not supported.")
+                    if (sysdump_dump_version /= sysdump_version) then
+                        call stop_all('read_system_hdf5', "Reading between different &
+                            &sysdump versions not supported.")
+                    end if
+                call h5gclose_f(group_id, ierr)
+
+                ! --- sys group ---
+                call h5gopen_f(file_id, gsys, group_id, ierr)
+
+                call hdf5_read(group_id, dsystem, sys%system)
+
+                call hdf5_read(group_id, dsymmetry, sys%symmetry)
+                call hdf5_read(group_id, dnsym, sys%nsym)
+                call hdf5_read(group_id, dsym0, sys%sym0)
+                call hdf5_read(group_id, dsym_max, sys%sym_max)
+
+                call hdf5_read(group_id, dnsym_tot, sys%nsym_tot)
+                call hdf5_read(group_id, dsym0_tot, sys%sym0_tot)
+                call hdf5_read(group_id, dsym_max_tot, sys%sym_max_tot)
+
+                call hdf5_read(group_id, dmax_number_excitations,&
+                                                sys%max_number_excitations)
+
+                    ! --- basis subgroup ---
+                    call h5gopen_f(group_id, gbasis, subgroup_id, ierr)
+
+                    call hdf5_read(subgroup_id, dnbasis, nbasis)
+                    sys%basis%nbasis = nbasis
+
+                    allocate(sys%basis%basis_fns(nbasis),  stat = ierr)
+                    call check_allocate('sys%basis%basis_fns', nbasis, ierr)
+
+                    call hdf5_read(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%spatial_index)
+                    call hdf5_read(subgroup_id, dbasis_sym, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%sym)
+                    call hdf5_read(subgroup_id, dbasis_sym_index, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%sym_index)
+                    call hdf5_read(subgroup_id, dbasis_sym_spin_index, kinds,&
+                                [nbasis],  sys%basis%basis_fns(:)%sym_spin_index)
+                    call hdf5_read(subgroup_id, dbasis_ms, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%ms)
+                    call hdf5_read(subgroup_id, dbasis_lz, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%lz)
+                    call hdf5_read(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%sp_eigv)
+
+                    call h5gclose_f(subgroup_id, ierr)
+
+                sys%nvirt = sys%basis%nbasis - sys%nel
+
+                call hdf5_read(group_id, dcas, kinds, [2], cas)
+
+                if ((sys%CAS(1) /= -1 .or. sys%CAS(2) /= -1) .and. (sys%CAS(1) /= cas(1) &
+                                                .or. sys%CAS(2) /= cas(2))) then
+                    call stop_all('read_system_hdf5', 'attempting to start calculation &
+                            &with different CAS to that used in HDF5 file creation; not &
+                            &currently supported. Use original INTDUMP to generate new &
+                            &HDF5 file.')
                 end if
-            call h5gclose_f(group_id, ierr)
+                sys%CAS = cas
 
-            ! --- sys group ---
-            call h5gopen_f(file_id, gsys, group_id, ierr)
+                    ! --- read_in subgroup ---
+                    call h5gopen_f(group_id, gread_in, subgroup_id, ierr)
 
-            call hdf5_read(group_id, dsystem, sys%system)
+                    call hdf5_read(subgroup_id, duhf, sys%read_in%uhf)
+                    ! Workaround reading real value from HDF5.
+                    call hdf5_read(subgroup_id, decore, kinds, [1], &
+                                                ecore)
+                    sys%read_in%Ecore = ecore(1)
+                    call hdf5_read(subgroup_id, duselz, sys%read_in%uselz)
+                    call hdf5_read(subgroup_id, dcomp, sys%read_in%comp)
 
-            call hdf5_read(group_id, dsymmetry, sys%symmetry)
-            call hdf5_read(group_id, dnsym, sys%nsym)
-            call hdf5_read(group_id, dsym0, sys%sym0)
-            call hdf5_read(group_id, dsym_max, sys%sym_max)
+                    ! Do system initialisation that hasn't been read in, hopefully
+                    ! in same order as in conventional initialisation. Also write
+                    ! out read in info for easy checking to compare to original.
+                    call init_basis_strings(sys%basis)
+                    call init_determinants(sys, sys%nel)
+                    call init_excitations(sys%basis)
+                    call init_pg_symmetry(sys)
 
-            call hdf5_read(group_id, dnsym_tot, sys%nsym_tot)
-            call hdf5_read(group_id, dsym0_tot, sys%sym0_tot)
-            call hdf5_read(group_id, dsym_max_tot, sys%sym_max_tot)
+                    if (parent .and. verbose_t) then
+                        call write_basis_fn_header(sys)
+                        do i = 1, sys%basis%nbasis
+                            call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
+                                                    new_line=.true.)
+                        end do
+                        write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+                    else if (parent) then
+                        call write_basis_fn_title()
+                    end if
 
-            call hdf5_read(group_id, dmax_number_excitations,&
-                                            sys%max_number_excitations)
+                    call print_basis_metadata(sys%basis, sys%nel, .false.)
+                    call print_pg_symmetry_info(sys)
 
-                ! --- basis subgroup ---
-                call h5gopen_f(group_id, gbasis, subgroup_id, ierr)
+                        ! ---integrals subsubgroup ---
+                        call h5gopen_f(subgroup_id, gintegrals, subsubgroup_id, ierr)
 
-                call hdf5_read(subgroup_id, dnbasis, nbasis)
-                sys%basis%nbasis = nbasis
+                        call read_1body_integrals(subsubgroup_id, done_body, kinds, &
+                            sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
+                            sys%read_in%pg_sym%nbasis_sym_spin, .false., &
+                            sys%read_in%one_e_h_integrals)
 
-                allocate(sys%basis%basis_fns(nbasis),  stat = ierr)
-                call check_allocate('sys%basis%basis_fns', nbasis, ierr)
+                        call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints, &
+                            kinds, sys%read_in%uhf, sys%basis%nbasis, &
+                            sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, .false., &
+                            sys%read_in%coulomb_integrals)
 
-                call hdf5_read(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%spatial_index)
-                call hdf5_read(subgroup_id, dbasis_sym, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%sym)
-                call hdf5_read(subgroup_id, dbasis_sym_index, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%sym_index)
-                call hdf5_read(subgroup_id, dbasis_sym_spin_index, kinds,&
-                            [nbasis],  sys%basis%basis_fns(:)%sym_spin_index)
-                call hdf5_read(subgroup_id, dbasis_ms, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%ms)
-                call hdf5_read(subgroup_id, dbasis_lz, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%lz)
-                call hdf5_read(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%sp_eigv)
+                        if (sys%read_in%comp) then
+                            call read_1body_integrals(subsubgroup_id, done_body_im, &
+                                kinds, sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
+                                sys%read_in%pg_sym%nbasis_sym_spin, .true., &
+                                sys%read_in%one_e_h_integrals_imag)
 
-                call h5gclose_f(subgroup_id, ierr)
+                            call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, &
+                                kinds, sys%read_in%uhf, sys%basis%nbasis, &
+                                sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, .true., &
+                                sys%read_in%coulomb_integrals_imag)
+                        end if
+                        call h5gclose_f(subsubgroup_id, ierr)
 
-            sys%nvirt = sys%basis%nbasis - sys%nel
+                    call h5gclose_f(subgroup_id, ierr)
 
-            call hdf5_read(group_id, dcas, kinds, [2], cas)
+                call h5gclose_f(group_id, ierr)
 
-            if ((sys%CAS(1) /= -1 .or. sys%CAS(2) /= -1) .and. (sys%CAS(1) /= cas(1) &
-                                            .or. sys%CAS(2) /= cas(2))) then
-                call stop_all('read_system_hdf5', 'attempting to start calculation &
-                        &with different CAS to that used in HDF5 file creation; not &
-                        &currently supported. Use original INTDUMP to generate new &
-                        &HDF5 file.')
+                call h5fclose_f(file_id, ierr)
+                call h5close_f(ierr)
             end if
-            sys%CAS = cas
+#ifdef PARALLEL
+            ! Distribute values needed for initialisation on other processes.
+            call MPI_BCast(norb, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%nel, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%symmetry, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%read_in%uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%basis%nbasis, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%CAS, 2, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
 
-                ! --- read_in subgroup ---
-                call h5gopen_f(group_id, gread_in, subgroup_id, ierr)
+            ! Braodcast symmetry values.
+            call MPI_BCast(sys%nsym, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%sym0, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%sym_max, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%nsym_tot, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%sym0_tot, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%sym_max_tot, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%max_number_excitations, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
 
-                call hdf5_read(subgroup_id, duhf, sys%read_in%uhf)
-                ! Workaround reading real value from HDF5.
-                call hdf5_read(subgroup_id, decore, kinds, [1], &
-                                            ecore)
-                sys%read_in%Ecore = ecore(1)
-                call hdf5_read(subgroup_id, duselz, sys%read_in%uselz)
-                call hdf5_read(subgroup_id, dcomp, sys%read_in%comp)
+            ! Allocate basis on non-parent processors.
+            if (.not. parent) then
+                    allocate(sys%basis%basis_fns(sys%basis%nbasis),  stat = ierr)
+                    call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
+            end if
+            ! Broadcast basis.
+            call MPI_BCast(sys%basis%basis_fns(:)%spatial_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%basis%basis_fns(:)%sym, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%basis%basis_fns(:)%sym_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%basis%basis_fns(:)%sym_spin_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%basis%basis_fns(:)%ms, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%basis%basis_fns(:)%lz, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%basis%basis_fns(:)%sp_eigv, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
 
-                ! Do system initialisation that hasn't been read in, hopefully
-                ! in same order as in conventional initialisation. Also write
-                ! out read in info for easy checking to compare to original.
+            ! Broadcast read_in parameters.
+            call MPI_BCast(sys%read_in%Ecore, 1, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%read_in%uselz, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%read_in%comp, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+
+            if (.not. parent) then
+                ! Use information already transferred to initiate systems on other processes,
+                ! which we can then populate using root processor.
                 call init_basis_strings(sys%basis)
                 call init_determinants(sys, sys%nel)
                 call init_excitations(sys%basis)
-
                 call init_pg_symmetry(sys)
 
-                if (parent .and. verbose_t) then
-                    call write_basis_fn_header(sys)
-                    do i = 1, sys%basis%nbasis
-                        call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
-                                                new_line=.true.)
-                    end do
-                    write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
-                else if (parent) then
-                    call write_basis_fn_title()
+                call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
+                                    .false., sys%read_in%one_e_h_integrals)
+                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
+                                    .false., sys%read_in%coulomb_integrals)
+                if (sys%read_in%comp) then
+                    call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
+                                        sys%read_in%pg_sym%nbasis_sym_spin, .true., &
+                                        sys%read_in%one_e_h_integrals_imag)
+                    call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
+                                        sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
                 end if
+            end if
 
-                call print_basis_metadata(sys%basis, sys%nel, .false.)
-                call print_pg_symmetry_info(sys)
+            ! Broadcast integrals.
+            call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
+            call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
+            if (sys%read_in%comp) then
+                call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
+                call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
+            end if
+#endif
 
-                    ! ---integrals subsubgroup ---
-                    call h5gopen_f(subgroup_id, gintegrals, subsubgroup_id, ierr)
+            if (sys%read_in%uhf) then
+                norb =  sys%basis%nbasis
+            else
+                norb = sys%basis%nbasis/2
+            end if
 
-                    call read_1body_integrals(subsubgroup_id, done_body, kinds, &
-                        sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                        sys%read_in%pg_sym%nbasis_sym_spin, .false., &
-                        sys%read_in%one_e_h_integrals)
-
-                    call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints, &
-                        kinds, sys%read_in%uhf, sys%basis%nbasis, &
-                        sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, .false., &
-                        sys%read_in%coulomb_integrals)
-
-                    if (sys%read_in%comp) then
-                        call read_1body_integrals(subsubgroup_id, done_body_im, &
-                            kinds, sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                            sys%read_in%pg_sym%nbasis_sym_spin, .true., &
-                            sys%read_in%one_e_h_integrals_imag)
-
-                        call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, &
-                            kinds, sys%read_in%uhf, sys%basis%nbasis, &
-                            sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, .true., &
-                            sys%read_in%coulomb_integrals_imag)
-                    end if
-                    call h5gclose_f(subsubgroup_id, ierr)
-
-                call h5gclose_f(subgroup_id, ierr)
-
-            call h5gclose_f(group_id, ierr)
-
-            call h5fclose_f(file_id, ierr)
-            call h5close_f(ierr)
+            allocate(sys%basis%basis_fns(sys%basis%nbasis), stat=ierr)
+            call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
 
             if (sys%read_in%dipole_int_file /= '') then
-                if (sys%read_in%uhf) then
-                    allocate(sp_fcidump_rank(0:nbasis), stat=ierr)
-                    call check_allocate('sp_fcidump_rank', nbasis+1, ierr)
-                else
-                    allocate(sp_fcidump_rank(0:nbasis/2), stat=ierr)
-                    call check_allocate('sp_fcidump_rank', nbasis/2 + 1, ierr)
+                if (parent) then
+                    if (sys%read_in%uhf) then
+                        allocate(sp_fcidump_rank(0:nbasis), stat=ierr)
+                        call check_allocate('sp_fcidump_rank', nbasis+1, ierr)
+                    else
+                        allocate(sp_fcidump_rank(0:nbasis/2), stat=ierr)
+                        call check_allocate('sp_fcidump_rank', nbasis/2 + 1, ierr)
+                    end if
+                    do i = lbound(sp_fcidump_rank, dim=1), ubound(sp_fcidump_rank, dim=1)
+                        sp_fcidump_rank(i) = i
+                    end do
                 end if
-                do i = lbound(sp_fcidump_rank, dim=1), ubound(sp_fcidump_rank, dim=1)
-                    sp_fcidump_rank(i) = i
-                end do
                 call read_in_one_body(sys%read_in%dipole_int_file, sys%basis%nbasis, sys%basis%basis_fns, &
                                       sys%read_in%pg_sym, sys%read_in%uhf, sp_fcidump_rank, sys%nel - sys%cas(1), &
                                       sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)

@@ -87,8 +87,8 @@ contains
         use lua_hande_system, only: get_sys_t
 
         use errors, only: stop_all
-        use parallel, only: nprocs
-        use system, only: sys_t
+        use parallel, only: nprocs, parent
+        use system, only: sys_t, read_in
 
         use hdf5_system, only: dump_system_hdf5
 
@@ -104,9 +104,7 @@ contains
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
-        ! [review] - JSS: check that this is a suitable system first (i.e. read_in).
-        ! [review] - JSS: should only do this on the root process.
-        call  dump_system_hdf5(sys)
+        if (sys%system == read_in .and. parent) call  dump_system_hdf5(sys)
 
         nresult = 0
 

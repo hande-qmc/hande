@@ -512,13 +512,14 @@ contains
         use parallel, only: parent
         use errors, only: stop_all
         use hdf5_system, only: read_system_hdf5
+        use hdf5_helper, only: check_ifhdf5
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts, ind
+        integer :: opts
         logical :: new, new_basis, verbose, hdf5
         integer :: err
 
@@ -540,31 +541,13 @@ contains
 
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
 
-        ! [review] - JSS: this seems rather unnecessary given you then check that the last three characters are .H5.
-        ! [review] - JSS: Instead of inspecting the file extension, why not use the h5fis_hdf5 subroutine from the HDF5 API?
-        ! [review] - JSS: e.g.
-        !     call h5fis_hdf5_f(fcidump, hdf5, err)
-        !     if (hdf5) then
-        !         call init_system(sys)
-        !         call read_system_hdf5(sys)
-        !     else
-        !         ...
-        !     end if
-        ! [review] - JSS: would need to wrap h5is_hdf5_f (i guess in hdf5_helper) for optional compilation, of course.
-        ind = index(sys%read_in%fcidump, ".H5", back = .true.)
+        call check_ifhdf5(sys%read_in%fcidump, hdf5, err)
 
-        hdf5 = .false.
-
-        ! [review] - JSS: note discrepancy between hdf5 (all cores read in the fcidump file) and ascii (only parent reads in and broadcasts).
-        if (ind /= 0) then
-            if (sys%read_in%fcidump(ind:) == ".H5") then
-                hdf5 = .true.
+        if (hdf5) then
                 call init_system(sys)
                 if (parent) call check_sys(sys)
                 call read_system_hdf5(sys)
-            end if
-        end if
-        if (.not.hdf5) then
+        else
 
             call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
             call aot_get_val(sys%read_in%comp, err, lua_state, opts, 'complex')

@@ -28,7 +28,7 @@ module hdf5_helper
     implicit none
 
     private
-    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape, hdf5_path
+    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape, hdf5_path, check_ifhdf5
 
 
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
@@ -81,7 +81,11 @@ module hdf5_helper
 
     integer, parameter :: hande_hdf5_false = 0, hande_hdf5_true = 1
 
+#endif
+
     contains
+
+#ifndef DISABLE_HDF5
 
         ! === Helper procedures: initialisation, properties ===
 
@@ -1440,5 +1444,29 @@ module hdf5_helper
         end subroutine read_ptr
 
 #endif
+
+        subroutine check_ifhdf5(filename, if_hdf5, ierr)
+            use, intrinsic :: iso_c_binding
+#ifndef DISABLE_HDF5
+            use hdf5
+#else
+            use parallel, only: parent
+            use errors, only: warning
+#endif
+            character(*), intent(in) :: filename
+            logical, intent(out) :: if_hdf5
+            integer, intent(out) :: ierr
+            if_hdf5 = .false.
+            ierr = 0
+#ifndef DISABLE_HDF5
+            call h5fis_hdf5_f(filename, if_hdf5, ierr)
+#else
+            if (parent) call warning('check_ifhdf5', '# Not compiled with HDF5 support. Assuming &
+                                    &fcidump supplied is in ascii format.')
+#endif
+
+        end subroutine check_ifhdf5
+
+
 
 end module hdf5_helper
