@@ -226,6 +226,8 @@ type ccmc_in_t
     logical :: linked = .false.
     ! If true, vary shift to control reference, not total, population
     logical :: vary_shift_reference = .false.
+    ! If true, use a quasiNewton step
+    logical :: qn = .false.
 end type ccmc_in_t
 
 type restart_in_t
