@@ -1475,7 +1475,7 @@ contains
 
         ref_name = 'reference'
         if (present(ref_table_name)) then
-            if (len(ref_name) > len(ref_table_name)) call stop_all('read_reference_t', 'ref_name size too large.')
+            if (len(ref_table_name) > len(ref_name)) call stop_all('read_reference_t', 'ref_name size too large.')
             ref_name = ref_table_name
         end if
 
