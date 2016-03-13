@@ -308,9 +308,10 @@ contains
         use system, only: sys_t, sys_t_json
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
 
-        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, reference_t
+        use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
         use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t
-        use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, reference_t_json
+        use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
+        use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
 
@@ -389,7 +390,7 @@ contains
             call ccmc_in_t_json(js, ccmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
             call restart_in_t_json(js, restart_in)
-            call reference_t_json(js, qs%ref, sys, .true.)
+            call reference_t_json(js, qs%ref, sys, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if

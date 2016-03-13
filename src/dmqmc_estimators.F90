@@ -373,7 +373,7 @@ contains
         use proc_pointers, only: update_dmqmc_kinetic_energy_ptr
         use determinants, only: det_info_t
         use system, only: sys_t
-        use qmc_data, only: reference_t, particle_t
+        use qmc_data, only: particle_t
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, energy_ind, energy_squared_ind, &
                               correlation_fn_ind, staggered_mag_ind, full_r2_ind, dmqmc_weighted_sampling_t, &
                               kinetic_ind, H0_ind, potential_ind, HI_ind

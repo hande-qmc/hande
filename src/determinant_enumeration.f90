@@ -13,7 +13,8 @@ contains
 
 !--- Hilbert space enumeration ---
 
-    subroutine enumerate_determinants(sys, init, spin_flip, ex_level, sym_space_size, ndets, dets_list, ref_sym, occ_list0)
+    subroutine enumerate_determinants(sys, init, spin_flip, ex_level, sym_space_size, ndets, dets_list, ref_sym, occ_list0, &
+                                      verbose_in)
 
         ! Find the Slater determinants of a given system that can be formed from
         ! the basis functions.
@@ -40,6 +41,8 @@ contains
         !        Used as the reference determinant if a truncated CI space is
         !        being used.  *MUST* be specified if ex_level is not the number
         !        of electrons in the system.
+        !    verbose_in(optional): print out info about number of determinants in each symmetry
+        !        block.  Default: same value as init.
         ! In/Out:
         !    sym_space_size: number of determinants of each symmetry.  Output if init
         !        is true, input if init is false.
@@ -67,6 +70,7 @@ contains
         integer, intent(inout), allocatable :: sym_space_size(:) ! (nsym)
         integer, intent(out) :: ndets
         integer(i0), intent(out), allocatable :: dets_list(:,:) ! (string_len,ndets)
+        logical, intent(in), optional :: verbose_in
 
         integer :: i, j, iel, idet, ierr
         integer :: nbeta_combinations
@@ -76,9 +80,11 @@ contains
         integer, allocatable :: occ(:), comb(:,:), unocc(:)
         integer :: k(sys%lattice%ndim), k_beta(sys%lattice%ndim)
         type(det_info_t) :: d0
-        logical :: in_space, force_full, truncate_space
+        logical :: in_space, force_full, truncate_space, verbose
 
         truncate_space = ex_level /= sys%nel
+        verbose = init
+        if (present(verbose_in)) verbose = verbose_in
 
         force_full = .false.
         if (init) then
@@ -305,7 +311,7 @@ contains
 
         end select
 
-        if (init .and. parent) then
+        if (verbose .and. parent) then
             ! Output information about the size of the space.
             Ms = sys%nalpha - sys%nbeta
             write (6,'(1X,a75,'//int_fmt(Ms,0)//',a1)') &

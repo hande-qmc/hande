@@ -27,7 +27,8 @@ contains
         use system, only: sys_t
         use interact
 
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, load_bal_in_t, annihilation_flags_t
+        use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t
+        use reference_determinant, only: reference_t
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys

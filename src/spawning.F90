@@ -805,7 +805,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
@@ -860,7 +860,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det
         use spawn_data, only: spawn_t
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
@@ -915,7 +915,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use spawn_data, only: spawn_t
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
@@ -976,7 +976,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use spawn_data, only: spawn_t
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
@@ -1038,7 +1038,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
@@ -1101,7 +1101,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level, in_ras
         use spawn_data, only: spawn_t
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
 
         type(basis_t), intent(in) :: basis
         type(reference_t), intent(in) :: reference
@@ -1161,7 +1161,7 @@ contains
         use basis_types, only: basis_t
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use determinants, only: det_info_t
         use spawn_data, only: spawn_t
 
@@ -1229,7 +1229,7 @@ contains
         use errors, only: stop_all
         use excitations, only: excit_t, create_excited_det
         use parallel, only: nprocs
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use determinants, only: det_info_t
         use spawn_data, only: spawn_t
 
@@ -1301,7 +1301,7 @@ contains
         use excitations, only: excit_t, create_excited_det
         use determinants, only: det_info_t
         use parallel, only: nprocs
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
@@ -1376,7 +1376,7 @@ contains
         use excitations, only: excit_t, create_excited_det
         use determinants, only: det_info_t
         use parallel, only: nprocs
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
@@ -1458,7 +1458,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use determinants, only: det_info_t
         use parallel, only: nprocs
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis
@@ -1539,7 +1539,7 @@ contains
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use determinants, only: det_info_t
         use parallel, only: nprocs
-        use qmc_data, only: reference_t
+        use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
 
         type(basis_t), intent(in) :: basis

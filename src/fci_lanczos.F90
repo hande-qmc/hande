@@ -19,8 +19,7 @@ contains
 
         use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil, hamil_t
         use hamiltonian, only: get_hmatel
-        use qmc_data, only: reference_t
-        use reference_determinant, only: copy_reference_t
+        use reference_determinant, only: copy_reference_t, reference_t
         use system, only: sys_t, copy_sys_spin_info
 
         use checking, only: check_allocate
@@ -180,9 +179,9 @@ contains
 
         if (parent) then
             if (fci_in%direct_lanczos) then
-                write (6,'(/,1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
+                write (6,'(1X,a44,/)') 'Performing direct Lanczos diagonalisation...'
             else
-                write (6,'(/,1X,a37,/)') 'Performing Lanczos diagonalisation...'
+                write (6,'(1X,a37,/)') 'Performing Lanczos diagonalisation...'
             end if
         end if
 

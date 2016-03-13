@@ -52,7 +52,8 @@ contains
 
         use determinant_enumeration
         use fci_utils, only: generate_hamil, hamil_t
-        use qmc_data, only: qmc_in_t, reference_t, particle_t, qmc_state_t
+        use qmc_data, only: qmc_in_t, particle_t, qmc_state_t
+        use reference_determinant, only: reference_t
         use spawn_data, only: spawn_t
         use system, only: sys_t, copy_sys_spin_info, set_spin_polarisation, read_in
 
@@ -210,8 +211,8 @@ contains
         use energy_evaluation, only: update_shift
         use parallel, only: parent, iproc
         use fciqmc_data, only: write_fciqmc_report_header, write_fciqmc_report
-        use qmc_data, only: qmc_in_t, restart_in_t, reference_t, particle_t, qmc_state_t, &
-                            qmc_in_t_json, restart_in_t_json, reference_t_json
+        use qmc_data, only: qmc_in_t, restart_in_t, particle_t, qmc_state_t, qmc_in_t_json, restart_in_t_json
+        use reference_determinant, only: reference_t, reference_t_json
         use spawn_data, only: spawn_t
         use system, only: sys_t, sys_t_json
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t, dump_restart_file_wrapper
