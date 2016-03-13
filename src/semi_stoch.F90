@@ -1537,9 +1537,6 @@ contains
         call enumerate_determinants(sys, .true., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
                                     sys%symmetry, ss_ref%occ_list0, .false.)
 
-        allocate(determ_dets(size(dets_this_proc, dim=1), determ%tot_size), stat=ierr)
-        call check_allocate('determ_dets', size(dets_this_proc, dim=1)*determ%tot_size, ierr)
-
         ! Actually store the determinants, in the determ_dets array.
         call enumerate_determinants(sys, .false., spin_flip, ss_ref%ex_level, sym_space_size, determ%tot_size, determ_dets, &
                                     sys%symmetry, ss_ref%occ_list0, .false.)
