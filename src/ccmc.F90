@@ -1527,9 +1527,9 @@ contains
         ! 2, Apply additional factors.
         hmatel%r = hmatel%r*cluster%amplitude*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
-        call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+        if (allowed_excitation) call create_excited_det(sys%basis, cdet%f, connection, fexcit)
 
-        if (qn) then
+        if (allowed_excitation .and. qn) then
          call decode_det(sys%basis, fexcit, occ_list)
 
          call decode_det(sys%basis, qs%ref%f0, occ_list_ref)
@@ -1667,9 +1667,9 @@ contains
                 KiiAi = (-qs%shift(1))*cluster%amplitude
             case(1)
 !                KiiAi = ((cdet%data(1) - proj_energy)/diagel + (proj_energy - qs%shift(1)))*cluster%amplitude
-                KiiAi = (cdet%data(1)*invdiagel - qs%shift(1))*cluster%amplitude
+                KiiAi = (cdet%data(1) - qs%shift(1))*invdiagel*cluster%amplitude
             case default
-                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00)*invdiagel - proj_energy) *cluster%amplitude
+                KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *cluster%amplitude
             end select
         end if
 
@@ -1800,9 +1800,9 @@ contains
             KiiAi = (-qs%shift(1))*population
         else
             if (linked_ccmc) then
-                KiiAi = (Hii*invdiagel + proj_energy - qs%shift(1))*population
+                KiiAi = (Hii + proj_energy - qs%shift(1))*invdiagel*population
             else
-                KiiAi = (Hii*invdiagel - qs%shift(1))*population
+                KiiAi = (Hii - qs%shift(1))*invdiagel*population
             end if
         end if
 
@@ -2326,7 +2326,7 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-            if (qn) then
+            if (allowed .and. qn) then
                call decode_det(sys%basis, cdet%f, occ_list)
 
                call decode_det(sys%basis, qs%ref%f0, occ_list_ref)
