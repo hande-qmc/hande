@@ -78,6 +78,7 @@ contains
 
     function lua_dump_hdf5_system(L) result(nresult) bind(c)
 
+        ! [review] - JSS: docs
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
@@ -100,11 +101,12 @@ contains
         integer :: opts, err
 
         character(3), parameter :: keys(1) = [character(3) :: 'sys']
+
         lua_state = flu_copyptr(L)
-
         call get_sys_t(lua_state, sys)
-
-        call dump_system_hdf5(sys)
+        ! [review] - JSS: check that this is a suitable system first (i.e. read_in).
+        ! [review] - JSS: should only do this on the root process.
+        call  dump_system_hdf5(sys)
 
         nresult = 0
 

@@ -140,6 +140,28 @@ and similarly for :code:`system` objects.
 Dump system information
 -----------------------
 
+.. code-block:: lua
+
+    dump_hdf5_system {
+        sys = system,
+    }
+
+Options:
+
+``sys``
+    type: system object.
+
+    Required.
+
+    The system on which to perform the calculation.  Must be created via the read_in
+    function.
+
+.. [review] - JSS:
+
+    Suggest note a typical factor in initialisation time (~100x) and file
+    size (...?) and that this is particularly important when running in parallel on
+    a large number of cores.
+
 When running a calculation using a system generated from a FCIDUMP, the :code:`system` object
 created by lua_read_in can be dumped in HDF5 format for reuse. This enables much faster
 initialisation for larger systems.
@@ -147,6 +169,7 @@ initialisation for larger systems.
 .. code-block:: lua
 
      sys = read_in {
+         -- [review] - JSS: use a relative path in the example (i.e. just FCIDUMP.Polyyne_1.0.3x1x1.24.PW600_SS) for clarity.
          int_file = "/home/cs675/Code/FCIDUMPs/FCIDUMP.Polyyne_1.0.3x1x1.24.PW600_SS",
          nel = 24,
          ms = 0,
@@ -157,6 +180,8 @@ initialisation for larger systems.
          sys = sys,
      }
 
+     -- [review] - JSS: I would leave out the fciqmc calculation as it doesn't show the purpose of the dump_hdf5_system call.
+     -- [review] - JSS: Instead, show a separate input which uses the newly created HDF5 file.
      fciqmc {
          sys = sys,
          qmc = {
@@ -171,8 +196,10 @@ initialisation for larger systems.
          },
      }
 
+.. [review] - JSS: according to the code it will produce the file /home/cs675/Code/FCIDUMPs/FCIDUMP.Polyyne_1.0.3x1x1.24.PW600_SS.H5 rather than INTDUMP.H5.
 This will produce a HDF5 file entitled INTDUMP.H5. Passing this as the argument to int_file
 will enable it to be used in future calculations.
 
+.. [review] - JSS: really a CAS used to create the system object rather than to produce the file.
 If a CAS is used to produce such a file it will be labelled as such; conversion between
 diferent CAS within this functionality is not currently supported.

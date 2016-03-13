@@ -71,8 +71,6 @@ module hdf5_system
     private
     public :: read_system_hdf5, dump_system_hdf5
 
-
-
     ! Version ID of sysdump, just for compatability later on. Increment for any
     ! changes to functionality.
     integer, parameter :: sysdump_version = 0
@@ -128,18 +126,17 @@ module hdf5_system
                                 dbasis_lz = 'basis_lz',         &
                                 dbasis_sp_eigv = 'basis_sp_eigv'
 
-
-
     contains
 
 #ifndef DISABLE_HDF5
         subroutine init_system_hdf5(write_mode, sys, filename, kinds, verbose)
+
             ! Initialise HDF5 system functionality:
             ! * set filename;
             ! * print information line;
             ! * create HDF5 types
 
-            ! NOTE: HDF5 library must be opened (h5open_f) before init_restart_hdf5 is
+            ! NOTE: HDF5 library must be opened (h5open_f) before init_system_hdf5 is
             ! called and not closed between calling init_restart_hdf5 and operating on
             ! the restart file to ensure the HDF5 types match those calculated here.
 
@@ -152,8 +149,6 @@ module hdf5_system
             !   filename: name of system file.
             !   kinds: derived tpe containing HDF5 types which correspond to the
             !       non-standard integer and real kinds used in HANDE.
-
-
 
             use hdf5_helper, only: hdf5_kinds_t, hdf5_kinds_init
             use utils, only: get_unique_filename
@@ -170,9 +165,7 @@ module hdf5_system
 
             logical :: verbose_loc, exists
 
-
             if (present(verbose)) verbose_loc = verbose
-
 
             if (write_mode) then
                 ! If we used a CAS give clear indication in filename.
@@ -207,8 +200,6 @@ module hdf5_system
             ! In:
             !   Sys: derived type containing all information required to set up system
             !       again in binary form.
-            ! Out:
-            !   None
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -225,7 +216,6 @@ module hdf5_system
 
 #ifndef DISABLE_HDF5
             character(255) :: integral_filename
-
 
             integer :: date_time(8)
             character(19) :: date_str
@@ -272,13 +262,10 @@ module hdf5_system
             call hdf5_write(group_id, dsym0_tot, sys%sym0_tot)
             call hdf5_write(group_id, dsym_max_tot, sys%sym_max_tot)
 
-
             call hdf5_write(group_id, dcas, kinds, [2], sys%CAS)
 
             call hdf5_write(group_id, dmax_number_excitations,&
                                             sys%max_number_excitations)
-
-
 
                 ! --- basis subgroup ---
                 call h5gcreate_f(group_id, gbasis, subgroup_id, ierr)
@@ -303,7 +290,6 @@ module hdf5_system
                             sys%basis%basis_fns(:)%lz)
                 call hdf5_write(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
                             sys%basis%basis_fns(:)%sp_eigv)
-
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -401,7 +387,6 @@ module hdf5_system
             verbose_t = .true.
             if (present(verbose)) verbose_t = verbose
 
-
             ! Initialise HDF5 and open file.
             call h5open_f(ierr)
             call init_system_hdf5(.false., sys, filename, kinds)
@@ -478,8 +463,7 @@ module hdf5_system
             end if
             sys%CAS = cas
 
-
-                ! --- read in subgroup ---
+                ! --- read_in subgroup ---
                 call h5gopen_f(group_id, gread_in, subgroup_id, ierr)
 
                 call hdf5_read(subgroup_id, duhf, sys%read_in%uhf)
@@ -558,8 +542,8 @@ module hdf5_system
                     sp_fcidump_rank(i) = i
                 end do
                 call read_in_one_body(sys%read_in%dipole_int_file, sys%basis%nbasis, sys%basis%basis_fns, &
-                sys%read_in%pg_sym, sys%read_in%uhf, sp_fcidump_rank, sys%nel - sys%cas(1), &
-                sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)
+                                      sys%read_in%pg_sym, sys%read_in%uhf, sp_fcidump_rank, sys%nel - sys%cas(1), &
+                                      sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)
                 deallocate(sp_fcidump_rank, stat=ierr)
                 call check_deallocate('sp_fcidump_rank', ierr)
             end if
@@ -574,6 +558,7 @@ module hdf5_system
 
 #ifndef DISABLE_HDF5
         subroutine write_1body_integrals(id, dname, kinds, nbasis_sym_spin, integs)
+
             ! Writes one-body integral values out in spin & symmetry chunks, as stored.
             ! In:
             !   id: hdf5 group id to write in.
@@ -582,9 +567,6 @@ module hdf5_system
             !       non-standard integer and real kinds used in HANDE.
             !   nbasis_sym_spin: (i,j) gives no. basis functions with spin i, sym j.
             !   integs: integral storage from one_body_t
-            ! Out:
-            !   None
-
 
             use hdf5
             use hdf5_helper, only: hdf5_write, hdf5_kinds_t
@@ -604,13 +586,14 @@ module hdf5_system
             do ispin = 1, shpe(1)
                 do isym = lbound(nbasis_sym_spin, dim=2), ubound(nbasis_sym_spin, dim=2)
                     call get_onebody_name(dname, ispin, isym, dentr_name)
-                    call hdf5_write(id, dentr_name, kinds, &
-                                shape(integs(ispin, isym + 1)%v), integs(ispin, isym + 1)%v)
+                    call hdf5_write(id, dentr_name, kinds, shape(integs(ispin, isym + 1)%v), integs(ispin, isym + 1)%v)
                 end do
             end do
+
         end subroutine write_1body_integrals
 
         subroutine write_coulomb_integrals(id, dname, kinds, integs)
+
             ! Writes Coulomb integral value out in spin chunks, as stored.
             ! In:
             !   id: hdf5 group id to write in.
@@ -618,8 +601,6 @@ module hdf5_system
             !   kinds: derived tpe containing HDF5 types which correspond to the
             !       non-standard integer and real kinds used in HANDE.
             !   integs: integral storage from one_body_t.
-            ! Out:
-            !   None
 
             use hdf5
             use hdf5_helper, only: hdf5_write, hdf5_kinds_t
@@ -635,13 +616,13 @@ module hdf5_system
             shpe = shape(integs)
             do ispin = 1, shpe(1)
                 call get_coulomb_name(dname, ispin, dentr_name)
-                call hdf5_write(id, dentr_name, kinds, &
-                            shape(integs(ispin)%v), integs(ispin)%v)
+                call hdf5_write(id, dentr_name, kinds, shape(integs(ispin)%v), integs(ispin)%v)
             end do
 
         end subroutine write_coulomb_integrals
 
         subroutine read_1body_integrals(id, dname, kinds, uhf, op_sym, nbasis_sym_spin, imag, store)
+
             ! Reads one body integrals from hdf5 previously output by hande.
 
             ! In:
@@ -659,6 +640,7 @@ module hdf5_system
             ! NB. should be called after reading all other system information in,
             ! as requires other information (uhf, nbasis_sym_spin) to size info
             ! to be read in.
+
             use hdf5
             use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
             use molecular_integrals, only: init_one_body_t
@@ -692,11 +674,10 @@ module hdf5_system
                 do isym = 0, dummy(2) - 1
                     call get_onebody_name(dname, ispin, isym, dentr_name)
                     s(1) = nbasis_sym_spin(ispin, isym) * (nbasis_sym_spin(ispin, isym) + 1) / 2
-                    call hdf5_read(id, dentr_name, &
-                                kinds, s,&
-                                store%integrals(ispin, isym)%v)
+                    call hdf5_read(id, dentr_name, kinds, s, store%integrals(ispin, isym)%v)
                 end do
             end do
+
         end subroutine read_1body_integrals
 
         subroutine read_coulomb_integrals(id, dname, kinds, uhf, nbasis, &
@@ -715,6 +696,7 @@ module hdf5_system
             !   imag: bool, sets whether imaginary components.
             ! Out:
             !   store: fully allocated two_body_t with all appropriate integral values.
+
             use hdf5
             use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
             use molecular_integrals, only: init_two_body_t
@@ -738,14 +720,13 @@ module hdf5_system
             do ispin = 1, shpe(1)
                 call get_coulomb_name(dname, ispin, dentr_name)
                 call dset_shape(id, dentr_name, s)
-                call hdf5_read(id, dentr_name, kinds, &
-                        shape(store%integrals(ispin)%v), &
-                        store%integrals(ispin)%v)
+                call hdf5_read(id, dentr_name, kinds, shape(store%integrals(ispin)%v), store%integrals(ispin)%v)
             end do
 
         end subroutine read_coulomb_integrals
 
         subroutine get_onebody_name(dname, ispin, isym, entry_name)
+
             ! Generates name for set parameters when storing one-body integral chunks.
             ! Name follows pattern "dname_ispin[ispin]_isym[isym]"
             ! In:
@@ -760,9 +741,11 @@ module hdf5_system
             character(155), intent(out) :: entry_name
 
             write (entry_name, "(a,a,i2.2,a,i2.2)") trim(dname), "_ispin", ispin, "_isym", isym
+
         end subroutine get_onebody_name
 
         subroutine get_coulomb_name(dname, ispin, entry_name)
+
             ! Generates name for set parameters when storing coulomb integral chunks.
             ! Name follows pattern "dname_ispin[ispin]"
             ! In:
@@ -776,6 +759,7 @@ module hdf5_system
             character(155), intent(out) :: entry_name
 
             write (entry_name, "(a,a,i2.2)") trim(dname), "_ispin", ispin
+
         end subroutine get_coulomb_name
 
 #endif

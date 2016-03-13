@@ -540,10 +540,22 @@ contains
 
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
 
+        ! [review] - JSS: this seems rather unnecessary given you then check that the last three characters are .H5.
+        ! [review] - JSS: Instead of inspecting the file extension, why not use the h5fis_hdf5 subroutine from the HDF5 API?
+        ! [review] - JSS: e.g.
+        !     call h5fis_hdf5_f(fcidump, hdf5, err)
+        !     if (hdf5) then
+        !         call init_system(sys)
+        !         call read_system_hdf5(sys)
+        !     else
+        !         ...
+        !     end if
+        ! [review] - JSS: would need to wrap h5is_hdf5_f (i guess in hdf5_helper) for optional compilation, of course.
         ind = index(sys%read_in%fcidump, ".H5", back = .true.)
 
         hdf5 = .false.
 
+        ! [review] - JSS: note discrepancy between hdf5 (all cores read in the fcidump file) and ascii (only parent reads in and broadcasts).
         if (ind /= 0) then
             if (sys%read_in%fcidump(ind:) == ".H5") then
                 hdf5 = .true.
