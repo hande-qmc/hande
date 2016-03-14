@@ -169,6 +169,7 @@ contains
         use determinants
         use dmqmc_estimators
         use dmqmc_procedures
+        use dmqmc_data, only: hartree_fock_dm
         use energy_evaluation
         use excit_gen_mol
         use excit_gen_op_mol
@@ -299,7 +300,6 @@ contains
 
             update_proj_energy_ptr => update_proj_energy_mol
             sc0_ptr => slater_condon0_mol
-            energy_diff_ptr => double_counting_correction_mol
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
@@ -316,7 +316,6 @@ contains
 
             update_proj_energy_ptr => update_proj_energy_ueg
             sc0_ptr => slater_condon0_ueg
-            energy_diff_ptr => exchange_energy_ueg
 
             gen_excit_ptr%full => gen_excit_ueg_no_renorm
             decoder_ptr => decode_det_occ
@@ -401,6 +400,18 @@ contains
                         create_spawned_particle_dm_ptr => create_spawned_particle_density_matrix
                     end if
                 end if
+            end if
+
+            ! Reweighting routines for different initial density matrices.
+            if (dmqmc_in%propagate_to_beta .and. dmqmc_in%grand_canonical_initialisation) then
+                select case(sys%system)
+                case(ueg)
+                    energy_diff_ptr => exchange_energy_ueg
+                case(read_in)
+                    energy_diff_ptr => double_counting_correction_mol
+                case default
+                    ! Please implement.
+                end select
             end if
 
             ! Weighted importance sampling routines.
@@ -715,7 +726,7 @@ contains
         !   reference: reference selected for the qmc calculation.
 
         use system, only: sys_t, ueg, read_in
-        use proc_pointers, only: sc0_ptr, energy_diff_ptr, op0_ptr
+        use proc_pointers, only: sc0_ptr, op0_ptr
         use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, copy_reference_t, set_reference_det
         use checking, only: check_allocate
@@ -758,13 +769,6 @@ contains
 
         ! Energy of reference determinant.
         reference%H00 = sc0_ptr(sys, reference%f0)
-        ! Exchange energy of reference determinant.  (Only used in ip-dmqmc)
-        select case (sys%system)
-        case (ueg, read_in)
-            reference%energy_shift = energy_diff_ptr(sys, reference%occ_list0)
-        case default
-            ! [todo] - Implement for all models.
-        end select
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
 
     end subroutine init_reference

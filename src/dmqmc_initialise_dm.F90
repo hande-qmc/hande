@@ -17,7 +17,7 @@ implicit none
 contains
 
     subroutine create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qmc_state, annihilation_flags, &
-                                             target_nparticles_tot, psip_list, spawn, chem_pot)
+                                             target_nparticles_tot, psip_list, spawn, chem_pot, energy_shift)
 
         ! Create a starting density matrix by sampling the elements of the
         ! (unnormalised) identity matrix. This is a sampling of the
@@ -61,6 +61,7 @@ contains
         type(annihilation_flags_t), intent(in) :: annihilation_flags
         integer(int_64), intent(in) :: target_nparticles_tot
         real(p), intent(in) :: chem_pot
+        real(p), intent(in) :: energy_shift
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
 
@@ -119,7 +120,7 @@ contains
                     ! a guess.
                     if (dmqmc_in%grand_canonical_initialisation) then
                         call init_grand_canonical_ensemble(sys, dmqmc_in, npsips_this_proc, psip_list%pop_real_factor, spawn, &
-                                                           qmc_state%ref%energy_shift, qmc_state%target_beta, &
+                                                           energy_shift, qmc_state%target_beta, &
                                                            & qmc_in%initiator_approx, qmc_in%initiator_pop, rng, chem_pot)
                     else
                         call random_distribution_electronic(rng, sys, npsips_this_proc, psip_list%pop_real_factor, ireplica, &

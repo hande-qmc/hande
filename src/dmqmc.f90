@@ -56,7 +56,7 @@ contains
                             qmc_in_t_json, restart_in_t_json, load_bal_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t, dmqmc_weighted_sampling_t, dmqmc_in_t_json, ipdmqmc_in_t_json, &
-                              rdm_in_t_json, operators_in_t_json
+                              rdm_in_t_json, operators_in_t_json, hartree_fock_dm
         use check_input, only: check_qmc_opts, check_dmqmc_opts
         use spawn_data, only: write_memcheck_report, dealloc_spawn_t
         use idmqmc, only: set_parent_flag_dmqmc
@@ -89,7 +89,7 @@ contains
         logical :: soft_exit, write_restart_shift, update_tau
         logical :: error, rdm_error, attempt_spawning, restarting
         real :: t1, t2
-        real(p) :: mu
+        real(p) :: mu, energy_shift
         type(dSFMT_t) :: rng
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
@@ -139,6 +139,11 @@ contains
         ! Determine the chemical potential if doing the ip-dmqmc algorithm.
         if (dmqmc_in%propagate_to_beta .and. dmqmc_in%grand_canonical_initialisation) then
             mu = find_chem_pot(sys, qs%target_beta)
+            if (dmqmc_in%initial_matrix == hartree_fock_dm) then
+                energy_shift = energy_diff_ptr(sys, qs%ref%occ_list0)
+            else
+                energy_shift = 0.0_p
+            end if
         else
             mu = 0.0_p
         end if
@@ -159,7 +164,7 @@ contains
             call operators_in_t_json(js)
             call restart_in_t_json(js, restart_in)
             call load_bal_in_t_json(js, load_bal_in)
-            call reference_t_json(js, qs%ref, sys, dmqmc_energy_shift=.true., terminal=.true.)
+            call reference_t_json(js, qs%ref, sys, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')
         end if
@@ -202,7 +207,7 @@ contains
             ! matrix.
             call create_initial_density_matrix(rng, sys, qmc_in, dmqmc_in, qs, annihilation_flags, &
                                                init_tot_nparticles, qs%psip_list, qs%spawn_store%spawn, &
-                                               mu)
+                                               mu, energy_shift)
 
             ! Allow the shift to vary from the very start of the beta loop, if
             ! this condition is met.
