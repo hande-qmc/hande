@@ -91,12 +91,13 @@ contains
         ! Lua:
         !    dump_hdf5_system {
         !       sys = system,       -- required
+        !       filename = filename,
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
 
-        use aot_table_module, only: aot_table_top, aot_table_close
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_table_close
         use lua_hande_system, only: get_sys_t
         use lua_hande_utils, only: warn_unused_args
 
@@ -113,17 +114,20 @@ contains
         type(sys_t), pointer :: sys
 
         integer :: opts, err
+        character(255) :: filename
 
-        character(3), parameter :: keys(1) = [character(3) :: 'sys']
+        character(8), parameter :: keys(2) = [character(8) :: 'sys', 'filename']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
         opts = aot_table_top(lua_state)
+        filename = ''
+        call aot_get_val(filename, err, lua_state, opts, 'filename')
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
         if (sys%system == read_in) then
-            if (parent) call dump_system_hdf5(sys)
+            if (parent) call dump_system_hdf5(sys, filename)
         else
             call warning('lua_dump_hdf5_system', 'Cannot write systems other than read_in to an HDF5 file.')
         end if

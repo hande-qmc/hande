@@ -144,6 +144,7 @@ Dump system information
 
     dump_hdf5_system {
         sys = system,
+        filename = filename,
     }
 
 Options:
@@ -156,21 +157,25 @@ Options:
     The system on which to perform the calculation.  Must be created via the read_in
     function.
 
-.. [review] - JSS:
+``filename``
+    type: string. Optional.
 
-    Suggest note a typical factor in initialisation time (~100x) and file
-    size (...?) and that this is particularly important when running in parallel on
-    a large number of cores.
+    Filename to dump system hdf5 file to. If unset will generate a filename to dump to
+    based on the template:
+        int_file + CAS_information + .H5
 
 When running a calculation using a system generated from a FCIDUMP, the :code:`system` object
 created by lua_read_in can be dumped in HDF5 format for reuse. This enables much faster
 initialisation for larger systems.
 
+Using this functionality speeds initialisation by a factor of ~100x and reduces required file
+size by ~16x (for large FCIDUMPs). When running in parallel on a large number of cores this is
+particularly important to utilise.
+
 .. code-block:: lua
 
      sys = read_in {
-         -- [review] - JSS: use a relative path in the example (i.e. just FCIDUMP.Polyyne_1.0.3x1x1.24.PW600_SS) for clarity.
-         int_file = "/home/cs675/Code/FCIDUMPs/FCIDUMP.Polyyne_1.0.3x1x1.24.PW600_SS",
+         int_file = "./FCIDUMP",
          nel = 24,
          ms = 0,
          sym = 0,
@@ -180,26 +185,10 @@ initialisation for larger systems.
          sys = sys,
      }
 
-     -- [review] - JSS: I would leave out the fciqmc calculation as it doesn't show the purpose of the dump_hdf5_system call.
-     -- [review] - JSS: Instead, show a separate input which uses the newly created HDF5 file.
-     fciqmc {
-         sys = sys,
-         qmc = {
-             tau = 1e-5,
-             rng_seed = 23,
-             init_pop = 10,
-             mc_cycles = 20,
-             nreports = 100000,
-             target_population = 100000,
-             state_size = 150000,
-             spawned_state_size = 75000,
-         },
-     }
-
-.. [review] - JSS: according to the code it will produce the file /home/cs675/Code/FCIDUMPs/FCIDUMP.Polyyne_1.0.3x1x1.24.PW600_SS.H5 rather than INTDUMP.H5.
-This will produce a HDF5 file entitled INTDUMP.H5. Passing this as the argument to int_file
-will enable it to be used in future calculations.
+This will produce a HDF5 file entitled "./FCIDUMP.H5". Passing this as the argument to int_file
+within read_in will use it in future calculations- a HDF5 file is automatically detected.
 
 .. [review] - JSS: really a CAS used to create the system object rather than to produce the file.
-If a CAS is used to produce such a file it will be labelled as such; conversion between
-diferent CAS within this functionality is not currently supported.
+If a CAS is used to produce the system object used to produce such a file it will be
+labelled as such; conversion between different CAS within this functionality is not currently
+supported.
