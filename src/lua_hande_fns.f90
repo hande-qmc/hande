@@ -93,9 +93,12 @@ contains
         !       sys = system,       -- required
         !       filename = filename,
         !    }
+        ! Returns:
+        !    name of HDF5 file created.  Only set on the root process and set
+        !    to an empty string for all other processors.
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
-        use flu_binding, only: flu_State, flu_copyptr
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushstring
 
         use aot_table_module, only: aot_table_top, aot_get_val, aot_table_close
         use lua_hande_system, only: get_sys_t
@@ -132,7 +135,8 @@ contains
             call warning('lua_dump_hdf5_system', 'Cannot write systems other than read_in to an HDF5 file.')
         end if
 
-        nresult = 0
+        nresult = 1
+        call flu_pushstring(lua_state, filename)
 
     end function lua_dump_hdf5_generic_system
 

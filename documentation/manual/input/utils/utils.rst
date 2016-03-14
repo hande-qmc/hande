@@ -164,6 +164,11 @@ Options:
     based on the template:
         int_file + CAS_information + .H5
 
+Returns:
+    name of HDF5 file created.  This is currently only available on the root processor and
+    can be passed into subsequent calls to ``read_in`` safely as only the root processor
+    reads from integral and system files.
+
 When running a calculation using a system generated from a FCIDUMP, the :code:`system` object
 created by lua_read_in can be dumped in HDF5 format for reuse. This enables much faster
 initialisation for larger systems.
