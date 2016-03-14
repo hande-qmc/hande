@@ -172,6 +172,9 @@ module hdf5_system
                     if (sys%CAS(1) == -1 .and. sys%CAS(2) == -1) then
                         write (filename, "(a,a)") trim(sys%read_in%fcidump), ".H5"
                     else
+                        ! [review] - JSS: this breaks horribly if we have more than 99 orbitals.
+                        ! [review] - JSS: suggest
+                        !    write (filename, '(a,"-CAS",i0,",",i0,".H5")') trim(sys%read_in%fcidump), sys%CAS
                         write (filename, "(a,a,i2.2,a,i2.2,a)") trim(sys%read_in%fcidump), "-", &
                                                         sys%CAS(1), ",", sys%CAS(2), "CAS.H5"
                     end if
@@ -247,6 +250,7 @@ module hdf5_system
 
                 call hdf5_write(group_id, duuid, GLOBAL_META%uuid)
 
+                ! [review] - JSS: please fix.
                 ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
                 ! Currently mis-sized somewhere and so disabled as kept giving 'End of record' errors..
                 !write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
@@ -278,11 +282,13 @@ module hdf5_system
                 ! --- basis subgroup ---
                 call h5gcreate_f(group_id, gbasis, subgroup_id, ierr)
 
+                ! [review] - JSS: not needed.
                 nbasis = sys%basis%nbasis
 
                 ! Write information for basis strings by type not string; array
                 ! size set by nbasis.
 
+                ! [review] - JSS: associate is your friend.
                 call hdf5_write(subgroup_id, dnbasis, sys%basis%nbasis)
                 call hdf5_write(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
                             sys%basis%basis_fns(:)%spatial_index)
@@ -437,10 +443,12 @@ module hdf5_system
                     ! --- basis subgroup ---
                     call h5gopen_f(group_id, gbasis, subgroup_id, ierr)
 
+                    ! [review] - JSS: read in sys%basis%nbasis directly.
                     call hdf5_read(subgroup_id, dnbasis, nbasis)
                     sys%basis%nbasis = nbasis
 
-                    allocate(sys%basis%basis_fns(nbasis),  stat = ierr)
+                    ! [review] - JSS: associate is your friend here.
+                    allocate(sys%basis%basis_fns(nbasis),  stat=ierr)
                     call check_allocate('sys%basis%basis_fns', nbasis, ierr)
 
                     call hdf5_read(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
@@ -541,6 +549,7 @@ module hdf5_system
             end if
 #ifdef PARALLEL
             ! Distribute values needed for initialisation on other processes.
+            ! [review] - JSS: norb isn't set at this point.
             call MPI_BCast(norb, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%nel, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%symmetry, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
@@ -606,12 +615,14 @@ module hdf5_system
             end if
 #endif
 
+            ! [review] - JSS: norb isn't actually used...just delete it.
             if (sys%read_in%uhf) then
                 norb =  sys%basis%nbasis
             else
                 norb = sys%basis%nbasis/2
             end if
 
+            ! [review] - JSS: ?!?!?!  already allocated, causes catastrophic errors.
             allocate(sys%basis%basis_fns(sys%basis%nbasis), stat=ierr)
             call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
 
@@ -633,6 +644,7 @@ module hdf5_system
                                       sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)
                 deallocate(sp_fcidump_rank, stat=ierr)
                 call check_deallocate('sp_fcidump_rank', ierr)
+                ! [review] - JSS: no broadcast?
             end if
 #else
 
