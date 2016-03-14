@@ -25,13 +25,14 @@ contains
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
 
-        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
         use errors, only: stop_all
         use parallel, only: nprocs
         use restart_hdf5, only: restart_info_t, init_restart_info_t, redistribute_restart_hdf5
         use system, only: sys_t
         use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -42,6 +43,7 @@ contains
         logical :: read_exists, write_exists
         type(restart_info_t) :: ri
         type(sys_t), pointer :: sys
+        character(6), parameter :: keys(4) = [character(6) :: 'sys', 'read', 'write', 'nprocs']
 
         lua_state = flu_copyptr(l)
         opts = aot_table_top(lua_state)
@@ -64,6 +66,9 @@ contains
         else
             call init_restart_info_t(ri)
         end if
+
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
 
         if (aot_exists(lua_state, opts, 'sys')) then
             call get_sys_t(lua_state, sys)
@@ -91,8 +96,9 @@ contains
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
 
-        use aot_table_module, only: aot_table_top
+        use aot_table_module, only: aot_table_top, aot_table_close
         use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
 
         use errors, only: warning
         use parallel, only: nprocs, parent
@@ -112,6 +118,9 @@ contains
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
+        opts = aot_table_top(lua_state)
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
 
         if (sys%system == read_in) then
             if (parent) call dump_system_hdf5(sys)
