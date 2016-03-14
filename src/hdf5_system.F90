@@ -18,7 +18,7 @@ module hdf5_system
     ! /                                 # ROOT/
     !
     ! metadata/
-    !       hande (version)             # git sha1 hash.  For info only (not currently used on read-in).
+    !       hande version               # git sha1 hash.  For info only (not currently used on read-in).
     !       uuid                        # UUID of calculation.  For info only (not currently used on read-in).
     !       date                        # For info only (not currently used on read-in).
     !       sysdump version             # Version of hdf5_system module used to produce file.
@@ -32,20 +32,20 @@ module hdf5_system
     !   nsym_tot
     !   sym0_tot
     !   sym_max_tot
-    !   cas
+    !   CAS
     !   max_number_excitations
     !
     !   basis/
     !       nbasis
     !                                   # Arrays containing information for
     !                                   # ith basis function at ith position.
-    !       spat_ind
-    !       sym
-    !       sym_index
-    !       sym_spin_index
-    !       ms
-    !       lz
-    !       sp_eigv
+    !       basis_spatial_index
+    !       basis_symmetry
+    !       basis_symmetry_index
+    !       basis_symmetry_spin_index
+    !       basis_ms
+    !       basis_lz
+    !       basis_sp_eigv
     !
     !   read_in/
     !       fcidump     (string)
@@ -58,9 +58,9 @@ module hdf5_system
     !                                   # write_coulomb_integrals for storage
     !                                   # structure information.
     !           one_body
-    !           coulomb
+    !           coulomb_ints
     !           one_body_im
-    !           coulomb_im
+    !           coulomb_ints_im
 
     ! where XXX/ indicates a group called XXX, YYY indicates a dataset called
     ! YYY and a nested structure indicates group membership and # is used to
@@ -105,8 +105,6 @@ module hdf5_system
                                 decore = 'ecore',               &
                                 duselz = 'uselz',               &
                                 dintegrals = 'integrals',       &
-                                dop_sym = 'op_sym',             &
-                                dimag = 'imag',                 &
                                 dcomp = 'comp',                 &
 
                                 done_body = 'one_body',         &
