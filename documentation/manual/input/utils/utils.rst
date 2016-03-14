@@ -188,7 +188,6 @@ particularly important to utilise.
 This will produce a HDF5 file entitled "./FCIDUMP.H5". Passing this as the argument to int_file
 within read_in will use it in future calculations- a HDF5 file is automatically detected.
 
-.. [review] - JSS: really a CAS used to create the system object rather than to produce the file.
 If a CAS is used to produce the system object used to produce such a file it will be
 labelled as such; conversion between different CAS within this functionality is not currently
 supported.

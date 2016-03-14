@@ -61,8 +61,9 @@ Options
 
     Specify the FCIDUMP file containing the integrals and information relating to the
     single-particle basis.
-    .. [review] - JSS: include a link to the function for converting a FCIDUMP file to a HDF5 file.
-    Can also be an HDF5 file previously produced by HANDE from a FCIDUMP.
+    Can also be an HDF5 file previously produced by HANDE from a FCIDUMP. To produce
+    such a file you can use the dump_hdf5_generic_system lua function (see utils/utils
+    for further information).
 ``dipole_int_file``
     type: string.
 
