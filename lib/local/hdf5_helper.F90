@@ -1446,6 +1446,15 @@ module hdf5_helper
 #endif
 
         subroutine check_ifhdf5(filename, if_hdf5, ierr)
+
+            ! Check if file is an HDF5 file.
+
+            ! In:
+            !    filename: file to check
+            ! Out:
+            !    if_hdf5: True (false) if file is (not) an HDF5 file.  False if compiled without HDF5 support.
+            !    ierr: error code from h5fis_hdf5_f call.
+
             use, intrinsic :: iso_c_binding
 #ifndef DISABLE_HDF5
             use hdf5
@@ -1461,10 +1470,8 @@ module hdf5_helper
 #ifndef DISABLE_HDF5
             call h5fis_hdf5_f(filename, if_hdf5, ierr)
 #else
-            if (parent) call warning('check_ifhdf5', '# Not compiled with HDF5 support. Assuming &
-                                    &fcidump supplied is in ascii format.')
+            if (parent) call warning('check_ifhdf5', '# Not compiled with HDF5 support. Assuming file supplied is in ascii format.')
 #endif
-
         end subroutine check_ifhdf5
 
 

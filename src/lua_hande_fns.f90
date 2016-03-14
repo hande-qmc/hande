@@ -78,7 +78,15 @@ contains
 
     function lua_dump_hdf5_system(L) result(nresult) bind(c)
 
-        ! [review] - JSS: docs
+        ! Write a read_in system to an HDF5 file, which can subsequently be used instead of an ASCII FCIDUMP file.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    dump_hdf5_system {
+        !       sys = system,       -- required
+        !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
@@ -86,7 +94,7 @@ contains
         use aot_table_module, only: aot_table_top
         use lua_hande_system, only: get_sys_t
 
-        use errors, only: stop_all
+        use errors, only: warning
         use parallel, only: nprocs, parent
         use system, only: sys_t, read_in
 
@@ -104,10 +112,15 @@ contains
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
-        if (sys%system == read_in .and. parent) call  dump_system_hdf5(sys)
+
+        if (sys%system == read_in) then
+            if (parent) call dump_system_hdf5(sys)
+        else
+            call warning('lua_dump_hdf5_system', 'Cannot write systems other than read_in to an HDF5 file.')
+        end if
 
         nresult = 0
 
-    end function
+    end function lua_dump_hdf5_system
 
 end module lua_hande_fns
