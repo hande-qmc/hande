@@ -102,7 +102,7 @@ contains
         use lua_hande_utils, only: warn_unused_args
 
         use errors, only: warning
-        use parallel, only: nprocs, parent
+        use parallel, only: parent
         use system, only: sys_t, read_in
 
         use hdf5_system, only: dump_system_hdf5

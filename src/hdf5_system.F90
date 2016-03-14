@@ -161,9 +161,8 @@ module hdf5_system
             logical, intent(in), optional ::  verbose
             character(255), intent(in), optional :: in_name
             character(255), intent(out) :: filename
-            integer :: fname_id
 
-            logical :: verbose_loc, exists
+            logical :: verbose_loc
 
             verbose_loc = .true.
             if (present(verbose)) verbose_loc = verbose
@@ -391,7 +390,7 @@ module hdf5_system
             real(p) :: ecore(1)
 
             integer :: i, norb
-            logical :: exists, verbose_t
+            logical :: verbose_t
             integer, allocatable :: sp_fcidump_rank(:)
 
             verbose_t = .true.
@@ -743,8 +742,7 @@ module hdf5_system
             integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
             type(one_body_t), intent(out) :: store
 
-            integer :: ispin, isym, s(1), nspin, ierr, dummy(2)
-            integer(hsize_t) :: dum(1)
+            integer :: ispin, isym, s(1), nspin, dummy(2)
             character(155) :: dentr_name
 
             if (uhf) then
