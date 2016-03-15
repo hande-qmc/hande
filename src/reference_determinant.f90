@@ -33,10 +33,6 @@ type reference_t
     ! Value of <D0|O|D0>, where O is the operator we are sampling.
     ! (Applicable/set only if Hellmann--Feynman sampling is in operation.)
     real(p) :: O00
-    ! Energy shift of the reference determinant i.e.
-    ! <D0|H_new|D0>-<D0|H_old|D0>, where H_old and H_new are two different
-    ! Hamiltonians. Used in ip-dmqmc when reweighing the initial density matrix.
-    real(p) :: energy_shift = 0.0_p
 end type reference_t
 
 contains
@@ -286,7 +282,7 @@ contains
 
 !--- reference_t utils ---
 
-    subroutine reference_t_json(js, ref, sys, dmqmc_energy_shift, terminal)
+    subroutine reference_t_json(js, ref, sys, terminal)
 
         ! Serialise a reference_t object in JSON format.
 
@@ -295,7 +291,6 @@ contains
         ! In:
         !   reference: reference_t object containing the information about reference state (including any defaults set).
         !   sys (optional): system to which reference belongs.  If present, output the spin and symmetry information of the reference.
-        !   dmqmc_energy_shift (optional): if true, print out the 'energy shift' for IP-DMQMC.  Default: false.
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
@@ -307,12 +302,7 @@ contains
         type(json_out_t), intent(inout) :: js
         type(reference_t), intent(in) :: ref
         type(sys_t), intent(in), optional :: sys
-        logical, intent(in), optional :: dmqmc_energy_shift, terminal
-
-        logical :: print_energy_shift
-
-        print_energy_shift = .false.
-        if (present(dmqmc_energy_shift)) print_energy_shift = dmqmc_energy_shift
+        logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'reference')
         if (allocated(ref%occ_list0)) then
@@ -332,8 +322,7 @@ contains
                 call json_write_key(js, 'hilbert_space_det_symmetry', symmetry_orb_list(sys, ref%hs_occ_list0))
             end if
         end if
-        call json_write_key(js, 'ex_level', ref%ex_level, .not.print_energy_shift)
-        if (print_energy_shift) call json_write_key(js, 'shift', ref%energy_shift, .true.)
+        call json_write_key(js, 'ex_level', ref%ex_level, .true.)
         call json_object_end(js, terminal)
 
     end subroutine reference_t_json
