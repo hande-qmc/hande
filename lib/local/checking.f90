@@ -2,8 +2,11 @@ module checking
 
     ! Helper routines for testing whether an event was a success.
 
+    use iso_fortran_env, only: NUMERIC_STORAGE_SIZE 
+    use const, only: int_64
     implicit none
 
+    integer(int_64), parameter :: MAX_INT = 2_int_64**(NUMERIC_STORAGE_SIZE-1)-1
     interface check_allocate
         module procedure check_allocate_int_32
         module procedure check_allocate_int_64
@@ -28,7 +31,7 @@ module checking
             integer(int_32), intent(in) :: array_size
             integer, intent(in) :: ierr
 
-            if (ierr /= 0) then
+            if (array_size < 0 .or. ierr /= 0) then
                 ! Error in allocating array.
                 if (nprocs > 1) then
                     write (6,'(1X,a25,1X,a,1X,a9,1X,'//int_fmt(array_size,1)//',a12,'//int_fmt(iproc,1)//')') &
@@ -38,7 +41,7 @@ module checking
                         'Error in allocating array',trim(array_name),'with size',array_size
                 end if
                 write (6,*) 'ierr',ierr
-                call stop_all('check_allocate','Allocation error')
+                call stop_all('check_allocate_int_32','Allocation error')
             end if
 
         end subroutine check_allocate_int_32
@@ -60,7 +63,7 @@ module checking
             integer(int_64), intent(in) :: array_size
             integer, intent(in) :: ierr
 
-            if (ierr /= 0) then
+            if (array_size < 0 .or. array_size > MAX_INT .or. ierr /= 0) then
                 ! Error in allocating array.
                 if (nprocs > 1) then
                     write (6,'(1X,a25,1X,a,1X,a9,1X,'//int_fmt(array_size,1)//',a12,'//int_fmt(iproc,1)//')') &
