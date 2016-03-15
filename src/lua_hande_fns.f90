@@ -68,7 +68,6 @@ contains
         end if
 
         call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
 
         if (aot_exists(lua_state, opts, 'sys')) then
             call get_sys_t(lua_state, sys)
@@ -76,6 +75,8 @@ contains
         else
             call redistribute_restart_hdf5(ri, nprocs_target)
         end if
+
+        call aot_table_close(lua_state, opts)
 
         nresult = 0
 
