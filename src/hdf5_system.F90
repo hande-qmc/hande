@@ -177,9 +177,6 @@ module hdf5_system
                     if (sys%CAS(1) == -1 .and. sys%CAS(2) == -1) then
                         write (filename, "(a,a)") trim(sys%read_in%fcidump), ".H5"
                     else
-                        ! [review] - JSS: this breaks horribly if we have more than 99 orbitals.
-                        ! [review] - JSS: suggest
-                        ! [reply] - CJCS: Was fairly arbitrary upper bound; fix sounds good.
                         write (filename, '(a,"-CAS",i0,",",i0,".H5")') trim(sys%read_in%fcidump), sys%CAS
                     end if
                 end if
@@ -253,7 +250,6 @@ module hdf5_system
 
                 call hdf5_write(group_id, duuid, GLOBAL_META%uuid)
 
-                ! [review] - JSS: please fix.
                 ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
                 ! Currently mis-sized somewhere and so disabled as kept giving 'End of record' errors..
                 call date_and_time(values=date_time)
@@ -661,8 +657,6 @@ module hdf5_system
                                       sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)
                 deallocate(sp_fcidump_rank, stat=ierr)
                 call check_deallocate('sp_fcidump_rank', ierr)
-                ! [review] - JSS: no broadcast?
-                ! [reply] - CJCS: Done within read_in_one_body
             end if
 #else
 
