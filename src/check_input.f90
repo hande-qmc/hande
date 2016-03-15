@@ -195,8 +195,8 @@ contains
         !   sys: system being studied.
         !   dmqmc_in: DMQMC options.
 
-        use system, only: sys_t, heisenberg, ueg
-        use dmqmc_data, only: dmqmc_in_t
+        use system, only: sys_t, heisenberg, ueg, read_in
+        use dmqmc_data, only: dmqmc_in_t, hartree_fock_dm
         use calc, only: dmqmc_rdm_r2, doing_dmqmc_calc, dmqmc_full_r2
         use calc, only: dmqmc_staggered_magnetisation, dmqmc_energy_squared, dmqmc_correlation
         use calc, only: dmqmc_potential_energy, dmqmc_kinetic_energy, dmqmc_HI_energy
@@ -264,6 +264,10 @@ contains
             & .and.  dmqmc_in%metropolis_attempts == 0) then
             call stop_all(this, 'metropolis_attempts must be non-zero to sample the correct initial density matrix&
                                  & if not using grand_canonical_initialisation.')
+        end if
+        if (dmqmc_in%grand_canonical_initialisation .and. dmqmc_in%initial_matrix == hartree_fock_dm &
+            .and. sys%system /= ueg .and. sys%system /= read_in) then
+            call stop_all(this, 'Reweighting of initial matrix not supported for this system. Please implement.')
         end if
         if (dmqmc_in%symmetric .and. dmqmc_in%propagate_to_beta .and. sys%system /= ueg) then
             call stop_all(this, 'Symmetric propagation is only implemented for the UEG. Please implement.')
