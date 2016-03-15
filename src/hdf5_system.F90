@@ -89,6 +89,8 @@ module hdf5_system
                                 duuid = 'uuid',                 &
 
                                 dsystem = 'system',             &
+                                dnel = 'nelectrons',            &
+                                dms = 'Ms',                     &
                                 dsymmetry = 'symmetry',         &
                                 dnsym = 'nsym',                 &
                                 dsym0 = 'sym0',                 &
@@ -267,6 +269,16 @@ module hdf5_system
 
             call hdf5_write(group_id, dsystem, sys%system)
 
+            ! Write either original number of electrons or modified number of electrons
+            ! depending upon whether using a CAS.
+            if (sys%CAS(1) == -1) then
+                call hdf5_write(group_id, dnel, sys%nel)
+            else
+                call hdf5_write(group_id, dnel, sys%CAS(1))
+            end if
+
+            call hdf5_write(group_id, dms, sys%Ms)
+
             call hdf5_write(group_id, dsymmetry, sys%symmetry)
             call hdf5_write(group_id, dnsym, sys%nsym)
             call hdf5_write(group_id, dsym0, sys%sym0)
@@ -427,6 +439,24 @@ module hdf5_system
 
                 call hdf5_read(group_id, dsystem, sys%system)
 
+                if ((sys%nel == 0) .and. sys%Ms == huge(1)) then
+                    call hdf5_read(group_id, dnel, sys%nel)
+                    call hdf5_read(group_id, dms, sys%Ms)
+                else if (sys%nel == 0) then
+                    call stop_all('read_system_hdf5', "Specified total spin but not number &
+                            &electrons. Please specify neither to use values contained within &
+                            & system dump or both.")
+                else if (sys%Ms == huge(1)) then
+                    call stop_all('read_system_hdf5', "Specified number electrons but not total &
+                            &spin. Please specify neither to use values contained within &
+                            &system dump or both.")
+
+                else
+                    write (*,*), "# WARNING: Overwriting nel and Ms within &
+                            &hdf5 file."
+                    write (*,*)
+                end if
+
                 call hdf5_read(group_id, dsymmetry, sys%symmetry)
                 call hdf5_read(group_id, dnsym, sys%nsym)
                 call hdf5_read(group_id, dsym0, sys%sym0)
@@ -443,10 +473,10 @@ module hdf5_system
                     call h5gopen_f(group_id, gbasis, subgroup_id, ierr)
 
                     associate(nbasis=>sys%basis%nbasis)
-                        allocate(sys%basis%basis_fns(nbasis),  stat=ierr)
 
                         call hdf5_read(subgroup_id, dnbasis, nbasis)
 
+                        allocate(sys%basis%basis_fns(nbasis),  stat=ierr)
                         call check_allocate('sys%basis%basis_fns', nbasis, ierr)
 
                         call hdf5_read(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
@@ -471,12 +501,11 @@ module hdf5_system
 
                 call hdf5_read(group_id, dcas, kinds, [2], cas)
 
-                if ((sys%CAS(1) /= -1 .or. sys%CAS(2) /= -1) .and. (sys%CAS(1) /= cas(1) &
-                                                .or. sys%CAS(2) /= cas(2))) then
-                    call stop_all('read_system_hdf5', 'attempting to start calculation &
-                            &with different CAS to that used in HDF5 file creation; not &
-                            &currently supported. Use original INTDUMP to generate new &
-                            &HDF5 file.')
+                if (sys%CAS(1) /= -1 .or. sys%CAS(2) /= -1) then
+                    call stop_all('read_system_hdf5', 'Attempted to start calculation &
+                            &using a CAS and HDF5 file initiation. This is not currently &
+                            &supported. Use original INTDUMP to generate new &
+                            &HDF5 file with given CAS instead.')
                 end if
                 sys%CAS = cas
 

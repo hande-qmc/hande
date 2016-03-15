@@ -1,3 +1,6 @@
+.. _utils:
+
+
 Utilities
 =========
 
@@ -137,12 +140,14 @@ For example, for :code:`qmc_state` objects:
 
 and similarly for :code:`system` objects.
 
-Dump system information
------------------------
+.. _utils_hdf5_system_dump:
+
+Write hdf5 system file
+---------------------
 
 .. code-block:: lua
 
-    dump_hdf5_system {
+    write_read_in_system {
         sys = system,
         filename = filename,
     }
@@ -180,19 +185,23 @@ particularly important to utilise.
 .. code-block:: lua
 
      sys = read_in {
-         int_file = "./FCIDUMP",
+         int_file = "FCIDUMP",
          nel = 24,
          ms = 0,
          sym = 0,
      }
 
-     dump_hdf5_system {
+     hdf5_name = write_read_in_system {
          sys = sys,
      }
 
-This will produce a HDF5 file entitled "./FCIDUMP.H5". Passing this as the argument to int_file
-within read_in will use it in future calculations- a HDF5 file is automatically detected.
+This will produce a HDF5 file entitled "FCIDUMP.H5" and return this value to the hdf5_name.
+Passing this as the argument to int_file within read_in will use it in future calculations-
+a HDF5 file is automatically detected.
 
 If a CAS is used to produce the system object used to produce such a file it will be
 labelled as such; conversion between different CAS within this functionality is not currently
 supported.
+
+When using a HDF5 file to initialise a system either both of nel and ms must be specified or
+neither; if neither is specified the values within the system dump will be used.

@@ -61,9 +61,9 @@ Options
 
     Specify the FCIDUMP file containing the integrals and information relating to the
     single-particle basis.
-    Can also be an HDF5 file previously produced by HANDE from a FCIDUMP. To produce
-    such a file you can use the dump_hdf5_generic_system lua function (see utils/utils
-    for further information).
+    Can also be an HDF5 file previously produced by HANDE from a FCIDUMP for considerable gains in
+    initialisation speed and read_in file size. To produce such a file you can use the 
+    dump_hdf5_generic_system lua function. For further information see :ref:`utils_hdf5_system_dump`.
 ``dipole_int_file``
     type: string.
 
@@ -78,12 +78,12 @@ Options
     Optional.  No default.
 
     If specified, then the basis set is restricted to a given complete active space,
-    whereby ``CAS = {M,N}`` corresponds to allowing only :math:`N` electrons to be distributed
-    among :math:`2M` spin orbitals.  Any additional electrons are 'frozen' (i.e. forced to
+    whereby ``CAS = {N,M}`` corresponds to allowing only :math:`N` electrons to be distributed
+    among :math:`M` spin orbitals.  Any additional electrons are 'frozen' (i.e. forced to
     be in the lowest spin orbitals) and any additional high-energy spin orbitals are
     removed from the basis set.
-    If using HDF5 system initialisation must agree with CAS used to generate HDF5 file or be set
-    to default.
+    Functionality not compatible with reading from an hdf5 file; to use this in combination with
+    hdf5 initialisation use setting when generating hdf5 file.
 ``verbose``
     type: boolean.
 

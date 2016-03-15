@@ -545,8 +545,8 @@ contains
 
         if (hdf5) then
                 call init_system(sys)
-                if (parent) call check_sys(sys)
                 call read_system_hdf5(sys)
+                if (parent) call check_sys(sys)
         else
 
             call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
