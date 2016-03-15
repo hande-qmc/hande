@@ -465,7 +465,7 @@ contains
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
-        use aot_table_module, only: aot_table_top, aot_table_close
+        use aot_table_module, only: aot_table_top, aot_table_close, aot_table_from_1Darray
 
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use dmqmc, only: do_dmqmc
@@ -475,6 +475,7 @@ contains
         use reference_determinant, only: reference_t
         use system, only: sys_t, heisenberg, read_in, ueg
 
+        use const, only: p
         use calc, only: calc_type, dmqmc_calc, doing_dmqmc_calc, dmqmc_energy_squared
         use checking, only: check_allocate
         use real_lattice, only: create_next_nearest_orbs
@@ -495,6 +496,7 @@ contains
 
         logical :: have_restart_state
         integer :: opts, ierr
+        real(p), allocatable :: sampling_probs(:)
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
                                                                 'restart', 'reference', 'qmc_state']
 
@@ -537,15 +539,19 @@ contains
         allocate(qmc_state_out)
         if (have_restart_state) then
             call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, &
-                          qmc_state_restart)
+                          sampling_probs, qmc_state_restart)
         else
-            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out)
+            call do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference, qmc_state_out, sampling_probs)
         end if
 
         sys%basis%tensor_label_len = sys%basis%string_len
 
-        call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
+        call push_qmc_state(lua_state, qmc_state_out)
+        if (dmqmc_in%find_weights) then
+            nresult = nresult + 1
+            call aot_table_from_1Darray(lua_state, opts, sampling_probs)
+        end if
 
     end function lua_dmqmc
 

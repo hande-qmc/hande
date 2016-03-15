@@ -9,7 +9,8 @@ implicit none
 
 contains
 
-    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference_in, qs, qmc_state_restart)
+    subroutine do_dmqmc(sys, qmc_in, dmqmc_in, dmqmc_estimates, restart_in, load_bal_in, reference_in, qs, sampling_probs, &
+                        qmc_state_restart)
 
         ! Run DMQMC calculation. We run from a beta=0 to a value of beta
         ! specified by the user and then repeat this main loop beta_loops
@@ -30,6 +31,8 @@ contains
         !    dmqmc_estimates: type containing all DMQMC estimates.
         ! Out:
         !    qs: qmc_state for use if restarting the calculation
+        !    sampling_probs: sampling probabilities found via the output_and_alter_weights algorithm.  Only allocated and set if
+        !       dmqmc_in%find_weights is true.
 
         use parallel
         use json_out
@@ -69,6 +72,7 @@ contains
         type(reference_t), intent(in) :: reference_in
         type(qmc_state_t), intent(out), target :: qs
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
+        real(p), intent(out), allocatable :: sampling_probs(:)
 
         integer :: idet, ireport, icycle, iparticle, iteration, ireplica, ierr
         integer :: beta_cycle, nreport
@@ -384,6 +388,12 @@ contains
         if (restart_in%write_restart) then
             call dump_restart_hdf5(ri, qs, qs%mc_cycles_done, qs%psip_list%tot_nparticles, sys%basis%nbasis, .false.)
             if (parent) write (6,'()')
+        end if
+
+        if (dmqmc_in%find_weights) then
+            allocate(sampling_probs(size(weighted_sampling%sampling_probs)), stat=ierr)
+            call check_allocate('sampling_probs', size(weighted_sampling%sampling_probs), ierr)
+            sampling_probs = weighted_sampling%sampling_probs
         end if
 
         call copy_sys_spin_info(sys_copy, sys)

@@ -35,8 +35,10 @@ Calculations
 
 All QMC methods (FCIQMC, CCMC, DMQMC and the simple FCIQMC implementation)
 return a pointer to a :code:`qmc_state` object (which cannot be directly manipulated or
-inspected from lua).  They also accept such an object as an optional argument to
-resume a previous QMC calculation.
+inspected from lua) as the first return value.  They also accept such an object as an
+optional argument to resume a previous QMC calculation.  Additional,
+calculation-specific, values are returned in some cases, as described in the relevant
+section.
 
 .. toctree::
    :maxdepth: 1
