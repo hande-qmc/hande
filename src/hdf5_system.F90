@@ -143,7 +143,7 @@ module hdf5_system
             !   sys: sys_t type. If writing out contains all required information. If
             !       reading in contains minimal read in info (nel, fcidump).
             !   verbose (optional): write output. Default: true.
-            !   in_name (optional): user-defined filename to write to. Ignored if set 
+            !   in_name (optional): user-defined filename to write to. Ignored if set
             !       to ''.
             ! In/Out:
             !   filename: name of HDF5 system file.  Used if set to a non-empty string,
@@ -254,8 +254,9 @@ module hdf5_system
                 ! [review] - JSS: please fix.
                 ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
                 ! Currently mis-sized somewhere and so disabled as kept giving 'End of record' errors..
-                !write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
-                !call hdf5_write(group_id, ddate, date_str)
+                call date_and_time(values=date_time)
+                write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
+                call hdf5_write(group_id, ddate, date_str)
 
                 call hdf5_write(group_id, dsysdump, sysdump_version)
 

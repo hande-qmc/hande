@@ -81,7 +81,7 @@ contains
 
     end function lua_redistribute_restart
 
-    function lua_dump_hdf5_generic_system(L) result(nresult) bind(c)
+    function lua_write_read_in_system(L) result(nresult) bind(c)
 
         ! Write a read_in system to an HDF5 file, which can subsequently be used instead of an ASCII FCIDUMP file.
 
@@ -138,6 +138,6 @@ contains
         nresult = 1
         call flu_pushstring(lua_state, filename)
 
-    end function lua_dump_hdf5_generic_system
+    end function lua_write_read_in_system
 
 end module lua_hande_fns
