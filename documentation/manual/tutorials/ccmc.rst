@@ -96,8 +96,19 @@ whereby large spawning attempts are divided into a number of smaller spawns:
     :language: lua
 
 Running as before, and inspecting the :download:`output <calcs/ccmc/co_ccmc_multispawn.out>`,
-it can be seen that, despite using a much larger timestep, there are now no blooms.  This
-substantially reduces the stochastic error:
+it can be seen that there are now no blooms.  Additionally, plotting the population growth
+and comparing to the previous plot we see that there are now no spikes in the population:
+
+.. plot::
+
+    import pyhande
+    import matplotlib.pyplot as plt
+    (metadata, qmc_data) = pyhande.extract.extract_data('calcs/ccmc/co_ccmc_multispawn.out')[0]
+    plt.plot(qmc_data['iterations'], qmc_data['# H psips'])
+    plt.xlabel('iteration')
+    plt.ylabel('# particles')
+
+This substantially reduces the stochastic error:
 
 .. literalinclude:: calcs/ccmc/co_ccmc_multispawn.block
 
