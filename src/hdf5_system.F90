@@ -156,6 +156,7 @@ module hdf5_system
             use hdf5_helper, only: hdf5_kinds_t, hdf5_kinds_init
             use utils, only: get_unique_filename
             use system, only: sys_t
+            use const, only: i0
 
             logical, intent(in) :: write_mode
             type(sys_t), intent(in) :: sys
@@ -176,9 +177,8 @@ module hdf5_system
                     else
                         ! [review] - JSS: this breaks horribly if we have more than 99 orbitals.
                         ! [review] - JSS: suggest
-                        !    write (filename, '(a,"-CAS",i0,",",i0,".H5")') trim(sys%read_in%fcidump), sys%CAS
-                        write (filename, "(a,a,i2.2,a,i2.2,a)") trim(sys%read_in%fcidump), "-", &
-                                                        sys%CAS(1), ",", sys%CAS(2), "CAS.H5"
+                        ! [reply] - CJCS: Was fairly arbitrary upper bound; fix sounds good.
+                        write (filename, '(a,"-CAS",i0,",",i0,".H5")') trim(sys%read_in%fcidump), sys%CAS
                     end if
                 end if
             else
@@ -283,28 +283,24 @@ module hdf5_system
                 ! --- basis subgroup ---
                 call h5gcreate_f(group_id, gbasis, subgroup_id, ierr)
 
-                ! [review] - JSS: not needed.
-                nbasis = sys%basis%nbasis
+                associate(nbasis=>sys%basis%nbasis)
+                    call hdf5_write(subgroup_id, dnbasis, sys%basis%nbasis)
+                    call hdf5_write(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%spatial_index)
+                    call hdf5_write(subgroup_id, dbasis_sym, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%sym)
+                    call hdf5_write(subgroup_id, dbasis_sym_index, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%sym_index)
+                    call hdf5_write(subgroup_id, dbasis_sym_spin_index, kinds,&
+                                [nbasis],  sys%basis%basis_fns(:)%sym_spin_index)
+                    call hdf5_write(subgroup_id, dbasis_ms, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%ms)
+                    call hdf5_write(subgroup_id, dbasis_lz, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%lz)
+                    call hdf5_write(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
+                                sys%basis%basis_fns(:)%sp_eigv)
 
-                ! Write information for basis strings by type not string; array
-                ! size set by nbasis.
-
-                ! [review] - JSS: associate is your friend.
-                call hdf5_write(subgroup_id, dnbasis, sys%basis%nbasis)
-                call hdf5_write(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%spatial_index)
-                call hdf5_write(subgroup_id, dbasis_sym, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%sym)
-                call hdf5_write(subgroup_id, dbasis_sym_index, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%sym_index)
-                call hdf5_write(subgroup_id, dbasis_sym_spin_index, kinds,&
-                            [nbasis],  sys%basis%basis_fns(:)%sym_spin_index)
-                call hdf5_write(subgroup_id, dbasis_ms, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%ms)
-                call hdf5_write(subgroup_id, dbasis_lz, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%lz)
-                call hdf5_write(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
-                            sys%basis%basis_fns(:)%sp_eigv)
+                end associate
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -386,7 +382,7 @@ module hdf5_system
 #ifndef DISABLE_HDF5
 
             character(255) :: filename
-            integer :: ierr, nbasis, sysdump_dump_version, cas(2)
+            integer :: ierr, sysdump_dump_version, cas(2)
 
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
@@ -445,28 +441,28 @@ module hdf5_system
                     ! --- basis subgroup ---
                     call h5gopen_f(group_id, gbasis, subgroup_id, ierr)
 
-                    ! [review] - JSS: read in sys%basis%nbasis directly.
-                    call hdf5_read(subgroup_id, dnbasis, nbasis)
-                    sys%basis%nbasis = nbasis
+                    associate(nbasis=>sys%basis%nbasis)
+                        allocate(sys%basis%basis_fns(nbasis),  stat=ierr)
 
-                    ! [review] - JSS: associate is your friend here.
-                    allocate(sys%basis%basis_fns(nbasis),  stat=ierr)
-                    call check_allocate('sys%basis%basis_fns', nbasis, ierr)
+                        call hdf5_read(subgroup_id, dnbasis, nbasis)
 
-                    call hdf5_read(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
-                                sys%basis%basis_fns(:)%spatial_index)
-                    call hdf5_read(subgroup_id, dbasis_sym, kinds, [nbasis],&
-                                sys%basis%basis_fns(:)%sym)
-                    call hdf5_read(subgroup_id, dbasis_sym_index, kinds, [nbasis],&
-                                sys%basis%basis_fns(:)%sym_index)
-                    call hdf5_read(subgroup_id, dbasis_sym_spin_index, kinds,&
-                                [nbasis],  sys%basis%basis_fns(:)%sym_spin_index)
-                    call hdf5_read(subgroup_id, dbasis_ms, kinds, [nbasis],&
-                                sys%basis%basis_fns(:)%ms)
-                    call hdf5_read(subgroup_id, dbasis_lz, kinds, [nbasis],&
-                                sys%basis%basis_fns(:)%lz)
-                    call hdf5_read(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
-                                sys%basis%basis_fns(:)%sp_eigv)
+                        call check_allocate('sys%basis%basis_fns', nbasis, ierr)
+
+                        call hdf5_read(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
+                                    sys%basis%basis_fns(:)%spatial_index)
+                        call hdf5_read(subgroup_id, dbasis_sym, kinds, [nbasis],&
+                                    sys%basis%basis_fns(:)%sym)
+                        call hdf5_read(subgroup_id, dbasis_sym_index, kinds, [nbasis],&
+                                    sys%basis%basis_fns(:)%sym_index)
+                        call hdf5_read(subgroup_id, dbasis_sym_spin_index, kinds,&
+                                    [nbasis],  sys%basis%basis_fns(:)%sym_spin_index)
+                        call hdf5_read(subgroup_id, dbasis_ms, kinds, [nbasis],&
+                                    sys%basis%basis_fns(:)%ms)
+                        call hdf5_read(subgroup_id, dbasis_lz, kinds, [nbasis],&
+                                    sys%basis%basis_fns(:)%lz)
+                        call hdf5_read(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
+                                    sys%basis%basis_fns(:)%sp_eigv)
+                    end associate
 
                     call h5gclose_f(subgroup_id, ierr)
 
@@ -551,8 +547,6 @@ module hdf5_system
             end if
 #ifdef PARALLEL
             ! Distribute values needed for initialisation on other processes.
-            ! [review] - JSS: norb isn't set at this point.
-            call MPI_BCast(norb, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%nel, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%symmetry, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
@@ -574,13 +568,15 @@ module hdf5_system
                     call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
             end if
             ! Broadcast basis.
-            call MPI_BCast(sys%basis%basis_fns(:)%spatial_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-            call MPI_BCast(sys%basis%basis_fns(:)%sym, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-            call MPI_BCast(sys%basis%basis_fns(:)%sym_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-            call MPI_BCast(sys%basis%basis_fns(:)%sym_spin_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-            call MPI_BCast(sys%basis%basis_fns(:)%ms, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-            call MPI_BCast(sys%basis%basis_fns(:)%lz, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-            call MPI_BCast(sys%basis%basis_fns(:)%sp_eigv, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
+            associate(nbasis=>sys%basis%nbasis)
+                call MPI_BCast(sys%basis%basis_fns(:)%spatial_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sym, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sym_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sym_spin_index, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%ms, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%lz, nbasis, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+                call MPI_BCast(sys%basis%basis_fns(:)%sp_eigv, nbasis, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
+            end associate
 
             ! Broadcast read_in parameters.
             call MPI_BCast(sys%read_in%Ecore, 1, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
@@ -617,25 +613,14 @@ module hdf5_system
             end if
 #endif
 
-            ! [review] - JSS: norb isn't actually used...just delete it.
-            if (sys%read_in%uhf) then
-                norb =  sys%basis%nbasis
-            else
-                norb = sys%basis%nbasis/2
-            end if
-
-            ! [review] - JSS: ?!?!?!  already allocated, causes catastrophic errors.
-            allocate(sys%basis%basis_fns(sys%basis%nbasis), stat=ierr)
-            call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
-
             if (sys%read_in%dipole_int_file /= '') then
                 if (parent) then
                     if (sys%read_in%uhf) then
-                        allocate(sp_fcidump_rank(0:nbasis), stat=ierr)
-                        call check_allocate('sp_fcidump_rank', nbasis+1, ierr)
+                        allocate(sp_fcidump_rank(0:sys%basis%nbasis), stat=ierr)
+                        call check_allocate('sp_fcidump_rank', sys%basis%nbasis+1, ierr)
                     else
-                        allocate(sp_fcidump_rank(0:nbasis/2), stat=ierr)
-                        call check_allocate('sp_fcidump_rank', nbasis/2 + 1, ierr)
+                        allocate(sp_fcidump_rank(0:sys%basis%nbasis/2), stat=ierr)
+                        call check_allocate('sp_fcidump_rank', sys%basis%nbasis/2 + 1, ierr)
                     end if
                     do i = lbound(sp_fcidump_rank, dim=1), ubound(sp_fcidump_rank, dim=1)
                         sp_fcidump_rank(i) = i
@@ -647,6 +632,7 @@ module hdf5_system
                 deallocate(sp_fcidump_rank, stat=ierr)
                 call check_deallocate('sp_fcidump_rank', ierr)
                 ! [review] - JSS: no broadcast?
+                ! [reply] - CJCS: Done within read_in_one_body
             end if
 #else
 
