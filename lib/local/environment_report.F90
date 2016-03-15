@@ -194,6 +194,11 @@ contains
 #else
         write (io_unit,'(5X,"PARALLEL not defined.  MPI parallelization disabled.")')
 #endif
+#ifdef DISABLE_SCALAPACK
+        write (io_unit,'(5X,"DISABLE_SCALAPACK defined.  ScaLAPACK disabled.")')
+#else
+        write (io_unit,'(5X,"DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.")')
+#endif
 #ifdef SINGLE_PRECISION
         write (io_unit,'(5X,"SINGLE_PRECISION defined.  Single precision used where relevant.")')
 #else

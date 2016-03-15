@@ -242,6 +242,7 @@ contains
         ! See ScaLAPACK pdsyev procedure for details.
 
         use const, only: sp
+        use errors, only: stop_all
 
         character, intent(in) :: job, uplo
         integer, intent(in) :: N
@@ -253,8 +254,10 @@ contains
         integer, intent(in) :: lwork
         integer, intent(out) :: info
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         call pssyev(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, info)
+#else
+        call stop_all('pssyev_f90', "Scalapack disabled at compile-time")
 #endif
 
     end subroutine pssyev_f90
@@ -264,6 +267,7 @@ contains
         ! See ScaLAPACK pdsyev procedure for details.
 
         use const, only: dp
+        use errors, only: stop_all
 
         character, intent(in) :: job, uplo
         integer, intent(in) :: N
@@ -275,8 +279,10 @@ contains
         integer, intent(in) :: lwork
         integer, intent(out) :: info
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         call pdsyev(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, info)
+#else
+        call stop_all('pdsyev_f90', "Scalapack disabled at compile-time")
 #endif
 
     end subroutine pdsyev_f90
@@ -287,6 +293,7 @@ contains
 
         use checking, only: check_allocate, check_deallocate
         use const, only: p
+        use errors, only: stop_all
 
         character, intent(in) :: job, uplo
         integer, intent(in) :: N
@@ -316,6 +323,7 @@ contains
         ! See ScaLAPACK pcheev procedure for details.
 
         use const, only: sp
+        use errors, only: stop_all
 
         character, intent(in) :: job, uplo
         integer, intent(in) :: N
@@ -330,8 +338,10 @@ contains
         integer, intent(in) :: lrwork
         integer, intent(out) :: info
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         call pcheev(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, rwork, lrwork, info)
+#else
+        call stop_all('pcheev_f90', "Scalapack disabled at compile-time")
 #endif
 
     end subroutine pcheev_f90
@@ -341,6 +351,7 @@ contains
         ! See ScaLAPACK pzheev procedure for details.
 
         use const, only: dp
+        use errors, only: stop_all
 
         character, intent(in) :: job, uplo
         integer, intent(in) :: N
@@ -355,8 +366,10 @@ contains
         integer, intent(in) :: lrwork
         integer, intent(out) :: info
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         call pzheev(job, uplo, N, A, IA, JA, desca, W, Z, IZ, JZ, descz, work, lwork, rwork, lrwork, info)
+#else
+        call stop_all('pzheev_f90', "Scalapack disabled at compile-time")
 #endif
 
     end subroutine pzheev_f90
@@ -399,14 +412,17 @@ contains
         ! See ScaLAPACK's pslaprnt for details.
 
         use const, only: sp
+        use errors, only: stop_all
 
         integer, intent(in) :: M, N, IA, JA, desca(:), irprnt, icprnt, nout
         character(*), intent(in) :: cmatnm
         real(sp), intent(in) :: A(:,:)
         real(sp), intent(out) :: work(:)
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         call pslaprnt(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+#else
+        call stop_all('pslaprnt_f90', "Scalapack disabled at compile-time")
 #endif
 
     end subroutine pslaprnt_f90
@@ -416,14 +432,17 @@ contains
         ! See ScaLAPACK's pdlaprnt for details.
 
         use const, only: dp
+        use errors, only: stop_all
 
         integer, intent(in) :: M, N, IA, JA, desca(:), irprnt, icprnt, nout
         character(*), intent(in) :: cmatnm
         real(dp), intent(in) :: A(:,:)
         real(dp), intent(out) :: work(:)
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         call pdlaprnt(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+#else
+        call stop_all('pdlaprnt_f90', "Scalapack disabled at compile-time")
 #endif
 
     end subroutine pdlaprnt_f90
@@ -433,14 +452,17 @@ contains
         ! See ScaLAPACK's pclaprnt for details.
 
         use const, only: sp
+        use errors, only: stop_all
 
         integer, intent(in) :: M, N, IA, JA, desca(:), irprnt, icprnt, nout
         character(*), intent(in) :: cmatnm
         complex(sp), intent(in) :: A(:,:)
         complex(sp), intent(out) :: work(:)
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         call pclaprnt(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+#else
+        call stop_all('pclaprnt_f90', "Scalapack disabled at compile-time")
 #endif
 
     end subroutine pclaprnt_f90
@@ -450,14 +472,17 @@ contains
         ! See ScaLAPACK's pzlaprnt for details.
 
         use const, only: dp
+        use errors, only: stop_all
 
         integer, intent(in) :: M, N, IA, JA, desca(:), irprnt, icprnt, nout
         character(*), intent(in) :: cmatnm
         complex(dp), intent(in) :: A(:,:)
         complex(dp), intent(out) :: work(:)
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         call pzlaprnt(M, N, A, IA, JA, desca, irprnt, icprnt, cmatnm, nout, work)
+#else
+        call stop_all('pzlaprnt_f90', "Scalapack disabled at compile-time")
 #endif
 
     end subroutine pzlaprnt_f90
