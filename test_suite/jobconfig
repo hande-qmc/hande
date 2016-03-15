@@ -140,3 +140,61 @@ vquick64 = vquick
            ccmc_real_64/np2/NH3-6-31g_ccsdt_linked_short
            dmqmc_real_64/np4/n2_sto3g_short
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64
+
+single_precision = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CAS8_12-CCSDT
+                   ccmc/np2/H2O-cc-pVDZ_tau_search
+                   dmqmc/np1/heisenberg_3d
+                   dmqmc/np1/hubbard_real_1d
+                   dmqmc/np1/ueg_n7_rs1_e1_dmqmc
+                   dmqmc/np2/heisenberg_3d
+                   dmqmc/np2/n2_sto3g
+                   dmqmc/np4/ueg_n7_rs1_e1_dmqmc
+                   fci/H2-RHF-cc-pVTZ-Lz
+                   fci/H2O-RHF-sto-2g
+                   fci/H2O-RHF-sto-2g-complex
+                   fci/Ne-RHF-cc-pVDZ
+                   fci/chung_landau_1d_fci
+                   fci/heisenberg_1d_fci
+                   fci/heisenberg_1d_fci_rdm
+                   fci/heisenberg_1d_finite_cluster_fci
+                   fci/hubbard_k_1d
+                   fci/hubbard_k_tilted_2d_fci
+                   fci/ringium
+                   fciqmc/np1/H2-RHF-cc-pVTZ-Lz
+                   fciqmc/np1/Ne-RHF-cc-pVDZ_softexit
+                   fciqmc/np1/heisenberg_1d_ferro_field_fciqmc
+                   fciqmc/np1/heisenberg_1d_neel_ref_fciqmc
+                   fciqmc/np1/heisenberg_1d_no_renorm
+                   fciqmc/np1/heisenberg_2d_field_fciqmc
+                   fciqmc/np1/hubbard_k_1d_n4
+                   fciqmc/np1/hubbard_k_nontilted_2d_fciqmc
+                   fciqmc/np1/hubbard_k_select_ref_det
+                   fciqmc/np1/hubbard_real_1d_continue
+                   fciqmc/np1/hubbard_real_1d_fciqmc
+                   fciqmc/np1/hubbard_real_1d_no_renorm
+                   fciqmc/np2/ueg_n10_rs2_e4_fciqmc
+                   fciqmc/np2/ueg_n10_rs2_e4_tau_search
+                   fciqmc/np4/Ne-RHF-cc-pVDZ_softexit
+                   fciqmc/np4/ueg_n10_rs2_e4_fciqmc
+                   fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
+                   fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
+                   idmqmc/np1/ueg_n14_ec4_rs1
+                   idmqmc/np4/ueg_n14_ec4_rs1
+                   ifciqmc/np1/hubbard_k_1d_ifciqmc
+                   ifciqmc/np1/hubbard_k_1d_ifciqmc_cas
+                   ifciqmc/np1/hubbard_k_nontilted_2d_ifciqmc
+                   ifciqmc/np1/ueg_interact
+                   ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block
+                   ifciqmc_real_32/np4/H2O-RHF-cc-pVTZ-non-block
+                   lanczos/CN-UHF-sto-3g
+                   lanczos/Ne-RHF-cc-pVDZ_sparse
+                   lanczos/hubbard_k_nontilted_2d_lanczos
+                   lanczos/hubbard_k_tilted_2d_sparse
+                   lanczos/hubbard_real_nontilted_2d_direct
+                   mc_hilbert_space/np1/hf_hilbert_space
+                   mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
+                   mc_hilbert_space/np1/ueg_n14_rs1_e3_hilbert_space
+                   mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
+                   mc_hilbert_space/np2/ueg_n14_rs1_e3_hilbert_space
+                   simple_fciqmc/hubbard_k_1d_sparse
+                   simple_fciqmc/hubbard_k_nontilted_2d_sfciqmc

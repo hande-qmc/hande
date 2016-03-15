@@ -137,7 +137,7 @@ contains
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t
 
-        use const, only: p
+        use const, only: p, dp
         use dSFMT_interface, only: dSFMT_t
 
         type(sys_t), intent(in) :: sys
@@ -149,14 +149,14 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer, intent(inout) :: request_s(:), request_rep(:)
         real, intent(inout) :: report_time
-        real(p), intent(inout) :: ntot_particles(:)
+        real(dp), intent(inout) :: ntot_particles(:)
         real(p), intent(inout) :: shift
         logical, intent(in) :: dump_restart_file
         type(load_bal_in_t), intent(in) :: load_bal_in
 
         real :: curr_time
         real(p) :: shift_save
-        real(p) :: ntot_particles_save(size(ntot_particles))
+        real(dp) :: ntot_particles_save(size(ntot_particles))
 
         call cpu_time(curr_time)
 

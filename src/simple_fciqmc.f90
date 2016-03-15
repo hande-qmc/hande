@@ -229,7 +229,7 @@ contains
 
         integer :: ireport, icycle, idet, j
         integer(int_p) :: ipart
-        real(p) :: nparticles, nparticles_old
+        real(dp) :: nparticles, nparticles_old
         integer :: nattempts
         real :: t1, t2
         type(dSFMT_t) :: rng
@@ -410,7 +410,7 @@ contains
         integer :: j, jdet
         integer(int_s) :: nspawn
         real(p) :: rate
-        real(p) :: r
+        real(dp) :: r
 
         ! Simulate spawning by attempting to spawn on all
         ! connected determinants.

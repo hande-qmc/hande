@@ -240,7 +240,7 @@ contains
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(in) :: qs
         integer, intent(in) :: ireport
-        real(p), intent(in) :: ntot_particles(:)
+        real(dp), intent(in) :: ntot_particles(:)
         real, intent(in) :: elapsed_time
         logical, intent(in) :: comment, non_blocking_comm
         type(dmqmc_in_t), optional, intent(in) :: dmqmc_in

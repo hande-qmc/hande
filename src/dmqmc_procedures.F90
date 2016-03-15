@@ -661,7 +661,7 @@ contains
 
         ! Alter weights for the next iteration.
         weighted_sampling%probs(:max_number_excitations) = &
-                    & real(weighted_sampling%probs(:max_number_excitations),p)*weighted_sampling%altering_factors
+                    & real(weighted_sampling%probs(:max_number_excitations)*weighted_sampling%altering_factors, p)
 
         ! When the weights for an excitation level are increased by a factor,
         ! the number of psips on that level has to decrease by the same factor,
@@ -679,7 +679,7 @@ contains
             ! The new population that we are aiming for. If this is not an
             ! integer then we will have to round up or down to an integer with
             ! an unbiased probability.
-            new_population_target = abs(real(psip_list%pops(:,idet),p))/weighted_sampling%altering_factors(excit_level)
+            new_population_target = abs(real(psip_list%pops(:,idet)/weighted_sampling%altering_factors(excit_level),p))
             new_population = int(new_population_target, int_p)
 
             ! If new_population_target is not an integer, round it up or down

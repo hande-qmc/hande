@@ -371,14 +371,14 @@ contains
         use parallel
         use utils, only: int_fmt
 
-        real(p), intent(in) :: nparticles(:)
+        real(dp), intent(in) :: nparticles(:)
         integer, intent(in) :: nstates_active
         logical, intent(in) :: use_mpi_barriers
         type(parallel_timing_t), intent(in) :: spawn_mpi_time
         type(parallel_timing_t), optional, intent(in) :: determ_mpi_time
 
 #ifdef PARALLEL
-        real(p) :: load_data(size(nparticles), nprocs)
+        real(dp) :: load_data(size(nparticles), nprocs)
         integer :: load_data_int(nprocs)
         integer :: i, ierr
         real(p) :: barrier_this_proc
@@ -390,14 +390,14 @@ contains
                 write (6,'(1X,a14,/,1X,14("^"),/)') 'Load balancing'
                 write (6,'(1X,a77,/)') "The final distribution of walkers and determinants across the processors was:"
             endif
-            call mpi_gather(nparticles, size(nparticles), mpi_preal, load_data, size(nparticles), &
-                            mpi_preal, 0, MPI_COMM_WORLD, ierr)
+            call mpi_gather(nparticles, size(nparticles), mpi_real8, load_data, size(nparticles), &
+                            mpi_real8, 0, MPI_COMM_WORLD, ierr)
             if (parent) then
                 do i = 1, size(nparticles)
                     if (size(nparticles) > 1) write (6,'(1X,a,'//int_fmt(i,1)//')') 'Particle type:', i
                     write (6,'(1X,"Min # of particles on a processor:",6X,es13.6)') minval(load_data(i,:))
                     write (6,'(1X,"Max # of particles on a processor:",6X,es13.6)') maxval(load_data(i,:))
-                    write (6,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') real(sum(load_data(i,:)), p)/nprocs
+                    write (6,'(1X,"Mean # of particles on a processor:",5X,es13.6,/)') sum(load_data(i,:))/nprocs
                 end do
             end if
             call mpi_gather(nstates_active, 1, mpi_integer, load_data_int, 1, mpi_integer, 0, MPI_COMM_WORLD, ierr)
@@ -424,18 +424,18 @@ contains
                 if (use_mpi_barriers) then
                     write (6,'(1X,"Min time taken by MPI barrier calls:",5X,f8.2,"s")') minval(barrier_time)
                     write (6,'(1X,"Max time taken by MPI barrier calls:",5X,f8.2,"s")') maxval(barrier_time)
-                    write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') real(sum(barrier_time), p)/nprocs
+                    write (6,'(1X,"Mean time taken by MPI barrier calls:",4X,f8.2,"s")') sum(barrier_time)/nprocs
                     write (6,'()')
                 end if
                 write (6,'(1X,"Min time taken by walker communication:",5X,f8.2,"s")') minval(spawn_comms)
                 write (6,'(1X,"Max time taken by walker communication:",5X,f8.2,"s")') maxval(spawn_comms)
-                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') real(sum(spawn_comms), p)/nprocs
+                write (6,'(1X,"Mean time taken by walker communication:",4X,f8.2,"s")') sum(spawn_comms)/nprocs
                 write (6,'()')
                 if (present(determ_mpi_time)) then
                     write (6,'(1X,"Min time taken by semi-stochastic communication:",5X,f8.2,"s")') minval(determ_comms)
                     write (6,'(1X,"Max time taken by semi-stochastic communication:",5X,f8.2,"s")') maxval(determ_comms)
                     write (6,'(1X,"Mean time taken by semi-stochastic communication:",4X,f8.2,"s")') &
-                        real(sum(determ_comms), p)/nprocs
+                        sum(determ_comms)/nprocs
                     write (6,'()')
                 end if
             end if
@@ -486,7 +486,7 @@ contains
         integer(int_p), intent(in) :: real_factor
         integer(int_p), intent(inout) :: pops(:,:)
         integer, intent(inout) :: nstates
-        real(p), intent(inout) :: nparticles(:)
+        real(dp), intent(inout) :: nparticles(:)
         type(spawn_t), intent(inout) :: spawn
 
         real(p) :: nsent(size(nparticles))
@@ -618,7 +618,7 @@ contains
         integer, optional, intent(in) :: spawn_elsewhere
 
         integer :: idet
-        real(p) :: ntot_particles(qs%psip_list%nspaces)
+        real(dp) :: ntot_particles(qs%psip_list%nspaces)
         real(p) :: real_population(qs%psip_list%nspaces), weighted_population
         type(det_info_t) :: cdet
         real(p) :: hmatel
@@ -665,7 +665,7 @@ contains
         else
             call mpi_allreduce(qs%estimators%proj_energy, proj_energy_sum, qs%psip_list%nspaces, mpi_preal, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
-            call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_PREAL, &
+            call mpi_allreduce(qs%psip_list%nparticles, ntot_particles, qs%psip_list%nspaces, MPI_REAL8, &
                                MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%estimators%D0_population, D0_population_sum, 1, mpi_preal, MPI_SUM, MPI_COMM_WORLD, ierr)
             call mpi_allreduce(qs%psip_list%nstates, qs%estimators%tot_nstates, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -882,7 +882,7 @@ contains
         integer, intent(in) :: nspawn_events
         logical, optional, intent(in) :: update_estimators
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
-        real(p), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
+        real(dp), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
         integer, intent(in) :: semi_stoch_shift_it
         integer, intent(inout) :: semi_stoch_start_it
         logical, intent(out) :: soft_exit

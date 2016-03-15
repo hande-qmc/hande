@@ -972,6 +972,7 @@ module hdf5_helper
             use const, only: dp, sp, int_32, int_64
             use checking
             use errors
+            use parallel, only: parent
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -990,7 +991,8 @@ module hdf5_helper
                 ptr = c_loc(arr)
                 call read_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
             else if (dtype_equal(id, dset, kinds%dp)) then
-                call warning('read_array_1d_real_sp', 'Converting from double to single precision for dataset: '//dset//'.')
+                if (parent) call warning('read_array_1d_real_sp', &
+                                         'Converting from double to single precision for dataset: '//dset//'.', 2)
                 allocate(arr_dp(arr_shape(1)), stat=ierr)
                 call check_allocate('arr_dp', arr_shape(1), ierr)
                 call hdf5_read(id, dset, kinds, arr_shape, arr_dp)
@@ -998,7 +1000,7 @@ module hdf5_helper
                 deallocate(arr_dp, stat=ierr)
                 call check_deallocate('arr_dp', ierr)
             else
-                call warning('read_array_1d_real_sp', msg//dset//'.')
+                if (parent) call warning('read_array_1d_real_sp', msg//dset//'.', 2)
                 if (dtype_equal(id, dset, kinds%i32)) then
                     allocate(arr_32(arr_shape(1)), stat=ierr)
                     call check_allocate('arr_32', size(arr_32), ierr)
@@ -1038,6 +1040,7 @@ module hdf5_helper
             use const, only: dp, sp, int_32, int_64
             use checking
             use errors
+            use parallel, only: parent
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -1056,7 +1059,8 @@ module hdf5_helper
                 ptr = c_loc(arr)
                 call read_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
             else if (dtype_equal(id, dset, kinds%dp)) then
-                call warning('read_array_2d_real_sp', 'Converting from double to single precision for dataset: '//dset//'.')
+                if (parent) call warning('read_array_2d_real_sp', &
+                                         'Converting from double to single precision for dataset: '//dset//'.', 2)
                 allocate(arr_dp(arr_shape(1),arr_shape(2)), stat=ierr)
                 call check_allocate('arr_dp', size(arr_dp), ierr)
                 call hdf5_read(id, dset, kinds, arr_shape, arr_dp)
@@ -1064,7 +1068,7 @@ module hdf5_helper
                 deallocate(arr_dp, stat=ierr)
                 call check_deallocate('arr_dp', ierr)
             else
-                call warning('read_array_2d_real_sp', msg//dset//'.')
+                if (parent) call warning('read_array_2d_real_sp', msg//dset//'.', 2)
                 if (dtype_equal(id, dset, kinds%i32)) then
                     allocate(arr_32(arr_shape(1),arr_shape(2)), stat=ierr)
                     call check_allocate('arr_32', size(arr_32), ierr)
@@ -1104,6 +1108,7 @@ module hdf5_helper
             use const, only: sp, dp, int_32, int_64
             use checking
             use errors
+            use parallel, only: parent
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -1122,7 +1127,8 @@ module hdf5_helper
                 ptr = c_loc(arr)
                 call read_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
             else if (dtype_equal(id, dset, kinds%sp)) then
-                call warning('read_array_1d_real_dp', 'Converting from single to double precision for dataset: '//dset//'.')
+                if (parent) call warning('read_array_1d_real_dp', &
+                                         'Converting from single to double precision for dataset: '//dset//'.', 2)
                 allocate(arr_sp(arr_shape(1)), stat=ierr)
                 call check_allocate('arr_sp', arr_shape(1), ierr)
                 call hdf5_read(id, dset, kinds, arr_shape, arr_sp)
@@ -1130,7 +1136,7 @@ module hdf5_helper
                 deallocate(arr_sp, stat=ierr)
                 call check_deallocate('arr_sp', ierr)
             else
-                call warning('read_array_1d_real_dp', msg//dset//'.')
+                if (parent) call warning('read_array_1d_real_dp', msg//dset//'.', 2)
                 if (dtype_equal(id, dset, kinds%i32)) then
                     allocate(arr_32(arr_shape(1)), stat=ierr)
                     call check_allocate('arr_32', size(arr_32), ierr)
@@ -1170,6 +1176,7 @@ module hdf5_helper
             use const, only: sp, dp, int_32, int_64
             use checking
             use errors
+            use parallel, only: parent
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
@@ -1188,7 +1195,8 @@ module hdf5_helper
                 ptr = c_loc(arr)
                 call read_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
             else if (dtype_equal(id, dset, kinds%sp)) then
-                call warning('read_array_2d_real_dp', 'Converting from single to double precision for dataset: '//dset//'.')
+                if (parent) call warning('read_array_2d_real_dp', &
+                                         'Converting from single to double precision for dataset: '//dset//'.', 2)
                 allocate(arr_sp(arr_shape(1),arr_shape(2)), stat=ierr)
                 call check_allocate('arr_sp', size(arr_sp), ierr)
                 call hdf5_read(id, dset, kinds, arr_shape, arr_sp)
@@ -1196,7 +1204,7 @@ module hdf5_helper
                 deallocate(arr_sp, stat=ierr)
                 call check_deallocate('arr_sp', ierr)
             else
-                call warning('read_array_2d_real_dp', msg//dset//'.')
+                if (parent) call warning('read_array_2d_real_dp', msg//dset//'.', 2)
                 if (dtype_equal(id, dset, kinds%i32)) then
                     allocate(arr_32(arr_shape(1),arr_shape(2)), stat=ierr)
                     call check_allocate('arr_32', size(arr_32), ierr)

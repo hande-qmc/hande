@@ -82,7 +82,7 @@ type qmc_in_t
     real(p) :: initial_shift = 0.0_p
     ! Factor by which the changes in the population are damped when updating the
     ! shift.
-    real(p) :: shift_damping = 0.050_dp
+    real(p) :: shift_damping = 0.050_p
 
     ! Array sizes: main and spawned particle lists.
     ! If these are < 0, then the values represent the number of MB to be used.
@@ -387,11 +387,11 @@ type particle_t
     ! Updated during death and annihilation and merging.
     ! The first element is the number of normal (Hamiltonian) particles.
     ! Subsequent elements are the number of Hellmann--Feynamnn particles.
-    real(p), allocatable :: nparticles(:) ! (sampling_size)
+    real(dp), allocatable :: nparticles(:) ! (sampling_size)
     ! Total number of particles across *all* processors, i.e. \sum_{proc} nparticles_{proc}
-    real(p), allocatable :: tot_nparticles(:) ! (sampling_size)
+    real(dp), allocatable :: tot_nparticles(:) ! (sampling_size)
     ! Total number of particles on all determinants for each processor
-    real(p), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
+    real(dp), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
     ! Walker information: main list.
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
     ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
@@ -480,7 +480,7 @@ type estimators_t
     ! where
     !     N_i is the Hamiltonian population on |D_i>,
     !     \tilde{N}_i is the Hellmann--Feynman population on |D_i>.
-    real(p) :: hf_signed_pop
+    real(dp) :: hf_signed_pop
     ! Population on the reference in the Hellmann--Feynman space, \tilde{N}_0.
     real(p) :: D0_hf_population
     ! \sum_i <D_0|O|D_i> N_i.

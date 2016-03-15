@@ -64,7 +64,7 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
 
-        real(p) :: nparticles_temp(psip_list%nspaces)
+        real(dp) :: nparticles_temp(psip_list%nspaces)
         integer :: nel, ireplica, ialpha, ms
         integer(int_64) :: npsips_this_proc, npsips
         real(dp) :: total_size, sector_size
@@ -182,7 +182,7 @@ contains
         ! Finally, count the total number of particles across all processes.
         if (dmqmc_in%all_spin_sectors) then
 #ifdef PARALLEL
-            call mpi_allreduce(nparticles_temp, psip_list%tot_nparticles, psip_list%nspaces, MPI_PREAL, MPI_SUM, &
+            call mpi_allreduce(nparticles_temp, psip_list%tot_nparticles, psip_list%nspaces, MPI_REAL8, MPI_SUM, &
                                 MPI_COMM_WORLD, ierr)
 #else
             psip_list%tot_nparticles = nparticles_temp

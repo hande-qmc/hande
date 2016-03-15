@@ -71,7 +71,8 @@ contains
         integer :: idet, ireport, icycle, hf_initiator_flag, h_initiator_flag, ierr
         integer(int_p) :: iparticle
         integer(int_64) :: nattempts
-        real(p), allocatable :: nparticles_old(:), real_population(:)
+        real(dp), allocatable :: nparticles_old(:)
+        real(p), allocatable :: real_population(:)
         type(det_info_t) :: cdet
 
         integer(int_p) :: nspawned, ndeath

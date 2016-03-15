@@ -616,7 +616,7 @@ contains
 
         integer :: i
 #ifdef PARALLEL
-        real(p) :: tmp_p
+        real(dp) :: tmp_dp
         integer :: ierr
 #endif
 
@@ -628,7 +628,7 @@ contains
             ! Should we already be in varyshift mode (e.g. restarting a calculation)?
 #ifdef PARALLEL
             do i=1, pl%nspaces
-                call mpi_allgather(pl%nparticles(i), 1, MPI_PREAL, pl%nparticles_proc(i,:), 1, MPI_PREAL, MPI_COMM_WORLD, ierr)
+                call mpi_allgather(pl%nparticles(i), 1, MPI_REAL8, pl%nparticles_proc(i,:), 1, MPI_REAL8, MPI_COMM_WORLD, ierr)
             end do
             ! When restarting a non-blocking calculation this sum will not equal
             ! tot_nparticles as some walkers have been communicated around the report
@@ -647,8 +647,8 @@ contains
 
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL
-            tmp_p = calculate_hf_signed_pop(qmc_state%psip_list)
-            call mpi_allreduce(tmp_p, qmc_state%estimators%hf_signed_pop, qmc_state%psip_list%nspaces, mpi_preal, MPI_SUM, &
+            tmp_dp = calculate_hf_signed_pop(qmc_state%psip_list)
+            call mpi_allreduce(tmp_dp, qmc_state%estimators%hf_signed_pop, qmc_state%psip_list%nspaces, mpi_real8, MPI_SUM, &
                                MPI_COMM_WORLD, ierr)
 #else
             qmc_state%estimators%hf_signed_pop = calculate_hf_signed_pop(qmc_state%psip_list)

@@ -78,7 +78,8 @@ contains
         integer :: beta_cycle, nreport
         integer :: unused_int_1 = -1, unused_int_2 = 0
         integer(int_64) :: init_tot_nparticles
-        real(p), allocatable :: tot_nparticles_old(:), real_population(:)
+        real(dp), allocatable :: tot_nparticles_old(:)
+        real(p), allocatable :: real_population(:)
         integer(int_64) :: nattempts
         integer :: nel_temp, nattempts_current_det
         type(det_info_t) :: cdet1, cdet2
@@ -449,7 +450,7 @@ contains
         integer, intent(in) :: beta_cycle
         type(qmc_state_t), intent(inout) :: qs
         integer, intent(out) :: nstates_active
-        real(p), intent(out) :: nparticles(:)
+        real(dp), intent(out) :: nparticles(:)
         real(p), intent(out) :: accumulated_probs(:)
         integer :: new_seed
 

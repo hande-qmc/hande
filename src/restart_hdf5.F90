@@ -283,7 +283,7 @@ module restart_hdf5
             type(restart_info_t), intent(in) :: ri
             type(qmc_state_t), intent(in) :: qs
             integer, intent(in) :: ncycles
-            real(p), intent(in) :: total_population(:)
+            real(dp), intent(in) :: total_population(:)
             integer, intent(in) :: nbasis
             logical, intent(in) :: nb_comm
 #ifndef DISABLE_HDF5
@@ -303,7 +303,7 @@ module restart_hdf5
             ! Temporary variables so for copying data to which we can also call c_ptr on.
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
-            real(p), allocatable, target :: tmp_pop(:)
+            real(dp), allocatable, target :: tmp_pop(:)
             real(p), target :: tmp(1)
 
 
@@ -446,6 +446,7 @@ module restart_hdf5
             use qmc_data, only: qmc_state_t
             use sort, only: qsort
             use qmc_common, only: redistribute_particles
+            use parallel, only: parent
 
             type(restart_info_t), intent(in) :: ri
             logical, intent(in) :: nb_comm
@@ -561,10 +562,10 @@ module restart_hdf5
                     call convert_dets(subgroup_id, ddets, kinds, qs%psip_list%states)
                 end if
 
-                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32)) &
+                if (.not. dtype_equal(subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32) .and. parent) &
                     call warning('read_restart_hdf5', &
                                   'Converting populations from 64 to 32 bit integers.  Overflow may occur. '// &
-                                  'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
+                                  'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
 
                 call h5lexists_f(subgroup_id, dscaling, exists, ierr)
                 if (exists) then
@@ -1003,10 +1004,10 @@ module restart_hdf5
                     end do
 
                     ! Read.
-                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32)) &
+                    if (.not. dtype_equal(orig_subgroup_id, dpops, kinds%int_p) .and. (bit_size(0_int_p) == 32) .and. parent) &
                         call warning('redistribute_restart_hdf5', &
                                       'Converting populations from 64 to 32 bit integers.  Overflow may occur. '// &
-                                      'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.')
+                                      'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
 
                     if (i0_length == i0_length_restart) then
                         call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states), psip_read%states)
@@ -1179,12 +1180,12 @@ module restart_hdf5
             !         the shift turns on?  If true and a restart file is written out, then
             !         returned as false.
 
-            use const, only: p
+            use const, only: dp
             use qmc_data, only: qmc_state_t
 
             type(qmc_state_t), intent(in) :: qs
             logical, intent(inout) :: dump_restart_shift
-            real(p), intent(in) :: ntot_particles(qs%psip_list%nspaces)
+            real(dp), intent(in) :: ntot_particles(qs%psip_list%nspaces)
             integer, intent(in) :: ireport, ncycles, dump_freq, nbasis
             type(restart_info_t), intent(in) :: ri_freq, ri_shift
             logical, intent(in) :: nb_comm

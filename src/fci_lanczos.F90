@@ -219,7 +219,7 @@ contains
 #ifdef SINGLE_PRECISION
         allocate(evec_copy(nrows,mev), stat=ierr)
         call check_allocate('evec_copy',nrows*mev,ierr)
-        evec_copy=evec
+        evec_copy = real(evec, p)
 #endif
 
         ! Get info...
@@ -303,7 +303,7 @@ contains
             ! imagine...) so we work round it by doing copies to/from the
             ! single-precision equivalents of the input/output variables.
 #ifdef SINGLE_PRECISION
-            xin_p = xin
+            xin_p = real(xin, p)
 #endif
 
             if (nprocs == 1) then
@@ -393,7 +393,8 @@ contains
             real(dp), intent(in) :: xin(ldx,ncol)
             real(dp), intent(out) :: yout(ldy,ncol)
             integer :: i, j, k
-            real(p) :: tmp, hmatel
+            real(dp) :: tmp
+            real(p) :: hmatel
 
             yout = 0.0_dp
             do k = 1, ncol

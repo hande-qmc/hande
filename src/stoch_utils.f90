@@ -25,7 +25,7 @@ contains
         !    cutoff: the value to round up to.
         !    ntypes: the number of values in population to apply this op to.
 
-        use const, only: int_32, p
+        use const, only: int_32, dp
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
@@ -33,7 +33,7 @@ contains
         integer(int_32), intent(in) :: cutoff
         integer, intent(in) :: ntypes
         integer :: itype
-        real(p) :: r
+        real(dp) :: r
 
         do itype = 1, ntypes
             if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_32) then
@@ -61,7 +61,7 @@ contains
         !    cutoff: the value to round up to.
         !    ntypes: the number of values in population to apply this op to.
 
-        use const, only: int_64, p
+        use const, only: int_64, dp
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
 
         type(dSFMT_t), intent(inout) :: rng
@@ -69,7 +69,7 @@ contains
         integer(int_64), intent(in) :: cutoff
         integer, intent(in) :: ntypes
         integer :: itype
-        real(p) :: r
+        real(dp) :: r
 
         do itype = 1, ntypes
             if (abs(population(itype)) < cutoff .and. population(itype) /= 0_int_64) then

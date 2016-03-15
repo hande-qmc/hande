@@ -66,7 +66,7 @@ contains
             ! value of basis_fns%l is 2*lz
             x1 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(j)%l(1) + 1.0_p) * 0.5_p
             x2 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(i)%l(1) + 1.0_p) * 0.5_p
-            intgrl = (digamma(x1) - digamma(x2)) / (pi * sys%ringium%radius)
+            intgrl = real((digamma(x1) - digamma(x2)) / (pi * sys%ringium%radius),p)
         end if
 
     end function get_two_e_int_ringium
@@ -102,7 +102,7 @@ contains
         ! value of basis_fns%l is 2*lz
         x1 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(j)%l(1) + 1.0) * 0.5
         x2 = (sys%basis%basis_fns(a)%l(1) - sys%basis%basis_fns(i)%l(1) + 1.0) * 0.5
-        intgrl = (digamma(x1) - digamma(x2)) / (pi * sys%ringium%radius)
+        intgrl = real((digamma(x1) - digamma(x2)) / (pi * sys%ringium%radius),p)
 
     end function get_two_e_int_ringium_nonzero
 
