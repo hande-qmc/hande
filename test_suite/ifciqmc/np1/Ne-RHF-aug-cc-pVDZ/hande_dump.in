@@ -29,4 +29,26 @@ fciqmc {
         write = 0,
     },
 }
+
 --    SCF calculation produced by Q-Chem using:  
+--[[
+$molecule
+    0 1
+    10  0  0  0
+$end
+
+$rem
+    basis aug-cc-pvdz
+    exchange hf
+    correlation idump
+    scf_convergence 11
+    thresh 13
+    jobtype sp
+    iprint 20000011
+    geom_opt_coords 0
+    print_orbitals 999
+    unrestricted false
+    use_abelian_subgroup true
+    scf_restrict_sym 3
+$end
+--]]
