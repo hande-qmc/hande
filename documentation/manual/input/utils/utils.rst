@@ -142,7 +142,7 @@ and similarly for :code:`system` objects.
 
 .. _utils_hdf5_system_dump:
 
-Write hdf5 system file
+Write HDF5 system file
 ---------------------
 
 .. code-block:: lua
@@ -166,21 +166,22 @@ Options:
     type: string. Optional.
 
     Filename to dump system hdf5 file to. If unset will generate a filename to dump to
-    based on the template:
-        int_file + CAS_information + .H5
+    based on the template: int_file + CAS_information + .H5, where ``int_file`` and the
+    CAS information are set in the call to ``read_in`` which create the ``system`` object.
 
 Returns:
     name of HDF5 file created.  This is currently only available on the root processor and
     can be passed into subsequent calls to ``read_in`` safely as only the root processor
     reads from integral and system files.
 
-When running a calculation using a system generated from a FCIDUMP, the :code:`system` object
-created by lua_read_in can be dumped in HDF5 format for reuse. This enables much faster
-initialisation for larger systems.
+When running a calculation using a system generated from a FCIDUMP, the `:`system`` object
+created by lua_read_in can be dumped in HDF5 format for reuse in subsequent calculations;
+this speeds initialisation by a factor of ~100x and reduces the required file size by ~16x
+for large FCIDUMPs.  When running in parallel on a large number of cores this is
+particularly important to utilise as it overcomes an inherent serialisation point in the
+calculation initialisation.
 
-Using this functionality speeds initialisation by a factor of ~100x and reduces required file
-size by ~16x (for large FCIDUMPs). When running in parallel on a large number of cores this is
-particularly important to utilise.
+For example:
 
 .. code-block:: lua
 
@@ -195,13 +196,16 @@ particularly important to utilise.
          sys = sys,
      }
 
-This will produce a HDF5 file entitled "FCIDUMP.H5" and return this value to the hdf5_name.
-Passing this as the argument to int_file within read_in will use it in future calculations-
-a HDF5 file is automatically detected.
+produces an HDF5 file entitled "FCIDUMP.H5" and return this value to the variable
+``hdf5_name``.  Passing this as the argument to ``int_file`` within ``read_in`` will use
+it in future calculations -- the HDF5 format of the file is automatically detected.
 
 If a CAS is used to produce the system object used to produce such a file it will be
-labelled as such; conversion between different CAS within this functionality is not currently
-supported.
+labelled as such and only information for basis functions within the CAS will be stored;
+conversion between different CAS within this functionality is not currently supported.
 
-When using a HDF5 file to initialise a system either both of nel and ms must be specified or
-neither; if neither is specified the values within the system dump will be used.
+.. important::
+
+    When using a HDF5 file to initialise a system either both of nel and ms must be
+    specified or neither; if neither are specified the values stored within the system
+    HDF5 file will be used and otherwise the given values override those stored.
