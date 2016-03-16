@@ -8,6 +8,11 @@ interface int_fmt
     module procedure int_fmt_int_32
     module procedure int_fmt_int_64
 end interface int_fmt
+interface tri_ind
+    module procedure tri_ind_int_32
+    module procedure tri_ind_int_64
+end interface tri_ind
+
 
 contains
 
@@ -462,7 +467,7 @@ contains
 
 ! --- Array indexing ---
 
-    elemental function tri_ind(i,j) result(indx)
+    elemental function tri_ind_int_64(i,j) result(indx)
 
         ! Find the index corresponding to the (i,j)-th element of a lower
         ! triangular array.  This maps:
@@ -483,12 +488,50 @@ contains
         !    A combined (1-indexed) index for the corresponding element in
         !    a lower triangular array.
 
-        integer :: indx
-        integer, intent(in) :: i, j
+        use const, only: int_64
+        integer(int_64) :: indx
+        integer(int_64) :: tmp
+        integer(int_64), intent(in) :: i, j
 
-        indx = ((i-1)*i)/2 + j
+        !The unsigned integer is there to avoid overflow with >2^30 integrals.
+        tmp=i
+        tmp=i*(i-1)
+        indx = tmp/2 + j
 
-    end function tri_ind
+    end function tri_ind_int_64
+
+    elemental function tri_ind_int_32(i,j) result(indx)
+
+        ! Find the index corresponding to the (i,j)-th element of a lower
+        ! triangular array.  This maps:
+        !
+        !   1,1                   1
+        !   2,1 2,2               2  3
+        !   3,1 3,2 3,3       to  4  5  6
+        !   4,1 4,2 4,3 4,4       7  8  9 10
+        !
+        ! WARNING:
+        ! We assume that i >= j.  It is the programmer's responsibility to check
+        ! this and re-order i and j if required.
+        !
+        ! In:
+        !    i: (1-indexed) row index
+        !    j: (1-indexed) column index
+        ! Returns:
+        !    A combined (1-indexed) index for the corresponding element in
+        !    a lower triangular array.
+
+        use const, only: int_32, int_64
+        integer(int_64) :: indx
+        integer(int_64) :: tmp
+        integer(int_32), intent(in) :: i, j
+
+        !The 64-bit is there to avoid overflow with >2^30 integrals.
+        tmp = i
+        tmp = tmp * (i-1)
+        indx = tmp/2 + j
+
+    end function tri_ind_int_32
 
     elemental function tri_ind_reorder(i,j) result(indx)
 
@@ -513,7 +556,9 @@ contains
         !    A combined (1-indexed) index for the corresponding element in
         !    a lower triangular array.
 
-        integer :: indx
+        use const, only: int_64
+
+        integer(int_64) :: indx
         integer, intent(in) :: i, j
 
         if (i>=j) then

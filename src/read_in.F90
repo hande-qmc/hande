@@ -31,6 +31,7 @@ contains
         !        read_in%Ecore components are set using information from the
         !        integral dump file.
 
+        use const, only: int_64
         use basis, only: write_basis_fn, write_basis_fn_header, write_basis_fn_title
         use basis_types, only: basis_fn_t, dealloc_basis_fn_t_array
         use molecular_integrals
@@ -63,7 +64,8 @@ contains
         type(basis_fn_t), allocatable :: all_basis_fns(:)
 
         ! Integrals
-        integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb, ti
+        integer :: i, j, a, b, ii, jj, aa, bb, orbs(4), active(2), core(2), ia, ic, iorb
+        integer(int_64) :: ti
         real(p) :: x, y, im_core
         complex(p) :: compint
 
