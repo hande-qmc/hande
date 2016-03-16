@@ -1468,7 +1468,6 @@ module hdf5_helper
             if_hdf5 = .false.
             ierr = 0
 #ifndef DISABLE_HDF5
-            write (0,*) filename
             call h5fis_hdf5_f(filename, if_hdf5, ierr)
 #else
             if (parent) call warning('check_ifhdf5', '# Not compiled with HDF5 support. Assuming file supplied is in ascii format.')
