@@ -487,10 +487,8 @@ contains
             hmatel = cmplx(0.0, 0.0, p)
         else if (connection%nexcit == 1) then
             if (connection%to_orb(1) == 0) then
-                print *, connection%from_orb(1), pgen, hmatel_dummy, allowed
                 call stop_all('spawn_complex', 'Spawn target orb index 0.')
             else if (connection%from_orb(1) == 0) then
-                print *, connection%to_orb(1), pgen, hmatel_dummy, allowed
                 call stop_all('spawn_complex', 'Spawn origin orb index 0.')
             end if
             hmatel = slater_condon1_mol_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1),&

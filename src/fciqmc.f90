@@ -203,6 +203,7 @@ contains
                 end if
 
                 call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath)
+                ndeath_im = 0_int_p
                 call load_balancing_wrapper(sys, qs%ref, load_bal_in, annihilation_flags, fciqmc_in%non_blocking_comm, &
                                             rng, qs%psip_list, qs%spawn_store%spawn, qs%par_info, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
@@ -296,10 +297,10 @@ contains
                             call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
                                            qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
                             ndeath = ndeath + ndeath_im
+                            ndeath_im = 0_int_p
                         end if
                     end if
                 end do
-
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
@@ -319,8 +320,7 @@ contains
                         if (determ%doing_semi_stoch) call determ_projection(rng, qmc_in, qs, spawn, determ)
 
                         call direct_annihilation(sys, rng, qs%ref, annihilation_flags, pl, spawn, nspawn_events, determ)
-                        ! As in real case ndeath_im is 0_int_p can just call this in either case without a problem.
-                        call end_mc_cycle(nspawn_events, ndeath + ndeath_im, pl%pop_real_factor, nattempts, qs%spawn_store%rspawn)
+                        call end_mc_cycle(nspawn_events, ndeath, pl%pop_real_factor, nattempts, qs%spawn_store%rspawn)
                     end if
                 end associate
 

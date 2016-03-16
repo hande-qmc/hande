@@ -390,7 +390,6 @@ contains
         end if
         write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, &
                                              qs%spawn_store%rspawn, elapsed_time/qmc_in%ncycles
-
     end subroutine write_fciqmc_report
 
     subroutine end_fciqmc(reference, psip_list, spawn)
