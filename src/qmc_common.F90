@@ -729,7 +729,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts)
+    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts, ndeath_im)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -747,6 +747,9 @@ contains
         ! In (optional):
         !    min_attempts: if present, set nattempts to be at least this value.
         !    nb_comm: true if using non-blocking communications.
+        ! Out (optional):
+        !    ndeath_im: number of imaginary particle deaths that occur in a Monte
+        !       Carlo cycle.  Reset to 0 on output.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use qmc_data, only: particle_t
@@ -757,6 +760,7 @@ contains
         integer(int_64), intent(in), optional :: min_attempts
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
+        integer(int_p), intent(out), optional :: ndeath_im
 
 
         ! Reset the current position in the spawning array to be the
@@ -765,7 +769,7 @@ contains
 
         ! Reset death counter
         ndeath = 0_int_p
-
+        if (present(ndeath_im)) ndeath_im = 0_int_p
         ! Number of spawning attempts that will be made.
         ! For FCIQMC, this is used for accounting later, not for controlling the
         ! spawning.
