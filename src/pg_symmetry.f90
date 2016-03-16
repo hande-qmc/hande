@@ -76,12 +76,15 @@ implicit none
 
 contains
 
-    subroutine init_pg_symmetry(sys)
+    subroutine init_pg_symmetry(sys, hdf5)
 
         ! Initialise point group symmetry information.
         ! *Must* be called after basis functions are initialised and have their
         ! symmetries set from the FCIDUMP file.
 
+        ! In (optional):
+        !    hdf5: logical determining whether initiating system from hdf5 file.
+        !       In this case basis function symmetry doesn't need to be updated.
         ! In/Out:
         !    sys: system being studied.  On output the symmetry fields are set.
 
@@ -89,11 +92,20 @@ contains
 
         use system, only: sys_t
 
+        logical, intent(in), optional :: hdf5
+
         type(sys_t), intent(inout) :: sys
 
         integer :: i, ierr, ims, ind
 
         integer :: maxsym, maxLz
+
+        logical :: hdf5_loc
+
+        hdf5_loc = .false.
+        if (present(hdf5)) hdf5_loc = hdf5
+
+
         ! molecular systems use symmetry indices starting from 0.
         sys%sym0 = 0
 
@@ -107,7 +119,7 @@ contains
         ! representation.
 
         maxsym = 2**ceiling(log(real(maxval(sys%basis%basis_fns(:)%sym)+1))/log(2.0))
-        
+
         if(sys%read_in%useLz) then
             ! This is the Max Lz value we find in the basis functions.
             maxLz = maxval(sys%basis%basis_fns(:)%lz)
@@ -117,8 +129,11 @@ contains
         ! The point group mask is used to extract the point group symmetry from a sym.
         ! Since the point group sym goes from 0..maxsym-1, and maxsym is always a power
         ! of 2, the mask is just maxsym-1
-        sys%read_in%pg_sym%pg_mask = maxsym-1
-
+        if (hdf5_loc) then
+            maxsym = sys%read_in%pg_sym%pg_mask + 1
+        else
+            sys%read_in%pg_sym%pg_mask = maxsym-1
+        end if
         ! We'll put Lz in higher bits, and an encode or decode by multiplying or diviging by:
         sys%read_in%pg_sym%Lz_divisor = maxsym
 
@@ -173,19 +188,21 @@ contains
         associate(nbasis=>sys%basis%nbasis, basis_fns=>sys%basis%basis_fns)
             do i = 1, nbasis
                 ! Encode the Lz into the symmetry. We shift the lz into higher bits (by *maxsym)  and offset.
-                if (maxLz>0) then
+                if (maxLz>0 .and. .not. hdf5_loc) then
                     basis_fns(i)%sym = basis_fns(i)%sym + &
                         (basis_fns(i)%lz*sys%read_in%pg_sym%Lz_divisor+sys%read_in%pg_sym%Lz_offset)
                 endif
                 sys%read_in%pg_sym%nbasis_sym(basis_fns(i)%sym) = sys%read_in%pg_sym%nbasis_sym(basis_fns(i)%sym) + 1
-                basis_fns(i)%sym_index = sys%read_in%pg_sym%nbasis_sym(basis_fns(i)%sym)
+
+                if (.not.hdf5_loc) basis_fns(i)%sym_index = sys%read_in%pg_sym%nbasis_sym(basis_fns(i)%sym)
 
                 ims = (basis_fns(i)%Ms+3)/2 ! Ms=-1,1 -> ims=1,2
 
                 sys%read_in%pg_sym%nbasis_sym_spin(ims,basis_fns(i)%sym) = &
                             sys%read_in%pg_sym%nbasis_sym_spin(ims,basis_fns(i)%sym) + 1
-                basis_fns(i)%sym_spin_index = sys%read_in%pg_sym%nbasis_sym_spin(ims,basis_fns(i)%sym)
-
+                if (.not. hdf5_loc) then
+                    basis_fns(i)%sym_spin_index = sys%read_in%pg_sym%nbasis_sym_spin(ims,basis_fns(i)%sym)
+                end if
             end do
         end associate
 

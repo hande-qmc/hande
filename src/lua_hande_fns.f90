@@ -109,7 +109,7 @@ contains
         use parallel, only: parent
         use system, only: sys_t, read_in
 
-        use hdf5_system, only: dump_system_hdf5
+        use hdf5_system, only: dump_system_hdf5, get_filename
 
         type(c_ptr), value :: L
         integer(c_int) :: nresult
@@ -131,7 +131,11 @@ contains
         call aot_table_close(lua_state, opts)
 
         if (sys%system == read_in) then
-            if (parent) call dump_system_hdf5(sys, filename)
+            if (parent) then
+                call dump_system_hdf5(sys, filename)
+            else
+                call get_filename(.true., sys, filename)
+            end if
         else
             call warning('lua_dump_hdf5_system', 'Cannot write systems other than read_in to an HDF5 file.')
         end if
