@@ -158,7 +158,6 @@ module hdf5_system
             use hdf5_helper, only: hdf5_kinds_t, hdf5_kinds_init
             use utils, only: get_unique_filename
             use system, only: sys_t
-            use const, only: i0
 
             logical, intent(in) :: write_mode
             type(sys_t), intent(in) :: sys
@@ -267,6 +266,7 @@ module hdf5_system
 
             ! Write either original number of electrons or modified number of electrons
             ! depending upon whether using a CAS.
+            ! [review] - JSS: isn't nel set to CAS(1) by this point.  I think so -- see read_in.F90 line 333.
             if (sys%CAS(1) == -1) then
                 call hdf5_write(group_id, dnel, sys%nel)
             else
@@ -446,8 +446,8 @@ module hdf5_system
                     call stop_all('read_system_hdf5', "Specified number electrons but not total &
                             &spin. Please specify neither to use values contained within &
                             &system dump or both.")
-
                 else
+                    ! [review] - JSS: I'm sure Ruth will espouse the benefits of using call warning(...).
                     write (*,*), "# WARNING: Overwriting nel and Ms within &
                             &hdf5 file."
                     write (*,*)
