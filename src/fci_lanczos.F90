@@ -330,7 +330,7 @@ contains
 #endif
                 end do
             else
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
                 if (sparse_hamil) write (6,'(1X, a81)') 'WARNING.  Sparsity not implemented in parallel.  &
                                                   &This is not going to end well...'
                 ! Use pblas to perform matrix-vector multiplication.
@@ -359,6 +359,8 @@ contains
                     yout = 0.0_dp
 #endif
                 end if
+#else
+                call stop_all('fci_lanczos.F90', "Scalapack disabled at compile-time")
 #endif
             end if
 

@@ -232,7 +232,7 @@ contains
             end do
         end if
 
-#ifdef PARALLEL
+#if defined(PARALLEL) && ! defined(DISABLE_SCALAPACK)
         ! Initialise a single BLACS context.
         call blacs_get(0, 0, context)
         ! Initialise processor grid, nproc_rows x nproc_cols

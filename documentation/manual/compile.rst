@@ -195,6 +195,10 @@ DISABLE_UUID
 
     If defined then each calculation will not print universally unique identifier. This removes the
     dependency on libuuid.
+DISABLE_SCALAPACK
+    Default: not defined
+
+    If defined then FCI calculations in parallel are disabled, and the dependency on ScaLAPACK is removed.
 DSFMT_MEXP 
     Default: 19937.
 
