@@ -173,4 +173,25 @@ contains
 
     end subroutine get_userdata
 
+    subroutine ishdf5_wrapper(filename, if_hdf5, ierr)
+        ! Wrapper around hdf5_helper wrapper to h5fis_hdf5_f to ensure only check on
+        ! parent processor.
+        ! In:
+        !   filename: integral filename which could be in hdf5 file format.
+        ! Out:
+        !   if_hdf5: logical parameter showing whether integral file is in hdf5 format.
+
+        use parallel
+        use hdf5_helper, only: check_ifhdf5
+
+        character(*), intent(in) :: filename
+        logical, intent(out) :: if_hdf5
+        integer, intent(inout) :: ierr
+
+        if (parent) call check_ifhdf5(filename, if_hdf5, ierr)
+#ifdef PARALLEL
+        call MPI_BCAST(if_hdf5, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+#endif
+    end subroutine ishdf5_wrapper
+
 end module lua_hande_utils

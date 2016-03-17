@@ -504,7 +504,7 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, ishdf5_wrapper
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
         use system, only: sys_t, read_in, init_system
@@ -512,7 +512,6 @@ contains
         use parallel, only: parent
         use errors, only: stop_all
         use hdf5_system, only: read_system_hdf5
-        use hdf5_helper, only: check_ifhdf5
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
@@ -541,7 +540,7 @@ contains
 
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
 
-        call check_ifhdf5(sys%read_in%fcidump, hdf5, err)
+        call ishdf5_wrapper(sys%read_in%fcidump, hdf5, err)
 
         if (hdf5) then
                 call init_system(sys)
