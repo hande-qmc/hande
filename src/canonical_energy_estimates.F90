@@ -14,7 +14,7 @@ module canonical_energy_estimates
 ! Note that for molecular systems we don't actually evaluate the kinetic energy
 ! directly but rather the sum of Hartree-Fock eigenvalues. The double counting
 ! correction is then added from the potential contribution.
-! The folowing enumerators set the location in the estimates array.
+! The following enumerators set the location in the estimates array.
 
 use const
 
@@ -295,8 +295,8 @@ contains
         ! estimate the non-interacting free energy as:
         ! F^0_C = -kT log(e^{-beta mu N}Z_GC(N)), so given N_ACC/N_ATT = d, it follows that
         ! F^0_C = -kT log(d) -kT log(Z_GC) + mu N = -kT log(d) + Omega + mu N, where Omega is
-        ! is the grand potential. This routine evalues Omega and mu N, which can then be combined
-        ! with the estimate for -k T log(d) during post processing.
+        ! is the grand potential. This routine evaluates Omega and mu N, which can then be
+        ! combined with the estimate for -kT log(d) during post processing.
 
         ! In:
         !    sys: system begin studied.
@@ -319,9 +319,9 @@ contains
             omega = omega + log(1.0_p+exp(-beta*(sys%basis%basis_fns(iorb)%sp_eigv-mu)))
         end do
 
-        if (sys%ms == 0) omega = omega * 2.0
+        if (sys%ms == 0) omega = omega * 2.0_p
 
-        correction = (-1.0/beta)*omega + mu*sys%nel
+        correction = (-1.0_p/beta)*omega + mu*sys%nel
 
     end function free_energy_correction
 
