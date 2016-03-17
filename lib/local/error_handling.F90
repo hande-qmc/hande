@@ -54,11 +54,13 @@ contains
 
         print_backtrace_loc = debug
         if (present(print_backtrace)) print_backtrace_loc = print_backtrace
+#ifndef DISABLE_BACKTRACE
         if (print_backtrace_loc) then
             c_buf = c_loc(buffer)
             btr_size = backtrace(c_buf, 100)
             call backtrace_symbols_fd(c_buf, btr_size, 2)
         end if
+#endif
 
         write (error_unit,'(/a7)') 'ERROR.'
         write (error_unit,'(1X,a)') 'HANDE stops in subroutine: '//adjustl(sub_name)//'.'
