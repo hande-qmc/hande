@@ -222,11 +222,27 @@ contains
                 call stop_all('read_in_integrals', 'CAS cannot have more active basis functions than in the system')
             end if
         end if
-        if (nelec /= sys%nel .and. parent) then
-            write (6,'(1X,"WARNING: overriding the number of electrons in FCIDUMP file: '&
-                //trim(sys%read_in%fcidump)//'.")')
-            write (6,'(1X,"FCIDUMP file indicates",'//int_fmt(nelec,1)//'" electrons.")') nelec
-            write (6,'(1X,"Input file set",'//int_fmt(sys%nel,1)//'" electrons.",/)') sys%nel
+        if (sys%nel /= 0 .and. sys%Ms /= huge(1)) then
+            if (parent) then
+                write (6,'(1X,"WARNING: overriding the number of electrons in FCIDUMP file: '&
+                    //trim(sys%read_in%fcidump)//'.")')
+                write (6,'(1X,"FCIDUMP file indicates",'//int_fmt(nelec,1)//'" electrons.")') nelec
+                write (6,'(1X,"Input file set",'//int_fmt(sys%nel,1)//'" electrons.",/)') sys%nel
+            end if
+        else if (sys%nel /= 0) then
+            call stop_all('read_in_integrals', 'Only provided nel not Ms in input file. Please '&
+                    &'either provide both nel and Ms or provide neither to use values from FCIDUMP')
+        else if (sys%Ms /= 0) then
+            call stop_all('read_in_integrals', 'Only provided Ms not nel in input file. Please '&
+                    &'either provide both nel and Ms or provide neither to use values from FCIDUMP')
+        else
+            if (parent) then
+                write (6,'(1X,"WARNING: using the number of electrons in FCIDUMP file: '&
+                    //trim(sys%read_in%fcidump)//'.")')
+                write (6,'(1X,"FCIDUMP file indicates",'//int_fmt(nelec,1)//'" electrons.")') nelec
+            end if
+            sys%nel = nelec
+            sys%Ms = ms2
         end if
 
         if (present(cas_info)) then
