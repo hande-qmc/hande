@@ -20,6 +20,9 @@ HANDE development team
 | Matthew Foulkes, Imperial College London.
 | Will Vigor, Imperial College London.
 | Ruth Franklin, University of Cambridge.
+| Charlie Scott, University of Cambridge.
+| Verena Neufeld, University of Cambridge.
+| James Shepherd, MIT.
 
 LICENSE
 -------
