@@ -199,6 +199,12 @@ DISABLE_SCALAPACK
     Default: not defined
 
     If defined then FCI calculations in parallel are disabled, and the dependency on ScaLAPACK is removed.
+DISABLE_BACKTRACE
+    Default: not defined
+
+    If defined then the backtrace is disabled.  The backtrace functionality is a GNU extension and not
+    available on all POSIX architectures.  No working functionality is lost.
+
 DSFMT_MEXP 
     Default: 19937.
 
