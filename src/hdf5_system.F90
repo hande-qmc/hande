@@ -33,7 +33,6 @@ module hdf5_system
     !   sym0_tot
     !   sym_max_tot
     !   CAS
-    !   max_number_excitations
     !
     !   basis/
     !       nbasis
@@ -100,8 +99,6 @@ module hdf5_system
                                 dsym0_tot = 'sym0_tot',         &
                                 dsym_max_tot = 'sym_max_tot',   &
                                 dcas = 'CAS',                   &
-                                dmax_number_excitations =       &
-                                       'max_number_excitations',&
 
                                 dfcidump = 'fcidump',           &
                                 duhf = 'uhf',                   &
@@ -305,9 +302,6 @@ module hdf5_system
             call hdf5_write(group_id, dms, sys%Ms)
 
             call hdf5_write(group_id, dcas, kinds, [2], sys%CAS)
-
-            call hdf5_write(group_id, dmax_number_excitations,&
-                                            sys%max_number_excitations)
 
                 ! --- basis subgroup ---
                 call h5gcreate_f(group_id, gbasis, subgroup_id, ierr)
@@ -600,6 +594,7 @@ module hdf5_system
             if (.not. parent) then
                     allocate(sys%basis%basis_fns(sys%basis%nbasis),  stat = ierr)
                     call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
+                    sys%nvirt = sys%basis%nbasis - sys%nel
             end if
             ! Broadcast basis.
             associate(nbasis=>sys%basis%nbasis)
