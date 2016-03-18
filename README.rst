@@ -1,9 +1,12 @@
 HANDE
 =====
 
-HANDE is an efficient, highly parallel code for stochastic quantum chemistry.  It can be
+`HANDE <http://www.hande.org.uk>`_ is an efficient, highly parallel code for stochastic quantum chemistry.  It can be
 used both as a standalone program or (optionally) as a library from an existing quantum
 chemistry code.
+
+.. image:: https://travis-ci.org/hande-qmc/hande.svg?branch=master
+    :target: https://travis-ci.org/hande-qmc/hande
 
 Documentation
 -------------
