@@ -277,7 +277,7 @@ None.
 
     (metadata, data) = ([], [])
     for (md, df) in hande_out:
-        if 'DMQMC' in md['calc_type']:
+        if 'DMQMC' in md['calc_type'] and not md['dmqmc']['find_weights']:
             metadata.append(md)
             # Convert the iteration number to the beta value.
             if 'qmc' in md:
