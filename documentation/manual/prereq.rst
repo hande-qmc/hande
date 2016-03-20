@@ -41,11 +41,8 @@ lua 5.3
 
 MPI (parallel compilation only)
     MPI 2 is required.  We have used a variety of implementations (including OpenMPI and
-    various vendor implementations).
-scalapack (parallel compilation only)
-    Available from http://www.netlib.org/scalapack/ and vendor implementations.  Often
-    already installed on HPC systems, included in Intel Maths Kernel Library and can be
-    installed from most package managers.
+    various vendor implementations).  MPI 3 is **highly** recommended and is used by
+    default.
 python 2.7+ or python 3.2+
     Almost all tools packaged with HANDE are written in python.
 
@@ -53,7 +50,7 @@ python 2.7+ or python 3.2+
 
         python 2.6 or earlier python 3 versions **may** be sufficient but will probably
         require additional work.  In particular, the argparse module (included from 2.7
-        and 3.2 onwards) is required and installing (especially recent versions of )
+        and 3.2 onwards) is required and installing (especially recent versions of)
         pandas  may be problematic.  Using a recent version of python is highly
         recommended.
 pandas 0.14.1+
@@ -71,6 +68,15 @@ AOTUS
     AOTUS provides a nice Fortran wrapper to Lua's C-API.  For convenience (given that
     module files are Fortran-specific), AOTUS is included in the HANDE source
     distribution.
+cephes
+    Mathematical functions.  Only the minimal subset required for the digamma (psi)
+    function are included.
+dSFMT and dSFMT_F03_interface
+    dSFMT (double precision SIMD-oriented Fast Mersenne Twister) is a fast and high
+    quality pseudo-random number generator; dSFMT_F03_interface is a Fortran 2003 wrapper
+    to it.
+pyblock
+    python module for performing blocking analyses.
 
 Optional dependencies
 ---------------------
@@ -105,6 +111,10 @@ libuuid
         uuid-dev) to be installed in order for libuuid to exist on default search paths.
         Some luck may be found by looking under /lib or /lib64 instead of /usr/lib and
         /usr/lib64.
+scalapack (parallel compilation only)
+    Available from http://www.netlib.org/scalapack/ and vendor implementations.  Often
+    already installed on HPC systems, included in Intel Maths Kernel Library and can be
+    installed from most package managers.
 TRLan
     Required for (and only for) performing FCI calculations using the Lanczos algorithm.
     Available from http://crd-legacy.lbl.gov/~kewu/trlan.html.

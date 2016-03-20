@@ -194,6 +194,13 @@ DISABLE_LANCZOS
     Default: not defined.
 
     If defined then Lanczos diagonalisation is disabled.  This removes the dependency on the TRLan library.
+DISABLE_MPI3
+    Default: not defined.
+
+    If defined then additional functionality provided by the MPI 3 standard is not used.
+    This disables some functionality (e.g. exploiting MPI 3 shared memory to store large
+    integral arrays only once per node rather than once per processor) and causes
+    slower fallback communication procedures to be used in some cases.
 DISABLE_HDF5
     Default: not defined.
 
@@ -215,7 +222,6 @@ DISABLE_BACKTRACE
 
     If defined then the backtrace is disabled.  The backtrace functionality is a GNU extension and not
     available on all POSIX architectures.  No working functionality is lost.
-
 DSFMT_MEXP 
     Default: 19937.
 
@@ -228,11 +234,15 @@ DSFMT_MEXP
     521, 1279, 2203, 4253, 11213, 19937, 44497, 86243,
     132049 and 216091 and lead to, for example, random numbers with a period of
     a Mersenne Prime such as :math:`2^{512}-1`.
-NAGF95  
+ENABLE_SHMEM_POSIX
     Default: not defined.
 
-    If defined then code specific to, and necessary for compilation using, the
-    NAG Fortran compiler is included.
+    If defined, then use POSIX functions to allocate large arrays using shared memory
+    (i.e. once per node rather than once per processor).  This depends upon having access
+    to various system-level functionality and so, depending upon local configuration, may
+    not work when run as a non-privileged user (and hande should **not** be run by
+    privileged users!).  As a result, we recommend using MPI 3 instead of this where
+    possible.
 PARALLEL  
     Default: not defined.
 
