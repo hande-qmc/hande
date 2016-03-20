@@ -199,6 +199,7 @@ we find
     import pandas as pd
     import matplotlib.pyplot as plt
     data = pd.read_csv('calcs/dmqmc/ipdmqmc_ueg_block.out', sep=r'\s+')
+    data = data[::2]
     plt.errorbar(data['Beta'], data['Tr[Hp]/Tr[p]']/7., yerr=data['Tr[Hp]/Tr[p]_error']/7., fmt='s')
     plt.xlabel(r'$\tau/\tau_F$')
     plt.ylabel(r'$U/N$ (Ha)')
