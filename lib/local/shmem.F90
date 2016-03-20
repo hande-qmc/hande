@@ -39,15 +39,15 @@ type shmem_handle_t
 end type shmem_handle_t
 
 interface allocate_shared
-    !module procedure alloc_shared_real_sp_1D
-    !module procedure alloc_shared_real_sp_2D
+    module procedure alloc_shared_real_sp_1D
+    module procedure alloc_shared_real_sp_2D
     module procedure alloc_shared_real_dp_1D
     module procedure alloc_shared_real_dp_2D
 end interface
 
 interface deallocate_shared
-    !module procedure dealloc_shared_real_sp_1D
-    !module procedure dealloc_shared_real_sp_2D
+    module procedure dealloc_shared_real_sp_1D
+    module procedure dealloc_shared_real_sp_2D
     module procedure dealloc_shared_real_dp_1D
     module procedure dealloc_shared_real_dp_2D
 end interface deallocate_shared
@@ -142,6 +142,70 @@ contains
     !       memory block.  Must be provided to deallocate the memory.  Do
     !       **not** modify.
 
+    subroutine alloc_shared_real_sp_1D(A, A_name, handle, N1)
+
+        use const, only: sp, int_64
+        use checking, only: check_allocate
+        use utils, only: fstring_to_carray
+        use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr, c_null_ptr
+
+        real(sp), pointer, intent(out) :: A(:)
+        character(*), intent(in) :: A_name
+        integer(int_64), intent(in) :: N1
+        type(shmem_handle_t), intent(out) :: handle
+        integer :: ierr
+        integer, parameter :: nbytes = 8
+        type(c_ptr) :: ptr
+        ptr = c_null_ptr
+
+        handle = shmem_handle_t(A_name, -1)
+
+#if defined ENABLE_SHMEM_POSIX
+        ierr = 0
+        call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*nbytes)
+        call c_f_pointer(ptr, A, [N1])
+#elif defined PARALLEL && ! defined DISABLE_MPI3
+        call mpi3_shared_alloc(N1*nbytes, ptr, handle%mpi_win)
+        call c_f_pointer(ptr, A, [N1])
+#else
+        allocate(A(N1), stat=ierr)
+        call check_allocate(A_name, N1, ierr)
+#endif
+
+    end subroutine alloc_shared_real_sp_1D
+
+    subroutine alloc_shared_real_sp_2D(A, A_name, handle, N1, N2)
+
+        use const, only: sp, int_64
+        use checking, only: check_allocate
+        use utils, only: fstring_to_carray
+        use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr, c_null_ptr
+
+        real(sp), pointer, intent(out) :: A(:,:)
+        character(*), intent(in) :: A_name
+        integer(int_64), intent(in) :: N1, N2
+        type(shmem_handle_t), intent(out) :: handle
+        integer :: ierr
+        integer, parameter :: nbytes = 8
+        type(c_ptr) :: ptr
+        ptr = c_null_ptr
+
+        handle = shmem_handle_t(A_name, -1)
+
+#if defined ENABLE_SHMEM_POSIX
+        ierr = 0
+        call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*N2*nbytes)
+        call c_f_pointer(ptr, A, [N1, N2])
+#elif defined PARALLEL && ! defined DISABLE_MPI3
+        call mpi3_shared_alloc(N1*N2*nbytes, ptr, handle%mpi_win)
+        call c_f_pointer(ptr, A, [N1,N2])
+#else
+        allocate(A(N1, N2), stat=ierr)
+        call check_allocate(A_name, N1*N2, ierr)
+#endif
+
+    end subroutine alloc_shared_real_sp_2D
+
     subroutine alloc_shared_real_dp_1D(A, A_name, handle, N1)
 
         use const, only: dp, int_64
@@ -212,6 +276,67 @@ contains
     !    A: shared memory array.  Deallocated on exit.
     !    handle: shmem_handle_t object returned when A was allocated.  Modified
     !       by MPI_Win_Free if using MPI-3.
+
+    subroutine dealloc_shared_real_sp_1D(A, handle)
+
+        use, intrinsic :: iso_c_binding, only: c_loc, c_ptr, c_null_ptr
+        use const, only: sp, int_64
+        use checking, only: check_deallocate
+        use parallel
+        use utils, only: fstring_to_carray
+
+        real(sp), pointer, intent(inout) :: A(:)
+        type(shmem_handle_t), intent(inout) :: handle
+        integer :: ierr
+        integer, parameter :: nbytes = 8
+        type(c_ptr) :: ptr
+        ptr = c_null_ptr
+
+
+#if defined ENABLE_SHMEM_POSIX
+        ierr = 0
+        ptr = c_loc(A)
+        call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
+        nullify(A)
+#elif defined PARALLEL && ! defined DISABLE_MPI3
+        call MPI_Win_Free(handle%mpi_win, ierr)
+        nullify(A)
+#else
+        deallocate(A, stat=ierr)
+        call check_deallocate(handle%shmem_name, ierr)
+#endif
+
+    end subroutine dealloc_shared_real_sp_1D
+
+    subroutine dealloc_shared_real_sp_2D(A, handle)
+
+        use, intrinsic :: iso_c_binding, only: c_loc, c_ptr, c_null_ptr
+        use const, only: sp, int_64
+        use checking, only: check_deallocate
+        use parallel
+        use utils, only: fstring_to_carray
+
+        real(sp), pointer, intent(inout) :: A(:,:)
+        type(shmem_handle_t), intent(inout) :: handle
+        integer :: ierr
+        integer, parameter :: nbytes = 8
+        type(c_ptr) :: ptr
+        ptr = c_null_ptr
+
+#if defined ENABLE_SHMEM_POSIX
+        ierr = 0
+        ptr = c_loc(A)
+        call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
+        nullify(A)
+#elif defined PARALLEL && ! defined DISABLE_MPI3
+        call MPI_Win_Free(handle%mpi_win, ierr)
+        nullify(A)
+#else
+        deallocate(A, stat=ierr)
+        call check_deallocate(handle%shmem_name, ierr)
+#endif
+
+    end subroutine dealloc_shared_real_sp_2D
 
     subroutine dealloc_shared_real_dp_1D(A, handle)
 
