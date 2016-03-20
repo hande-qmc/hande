@@ -234,7 +234,7 @@ Hamiltonian matrix elements are identical in magnitude.  Carefully inspecting th
 in :download:`hubbard_fciqmc_real.out <calcs/fciqmc/hubbard_fciqmc_real.out>` reveals that
 there is almost one spawning event for every particle [#]_.  This results in a costly
 communication overhead every timestep.  We can improve this by changing the
-``spawn_cutoff`` parameter, which is the minimum absolute value of a spawning event.
+``spawn_cutoff`` parameter, which is the minimum absolute value of a spawning event [Overy2014]_.
 A spawning event with a smaller cutoff is probabilistically rounded to zero or the cutoff
 value [#]_.  The default cutoff value, 0.01, need only be changed in cases such as this
 and is set using the ``spawn_cutoff`` parameter in the ``qmc`` table:
