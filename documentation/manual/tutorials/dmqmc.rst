@@ -109,7 +109,7 @@ and we find that the psips are now more equally distributed among excitation lev
     tau = metadata['qmc']['tau']
     for i in range(0,10):
         plt.plot(qmc_data['iterations']*tau, qmc_data['Excit. level %s'%i], label=r'Excit. level %s'%i)
-    plt.xlim([0,10000*tau])
+    plt.xlim([0,5000*tau])
     plt.xlabel(r'$\beta J$')
     plt.legend(numpoints=1, loc='best')
     plt.ylabel('Weight of psips')
