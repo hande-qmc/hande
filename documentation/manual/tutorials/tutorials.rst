@@ -36,3 +36,4 @@ We recommend working through the FCIQMC tutorial before the iFCIQMC, CCMC or DMQ
     ccmc
     dmqmc
     kinetic
+    shoulder
