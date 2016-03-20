@@ -9,7 +9,7 @@ module shmem
 ! * Where neither are available, fall back to just doing standard allocate.
 
 ! If:
-! * SHMEM_POSIX is defined: shm_open, mmap and other POSIX functions are used.
+! * ENABLE_SHMEM_POSIX is defined: shm_open, mmap and other POSIX functions are used.
 ! * DISABLE_MPI3 is defined or PARALLEL is not defined, fall back to standard allocate (no shared memory).
 ! * otherwise MPI 3 is used (default).
 
@@ -130,7 +130,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-#if defined SHMEM_POSIX
+#if defined ENABLE_SHMEM_POSIX
         ierr = 0
         call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*nbytes)
         call c_f_pointer(ptr, A, [N1])
@@ -158,7 +158,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-#if defined SHMEM_POSIX
+#if defined ENABLE_SHMEM_POSIX
         ierr = 0
         call alloc_shared_posix(ptr, A_name, N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
@@ -189,7 +189,7 @@ contains
         ptr = c_null_ptr
 
 
-#if defined SHMEM_POSIX
+#if defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
         call free_shared_posix(ptr, A_name, size(A, kind=int_64)*nbytes)
@@ -218,7 +218,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-#if defined SHMEM_POSIX
+#if defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
         call free_shared_posix(ptr, A_name, size(A, kind=int_64)*nbytes)
