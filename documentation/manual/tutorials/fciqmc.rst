@@ -176,8 +176,8 @@ ground state energy:
     import pyhande
     import matplotlib.pyplot as plt
     (metadata, qmc_data) = pyhande.extract.extract_data('calcs/fciqmc/hubbard_fciqmc.out')[0]
-    plt.plot(qmc_data['iterations'], qmc_data['Shift'], label='$S(\tau)$')
-    plt.plot(qmc_data['iterations'], qmc_data['\sum H_0j N_j']/qmc_data['N_0'], label='$E(\tau) = \sum_j H_{0j} N_j(\tau)/N_0(\tau)$')
+    plt.plot(qmc_data['iterations'], qmc_data['Shift'], label=r'$S(\tau)$')
+    plt.plot(qmc_data['iterations'], qmc_data['\sum H_0j N_j']/qmc_data['N_0'], label=r'$E(\tau) = \sum_j H_{0j} N_j(\tau)/N_0(\tau)$')
     plt.legend()
     plt.xlabel('iteration')
     plt.ylabel('Correlation energy / $t$')
@@ -228,8 +228,91 @@ more than compensates; it is much more efficient than simply running for longer.
 ampltiudes also reduce the plateau height in some cases (as is the case here) though this
 has not been investigated carefully in a wide variety of systems.
 
+One reason that the calculation with real ampltiudes took so much longer than that with
+integer ampltiudes is due to the nature of the Hubbard model: all non-zero off-diagonal
+Hamiltonian matrix elements are identical in magnitude.  Carefully inspecting the output
+in :download:`hubbard_fciqmc_real.out <calcs/fciqmc/hubbard_fciqmc_real.out>` reveals that
+there is almost one spawning event for every particle [#]_.  This results in a costly
+communication overhead every timestep.  We can improve this by changing the
+``spawn_cutoff`` parameter, which is the minimum absolute value of a spawning event.
+A spawning event with a smaller cutoff is probabilistically rounded to zero or the cutoff
+value [#]_.  The default cutoff value, 0.01, need only be changed in cases such as this
+and is set using the ``spawn_cutoff`` parameter in the ``qmc`` table:
+
+.. literalinclude:: calcs/fciqmc/hubbard_fciqmc_real_sc0.1.lua
+    :language: lua
+
+Note that a value of 1 is comparable to using integer ampltiudes except for the death
+step, which acts without stochastic rounding if ``real_amplitudes`` is enabled.
+
+We can run calculations with different values of ``spawn_cutoff`` as before; here we
+set use values of 0.1, 0.25 and 0.5.  ``reblock_hande.py`` can analyse multiple
+calculations at once and so we can easily see the impact of changing ``spawn_cutoff``
+compared to the default value and the original FCIQMC calculation using integer
+ampltiudes:
+
+.. code-block:: bash
+
+   $ reblock_hande.py --quiet --start 30000 hubbard_fciqmc*out
+
+.. literalinclude:: calcs/fciqmc/hubbard_fciqmc_spawn_cutoff.block
+
+As expected, increasing the ``spawn_cutoff`` results in an increase in the stochastic
+error (linear, in this case, due to the identical magnitude of non-zero off-diagonal
+Hamiltonian matrix elements).  Finally, we can compare the change in stochastic error to
+the wall time of the calculation:
+
+.. plot::
+
+    import glob
+    import numpy as np
+    import pandas as pd
+    import pyhande
+    import matplotlib.pyplot as plt
+
+    results = {}
+    for fname in glob.glob('calcs/fciqmc/hubbard_fciqmc*out'):
+        out = pyhande.lazy.std_analysis([fname], start=30000, extract_psips=True)[0]
+        res = out.opt_block.loc['Proj. Energy', 'mean':'standard error']
+        res['wall_time'] = out.metadata['wall_time']
+        if out.metadata['qmc']['real_amplitudes']:
+            results[out.metadata['qmc']['spawn_cutoff']] = res
+        else:
+            results[1.0] = res
+    results = pd.DataFrame(results).T
+
+    # todo - legend, axis labels
+    (fig, ax1) = plt.subplots()
+    lines1 = ax1.plot(results.index, 10**5*results['standard error'], 'x-', label='standard error')
+    ax1.set_xlabel('spawn cutoff')
+    ax1.set_ylabel(r'standard error / $10^{-5}$ [$U/t$]')
+
+    ax2 = ax1.twinx()
+    try:
+        ax2._get_lines.color_cycle.next()
+    except AttributeError:
+        ax2._get_lines.prop_cycler.next()
+    lines2 = ax2.plot(results.index, results['wall_time'], 'x-', label='wall time')
+    ax2.set_yticks(np.linspace(ax2.get_yticks()[0],ax2.get_yticks()[-1],len(ax1.get_yticks())))
+    ax2.set_ylabel('wall time [s]')
+
+    lines = lines1 + lines2
+    labels = [l.get_label() for l in lines]
+    ax1.legend(lines, labels, loc='center right')
+
+For convenience, the integer amplitude calculation is shown as having a ``spawn_cutoff``
+of 1. Clearly there is a playoff between the computational cost and the desired stochastic
+error; choosing a value of 0.25 for ``spawn_cutoff`` in this case seems sensible as it is
+around the point where the rate of change in the wall time begins to slow [#]_.
+
 .. rubric:: Footnotes
 
 .. [#] With some scripting it is possible to automatically detect the plateau and interact
        with the calculation at this point.
-
+.. [#] This can be confirmed analytically using knowledge of the internal excitation
+       generators and the associated probabilities, the value of :math:`U/t` and the
+       calculation timestep.
+.. [#] One can hence view the integer amplitudes algorithm, ignoring death and spawning
+       events which produce multiple particles, as having a ``spawn_cutoff`` of 1.
+.. [#] A more comprehensive approach to assessing the efficiency of the calculations can
+       be found in [Vigor16]_.
