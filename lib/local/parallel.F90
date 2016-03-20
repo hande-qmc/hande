@@ -35,6 +35,7 @@ logical :: parent
 
 ! Inter-node communicator
 ! Set to MPI_COMM_NULL if MPI 3 is not available.
+! [review] - AJWT: This would probably be best as inter_node_comm
 integer :: node_comm
 
 ! Intra-node communicator
