@@ -3,6 +3,7 @@ module base_types
 ! Module containing derived types useful in various circumstances.
 
 use const
+use shmem, only: shmem_handle_t
 
 implicit none
 
@@ -10,10 +11,14 @@ implicit none
 
 type alloc_int1d
     integer, pointer :: v(:)
+    ! shmem handle for safe allocation/deallocation.
+    type(shmem_handle_t) :: shmem_handle
 end type
 
 type alloc_rp1d
     real(p), pointer :: v(:)
+    ! shmem handle for safe allocation/deallocation.
+    type(shmem_handle_t) :: shmem_handle
 end type
 
 type alloc_rdp1d

@@ -27,7 +27,16 @@ module shmem
 implicit none
 
 private
-public :: allocate_shared, deallocate_shared
+public :: allocate_shared, deallocate_shared, shmem_handle_t
+
+type shmem_handle_t
+#if ! defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && (__GNUC_MINOR__ > 7))
+    character(:), allocatable :: shmem_name
+#else
+    character(255) :: shmem_name
+#endif
+    integer :: mpi_win
+end type shmem_handle_t
 
 interface allocate_shared
     !module procedure alloc_shared_real_sp_1D
@@ -77,7 +86,7 @@ contains
 
     ! helpers
 
-    subroutine mpi3_shared_alloc(nbytes, ptr)
+    subroutine mpi3_shared_alloc(nbytes, ptr, win)
 
         use, intrinsic :: iso_c_binding, only: c_ptr
         use const, only: int_64
@@ -86,7 +95,8 @@ contains
 
         integer(int_64), intent(in) :: nbytes
         type(c_ptr), intent(out) :: ptr
-        integer :: win, win_info, ierr, disp
+        integer, intent(out) :: win
+        integer :: win_info, ierr, disp
         integer(MPI_ADDRESS_KIND) :: n
 
 #if defined PARALLEL && ! defined DISABLE_MPI3
@@ -115,7 +125,13 @@ contains
 
     ! alloc_shared_*
 
-    subroutine alloc_shared_real_dp_1D(A, A_name, N1)
+    ! In:
+    !    A_name:
+    !    N1, N2, ...: dimensions of array.
+    ! In/Out:
+    !    A:
+
+    subroutine alloc_shared_real_dp_1D(A, A_name, shmem_handle, N1)
 
         use const, only: dp, int_64
         use checking, only: check_allocate
@@ -125,17 +141,20 @@ contains
         real(dp), pointer, intent(out) :: A(:)
         character(*), intent(in) :: A_name
         integer(int_64), intent(in) :: N1
+        type(shmem_handle_t), intent(out) :: shmem_handle
         integer :: ierr
         integer, parameter :: nbytes = 8
         type(c_ptr) :: ptr
         ptr = c_null_ptr
+
+        shmem_handle = shmem_handle_t(A_name, -1)
 
 #if defined ENABLE_SHMEM_POSIX
         ierr = 0
         call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*nbytes)
         call c_f_pointer(ptr, A, [N1])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
-        call mpi3_shared_alloc(N1*nbytes, ptr)
+        call mpi3_shared_alloc(N1*nbytes, ptr, shmem_handle%mpi_win)
         call c_f_pointer(ptr, A, [N1])
 #else
         allocate(A(N1), stat=ierr)
@@ -144,7 +163,7 @@ contains
 
     end subroutine alloc_shared_real_dp_1D
 
-    subroutine alloc_shared_real_dp_2D(A, A_name, N1, N2)
+    subroutine alloc_shared_real_dp_2D(A, A_name, shmem_handle, N1, N2)
 
         use const, only: dp, int_64
         use checking, only: check_allocate
@@ -153,17 +172,20 @@ contains
         real(dp), pointer, intent(out) :: A(:,:)
         character(*), intent(in) :: A_name
         integer(int_64), intent(in) :: N1, N2
+        type(shmem_handle_t), intent(out) :: shmem_handle
         integer :: ierr
         integer, parameter :: nbytes = 8
         type(c_ptr) :: ptr
         ptr = c_null_ptr
+
+        shmem_handle = shmem_handle_t(A_name, -1)
 
 #if defined ENABLE_SHMEM_POSIX
         ierr = 0
         call alloc_shared_posix(ptr, A_name, N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
-        call mpi3_shared_alloc(N1*N2*nbytes, ptr)
+        call mpi3_shared_alloc(N1*N2*nbytes, ptr, shmem_handle%mpi_win)
         call c_f_pointer(ptr, A, [N1,N2])
 #else
         allocate(A(N1, N2), stat=ierr)
@@ -174,7 +196,12 @@ contains
 
     ! dealloc_shared_*
 
-    subroutine dealloc_shared_real_dp_1D(A, A_name)
+    ! In:
+    !    A_name:
+    ! In/Out:
+    !    A:
+
+    subroutine dealloc_shared_real_dp_1D(A, handle)
 
         use, intrinsic :: iso_c_binding, only: c_loc, c_ptr, c_null_ptr
         use const, only: dp, int_64
@@ -182,7 +209,7 @@ contains
         use parallel
 
         real(dp), pointer, intent(inout) :: A(:)
-        character(*), intent(in) :: A_name
+        type(shmem_handle_t), intent(inout) :: handle
         integer :: ierr
         integer, parameter :: nbytes = 8
         type(c_ptr) :: ptr
@@ -192,19 +219,19 @@ contains
 #if defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
-        call free_shared_posix(ptr, A_name, size(A, kind=int_64)*nbytes)
+        call free_shared_posix(ptr, handle%shmem_name, size(A, kind=int_64)*nbytes)
         nullify(A)
 #elif defined PARALLEL && ! defined DISABLE_MPI3
-        ! [todo] - need to call MPI_Win_Free on the window object (which is not yet exposed outside of mpi3_shared_alloc).
+        call MPI_Win_Free(handle%mpi_win, ierr)
         nullify(A)
 #else
         deallocate(A, stat=ierr)
-        call check_deallocate(A_name, ierr)
+        call check_deallocate(handle%shmem_name, ierr)
 #endif
 
     end subroutine dealloc_shared_real_dp_1D
 
-    subroutine dealloc_shared_real_dp_2D(A, A_name)
+    subroutine dealloc_shared_real_dp_2D(A, handle)
 
         use, intrinsic :: iso_c_binding, only: c_loc, c_ptr, c_null_ptr
         use const, only: dp, int_64
@@ -212,7 +239,7 @@ contains
         use parallel
 
         real(dp), pointer, intent(inout) :: A(:,:)
-        character(*), intent(in) :: A_name
+        type(shmem_handle_t), intent(inout) :: handle
         integer :: ierr
         integer, parameter :: nbytes = 8
         type(c_ptr) :: ptr
@@ -221,14 +248,14 @@ contains
 #if defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
-        call free_shared_posix(ptr, A_name, size(A, kind=int_64)*nbytes)
+        call free_shared_posix(ptr, handle%shmem_name, size(A, kind=int_64)*nbytes)
         nullify(A)
 #elif defined PARALLEL && ! defined DISABLE_MPI3
-        ! [todo] - need to call MPI_Win_Free on the window object (which is not yet exposed outside of mpi3_shared_alloc).
+        call MPI_Win_Free(handle%mpi_win, ierr)
         nullify(A)
 #else
         deallocate(A, stat=ierr)
-        call check_deallocate(A_name, ierr)
+        call check_deallocate(handle%shmem_name, ierr)
 #endif
 
     end subroutine dealloc_shared_real_dp_2D

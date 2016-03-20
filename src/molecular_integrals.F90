@@ -215,7 +215,9 @@ contains
 
         do ispin = 1, nspin
             write (int_name, '("two_body_store_component",i1)') ispin
-            call allocate_shared(store%integrals(ispin)%v, int_name, nintgrls)
+            associate(int_store=>store%integrals(ispin))
+                call allocate_shared(int_store%v, int_name, int_store%shmem_handle, nintgrls)
+            end associate
         end do
 
     end subroutine init_two_body_t
@@ -233,12 +235,12 @@ contains
 
         type(two_body_t), intent(inout) :: store
         integer :: ierr, ispin
-        character(25) :: int_name
 
         if (allocated(store%integrals)) then
             do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
-                write (int_name, '("two_body_store_component",i1)') ispin
-                call deallocate_shared(store%integrals(ispin)%v, int_name)
+                associate(int_store=>store%integrals(ispin))
+                    call deallocate_shared(int_store%v, int_store%shmem_handle)
+                end associate
             end do
             deallocate(store%integrals, stat=ierr)
             call check_deallocate('two_body_store', ierr)
