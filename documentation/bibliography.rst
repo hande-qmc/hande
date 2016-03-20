@@ -11,6 +11,7 @@ Bibliography
 .. [Lee11] R. M. Lee, G. J. Conduit, N. Nemec, P. Lopez Rios, and N. D. Drummond, Strategies for improving the efficiency of quantum Monte Carlo calculations", Phys. Rev. E. 83, 066706 (2011).
 .. [Loos13] P.F. Loos, P.M.W. Gill, Uniform electron gases. I. Electrons on a ring. J. Chem. Phys. 138, 164124 (2013).
 .. [Malone15] F.D. Malone, N.S. Blunt, J.J. Shepherd, D.K.K. Lee, J.S. Spencer, W.M.C. Foulkes, Interaction picture density matrix quantum Monte Carlo, J. Chem. Phys. 143, 044116 (2015).
+.. [Malone16a] F.D. Malone, W.M.C. Foulkes, J.S. Spencer, Improved parallel algorithms for full configuration interaction quantum Monte Carlo, in preparation.
 .. [Petruzielo12] F.R. Petruzielo, A.A. Holmes, H.J. Changlani, M.P. Nightingale, C. J. Umrigar, Semistochastic projector monte carlo method, Phys. Rev. Lett. 109, 230201 (2012).
 .. [Shepherd14] J.J. Shepherd, G.E. Scuseria, J.S. Spencer, Sign problem in full configuration interaction quantum Monte Carlo: Linear and sublinear representation regimes for the exact wave function, Phys. Rev. B 90, 155130 (2014).
 .. [Spencer12] J.S. Spencer, N.S. Blunt, W.M.C. Foulkes, The sign problem and population dynamics in the full configuration interaction quantum Monte Carlo method, J. Chem. Phys. 136, 054110 (2012).

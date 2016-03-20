@@ -72,8 +72,9 @@ Options
 
     Optional.
 
-    Further options to improve the parallel load balancing of an FCIQMC simulation.  See
-    :ref:`load_bal_table`.
+    Further options to improve the parallel load balancing of an FCIQMC simulation.  If
+    present (even if empty) an advanced load-balancing algorithm is used
+    [Malone16a]_.  See :ref:`load_bal_table` for more details.
 ``qmc_state``
     type: qmc_state object.
 
