@@ -109,10 +109,14 @@ each separate file is passed in as a separate argument on the command line.
     results are required in order to confirm the error due to the initiator approximation
     is smaller than the stochastic error.
 
-Finally, using real populations can, as with the :ref:`FCIQMC <fciqmc_tutorial>`, have
+Finally, using real populations can, as with the :ref:`FCIQMC tutorial <fciqmc_tutorial>`, have
 a significant impact on the stochastic error.  Again, this is done by setting
 ``real_amplitudes = true`` in the input file (see
-:download:`hubbard_ifciqmc_real.lua <calcs/ifciqmc/hubbard_ifciqmc_real.lua>`).  Running:
+:download:`hubbard_ifciqmc_real.lua <calcs/ifciqmc/hubbard_ifciqmc_real.lua>`).  We also
+choose to set ``spawn_cutoff`` to 0.25 following the investigation in :ref:`FCIQMC
+tutorial <fciqmc_tutorial>`; this results in a small increase in the stochastic error but
+results in the calculation taking roughly half the time.  Again, note this is somewhat
+unique to the Hubbard model.  Running:
 
 .. code-block:: bash
 

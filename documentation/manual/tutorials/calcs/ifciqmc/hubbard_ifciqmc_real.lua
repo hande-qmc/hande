@@ -24,6 +24,7 @@ for i,target in ipairs(targets) do
             spawned_state_size = -100,
             initiator = true,
             real_amplitudes = true,
+            spawn_cutoff = 0.25,
         },
     }
     -- For memory efficiency, explicitly free qmc_state after each calculation.
