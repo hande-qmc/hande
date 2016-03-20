@@ -180,7 +180,7 @@ estimates for quantities other that the internal energy especially at lower temp
 This is thought to be due to sampling issues at low temperatures where the initial mean field
 guess becomes significantly different (in terms of energy scales) to the fully interacting theory.
 Symmetrising the equations allows psips to move along rows and which improves sampling.
-See []_.
+See [Malone16]_.
 
 Running the code
 
@@ -212,4 +212,4 @@ where again only estimates at the final iteration are physical, i.e., when
 The initiator approximation can significantly extend the range of applicability of DMQMC
 but is somewhat experimental. See the options, in particular ``initiator_level`` in the
 manual for more discussion. The user should ensure results are meaningful by comparing
-answers at various walker populations. See []_ for further discussion.
+answers at various walker populations. See [Malone16]_ for further discussion.
