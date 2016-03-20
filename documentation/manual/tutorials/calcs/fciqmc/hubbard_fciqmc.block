@@ -1,4 +1,4 @@
 Recommended statistics from optimal block size:
 
-                              # H psips \sum H_0j N_j        N_0       Shift Proj. Energy
-fciqmc/hubbard_fciqmc.out  5209000(700)      -7730(5)  23450(20)  -0.3297(2)  -0.32969(3)
+                               # H psips \sum H_0j N_j        N_0       Shift Proj. Energy
+fciqmc/hubbard_fciqmc.out  5222000(1000)      -7791(7)  23630(20)  -0.3299(3)  -0.32969(2)
