@@ -178,6 +178,7 @@ contains
 
         use const, only: dp, int_64
         use checking, only: check_allocate
+        use utils, only: fstring_to_carray
         use, intrinsic :: iso_c_binding, only: c_f_pointer, c_ptr, c_null_ptr
 
         real(dp), pointer, intent(out) :: A(:,:)
@@ -193,7 +194,7 @@ contains
 
 #if defined ENABLE_SHMEM_POSIX
         ierr = 0
-        call alloc_shared_posix(ptr, A_name, N1*N2*nbytes)
+        call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
 #elif defined PARALLEL && ! defined DISABLE_MPI3
         call mpi3_shared_alloc(N1*N2*nbytes, ptr, handle%mpi_win)
@@ -218,6 +219,7 @@ contains
         use const, only: dp, int_64
         use checking, only: check_deallocate
         use parallel
+        use utils, only: fstring_to_carray
 
         real(dp), pointer, intent(inout) :: A(:)
         type(shmem_handle_t), intent(inout) :: handle
@@ -230,7 +232,7 @@ contains
 #if defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
-        call free_shared_posix(ptr, handle%shmem_name, size(A, kind=int_64)*nbytes)
+        call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
         nullify(A)
 #elif defined PARALLEL && ! defined DISABLE_MPI3
         call MPI_Win_Free(handle%mpi_win, ierr)
@@ -248,6 +250,7 @@ contains
         use const, only: dp, int_64
         use checking, only: check_deallocate
         use parallel
+        use utils, only: fstring_to_carray
 
         real(dp), pointer, intent(inout) :: A(:,:)
         type(shmem_handle_t), intent(inout) :: handle
@@ -259,7 +262,7 @@ contains
 #if defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
-        call free_shared_posix(ptr, handle%shmem_name, size(A, kind=int_64)*nbytes)
+        call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
         nullify(A)
 #elif defined PARALLEL && ! defined DISABLE_MPI3
         call MPI_Win_Free(handle%mpi_win, ierr)
