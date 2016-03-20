@@ -1168,8 +1168,10 @@ contains
 
         iunit = 6
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
-! [review] - AJWT: worth a note that if there is no shared memory (i.e. effectively each proc is its own node)
-! [review] - AJWT: then this becomes the MPI_COMM_WORLD internode communication.  This confused me a lot!
+
+        ! Broadcast integrals between **nodes** such that each processor can access the integrals.
+        ! Note intra_node_comm is the MPI_COMM_WORLD internode communicator if MPI-3 shared memory is not in use
+        ! (i.e. each processor is effectively its own node).  See comments in parallel for more details.
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             ! Only use chunked broadcasting if have more elements than can broadcast in
             ! single MPI call.
