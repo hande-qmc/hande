@@ -1231,7 +1231,7 @@ contains
                 call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, intra_node_comm, ierr)
             end if
         end do
-        if (node_comm /= MPI_COMM_NULL) call MPI_Barrier(node_comm, ierr)
+        if (inter_node_comm /= MPI_COMM_NULL) call MPI_Barrier(inter_node_comm, ierr)
 #else
         integer :: i
         ! A null operation so I can use -Werror when compiling

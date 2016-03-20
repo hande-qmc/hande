@@ -35,8 +35,7 @@ logical :: parent
 
 ! Inter-node communicator
 ! Set to MPI_COMM_NULL if MPI 3 is not available.
-! [review] - AJWT: This would probably be best as inter_node_comm
-integer :: node_comm
+integer :: inter_node_comm
 
 ! Intra-node communicator
 ! **WARNING** - set to MPI_COMM_NULL unless on the 0-th (root) processor within a node.
@@ -159,15 +158,15 @@ contains
 
 #ifdef DISABLE_MPI3
         ! :-(
-        node_comm = MPI_COMM_NULL
+        inter_node_comm = MPI_COMM_NULL
         intra_node_comm = MPI_COMM_WORLD
 #else
         ! Get communicator for processors which can share memory.
-        call MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, iproc, MPI_INFO_NULL, node_comm, ierr)
+        call MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, iproc, MPI_INFO_NULL, inter_node_comm, ierr)
         ! Now create a communicator between the 0-th processor of each node.
         ! No idea why there isn't a MPI_COMM_TYPE_* for this...
         colour = MPI_UNDEFINED
-        call MPI_Comm_rank(node_comm, node_rank, ierr)
+        call MPI_Comm_rank(inter_node_comm, node_rank, ierr)
         if (node_rank == root) colour = 0
         call MPI_Comm_split(MPI_COMM_WORLD, colour, node_rank, intra_node_comm, ierr)
 #endif

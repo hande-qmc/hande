@@ -94,12 +94,12 @@ contains
         call MPI_Info_set(win_info, "alloc_shared_non_contig", "true", ierr)
         if (intra_node_comm == MPI_COMM_NULL) then
             ! Just get access.
-            call MPI_Win_allocate_shared(0_MPI_ADDRESS_KIND, 1, win_info, node_comm, ptr, win, ierr)
+            call MPI_Win_allocate_shared(0_MPI_ADDRESS_KIND, 1, win_info, inter_node_comm, ptr, win, ierr)
             call MPI_Win_shared_query(win, root, n, disp, ptr, ierr)
             if (disp /= 1 .or. n /= nbytes) call stop_all('mpi3_shared_alloc', 'Shared memory region not expected size.')
         else
             ! Allocate.
-            call MPI_Win_allocate_shared(int(nbytes, MPI_ADDRESS_KIND), 1, win_info, node_comm, ptr, win, ierr)
+            call MPI_Win_allocate_shared(int(nbytes, MPI_ADDRESS_KIND), 1, win_info, inter_node_comm, ptr, win, ierr)
         end if
         call MPI_Info_free(win_info, ierr)
 #else
