@@ -3,15 +3,16 @@ Canonical total energy
 
 .. code-block:: lua
 
-    canonical_energy {
+    canonical_estimates {
         sys = system,
-        canonical_energy = { ... },
+        canonical_estimates = { ... },
     }
 
 
-``canonical_energy`` calculates various energy estimates of a system in the canonical ensemble
-at a given temperature, using knowledge of the grand canonical ensemble and the single-particle
-eigenvalues of the underlying non-interacting system.  See [Malone15]_ for details. Currently only implemented for the 3D-UEG.
+``canonical_estimates`` calculates various estimates for properties of a system in the
+canonical ensemble at a given temperature, using knowledge of the grand canonical ensemble
+and the single-particle eigenvalues of the underlying non-interacting system.  See
+[Malone15]_ for details. Currently only implemented for the UEG and read_in.
 
 Options
 -------
@@ -23,7 +24,7 @@ Options
 
     The system on which to perform the calculation.  Must be created via a system
     function.
-``canonical_energy``
+``canonical_estimates``
     type: lua table.
 
     Required.
@@ -45,8 +46,8 @@ kinetic options
 
     Required.
 
-    Number of determinants within the canonical ensemble to generate each Monte Carlo
-    cycle.
+    Number of determinants within the canonical ensemble we attempt to generate each Monte
+    Carlo cycle.
 ``beta``
     type:  float.
 
