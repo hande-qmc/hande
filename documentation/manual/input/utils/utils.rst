@@ -170,6 +170,9 @@ Options:
     CAS information are set in the call to ``read_in`` which create the ``system`` object.
 
 Returns:
+
+    type: string.
+
     name of HDF5 file created.  This is currently only available on the root processor and
     can be passed into subsequent calls to ``read_in`` safely as only the root processor
     reads from integral and system files.
