@@ -30,15 +30,11 @@ contains
 
         parent_flag = 0_int_p
         do i = 1, size(parent_population)
-            if (abs(parent_population(i)) > initiator_pop) then
-                ! Has a high enough population to be an initiator in this space.
-                parent_flag = parent_flag
-            else if (determ_flag == 0) then
-                ! Is a deterministic state (which must always be an initiator).
-                parent_flag = parent_flag
-            else
+            if (.not.(abs(parent_population(i)) > initiator_pop .or. determ_flag == 0)) then
                 ! Isn't an initiator.
                 parent_flag = ibset(parent_flag, i)
+            ! Otherwise has a high enough population to be an initiator in this space,
+            ! or is a deterministic state (which must always be an initiator).
             end if
         end do
     end subroutine set_parent_flag_real
@@ -62,17 +58,14 @@ contains
 
         parent_flag = 0_int_p
         do i = 1, size(parent_population), 2
-            if (sqrt(parent_population(i) ** 2 + parent_population(i+1) ** 2) > initiator_pop) then
-                ! Has a high enough population to be an initiator in this space.
-                parent_flag = parent_flag
-            else if (determ_flag == 0) then
-                ! Is a deterministic state (which must always be an initiator).
-                parent_flag = parent_flag
-            else
+            if (.not.((sqrt(parent_population(i) ** 2 + parent_population(i+1) ** 2) > initiator_pop) .or.&
+                    (determ_flag == 0))) then
                 ! Isn't an initiator.
                 parent_flag = ibset(parent_flag, i)
                 parent_flag = ibset(parent_flag, i + 1)
             end if
+            ! Otherwise has a high enough population to be an initiator in this space,
+            ! or is a deterministic state (which must always be an initiator).
         end do
     end subroutine set_parent_flag_complex
 end module ifciqmc
