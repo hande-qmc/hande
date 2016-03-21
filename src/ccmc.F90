@@ -1666,8 +1666,7 @@ contains
             case(0)
                 KiiAi = (-qs%shift(1))*cluster%amplitude
             case(1)
-!                KiiAi = ((cdet%data(1) - proj_energy)/diagel + (proj_energy - qs%shift(1)))*cluster%amplitude
-                KiiAi = (cdet%data(1) - qs%shift(1))*invdiagel*cluster%amplitude
+                KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case default
                 KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *cluster%amplitude
             end select
@@ -1800,9 +1799,9 @@ contains
             KiiAi = (-qs%shift(1))*population
         else
             if (linked_ccmc) then
-                KiiAi = (Hii + proj_energy - qs%shift(1))*invdiagel*population
+                KiiAi = (Hii*invdiagel + proj_energy - qs%shift(1))*population
             else
-                KiiAi = (Hii - qs%shift(1))*invdiagel*population
+                KiiAi = ((Hii - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
             end if
         end if
 
