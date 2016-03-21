@@ -25,7 +25,11 @@ contains
         character(*), parameter :: this='check_sys'
 
         if (sys%system /= heisenberg) then
-            if (sys%nel <= 0) call stop_all(this,'Number of electrons must be positive.')
+            if (sys%nel < 0) call stop_all(this,'Number of electrons must be positive.')
+            if (sys%nel == 0 .and. sys%Ms /= huge(1)) call stop_all(this, &
+                                        'Must specify both or neither of nel and Ms.')
+            if (sys%nel /= 0 .and. sys%Ms == huge(1)) call stop_all(this, &
+                                        'Must specify both or neither of nel and Ms.')
         end if
 
         if (sys%system /= ueg .and. sys%system /= read_in .and. sys%system /= ringium) then

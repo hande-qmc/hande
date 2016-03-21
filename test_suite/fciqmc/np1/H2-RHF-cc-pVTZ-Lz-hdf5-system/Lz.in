@@ -1,0 +1,37 @@
+system = {
+    int_file = "FCIDUMP",
+    nel = 2,
+    ms = 0,
+    sym = 0,
+    Lz = true,
+}
+
+sys = read_in(system)
+
+new_file = write_read_in_system{sys = sys}
+
+sys:free()
+
+system.int_file = new_file
+sys = read_in(system)
+
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.0100,
+        rng_seed = 7,
+        init_pop = 10,
+        mc_cycles = 100,
+        nreports = 500,
+        target_population = 100,
+        excit_gen = "no_renorm",
+        state_size = -5,
+        spawned_state_size = -1,
+    },
+    restart = {
+        write = 0,
+    },
+    reference = {
+        ex_level = 2,
+    },
+}

@@ -251,6 +251,7 @@ type sys_read_in_t
     ! ^^^^^^^^^^^^^^
 
     ! FCIDUMP filename (contains integrals which make up the Hamiltonian matrix).
+    ! Can be text or HDF5 file.
     character(255) :: fcidump = 'FCIDUMP'
     ! Dipole integral file, contains integrals <i|O|a>, where O=x, y or z.
     character(255) :: dipole_int_file = ''

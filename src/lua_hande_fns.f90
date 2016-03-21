@@ -25,13 +25,14 @@ contains
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
         use flu_binding, only: flu_State, flu_copyptr
 
-        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
         use errors, only: stop_all
         use parallel, only: nprocs
         use restart_hdf5, only: restart_info_t, init_restart_info_t, redistribute_restart_hdf5
         use system, only: sys_t
         use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -42,6 +43,7 @@ contains
         logical :: read_exists, write_exists
         type(restart_info_t) :: ri
         type(sys_t), pointer :: sys
+        character(6), parameter :: keys(4) = [character(6) :: 'sys', 'read', 'write', 'nprocs']
 
         lua_state = flu_copyptr(l)
         opts = aot_table_top(lua_state)
@@ -65,6 +67,8 @@ contains
             call init_restart_info_t(ri)
         end if
 
+        call warn_unused_args(lua_state, keys, opts)
+
         if (aot_exists(lua_state, opts, 'sys')) then
             call get_sys_t(lua_state, sys)
             call redistribute_restart_hdf5(ri, nprocs_target, sys)
@@ -72,8 +76,73 @@ contains
             call redistribute_restart_hdf5(ri, nprocs_target)
         end if
 
+        call aot_table_close(lua_state, opts)
+
         nresult = 0
 
     end function lua_redistribute_restart
+
+    function lua_write_read_in_system(L) result(nresult) bind(c)
+
+        ! Write a read_in system to an HDF5 file, which can subsequently be used instead of an ASCII FCIDUMP file.
+
+        ! In/Out:
+        !    L: lua state (bare C pointer).
+
+        ! Lua:
+        !    dump_hdf5_system {
+        !       sys = system,       -- required
+        !       filename = filename,
+        !    }
+        ! Returns:
+        !    name of HDF5 file created.  Only set on the root process and set
+        !    to an empty string for all other processors.
+
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int
+        use flu_binding, only: flu_State, flu_copyptr, flu_pushstring
+
+        use aot_table_module, only: aot_table_top, aot_get_val, aot_table_close
+        use lua_hande_system, only: get_sys_t
+        use lua_hande_utils, only: warn_unused_args
+
+        use errors, only: warning
+        use parallel, only: parent
+        use system, only: sys_t, read_in
+
+        use hdf5_system, only: dump_system_hdf5, get_filename
+
+        type(c_ptr), value :: L
+        integer(c_int) :: nresult
+
+        type(flu_State) :: lua_state
+        type(sys_t), pointer :: sys
+
+        integer :: opts, err
+        character(255) :: filename
+
+        character(8), parameter :: keys(2) = [character(8) :: 'sys', 'filename']
+
+        lua_state = flu_copyptr(L)
+        call get_sys_t(lua_state, sys)
+        opts = aot_table_top(lua_state)
+        filename = ''
+        call aot_get_val(filename, err, lua_state, opts, 'filename')
+        call warn_unused_args(lua_state, keys, opts)
+        call aot_table_close(lua_state, opts)
+
+        if (sys%system == read_in) then
+            if (parent) then
+                call dump_system_hdf5(sys, filename)
+            else
+                call get_filename(.true., sys, filename)
+            end if
+        else
+            call warning('lua_dump_hdf5_system', 'Cannot write systems other than read_in to an HDF5 file.')
+        end if
+
+        nresult = 1
+        call flu_pushstring(lua_state, filename)
+
+    end function lua_write_read_in_system
 
 end module lua_hande_fns

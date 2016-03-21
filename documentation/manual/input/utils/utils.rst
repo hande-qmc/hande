@@ -1,3 +1,6 @@
+.. _utils:
+
+
 Utilities
 =========
 
@@ -136,3 +139,76 @@ For example, for :code:`qmc_state` objects:
     }
 
 and similarly for :code:`system` objects.
+
+.. _utils_hdf5_system_dump:
+
+Write HDF5 system file
+----------------------
+
+.. code-block:: lua
+
+    write_read_in_system {
+        sys = system,
+        filename = filename,
+    }
+
+Options:
+
+``sys``
+    type: system object.
+
+    Required.
+
+    The system on which to perform the calculation.  Must be created via the read_in
+    function.
+
+``filename``
+    type: string. Optional.
+
+    Filename to dump system hdf5 file to. If unset will generate a filename to dump to
+    based on the template: int_file + CAS_information + .H5, where ``int_file`` and the
+    CAS information are set in the call to ``read_in`` which create the ``system`` object.
+
+Returns:
+
+    type: string.
+
+    name of HDF5 file created.  This is currently only available on the root processor and
+    can be passed into subsequent calls to ``read_in`` safely as only the root processor
+    reads from integral and system files.
+
+When running a calculation using a system generated from a FCIDUMP, the ``system`` object
+created by ``read_in`` can be dumped in HDF5 format for reuse in subsequent calculations;
+this speeds initialisation by a factor of ~100x and reduces the required file size by ~16x
+for large FCIDUMPs.  When running in parallel on a large number of cores this is
+particularly important to utilise as it overcomes an inherent serialisation point in the
+calculation initialisation.
+
+For example:
+
+.. code-block:: lua
+
+     sys = read_in {
+         int_file = "FCIDUMP",
+         nel = 24,
+         ms = 0,
+         sym = 0,
+     }
+
+     hdf5_name = write_read_in_system {
+         sys = sys,
+     }
+
+produces an HDF5 file entitled "FCIDUMP.H5" and return this value to the variable
+``hdf5_name``.  Passing this as the argument to ``int_file`` within ``read_in`` will use
+it in future calculations -- the HDF5 format of the file is automatically detected.
+
+If a CAS is used to produce the system object used to produce such a file it will be
+labelled as such and only information for basis functions within the CAS will be stored;
+conversion between different CAS within this functionality is not currently supported.
+
+.. important::
+
+    When using a HDF5 file to initialise a system either both of nel and ms must be
+    specified or neither; if neither are specified the values stored within the system
+    HDF5 file will be used and otherwise the given values override those stored.

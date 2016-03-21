@@ -29,13 +29,15 @@ Options
 ``electrons``
     type: integer.
 
-    Required.
+    Required unless ``int_file`` is in HDF5 format.  If specified, then ``ms`` **must** be
+    specified..
 
     Number of electrons in the unit cell.
 ``ms``
     type: integer.
 
-    Required.
+    Required unless ``int_file`` is in HDF5 format.  If specified, then ``electrons``
+    **must** be specified..
 
     Set the spin polarisation of the system in units of electron spin (i.e. a single
     electron can take values 1 or -1).
@@ -60,7 +62,9 @@ Options
     Optional.  Default: 'FCIDUMP'.
 
     Specify the FCIDUMP file containing the integrals and information relating to the
-    single-particle basis.
+    single-particle basis.  This can also be an HDF5 file previously produced by HANDE from a FCIDUMP via the
+    ``write_read_in_system`` function (see :ref:`utils_hdf5_system_dump`), which is both
+    more compact in size and considerably faster to process.
 ``dipole_int_file``
     type: string.
 
@@ -75,10 +79,17 @@ Options
     Optional.  No default.
 
     If specified, then the basis set is restricted to a given complete active space,
-    whereby ``CAS = {M,N}`` corresponds to allowing only :math:`N` electrons to be distributed
+    whereby ``CAS = {N,M}`` corresponds to allowing only :math:`N` electrons to be distributed
     among :math:`2M` spin orbitals.  Any additional electrons are 'frozen' (i.e. forced to
     be in the lowest spin orbitals) and any additional high-energy spin orbitals are
     removed from the basis set.
+
+    .. warning::
+
+        This functionality is not compatible with reading from an HDF5 file; to use a CAS
+        in combination with HDF5 initialisation, create the HDF5 file using a system with
+        the desired CAS.
+
 ``verbose``
     type: boolean.
 
