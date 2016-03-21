@@ -42,7 +42,7 @@ integer, parameter :: dmqmc_calc = 2**8
 ! Doing Coupled Cluster Monte Carlo?
 integer, parameter :: ccmc_calc = 2**9
 ! Monte Carlo estimate of thermal kinetic energy?
-integer, parameter :: mc_canonical_energy_estimates = 2**10
+integer, parameter :: mc_canonical_estimates = 2**10
 ! [review] - AJWT: Not at all sure what this is despite the comment!
 ! [reply] - JSS: lua_hande is the solution to this.  :-)
 ! Redistributing restart info.

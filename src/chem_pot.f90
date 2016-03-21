@@ -78,6 +78,8 @@ contains
 
         ! d/dmu N |_{mu=mu'} = d/dmu sum_k f_k
         !                    = beta sum_k e^{beta(ek-mu')}/(e^{beta(ek-mu')}+1)^2
+        !                    = beta \sum_k 1 / (2(cosh(beta(ek-mu'))+1))
+        ! where we go from the second to the third line for (numerical) stability purposes.
 
         ! In:
         !    basis: type containing information on the single-particle basis
@@ -100,8 +102,7 @@ contains
 
         do iorb = 1, sys%basis%nbasis, 2
             ek = sys%basis%basis_fns(iorb)%sp_eigv
-            ff = fermi_factor(ek, mu, beta)
-            nav_deriv = nav_deriv + beta*exp(beta*(ek-mu))*ff**2.0_p
+            nav_deriv = nav_deriv + beta/(2*(cosh(beta*(ek-mu))+1))
         end do
 
         ! Unpolarised?

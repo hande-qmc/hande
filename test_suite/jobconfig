@@ -21,7 +21,7 @@ max_nprocs = 1
 [mc_hilbert_space/np?/*/]
 
 # Canonical energy estimation.
-[mc_canonical_energy/np?/*/]
+[mc_canonical_estimates/np?/*/]
 
 # QMC: integer weights
 [*mc/np?/*/]
@@ -49,13 +49,13 @@ max_nprocs = 4
 [categories]
 
 # By default, run serial MC tests (with POP_SIZE=32) + deterministic tests.
-_default_ = fci lanczos mc_hilbert_space/np1 mc_canonical_energy/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
+_default_ = fci lanczos mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
 
-mpi = _default_ mc_hilbert_space/ mc_canonical_energy *mc *mc_real_32
+mpi = _default_ mc_hilbert_space/ mc_canonical_estimates *mc *mc_real_32
 
-pop64 = fci lanczos mc_hilbert_space/np1 mc_canonical_energy/np1 simple_fciqmc *mc/np1 *mc_real_64/np1
+pop64 = fci lanczos mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_64/np1
 
-pop64_mpi = pop64 mc_hilbert_space/ mc_canonical_energy *mc/ *mc_real_64
+pop64_mpi = pop64 mc_hilbert_space/ mc_canonical_estimates *mc/ *mc_real_64
 
 # A curated list of short tests (at least each directory contains one test that takes
 # under 10s to run.  The goal is to provide test categories for POP_SIZE=32 and
@@ -85,7 +85,7 @@ quick =   vquick
           ifciqmc/np4/H2O-RHF-cc-pVTZ-non-block/
           ifciqmc/np4/hubbard_k_1d_ifciqmc_load/
           ifciqmc_real_32/np4/H2O-RHF-cc-pVTZ-non-block/
-          mc_canonical_energy/np4/H2O_ccpvdz_RHF/
+          mc_canonical_estimates/np4/H2O_ccpvdz_RHF/
           mc_hilbert_space/np1/ueg_n14_rs1_e3_hilbert_space/
 
 quick64 = quick
@@ -132,8 +132,8 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            lanczos/hubbard_k_tilted_2d_sparse
            lanczos/hubbard_real_nontilted_2d_direct
            lanczos/hubbard_real_rectangle_2d_lanczos
-           mc_canonical_energy/np1/H2O_ccpvdz_RHF
-           mc_canonical_energy/np2/H2O_ccpvdz_RHF
+           mc_canonical_estimates/np1/H2O_ccpvdz_RHF
+           mc_canonical_estimates/np2/H2O_ccpvdz_RHF
            mc_hilbert_space/np1/hf_hilbert_space
            mc_hilbert_space/np1/hubbard_k_tilted_2d_mchilbert
            mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
