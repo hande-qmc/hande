@@ -149,12 +149,8 @@ contains
         ref_shift = energy_diff_ptr(sys, occ_list0)
 
         if (parent) then
-            ! [review] - NSB: You reduced the string length by two characters but didn't remove the angular
-            ! [review] - NSB: brackets. Also, you have <U>_0 in this description but <V>_0 in the column
-            ! [review] - NSB: name. Shouldn't all the angular brackets have been removed (i.e. as in the
-            ! [review] - NSB: new test benchmarks?)
-            write (6,'(1X,a85)') '<T>_0: Estimate for kinetic energy in non-interacting ensemble i.e. 1/Z_0 Tr(\rho_0 T).'
-            write (6,'(1X,a94)') '<U>_0: Estimate for potential energy in non-interacting ensemble energy i.e. 1/Z_0 Tr(\rho_0 V).'
+            write (6,'(1X,a87)') '<T>_0: Estimate for kinetic energy in non-interacting ensemble i.e. 1/Z_0 Tr(\rho_0 T).'
+            write (6,'(1X,a96)') '<V>_0: Estimate for potential energy in non-interacting ensemble energy i.e. 1/Z_0 Tr(\rho_0 V).'
             write (6,'(1X,a70)') 'Tr(T\rho_HF): Estimate for numerator of "Hartree-Fock" kinetic energy.'
             write (6,'(1X,a72)') 'Tr(V\rho_HF): Estimate for numerator of "Hartree-Fock" potential energy.'
             write (6,'(1X,a72)') 'Tr(\rho_HF): Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.'
