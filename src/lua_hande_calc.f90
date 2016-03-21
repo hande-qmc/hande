@@ -132,18 +132,18 @@ contains
 
     end function lua_hilbert_space
 
-    function lua_canonical_energy(L) result(nresult) bind(c)
+    function lua_canonical_estimates(L) result(nresult) bind(c)
 
-        ! Run a Monte Carlo calculation to estimate various mean-field energies of a
+        ! Run a Monte Carlo calculation to estimate various mean-field properties of a
         ! system in the canonical ensemble.
 
         ! In/Out:
         !    L: lua state (bare C pointer).
 
         ! Lua:
-        !    canonical_energy {
+        !    canonical_estimates {
         !       sys = system,      -- required
-        !       canonical_energy = { ... }, -- required
+        !       canonical_estimates = { ... }, -- required
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer
@@ -157,8 +157,8 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use system, only: sys_t
 
-        use calc, only: calc_type, mc_canonical_energy_estimates
-        use canonical_energy_estimates, only: estimate_canonical_energy
+        use calc, only: calc_type, mc_canonical_estimates
+        use canonical_estimates, only: estimate_canonical
 
         integer(c_int) :: nresult
         type(c_ptr), value :: l
@@ -169,23 +169,23 @@ contains
         integer :: opts, rng_seed, ncycles, nattempts
         logical :: fermi_temperature, all_spin_sectors
         real(p) :: beta
-        character(16), parameter :: keys(2) = [character(16) :: 'sys', 'canonical_energy']
+        character(19), parameter :: keys(2) = [character(19) :: 'sys', 'canonical_estimates']
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
 
         opts = aot_table_top(lua_state)
-        call read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
+        call read_canonical_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
         call warn_unused_args(lua_state, keys, opts)
         call aot_table_close(lua_state, opts)
 
-        calc_type = mc_canonical_energy_estimates
-        call estimate_canonical_energy(sys, fermi_temperature, beta, nattempts, ncycles, all_spin_sectors, rng_seed)
+        calc_type = mc_canonical_estimates
+        call estimate_canonical(sys, fermi_temperature, beta, nattempts, ncycles, all_spin_sectors, rng_seed)
 
         ! [todo] - return estimate of various canonical mean-field energies and error to lua.
         nresult = 0
 
-    end function lua_canonical_energy
+    end function lua_canonical_estimates
 
     function lua_simple_fciqmc(L) result(nresult) bind(c)
 
@@ -703,12 +703,12 @@ contains
 
     end subroutine read_hilbert_args
 
-    subroutine read_canonical_energy_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
+    subroutine read_canonical_args(lua_state, opts, fermi_temperature, beta, nattempts, ncycles, rng_seed, all_spin_sectors)
 
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
-        !    opts: handle to the table which is input to the Lua canonical_energy_estimate
+        !    opts: handle to the table which is input to the Lua canonical_estimates
         !        routine.
         ! Out:
         !    fermi_temperature: if true, rescale beta as the inverse reduced
@@ -733,30 +733,30 @@ contains
         integer, intent(out) :: nattempts, ncycles, rng_seed
         real(p), intent(out) :: beta
 
-        integer :: canonical_energy_table, err
+        integer :: canonical_estimates_table, err
         character(17), parameter :: keys(6) = [character(17) :: 'nattempts', 'ncycles', 'beta', &
                                                                 'fermi_temperature', 'rng_seed', 'all_spin_sectors']
 
-        if (.not. aot_exists(lua_state, opts, 'canonical_energy') .and. parent) &
-            call stop_all('read_canonical_energy_args','"canonical_energy" table not present.')
-        call aot_table_open(lua_state, opts, canonical_energy_table, 'canonical_energy')
+        if (.not. aot_exists(lua_state, opts, 'canonical_estimates') .and. parent) &
+            call stop_all('read_canonical_args','"canonical_estimates" table not present.')
+        call aot_table_open(lua_state, opts, canonical_estimates_table, 'canonical_estimates')
 
-        call aot_get_val(nattempts, err, lua_state, canonical_energy_table, 'nattempts')
-        if (err /= 0 .and. parent) call stop_all('read_canonical_energy_args', 'nattempts: Number of attempts/cycle not supplied.')
-        call aot_get_val(ncycles, err, lua_state, canonical_energy_table, 'ncycles')
-        if (err /= 0 .and. parent) call stop_all('read_canonical_energy_args', 'ncycles: Number of cycles not supplied.')
+        call aot_get_val(nattempts, err, lua_state, canonical_estimates_table, 'nattempts')
+        if (err /= 0 .and. parent) call stop_all('read_canonical_args', 'nattempts: Number of attempts/cycle not supplied.')
+        call aot_get_val(ncycles, err, lua_state, canonical_estimates_table, 'ncycles')
+        if (err /= 0 .and. parent) call stop_all('read_canonical_args', 'ncycles: Number of cycles not supplied.')
 
-        call aot_get_val(beta, err, lua_state, canonical_energy_table, 'beta')
-        if (err /= 0 .and. parent) call stop_all('read_canonical_energy_args', 'beta: target temperature not supplied.')
-        call aot_get_val(fermi_temperature, err, lua_state, canonical_energy_table, 'fermi_temperature', default=.false.)
+        call aot_get_val(beta, err, lua_state, canonical_estimates_table, 'beta')
+        if (err /= 0 .and. parent) call stop_all('read_canonical_args', 'beta: target temperature not supplied.')
+        call aot_get_val(fermi_temperature, err, lua_state, canonical_estimates_table, 'fermi_temperature', default=.false.)
 
-        call get_rng_seed(lua_state, canonical_energy_table, rng_seed)
-        call aot_get_val(all_spin_sectors, err, lua_state, canonical_energy_table, 'all_spin_sectors', default=.false.)
+        call get_rng_seed(lua_state, canonical_estimates_table, rng_seed)
+        call aot_get_val(all_spin_sectors, err, lua_state, canonical_estimates_table, 'all_spin_sectors', default=.false.)
 
-        call warn_unused_args(lua_state, keys, canonical_energy_table)
-        call aot_table_close(lua_state, canonical_energy_table)
+        call warn_unused_args(lua_state, keys, canonical_estimates_table)
+        call aot_table_close(lua_state, canonical_estimates_table)
 
-    end subroutine read_canonical_energy_args
+    end subroutine read_canonical_args
 
     subroutine read_qmc_in(lua_state, opts, qmc_in, short)
 

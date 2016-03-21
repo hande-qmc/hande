@@ -169,7 +169,7 @@ contains
         ! Calculations
         call flu_register(lua_state, 'fci', lua_fci)
         call flu_register(lua_state, 'hilbert_space', lua_hilbert_space)
-        call flu_register(lua_state, 'canonical_energy', lua_canonical_energy)
+        call flu_register(lua_state, 'canonical_estimates', lua_canonical_estimates)
         call flu_register(lua_state, 'simple_fciqmc', lua_simple_fciqmc)
         call flu_register(lua_state, 'fciqmc', lua_fciqmc)
         call flu_register(lua_state, 'ccmc', lua_ccmc)

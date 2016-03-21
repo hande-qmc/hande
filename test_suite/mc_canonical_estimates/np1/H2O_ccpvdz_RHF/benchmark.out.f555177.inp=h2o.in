@@ -9,7 +9,7 @@
  Hostname:
      hylleraas
  Working directory: 
-     /home/fm813/projects/hande/test_suite/mc_canonical_energy/np1/H2O_ccpvdz_RHF
+     /home/fm813/projects/hande/test_suite/mc_canonical_estimates/np1/H2O_ccpvdz_RHF
  Started running on 15/02/2016 at 17:25:52
  Calculation UUID: 1c0115b6-8767-436a-b87d-06db6580f50f.
  Preprocessor settings:
@@ -33,9 +33,9 @@ sys = read_in {
     sym = 0,
 }
 
-canonical_energy {
+canonical_estimates {
     sys = sys,
-    canonical_energy = {
+    canonical_estimates = {
         beta = 0.5,
         nattempts = 10000,
         ncycles = 100,

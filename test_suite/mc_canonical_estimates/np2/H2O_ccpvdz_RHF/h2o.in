@@ -5,9 +5,9 @@ sys = read_in {
     sym = 0,
 }
 
-canonical_energy {
+canonical_estimates {
     sys = sys,
-    canonical_energy = {
+    canonical_estimates = {
         beta = 0.5,
         nattempts = 10000,
         ncycles = 100,

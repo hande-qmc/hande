@@ -9,7 +9,7 @@
  Hostname:
      hylleraas
  Working directory: 
-     /home/fm813/projects/hande/test_suite/mc_canonical_energy/np1/ueg_n7_ec20_rs1
+     /home/fm813/projects/hande/test_suite/mc_canonical_estimates/np1/ueg_n7_ec20_rs1
  Started running on 15/02/2016 at 17:25:52
  Calculation UUID: b4817f6e-1c68-4ca5-8eef-137f76c2af49.
  Preprocessor settings:
@@ -34,9 +34,9 @@ sys = ueg {
     rs = 1,
 }
 
-canonical_energy {
+canonical_estimates {
     sys = sys,
-    canonical_energy = {
+    canonical_estimates = {
         beta = 1,
         nattempts = 10000,
         ncycles = 100,

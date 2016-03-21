@@ -13,7 +13,7 @@ except ImportError:
 
 
 def main(filename):
-    ''' Analyse the output from a canonical kinetic energy calculation.
+    ''' Analyse the output from a canonical estimates calculation.
 
 Parameters
 ----------

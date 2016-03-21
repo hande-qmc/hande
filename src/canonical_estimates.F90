@@ -1,4 +1,4 @@
-module canonical_energy_estimates
+module canonical_estimates
 
 ! Estimate the various energy estimates in the canonical ensemble.
 ! Let H = T + V, then we can estimate thermodynamic values for <H>,
@@ -43,10 +43,10 @@ end enum
 
 contains
 
-    subroutine estimate_canonical_energy(sys, fermi_temperature, beta, nattempts, ncycles, all_spin_sectors, rng_seed)
+    subroutine estimate_canonical(sys, fermi_temperature, beta, nattempts, ncycles, all_spin_sectors, rng_seed)
 
         ! From the Fermi factors calculated in the grand canonical ensemble we can
-        ! estimate the total energy in the canonical ensemble by generating determinants
+        ! estimate various mean field properties of canonical ensemble by generating determinants
         ! with arbitrary particle number and only keeping those with <N> = nel.
 
         ! In:
@@ -142,7 +142,7 @@ contains
         case (read_in)
             energy_diff_ptr => double_counting_correction_mol
         case default
-            call stop_all('estimate_canonical_energy', 'Not implemented for selected model Hamiltonian')
+            call stop_all('estimate_estimates', 'Not implemented for selected model Hamiltonian')
         end select
         ! Add a shift to the exponentials of the Boltzman factors to prevent
         ! numerical problems at lower temperatures.
@@ -218,7 +218,7 @@ contains
 #endif
             ! Average over processors.
             estimators(ke_idx:hf_part_idx) = estimators(ke_idx:hf_part_idx) / estimators(naccept_idx)
-            if (estimators(naccept_idx) == 0) call stop_all('estimate_canonical_energy', 'Number of generated configurations is &
+            if (estimators(naccept_idx) == 0) call stop_all('estimate_estimates', 'Number of generated configurations is &
                                                         &zero, increase number of attempts in input file.')
             if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,4(es17.10,5X))') ireport, estimators(ke_idx), &
                                                              estimators(pe_idx), estimators(hf_ke_idx), &
@@ -236,7 +236,7 @@ contains
 
         call dSFMT_end(rng)
 
-    end subroutine estimate_canonical_energy
+    end subroutine estimate_canonical
 
     subroutine generate_allowed_orbital_list(sys, rng, porb, nselect, spin_factor, occ_list, ngen)
 
@@ -325,4 +325,4 @@ contains
 
     end function free_energy_correction
 
-end module canonical_energy_estimates
+end module canonical_estimates
