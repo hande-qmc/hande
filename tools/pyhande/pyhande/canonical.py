@@ -88,7 +88,9 @@ results : :class:`pandas.DataFrame`
         pd.Series(np.average(data, axis=0, weights=w), index=list(data.keys()))
     )
     # Weighted estimate for the covariance. See
-    # https://en.wikipedia.org/wiki/Weighted_arithmetic_mean for more details.
+    # https://en.wikipedia.org/wiki/Weighted_arithmetic_mean and
+    # http://stats.stackexchange.com/questions/61225/correct-equation-for-weighted-unbiased-sample-covariance
+    # for more details.
     w2 = sum(w**2.0)
     xm = data.sub(means, axis=1)
     covariances = 1.0/(1.0-w2) * xm.mul(w, axis=0).T.dot(xm)
