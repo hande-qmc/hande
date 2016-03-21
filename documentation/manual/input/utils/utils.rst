@@ -143,7 +143,7 @@ and similarly for :code:`system` objects.
 .. _utils_hdf5_system_dump:
 
 Write HDF5 system file
----------------------
+----------------------
 
 .. code-block:: lua
 
@@ -177,8 +177,8 @@ Returns:
     can be passed into subsequent calls to ``read_in`` safely as only the root processor
     reads from integral and system files.
 
-When running a calculation using a system generated from a FCIDUMP, the `:`system`` object
-created by lua_read_in can be dumped in HDF5 format for reuse in subsequent calculations;
+When running a calculation using a system generated from a FCIDUMP, the ``system`` object
+created by ``read_in`` can be dumped in HDF5 format for reuse in subsequent calculations;
 this speeds initialisation by a factor of ~100x and reduces the required file size by ~16x
 for large FCIDUMPs.  When running in parallel on a large number of cores this is
 particularly important to utilise as it overcomes an inherent serialisation point in the
