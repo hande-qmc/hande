@@ -2,24 +2,25 @@
    HANDE
 
  ================================================================
- Compiled on Feb 15 2016 at 17:25:02
- Compiled using cmth.mpi.(optimised)
+ Compiled on Mar 21 2016 at 18:58:25
+ Compiled using cuc3.intel13.mpi.(optimised)
  VCS BASE repository version:
-     f5551773ffb5c0ec4b55d2e13435f81bb1e1b533
+     d1c281e40508356a6c5da79e486ef8adbe4a79d1
  Hostname:
      hylleraas
  Working directory: 
      /home/fm813/projects/hande/test_suite/mc_canonical_estimates/np1/H2O_ccpvdz_RHF
- Started running on 15/02/2016 at 17:25:52
- Calculation UUID: 1c0115b6-8767-436a-b87d-06db6580f50f.
+ Started running on 21/03/2016 at 19:01:10
+ Calculation UUID: d15834c8-5284-472e-af10-4813ca85682e.
  Preprocessor settings:
      DISABLE_HDF5 not defined.  HDF5 enabled.
-     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_LANCZOS defined.  Lanczos disabled.
      DISABLE_UUID not defined.  UUID enabled.
      PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
      SINGLE_PRECISION not defined.  Double precision used throughout.
      USE_POPCNT not defined.  Internal POPCNT procedure used.
-     DET_SIZE = 64.
+     DET_SIZE = 32.
      POP_SIZE = 32.
  ================================================================
 
@@ -63,62 +64,62 @@ set globals {
 
  Spin given in units of 1/2.
 
- index  spatial symmetry sym_index lz     ms     <i|h|i>
-     1      1       0       1       0       1    -20.55091874
-     2      1       0       2       0      -1    -20.55091874
-     3      2       0       3       0       1     -1.33530455
-     4      2       0       4       0      -1     -1.33530455
-     5      3       3       1       0       1     -0.69779907
-     6      3       3       2       0      -1     -0.69779907
-     7      4       0       5       0       1     -0.56608987
-     8      4       0       6       0      -1     -0.56608987
-     9      5       2       1       0       1     -0.49295376
-    10      5       2       2       0      -1     -0.49295376
-    11      6       0       7       0       1      0.18510253
-    12      6       0       8       0      -1      0.18510253
-    13      7       3       3       0       1      0.25584942
-    14      7       3       4       0      -1      0.25584942
-    15      8       3       5       0       1      0.78730114
-    16      8       3       6       0      -1      0.78730114
-    17      9       0       9       0       1      0.85179756
-    18      9       0      10       0      -1      0.85179756
-    19     10       0      11       0       1      1.16370878
-    20     10       0      12       0      -1      1.16370878
-    21     11       2       3       0       1      1.20035247
-    22     11       2       4       0      -1      1.20035247
-    23     12       3       7       0       1      1.25347930
-    24     12       3       8       0      -1      1.25347930
-    25     13       0      13       0       1      1.44491764
-    26     13       0      14       0      -1      1.44491764
-    27     14       1       1       0       1      1.47558842
-    28     14       1       2       0      -1      1.47558842
-    29     15       2       5       0       1      1.67408283
-    30     15       2       6       0      -1      1.67408283
-    31     16       0      15       0       1      1.86786068
-    32     16       0      16       0      -1      1.86786068
-    33     17       3       9       0       1      1.93195454
-    34     17       3      10       0      -1      1.93195454
-    35     18       3      11       0       1      2.44637991
-    36     18       3      12       0      -1      2.44637991
-    37     19       0      17       0       1      2.48352406
-    38     19       0      18       0      -1      2.48352406
-    39     20       2       7       0       1      3.28330525
-    40     20       2       8       0      -1      3.28330525
-    41     21       1       3       0       1      3.33616949
-    42     21       1       4       0      -1      3.33616949
-    43     22       0      19       0       1      3.50696081
-    44     22       0      20       0      -1      3.50696081
-    45     23       0      21       0       1      3.86282495
-    46     23       0      22       0      -1      3.86282495
-    47     24       3      13       0       1      4.14445421
-    48     24       3      14       0      -1      4.14445421
+ index  spatial symmetry sym_index lz     ms       <i|h|i>
+     1      1       0       1       0       1       -2.05509187E+01
+     2      1       0       2       0      -1       -2.05509187E+01
+     3      2       0       3       0       1       -1.33530455E+00
+     4      2       0       4       0      -1       -1.33530455E+00
+     5      3       3       1       0       1       -6.97799068E-01
+     6      3       3       2       0      -1       -6.97799068E-01
+     7      4       0       5       0       1       -5.66089868E-01
+     8      4       0       6       0      -1       -5.66089868E-01
+     9      5       2       1       0       1       -4.92953759E-01
+    10      5       2       2       0      -1       -4.92953759E-01
+    11      6       0       7       0       1        1.85102533E-01
+    12      6       0       8       0      -1        1.85102533E-01
+    13      7       3       3       0       1        2.55849425E-01
+    14      7       3       4       0      -1        2.55849425E-01
+    15      8       3       5       0       1        7.87301145E-01
+    16      8       3       6       0      -1        7.87301145E-01
+    17      9       0       9       0       1        8.51797558E-01
+    18      9       0      10       0      -1        8.51797558E-01
+    19     10       0      11       0       1        1.16370878E+00
+    20     10       0      12       0      -1        1.16370878E+00
+    21     11       2       3       0       1        1.20035247E+00
+    22     11       2       4       0      -1        1.20035247E+00
+    23     12       3       7       0       1        1.25347930E+00
+    24     12       3       8       0      -1        1.25347930E+00
+    25     13       0      13       0       1        1.44491764E+00
+    26     13       0      14       0      -1        1.44491764E+00
+    27     14       1       1       0       1        1.47558842E+00
+    28     14       1       2       0      -1        1.47558842E+00
+    29     15       2       5       0       1        1.67408283E+00
+    30     15       2       6       0      -1        1.67408283E+00
+    31     16       0      15       0       1        1.86786068E+00
+    32     16       0      16       0      -1        1.86786068E+00
+    33     17       3       9       0       1        1.93195454E+00
+    34     17       3      10       0      -1        1.93195454E+00
+    35     18       3      11       0       1        2.44637991E+00
+    36     18       3      12       0      -1        2.44637991E+00
+    37     19       0      17       0       1        2.48352406E+00
+    38     19       0      18       0      -1        2.48352406E+00
+    39     20       2       7       0       1        3.28330525E+00
+    40     20       2       8       0      -1        3.28330525E+00
+    41     21       1       3       0       1        3.33616949E+00
+    42     21       1       4       0      -1        3.33616949E+00
+    43     22       0      19       0       1        3.50696081E+00
+    44     22       0      20       0      -1        3.50696081E+00
+    45     23       0      21       0       1        3.86282495E+00
+    46     23       0      22       0      -1        3.86282495E+00
+    47     24       3      13       0       1        4.14445421E+00
+    48     24       3      14       0      -1        4.14445421E+00
 
  E_core =    9.168193260388
  Number of electrons: 10
  Number of basis functions: 48
 
- Bit-length of integers used to store determinant bit-strings: 64
- Number of integers used to store determinant bit-strings: 1
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 2
 
  Symmetry information
  --------------------
@@ -168,7 +169,8 @@ set globals {
              "uhf": false,   
              "Ecore": 9.16819326,   
              "CAS": [ -1, -1],
-             "useLz": false    
+             "useLz": false,   
+             "complex": false    
          }
      },
      "all_spin_sectors": true,   
@@ -182,14 +184,14 @@ set globals {
  }
  -- End JSON block --
 
- T_0: Estimate for kinetic energy in non-interacting ensemble i.e. 1/Z_0 Tr(\rho_0 T).
- U_0: Estimate for potential energy in non-interacting ensemble energy i.e. 1/Z_0 Tr(\rho_0 V).
+ <T>_0: Estimate for kinetic energy in non-interacting ensemble i.e. 1/Z_0 Tr(\rho_0 T).
+ <V>_0: Estimate for potential energy in non-interacting ensemble energy i.e. 1/Z_0 Tr(\rho_0 V).
  Tr(T\rho_HF): Estimate for numerator of "Hartree-Fock" kinetic energy.
  Tr(V\rho_HF): Estimate for numerator of "Hartree-Fock" potential energy.
  Tr(\rho_HF): Estimate for denominator of "Hatree-Fock" energy i.e. Z_HF.
  N_ACC/N_ATT: Ratio of number of generated N particle states to number of attempts. Also Estimate for Z_GC(N)/Z_GC.
 
- # iterations                   T_0                   V_0              Tr(T\rho_HF)          Tr(V\rho_HF)           Tr(\rho_HF)           N_ACC/N_ATT
+ # iterations                 <T>_0                 <V>_0              Tr(T\rho_HF)          Tr(V\rho_HF)           Tr(\rho_HF)           N_ACC/N_ATT
             1     -3.5982643705E+01     -3.9616504087E+01         -8.7354018425E+01     -9.8906294485E+01      2.4826940545E+00      1.5500000000E-01
             2     -3.6116780324E+01     -3.9629569909E+01         -8.8169397062E+01     -9.9715949165E+01      2.5017976028E+00      1.6140000000E-01
             3     -3.6100854933E+01     -3.9619193026E+01         -8.7626388044E+01     -9.8887627299E+01      2.4823885419E+00      1.5740000000E-01
@@ -292,8 +294,8 @@ set globals {
           100     -3.6167819650E+01     -3.9604853561E+01         -8.7196778499E+01     -9.8504462567E+01      2.4727832621E+00      1.6260000000E-01
 
  ================================================================
- Finished running on 15/02/2016 at 17:25:52
- Wall time (seconds):                           0.41
- CPU time (per processor, seconds):             0.41
+ Finished running on 21/03/2016 at 19:01:11
+ Wall time (seconds):                           0.44
+ CPU time (per processor, seconds):             0.44
  ================================================================
 
