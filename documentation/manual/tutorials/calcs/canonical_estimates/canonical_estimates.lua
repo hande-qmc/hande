@@ -6,9 +6,9 @@ sys = ueg {
     rs = 1,
 }
 
-canonical_energy {
+canonical_estimates {
     sys = sys,
-    canonical_energy = {
+    canonical_estimates = {
         beta = 1,
         nattempts = 10000,
         ncycles = 1000,
