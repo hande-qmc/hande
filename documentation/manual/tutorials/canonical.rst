@@ -1,7 +1,7 @@
 .. _canonical_estimates_tutorial:
 
 Canonical Estimates
-==================
+===================
 
 In this tutorial we will discuss how estimates for various mean-field properties of
 a system can be evaluated in the canonical ensemble at finite temperatures. These
