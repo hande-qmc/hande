@@ -162,7 +162,7 @@ the shoulder.
 
 
 Effects of Initial Population
-=============================
+-----------------------------
 
 In this part of the tutorial we will see that a large initial population can
 lead to overshooting the shoulder. 
