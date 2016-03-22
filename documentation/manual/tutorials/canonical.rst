@@ -42,4 +42,4 @@ which gives
 .. literalinclude:: calcs/canonical_estimates/canonical_estimates_res.out
 
 In particular, we can compare the values of :math:`U_0` and
-:math:`U_{\mathrm{HF}}` to the value of 32.92(2) Ha from the IP-DMQMC tutorial.
+:math:`U_{\mathrm{HF}}` to the value of 32.91(4) Ha from the IP-DMQMC tutorial.
