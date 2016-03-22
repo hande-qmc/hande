@@ -213,14 +213,14 @@ Returns
 spline_fit : :class:`pandas.Series`
     Cubic B-spline fit.
 '''
-    
+
     beta_values = list(estimates.index.values)
     values = list(estimates[column].values)
     weights = list(1/estimates[column+' error'].values)
-    
+
     tck = scipy.interpolate.splrep(beta_values, values, weights, k=3)
     spline_fit = scipy.interpolate.splev(beta_values, tck)
-    
+
     return pd.Series(spline_fit, index=beta_values)
 
 def parse_args(args):
@@ -249,6 +249,10 @@ options : :class:`OptionParser`
     parser.add_option('-b', '--with-spline', action='store_true', dest='with_spline',
                       default=False, help='Output a B-spline fit for each of '
                       ' estimates calculated')
+    parser.add_option('-c', '--calc-number', action='store', default=None, type=int,
+                      dest='calc_number', help='Calculation number to analyse. '
+                      'Note any simulation using find_weights option should not '
+                      'be included.')
 
     (options, filenames) = parser.parse_args(args)
 
@@ -273,6 +277,7 @@ None.
 '''
 
     (files, options) = parse_args(args)
+    print files
     hande_out = pyhande.extract.extract_data_sets(files)
 
     (metadata, data) = ([], [])
@@ -285,7 +290,10 @@ None.
             df['Beta'] = df['Beta']*tau
             data.append(df)
     if data:
-        data = pd.concat(data)
+        if options.calc_number:
+            data = data[options.calc_number]
+        else:
+            data = pd.concat(data)
 
     # Sanity check: Same time step used in all calculations?
     # Only check for new metadata format...
