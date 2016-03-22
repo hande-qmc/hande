@@ -527,59 +527,9 @@ module hdf5_system
                     ! Do system initialisation that hasn't been read in, hopefully
                     ! in same order as in conventional initialisation. Also write
                     ! out read in info for easy checking to compare to original.
-                    call init_basis_strings(sys%basis)
-                    call init_determinants(sys, sys%nel)
-                    call init_excitations(sys%basis)
-                    call init_pg_symmetry(sys, .true.)
 
-                    if (parent .and. verbose_t) then
-                        call write_basis_fn_header(sys)
-                        do i = 1, sys%basis%nbasis
-                            call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
-                                                    new_line=.true.)
-                        end do
-                        write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
-                    else if (parent) then
-                        call write_basis_fn_title()
-                    end if
-
-                    call print_basis_metadata(sys%basis, sys%nel, .false.)
-                    call print_pg_symmetry_info(sys)
-
-                        ! ---integrals subsubgroup ---
-                        call h5gopen_f(subgroup_id, gintegrals, subsubgroup_id, ierr)
-
-                        call read_1body_integrals(subsubgroup_id, done_body, kinds, &
-                            sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                            sys%read_in%pg_sym%nbasis_sym_spin, .false., &
-                            sys%read_in%one_e_h_integrals)
-
-                        call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints, &
-                            kinds, sys%read_in%uhf, sys%basis%nbasis, &
-                            sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, .false., &
-                            sys%read_in%coulomb_integrals)
-
-                        if (sys%read_in%comp) then
-                            call read_1body_integrals(subsubgroup_id, done_body_im, &
-                                kinds, sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                                sys%read_in%pg_sym%nbasis_sym_spin, .true., &
-                                sys%read_in%one_e_h_integrals_imag)
-
-                            call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, &
-                                kinds, sys%read_in%uhf, sys%basis%nbasis, &
-                                sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, .true., &
-                                sys%read_in%coulomb_integrals_imag)
-                        end if
-                        call h5gclose_f(subsubgroup_id, ierr)
-
-                    call h5gclose_f(subgroup_id, ierr)
-
-                call h5gclose_f(group_id, ierr)
-
-                call h5fclose_f(file_id, ierr)
-                call h5close_f(ierr)
             end if
-#ifdef PARALLEL
+
             ! Distribute values needed for initialisation on other processes.
             call MPI_BCast(sys%nel, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%symmetry, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
@@ -612,26 +562,68 @@ module hdf5_system
             call MPI_BCast(sys%read_in%uselz, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%comp, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
 
-            if (.not. parent) then
-                ! Use information already transferred to initiate systems on other processes,
-                ! which we can then populate using root processor.
-                call init_basis_strings(sys%basis)
-                call init_determinants(sys, sys%nel)
-                call init_excitations(sys%basis)
-                call init_pg_symmetry(sys, .true.)
+            call init_basis_strings(sys%basis)
+            call init_determinants(sys, sys%nel)
+            call init_excitations(sys%basis)
+            call init_pg_symmetry(sys, .true.)
 
-                call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
-                                    .false., sys%read_in%one_e_h_integrals)
-                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
-                                    .false., sys%read_in%coulomb_integrals)
-                if (sys%read_in%comp) then
-                    call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                                        sys%read_in%pg_sym%nbasis_sym_spin, .true., &
-                                        sys%read_in%one_e_h_integrals_imag)
-                    call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
-                                        sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
-                end if
+            call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
+                                .false., sys%read_in%one_e_h_integrals)
+            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
+                                .false., sys%read_in%coulomb_integrals)
+            if (sys%read_in%comp) then
+                call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
+                                    sys%read_in%pg_sym%nbasis_sym_spin, .true., &
+                                    sys%read_in%one_e_h_integrals_imag)
+                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
+                                    sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
             end if
+
+
+            if (parent) then
+
+                    if (parent .and. verbose_t) then
+                        call write_basis_fn_header(sys)
+                        do i = 1, sys%basis%nbasis
+                            call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
+                                                    new_line=.true.)
+                        end do
+                        write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+                    else if (parent) then
+                        call write_basis_fn_title()
+                    end if
+
+                    call print_basis_metadata(sys%basis, sys%nel, .false.)
+                    call print_pg_symmetry_info(sys)
+
+                        ! ---integrals subsubgroup ---
+                        call h5gopen_f(subgroup_id, gintegrals, subsubgroup_id, ierr)
+
+                        call read_1body_integrals(subsubgroup_id, done_body, kinds, &
+                            sys%read_in%uhf, sys%read_in%pg_sym%nbasis_sym_spin, &
+                            sys%read_in%one_e_h_integrals)
+
+                        call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints, &
+                            kinds, sys%read_in%coulomb_integrals)
+
+                        if (sys%read_in%comp) then
+                            call read_1body_integrals(subsubgroup_id, done_body_im, &
+                                kinds, sys%read_in%uhf, sys%read_in%pg_sym%nbasis_sym_spin, &
+                                sys%read_in%one_e_h_integrals_imag)
+
+                            call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, &
+                                kinds, sys%read_in%coulomb_integrals_imag)
+                        end if
+                        call h5gclose_f(subsubgroup_id, ierr)
+
+                    call h5gclose_f(subgroup_id, ierr)
+
+                call h5gclose_f(group_id, ierr)
+
+                call h5fclose_f(file_id, ierr)
+                call h5close_f(ierr)
+            end if
+#ifdef PARALLEL
 
             ! Broadcast integrals.
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
@@ -735,7 +727,7 @@ module hdf5_system
 
         end subroutine write_coulomb_integrals
 
-        subroutine read_1body_integrals(id, dname, kinds, uhf, op_sym, nbasis_sym_spin, imag, store)
+        subroutine read_1body_integrals(id, dname, kinds, uhf, nbasis_sym_spin, store)
 
             ! Reads one body integrals from hdf5 previously output by hande.
 
@@ -745,9 +737,7 @@ module hdf5_system
             !   kinds: derived tpe containing HDF5 types which correspond to the
             !       non-standard integer and real kinds used in HANDE.
             !   uhf: bool, sets whether integrals results from uhf calculation.
-            !   op_sym: bit string representation of irreducible representations.
             !   nbasis_sym_spin: (i,j) gives no. basis functions with spin i, sym j.
-            !   imag: bool, sets whether imaginary components.
             ! Out:
             !   store: fully allocated one_body_t with all appropriate integral values.
 
@@ -757,17 +747,15 @@ module hdf5_system
 
             use hdf5
             use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
-            use molecular_integrals, only: init_one_body_t
             use molecular_integral_types, only: one_body_t
             use checking, only: check_allocate
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dname
             type(hdf5_kinds_t), intent(in) :: kinds
-            logical, intent(in) :: uhf, imag
-            integer, intent(in) :: op_sym
+            logical, intent(in) :: uhf
             integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
-            type(one_body_t), intent(out) :: store
+            type(one_body_t), intent(inout) :: store
 
             integer :: ispin, isym, s(1), nspin, dummy(2)
             character(155) :: dentr_name
@@ -777,8 +765,6 @@ module hdf5_system
             else
                 nspin = 1
             end if
-
-            call init_one_body_t(uhf, op_sym, nbasis_sym_spin, imag, store)
 
             do ispin = 1, nspin
                 ! Workaround behaviour of lbound/ubound on allocatable arrays
@@ -793,8 +779,7 @@ module hdf5_system
 
         end subroutine read_1body_integrals
 
-        subroutine read_coulomb_integrals(id, dname, kinds, uhf, nbasis, &
-                                    op_sym, comp, imag, store)
+        subroutine read_coulomb_integrals(id, dname, kinds, store)
             ! Reads coulomb integrals from hdf5 previously output by hande.
 
             ! In:
@@ -802,31 +787,21 @@ module hdf5_system
             !   dname: name of dataset values will belong to.
             !   kinds: derived tpe containing HDF5 types which correspond to the
             !       non-standard integer and real kinds used in HANDE.
-            !   uhf: bool, sets whether integrals results from uhf calculation.
-            !   nbasis: number of basis functions.
-            !   op_sym: bit string representation of irreducible representations.
-            !   comp: bool, sets whether from calculation with real and imaginary spaces.
-            !   imag: bool, sets whether imaginary components.
             ! Out:
             !   store: fully allocated two_body_t with all appropriate integral values.
 
             use hdf5
             use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
-            use molecular_integrals, only: init_two_body_t
             use molecular_integral_types, only: two_body_t
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dname
             type(hdf5_kinds_t), intent(in) :: kinds
-            logical, intent(in) :: uhf, imag, comp
-            integer, intent(in) :: op_sym, nbasis
-            type(two_body_t), intent(out) :: store
+            type(two_body_t), intent(inout) :: store
 
             integer :: ispin, shpe(1)
             integer(hsize_t) :: s(1)
             character(155) :: dentr_name
-
-            call init_two_body_t(uhf, nbasis, op_sym, comp, imag, store)
 
             shpe = shape(store%integrals)
 
