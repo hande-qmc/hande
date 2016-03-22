@@ -1,8 +1,11 @@
-OUT=fciqmc/hubbard_fciqmc.out fciqmc/hubbard_fciqmc_real.out ifciqmc/hubbard_ifciqmc.out ifciqmc/hubbard_ifciqmc_real.out
+OUT=fciqmc/hubbard_fciqmc.out fciqmc/hubbard_fciqmc_real.out \
+	ifciqmc/hubbard_ifciqmc.out ifciqmc/hubbard_ifciqmc_real.out \
+	dmqmc/heisenberg_reweighted_block.out dmqmc/ipdmqmc_ueg_block.out
 
 BLOCK=$(addsuffix .block,$(basename $(OUT))) fciqmc/hubbard_fciqmc_spawn_cutoff.block
 
 REBLOCK=../../../../tools/reblock_hande.py 
+FT=../../../../tools/dmqmc/finite_temp_analysis.py
 
 all: $(BLOCK)
 
@@ -16,6 +19,10 @@ fciqmc/hubbard_fciqmc_spawn_cutoff.block: $(wildcard fciqmc/hubbard_fciqmc*.out)
 
 ifciqmc/%.block: ifciqmc/%.out
 	$(REBLOCK) --quiet --start 30000 $< > $@
+
+# DMQMC
+dmqmc/%_block.out: dmqmc/%.out
+	$(FT) $< > $@
 
 # Catch all --- block everything.
 %.block: %.out
