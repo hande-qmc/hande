@@ -101,7 +101,7 @@ iteration and again examine the excitation distribution
 
 .. code-block:: bash
 
-    $ aprun -B hande.x heisenberg_reweight.lua > heisenberg_reweight_single.out
+    $ aprun -B hande.x heisenberg_reweight_single.lua > heisenberg_reweight_single.out
 
 and we find that the psips are now more equally distributed among excitation levels:
 
