@@ -41,5 +41,5 @@ which gives
 
 .. literalinclude:: calcs/canonical_estimates/canonical_estimates_res.out
 
-In particular, we can compare the values of :math:`\langle H \rangle_0` and
-:math:`\langle H\rangle_{HF}` to the value of 32.92(2) Ha from the IP-DMQMC tutorial.
+In particular, we can compare the values of :math:`U_0` and
+:math:`U_{\mathrm{HF}}` to the value of 32.92(2) Ha from the IP-DMQMC tutorial.
