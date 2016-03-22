@@ -16,7 +16,7 @@ population plot might be easier as there often is a "shoulder" at the plateau po
 
 .. review:: RSTF - you keep referring to the CCMC tutorial, but there is minimal discussion of plateaus/shoulders there (and certainly no relevant graph) - better to refer to the FCIQMC one.
 The example here is water in cc-pVDZ basis [Dunning89]_ [correctcite???]. Similarly to :ref:`CCMC <ccmc_tutorial>`, the
-integrals were calculated with Psi4 [cite???] (see :ref:`CCMC <ccmc_tutorial>` for details).
+integrals were calculated with PSI4 (see :ref:`<generating_integrals>` for details).
 Input and output files are in ``documentation/manual/tutorials/calcs/shoulder/``.
 The first calculation was started as
 
