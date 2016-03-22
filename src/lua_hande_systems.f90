@@ -76,7 +76,7 @@ contains
 
     end subroutine get_sys_t
 
-    subroutine push_sys(lua_state, sys)
+    subroutine push_sys(lua_state, sys, new)
 
         ! Add a table containing the passed system to the lua stack for returning
 
@@ -84,6 +84,7 @@ contains
         !   lua_state: flu/Lua state to which the HANDE API is added.
         ! In:
         !   sys: the sys object to return to lua
+        !   new: if false, do not create a new system object
 
         use, intrinsic :: iso_c_binding, only: c_loc
         use flu_binding, only: flu_State, flu_pushlightuserdata, flu_pushstring, flu_settable, flu_pushcclosure, fluL_setmetatable
@@ -93,24 +94,31 @@ contains
 
         type(sys_t), pointer, intent(in) :: sys
         type(flu_state), intent(inout) :: lua_state
+        logical, intent(in) :: new
 
         integer :: table
 
-        ! Create table to become sys object
-        call aot_table_open(lua_state, thandle=table)
-        
-        ! Add sys pointer as t.sys
-        call flu_pushstring(lua_state, "sys")
-        call flu_pushlightuserdata(lua_state, c_loc(sys))
-        call flu_settable(lua_state, table)
+        if (new) then
+            ! Create table to become sys object
+            call aot_table_open(lua_state, thandle=table)
 
-        ! Add deallocation function as t:free()
-        call flu_pushstring(lua_state, "free")
-        call flu_pushcclosure(lua_state, lua_dealloc_sys, 0)
-        call flu_settable(lua_state, table)
+            ! Add sys pointer as t.sys
+            call flu_pushstring(lua_state, "sys")
+            call flu_pushlightuserdata(lua_state, c_loc(sys))
+            call flu_settable(lua_state, table)
 
-        ! Set metatable to mark for finalisation.  Note metatable is created in register_lua_hande_api.
-        call fluL_setmetatable(lua_state, "sys")
+            ! Add deallocation function as t:free()
+            call flu_pushstring(lua_state, "free")
+            call flu_pushcclosure(lua_state, lua_dealloc_sys, 0)
+            call flu_settable(lua_state, table)
+
+            ! Set metatable to mark for finalisation.  Note metatable is created in register_lua_hande_api.
+            call fluL_setmetatable(lua_state, "sys")
+        else
+            ! Push already existing sys table/object onto stack
+            call aot_table_open(lua_state, 1, table, 'sys')
+        end if
+
 
     end subroutine push_sys
 
@@ -343,9 +351,8 @@ contains
         end if
 
         call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
 
-        call push_sys(lua_state, sys)
+        call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
     end function lua_hubbard_k
@@ -472,9 +479,8 @@ contains
         end if
 
         call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
 
-        call push_sys(lua_state, sys)
+        call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
     end function real_lattice_wrapper
@@ -560,9 +566,8 @@ contains
         end if
 
         call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
 
-        call push_sys(lua_state, sys)
+        call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
     end function lua_read_in
@@ -638,9 +643,8 @@ contains
         end if
 
         call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
 
-        call push_sys(lua_state, sys)
+        call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
     end function lua_heisenberg
@@ -733,9 +737,8 @@ contains
         end if
 
         call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
 
-        call push_sys(lua_state, sys)
+        call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
     end function lua_ueg
@@ -812,9 +815,8 @@ contains
         end if
 
         call warn_unused_args(lua_state, keys, opts)
-        call aot_table_close(lua_state, opts)
 
-        call push_sys(lua_state, sys)
+        call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
     end function lua_ringium
