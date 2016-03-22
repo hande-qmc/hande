@@ -88,7 +88,8 @@ of the plateau.
 	``plateau_estimator`` gave 18480 with an estimated standard error of 40 for the shoulder height and ``plateau_estimator_hist`` gave 20155. 
 
 The position of the shoulder can be varied with changing the time step ``tau`` or the
-``cluster_multispawn_threshold`` for example, more details below.
+``cluster_multispawn_threshold`` (if applicable) for example, more details below. A large
+initial population ``init_pop`` can lead to overshooting of the shoulder. 
 
 Effects of the Time Step
 ------------------------
@@ -148,7 +149,7 @@ The plot below compares the shoulder plot of this and the first calculation on t
     (metadata, qmc_data) = pyhande.extract.extract_data('calcs/shoulder/h2o_plat.out')[0]
     (metadata, qmc_data2) = pyhande.extract.extract_data('calcs/shoulder/h2o_plat_smallmsc.out')[0]
     plt.loglog(qmc_data['# H psips'], (qmc_data['# H psips'] / qmc_data['N_0']) , label='multispawn threshold = none')
-    plt.loglog(qmc_data2['# H psips'], (qmc_data2['# H psips'] / qmc_data2['N_0']), label=r'multispawn threshold = $0.1$')
+    plt.loglog(qmc_data2['# H psips'], (qmc_data2['# H psips'] / qmc_data2['N_0']), label='multispawn threshold = 0.1')
     plt.legend(loc="best")
     plt.xlabel('# particles')
     plt.ylabel('# particles / # particles on reference determinant')
@@ -158,3 +159,34 @@ computer number representation limits.
 
 Clearly, setting a low multispawn threshold lowers the total number of particles at
 the shoulder.
+
+
+Effects of Initial Population
+=============================
+
+In this part of the tutorial we will see that a large initial population can
+lead to overshooting the shoulder. 
+
+As a demonstration, we look at almost the same calculation as the first one but
+with a larger initial population. 
+
+.. literalinclude:: calcs/shoulder/h2o_plat_bigstartpop.lua
+	:language: lua
+
+The following plot compares the original with the calculation starting with a
+large initial population:
+
+.. plot::
+
+    import pyhande
+    import matplotlib.pyplot as plt
+    (metadata, qmc_data) = pyhande.extract.extract_data('calcs/shoulder/h2o_plat.out')[0]
+    (metadata, qmc_data2) = pyhande.extract.extract_data('calcs/shoulder/h2o_plat_bigstartpop.out')[0]
+    plt.loglog(qmc_data['# H psips'], (qmc_data['# H psips'] / qmc_data['N_0']), label='initial population = 200')
+    plt.loglog(qmc_data2['# H psips'], (qmc_data2['# H psips'] / qmc_data2['N_0']), label='initial population = 800')
+    plt.legend(loc="best")
+    plt.xlabel('# particles')
+    plt.ylabel('# particles / # particles on reference determinant')
+
+We see that the calculation with a larger initial population overshoots the
+shoulder. However, it still forms a shoulder and is probably stable.  
