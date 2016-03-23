@@ -6,24 +6,19 @@ Shoulder Plots
 This tutorial looks further into finding the optimal target particle population
 in more detail. It is advisable to have read the :ref:`FCIQMC <fciqmc_tutorial>` and :ref:`CCMC <ccmc_tutorial>` tutorials
 before this one. More information and details on shoulder plots can be found in [Spencer15]_.
-One technique for finding the minimum number of required particles is looking
-for a plateau in the total population vs iteration plot, as described in the
-:ref:`FCIQMC <fciqmc_tutorial>` tutorial.
-However, this plateau might not be easy to find by visual inspection and in fact might not even be there. Looking
-at the ratio of total population to population on reference determinant vs total
-population plot might be easier as there often is a "shoulder" at the plateau point.
 
 The example used here is a CCSDT calculation on water in a cc-pVDZ basis [Dunning89]_.
 As for the :ref:`CCMC tutorial <ccmc_tutorial>`, the
 integrals were calculated with PSI4 (see :ref:`generating_integrals` for details).
 Input and output files are in ``documentation/manual/tutorials/calcs/shoulder/``.
-The first calculation was started as
+
+The first calculation was run using
 
 .. literalinclude:: calcs/shoulder/h2o_plat.lua
 	:language: lua
 
 As in :ref:`FCIQMC <fciqmc_tutorial>`, a plateau can be seen in the total population vs iteration
-plot which indicates roughly the minimum particle number to make the calculation
+plot, which indicates roughly the minimum particle number to make the calculation
 stable.
 
 .. plot::
@@ -46,16 +41,29 @@ stable.
 	tickY2.set_color('b')
     plt.show()
 
-The plateau is found at around 20000 particles. In the beginning, the only
-occupied determinant is the reference determinant. These particles then spawn
-onto other available determinants, making the total population grow at a greater
-pace than the population on the reference determinant does. At the plateau
-point, death and annihilation cancel out the spawning until the total population
-grows again. However, the new rate of growing is less than the growth rate of
-particles on the reference determinant. See [Spencer15]_ for details. This
-implies that it is informative to consider the ratio of total population to
-population on the reference determinant which we do in the form of "shoulder"
-plots as shown below:
+The plateau is clearly visible at around 20000 particles.  This is one technique but the
+plateau is frequently not so easy to observe by visual inspection, especially for CCMC.
+
+.. [review] - JSS:
+
+    Alex has some thoughts about terminology (determinant vs excitor, reference
+    determinant/excitor/reference) etc.  It would be good to be consistent.
+
+    Isn't the key observation that prior to the plateau the total population grows faster
+    than the reference, after the plateau the populations grow at the same rate (because
+    we have a converged wavefunction) and during the population on the reference increases
+    whilst the total remains approximately constant?  Hence the plateau corresponds to
+    a peak in the N_tot/N_0 vs N_tot.  This isn't clear from your text, which implies that
+    the total population grows faster than the reference after the plateau.
+
+In the beginning, the only occupied determinant is the reference determinant. These
+particles then spawn onto other available determinants, making the total population grow
+at a greater pace than the population on the reference determinant does. At the plateau
+point, death and annihilation cancel out the spawning until the total population grows
+again. However, the new rate of growing is less than the growth rate of particles on the
+reference determinant. See [Spencer15]_ for details. This implies that it is informative
+to consider the ratio of total population to population on the reference determinant which
+we do in the form of "shoulder" plots as shown below:
 
 .. plot::
 
@@ -72,14 +80,22 @@ of the plateau.
 .. note::
    
     :ref:`pyhande` contains two functions to estimate the position of the
-    plateau/shoulder. These are ``plateau_estimator`` and ``plateau_estimator_hist``
-    and they are described in detail in :ref:`pyhande_analysis`.
-    ``plateau_estimator`` gave 18480 with an estimated standard error of 40 for
-    the shoulder height and ``plateau_estimator_hist`` gave 20155. 
+    plateau/shoulder: :func:`pyhande.analysis.plateau_estimator`, which looks
+    for the peak in the shoulder plot [Spencer15]_, and :func:`pyhande.analysis.plateau_estimator_hist`,
+    which uses a histogram approach to identifying the plateau [Shepherd14]_.  As a result
+    of the difference in approaches, the former tends to pick up the population at the
+    start of the plateau whilst the latter favours the end of the plateau and is less well
+    suited to cases without a clear plateau.
 
-The position of the shoulder can be varied with changing the time step ``tau`` or the
-``cluster_multispawn_threshold`` (if applicable) for example, more details below. A large
-initial population ``init_pop`` can lead to overshooting of the shoulder. 
+    In this case, ``plateau_estimator`` gave 18480 with an estimated standard error of 40
+    for the shoulder height and ``plateau_estimator_hist`` gave 20155.  The difference is
+    not important as the plateau is not exactly constant; its value to a few significant
+    values is the important quantity.
+
+The position of the plateau/shoulder is somewhat sensitive to input parameters and can be
+varied with changing the time step ``tau`` or the ``cluster_multispawn_threshold`` (if
+applicable) for example, more details below. A large initial population ``init_pop`` can
+also lead to overshooting of the shoulder.
 
 Effects of the Time Step
 ------------------------
@@ -103,11 +119,12 @@ The two resulting shoulders are shown in the following graph:
     plt.xlabel('# particles')
     plt.ylabel('# particles / # particles on reference determinant')
 
-A smaller time step leads to fewer particles at the shoulder position.
-
+A smaller time step leads to fewer particles at the shoulder position, as described in [Booth09]_, [Vigor16]_.
 
 Effects of Cluster Multispawn Threshold
 ---------------------------------------
+
+.. review - JSS: some explanation of why this helps would provide welcome insight into the method.
 
 This part looks at changing the multispawn threshold. This is another feature which can change the number of particles at the shoulder. 
 Positive effects of that have already been shown in :ref:`CCMC <ccmc_tutorial>`.
@@ -140,9 +157,10 @@ computer number representation limits.
 Clearly, setting a low multispawn threshold lowers the total number of particles at
 the shoulder.
 
-
 Effects of Initial Population
 -----------------------------
+
+.. review - JSS: again, some explanation of why this overshoot happens would provide welcome insight into the method.
 
 In this part of the tutorial we will see that a large initial population can
 lead to overshooting the shoulder. 
@@ -167,6 +185,8 @@ large initial population:
     plt.legend(loc="best")
     plt.xlabel('# particles')
     plt.ylabel('# particles / # particles on reference determinant')
+
+.. review - JSS: what do we mean by stable?
 
 We see that the calculation with a larger initial population overshoots the
 shoulder. However, it still forms a shoulder and is stable.

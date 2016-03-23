@@ -207,7 +207,7 @@ Credit to James Shepherd for the idea and original (perl) implementation.
 Parameters
 ----------
 data : :class:`pandas.DataFrame`
-    HANDE QMC data. func:`pyhande.extract.extract_data_sets` can be used to
+    HANDE QMC data. :func:`pyhande.extract.extract_data_sets` can be used to
     extract this from a HANDE output file.
 total_key : string
     column name in reblock_data containing the total number of psips.
