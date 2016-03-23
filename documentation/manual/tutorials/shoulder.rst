@@ -13,13 +13,8 @@ However, this plateau might not be easy to find by visual inspection and in fact
 at the ratio of total population to population on reference determinant vs total
 population plot might be easier as there often is a "shoulder" at the plateau point.
 
-.. review:: RSTF - What about the plateau detection functions in pyhande (pyhande.analysis.plateau_estimator{,_hist})?  Surely they should be at the very least mentioned.
-.. reviewanswer:: VAN - added here as a note. Could add python script if I get pyhande path to work.
-
-.. review:: RSTF - you keep referring to the CCMC tutorial, but there is minimal discussion of plateaus/shoulders there (and certainly no relevant graph) - better to refer to the FCIQMC one.
-.. reviewanswer:: VAN - it seems you have fixed that already. Oh and thanks for grammar fixes
-
-The example here is water in cc-pVDZ basis [Dunning89]_ [correctcite???]. Similarly to :ref:`CCMC <ccmc_tutorial>`, the
+The example used here is a CCSDT calculation on water in a cc-pVDZ basis [Dunning89]_.
+As for the :ref:`CCMC tutorial <ccmc_tutorial>`, the
 integrals were calculated with PSI4 (see :ref:`generating_integrals` for details).
 Input and output files are in ``documentation/manual/tutorials/calcs/shoulder/``.
 The first calculation was started as
@@ -27,12 +22,9 @@ The first calculation was started as
 .. literalinclude:: calcs/shoulder/h2o_plat.lua
 	:language: lua
 
-As in :ref:`CCMC <ccmc_tutorial>`, a plateau can be seen in the total population vs iteration
+As in :ref:`FCIQMC <fciqmc_tutorial>`, a plateau can be seen in the total population vs iteration
 plot which indicates roughly the minimum particle number to make the calculation
 stable.
-
-.. review:: RSTF - maybe useful to also plot N_0 on here?
-.. reviewanswer:: VAN - done.
 
 .. plot::
 
@@ -65,9 +57,6 @@ implies that it is informative to consider the ratio of total population to
 population on the reference determinant which we do in the form of "shoulder"
 plots as shown below:
 
-.. review:: RSTF - Explain why it is a relevant/meaningful thing to plot and the relationship with the plateau
-.. reviewanswer:: VAN - done.
-
 .. plot::
 
     import pyhande
@@ -79,8 +68,6 @@ plots as shown below:
 
 The position of the shoulder is at about 20000 which corresponds to the position
 of the plateau. 
-.. review:: RSTF - I'm not sure what you mean by that last sentence - you seem to be making a different distinction between shoulder and plateau than usual.
-.. reviewanswer:: VAN - I have deleted that last sentence.
 
 .. note::
    
@@ -96,9 +83,6 @@ initial population ``init_pop`` can lead to overshooting of the shoulder.
 
 Effects of the Time Step
 ------------------------
-
-.. review:: RSTF - The other tutorials don't use the passive voice, it's a bit jarring.
-.. reviewanswer:: VAN - changed to active future/present.
 
 Now we will run another calculation with a higher time step, see input file below:
 
@@ -119,14 +103,11 @@ The two resulting shoulders are shown in the following graph:
     plt.xlabel('# particles')
     plt.ylabel('# particles / # particles on reference determinant')
 
-A smaller time step leads to less particles at the shoulder position.
+A smaller time step leads to fewer particles at the shoulder position.
 
 
 Effects of Cluster Multispawn Threshold
 ---------------------------------------
-
-.. review:: RSTF - mention this is specific to CCMC (whereas everything previously applies equally much to FCIQMC (and DMQMC?))
-.. reviewanswer:: VAN - modified. What about DMQMC?
 
 This part looks at changing the multispawn threshold. This is another feature which can change the number of particles at the shoulder. 
 Positive effects of that have already been shown in :ref:`CCMC <ccmc_tutorial>`.
@@ -140,10 +121,6 @@ the following calculation with a low multispawn threshold:
         :language: lua
 
 The plot below compares the shoulder plot of this and the first calculation on top of this tutorial:
-
-.. review:: RSTF - Probably better not to refer to the multispawn threshold as a 'cutoff' to avoid confusion with the spawn_cutoff option for real amplitudes.
-.. reviewanswer:: VAN - Changed.
-
 
 .. plot::
 
@@ -192,4 +169,4 @@ large initial population:
     plt.ylabel('# particles / # particles on reference determinant')
 
 We see that the calculation with a larger initial population overshoots the
-shoulder. However, it still forms a shoulder and is probably stable.  
+shoulder. However, it still forms a shoulder and is stable.
