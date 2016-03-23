@@ -20,7 +20,7 @@ population plot might be easier as there often is a "shoulder" at the plateau po
 .. reviewanswer:: VAN - it seems you have fixed that already. Oh and thanks for grammar fixes
 
 The example here is water in cc-pVDZ basis [Dunning89]_ [correctcite???]. Similarly to :ref:`CCMC <ccmc_tutorial>`, the
-integrals were calculated with PSI4 (see :ref:`<generating_integrals>` for details).
+integrals were calculated with PSI4 (see :ref:`generating_integrals` for details).
 Input and output files are in ``documentation/manual/tutorials/calcs/shoulder/``.
 The first calculation was started as
 
@@ -82,10 +82,13 @@ of the plateau.
 .. review:: RSTF - I'm not sure what you mean by that last sentence - you seem to be making a different distinction between shoulder and plateau than usual.
 .. reviewanswer:: VAN - I have deleted that last sentence.
 
-.. note:: :ref:`pyhande` contains two functions to estimate the position of the
-	plateau/shoulder. These are ``plateau_estimator`` and ``plateau_estimator_hist`` and they are described in
-	detail in ``pyhande.analysis``, see :ref:`pyhande`. 
-	``plateau_estimator`` gave 18480 with an estimated standard error of 40 for the shoulder height and ``plateau_estimator_hist`` gave 20155. 
+.. note::
+   
+    :ref:`pyhande` contains two functions to estimate the position of the
+    plateau/shoulder. These are ``plateau_estimator`` and ``plateau_estimator_hist``
+    and they are described in detail in :ref:`pyhande_analysis`.
+    ``plateau_estimator`` gave 18480 with an estimated standard error of 40 for
+    the shoulder height and ``plateau_estimator_hist`` gave 20155. 
 
 The position of the shoulder can be varied with changing the time step ``tau`` or the
 ``cluster_multispawn_threshold`` (if applicable) for example, more details below. A large
