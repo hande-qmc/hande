@@ -1,13 +1,15 @@
 OUT=fciqmc/hubbard_fciqmc.out fciqmc/hubbard_fciqmc_real.out \
-	ifciqmc/hubbard_ifciqmc.out ifciqmc/hubbard_ifciqmc_real.out \
-	dmqmc/heisenberg_reweighted_block.out dmqmc/ipdmqmc_ueg_block.out
+	ifciqmc/hubbard_ifciqmc.out ifciqmc/hubbard_ifciqmc_real.out
+
+DMQMC_OUT=dmqmc/heisenberg_reweighted.out dmqmc/ipdmqmc_ueg.out
 
 BLOCK=$(addsuffix .block,$(basename $(OUT))) fciqmc/hubbard_fciqmc_spawn_cutoff.block
+DMQMC_SUMMARY=$(addsuffix _block.out,$(basename $(DMQMC_OUT)))
 
 REBLOCK=../../../../tools/reblock_hande.py 
 FT=../../../../tools/dmqmc/finite_temp_analysis.py
 
-all: $(BLOCK)
+all: $(BLOCK) $(DMQMC_SUMMARY)
 
 # Specific cases --- chose start point.
 fciqmc/%.block: fciqmc/%.out
