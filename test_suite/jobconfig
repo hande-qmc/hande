@@ -119,6 +119,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fciqmc/np1/hubbard_real_1d_continue
            fciqmc/np1/hubbard_real_1d_fciqmc
            fciqmc/np1/H2-RHF-cc-pVTZ-Lz-hdf5-system
+           fciqmc/np1/hubbard_real_1d_change_sys
            fciqmc/np2/ueg_n10_rs2_e4_tau_search
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS
            fciqmc_real_32/np1/He2-aug-cc-pVDZ_real_32_SS_Extra_MPI
