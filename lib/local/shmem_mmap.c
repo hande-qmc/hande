@@ -10,7 +10,7 @@ void alloc_shared_posix(void **ptr, const char *handle, const size_t len)
 {
 	int fd;
 
-#ifdef ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
 	fd = shm_open(handle, O_CREAT | O_RDWR, S_IRWXU);
 
 	if(fd == -1 ) { perror( "shm_open" ); exit(0);}
@@ -31,7 +31,7 @@ void alloc_shared_posix(void **ptr, const char *handle, const size_t len)
 
 void free_shared_posix(void *ptr, char *handle, int len)
 {
-#ifdef ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
 	munmap(ptr, len);
 	shm_unlink(handle);
 #endif

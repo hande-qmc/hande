@@ -160,7 +160,7 @@ contains
 
         handle = shmem_handle_t(A_name, -1)
 
-#if defined ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
         call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*nbytes)
         call c_f_pointer(ptr, A, [N1])
@@ -192,7 +192,7 @@ contains
 
         handle = shmem_handle_t(A_name, -1)
 
-#if defined ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
         call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
@@ -224,7 +224,7 @@ contains
 
         handle = shmem_handle_t(A_name, -1)
 
-#if defined ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
         call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*nbytes)
         call c_f_pointer(ptr, A, [N1])
@@ -256,7 +256,7 @@ contains
 
         handle = shmem_handle_t(A_name, -1)
 
-#if defined ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
         call alloc_shared_posix(ptr, fstring_to_carray(A_name), N1*N2*nbytes)
         call c_f_pointer(ptr, A, [N1, N2])
@@ -293,7 +293,7 @@ contains
         ptr = c_null_ptr
 
 
-#if defined ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
         call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
@@ -323,7 +323,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-#if defined ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
         call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
@@ -354,7 +354,7 @@ contains
         ptr = c_null_ptr
 
 
-#if defined ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
         call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)
@@ -384,7 +384,7 @@ contains
         type(c_ptr) :: ptr
         ptr = c_null_ptr
 
-#if defined ENABLE_SHMEM_POSIX
+#if defined PARALLEL && defined ENABLE_SHMEM_POSIX
         ierr = 0
         ptr = c_loc(A)
         call free_shared_posix(ptr, fstring_to_carray(handle%shmem_name), size(A, kind=int_64)*nbytes)

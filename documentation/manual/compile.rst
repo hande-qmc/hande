@@ -195,7 +195,7 @@ DISABLE_LANCZOS
 
     If defined then Lanczos diagonalisation is disabled.  This removes the dependency on the TRLan library.
 DISABLE_MPI3
-    Default: not defined.
+    Default: not defined.  Only relevant when PARALLEL is defined.
 
     If defined then additional functionality provided by the MPI 3 standard is not used.
     This disables some functionality (e.g. exploiting MPI 3 shared memory to store large
@@ -235,7 +235,7 @@ DSFMT_MEXP
     132049 and 216091 and lead to, for example, random numbers with a period of
     a Mersenne Prime such as :math:`2^{512}-1`.
 ENABLE_SHMEM_POSIX
-    Default: not defined.
+    Default: not defined.  Only relevant when PARALLEL is defined.
 
     If defined, then use POSIX functions to allocate large arrays using shared memory
     (i.e. once per node rather than once per processor).  This depends upon having access
