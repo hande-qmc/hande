@@ -173,6 +173,19 @@ contains
 #endif
 #ifdef PARALLEL
         write (io_unit,'(5X,"PARALLEL defined.  MPI parallelization enabled.")')
+
+#ifdef DISABLE_MPI3
+        write (io_unit,'(5X,"DISABLE_MPI3 defined.  MPI-3 shared memory disabled.")')
+#else
+        write (io_unit,'(5X,"DISABLE_MPI3 not defined.  MPI-3 shared memory enabled.")')
+#endif
+#if ! defined DISABLE_MPI3 && defined ENABLE_SHMEM_POSIX
+        write (io_unit,'(5X,"ENABLE_SHMEM_POSIX defined.  POSIX shared memory enabled.")')
+#else
+        write (io_unit,'(5X,"ENABLE_SHMEM_POSIX not defined or MPI-3 in use.  POSIX shared memory disabled.")')
+#endif
+
+
 #else
         write (io_unit,'(5X,"PARALLEL not defined.  MPI parallelization disabled.")')
 #endif
