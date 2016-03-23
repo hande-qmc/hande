@@ -549,9 +549,10 @@ contains
         call ishdf5_wrapper(sys%read_in%fcidump, hdf5, err)
 
         if (hdf5) then
-                call init_system(sys)
-                call read_system_hdf5(sys)
-                if (parent) call check_sys(sys)
+            call init_system(sys)
+            call read_system_hdf5(sys)
+            if (parent) call check_sys(sys)
+            new_basis = .true.
         else
 
             call aot_get_val(sys%read_in%useLz, err, lua_state, opts, 'Lz')
