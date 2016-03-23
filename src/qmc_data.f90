@@ -141,6 +141,16 @@ type qmc_in_t
     ! If true then allow the use of MPI barrier calls.
     logical :: use_mpi_barriers = .false.
 
+    ! If true, use a quasiNewton step
+    logical :: quasi_newton = .false.
+
+    ! The lower threshold for a quasiNewton enegy difference
+    real(p) :: quasi_newton_thresh = 1.e-5_p
+
+    ! The value to set the quasiNewton energy difference to if lower than the
+    ! threshold
+    real(p) :: quasi_newton_value = 1_p
+
 end type qmc_in_t
 
 type fciqmc_in_t
@@ -538,6 +548,13 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
+    ! If true, use a quasiNewton step
+    logical :: quasi_newton = .false.
+    ! The lower threshold for a quasiNewton enegy difference
+    real(p) :: quasi_newton_thresh = 1.e-5_p
+    ! The value to set the quasiNewton energy difference to if lower than the
+    ! threshold
+    real(p) :: quasi_newton_value = 1_p
     ! Value of beta which we propagate the density matrix to. Only used for DMQMC.
     real(p) :: target_beta = 1.0
     ! Convenience handles.

@@ -100,6 +100,7 @@ contains
         type(qmc_in_t) :: qmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
         character(36) :: uuid_restart
+        real(p) :: proj_energy_old
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -216,6 +217,7 @@ contains
 
             do ireport = 1, nreport
 
+                proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
                 call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
@@ -318,7 +320,8 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, qs, qs%psip_list%dat(ireplica,idet), qs%shift(ireplica), &
+                            call stochastic_death(rng, sys, qs, qs%psip_list%states(:,idet), qs%psip_list%dat(ireplica,idet), &
+                                           proj_energy_old, qs%shift(ireplica), &
                                            qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
                         end do
                     end do

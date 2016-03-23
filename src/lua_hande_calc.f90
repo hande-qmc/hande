@@ -856,14 +856,15 @@ contains
         character(len=10) :: str
         logical :: skip, no_renorm
 
-        character(23), parameter :: keys(25) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(23), parameter :: keys(28) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'initial_shift', &
                                                                  'shift_damping', 'initiator', 'initiator_threshold', &
                                                                  'quadrature_initiator', 'use_mpi_barriers', 'vary_shift_from', &
-                                                                 'excit_gen', 'reference_target', 'vary_shift']
+                                                                 'excit_gen', 'reference_target', 'vary_shift', &
+                                                                 'quasi_newton','quasi_newton_thresh', 'quasi_newton_value']
 
         if (present(short)) then
             skip = short
@@ -904,6 +905,9 @@ contains
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
         call aot_get_val(qmc_in%quadrature_initiator, err, lua_state, qmc_table, 'quadrature_initiator')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
+        call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')
+        call aot_get_val(qmc_in%quasi_newton_thresh, err, lua_state, qmc_table, 'quasi_newton_thresh')
+        call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then
             qmc_in%target_reference = .true.

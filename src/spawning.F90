@@ -96,6 +96,9 @@ contains
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
+        if(allowed) then
+           hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection )
+        endif
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
 
@@ -1818,4 +1821,38 @@ contains
 
     end subroutine create_spawned_particle_rdm
 
+    function get_spawned_particle_weighting(sys, qs, fspawnee, connection ) result(weight)
+        use qmc_data, only:  qmc_state_t
+        use system, only: sys_t
+        use determinants, only: decode_det, det_info_t
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
+
+        real(p) :: weight
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
+        integer(i0), intent(in) :: fspawnee(sys%basis%string_len)
+        type(excit_t), intent(in), optional :: connection
+        real(p) :: diagel
+        integer :: occ_list(sys%nel), occ_list_ref(sys%nel)
+        integer(i0) :: fexcit(sys%basis%string_len)
+        integer :: iel
+        if (qs%quasi_newton) then
+            if(present(connection)) then
+               call create_excited_det(sys%basis, fspawnee, connection, fexcit)
+            else
+               fexcit = fspawnee
+            endif
+            call decode_det(sys%basis, fexcit, occ_list)
+            call decode_det(sys%basis, qs%ref%f0, occ_list_ref)
+
+            diagel =0._p                                                                                        
+            do iel = 1, sys%nel                                                                                 
+                diagel=diagel+sys%basis%basis_fns(occ_list(iel))%sp_eigv-sys%basis%basis_fns(occ_list_ref(iel))%sp_eigv 
+            end do                                                                                              
+            if (diagel< qs%quasi_newton_thresh) diagel = qs%quasi_newton_value
+            weight = 1 / diagel
+        else
+            weight = 1
+        end if
+    end function get_spawned_particle_weighting
 end module spawning

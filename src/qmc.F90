@@ -146,7 +146,9 @@ contains
         call init_estimators(sys, qmc_in, restart_in%read_restart.and.fciqmc_in_loc%non_blocking_comm, qmc_state)
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
-
+        qmc_state%quasi_newton = qmc_in%quasi_newton
+        qmc_state%quasi_newton_thresh = qmc_in%quasi_newton_thresh
+        qmc_state%quasi_newton_value = qmc_in%quasi_newton_value
     end subroutine init_qmc
 
     subroutine init_proc_pointers(sys, qmc_in, reference, dmqmc_in, fciqmc_in)

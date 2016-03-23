@@ -90,6 +90,8 @@ contains
         logical :: soft_exit, comms_found, error
 
         real :: t1, t2
+        
+        real(p) :: proj_energy_old
 
         if (parent) then
             write (6,'(1X,"FCIQMC (with Hellmann-Feynman sampling")')
@@ -124,6 +126,7 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
+            proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
             ! Zero report cycle quantities.
             qs%estimators%proj_energy = 0.0_p
             qs%estimators%proj_hf_O_hpsip = 0.0_p
@@ -254,7 +257,8 @@ contains
                     ! created don't get an additional death/cloning opportunity.
 
                     ! Clone or die: Hellmann--Feynman walkers.
-                    call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                    call stochastic_death(rng, sys, qs, qs%psip_list%states(:,idet), qs%psip_list%dat(2,idet), proj_energy_old, &
+                                          qs%shift(2), &
                                           qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath)
 
                     ! Clone Hellmann--Feynman walkers from Hamiltonian walkers.
@@ -270,7 +274,8 @@ contains
                     end if
 
                     ! Clone or die: Hamiltonian walkers.
-                    call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
+                    call stochastic_death(rng, sys, qs, qs%psip_list%states(:,idet), qs%psip_list%dat(1,idet), proj_energy_old, &
+                                          qs%shift(1), &
                                           qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
 
                 end do
