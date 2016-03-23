@@ -14,7 +14,7 @@ dmqmc {
         init_pop = 5e6,
         rng_seed = 19838,
         mc_cycles = 10,
-        nreports = 1000,
+        nreports = 500,
         shift_damping = 0.5,
         target_population = 5e6,
         state_size = -400,

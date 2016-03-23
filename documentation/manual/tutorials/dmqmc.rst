@@ -16,9 +16,9 @@ boundary conditions. The input file for this system is given as
 and is largely analogous to that found in the :ref:`FCIQMC tutorial <fciqmc_tutorial>`. We
 refer the reader to the discussion there and the manual for system specific input options.
 Note that ``init_pop`` here controls the population with which the density matrix at
-:math:`\tau=0` is sampled. Typically the shift is allowed to vary from the beginning of
+:math:`\beta=0` is sampled. Typically the shift is allowed to vary from the beginning of
 a simulation by setting ``target_pop`` equal to ``init_pop``. Here we will attempt to run to
-a final temperature of :math:`\tau=10\beta J`.
+a final temperature of :math:`\beta = 5/J`.
 The ``beta_loops`` option determines the number of independent simulations over which
 observables are averaged, see :ref:`dmqmc_table` for more options. The operators table
 specifies which observables are to be evaluated in a given simulation. Here only the total
