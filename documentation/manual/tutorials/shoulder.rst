@@ -7,10 +7,9 @@ This tutorial looks further into finding the optimal target particle population
 in more detail. It is advisable to have read the :ref:`FCIQMC <fciqmc_tutorial>` and :ref:`CCMC <ccmc_tutorial>` tutorials
 before this one. More information and details on shoulder plots can be found in [Spencer15]_.
 
-The example used here is a CCSDT calculation on water in a cc-pVDZ basis [Dunning89]_.
-As for the :ref:`CCMC tutorial <ccmc_tutorial>`, the
-integrals were calculated with PSI4 (see :ref:`generating_integrals` for details).
-Input and output files are in ``documentation/manual/tutorials/calcs/shoulder/``.
+The example used here is a CCSDT Monte Carlo calculation on water in a cc-pVDZ basis [Dunning89]_.
+As for the :ref:`CCMC tutorial <ccmc_tutorial>`, the integrals were calculated with PSI4 
+(see :ref:`generating_integrals` for details). Input and output files are in ``documentation/manual/tutorials/calcs/shoulder/``.
 
 The first calculation was run using
 
@@ -19,7 +18,7 @@ The first calculation was run using
 
 As in :ref:`FCIQMC <fciqmc_tutorial>`, a plateau can be seen in the total population vs iteration
 plot, which indicates roughly the minimum particle number to make the calculation
-stable.
+stable [#]_.
 
 .. plot::
 
@@ -34,7 +33,7 @@ stable.
     axisY2 = axisY1.twinx()
     axisY2.set_yscale('log')
     axisY2.plot(qmc_data['iterations'], qmc_data['N_0'], 'b-')
-    axisY2.set_ylabel('# particles on reference determinant', color='b')
+    axisY2.set_ylabel('# particles on reference', color='b')
     for tickY1 in axisY1.get_yticklabels() :
 	tickY1.set_color('r')
     for tickY2 in axisY2.get_yticklabels() :
@@ -56,14 +55,23 @@ plateau is frequently not so easy to observe by visual inspection, especially fo
     a peak in the N_tot/N_0 vs N_tot.  This isn't clear from your text, which implies that
     the total population grows faster than the reference after the plateau.
 
-In the beginning, the only occupied determinant is the reference determinant. These
-particles then spawn onto other available determinants, making the total population grow
-at a greater pace than the population on the reference determinant does. At the plateau
-point, death and annihilation cancel out the spawning until the total population grows
-again. However, the new rate of growing is less than the growth rate of particles on the
-reference determinant. See [Spencer15]_ for details. This implies that it is informative
-to consider the ratio of total population to population on the reference determinant which
-we do in the form of "shoulder" plots as shown below:
+In the beginning, only the reference is occupied. Its particles then spawn
+to occupy parts of the remaining space, making the total population 
+grow at a greater pace than the population on the reference does. At the plateau
+point, annihilation, spawning and death balance each other which temporarily
+leads to a constant total population while the reference population keeps growing.
+After a bit, the total population grows again and leaves the plateau. It then
+grows at a smaller or the same rate as the reference population because the system is now
+converged and the distribution of particles stochastically represents the 
+ground state wavefunction of the system. See [Spencer15]_ and [Spencer12]_ for details. 
+
+The ratio of total population to population on the reference therefore peaks at roughly
+the plateau with respect to the total population. A good way to find the position 
+of the plateau is therefore to look at the ratio of total population to
+population on the reference vs total population plots and find the position of
+the peak.  We call this "shoulder" plot and the peak, or "shoulder height", 
+is an upper limit for the position of the plateau, see [Spencer15]_. The shoulder plot for our example 
+from above is shown below:
 
 .. plot::
 
@@ -72,7 +80,7 @@ we do in the form of "shoulder" plots as shown below:
     (metadata, qmc_data) = pyhande.extract.extract_data('calcs/shoulder/h2o_plat.out')[0]
     plt.loglog(qmc_data['# H psips'], (qmc_data['# H psips'] / qmc_data['N_0']))
     plt.xlabel('# particles')
-    plt.ylabel('# particles / # particles on reference determinant')
+    plt.ylabel('# particles / # particles on reference')
 
 The position of the shoulder is at about 20000 which corresponds to the position
 of the plateau. 
@@ -87,10 +95,10 @@ of the plateau.
     start of the plateau whilst the latter favours the end of the plateau and is less well
     suited to cases without a clear plateau.
 
-    In this case, ``plateau_estimator`` gave 18480 with an estimated standard error of 40
-    for the shoulder height and ``plateau_estimator_hist`` gave 20155.  The difference is
-    not important as the plateau is not exactly constant; its value to a few significant
-    values is the important quantity.
+    In this case, ``plateau_estimator`` gave 18481 with an estimated standard error of 38
+    for the shoulder height and ``plateau_estimator_hist`` gave 20155 (rounded to 0 d.p.).  
+    The difference is not important as the plateau is not exactly constant; its value to a 
+    few significant values is the important quantity.
 
 The position of the plateau/shoulder is somewhat sensitive to input parameters and can be
 varied with changing the time step ``tau`` or the ``cluster_multispawn_threshold`` (if
@@ -117,7 +125,7 @@ The two resulting shoulders are shown in the following graph:
     plt.loglog(qmc_data2['# H psips'], (qmc_data2['# H psips'] / qmc_data2['N_0']), label=r'$\tau = 10^{-3}$')
     plt.legend()
     plt.xlabel('# particles')
-    plt.ylabel('# particles / # particles on reference determinant')
+    plt.ylabel('# particles / # particles on reference')
 
 A smaller time step leads to fewer particles at the shoulder position, as described in [Booth09]_, [Vigor16]_.
 
@@ -126,10 +134,17 @@ Effects of Cluster Multispawn Threshold
 
 .. review - JSS: some explanation of why this helps would provide welcome insight into the method.
 
-This part looks at changing the multispawn threshold. This is another feature which can change the number of particles at the shoulder. 
-Positive effects of that have already been shown in :ref:`CCMC <ccmc_tutorial>`.
-Note that while changing the time step changes the position of the plateau for
-FCIQMC for example as well, cluster multispawn threshold is specific to CCMC. 
+This part looks at changing the multispawn threshold. This is another feature which 
+can change the number of particles at the shoulder. Positive effects of that have already 
+been shown in :ref:`CCMC <ccmc_tutorial>`. Note that while changing the time step changes 
+the position of the plateau for FCIQMC for example as well, cluster multispawn threshold 
+is specific to CCMC.
+The lower the multispawn threshold, the lower will be the number of "blooming" 
+events which spawn multiple particles at the same spawning attempt. "Blooming" 
+events can lead to greater uncertainty as the wavefunction is then sampled in a 
+more coarse and less fine manner. It is therefore not surprising that less particles
+are needed to converge to the correct wavefunction for a lower multispawn
+threshold.
 
 To demonstrate the effects of decreasing the multispawn threshold, we will run
 the following calculation with a low multispawn threshold:
@@ -149,7 +164,7 @@ The plot below compares the shoulder plot of this and the first calculation on t
     plt.loglog(qmc_data2['# H psips'], (qmc_data2['# H psips'] / qmc_data2['N_0']), label='multispawn threshold = 0.1')
     plt.legend(loc="best")
     plt.xlabel('# particles')
-    plt.ylabel('# particles / # particles on reference determinant')
+    plt.ylabel('# particles / # particles on reference')
 
 Note that "multispawn threshold = none" means that there is no threshold within
 computer number representation limits.
@@ -184,9 +199,25 @@ large initial population:
     plt.loglog(qmc_data2['# H psips'], (qmc_data2['# H psips'] / qmc_data2['N_0']), label='initial population = 800')
     plt.legend(loc="best")
     plt.xlabel('# particles')
-    plt.ylabel('# particles / # particles on reference determinant')
+    plt.ylabel('# particles / # particles on reference')
 
 .. review - JSS: what do we mean by stable?
 
 We see that the calculation with a larger initial population overshoots the
-shoulder. However, it still forms a shoulder and is stable.
+shoulder. However, it still forms a shoulder and is stable. By stable we refer
+to the fact that the total population and also the ratio of total to reference
+population stays roughly constant shortly after the target total population as 
+specified by the user has been reached. 
+
+The overshooting can be explained by considering that the only significant difference
+between the two curves above is that they start with a different population at
+the reference. Before they reach a shoulder, their population growth follows a
+very similar exponential growth (gradients on the log plot are very similar).
+The simulation with the greater initial behaviour has its spawning probabilies etc
+scaled up by about the ratio of the inital populations of the two simulations as
+compared to the other simulation. Given that both simulations describe the same
+system, the two graphs join when the ground wavefunction is represented by the
+distributions of particles (i.e. after the shoulder) as then the ratio of total
+to reference population should be the same for a given total population.   
+
+.. [#] The graphs were plotted with matplotlib, http://matplotlib.org/ 
