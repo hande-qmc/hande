@@ -56,7 +56,7 @@ def parse_args(args):
     parser.add_argument('-p', '--plotfile', default=None, help='File to save '
                         'the graphs to. The graphs are shown interactively by '
                         'default.')
-    parser.add_argument('calc', type=int, help='Calculation number to plot. '
+    parser.add_argument('-c', '--calc', type=int, help='Calculation number to plot. '
                         'C indexed.', default=0)
     parser.add_argument('-m', '--max-excit', action='store', dest='max_excit',
                         type=int, help='Plot up to maximum excitation '
