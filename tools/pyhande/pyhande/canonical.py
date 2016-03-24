@@ -71,7 +71,7 @@ results : :class:`pandas.DataFrame`
     data['U_0'] = data['<T>_0'] + data['<V>_0']
     data[r'Tr(H\rho_HF)'] = data[r'Tr(T\rho_HF)'] + data[r'Tr(V\rho_HF)']
 
-    ncycles = metadata['ncycles'] # For standard error.
+    ncycles = len(data) # For standard error.
     # Ensure some backwards compatability.
     if 'N_ACC/N_ATT' in data.columns:
         # Work out weights given that number of configurations generated differs
