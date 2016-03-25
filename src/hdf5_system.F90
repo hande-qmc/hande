@@ -276,7 +276,6 @@ module hdf5_system
                 call hdf5_write(group_id, duuid, GLOBAL_META%uuid)
 
                 ! Print out current time and date as HH:MM:SS DD/MM/YYYY.
-                ! Currently mis-sized somewhere and so disabled as kept giving 'End of record' errors..
                 call date_and_time(values=date_time)
                 write (date_str,'(2(i0.2,":"),i0.2,1X,2(i0.2,"/"),i4)') date_time(5:7), date_time(3:1:-1)
                 call hdf5_write(group_id, ddate, date_str)
@@ -292,12 +291,7 @@ module hdf5_system
 
             ! Write either original number of electrons or modified number of electrons
             ! depending upon whether using a CAS.
-            ! [review] - JSS: isn't nel set to CAS(1) by this point.  I think so -- see read_in.F90 line 333.
-            if (sys%CAS(1) == -1) then
-                call hdf5_write(group_id, dnel, sys%nel)
-            else
-                call hdf5_write(group_id, dnel, sys%CAS(1))
-            end if
+            call hdf5_write(group_id, dnel, sys%nel)
 
             call hdf5_write(group_id, dms, sys%Ms)
 
