@@ -405,7 +405,6 @@ module hdf5_system
             logical, optional, intent(in) :: verbose
 
 #ifndef DISABLE_HDF5
-
             character(255) :: filename
             integer :: ierr, sysdump_dump_version, cas(2)
 
@@ -527,19 +526,17 @@ module hdf5_system
                     ! Do system initialisation that hasn't been read in, hopefully
                     ! in same order as in conventional initialisation. Also write
                     ! out read in info for easy checking to compare to original.
-
             end if
 
+#ifdef PARALLEL
             ! Distribute values needed for initialisation on other processes.
             call MPI_BCast(sys%nel, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%symmetry, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%basis%nbasis, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%CAS, 2, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-
-            ! Braodcast symmetry values.
+            ! Broadcast symmetry values.
             call MPI_BCast(sys%read_in%pg_sym%pg_mask, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-
             ! Allocate basis on non-parent processors.
             if (.not. parent) then
                     allocate(sys%basis%basis_fns(sys%basis%nbasis),  stat = ierr)
@@ -561,7 +558,8 @@ module hdf5_system
             call MPI_BCast(sys%read_in%Ecore, 1, MPI_PREAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%uselz, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%comp, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
-
+#endif
+            ! Initialise various system parameters on all nodes simultaneously.
             call init_basis_strings(sys%basis)
             call init_determinants(sys, sys%nel)
             call init_excitations(sys%basis)
@@ -579,9 +577,7 @@ module hdf5_system
                                     sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
             end if
 
-
             if (parent) then
-
                     if (parent .and. verbose_t) then
                         call write_basis_fn_header(sys)
                         do i = 1, sys%basis%nbasis
@@ -623,7 +619,6 @@ module hdf5_system
                 call h5fclose_f(file_id, ierr)
                 call h5close_f(ierr)
             end if
-#ifdef PARALLEL
 
             ! Broadcast integrals.
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
@@ -632,7 +627,6 @@ module hdf5_system
                 call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
                 call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
             end if
-#endif
 
             if (sys%read_in%dipole_int_file /= '') then
                 if (parent) then
@@ -654,8 +648,7 @@ module hdf5_system
                 call check_deallocate('sp_fcidump_rank', ierr)
             end if
 #else
-
-            if (parent)  call stop_all('dump_system_hdf5', '# Not compiled with HDF5 support. Cannot read out &
+            if (parent)  call stop_all('read_system_hdf5', '# Not compiled with HDF5 support. Cannot read in &
                                     &sysdump file.')
 #endif
         end subroutine read_system_hdf5
@@ -738,12 +731,11 @@ module hdf5_system
             !       non-standard integer and real kinds used in HANDE.
             !   uhf: bool, sets whether integrals results from uhf calculation.
             !   nbasis_sym_spin: (i,j) gives no. basis functions with spin i, sym j.
-            ! Out:
-            !   store: fully allocated one_body_t with all appropriate integral values.
+            ! In/Out:
+            !   store: Fully allocated one_body_t passed in, returned with all
+            !       appropriate integral values stored.
 
-            ! NB. should be called after reading all other system information in,
-            ! as requires other information (uhf, nbasis_sym_spin) to size info
-            ! to be read in.
+            ! NB. must be called after allocating integral arrays within store.
 
             use hdf5
             use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
@@ -787,8 +779,11 @@ module hdf5_system
             !   dname: name of dataset values will belong to.
             !   kinds: derived tpe containing HDF5 types which correspond to the
             !       non-standard integer and real kinds used in HANDE.
-            ! Out:
-            !   store: fully allocated two_body_t with all appropriate integral values.
+            ! In/Out:
+            !   store: Fully allocated two_body_t passed in, returned with all
+            !       appropriate integral values stored.
+
+            ! NB. must be called after allocating integral arrays within store.
 
             use hdf5
             use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
