@@ -253,7 +253,7 @@ module hdf5_system
 
             integer :: date_time(8)
             character(19) :: date_str
-            integer :: ierr, nbasis
+            integer :: ierr
 
             ! HDF5 kinds
             type(hdf5_kinds_t) :: kinds
@@ -385,7 +385,7 @@ module hdf5_system
 
 #ifndef DISABLE_HDF5
             use hdf5
-            use hdf5_helper, only: hdf5_kinds_t, hdf5_read
+            use hdf5_helper, only: hdf5_kinds_t, hdf5_read, hdf5_path
 #endif
             use parallel
 
@@ -417,13 +417,20 @@ module hdf5_system
             ! reading reals.
             real(p) :: ecore(1)
 
-            integer :: i, norb, nel, ms
+            integer :: i, nel, ms
             logical :: verbose_t
             integer, allocatable :: sp_fcidump_rank(:)
 
             verbose_t = .true.
             if (present(verbose)) verbose_t = verbose
 
+            ! A little care must be taken with reading in the file to accomodate
+            ! (e.g.) shared memory allocators.  We first read in the data to be
+            ! broadcast to all processors, then allocate the (potentially
+            ! shared) integral arrays and then read and broadcast the integrals.
+            ! All reading is done on the parent processor but all processors
+            ! must take part in (e.g.) MPI-3 shared memory allocation together,
+            ! hence this ordering.
             if (parent) then
                 ! Initialise HDF5 and open file.
                 call h5open_f(ierr)
@@ -435,15 +442,12 @@ module hdf5_system
                 endif
 
                 ! --- metadata group ---
-                call h5gopen_f(file_id, gmetadata, group_id, ierr)
 
-                    call hdf5_read(group_id, dsysdump, sysdump_dump_version)
+                call hdf5_read(file_id, hdf5_path(gmetadata, dsysdump), sysdump_dump_version)
 
-                    if (sysdump_dump_version /= sysdump_version) then
-                        call stop_all('read_system_hdf5', "Reading between different &
-                            &sysdump versions not supported.")
-                    end if
-                call h5gclose_f(group_id, ierr)
+                if (sysdump_dump_version /= sysdump_version) then
+                    call stop_all('read_system_hdf5', "Reading between different sysdump versions not supported.")
+                end if
 
                 ! --- sys group ---
                 call h5gopen_f(file_id, gsys, group_id, ierr)
@@ -471,8 +475,8 @@ module hdf5_system
                     write (*,*)
                 end if
 
-                    ! --- basis subgroup ---
-                    call h5gopen_f(group_id, gbasis, subgroup_id, ierr)
+                ! --- basis subgroup ---
+                call h5gopen_f(group_id, gbasis, subgroup_id, ierr)
 
                     associate(nbasis=>sys%basis%nbasis)
 
@@ -497,7 +501,7 @@ module hdf5_system
                                     sys%basis%basis_fns(:)%sp_eigv)
                     end associate
 
-                    call h5gclose_f(subgroup_id, ierr)
+                call h5gclose_f(subgroup_id, ierr)
 
                 sys%nvirt = sys%basis%nbasis - sys%nel
 
@@ -511,8 +515,8 @@ module hdf5_system
                 end if
                 sys%CAS = cas
 
-                    ! --- read_in subgroup ---
-                    call h5gopen_f(group_id, gread_in, subgroup_id, ierr)
+                ! --- read_in subgroup ---
+                call h5gopen_f(group_id, gread_in, subgroup_id, ierr)
 
                     call hdf5_read(subgroup_id, duhf, sys%read_in%uhf)
                     ! Workaround reading real value from HDF5.
@@ -523,9 +527,9 @@ module hdf5_system
                     call hdf5_read(subgroup_id, dcomp, sys%read_in%comp)
                     ! All the symmetry information we need to initiate.
                     call hdf5_read(subgroup_id, dpg_mask, sys%read_in%pg_sym%pg_mask)
-                    ! Do system initialisation that hasn't been read in, hopefully
-                    ! in same order as in conventional initialisation. Also write
-                    ! out read in info for easy checking to compare to original.
+
+                call h5gclose_f(subgroup_id, ierr)
+                call h5gclose_f(group_id, ierr)
             end if
 
 #ifdef PARALLEL
@@ -560,6 +564,9 @@ module hdf5_system
             call MPI_BCast(sys%read_in%comp, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
 #endif
             ! Initialise various system parameters on all nodes simultaneously.
+            ! Do system initialisation that hasn't been read in, hopefully
+            ! in same order as in conventional initialisation. Also write
+            ! out read_in info for easy checking to compare to original.
             call init_basis_strings(sys%basis)
             call init_determinants(sys, sys%nel)
             call init_excitations(sys%basis)
@@ -574,47 +581,43 @@ module hdf5_system
                                     sys%read_in%pg_sym%nbasis_sym_spin, .true., &
                                     sys%read_in%one_e_h_integrals_imag)
                 call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
-                                    sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
+                                     sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
             end if
 
             if (parent) then
-                    if (parent .and. verbose_t) then
-                        call write_basis_fn_header(sys)
-                        do i = 1, sys%basis%nbasis
-                            call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
-                                                    new_line=.true.)
-                        end do
-                        write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
-                    else if (parent) then
-                        call write_basis_fn_title()
+                if (verbose_t) then
+                    call write_basis_fn_header(sys)
+                    do i = 1, sys%basis%nbasis
+                        call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
+                                                new_line=.true.)
+                    end do
+                    write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+                else
+                    call write_basis_fn_title()
+                end if
+
+                call print_basis_metadata(sys%basis, sys%nel, .false.)
+                call print_pg_symmetry_info(sys)
+
+                ! --- sys/read_in/integrals subsubgroup ---
+                call h5gopen_f(file_id, hdf5_path(gsys, gread_in, gintegrals), subsubgroup_id, ierr)
+
+                    call read_1body_integrals(subsubgroup_id, done_body, kinds, &
+                        sys%read_in%uhf, sys%read_in%pg_sym%nbasis_sym_spin, &
+                        sys%read_in%one_e_h_integrals)
+
+                    call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints, &
+                        kinds, sys%read_in%coulomb_integrals)
+
+                    if (sys%read_in%comp) then
+                        call read_1body_integrals(subsubgroup_id, done_body_im, &
+                            kinds, sys%read_in%uhf, sys%read_in%pg_sym%nbasis_sym_spin, &
+                            sys%read_in%one_e_h_integrals_imag)
+
+                        call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, &
+                            kinds, sys%read_in%coulomb_integrals_imag)
                     end if
-
-                    call print_basis_metadata(sys%basis, sys%nel, .false.)
-                    call print_pg_symmetry_info(sys)
-
-                        ! ---integrals subsubgroup ---
-                        call h5gopen_f(subgroup_id, gintegrals, subsubgroup_id, ierr)
-
-                        call read_1body_integrals(subsubgroup_id, done_body, kinds, &
-                            sys%read_in%uhf, sys%read_in%pg_sym%nbasis_sym_spin, &
-                            sys%read_in%one_e_h_integrals)
-
-                        call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints, &
-                            kinds, sys%read_in%coulomb_integrals)
-
-                        if (sys%read_in%comp) then
-                            call read_1body_integrals(subsubgroup_id, done_body_im, &
-                                kinds, sys%read_in%uhf, sys%read_in%pg_sym%nbasis_sym_spin, &
-                                sys%read_in%one_e_h_integrals_imag)
-
-                            call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, &
-                                kinds, sys%read_in%coulomb_integrals_imag)
-                        end if
-                        call h5gclose_f(subsubgroup_id, ierr)
-
-                    call h5gclose_f(subgroup_id, ierr)
-
-                call h5gclose_f(group_id, ierr)
+                call h5gclose_f(subsubgroup_id, ierr)
 
                 call h5fclose_f(file_id, ierr)
                 call h5close_f(ierr)
