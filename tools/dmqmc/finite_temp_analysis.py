@@ -277,6 +277,7 @@ None.
 '''
 
     (files, options) = parse_args(args)
+    # [review] - JSS: debug output and not correct for both python 2.7 and python 3.
     print files
     hande_out = pyhande.extract.extract_data_sets(files)
 

@@ -124,6 +124,10 @@ contains
 
     end subroutine neel_trial_state
 
+    ! [review] - JSS: what about original, non-symmetric algorithm?
+    ! [review] - JSS: is the user prevented from running such (unsupported)
+    ! [review] - JSS: calculations via a sanity check somewhere?
+
     subroutine dmqmc_int_pic_free_importance_sampling(sys, cdet, connection, trial_func, hmatel)
 
         ! Apply a transformation to the Hamiltonian matrix element by
@@ -144,6 +148,7 @@ contains
         !        and the child determinant, on which progeny are spawned.
         !    trial_func: importance sampling weights.
         ! In/Out:
+        ! [review] - JSS:  see comments in dmqmc_int_pic_hf_importance_sampling
         !    hmatel: on input, untransformed matrix element connecting two spin
         !        functions (kets).  On output, transformed matrix element,
         !        \Psi^T(cdet%f,cdet%f2) H_{ij} 1/\Psi(f_new,cdet%f2).
@@ -191,6 +196,8 @@ contains
         !        and the child determinant, on which progeny are spawned.
         !    trial_func: importance sampling weights.
         ! In/Out:
+        ! [review] - JSS: spin functions (kets) - probably determinants?
+        ! [review] - JSS: psi_T H 1\Psi_T doesn't match with what interaction_picture_reweighting_free does...
         !    hmatel: on input, untransformed matrix element connecting two spin
         !        functions (kets).  On output, transformed matrix element,
         !        \Psi^T(cdet%f,cdet%f2) H_{ij} 1/\Psi(f_new,cdet%f2).

@@ -755,6 +755,7 @@ contains
 
         select case(sys%system)
         case (heisenberg)
+            ! [review] - JSS: do we disable Chung-Landau from running DMQMC?
             ! It is assumed that there is an even maximum number of excitations.
             do i = 1, (sys%max_number_excitations/2)
                 ! Don't include levels where there are very few psips accumulated.
@@ -767,6 +768,7 @@ contains
                 end if
             end do
         case (ueg, hub_k)
+            ! [review] - Ringium?
             ! By momentum conservation there are never any psips on excitation level 1.
             if (excit_dist(0) > 10.0_p .and. excit_dist(2) > 10.0_p) then
                 weighted_sampling%sampling_probs(1) = 1.0_p
@@ -788,6 +790,7 @@ contains
             end do
         end select
 
+        ! [review] - JSS: why this comment change?  weighted_sampling%probs still seems appropriate.
         ! Recalculate dmqmc_accumulated_probs with the new weights.
         do i = 1, sys%max_number_excitations
             weighted_sampling%probs(i) = weighted_sampling%probs(i-1)*weighted_sampling%sampling_probs(i)
