@@ -755,7 +755,6 @@ contains
 
         select case(sys%system)
         case (heisenberg)
-            ! [review] - JSS: do we disable Chung-Landau from running DMQMC?
             ! It is assumed that there is an even maximum number of excitations.
             do i = 1, (sys%max_number_excitations/2)
                 ! Don't include levels where there are very few psips accumulated.

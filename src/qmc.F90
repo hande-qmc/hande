@@ -446,8 +446,6 @@ contains
                         trial_dm_ptr => kinetic_energy_ueg
                         if (dmqmc_in%symmetric) then
                             if (dmqmc_in%weighted_sampling) then
-                                ! [review] - JSS: puzzled how this will work for other systems
-                                ! [review] - JSS: when dmqmc_int_pic_free_importance_sampling etc are only set for UEG.
                                 gen_excit_ptr%trial_fn => dmqmc_int_pic_free_importance_sampling
                             else
                                 spawner_ptr => spawn_importance_sampling
