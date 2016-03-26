@@ -790,8 +790,7 @@ contains
             end do
         end select
 
-        ! [review] - JSS: why this comment change?  weighted_sampling%probs still seems appropriate.
-        ! Recalculate dmqmc_accumulated_probs with the new weights.
+        ! Recalculate weighted_sampling%probs with the new weights.
         do i = 1, sys%max_number_excitations
             weighted_sampling%probs(i) = weighted_sampling%probs(i-1)*weighted_sampling%sampling_probs(i)
         end do
