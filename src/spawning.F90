@@ -459,8 +459,8 @@ contains
         use qmc_data, only: qmc_state_t
         use system, only: sys_t
         use proc_pointers, only: gen_excit_ptr_t
+        use excit_gen_mol_complex
         use dSFMT_interface, only: dSFMT_t
-        use hamiltonian_molecular_complex, only: slater_condon1_mol_excit_complex, slater_condon2_mol_excit_complex
 
         use errors, only: stop_all
 
@@ -476,32 +476,15 @@ contains
         integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
-        real(p) :: pgen, hmatel_dummy
+        real(p) :: pgen
         logical :: allowed
         complex(p) :: hmatel
 
         ! 1. Generate random excitation.
-        call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel_dummy, allowed)
-        ! 2. Obtain complex matrix element.
-        if (.not.allowed) then
-            hmatel = cmplx(0.0, 0.0, p)
-        else if (connection%nexcit == 1) then
-            if (connection%to_orb(1) == 0) then
-                call stop_all('spawn_complex', 'Spawn target orb index 0.')
-            else if (connection%from_orb(1) == 0) then
-                call stop_all('spawn_complex', 'Spawn origin orb index 0.')
-            end if
-            hmatel = slater_condon1_mol_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1),&
-                                                connection%perm)
-        else if (connection%nexcit == 2) then
-            hmatel = slater_condon2_mol_excit_complex(sys, connection%from_orb(1), connection%from_orb(2),&
-                                                      connection%to_orb(1), connection%to_orb(2), connection%perm)
-        else
-            hmatel = cmplx(0.0_p, 0.0_p, p)
-        end if
+        !call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel_dummy, allowed)
+        call gen_excit_mol_complex(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
-
-        ! 3. Attempt spawning.
+        ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel, p), pgen, parent_sign)
 
         nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, aimag(hmatel), pgen, parent_sign)
