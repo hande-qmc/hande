@@ -124,17 +124,15 @@ contains
 
     end subroutine neel_trial_state
 
-    ! [review] - JSS: what about original, non-symmetric algorithm?
-    ! [review] - JSS: is the user prevented from running such (unsupported)
-    ! [review] - JSS: calculations via a sanity check somewhere?
-
     subroutine dmqmc_int_pic_free_importance_sampling(sys, cdet, connection, trial_func, hmatel)
 
         ! Apply a transformation to the Hamiltonian matrix element by
         ! reducing the probability of spawning to higher excitation levels
         ! between the two ends of the DMQMC bitstring. The exact trial function
         ! used is specified by the users upon input, and stored in the vector
-        ! accumulated_probs.
+        ! accumulated_probs. Here we apply the transformation to the interaction
+        ! picture Hamiltonian, where H^0 = T.
+
 
         ! This is a wrapper function for using importance sampling with the symmetric version
         ! of the ip-dmqmc algorithm, which also requires the Hamiltonian matrix element to be reweighted.
@@ -148,10 +146,9 @@ contains
         !        and the child determinant, on which progeny are spawned.
         !    trial_func: importance sampling weights.
         ! In/Out:
-        ! [review] - JSS:  see comments in dmqmc_int_pic_hf_importance_sampling
-        !    hmatel: on input, untransformed matrix element connecting two spin
-        !        functions (kets).  On output, transformed matrix element,
-        !        \Psi^T(cdet%f,cdet%f2) H_{ij} 1/\Psi(f_new,cdet%f2).
+        !    hmatel: on input, untransformed matrix element connecting two
+        !        determinants .  On output, transformed matrix element,
+        !        \Psi^T(cdet%f,cdet%f2) H_I(\alpha)_{ij} 1/\Psi(f_new,cdet%f2).
         !        The factors which the Hamiltonian are multiplied by depend
         !        on the level which we come from, and go to, and so depend on
         !        the two ends of the bitstring we spawn from, and the new
@@ -182,7 +179,8 @@ contains
         ! reducing the probability of spawning to higher excitation levels
         ! between the two ends of the DMQMC bitstring. The exact trial function
         ! used is specified by the users upon input, and stored in the vector
-        ! accumulated_probs.
+        ! accumulated_probs. Here we apply the transformation to the interaction
+        ! picture Hamiltonian, where H^0 = H^HF.
 
         ! This is a wrapper function for using importance sampling with the symmetric version
         ! of the ip-dmqmc algorithm, which also requires the hamiltonian matrix element to be reweighted.
@@ -196,11 +194,9 @@ contains
         !        and the child determinant, on which progeny are spawned.
         !    trial_func: importance sampling weights.
         ! In/Out:
-        ! [review] - JSS: spin functions (kets) - probably determinants?
-        ! [review] - JSS: psi_T H 1\Psi_T doesn't match with what interaction_picture_reweighting_free does...
-        !    hmatel: on input, untransformed matrix element connecting two spin
-        !        functions (kets).  On output, transformed matrix element,
-        !        \Psi^T(cdet%f,cdet%f2) H_{ij} 1/\Psi(f_new,cdet%f2).
+        !    hmatel: on input, untransformed matrix element connecting two
+        !        determinants .  On output, transformed matrix element,
+        !        \Psi^T(cdet%f,cdet%f2) H_I(\alpha)_{ij} 1/\Psi(f_new,cdet%f2).
         !        The factors which the Hamiltonian are multiplied by depend
         !        on the level which we come from, and go to, and so depend on
         !        the two ends of the bitstring we spawn from, and the new
