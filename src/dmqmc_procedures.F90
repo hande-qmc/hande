@@ -735,7 +735,7 @@ contains
         !    weighted_sampling: type containing weighted sampling information.
 
         use dmqmc_data, only: dmqmc_in_t, dmqmc_weighted_sampling_t
-        use system, only: sys_t, heisenberg, ueg, hub_k
+        use system, only: sys_t, heisenberg, ueg, hub_k, ringium
         use parallel
 
         type(sys_t), intent(in) :: sys
@@ -766,8 +766,7 @@ contains
                     weighted_sampling%sampling_probs(sys%max_number_excitations+1-i) = weighted_sampling%sampling_probs(i)**(-1)
                 end if
             end do
-        case (ueg, hub_k)
-            ! [review] - Ringium?
+        case (ueg, hub_k, ringium)
             ! By momentum conservation there are never any psips on excitation level 1.
             if (excit_dist(0) > 10.0_p .and. excit_dist(2) > 10.0_p) then
                 weighted_sampling%sampling_probs(1) = 1.0_p
