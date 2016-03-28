@@ -61,7 +61,7 @@ contains
 
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-        use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
+        use ccmc_utils, only: convert_excitor_to_determinant
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: particle_t
@@ -79,7 +79,8 @@ contains
         integer(int_64), intent(in) :: nattempts
         logical, intent(in) :: linked_ccmc
         integer, intent(in) :: D0_pos
-        real(p), intent(in) :: normalisation, initiator_pop
+        complex(p), intent(in) :: normalisation
+        real(p), intent(in) :: initiator_pop
         integer(int_p), intent(in) :: cumulative_excip_pop(:), tot_excip_pop
         integer :: min_size, max_size
         type(dSFMT_t), intent(inout) :: rng
@@ -200,8 +201,22 @@ contains
                 ! then this means we actually need the slot before D0_pos.
                 ! Correcting for this accident is much easier than producing an
                 ! array explicitly without D0...
-                if (pos == D0_pos) pos = pos - 1
-                excitor_pop = real(psip_list%pops(1,pos),p)/psip_list%pop_real_factor
+                ! If contain multiple spaces we can have this in a more general
+                ! case, where an excitor has population in another space but not
+                ! that which we're currently concerned with. More general test
+                ! should account for this.
+                if (pos /= 1) then
+                    do
+                        if (pos == 1) exit
+                        if (cumulative_excip_pop(pos) /= cumulative_excip_pop(pos-1)) exit
+                        pos = pos - 1
+                    end do
+                end if
+                if (sys%read_in%comp) then
+                    excitor_pop = cmplx(psip_list%pops(1,pos), psip_list%pops(2,pos),p)/psip_list%pop_real_factor
+                else
+                    excitor_pop = real(psip_list%pops(1,pos),p)/psip_list%pop_real_factor
+                end if
                 if (i == 1) then
                     ! First excitor 'seeds' the cluster:
                     cdet%f = psip_list%states(:,pos)
@@ -306,7 +321,8 @@ contains
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(sys%basis%string_len)
-        real(p), intent(in) :: prob, D0_normalisation, initiator_pop
+        real(p), intent(in) :: prob, initiator_pop
+        complex(p), intent(in) :: D0_normalisation
         type(det_info_t), intent(inout) :: cdet
         type(cluster_t), intent(inout) :: cluster
 
@@ -326,7 +342,8 @@ contains
         ! Must be the reference.
         cdet%f = f0
         cluster%excitation_level = 0
-        cluster%amplitude = D0_normalisation
+        cluster%amplitude = real(D0_normalisation, p)
+        cluster%amplitude_im = aimag(D0_normalisation)
         cluster%cluster_to_det_sign = 1
         if (cluster%amplitude <= initiator_pop) then
              ! Something has gone seriously wrong and the CC

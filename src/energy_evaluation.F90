@@ -1275,4 +1275,27 @@ contains
 
     end function get_sanitized_projected_energy 
 
+    pure function get_sanitized_projected_energy_cmplx(qs) result(proje)
+
+        ! From a qmc_state, qs, return either the value of the projected energy,
+        ! or 0 if this is undefined.
+
+        ! In:
+        !    qs: qmc state containing estimators.
+
+        ! Returns:
+        !   real containing (instantaneous) projected energy.
+
+        use qmc_data, only: qmc_state_t
+        real(p) ::  proje
+        type(qmc_state_t), intent(in) ::  qs
+
+        if (abs(qs%estimators%D0_population_comp)<tiny(0._p)) then
+           proje = 0
+        else
+           proje = qs%estimators%proj_energy_comp/qs%estimators%D0_population_comp
+        end if
+
+    end function get_sanitized_projected_energy_cmplx
+
 end module energy_evaluation
