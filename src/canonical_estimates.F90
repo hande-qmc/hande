@@ -86,8 +86,7 @@ contains
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         integer :: occ_list(sys%nel), iorb, ireport
-        logical :: gen
-        real(p) :: energy(hf_part_idx), beta_loc, hfx, mu
+        real(p) :: energy(hf_part_idx), beta_loc, mu
         integer(int_64) :: iattempt
         real(p) :: local_estimators(last_idx-1), estimators(last_idx-1)
 

@@ -96,7 +96,7 @@ contains
         real(p) :: nav_deriv
 
         integer :: iorb
-        real(p) :: ff, ek
+        real(p) :: ek
 
         nav_deriv = 0.0_p
 
