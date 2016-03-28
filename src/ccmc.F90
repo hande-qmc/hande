@@ -297,7 +297,8 @@ contains
                                  accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
         use ccmc_data
         use ccmc_selection, only: select_cluster, create_null_cluster, select_cluster_non_composite
-        use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death, stochastic_ccmc_death_nc
+        use ccmc_death_spawning, only: spawner_ccmc, linked_spawner_ccmc, stochastic_ccmc_death
+        use ccmc_death_spawning, only: stochastic_ccmc_death_nc, spawner_complex_ccmc
         use ccmc_utils, only: init_cluster, find_D0
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, &
                                 sum_sp_eigenvalues_bit_string, decode_det
@@ -346,6 +347,7 @@ contains
         type(det_info_t) :: ref_det
 
         integer(int_p) :: nspawned, ndeath
+        integer(int_p) :: nspawned_im, ndeath_im
         integer :: nspawn_events, ierr
         type(excit_t) :: connection
         type(cluster_t), allocatable, target :: cluster(:)
@@ -770,8 +772,14 @@ contains
                         ! of cluster%amplitude/cluster%pselect.  If this is
                         ! greater than cluster_multispawn_threshold, then nspawnings is
                         ! increased to the ratio of these.
-                        nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
-                                                         ccmc_in%cluster_multispawn_threshold))
+                        if (sys%read_in%comp) then
+                            nspawnings_total=max(1,ceiling( ((abs(cluster(it)%amplitude)+abs(cluster(it)%amplitude_im))&
+                                                         /cluster(it)%pselect)/ ccmc_in%cluster_multispawn_threshold))
+                        else
+                            nspawnings_total=max(1,ceiling( abs(cluster(it)%amplitude/cluster(it)%pselect)/ &
+                                                             ccmc_in%cluster_multispawn_threshold))
+                        end if
+
                         call ms_stats_update(nspawnings_total, ms_stats(it))
                         nattempts_spawn = nattempts_spawn + nspawnings_total
 
@@ -783,10 +791,15 @@ contains
                                 call linked_spawner_ccmc(rng(it), sys, qmc_in, qs, qs%spawn_store%spawn%cutoff, &
                                           cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total, &
                                           fexcit, cdet(it), ldet(it), rdet(it), left_cluster(it), right_cluster(it))
+                                nspawned_im = 0.0_p
+                            else if (sys%read_in%comp) then
+                                call spawner_complex_ccmc(rng(it), sys, qs, qs%spawn_store%spawn%cutoff, &
+                                          cdet(it), cluster(it), gen_excit_ptr, nspawned, nspawned_im, connection, nspawnings_total)
                             else
                                 call spawner_ccmc(rng(it), sys, qs, qs%spawn_store%spawn%cutoff, &
                                           ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, logging_info, nspawned, &
                                           connection, nspawnings_total)
+                                nspawned_im = 0.0_p
                             end if
 
                            if (nspawned /= 0_int_p) then
@@ -798,6 +811,16 @@ contains
                                                                     qs%spawn_store%spawn)
                                end if
                                if (abs(nspawned) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned)
+                           end if
+                           if (nspawned_im /= 0_int_p) then
+                               if (cluster(it)%excitation_level == huge(0)) then
+                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned_im, &
+                                                                    2, qs%spawn_store%spawn, fexcit)
+                               else
+                                   call create_spawned_particle_ptr(sys%basis, qs%ref, cdet(it), connection, nspawned_im, 2, &
+                                                                    qs%spawn_store%spawn)
+                               end if
+                               if (abs(nspawned_im) > bloom_threshold) call accumulate_bloom_stats(bloom_stats, nspawned_im)
                            end if
                         end do
 

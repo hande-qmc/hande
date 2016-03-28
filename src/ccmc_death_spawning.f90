@@ -607,4 +607,120 @@ contains
 
     end subroutine linked_spawner_ccmc
 
+    subroutine spawner_complex_ccmc(rng, sys, qs, spawn_cutoff, cdet, cluster, &
+                            gen_excit_ptr, nspawn, nspawn_im, connection, nspawnings_total)
+        ! Attempt to spawn a new particle on a connected excitor with
+        ! probability
+        !     \tau |<D'|H|D_s> A_s|
+        !   -------------------------
+        !   n_sel p_s p_clust p_excit
+        ! where |D_s> is the determinant formed by applying the excitor to the
+        ! reference determinant, A_s is the amplitude and D' is the determinant
+        ! formed from applying a connected excitor to the reference determinant.
+        ! See comments in select_cluster about n_sel, p_s and p_clust.  p_excit
+        ! is the probability of choosing D' given D_s.
+
+        ! This is just a thin wrapper around a system-specific excitation
+        ! generator and a utility function.  We need to modify the spawning
+        ! probability compared to the FCIQMC algorithm as we spawn from multiple
+        ! excips at once (in FCIQMC we allow each psip to spawn individually)
+        ! and have additional probabilities to take into account.
+
+        ! This routine will only attempt one spawning event, but needs to know
+        ! the total number attempted for this cluster which is passed into
+        ! nspawnings_total.
+
+        ! In linked CCMC, the probability of spawning is modified by changing
+        ! the matrix elements <D'|H|D_s> so that only linked diagrams are used
+        ! for spawning.
+
+        ! In:
+        !    sys: system being studied.
+        !    qs: qmc_state_t object. The timestep and reference determinant are used.
+        !    spawn_cutoff: The size of the minimum spawning event allowed, in
+        !        the encoded representation. Events smaller than this will be
+        !        stochastically rounded up to this value or down to zero.
+        !    linked_ccmc: if true then only sample linked clusters.
+        !    cdet: info on the current excitor (cdet) that we will spawn
+        !        from.
+        !    cluster: information about the cluster which forms the excitor.  In
+        !        particular, we use the amplitude, cluster_to_det_sign and pselect
+        !        (i.e. n_sel.p_s.p_clust) attributes in addition to any used in
+        !        the excitation generator.
+        !    gen_excit_ptr: procedure pointer to excitation generators.
+        !        gen_excit_ptr%full *must* be set to a procedure which generates
+        !        a complete excitation.
+        ! In/Out:
+        !    rng: random number generator.
+        !    nspawnings_total: The total number of spawnings attemped by the current cluster
+        !        in the current timestep.
+        ! Out:
+        !    nspawn: number of particles spawned, in the encoded representation.
+        !        0 indicates the spawning attempt was unsuccessful.
+        !    connection: excitation connection between the current excitor
+        !        and the child excitor, on which progeny are spawned.
+
+        use ccmc_data, only: cluster_t
+        use ccmc_utils, only: convert_excitor_to_determinant
+        use determinants, only: det_info_t
+        use dSFMT_interface, only: dSFMT_t
+        use excitations, only: excit_t, create_excited_det, get_excitation_level
+        use proc_pointers, only: gen_excit_ptr_t
+        use spawning, only: attempt_to_spawn
+        use system, only: sys_t
+        use const, only: depsilon
+        use qmc_data, only: qmc_in_t, qmc_state_t
+        use hamiltonian_data, only: hmatel_t
+
+        type(sys_t), intent(in) :: sys
+        type(qmc_state_t), intent(in) :: qs
+        integer(int_p), intent(in) :: spawn_cutoff
+        type(det_info_t), intent(in) :: cdet
+        type(cluster_t), intent(in) :: cluster
+        type(dSFMT_t), intent(inout) :: rng
+        integer, intent(in) :: nspawnings_total
+        type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
+        integer(int_p), intent(out) :: nspawn, nspawn_im
+        type(excit_t), intent(out) :: connection
+
+        ! We incorporate the sign of the amplitude into the Hamiltonian matrix
+        ! element, so we 'pretend' to attempt_to_spawn that all excips are
+        ! actually spawned by positive excips.
+        integer(int_p), parameter :: parent_sign = 1_int_p
+        type(hmatel_t) :: hmatel
+        real(p) :: pgen
+        integer(i0) :: fexcit(sys%basis%string_len)
+        integer :: excitor_sign, excitor_level
+        logical :: allowed_excitation
+
+        ! 1. Generate random excitation.
+        ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
+        ! generators of the sys%lattice%lattice models.  It is trivial to implement and (at
+        ! least for now) is left as an exercise to the interested reader.
+        call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
+
+        ! 2, Apply additional factors.
+        hmatel%c = hmatel%c*cmplx(cluster%amplitude, cluster%amplitude_im, p)*cluster%cluster_to_det_sign
+        pgen = pgen*cluster%pselect*nspawnings_total
+
+        ! 3. Attempt spawning.
+        nspawn = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, real(hmatel%c), pgen, parent_sign)
+        nspawn_im = attempt_to_spawn(rng, qs%tau, spawn_cutoff, qs%psip_list%pop_real_factor, aimag(hmatel%c), pgen, parent_sign)
+
+        if (nspawn /= 0_int_p .or. nspawn_im /= 0_int_p) then
+            ! 4. Convert the random excitation from a determinant into an
+            ! excitor.  This might incur a sign change and hence result in
+            ! a change in sign to the sign of the progeny.
+            ! This is the same process as excitor to determinant and hence we
+            ! can reuse code...
+            call create_excited_det(sys%basis, cdet%f, connection, fexcit)
+            excitor_level = get_excitation_level(qs%ref%f0, fexcit)
+            call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
+            if (excitor_sign < 0) then
+                nspawn = -nspawn
+                nspawn_im = -nspawn_im
+            end if
+        end if
+    end subroutine spawner_complex_ccmc
+
 end module ccmc_death_spawning
