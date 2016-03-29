@@ -586,8 +586,14 @@ contains
                 ! Note that 'death' in CCMC creates particles in the spawned
                 ! list, so the number of deaths not in the spawned list is
                 ! always 0.
-                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
-                                   min_attempts=nint(D0_normalisation,int_64))
+                if (sys%read_in%comp) then
+                    call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
+                                       min_attempts=nint(abs(real(D0_normalisation_comp,p)) + &
+                                       abs(aimag(D0_normalisation_comp)),int_64), ndeath_im = ndeath_im)
+                else
+                    call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, &
+                                       min_attempts=nint(D0_normalisation,int_64), ndeath_im = ndeath_im)
+                end if
                 nparticles_change = 0.0_p
 
                 ! We need to count spawning attempts differently as there may be multiple spawns
@@ -833,9 +839,15 @@ contains
                             if ((.not. ccmc_in%linked) .or. cluster(it)%nexcitors <= 2) then
                                 ! Do death for non-composite clusters directly and in a separate loop
                                 if (cluster(it)%nexcitors >= 2 .or. .not. ccmc_in%full_nc) then
-                                    call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
-                                                               qs, cdet(it), cluster(it), proj_energy_old, logging_info, &
-                                                               ndeath_tot)
+                                    if (sys%read_in%comp) then
+                                        call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
+                                                                   qs, cdet(it), cluster(it), real(proj_energy_old_comp,p), &
+                                                                   logging_info, ndeath_tot)
+                                    else
+                                        call stochastic_ccmc_death(rng(it), qs%spawn_store%spawn, ccmc_in%linked, sys, &
+                                                                   qs, cdet(it), cluster(it), proj_energy_old, logging_info, &
+                                                                   ndeath_tot)
+                                    end if
                                 end if
                             end if
                         end if

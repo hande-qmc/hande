@@ -190,12 +190,10 @@ contains
         !    cluster: information about the cluster which forms the excitor.
         !    proj_energy: projected energy.  This should be the average value from the last
         !        report loop, not the running total in qs%estimators.
-        !    logging_info: logging_t derived type containing information on logging behaviour.
         ! In/Out:
         !    rng: random number generator.
         !    spawn: spawn_t object to which the spanwed particle will be added.
 
-        use const, only: debug
         use ccmc_data, only: cluster_t
         use determinants, only: det_info_t
         use excitations, only: excit_t
@@ -217,8 +215,8 @@ contains
         type(spawn_t), intent(inout) :: spawn
         integer(int_p), intent(inout) :: ndeath_tot
 
-        real(p) :: pdeath, KiiAi
-        integer(int_p) :: nkill
+        real(p) :: pdeath, KiiAi, pdeath_im, KiiAi_im
+        integer(int_p) :: nkill, nkill_im
         type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
 
         real(p) :: invdiagel
@@ -255,12 +253,20 @@ contains
         else
             select case (cluster%nexcitors)
             case(0)
-                ! Death on the reference has H_ii - E_HF = 0.
                 KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                if (sys%read_in%comp) then
+                    KiiAi_im = (-qs%shift(1))*cluster%amplitude_im
+                end if
             case(1)
                 KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                if (sys%read_in%comp) then
+                    KiiAi_im = (cdet%data(1) - qs%shift(1))*cluster%amplitude_im
+                end if
             case default
                 KiiAi = ((sc0_ptr(sys, cdet%f) - qs%ref%H00) - proj_energy)*invdiagel *cluster%amplitude
+                if (sys%read_in%comp) then
+                    KiiAi_im = (sc0_ptr(sys, cdet%f) - qs%ref%H00 - proj_energy)*cluster%amplitude_im
+                end if
             end select
         end if
 
@@ -268,6 +274,11 @@ contains
         ! See comments in stochastic_death.
         KiiAi = qs%psip_list%pop_real_factor*KiiAi
         pdeath = qs%tau*abs(KiiAi)/cluster%pselect
+
+        if (sys%read_in%comp) then
+            KiiAi_im = qs%psip_list%pop_real_factor*KiiAi_im
+            pdeath_im = qs%tau*abs(KiiAi_im)/cluster%pselect
+        end if
 
         if (pdeath < spawn%cutoff) then
             ! Calling death once per excip (and hence with a low pselect) without any
@@ -305,8 +316,35 @@ contains
             call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill, 1, spawn)
         end if
 
-        if (debug) call write_logging_death(logging_info, KiiAi, proj_energy, qs%shift(1), invdiagel, &
-                                            nkill, pdeath, cluster%amplitude, 0.0_p)
+        ! Now repeat same stages with imaginary component. No need to repeat same comments.
+
+        if (sys%read_in%comp) then
+            if (pdeath_im < spawn%cutoff) then
+                if (pdeath_im > get_rand_close_open(rng)*spawn%cutoff) then
+                    nkill_im = spawn%cutoff
+                else
+                    nkill_im = 0_int_p
+                end if
+            else
+                ! Number that will definitely die
+                nkill_im = int(pdeath_im,int_p)
+                ! Stochastic death...
+                pdeath_im = pdeath_im - nkill_im
+                if (pdeath_im > get_rand_close_open(rng)) nkill_im = nkill_im + 1
+            end if
+
+            if (nkill_im /= 0) then
+                ndeath_tot = ndeath_tot + abs(nkill_im)
+                ! Create nkill excips with sign of -K_ii A_i
+                if (KiiAi_im > 0) nkill_im = -nkill_im
+                ! The excitor might be a composite cluster so we'll just create
+                ! excips in the spawned list and allow the annihilation process to take
+                ! care of the rest.
+                ! Pass through a null excitation so that we create a spawned particle on
+                ! the current excitor.
+                call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, null_excit, nkill_im, 2, spawn)
+            end if
+        end if
 
     end subroutine stochastic_ccmc_death
 
