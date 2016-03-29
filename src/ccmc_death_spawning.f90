@@ -525,7 +525,8 @@ contains
         integer :: excitor_sign, excitor_level
 
         integer :: i, j, npartitions, orb, bit_pos, bit_element
-        real(p) :: ppart, pgen, pop
+        real(p) :: ppart, pgen
+        complex(p) :: pop
         type(hmatel_t) :: hmatel, delta_h
         logical :: allowed, sign_change, linked, single_unlinked
         integer(i0) :: new_det(sys%basis%string_len)
@@ -553,7 +554,8 @@ contains
             ! check that left_cluster can be applied to the resulting excitor to
             ! give a cluster to spawn on to
             call create_excited_det(sys%basis, rdet%f, connection, fexcit)
-            call collapse_cluster(sys%basis, qs%ref%f0, ldet%f, 1.0_p, fexcit, pop, allowed)
+            call collapse_cluster(sys%basis, qs%ref%f0, ldet%f, cmplx(1.0_p,0.0_p,p), &
+                                    fexcit, pop, allowed)
         end if
 
         if (allowed) then

@@ -64,7 +64,7 @@ contains
 
         use determinants, only: det_info_t
         use ccmc_data, only: cluster_t
-        use ccmc_utils, only: convert_excitor_to_determinant
+        use ccmc_utils, only: convert_excitor_to_determinant, collapse_cluster
         use excitations, only: get_excitation_level
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: particle_t

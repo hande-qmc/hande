@@ -130,9 +130,9 @@ contains
         type(basis_t), intent(in) :: basis
         integer(i0), intent(in) :: f0(basis%string_len)
         integer(i0), intent(in) :: excitor(basis%string_len)
-        real(p), intent(in) :: excitor_population
+        complex(p), intent(in) :: excitor_population
         integer(i0), intent(inout) :: cluster_excitor(basis%string_len)
-        real(p), intent(inout) :: cluster_population
+        complex(p), intent(inout) :: cluster_population
         logical,  intent(out) :: allowed
 
         integer :: ibasis, ibit

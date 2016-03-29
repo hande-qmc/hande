@@ -474,7 +474,7 @@ contains
         D0_pos = 1
 
         ! Main fciqmc loop.
-        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, rdm_energy=ccmc_in%density_matrices)
+        if (parent) call write_qmc_report_header(qs%psip_list%nspaces, cmplx_est=sys%read_in%comp, rdm_energy=ccmc_in%density_matrices)
         call initial_fciqmc_status(sys, qmc_in, qs)
         ! Initialise timer.
         call cpu_time(t1)
@@ -727,7 +727,8 @@ contains
                         ! Deterministically select each excip as a non-composite cluster.
                         call select_cluster_non_composite(sys, qs%psip_list, qs%ref%f0, iattempt-nstochastic_clusters-nD0_select, &
                                                           iexcip_pos, nsingle_excitors, qmc_in%initiator_pop, D0_pos, &
-                                                          cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
+                                                          cumulative_abs_nint_pops, tot_abs_nint_pop, qmc_in%quadrature_initiator, &
+                                                          cdet(it), cluster(it))
                     end if
 
                     if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &
@@ -797,15 +798,16 @@ contains
                                 call linked_spawner_ccmc(rng(it), sys, qmc_in, qs, qs%spawn_store%spawn%cutoff, &
                                           cluster(it), gen_excit_ptr, nspawned, connection, nspawnings_total, &
                                           fexcit, cdet(it), ldet(it), rdet(it), left_cluster(it), right_cluster(it))
-                                nspawned_im = 0.0_p
+                                nspawned_im = 0_int_p
                             else if (sys%read_in%comp) then
                                 call spawner_complex_ccmc(rng(it), sys, qs, qs%spawn_store%spawn%cutoff, &
-                                          cdet(it), cluster(it), gen_excit_ptr, nspawned, nspawned_im, connection, nspawnings_total)
+                                          cdet(it), cluster(it), gen_excit_ptr, nspawned, nspawned_im, &
+                                          connection, nspawnings_total)
                             else
                                 call spawner_ccmc(rng(it), sys, qs, qs%spawn_store%spawn%cutoff, &
                                           ccmc_in%linked, cdet(it), cluster(it), gen_excit_ptr, logging_info, nspawned, &
                                           connection, nspawnings_total)
-                                nspawned_im = 0.0_p
+                                nspawned_im = 0_int_p
                             end if
 
                            if (nspawned /= 0_int_p) then
@@ -868,16 +870,16 @@ contains
                             dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
                         end if
                         if (sys%read_in%comp) then
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
+                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), real(proj_energy_old_comp, p), &
                                               qs%psip_list%pops(1, iattempt), nparticles_change(1), ndeath)
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
+                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), real(proj_energy_old_comp, p), &
                                               qs%psip_list%pops(2, iattempt), nparticles_change(2), ndeath_im)
                             ndeath = ndeath + ndeath_im
                             ndeath_im = 0_int_p
                         else
-                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, qs, iattempt==D0_pos, dfock, &
+                            call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
                                               nparticles_change(1), ndeath)
                         end if
@@ -930,15 +932,15 @@ contains
 
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, nspawn_events, &
                                  semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
-                                 load_bal_in, bloom_stats=bloom_stats, error=error, &
-                                 vary_shift_reference=ccmc_in%vary_shift_reference)
+                                 load_bal_in, bloom_stats=bloom_stats, comp=sys%read_in%comp, &
+                                 error=error, vary_shift_reference=ccmc_in%vary_shift_reference)
             if (error) exit
 
             call cpu_time(t2)
             if (parent) then
                 if (bloom_stats%nblooms_curr > 0) call bloom_stats_warning(bloom_stats)
                 call write_qmc_report(qmc_in, qs, ireport, nparticles_old, t2-t1, .false., .false., &
-                                         rdm_energy=ccmc_in%density_matrices)
+                                        sys%read_in%comp, rdm_energy=ccmc_in%density_matrices)
             end if
 
             ! Update the time for the start of the next iteration.
