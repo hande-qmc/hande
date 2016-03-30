@@ -729,7 +729,7 @@ contains
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts, ndeath_im)
+    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts, ndeath_im, complx)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -746,7 +746,7 @@ contains
         !        cycle.  Reset to 0 on output.
         ! In (optional):
         !    min_attempts: if present, set nattempts to be at least this value.
-        !    nb_comm: true if using non-blocking communications.
+        !    complx: true if using real and imaginary psips.
         ! Out (optional):
         !    ndeath_im: number of imaginary particle deaths that occur in a Monte
         !       Carlo cycle.  Reset to 0 on output.
@@ -758,10 +758,14 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         integer(int_64), intent(in), optional :: min_attempts
+        logical, intent(in), optional :: complx
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
         integer(int_p), intent(out), optional :: ndeath_im
 
+        logical :: complx_loc = .false.
+
+        if (present(complx)) complx_loc = complx
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
@@ -789,6 +793,7 @@ contains
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
             nattempts = nint(2*psip_list%nparticles(1), int_64)
+            if (complx) nattempts = nattempts + abs(nint(2*psip_list%nparticles(2), int_64))
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)

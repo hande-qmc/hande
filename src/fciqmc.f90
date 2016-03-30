@@ -202,7 +202,8 @@ contains
                                            qs%spawn_store%spawn, qmc_in%use_mpi_barriers)
                 end if
 
-                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, ndeath_im = ndeath_im)
+                call init_mc_cycle(qs%psip_list, qs%spawn_store%spawn, nattempts, ndeath, ndeath_im = ndeath_im, &
+                                            complx = sys%read_in%comp)
                 call load_balancing_wrapper(sys, qs%ref, load_bal_in, annihilation_flags, fciqmc_in%non_blocking_comm, &
                                             rng, qs%psip_list, qs%spawn_store%spawn, qs%par_info, determ)
                 if (fciqmc_in%non_blocking_comm) qs%spawn_store%spawn_recv%proc_map = qs%par_info%load%proc_map
@@ -295,10 +296,11 @@ contains
                         if (sys%read_in%comp) then
                             call stochastic_death(rng, qs, qs%psip_list%dat(1,idet), qs%shift(1), &
                                            qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
-                            ndeath = ndeath + ndeath_im
+                            ndeath = abs(ndeath) + abs(ndeath_im)
                             ndeath_im = 0_int_p
                         end if
                     end if
+
                 end do
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
@@ -328,6 +330,8 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
+
+
 
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &
