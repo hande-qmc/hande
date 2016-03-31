@@ -991,7 +991,7 @@ contains
                 ! Set the current free slot to be the next unique spawned location.
                 spawn%sdata(:,islot) = spawn%sdata(:,k)
                 do ipart = 1, spawn%ntypes
-                    if (spawn_flag(k) == 0_int_s) then
+                    if (.not.btest(spawn_flag(k), ipart-1)) then
                         ! from an initiator
                         initiator_pop(ipart) = spawn_parts(ipart,k)
                         events(ipart) = 0
@@ -1010,22 +1010,20 @@ contains
 
                     if (same_slot) then
                         ! Accumulate the population on this determinant
-                        if (spawn_flag(k) == 0_int_s) then
-                            ! This slot (k) was spawned from an initiator, so we accumulate
-                            ! the population from each type (separately).
-                            initiator_pop = initiator_pop + spawn_parts(:,k)
-                        else
-                            do ipart = 1, spawn%ntypes
-                                ! Not an initiator, so depending on the sign of the spawning
-                                ! we accumulate (signed) events.  Take care not to accumulate
-                                ! events if no ipart particle was spawned.
-                                if (spawn_parts(ipart,k) < 0_int_s) then
-                                    events(ipart) = events(ipart) - 1
-                                else if (spawn_parts(ipart,k) > 0_int_s) then
-                                    events(ipart) = events(ipart) + 1
-                                end if
-                            end do
-                        end if
+                        do ipart = 1, spawn%ntypes
+                            if (.not. btest(spawn_flag(k), ipart-1)) then
+                                ! This slot (k) was spawned from an initiator, so we accumulate
+                                ! the population from each type (separately).
+                                initiator_pop(ipart) = initiator_pop(ipart) + spawn_parts(ipart,k)
+                            ! Not an initiator, so depending on the sign of the spawning
+                            ! we accumulate (signed) events.  Take care not to accumulate
+                            ! events if no ipart particle was spawned.
+                            else if (spawn_parts(ipart,k) < 0_int_s) then
+                                events(ipart) = events(ipart) - 1
+                            else if (spawn_parts(ipart,k) > 0_int_s) then
+                                events(ipart) = events(ipart) + 1
+                            end if
+                        end do
                         ! For each type of particle, add the spawned particles into this slot.
                         spawn_parts(:,islot) = spawn_parts(:,islot) + spawn_parts(:,k)
                     else
