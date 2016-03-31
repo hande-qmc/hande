@@ -605,6 +605,7 @@ contains
         call json_write_key(js, 'target_particles', qmc%target_particles)
         call json_write_key(js, 'initiator_approx', qmc%initiator_approx)
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
+        call json_write_key(js, 'quadrature_initiator', qmc%quadrature_initiator)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
