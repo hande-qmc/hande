@@ -381,7 +381,7 @@ contains
             else
                 create_spawned_particle_ptr => create_spawned_particle_initiator
             end if
-            if (sys%read_in%comp) then
+            if (sys%read_in%comp .and. qmc_in%quadrature_initiator) then
                 set_parent_flag_ptr => set_parent_flag_complex
             else
                 set_parent_flag_ptr => set_parent_flag_real
