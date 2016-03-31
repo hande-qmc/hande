@@ -30,7 +30,7 @@ contains
 
         parent_flag = 0_int_p
         do i = 1, size(parent_population)
-            if (.not.(abs(parent_population(i)) > initiator_pop .or. determ_flag == 0)) then
+            if (.not.((abs(parent_population(i)) > initiator_pop) .or. ( determ_flag == 0))) then
                 ! Isn't an initiator.
                 parent_flag = ibset(parent_flag, i - 1)
             ! Otherwise has a high enough population to be an initiator in this space,
@@ -57,11 +57,12 @@ contains
         integer, intent(in) :: determ_flag
         integer, intent(out) :: parent_flag
         integer :: i
+        real :: magnitude
 
         parent_flag = 0_int_p
         do i = 1, size(parent_population), 2
-            if ((.not. ((parent_population(i) ** 2) + (parent_population(i+1) ** 2)) > &
-                    initiator_pop ** 2) .or. (.not.(determ_flag == 0))) then
+            magnitude = real(parent_population(i),p) ** 2 + real(parent_population(i+1),p) ** 2
+            if (.not.((magnitude > initiator_pop ** 2) .or. (determ_flag == 0))) then
                 ! Isn't an initiator.
                 parent_flag = ibset(parent_flag, i - 1)
                 parent_flag = ibset(parent_flag, i)
