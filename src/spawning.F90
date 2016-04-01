@@ -441,8 +441,9 @@ contains
         !    parent_sign: sign of the population on the parent determinant (i.e.
         !        either a positive or negative integer).
         !    gen_excit_ptr: procedure pointer to excitation generators.
-        !        gen_excit_ptr%full *must* be set to a procedure which generates
-        !        a complete excitation.
+        !        Currently only included for compatibility to spawn_ptr inteface
+        !        as used in real systems, as complex excitation generator isn't
+        !        compatible with gen_excit_ptr interface.
         !    weights: importance sampling weights.
         ! Out:
         !    nspawn: number of particles spawned through real component of hmatel,

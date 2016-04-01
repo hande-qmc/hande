@@ -1,7 +1,8 @@
 module excit_gen_mol_complex
 
 ! Module for random excitation generators and related routines for the molecular
-! system (ie one read in from an FCIDUMP file).
+! system (ie one read in from an FCIDUMP file) with complex integral values. Most
+! related routines are reused from excit_gen_mol to avoid duplication.
 
 ! See top-level comments in spawning about the overall aim of the spawning step.
 
@@ -16,7 +17,9 @@ contains
     subroutine gen_excit_mol_complex(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
-        ! of selecting that excitation and the Hamiltonian matrix element.
+        ! of selecting that excitation and the Hamiltonian matrix element. This
+        ! function is specifically for use with systems with complex coefficients
+        ! and hamiltonian elements.
 
         ! In:
         !    sys: system object being studied.
@@ -33,18 +36,20 @@ contains
         !        and the child determinant, on which progeny are gened.
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
         !        determinant and a connected determinant in molecular systems.
-        !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
+        !    allowed_excitation: false if a valid symmetry allowed excitation
+        !        was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
-        use hamiltonian_molecular_complex, only: slater_condon1_mol_excit_complex, slater_condon2_mol_excit_complex
+        use hamiltonian_molecular_complex, only: slater_condon1_mol_excit_complex, &
+                                                slater_condon2_mol_excit_complex
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
-        use excit_gen_mol
-
+        use excit_gen_mol, only: choose_ia_mol, choose_ij_mol, choose_ab_mol, &
+                                calc_pgen_single_mol, calc_pgen_double_mol
 
         type(sys_t), intent(in) :: sys
         type(excit_gen_data_t), intent(in) :: excit_gen_data

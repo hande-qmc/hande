@@ -105,7 +105,7 @@ Options
 
     Specify if the calculation should use complex dynamics in any calculation performed, 
     and if the FCIDUMP supplied is complex-formatted. Currently only compatible with
-    fci calculations.
+    fci and fciqmc calculations.
 
 
 :math:`L_z` symmetry

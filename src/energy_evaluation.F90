@@ -83,7 +83,7 @@ contains
         !    comp (optional): true if running calculation with real and complex walkers. This means that:
         !       - pairwise combine total populations when calculating shift variation and generate a
         !         combined shift for both.
-        !       - have complex proj enery estimator to pass real and imaginary components of via mpi.
+        !       - have complex proj energy estimator to pass real and imaginary components of via mpi.
 
         use bloom_handler, only: bloom_stats_t
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t
@@ -795,7 +795,8 @@ contains
                              proj_energy_sum_comp, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
-        ! energy.
+        ! energy. Tihs function is specifically for systems with complex
+        ! hamiltonian elements and coefficients.
         ! The correlation energy given by the projected energy is:
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
         ! where N_i is the population on the i-th determinant, D_i,

@@ -13,7 +13,8 @@ contains
 
     pure subroutine set_parent_flag_real(parent_population, initiator_pop, determ_flag, parent_flag)
 
-        ! Test whether the parent determinant is an initiator.
+        ! Test whether the parent determinant is an initiator. Sets flag individually for all spaces
+        ! supplied.
         !
         ! In:
         !    parent_population: current population of walkers on the parent
@@ -41,7 +42,8 @@ contains
 
     pure subroutine set_parent_flag_complex(parent_population, initiator_pop, determ_flag, parent_flag)
 
-        ! Test whether the parent determinant is an initiator.
+        ! Test whether the parent determinant is an initiator. Sets flag in pairs
+        ! of spaces based upon population magnitude when combined in quadrature.
         !
         ! In:
         !    parent_population: current population of walkers on the parent
