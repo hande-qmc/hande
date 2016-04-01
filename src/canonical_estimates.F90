@@ -86,8 +86,7 @@ contains
 
         real(dp) :: p_single(sys%basis%nbasis/2)
         integer :: occ_list(sys%nel), iorb, ireport
-        logical :: gen
-        real(p) :: energy(hf_part_idx), beta_loc, hfx, mu
+        real(p) :: energy(hf_part_idx), beta_loc, mu
         integer(int_64) :: iattempt
         real(p) :: local_estimators(last_idx-1), estimators(last_idx-1)
 
@@ -218,8 +217,8 @@ contains
 #endif
             ! Average over processors.
             estimators(ke_idx:hf_part_idx) = estimators(ke_idx:hf_part_idx) / estimators(naccept_idx)
-            if (estimators(naccept_idx) == 0) call stop_all('estimate_estimates', 'Number of generated configurations is &
-                                                        &zero, increase number of attempts in input file.')
+            if (abs(estimators(naccept_idx)) < depsilon) call stop_all('estimate_estimates', 'Number of generated configurations &
+                                                                       &is zero, increase number of attempts in input file.')
             if (parent) write(6,'(3X,i10,5X,2(es17.10,5X),4X,4(es17.10,5X))') ireport, estimators(ke_idx), &
                                                              estimators(pe_idx), estimators(hf_ke_idx), &
                                                              estimators(hf_pe_idx), estimators(hf_part_idx), &
