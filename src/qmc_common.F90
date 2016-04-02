@@ -793,7 +793,7 @@ contains
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
             nattempts = nint(2*psip_list%nparticles(1), int_64)
-            if (complx) nattempts = nattempts + abs(nint(2*psip_list%nparticles(2), int_64))
+            if (complx_loc) nattempts = nattempts + abs(nint(2*psip_list%nparticles(2), int_64))
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
