@@ -1,6 +1,6 @@
 .. _shoulder_tutorial:
 
-Shoulder Plots 
+Shoulder Plots
 ==============
 
 This tutorial looks further into finding the optimal target particle population
@@ -8,7 +8,7 @@ in more detail. It is advisable to have read the :ref:`FCIQMC <fciqmc_tutorial>`
 before this one. More information and details on shoulder plots can be found in [Spencer15]_.
 
 The example used here is a CCSDT Monte Carlo calculation on water in a cc-pVDZ basis [Dunning89]_.
-As for the :ref:`CCMC tutorial <ccmc_tutorial>`, the integrals were calculated with PSI4 
+As in the :ref:`CCMC tutorial <ccmc_tutorial>`, the integrals were calculated with PSI4
 (see :ref:`generating_integrals` for details). Input and output files are in ``documentation/manual/tutorials/calcs/shoulder/``.
 
 The first calculation was run using
@@ -16,50 +16,45 @@ The first calculation was run using
 .. literalinclude:: calcs/shoulder/h2o_plat.lua
 	:language: lua
 
-As in :ref:`FCIQMC <fciqmc_tutorial>`, a plateau can be seen in the total population vs iteration
+Just like :ref:`FCIQMC <fciqmc_tutorial>`, a plateau can be seen in a total population vs iteration
 plot, which indicates roughly the minimum particle number to make the calculation
-stable [#]_.
+stable:
 
 .. plot::
 
     import pyhande
     import matplotlib.pyplot as plt
     (metadata, qmc_data) = pyhande.extract.extract_data('calcs/shoulder/h2o_plat.out')[0]
-    fig, axisY1 = plt.subplots()
-    axisY1.set_yscale('log')
-    axisY1.plot(qmc_data['iterations'], qmc_data['# H psips'], 'r-')
-    axisY1.set_xlabel('iteration')
-    axisY1.set_ylabel('# particles', color='r')
-    axisY2 = axisY1.twinx()
-    axisY2.set_yscale('log')
-    axisY2.plot(qmc_data['iterations'], qmc_data['N_0'], 'b-')
-    axisY2.set_ylabel('# particles on reference', color='b')
-    for tickY1 in axisY1.get_yticklabels() :
-	tickY1.set_color('r')
-    for tickY2 in axisY2.get_yticklabels() :
-	tickY2.set_color('b')
-    plt.show()
+    fig, ax = plt.subplots()
+    ax.set_yscale('log')
+    ax.plot(qmc_data['iterations'], qmc_data['# H psips'], ls='-', label='total')
+    ax.plot(qmc_data['iterations'], qmc_data['N_0'], ls='-', label='reference')
+    ax.set_xlabel('iteration')
+    ax.set_ylabel('# particles')
+    ax.legend()
 
 The plateau is clearly visible at around 20000 particles.  This is one technique but the
-plateau is frequently not so easy to observe by visual inspection, especially for CCMC.
+plateau is frequently not so easy to observe by visual inspection, especially for CCMC and
+being able to estimate it computationally is useful for analysing large numbers of
+calculations.
 
-In the beginning, only the reference is occupied. Its particles then spawn
-to occupy parts of the remaining space, making the total population 
+In the beginning of a typical simulation, only the reference is occupied. Its particles
+then spawn to occupy parts of the remaining Hilbert space, making the total population
 grow at a greater pace than the population on the reference does. At the plateau
 point, annihilation, spawning and death balance each other which temporarily
 leads to a constant total population while the reference population keeps growing.
 After a bit, the total population grows again and leaves the plateau. It then
 grows at a smaller or the same rate as the reference population because the system is now
-converged and the distribution of particles stochastically represents the 
-ground state wavefunction of the system. See [Spencer15]_ and [Spencer12]_ for details. 
+converged and the distribution of particles stochastically represents the
+ground state wavefunction of the system. See [Spencer12]_ and [Spencer15]_ for details.
 
 The ratio of total population to population on the reference therefore peaks at roughly
-the plateau with respect to the total population. A good way to find the position 
+the plateau with respect to the total population. A good way to find the position
 of the plateau is therefore to look at the ratio of total population to
 population on the reference vs total population plots and find the position of
-the peak.  We call this "shoulder" plot and the peak, or "shoulder height", 
-is an upper limit for the position of the plateau, see [Spencer15]_. The shoulder plot for our example 
-from above is shown below:
+the peak.  We call this "shoulder" plot and the peak, or "shoulder height",
+is an upper limit for the position of the plateau, see [Spencer15]_. The shoulder plot for our example
+from above is:
 
 .. plot::
 
@@ -71,10 +66,10 @@ from above is shown below:
     plt.ylabel('# particles / # particles on reference')
 
 The position of the shoulder is at about 20000 which corresponds to the position
-of the plateau. 
+of the plateau.
 
 .. note::
-   
+
     :ref:`pyhande` contains two functions to estimate the position of the
     plateau/shoulder: :func:`pyhande.analysis.plateau_estimator`, which looks
     for the peak in the shoulder plot [Spencer15]_, and :func:`pyhande.analysis.plateau_estimator_hist`,
@@ -84,8 +79,8 @@ of the plateau.
     suited to cases without a clear plateau.
 
     In this case, ``plateau_estimator`` gave 18481 with an estimated standard error of 38
-    for the shoulder height and ``plateau_estimator_hist`` gave 20155 (rounded to 0 d.p.).  
-    The difference is not important as the plateau is not exactly constant; its value to a 
+    for the shoulder height and ``plateau_estimator_hist`` gave 20155 (rounded to 0 d.p.).
+    The difference is not important as the plateau is not exactly constant; its value to a
     few significant values is the important quantity.
 
 The position of the plateau/shoulder is somewhat sensitive to input parameters and can be
@@ -115,21 +110,19 @@ The two resulting shoulders are shown in the following graph:
     plt.xlabel('# particles')
     plt.ylabel('# particles / # particles on reference')
 
-A smaller time step leads to fewer particles at the shoulder position, as described in [Booth09]_, [Vigor16]_.
+A smaller time step can lead to fewer particles at the shoulder position, as described in [Booth09]_, [Vigor16]_.
 
 Effects of Cluster Multispawn Threshold
 ---------------------------------------
 
-.. review - JSS: some explanation of why this helps would provide welcome insight into the method.
-
-This part looks at changing the multispawn threshold. This is another feature which 
-can change the number of particles at the shoulder. Positive effects of that have already 
-been shown in :ref:`CCMC <ccmc_tutorial>`. Note that while changing the time step changes 
-the position of the plateau for FCIQMC for example as well, cluster multispawn threshold 
+This part looks at changing the multispawn threshold. This is another feature which
+can change the number of particles at the shoulder. Positive effects of that have already
+been shown in :ref:`CCMC <ccmc_tutorial>`. Note that while changing the time step changes
+the position of the plateau for FCIQMC for example as well, cluster multispawn threshold
 is specific to CCMC.
-The lower the multispawn threshold, the lower will be the number of "blooming" 
-events which spawn multiple particles at the same spawning attempt. "Blooming" 
-events can lead to greater uncertainty as the wavefunction is then sampled in a 
+The lower the multispawn threshold, the lower will be the number of "blooming"
+events which spawn multiple particles at the same spawning attempt. "Blooming"
+events can lead to greater uncertainty as the wavefunction is then sampled in a
 more coarse and less fine manner. It is therefore not surprising that less particles
 are needed to converge to the correct wavefunction for a lower multispawn
 threshold.
@@ -158,18 +151,18 @@ Note that "multispawn threshold = none" means that there is no threshold within
 computer number representation limits.
 
 Clearly, setting a low multispawn threshold lowers the total number of particles at
-the shoulder.
+the shoulder.  This is, like with a smaller timestep, due to more efficient sampling: an
+excitor with a large amplitude is allowed to explore more of the space (via multiple
+spawning attempts) than an excitor with a smaller amplitude.
 
 Effects of Initial Population
 -----------------------------
 
-.. review - JSS: again, some explanation of why this overshoot happens would provide welcome insight into the method.
-
 In this part of the tutorial we will see that a large initial population can
-lead to overshooting the shoulder. 
+lead to overshooting the shoulder.
 
 As a demonstration, we look at almost the same calculation as the first one but
-with a larger initial population. 
+with a larger initial population.
 
 .. literalinclude:: calcs/shoulder/h2o_plat_bigstartpop.lua
 	:language: lua
@@ -189,8 +182,6 @@ large initial population:
     plt.xlabel('# particles')
     plt.ylabel('# particles / # particles on reference')
 
-.. review - JSS: what do we mean by stable?
-
 We see that the calculation with a larger initial population has a shoulder at
 a larger number of particles, effectively overshooting the shoulder.
 At yet larger numbers of particles than this, we expect the calculation to be
@@ -198,7 +189,7 @@ stable once population control is enabled (i.e. the shift is allowed to vary).
 
 The overshooting can be explained by considering that the only significant difference
 between the two curves above is that they start with a different population at
-the reference. Before they reach a shoulder, each calcultion has a very fast
+the reference. Before they reach a shoulder, each calculation has a very fast
 growth in total population without changing the reference population.
 This results in an initial linear growth on the shoulder plots, which lasts until
 the reference populations begin to grow.
@@ -210,7 +201,7 @@ that which begins with a smaller population.
 Once a calculation has passed its shoulder, the location on the shoulder plot
 can generally be used to describe its 'state'.  Two calculations with different
 initial populations, but otherwise identical, will end up on the same curve once
-equilibrated, and will follow the curve if total particle numbers are allowed to 
+equilibrated, and will follow the curve if total particle numbers are allowed to
 grow.
 Modifying the algorithm (e.g. with multispawn_threshold) or changing the timestep
 will cause the equilibrium curve to shift position, and therefore affect the position
