@@ -148,9 +148,9 @@ a close look at the convergence of the projected energy estimator:
         opt_blocks = [calc.opt_block for calc in calcs]
         estimates = pd.concat([opt.stack() for opt in opt_blocks], keys=range(len(opt_blocks)), axis=1).T
         estimates = estimates[estimates['# H psips']['mean'] > 10**4]
-        plt.errorbar(estimates[('# H psips', 'mean')],estimates[('Proj. Energy', 'mean')],
-                     xerr=estimates[('# H psips', 'standard error')],
-                     yerr=estimates[('Proj. Energy', 'standard error')], label=title)
+        plt.errorbar(estimates[('# H psips', 'mean')].values, estimates[('Proj. Energy', 'mean')].values,
+                     xerr=estimates[('# H psips', 'standard error')].values,
+                     yerr=estimates[('Proj. Energy', 'standard error')].values, label=title)
 
     fciqmc_calc = pyhande.lazy.std_analysis(['calcs/fciqmc/hubbard_fciqmc.out'], 30000)[0]
     fciqmc_energy = fciqmc_calc.opt_block['mean']['Proj. Energy']
