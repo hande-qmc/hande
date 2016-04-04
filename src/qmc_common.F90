@@ -763,6 +763,9 @@ contains
         integer(int_p), intent(out) :: ndeath
         integer(int_p), intent(out), optional :: ndeath_im
 
+        ! [review] - RSTF: This *isn't* what you mean - initialising a local variable implicitly
+        ! [review] - RSTF: gives it the save attribute, so it's only initialised the first time
+        ! [review] - RSTF: the function is called.
         logical :: complx_loc = .false.
 
         if (present(complx)) complx_loc = complx

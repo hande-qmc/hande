@@ -59,6 +59,7 @@ contains
         integer, intent(in) :: determ_flag
         integer, intent(out) :: parent_flag
         integer :: i
+        ! [review] - RSTF: should be real(p)
         real :: magnitude
 
         parent_flag = 0_int_p

@@ -453,6 +453,7 @@ contains
         else if (((ntot_particles(1) + ntot_particles(2)) > qs%target_particles) .and. .not.qs%vary_shift(1)) then
             qs%vary_shift(1) = .true.
             qs%vary_shift(2) = .true.
+            ! [review] - RSTF: What about vary_shift_from = "proje" option?
             qs%shift(1) = qmc_in%vary_shift_from
             qs%shift(2) = qmc_in%vary_shift_from
         end if
@@ -795,7 +796,7 @@ contains
                              proj_energy_sum_comp, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
-        ! energy. Tihs function is specifically for systems with complex
+        ! energy. This function is specifically for systems with complex
         ! hamiltonian elements and coefficients.
         ! The correlation energy given by the projected energy is:
         !   \sum_{i \neq 0} <D_i|H|D_0> N_i/N_0
