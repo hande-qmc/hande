@@ -453,9 +453,13 @@ contains
         else if (((ntot_particles(1) + ntot_particles(2)) > qs%target_particles) .and. .not.qs%vary_shift(1)) then
             qs%vary_shift(1) = .true.
             qs%vary_shift(2) = .true.
-            ! [review] - RSTF: What about vary_shift_from = "proje" option?
             qs%shift(1) = qmc_in%vary_shift_from
             qs%shift(2) = qmc_in%vary_shift_from
+            if (qmc_in%vary_shift_from_proje) then
+                associate(est=>qs%estimators)
+                    qs%shift = real(est%proj_energy_comp/est%D0_population_comp, p)
+                end associate
+            end if
         end if
 
         ! average energy quantities over report loop.
