@@ -217,4 +217,4 @@ will cause the equilibrium curve to shift position, and therefore affect the pos
 of the shoulder.
 
 .. [#] The graphs were plotted with matplotlib, http://matplotlib.org/. Parts of the matplotlib source code
-	was taken from its tutorials.  
+	were taken from its tutorials.  
