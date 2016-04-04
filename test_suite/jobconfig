@@ -48,17 +48,20 @@ max_nprocs = 4
 # Form job categories.
 [categories]
 
-# By default, run serial MC tests (with POP_SIZE=32) + deterministic tests.
-_default_ = fci lanczos mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
+# Serial MC tests (with POP_SIZE=32) + deterministic tests.
+serial = fci lanczos mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_32/np1
 
-mpi = _default_ mc_hilbert_space/ mc_canonical_estimates *mc *mc_real_32
+mpi = serial mc_hilbert_space mc_canonical_estimates *mc *mc_real_32
 
-pop64 = fci lanczos mc_hilbert_space/np1 mc_canonical_estimates/np1 simple_fciqmc *mc/np1 *mc_real_64/np1
+pop64 = serial *mc_real_64/np1
 
-pop64_mpi = pop64 mc_hilbert_space/ mc_canonical_estimates *mc/ *mc_real_64
+# This is, in fact, all the tests
+pop64_mpi = mpi *mc_real_64
+
+_default_ = quick
 
 # A curated list of short tests (at least each directory contains one test that takes
-# under 10s to run.  The goal is to provide test categories for POP_SIZE=32 and
+# under 10s to run).  The goal is to provide test categories for POP_SIZE=32 and
 # POP_SIZE=64 configurations which take under 5 minutes to run on 4 cores of a decent
 # workstation.
 quick =   vquick
@@ -145,6 +148,7 @@ vquick64 = vquick
            dmqmc_real_64/np4/n2_sto3g_short
            fciqmc_real_64/np1/heisenberg_1d_neel_ref_fciqmc_real_64
 
+# Tests that pass to a reduced tolerance of 1.e-5 when compiled with -DSINGLE_PRECISION.
 single_precision = ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CAS8_12-CCSDT
                    ccmc/np2/H2O-cc-pVDZ_tau_search
                    dmqmc/np1/heisenberg_3d
