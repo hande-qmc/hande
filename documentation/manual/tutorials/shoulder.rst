@@ -43,18 +43,6 @@ stable [#]_.
 The plateau is clearly visible at around 20000 particles.  This is one technique but the
 plateau is frequently not so easy to observe by visual inspection, especially for CCMC.
 
-.. [review] - JSS:
-
-    Alex has some thoughts about terminology (determinant vs excitor, reference
-    determinant/excitor/reference) etc.  It would be good to be consistent.
-
-    Isn't the key observation that prior to the plateau the total population grows faster
-    than the reference, after the plateau the populations grow at the same rate (because
-    we have a converged wavefunction) and during the population on the reference increases
-    whilst the total remains approximately constant?  Hence the plateau corresponds to
-    a peak in the N_tot/N_0 vs N_tot.  This isn't clear from your text, which implies that
-    the total population grows faster than the reference after the plateau.
-
 In the beginning, only the reference is occupied. Its particles then spawn
 to occupy parts of the remaining space, making the total population 
 grow at a greater pace than the population on the reference does. At the plateau
@@ -203,21 +191,29 @@ large initial population:
 
 .. review - JSS: what do we mean by stable?
 
-We see that the calculation with a larger initial population overshoots the
-shoulder. However, it still forms a shoulder and is stable. By stable we refer
-to the fact that the total population and also the ratio of total to reference
-population stays roughly constant shortly after the target total population as 
-specified by the user has been reached. 
+We see that the calculation with a larger initial population has a shoulder at
+a larger number of particles, effectively overshooting the shoulder.
+At yet larger numbers of particles than this, we expect the calculation to be
+stable once population control is enabled (i.e. the shift is allowed to vary).
 
 The overshooting can be explained by considering that the only significant difference
 between the two curves above is that they start with a different population at
-the reference. Before they reach a shoulder, their population growth follows a
-very similar exponential growth (gradients on the log plot are very similar).
-The simulation with the greater initial behaviour has its spawning probabilies etc
-scaled up by about the ratio of the inital populations of the two simulations as
-compared to the other simulation. Given that both simulations describe the same
-system, the two graphs join when the ground wavefunction is represented by the
-distributions of particles (i.e. after the shoulder) as then the ratio of total
-to reference population should be the same for a given total population.   
+the reference. Before they reach a shoulder, each calcultion has a very fast
+growth in total population without changing the reference population.
+This results in an initial linear growth on the shoulder plots, which lasts until
+the reference populations begin to grow.
+
+The calculation with the greater initial population will require a greater total
+population to reach this point, and it occurs when this calculation's curve hits
+that which begins with a smaller population.
+
+Once a calculation has passed its shoulder, the location on the shoulder plot
+can generally be used to describe its 'state'.  Two calculations with different
+initial populations, but otherwise identical, will end up on the same curve once
+equilibrated, and will follow the curve if total particle numbers are allowed to 
+grow.
+Modifying the algorithm (e.g. with multispawn_threshold) or changing the timestep
+will cause the equilibrium curve to shift position, and therefore affect the position
+of the shoulder.
 
 .. [#] The graphs were plotted with matplotlib, http://matplotlib.org/ 
