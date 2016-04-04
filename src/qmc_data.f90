@@ -480,6 +480,10 @@ type estimators_t
     ! If performing calculations with real and imaginary walkers must be able to
     ! accumulate complex values. Have to be converted to real values for mpi, but
     ! makes manipulation much easier later on.
+! [review] - AJWT: I think it would be helpful to be explicit here WHEN these are
+! [review] - AJWT: valid, and when they are not (i.e. get moved somewhere else)
+! [review] - AJWT: to avoid the situation where somebody uses them at an
+! [review] - AJWT: inappropriate time (or udpates one AFTER they're converted)
     complex(p) :: proj_energy_comp
     complex(p) :: D0_population_comp
 

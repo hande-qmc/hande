@@ -60,8 +60,12 @@ contains
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
+! [review] - AJWT: I don't think it's good practice to call this nspawn_dummy
+! [review] - AJWT: here and call it nspawn_im elsewhere.  Be explicit that these
+! [review] - AJWT: spawners only work with non-complex.
         !    nspawn_dummy: unused argument for compatability with spawner_ptr
-        !        interface for both real and complex systems.
+        !        interface for both real and complex systems. Should be set to 0
+        !        if not used.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -131,7 +135,8 @@ contains
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
         !    nspawn_dummy: unused argument for compatability with spawner_ptr
-        !        interface for both real and complex systems.
+        !        interface for both real and complex systems. Should be set to 0
+        !        if not used.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -214,7 +219,8 @@ contains
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
         !    nspawn_dummy: unused argument for compatability with spawner_ptr
-        !        interface for both real and complex systems.
+        !        interface for both real and complex systems. Should be set to 0
+        !        if not used.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -303,7 +309,8 @@ contains
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
         !    nspawn_dummy: unused argument for compatability with spawner_ptr
-        !        interface for both real and complex systems.
+        !        interface for both real and complex systems. Should be set to 0
+        !        if not used.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
@@ -385,7 +392,8 @@ contains
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
         !    nspawn_dummy: unused argument for compatability with spawner_ptr
-        !        interface for both real and complex systems.
+        !        interface for both real and complex systems. Should be set to 0
+        !        if not used.
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are spawned.
 
