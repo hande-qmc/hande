@@ -11,7 +11,9 @@ testcode can be run from the test_suite subdirectory:
 
     testcode.py
 
-Note that the default set of tests are serial only.  The entire test suite is
+As the full test suite is extensive, it can take a long time to run, so the ``quick``
+and even shorter ``vquick`` categories are provided that aim to test most functionality
+but run in a few minutes.  By default the only the ``quick`` tests are run.  The entire test suite is
 run every night using buildbot (http://www.cmth.ph.ic.ac.uk/buildbot/hande/).
 
 Selected data from the HANDE output is compared to known 'good' results
