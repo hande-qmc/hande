@@ -32,9 +32,10 @@ contains
 !--- Spawning wrappers ---
 
     subroutine spawn_standard(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                              gen_excit_ptr, weights, nspawn, nspawn_dummy, connection)
+                              gen_excit_ptr, weights, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
+        ! Only for use with non-complex systems.
 
         ! This is just a thin wrapper around a system-specific excitation
         ! generator and a utility function.
@@ -60,10 +61,7 @@ contains
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
-! [review] - AJWT: I don't think it's good practice to call this nspawn_dummy
-! [review] - AJWT: here and call it nspawn_im elsewhere.  Be explicit that these
-! [review] - AJWT: spawners only work with non-complex.
-        !    nspawn_dummy: unused argument for compatability with spawner_ptr
+        !    nspawn_im: unused argument for compatability with spawner_ptr
         !        interface for both real and complex systems. Should be set to 0
         !        if not used.
         !    connection: excitation connection between the current determinant
@@ -85,13 +83,13 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn, nspawn_dummy
+        integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
         logical :: allowed
 
-        nspawn_dummy = 0_int_p
+        nspawn_im = 0_int_p
 
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
@@ -102,12 +100,14 @@ contains
     end subroutine spawn_standard
 
     subroutine spawn_importance_sampling(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                         gen_excit_ptr, weights, nspawn, nspawn_dummy, connection)
+                                         gen_excit_ptr, weights, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
         ! This subroutine applies a transformation to the Hamiltonian to achieve
         ! importance sampling of the stochastic process.
+
+        ! Only for use with non-complex systems.
 
         ! This is just a thin wrapper around a system-specific excitation
         ! generator, trial-function specific transformation routine and
@@ -134,7 +134,7 @@ contains
         ! Out:
         !    nspawn: number of particles spawned, in the encoded representation.
         !        0 indicates the spawning attempt was unsuccessful.
-        !    nspawn_dummy: unused argument for compatability with spawner_ptr
+        !    nspawn_im: unused argument for compatability with spawner_ptr
         !        interface for both real and complex systems. Should be set to 0
         !        if not used.
         !    connection: excitation connection between the current determinant
@@ -156,13 +156,13 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn, nspawn_dummy
+        integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, hmatel
         logical :: allowed
 
-        nspawn_dummy = 0_int_p
+        nspawn_im = 0_int_p
 
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
@@ -176,7 +176,7 @@ contains
     end subroutine spawn_importance_sampling
 
     subroutine spawn_lattice_split_gen(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                       gen_excit_ptr, weights, nspawn, nspawn_dummy, connection)
+                                       gen_excit_ptr, weights, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -193,6 +193,8 @@ contains
         ! spawning events are successful, it is faster to not do any unnecessary
         ! work and test whether the spawning event is successful before
         ! finalising the excitation.
+
+        ! ONly for use with non-complex systems.
 
         ! In/Out:
         !    rng: random number generator.
@@ -241,13 +243,13 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn, nspawn_dummy
+        integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, abs_hmatel, hmatel
         logical :: allowed
 
-        nspawn_dummy = 0_int_p
+        nspawn_im = 0_int_p
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
@@ -269,7 +271,7 @@ contains
     end subroutine spawn_lattice_split_gen
 
     subroutine spawn_lattice_split_gen_importance_sampling(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, &
-                                                           gen_excit_ptr, weights, nspawn, nspawn_dummy, connection)
+                                                           gen_excit_ptr, weights, nspawn, nspawn_im, connection)
 
         ! Attempt to spawn a new particle on a connected determinant.
 
@@ -283,6 +285,8 @@ contains
         ! spawning events are successful, it is faster to not do any unnecessary
         ! work and test whether the spawning event is successful before
         ! finalising the excitation.
+
+        ! Only for use with non-complex systems.
 
         ! In/Out:
         !    rng: random number generator.
@@ -331,13 +335,13 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn, nspawn_dummy
+        integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
 
         real(p) :: pgen, tilde_hmatel, hmatel
         logical :: allowed
 
-        nspawn_dummy = 0_int_p
+        nspawn_im = 0_int_p
 
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
@@ -366,11 +370,13 @@ contains
     end subroutine spawn_lattice_split_gen_importance_sampling
 
     subroutine spawn_null(rng, sys, qmc_state, spawn_cutoff, real_factor, cdet, parent_sign, gen_excit_ptr, weights, &
-                          nspawn, nspawn_dummy, connection)
+                          nspawn, nspawn_im, connection)
 
         ! This is a null spawning routine for use with operators which are
         ! diagonal in the basis and hence only have a cloning step in the
         ! Hellmann-Feynman sampling.  It does *nothing*.
+
+        ! Can be used with complex or non-complex systems.
 
         ! In/Out:
         !    rng: random number generator.
@@ -413,16 +419,15 @@ contains
         integer(int_p), intent(in) :: parent_sign
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
-        integer(int_p), intent(out) :: nspawn, nspawn_dummy
+        integer(int_p), intent(out) :: nspawn, nspawn_im
         type(excit_t), intent(out) :: connection
-
-        nspawn_dummy = 0_int_p
 
         ! Just some null operations to avoid -Wall -Werror causing errors.
         connection%nexcit = huge(0)
 
         ! Return nspawn = 0 as we don't want to do any spawning.
         nspawn = 0_int_p
+        nspawn_im = 0_int_p
 
     end subroutine spawn_null
 
@@ -433,6 +438,8 @@ contains
 
         ! This is just a thin wrapper around a system-specific excitation
         ! generator and a utility function.
+
+        ! Only for use with complex systems.
 
         ! In/Out:
         !    rng: random number generator.
