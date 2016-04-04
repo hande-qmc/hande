@@ -216,4 +216,5 @@ Modifying the algorithm (e.g. with multispawn_threshold) or changing the timeste
 will cause the equilibrium curve to shift position, and therefore affect the position
 of the shoulder.
 
-.. [#] The graphs were plotted with matplotlib, http://matplotlib.org/ 
+.. [#] The graphs were plotted with matplotlib, http://matplotlib.org/. Parts of the matplotlib source code
+	was taken from its tutorials.  
