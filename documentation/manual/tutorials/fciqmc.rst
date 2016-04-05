@@ -271,7 +271,7 @@ the wall time of the calculation:
     try:
         ax2._get_lines.color_cycle.next()
     except AttributeError:
-        ax2._get_lines.prop_cycler.next()
+        next(ax2._get_lines.prop_cycler)
     lines2 = ax2.plot(results.index, results['wall_time'], 'x-', label='wall time')
     ax2.set_yticks(np.linspace(ax2.get_yticks()[0],ax2.get_yticks()[-1],len(ax1.get_yticks())))
     ax2.set_ylabel('wall time [s]')
