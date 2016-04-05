@@ -21,7 +21,7 @@ the HANDE executable and similarly for the ``reblock_hande.py``,
     require the number of processors to be passed as an argument.  The tutorials show the
     exact command we used, which varies depending upon the machine used to run the
     tutorials.  We regularly use the OpenMPI implementation (``mpiexec -np
-    <# processors>`` or ``mpirun -np <# processors>), Intel MPI (``mpiexec``) and
+    <# processors>`` or ``mpirun -np <# processors>``), Intel MPI (``mpiexec``) and
     Cray-MPICH (``aprun``).
 
 
