@@ -1,0 +1,178 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr 04 2016 at 22:24:49
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ VCS BASE repository version:
+     da9c8759097cd4f728cbd232c8b52ee5b95c04e0
+ Hostname:
+     hypatia
+ Working directory: 
+     /home/rstf2/code/hande_master/test_suite/mc_hilbert_space/np1/ueg_n7_rs1_e3_hilbert_space
+ Started running on 04/04/2016 at 23:11:38
+ Calculation UUID: 76537bc0-b325-4237-a377-f45af2ebde28.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = ueg {
+    nel = 7,
+    ms = 7,
+    sym = 1,
+    dim = 3,
+    cutoff = 1,
+    rs = 1,
+}
+
+hilbert_space {
+    sys = sys,
+    hilbert = {
+        nattempts = 500000,
+        ex_level = 7,
+        rng_seed = 12,
+    },
+}
+-- Exercise the truncated generator, despite using setting the truncation level to the full space. 
+-- Exact answer: 714.
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  0,  0,  0)      1        0.00000000E+00
+     2   (  0,  0,  0)     -1        0.00000000E+00
+     3   (  0,  0, -1)      1        2.07589464E+00
+     4   (  0,  0, -1)     -1        2.07589464E+00
+     5   (  0, -1,  0)      1        2.07589464E+00
+     6   (  0, -1,  0)     -1        2.07589464E+00
+     7   ( -1,  0,  0)      1        2.07589464E+00
+     8   ( -1,  0,  0)     -1        2.07589464E+00
+     9   (  1,  0,  0)      1        2.07589464E+00
+    10   (  1,  0,  0)     -1        2.07589464E+00
+    11   (  0,  1,  0)      1        2.07589464E+00
+    12   (  0,  1,  0)     -1        2.07589464E+00
+    13   (  0,  0,  1)      1        2.07589464E+00
+    14   (  0,  0,  1)     -1        2.07589464E+00
+    15   (  0, -1, -1)      1        4.15178929E+00
+    16   (  0, -1, -1)     -1        4.15178929E+00
+    17   ( -1,  0, -1)      1        4.15178929E+00
+    18   ( -1,  0, -1)     -1        4.15178929E+00
+    19   (  1,  0, -1)      1        4.15178929E+00
+    20   (  1,  0, -1)     -1        4.15178929E+00
+    21   (  0,  1, -1)      1        4.15178929E+00
+    22   (  0,  1, -1)     -1        4.15178929E+00
+    23   ( -1, -1,  0)      1        4.15178929E+00
+    24   ( -1, -1,  0)     -1        4.15178929E+00
+    25   (  1, -1,  0)      1        4.15178929E+00
+    26   (  1, -1,  0)     -1        4.15178929E+00
+    27   ( -1,  1,  0)      1        4.15178929E+00
+    28   ( -1,  1,  0)     -1        4.15178929E+00
+    29   (  1,  1,  0)      1        4.15178929E+00
+    30   (  1,  1,  0)     -1        4.15178929E+00
+    31   (  0, -1,  1)      1        4.15178929E+00
+    32   (  0, -1,  1)     -1        4.15178929E+00
+    33   ( -1,  0,  1)      1        4.15178929E+00
+    34   ( -1,  0,  1)     -1        4.15178929E+00
+    35   (  1,  0,  1)      1        4.15178929E+00
+    36   (  1,  0,  1)     -1        4.15178929E+00
+    37   (  0,  1,  1)      1        4.15178929E+00
+    38   (  0,  1,  1)     -1        4.15178929E+00
+
+ Number of electrons: 7
+ Number of basis functions: 38
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 2
+
+ Hilbert space
+ -------------
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 38,   
+         "nel": 7,   
+         "nvirt": 31,   
+         "Ms": 7,   
+         "nalpha": 7,   
+         "nbeta": 0,   
+         "nvirt_alpha": 12,   
+         "nvirt_beta": 19,   
+         "nsym": 19,   
+         "sym0": 1,   
+         "sym_max": 19,   
+         "nsym_tot": 19,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 19,   
+         "symmetry": 1,   
+         "max_number_excitations": 7,   
+         "ueg": {
+             "r_s": 1.00000000,   
+             "ecutoff": 1.00000000,   
+             "k_fermi": 2.41798793,   
+             "E_fermi": 2.92333282,   
+             "ktwist": [0.00000000,0.00000000,0.00000000],
+             "L": [3.08362968,3.08362968,3.08362968]
+         }
+     },
+     "ex_level": 7,   
+     "nattempts": 500000,   
+     "ncycles": 20,   
+     "occ_list": [],
+     "rng_seed": 12    
+ }
+ -- End JSON block --
+
+ Symmetry of reference determinant: (  0,  0,  0)
+
+ space size: estimate of the Hilbert space size from a single iteration.
+ mean: running estimate of the mean of the Hilbert space size.
+ std. err.: running estimate of the standard error in the estimate of the mean.
+
+ # iterations  space size    mean          std. err.
+            1  7.105497E+02  7.105497E+02           NaN
+            2  7.125652E+02  7.115575E+02  1.007740E+00
+            3  7.100459E+02  7.110536E+02  7.696741E-01
+            4  7.148830E+02  7.120110E+02  1.101237E+00
+            5  7.251620E+02  7.146412E+02  2.765067E+00
+            6  7.011778E+02  7.123973E+02  3.183105E+00
+            7  7.158908E+02  7.128963E+02  2.736115E+00
+            8  7.206271E+02  7.138627E+02  2.559019E+00
+            9  7.123637E+02  7.136961E+02  2.262980E+00
+           10  7.329216E+02  7.156187E+02  2.791601E+00
+           11  7.195186E+02  7.159732E+02  2.549867E+00
+           12  7.283867E+02  7.170077E+02  2.547213E+00
+           13  7.146815E+02  7.168287E+02  2.349918E+00
+           14  7.043017E+02  7.159339E+02  2.352420E+00
+           15  7.245573E+02  7.165088E+02  2.264184E+00
+           16  7.082319E+02  7.159915E+02  2.180211E+00
+           17  7.054103E+02  7.153691E+02  2.140449E+00
+           18  7.071234E+02  7.149110E+02  2.069375E+00
+           19  7.201233E+02  7.151853E+02  1.976563E+00
+           20  7.266736E+02  7.157597E+02  1.961140E+00
+
+ Monte-Carlo estimate of size of space is: 7.157597E+02 +/- 1.961140E+00
+
+ ================================================================
+ Finished running on 04/04/2016 at 23:11:41
+ Wall time (seconds):                           2.84
+ CPU time (per processor, seconds):             2.84
+ ================================================================
+

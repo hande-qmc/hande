@@ -1,0 +1,190 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr 04 2016 at 22:24:49
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ VCS BASE repository version:
+     da9c8759097cd4f728cbd232c8b52ee5b95c04e0
+ Hostname:
+     hypatia
+ Working directory: 
+     /home/rstf2/code/hande_master/test_suite/lanczos/heisenberg_2d_tri_lanczos
+ Started running on 04/04/2016 at 23:10:27
+ Calculation UUID: 24597e8c-6b0b-45ed-ac55-a8799a195a4d.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = heisenberg {
+    lattice = { {4, 0}, {0, 4} },
+    ms = 2,
+    J = -4,
+    triangular = true,
+}
+
+fci {
+    sys = sys,
+    lanczos = {
+        sparse = false,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Site positions given in terms of the primitive lattice vectors.
+
+ index   site
+     1   ( -1, -1)
+     2   (  0, -1)
+     3   (  1, -1)
+     4   (  2, -1)
+     5   ( -1,  0)
+     6   (  0,  0)
+     7   (  1,  0)
+     8   (  2,  0)
+     9   ( -1,  1)
+    10   (  0,  1)
+    11   (  1,  1)
+    12   (  2,  1)
+    13   ( -1,  2)
+    14   (  0,  2)
+    15   (  1,  2)
+    16   (  2,  2)
+
+ Number of alpha spins: 9
+ Number of basis functions: 16
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 16,   
+         "nel": 9,   
+         "nvirt": 7,   
+         "Ms": 2,   
+         "nalpha": 0,   
+         "nbeta": 0,   
+         "nvirt_alpha": 0,   
+         "nvirt_beta": 0,   
+         "nsym": 1,   
+         "sym0": 1,   
+         "sym_max": 1,   
+         "nsym_tot": 1,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 1,   
+         "symmetry": 1,   
+         "max_number_excitations": 7,   
+         "lattice": {
+             "ndim": 2,   
+             "nsites": 16,   
+             "lattice": [[ 4, 0],[ 0, 4]],
+             "triangular_lattice": true,   
+             "bipartite_lattice": true,   
+             "connected_sites": {
+                 "1": [ 2, 4, 5, 6, 13, 16],
+                 "2": [ 1, 3, 6, 7, 13, 14],
+                 "3": [ 2, 4, 7, 8, 14, 15],
+                 "4": [ 1, 3, 5, 8, 15, 16],
+                 "5": [ 1, 4, 6, 8, 9, 10],
+                 "6": [ 1, 2, 5, 7, 10, 11],
+                 "7": [ 2, 3, 6, 8, 11, 12],
+                 "8": [ 3, 4, 5, 7, 9, 12],
+                 "9": [ 5, 8, 10, 12, 13, 14],
+                 "10": [ 5, 6, 9, 11, 14, 15],
+                 "11": [ 6, 7, 10, 12, 15, 16],
+                 "12": [ 7, 8, 9, 11, 13, 16],
+                 "13": [ 1, 2, 9, 12, 14, 16],
+                 "14": [ 2, 3, 9, 10, 13, 15],
+                 "15": [ 3, 4, 10, 11, 14, 16],
+                 "16": [ 1, 4, 11, 12, 13, 15]
+             },
+             "self_image": false,   
+             "finite_cluster": false    
+         },
+         "heisenberg": {
+             "J": -4.00000000,   
+             "magnetic_field": 0.00000000,   
+             "staggered_magnetic_field": 0.00000000,   
+             "nbonds": 48    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "nlanczos_eigv": 5,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": false    
+     },
+     "reference": {
+         "ex_level": 9    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1            11440
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2016/04/04 23:10:46.663 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          5 (computed),          5 (wanted)
+Times the operator is applied:        147 (MAX:             5000 ).
+Problem size:                       11440 (PE:   0),       11440 (Global)
+Convergence tolerance:           1.49E-08 (rel),       7.153E-07 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations       148
+Number of (re)start loops:              5
+Number of eigenpairs locked:            0
+OP(MATVEC):             9.8543E+00 sec, -1.7367E+07 FLOP/S (-1.7114E+08 FLOP)
+Re-Orthogonalization:   3.4170E-01 sec,  5.1328E+08 FLOP/S ( 1.7539E+08 FLOP)
+Restarting:             2.0400E-02 sec,  2.6020E+09 FLOP/S ( 5.3082E+07 FLOP)
+TRLAN on this PE:       1.0241E+01 sec,  0.0000E+00 FLOP/S ( 0.0000E+00 FLOP)
+
+ Lanczos diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1   -30.690921406679
+      2   -30.355948966893
+      3   -30.350802035334
+      4   -30.070724321002
+      5   -29.841428810565
+
+ ================================================================
+ Finished running on 04/04/2016 at 23:10:46
+ Wall time (seconds):                          18.83
+ CPU time (per processor, seconds):            63.96
+ ================================================================
+

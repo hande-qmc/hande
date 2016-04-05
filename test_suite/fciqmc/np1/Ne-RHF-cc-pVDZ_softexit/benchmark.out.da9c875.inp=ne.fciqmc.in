@@ -1,0 +1,267 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr 04 2016 at 22:24:49
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ VCS BASE repository version:
+     da9c8759097cd4f728cbd232c8b52ee5b95c04e0
+ Hostname:
+     hypatia
+ Working directory: 
+     /home/rstf2/code/hande_master/test_suite/fciqmc/np1/Ne-RHF-cc-pVDZ_softexit
+ Started running on 04/04/2016 at 22:49:52
+ Calculation UUID: c1bb2a67-15da-4a95-b371-66520c9f3592.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+f = io.open("HANDE.COMM", "w")
+f:write("softexit = true")
+f:close()
+
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
+
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.01,
+        rng_seed = 5691,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 450,
+        target_population = 20000,
+        state_size = -100,
+        spawned_state_size = -50,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+
+ index  spatial symmetry sym_index lz     ms       <i|h|i>
+     1      1       0       1       0       1       -3.27656354E+01
+     2      1       0       2       0      -1       -3.27656354E+01
+     3      2       0       3       0       1       -1.91879823E+00
+     4      2       0       4       0      -1       -1.91879823E+00
+     5      3       5       1       0       1       -8.32097252E-01
+     6      3       5       2       0      -1       -8.32097252E-01
+     7      4       6       1       0       1       -8.32097252E-01
+     8      4       6       2       0      -1       -8.32097252E-01
+     9      5       7       1       0       1       -8.32097252E-01
+    10      5       7       2       0      -1       -8.32097252E-01
+    11      6       5       3       0       1        1.69455773E+00
+    12      6       5       4       0      -1        1.69455773E+00
+    13      7       6       3       0       1        1.69455773E+00
+    14      7       6       4       0      -1        1.69455773E+00
+    15      8       7       3       0       1        1.69455773E+00
+    16      8       7       4       0      -1        1.69455773E+00
+    17      9       0       5       0       1        2.15942495E+00
+    18      9       0       6       0      -1        2.15942495E+00
+    19     10       0       7       0       1        5.19671140E+00
+    20     10       0       8       0      -1        5.19671140E+00
+    21     11       0       9       0       1        5.19671140E+00
+    22     11       0      10       0      -1        5.19671140E+00
+    23     12       1       1       0       1        5.19671140E+00
+    24     12       1       2       0      -1        5.19671140E+00
+    25     13       2       1       0       1        5.19671140E+00
+    26     13       2       2       0      -1        5.19671140E+00
+    27     14       3       1       0       1        5.19671140E+00
+    28     14       3       2       0      -1        5.19671140E+00
+
+ E_core =    0.000000000000
+ Number of electrons: 10
+ Number of basis functions: 28
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ Symmetry information
+ --------------------
+
+ Number of point group symmetries: 8
+ Not using Lz symmetry.
+ Totally symmetric symmetry: 0
+ The matrix below gives the direct products of the irreducible representations.
+
+  0  1  2  3  4  5  6  7
+  1  0  3  2  5  4  7  6
+  2  3  0  1  6  7  4  5
+  3  2  1  0  7  6  5  4
+  4  5  6  7  0  1  2  3
+  5  4  7  6  1  0  3  2
+  6  7  4  5  2  3  0  1
+  7  6  5  4  3  2  1  0
+
+ The table below gives the number of basis functions spanning each irreducible representation.
+
+ irrep  Lz   sym  nbasis  nbasis_up  nbasis_down
+   0     0    0     10       5          5
+   1     0    1      2       1          1
+   2     0    2      2       1          1
+   3     0    3      2       1          1
+   4     0    4      0       0          0
+   5     0    5      4       2          2
+   6     0    6      4       2          2
+   7     0    7      4       2          2
+
+ FCIQMC
+ ------
+
+ Memory allocated per core for main walker list (MB):  100.00
+ Number of elements per core in main walker list: 4166666
+ Memory allocated per core for spawned walker lists (MB):   50.00
+ Number of elements per core in spawned walker list: 1562500
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 28,   
+         "nel": 10,   
+         "nvirt": 18,   
+         "Ms": 0,   
+         "nalpha": 5,   
+         "nbeta": 5,   
+         "nvirt_alpha": 9,   
+         "nvirt_beta": 9,   
+         "nsym": 7,   
+         "sym0": 0,   
+         "sym_max": 7,   
+         "nsym_tot": 8,   
+         "sym0_tot": 0,   
+         "sym_max_tot": 7,   
+         "symmetry": 0,   
+         "max_number_excitations": 10,   
+         "read_in": {
+             "int_file":  "INTDUMP",   
+             "uhf": false,   
+             "Ecore": 0.00000000,   
+             "CAS": [ -1, -1],
+             "useLz": false,   
+             "complex": false    
+         }
+     },
+     "qmc": {
+         "rng_seed": 5691,   
+         "real_amplitudes": false,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen": 0,   
+         "pattempt_single": 0.04511278,   
+         "pattempt_double": 0.95488722,   
+         "tau": 0.01000000,   
+         "tau_search": false,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "walker_length": -100,   
+         "spawned_walker_length": -50,   
+         "D0_population": 10.00000000,   
+         "target_particles": 20000.00000000,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 10,   
+         "nreport": 450,   
+         "use_mpi_barriers": false    
+     },
+     "fciqmc": {
+         "select_ref_det_every_nreports": 2147483647,   
+         "init_spin_inv_D0": false,   
+         "ref_det_factor": 1.50000000,   
+         "non_blocking_comm": false,   
+         "doing_load_balancing": false,   
+         "trial_function": 0,   
+         "guiding_function": 0    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type": 0,   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode": 0,   
+         "read_id": 2147483647,   
+         "write_id": 2147483647    
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647    
+     },
+     "load balancing": {
+         "nslots": 1,   
+         "pop": 1000,   
+         "percent": 0.05000000,   
+         "max_attempts": 2,   
+         "write_info": false    
+     },
+     "reference": {
+         "det": [ 1, 3, 5, 7, 9, 2, 4, 6, 8, 10],
+         "det_ms": 0,   
+         "det_symmetry": 0,   
+         "H00": -128.48877555,   
+         "hilbert_space_det": [ 1, 3, 5, 7, 9, 2, 4, 6, 8, 10],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 0,   
+         "ex_level": 10    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ # spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ # iterations   Shift              \sum H_0j N_j      N_0                  # H psips           # states  # spawn_events  R_spawn   time
+ #          0   0.0000000000E+00   0.0000000000E+00   1.0000000000E+01     1.0000000000E+01           1               0   0.0000   0.000
+ # --------------------------------------------------------------
+ #  HANDE.COMM detected.
+ #
+ #  Contents of HANDE.COMM:
+ #
+ # softexit = true
+ #
+ # From now on we use the information provided in HANDE.COMM.
+ # --------------------------------------------------------------
+           10   0.0000000000E+00  -4.7692133357E-01   1.0000000000E+01     2.0000000000E+01          11               1   0.0669   0.000
+
+ ================================================================
+ Finished running on 04/04/2016 at 22:49:52
+ Wall time (seconds):                           0.02
+ CPU time (per processor, seconds):             0.02
+ ================================================================
+

@@ -1,0 +1,218 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr 04 2016 at 22:24:49
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ VCS BASE repository version:
+     da9c8759097cd4f728cbd232c8b52ee5b95c04e0
+ Hostname:
+     hypatia
+ Working directory: 
+     /home/rstf2/code/hande_master/test_suite/fci/heisenberg_1d_finite_cluster_fci
+ Started running on 04/04/2016 at 22:49:23
+ Calculation UUID: 4380f707-b355-48cc-b7a1-ffc5d140852b.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = heisenberg {
+    lattice = { {8} },
+    ms = 0,
+    J = -4,
+    finite = true,
+}
+
+fci {
+    sys = sys,
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Site positions given in terms of the primitive lattice vectors.
+
+ index   site
+     1   ( -3)
+     2   ( -2)
+     3   ( -1)
+     4   (  0)
+     5   (  1)
+     6   (  2)
+     7   (  3)
+     8   (  4)
+
+ Number of alpha spins: 4
+ Number of basis functions: 8
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 8,   
+         "nel": 4,   
+         "nvirt": 4,   
+         "Ms": 0,   
+         "nalpha": 0,   
+         "nbeta": 0,   
+         "nvirt_alpha": 0,   
+         "nvirt_beta": 0,   
+         "nsym": 1,   
+         "sym0": 1,   
+         "sym_max": 1,   
+         "nsym_tot": 1,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 1,   
+         "symmetry": 1,   
+         "max_number_excitations": 4,   
+         "lattice": {
+             "ndim": 1,   
+             "nsites": 8,   
+             "lattice": [[ 8]],
+             "triangular_lattice": false,   
+             "bipartite_lattice": true,   
+             "connected_sites": {
+                 "1": [ 2, 0],
+                 "2": [ 1, 3],
+                 "3": [ 2, 4],
+                 "4": [ 3, 5],
+                 "5": [ 4, 6],
+                 "6": [ 5, 7],
+                 "7": [ 6, 8],
+                 "8": [ 7, 0]
+             },
+             "self_image": false,   
+             "finite_cluster": true    
+         },
+         "heisenberg": {
+             "J": -4.00000000,   
+             "magnetic_field": 0.00000000,   
+             "staggered_magnetic_field": 0.00000000,   
+             "nbonds": 7    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "nlanczos_eigv": 5,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": false    
+     },
+     "reference": {
+         "ex_level": 4    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1               70
+
+ Performing exact diagonalisation...
+
+ LAPACK diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1   -13.499730394752
+      2   -11.928961951052
+      3   -10.014916277511
+      4    -9.335215457982
+      5    -8.432517425088
+      6    -8.227030407087
+      7    -7.668828436678
+      8    -7.395334472512
+      9    -7.326453999250
+     10    -6.698825465753
+     11    -6.580818521289
+     12    -5.862665440431
+     13    -5.697661043210
+     14    -5.580043498455
+     15    -4.913095926176
+     16    -4.902531924160
+     17    -4.483927568605
+     18    -4.152416475431
+     19    -3.986766488105
+     20    -3.931050629406
+     21    -3.209680056899
+     22    -2.916741432607
+     23    -2.909800594324
+     24    -2.793708785927
+     25    -2.487072277714
+     26    -2.485153950650
+     27    -2.466567410323
+     28    -1.943975853627
+     29    -1.804267580683
+     30    -1.788813411341
+     31    -1.566811256129
+     32    -1.516072431395
+     33    -1.267013840483
+     34    -1.203732978280
+     35    -0.868139180748
+     36    -0.695518130045
+     37    -0.481031006060
+     38    -0.314264612871
+     39    -0.191989734375
+     40    -0.062140409976
+     41     0.171572875254
+     42     0.510776879128
+     43     0.672219812498
+     44     1.016921474727
+     45     1.283294784375
+     46     1.391364537573
+     47     1.421263344859
+     48     1.469266270540
+     49     1.668828436678
+     50     2.141404342065
+     51     2.397985702756
+     52     2.587162870188
+     53     3.000000000000
+     54     3.108499999539
+     55     3.258036231415
+     56     3.415388916825
+     57     3.803679299438
+     58     3.905145368112
+     59     4.157304005344
+     60     4.530733729460
+     61     4.681871620055
+     62     4.745277236164
+     63     5.293714904820
+     64     5.530057564632
+     65     5.573363883991
+     66     5.828427124746
+     67     5.974795470740
+     68     6.357411921425
+     69     6.695518130045
+     70     7.000000000000
+
+ ================================================================
+ Finished running on 04/04/2016 at 22:49:23
+ Wall time (seconds):                           0.18
+ CPU time (per processor, seconds):             0.01
+ ================================================================
+
