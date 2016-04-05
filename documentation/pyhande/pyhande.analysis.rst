@@ -1,3 +1,5 @@
+.. _pyhande_analysis:
+
 pyhande.analysis
 ================
 

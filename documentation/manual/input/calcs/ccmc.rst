@@ -116,7 +116,7 @@ ccmc options
     Optional.  Default: false.
 
     If true, sample the linked coupled cluster equations instead of the unlinked coupled
-    cluster equations.  The original CCMC algorithm solves the equations
+    cluster equations [Franklin16]_.  The original CCMC algorithm solves the equations
 
     .. math::
 

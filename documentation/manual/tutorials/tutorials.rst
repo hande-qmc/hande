@@ -33,6 +33,12 @@ We recommend working through the FCIQMC tutorial before the iFCIQMC, CCMC or DMQ
 
     fciqmc
     ifciqmc
+    semi_stoch
     ccmc
     dmqmc
     canonical
+    shoulder
+
+All calculations were analysed using :ref:`pyhande` and all graphs were plotted using
+`matplotlib <http://matplotlib.org/>`_.  Parts of the plot generation code were
+adapted from the matplotlib tutorials.
