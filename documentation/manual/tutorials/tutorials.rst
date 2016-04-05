@@ -11,7 +11,19 @@ appropriate section of the manual.
 
 The tutorials assume that HANDE has been successfully compiled and the test suite has been
 sucessfully run.  Any reference to ``hande.x`` should be replaced with the full path to
-the HANDE executable and similarly for the ``reblock_hande.py`` script.
+the HANDE executable and similarly for the ``reblock_hande.py``,
+``finite_temperature_analysis.py`` and ``analyse_canonical.py`` scripts.
+
+.. note::
+
+    The exact command to launch HANDE with MPI depends upon the exact configuration of
+    MPI.  The command may be different (e.g. ``mpirun`` instead of ``mpiexec``) and might
+    require the number of processors to be passed as an argument.  The tutorials show the
+    exact command we used, which varies depending upon the machine used to run the
+    tutorials.  We regularly use the OpenMPI implementation (``mpiexec -np
+    <# processors>`` or ``mpirun -np <# processors>), Intel MPI (``mpiexec``) and
+    Cray-MPICH (``aprun``).
+
 
 The input and output files from the calculations performed in the tutorials can be
 found under the ``documentation/manual/tutorials/calcs/`` directory.  The example
