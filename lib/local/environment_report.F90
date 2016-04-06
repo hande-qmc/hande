@@ -30,7 +30,12 @@ implicit none
 #ifndef _VCS_VERSION
 #define _VCS_VERSION 'unknown'
 #endif
-character(*), parameter :: VCS_VERSION = _VCS_VERSION
+! git sha1 hash.  Created at compile-time in make.inc.
+! -dirty is appended if the source directories contain uncommitted changes.
+character(*), parameter :: HANDE_VCS_VERSION = _VCS_VERSION
+! HANDE version.  When tagging a commit, update this (directly on master is probably best).  In the immediate commit after the tag,
+! append -dev to it to 're-open' the code base for further development.
+character(*), parameter :: HANDE_VERSION = '0.99-dev'
 
 ! Global uuid
 character(36) :: GLOBAL_UUID
@@ -123,7 +128,8 @@ contains
         write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
         write (io_unit,'(a16,a)') 'Compiled using ', _CONFIG
 
-        write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',VCS_VERSION
+        write (io_unit,'(1X,"HANDE version: '//trim(HANDE_VERSION)//'")')
+        write (io_unit,'(1X,"git sha1 hash:",/,5X,a)') HANDE_VCS_VERSION
 
         stat = gethostname(str, str_len)
         if (stat == 0) then
