@@ -656,6 +656,7 @@ contains
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
+        use reference_determinant, only: reference_t_json
 
         type(json_out_t), intent(inout) :: js
         type(semi_stoch_in_t), intent(in) :: semi_stoch
@@ -687,7 +688,8 @@ contains
             call json_write_key(js, 'projection_mode', semi_stoch%projection_mode)
         end select
         call json_write_key(js, 'read_id', semi_stoch%read_id)
-        call json_write_key(js, 'write_id', semi_stoch%write_id, .true.)
+        call json_write_key(js, 'write_id', semi_stoch%write_id)
+        call reference_t_json(js, semi_stoch%ci_space, key='ci_space', terminal=.true.)
         call json_object_end(js, terminal)
 
     end subroutine semi_stoch_in_t_json

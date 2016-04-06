@@ -282,7 +282,7 @@ contains
 
 !--- reference_t utils ---
 
-    subroutine reference_t_json(js, ref, sys, terminal)
+    subroutine reference_t_json(js, ref, sys, key, terminal)
 
         ! Serialise a reference_t object in JSON format.
 
@@ -291,6 +291,7 @@ contains
         ! In:
         !   reference: reference_t object containing the information about reference state (including any defaults set).
         !   sys (optional): system to which reference belongs.  If present, output the spin and symmetry information of the reference.
+        !   key (optional): name for the reference object in the output.  Default: reference
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
@@ -302,9 +303,14 @@ contains
         type(json_out_t), intent(inout) :: js
         type(reference_t), intent(in) :: ref
         type(sys_t), intent(in), optional :: sys
+        character(*), intent(in), optional :: key
         logical, intent(in), optional :: terminal
 
-        call json_object_init(js, 'reference')
+        if (present(key)) then
+            call json_object_init(js, key)
+        else
+            call json_object_init(js, 'reference')
+        end if
         if (allocated(ref%occ_list0)) then
             call json_write_key(js, 'det', ref%occ_list0)
             if (present(sys)) then
