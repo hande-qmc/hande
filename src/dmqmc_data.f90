@@ -366,7 +366,14 @@ contains
 
         call json_object_init(js, 'ipdmqmc')
         call json_write_key(js, 'propagate_to_beta', dmqmc%propagate_to_beta)
-        call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
+        select case(dmqmc%initial_matrix)
+        case(hartree_fock_dm)
+            call json_write_key(js, 'initial_matrix', 'hartree_fock')
+        case(free_electron_dm)
+            call json_write_key(js, 'initial_matrix', 'free_electron')
+        case default
+            call json_write_key(js, 'initial_matrix', dmqmc%initial_matrix)
+        end select
         call json_write_key(js, 'grand_canonical_initialisation', dmqmc%grand_canonical_initialisation)
         call json_write_key(js, 'symmetric', dmqmc%symmetric)
         call json_write_key(js, 'chem_pot', dmqmc%chem_pot)

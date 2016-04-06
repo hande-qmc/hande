@@ -774,7 +774,7 @@ contains
         !     real_amplitudes = true/false,
         !     real_amplitude_force_32 = true/false,
         !     spawn_cutoff = cutoff,
-        !     no_renorm = true/false,
+        !     excit_gen = 'renorm'/'no_renorm',
         !     tau_search = true/false,
         !     pattempt_single = prob,
         !     pattempt_double = prob,
