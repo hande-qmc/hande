@@ -164,11 +164,11 @@ contains
 
         if (nprocs > 1) then
             if (hamil%comp) then
-                allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
-                call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
-            else
                 allocate(ceigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
                 call check_allocate('ceigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
+            else
+                allocate(eigvec(proc_blacs_info%nrows, proc_blacs_info%ncols), stat=ierr)
+                call check_allocate('eigvec',proc_blacs_info%nrows*proc_blacs_info%ncols,ierr)
             end if
         end if
 
