@@ -566,7 +566,7 @@ contains
 
                 call init_system(sys)
                 if (parent) call check_sys(sys)
-                call read_in_integrals(sys, cas_info=sys%cas, verbose=verbose)
+                call read_in_integrals(sys, verbose=verbose)
                 call init_generic_system_basis(sys)
                 call print_pg_symmetry_info(sys)
             end if

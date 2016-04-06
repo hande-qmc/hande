@@ -9,7 +9,7 @@ implicit none
 
 contains
 
-    subroutine read_in_integrals(sys, store_info, cas_info, verbose)
+    subroutine read_in_integrals(sys, store_info, verbose)
 
         ! Read in a FCIDUMP file, which contains the kinetic and coulomb
         ! integrals, one-particle eigenvalues and other system information.
@@ -20,10 +20,6 @@ contains
         !    store_info (optional): if true (default) then store the data read
         !        in.  Otherwise the basis defined by the FCIDUMP file is simply
         !        printed out.
-        !    cas_info (optional): if present, then defines the complete active
-        !        space.  Defailt: (N,M), where N is the total number of
-        !        electrons and M is the number of active *spatial* orbitals.
-        !        The default thus uses the entire space available.
         !    verbose (optional): print out information for each single-particle
         !         state.  Default: true.
         ! In/Out:
@@ -49,9 +45,8 @@ contains
 
         type(sys_t), intent(inout) :: sys
         logical, intent(in), optional :: store_info, verbose
-        integer, optional :: cas_info(2)
+
         logical :: t_store, t_verbose
-        integer :: cas(2)
 
         ! System data
         ! We don't know how many orbitals we have until we read in the FCI
@@ -69,7 +64,6 @@ contains
         real(p) :: x, y, im_core
         complex(p) :: compint
 
-
         ! reading in...
         integer :: ir, ios, ierr
         logical :: t_exists
@@ -78,7 +72,7 @@ contains
         logical, allocatable :: seen_iha(:)
         real(p), allocatable :: sp_eigv(:)
         logical :: not_found_sp_eigv, uhf
-        integer :: int_err, max_err_msg, tmp
+        integer :: int_err, max_err_msg
         character(1024) :: err_msg
 
         namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz, nprop, propbitlen
@@ -202,55 +196,41 @@ contains
         ! Sanity check
         if (any(sys%cas /= -1) .and. parent) then
             if (sys%cas(1) > sys%nel) then
-                write (6,'(1X,"Number of electrons in the system:",'//int_fmt(sys%nel,1)//',".")') sys%nel
-                write (6,'(1X,"Number of active electrons in CAS:",'//int_fmt(sys%cas(1),1)//',".")') sys%cas(1)
+                write (error_unit,'(1X,"Number of electrons in the system: ",i0,".")') sys%nel
+                write (error_unit,'(1X,"Number of active electrons in CAS: ",i0,".")') sys%cas(1)
                 call stop_all('read_in_integrals', 'CAS cannot have more active electrons than in the system.')
             end if
             if (sys%cas(2) > (sys%basis%nbasis-(sys%nel-sys%cas(1)))/2) then
                 ! The maximum number of active spin orbitals is nbasis - # core orbitals.
                 ! The number of core orbitals is nel-cas(1).
                 ! CAS(2) is in terms of spatial orbitals.
-                write (6,'(1X,"Number of spin-orbitals:",'//int_fmt(sys%basis%nbasis,1)//',".")') sys%basis%nbasis
-                tmp = sys%nel-cas(1)
-                write (6,'(1X,"Number of core electrons:",'//int_fmt(tmp,1)//',".")') tmp
-                tmp = sys%basis%nbasis-(sys%nel-sys%cas(1))
-                write (6,'(1X,"Number of possible active spin-orbitals:",' &
-                               //int_fmt(tmp,1)//',".")') tmp
-                tmp = sys%cas(2)*2
-                write (6,'(1X,"Number of active spin-orbitals in CAS:",' &
-                               //int_fmt(tmp,1)//',".")') tmp
+                write (error_unit,'(1X,"Number of spin-orbitals: ",i0,".")') sys%basis%nbasis
+                write (error_unit,'(1X,"Number of core electrons: ",i0,".")') sys%nel-sys%cas(1)
+                write (error_unit,'(1X,"Number of possible active spin-orbitals: ",i0,".")') sys%basis%nbasis-(sys%nel-sys%cas(1))
+                write (error_unit,'(1X,"Number of active spin-orbitals in CAS: ",i0,".")') 2*sys%cas(2)
                 call stop_all('read_in_integrals', 'CAS cannot have more active basis functions than in the system')
             end if
         end if
-            if (sys%nel == 0 .and. sys%Ms == huge(1)) then
-                if (parent) then
-                    write (6,'(1X,"WARNING: using the number of electrons in FCIDUMP file: '&
-                        //trim(sys%read_in%fcidump)//'.")')
-                    write (6,'(1X,"FCIDUMP file indicates",'//int_fmt(nelec,1)//'" electrons.")') nelec
-                end if
-                sys%nel = nelec
-                sys%Ms = ms2
-            else if (sys%Ms == huge(1) .and. parent) then
-                call stop_all('read_in_integrals', 'Only provided nel not Ms in input file. Please '&
-                        &'either provide both nel and Ms or provide neither to use values from FCIDUMP')
-            else if (sys%nel == 0 .and. parent) then
-                call stop_all('read_in_integrals', 'Only provided Ms not nel in input file. Please '&
-                        &'either provide both nel and Ms or provide neither to use values from FCIDUMP')
-            else if ((sys%nel /= nelec .or. sys%Ms /= ms2) .and. parent) then
-                write (6,'(1X,"WARNING: overriding the number of electrons in FCIDUMP file: '&
-                    //trim(sys%read_in%fcidump)//'.")')
-                write (6,'(1X,"FCIDUMP file indicates",'//int_fmt(nelec,1)//'" electrons.")') nelec
-                write (6,'(1X,"Input file set",'//int_fmt(sys%nel,1)//'" electrons.",/)') sys%nel
-            end if
 
-        if (present(cas_info)) then
-            if (any(cas_info < 1)) then
-                cas = (/ sys%nel, sys%basis%nbasis/2 /)
-            else
-                cas = cas_info
+        if (sys%nel == 0 .and. sys%Ms == huge(1)) then
+            if (parent) then
+                write (error_unit,'(1X,"WARNING: using the number of electrons in FCIDUMP file: '&
+                    //trim(sys%read_in%fcidump)//'.")')
+                write (error_unit,'(1X,"FCIDUMP file indicates ",i0," electrons.")') nelec
             end if
-        else
-            cas = (/ sys%nel, sys%basis%nbasis/2 /)
+            sys%nel = nelec
+            sys%Ms = ms2
+        else if (sys%Ms == huge(1) .and. parent) then
+            call stop_all('read_in_integrals', 'Only provided nel not Ms in input file. Please '&
+                &'either provide both nel and Ms or provide neither to use values from FCIDUMP')
+        else if (sys%nel == 0 .and. parent) then
+            call stop_all('read_in_integrals', 'Only provided Ms not nel in input file. Please '&
+                &'either provide both nel and Ms or provide neither to use values from FCIDUMP')
+        else if ((sys%nel /= nelec .or. sys%Ms /= ms2) .and. parent) then
+            write (error_unit,'(1X,"WARNING: overriding the number of electrons in FCIDUMP file: '&
+                              //trim(sys%read_in%fcidump)//'.")')
+            write (error_unit,'(1X,"FCIDUMP file indicates ",i0," electrons.")') nelec
+            write (error_unit,'(1X,"Input file set ",i0," electrons.",/)') sys%nel
         end if
 
         ! Read in FCIDUMP file to get single-particle eigenvalues.
@@ -344,11 +324,15 @@ contains
         ! NOTE: this sets sys%basis%nbasis to be the number of spin orbitals in the active
         ! basis.
 
-        active_basis_offset = sys%nel-cas(1) ! number of core *spin* orbitals
-        ! Note that sys%basis%nbasis is spin-orbitals whereas cas(2)=M is in spatial orbitals
-        ! (as we use the conventional sys%CAS definition).
-        sys%basis%nbasis = min(sys%basis%nbasis, 2*cas(2))
-        sys%nel = sys%nel - ( sys%nel - cas(1) )
+        if (all(sys%cas > 0)) then
+            active_basis_offset = sys%nel-sys%cas(1) ! number of core *spin* orbitals
+            ! Note that sys%basis%nbasis is spin-orbitals whereas cas(2)=M is in spatial orbitals
+            ! (as we use the conventional CAS definition).
+            sys%basis%nbasis = 2*sys%cas(2)
+            sys%nel = sys%cas(1)
+        else
+            active_basis_offset = 0
+        end if
         sys%nvirt = sys%basis%nbasis - sys%nel
         if (sys%read_in%uhf) then
             norb =  sys%basis%nbasis
@@ -457,7 +441,6 @@ contains
         ! For complex have also assumed expressions above for E_core and <a|h'|b>
         ! hold; if not the case then likely incorrect values obtained.
 
-
         ! Accumulate errors so we can print out (at most) max_err_msg errors from this file.
         int_err = 0
         max_err_msg = 10
@@ -558,8 +541,6 @@ contains
                                                                     int_err > max_err_msg, sys%read_in%one_e_h_integrals_imag, ierr)
                                         int_err = int_err + ierr
                                     end if
-
-
 
                                     seen_iha(tri_ind_reorder(ii,aa)) = .true.
                                 end if
@@ -770,8 +751,7 @@ contains
             do i = 1, size(all_basis_fns)
                 call write_basis_fn(sys, all_basis_fns(i), ind=i, new_line=.true.)
             end do
-            write (6,'(/,1X,"Freezing...",/,1X,"Using complete active space: (",' &
-                      //int_fmt(cas(1),0)//',",",'//int_fmt(cas(2),0)//',")",/)') cas
+            write (6,'(/,1X,"Freezing...",/,1X,"Using complete active space: (",i0,",",i0,")",/)') sys%cas
         end if
 
         call dealloc_basis_fn_t_array(all_basis_fns)
