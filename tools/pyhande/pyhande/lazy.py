@@ -142,12 +142,15 @@ Umrigar93
                 dtau = md['tau']
             except:
                 dtau = md['qmc']['tau']
-            sigmaE = opt_block['standard error']['Proj. Energy']
+            err_proj_e = opt_block['standard error']['Proj. Energy']
             Np = opt_block['mean']['# H psips']
-            N = data_len[int(pyblock.pd_utils.reblock_summary(reblock.ix[:, "Proj. Energy"]).index)]
-            inefficiency = sigmaE * math.sqrt(Np*N*dtau)
-            stderr = inefficiency*(0.5*opt_block['standard error']['# H psips']/Np+(opt_block['standard error error']['\sum H_0j N_j']/opt_block['standard error']['\sum H_0j N_j']))
-            d = pd.DataFrame(data={'mean':inefficiency, 'standard error':stderr}, index = ['Inefficiency'])
+            N = calc['iterations'].iloc[-1] - start
+            inefficiency = err_proj_e * math.sqrt(Np*N*dtau)
+#    # Really we should care about the covariance etc. but it is really horrible for the
+#    # projected energy
+            err_err_proj_e = err_proj_e*math.sqrt( (opt_block['standard error error']['\sum H_0j N_j']/(opt_block['standard error']['\sum H_0j N_j']  ))**2  + ((opt_block['standard error error']['N_0'])/(opt_block['standard error']['N_0']))**2 )
+            err_ineff = inefficiency*math.sqrt(((err_err_proj_e/err_proj_e)**2) + (opt_block['standard error']['# H psips']/(2*opt_block['mean']['# H psips']))**2)
+            d = pd.DataFrame(data={'mean':inefficiency, 'standard error':err_ineff}, index = ['Inefficiency'])
             opt_block = opt_block.append(d)
         except:
             pass
