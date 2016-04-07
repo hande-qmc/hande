@@ -138,10 +138,13 @@ Umrigar93
 
         #  We also try to provide some sort of error estimate for the inefficiency on the basis of the relative standard error error of the projected energy numerator..
         try:
+            try:
+                dtau = md['tau']
+            except:
+                dtau = md['qmc']['tau']
             sigmaE = opt_block['standard error']['Proj. Energy']
             Np = opt_block['mean']['# H psips']
             N = data_len[int(pyblock.pd_utils.reblock_summary(reblock.ix[:, "Proj. Energy"]).index)]
-            dtau = md['qmc']['tau']
             inefficiency = sigmaE * math.sqrt(Np*N*dtau)
             stderr = inefficiency*(0.5*opt_block['standard error']['# H psips']/Np+(opt_block['standard error error']['\sum H_0j N_j']/opt_block['standard error']['\sum H_0j N_j']))
             d = pd.DataFrame(data={'mean':inefficiency, 'standard error':stderr}, index = ['Inefficiency'])
