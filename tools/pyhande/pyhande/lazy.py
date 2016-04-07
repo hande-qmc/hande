@@ -144,6 +144,7 @@ Umrigar93
                 dtau = md['qmc']['tau']
             err_proj_e = opt_block['standard error']['Proj. Energy']
             Np = opt_block['mean']['# H psips']
+	#Review - [VAN]: are you not forgetting the start iteration itself for N. Also I would need to check where reblocking actually starts: (probably really irrelevant)
             N = calc['iterations'].iloc[-1] - start
             inefficiency = err_proj_e * math.sqrt(Np*N*dtau)
 #    # Really we should care about the covariance etc. but it is really horrible for the
