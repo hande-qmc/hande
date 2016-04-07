@@ -153,10 +153,10 @@ OPT = %(opt_level)s
 # Git info.
 
 # Get the git sha1 hash.  Outputs a string.
-GIT_SHA1 := $(shell git rev-parse HEAD 2> /dev/null || echo "unknown")
+GIT_SHA1 := $(shell git rev-parse HEAD 2> /dev/null || echo "git information not available.")
 
 # Append -dirty to SHA1 if source code contains changes.
-GIT_SHA1 := $(GIT_SHA1)$(shell test -z "$$(git status --porcelain -- $(SRCDIRS))" || echo -dirty)
+GIT_SHA1 := $(GIT_SHA1)$(shell test -z "$$(git status --porcelain -- $(SRCDIRS) 2>/dev/null)" || echo -dirty)
 CPPFLAGS = -D_VCS_VERSION='"${GIT_SHA1}"' -D_CONFIG='"$(CONFIG).($(OPT))"' %(defs)s
 
 #-----

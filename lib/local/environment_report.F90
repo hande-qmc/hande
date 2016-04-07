@@ -29,9 +29,13 @@ implicit none
 
 #ifndef _VCS_VERSION
 #define _VCS_VERSION 'unknown'
-#define _VCS_LOCAL_CHANGES
 #endif
-character(*), parameter :: VCS_VERSION = _VCS_VERSION
+! git sha1 hash.  Created at compile-time in make.inc.
+! -dirty is appended if the source directories contain uncommitted changes.
+character(*), parameter :: HANDE_VCS_VERSION = _VCS_VERSION
+! HANDE version.  When tagging a commit, update this (directly on master is probably best).  In the immediate commit after the tag,
+! append -dev to it to 're-open' the code base for further development.
+character(*), parameter :: HANDE_VERSION = '0.99-dev'
 
 ! Global uuid
 character(36) :: GLOBAL_UUID
@@ -52,44 +56,24 @@ contains
         !   * the working directory;
         !   * the host computer.
 
-        ! The VCS information is passed to environment_report via c-preprocessing.  The
+        ! The VCS information is passed to environment_report via C-preprocessing.  The
         ! following definitions are used:
         !
         ! * __DATE__ and __TIME__: date and time of compilation.
-        ! * _VCS_LOCAL_CHANGES: define if the local source code directory contains local
-        !   (uncommitted) changes.
         ! * _VCS_VERSION: set to a (quoted!) string containing the VCS revision id of the current
         !   commit.
+        ! * _CONFIG: set to quoted string containing the configuration (e.g compilers) used.
         !
-        ! The VCS information can be simply obtained via shell commands in the makefile:
-        ! see the example provided for the commands needed for git and subversion
-        ! repositories.  For instance, if a subversion repository is being used, then the
-        ! version id can be obtained using::
+        ! The VCS information can be simply obtained via shell commands in the makefile, e.g. for git:
         !
-        !     VCS_VERSION:=$(shell echo -n '"'$(svn info | awk '/Revision/{print $NF}')'"')
-        !
-        ! and if the working directory contains local changes, then the command::
-        !
-        !     svn st -q | xargs -i test -z {}
-        !
-        ! gives a non-zero return code.  Hence the variable VCS_LOCAL_CHANGES is
-        ! equal to -D_VCS_LOCAL_CHANGES or is a null string depending on whether there
-        ! are local changes or not::
-        !
-        !    VCS_LOCAL_CHANGES:=$(shell svn st -q | xargs -i test -z {} || echo -n "-D_VCS_LOCAL_CHANGES")
+        !    GIT_SHA1 := $(shell git rev-parse HEAD 2> /dev/null || echo "unknown")
+        !    GIT_SHA1 := $(GIT_SHA1)$(shell test -z "$$(git status --porcelain -- $(SRCDIRS))" || echo -dirty)
         !
         ! environment_report.F90 can thus be appropriately compiled with the command::
         !
-        !    $(FC) $(VCS_LOCAL_CHANGES) -D_VCS_VERSION='$(VCS_VERSION)' -c environment_report.F90 -o environment_report.o
+        !    $(FC) -D_VCS_VERSION="$(GIT_SHA1)" -D_CONFIG="<config>" environment_report.F90 -o environment_report.o
         !
         ! where $(FC) is defined to be the desired fortran compiler.
-        !
-        ! Similarly for git::
-        !
-        !     VCS_VERSION:=$(shell echo -n '"' && git log --max-count=1 --pretty=format:%H && echo -n '"')
-        !     VCS_LOCAL_CHANGES := $(shell git diff-index --quiet --cached HEAD
-        !                             --ignore-submodules -- && git diff-files --quiet
-        !                             --ignore-submodules || echo -n "-D_VCS_LOCAL_CHANGES") # on one line.
 
         use, intrinsic :: iso_c_binding, only: c_char, c_ptr, c_size_t, c_int, c_associated
         use utils, only: carray_to_fstring
@@ -144,10 +128,8 @@ contains
         write (io_unit,'(a13,a,a4,a)') 'Compiled on ',__DATE__,'at ',__TIME__
         write (io_unit,'(a16,a)') 'Compiled using ', _CONFIG
 
-        write (io_unit,'(a29,/,5X,a)') 'VCS BASE repository version:',VCS_VERSION
-#ifdef _VCS_LOCAL_CHANGES
-        write (io_unit,'(a46)') 'Source code directory contains local changes.'
-#endif
+        write (io_unit,'(1X,"HANDE version: '//trim(HANDE_VERSION)//'")')
+        write (io_unit,'(1X,"git sha1 hash:",/,5X,a)') HANDE_VCS_VERSION
 
         stat = gethostname(str, str_len)
         if (stat == 0) then

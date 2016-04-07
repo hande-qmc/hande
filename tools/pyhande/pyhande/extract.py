@@ -82,7 +82,8 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     # ... output header
     md_generic_header = dict(
         UUID = 'Calculation UUID:',
-        git_hash = 'VCS BASE repository version:',
+        git_hash = re.compile('git sha1 hash:|VCS BASE repository version:'),
+        hande_version = 'HANDE version:',
     )
     # ... footer of output (ie after QMC data table)
     comms_footer = dict(
@@ -148,10 +149,10 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
         elif not calc_type:
             # Generic header
             for (key, val) in md_generic_header.items():
-                if val in line:
-                    if key == 'git_hash':
+                if key == 'git_hash':
+                    if val.search(line):
                         md_generic[key] = next(f).strip()
-                    else:
+                elif val in line:
                         md_generic[key] = line.split()[-1]
             # Parse input block.
             if input_pattern in line:
