@@ -8,6 +8,7 @@ import pyblock
 import pyhande.extract
 import pyhande.analysis
 import pyhande.weight
+import math
 
 def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
                 reweight_history=0, mean_shift=0.0, arith_mean=False):
@@ -126,9 +127,27 @@ Umrigar93
                         col_name='Weighted Proj. E.')
             reblock = pd.concat([reblock, proje], axis=1)
             to_block.append('Weighted Proj. E.')
-
+        
         # Summary (including pretty printing of estimates).
         (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
+
+        # Now try to calculate an inefficiency according to
+        # Understanding and improving the efficiency of full configuration interaction quantum Monte Carlo
+        # W. A. Vigor, J. S. Spencer, M. J. Bearpark, and A. J. W. Thom
+        # J. Chem. Phys. 144, 094110 (2016); doi: 10.1063/1.4943113 
+
+        #  We also try to provide some sort of error estimate for the inefficiency on the basis of the relative standard error error of the projected energy numerator..
+        try:
+            sigmaE = opt_block['standard error']['Proj. Energy']
+            Np = opt_block['mean']['# H psips']
+            N = data_len[int(pyblock.pd_utils.reblock_summary(reblock.ix[:, "Proj. Energy"]).index)]
+            dtau = md['qmc']['tau']
+            inefficiency = sigmaE * math.sqrt(Np*N*dtau)
+            stderr = inefficiency*(0.5*opt_block['standard error']['# H psips']/Np+(opt_block['standard error error']['\sum H_0j N_j']/opt_block['standard error']['\sum H_0j N_j']))
+            d = pd.DataFrame(data={'mean':inefficiency, 'standard error':stderr}, index = ['Inefficiency'])
+            opt_block = opt_block.append(d)
+        except:
+            pass
 
         estimates = []
         for (name, row) in opt_block.iterrows():
