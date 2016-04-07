@@ -1,0 +1,203 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr 04 2016 at 22:24:49
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ VCS BASE repository version:
+     da9c8759097cd4f728cbd232c8b52ee5b95c04e0
+ Hostname:
+     hypatia
+ Working directory: 
+     /home/rstf2/code/hande_master/test_suite/fci/ringium
+ Started running on 04/04/2016 at 22:49:24
+ Calculation UUID: 52d6cb6a-91eb-4a1f-9db3-63ee6f2fca90.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = ringium{
+    nel = 4,
+    maxlz = 7,
+    radius = 3,
+}
+
+fci{sys=sys}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ Lz given in units of 1/2.
+
+ index    lz        ms       <i|h|i>
+     1   ( -1)      1        1.38888889E-02
+     2   ( -1)     -1        1.38888889E-02
+     3   (  1)      1        1.38888889E-02
+     4   (  1)     -1        1.38888889E-02
+     5   ( -3)      1        1.25000000E-01
+     6   ( -3)     -1        1.25000000E-01
+     7   (  3)      1        1.25000000E-01
+     8   (  3)     -1        1.25000000E-01
+     9   ( -5)      1        3.47222222E-01
+    10   ( -5)     -1        3.47222222E-01
+    11   (  5)      1        3.47222222E-01
+    12   (  5)     -1        3.47222222E-01
+    13   ( -7)      1        6.80555556E-01
+    14   ( -7)     -1        6.80555556E-01
+    15   (  7)      1        6.80555556E-01
+    16   (  7)     -1        6.80555556E-01
+
+ Number of electrons: 4
+ Number of basis functions: 16
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 16,   
+         "nel": 4,   
+         "nvirt": 12,   
+         "Ms": 4,   
+         "nalpha": 4,   
+         "nbeta": 0,   
+         "nvirt_alpha": 4,   
+         "nvirt_beta": 0,   
+         "nsym": 1,   
+         "sym0": 1,   
+         "sym_max": 1,   
+         "nsym_tot": 1,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 1,   
+         "symmetry": 1,   
+         "max_number_excitations": 4,   
+         "ringium": {
+             "radius": 3.00000000,   
+             "maxlz": 7    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "nlanczos_eigv": 5,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": false    
+     },
+     "reference": {
+         "ex_level": 4    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=4.
+
+ Symmetry index      # dets
+         1               70
+
+ Performing exact diagonalisation...
+
+ LAPACK diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1     1.757851451969
+      2     1.990328843296
+      3     1.990328843296
+      4     2.111579573771
+      5     2.111579573771
+      6     2.220017582210
+      7     2.220017582210
+      8     2.259366170009
+      9     2.259366170009
+     10     2.457702536356
+     11     2.475264415176
+     12     2.475264415176
+     13     2.547655255865
+     14     2.547655255865
+     15     2.574296488449
+     16     2.574296488449
+     17     2.603300931893
+     18     2.603300931893
+     19     2.694554120349
+     20     2.694554120349
+     21     2.727616631585
+     22     2.727616631585
+     23     2.737545477619
+     24     2.745132224859
+     25     2.745132224859
+     26     2.752310171259
+     27     2.752310171259
+     28     2.838046196025
+     29     2.838046196025
+     30     2.931799212597
+     31     2.931799212597
+     32     2.999913053043
+     33     2.999913053043
+     34     3.002685729934
+     35     3.002685729934
+     36     3.009784563872
+     37     3.009784563872
+     38     3.048865646736
+     39     3.062558594451
+     40     3.062558594451
+     41     3.074719146331
+     42     3.074719146331
+     43     3.090428118289
+     44     3.113429559269
+     45     3.113429559269
+     46     3.214256985233
+     47     3.214256985233
+     48     3.329996646448
+     49     3.329996646448
+     50     3.353949852289
+     51     3.353949852289
+     52     3.375552006720
+     53     3.375552006720
+     54     3.421228533213
+     55     3.451983062979
+     56     3.451983062979
+     57     3.512786556829
+     58     3.512786556829
+     59     3.616097633956
+     60     3.616097633956
+     61     3.771127795100
+     62     3.783053838219
+     63     3.783053838219
+     64     3.793295563576
+     65     3.793295563576
+     66     3.854960209337
+     67     3.854960209337
+     68     3.969558162123
+     69     3.969558162123
+     70     4.142297519567
+
+ ================================================================
+ Finished running on 04/04/2016 at 22:49:24
+ Wall time (seconds):                           0.02
+ CPU time (per processor, seconds):             0.01
+ ================================================================
+

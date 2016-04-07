@@ -1,0 +1,272 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr 04 2016 at 22:24:49
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ VCS BASE repository version:
+     da9c8759097cd4f728cbd232c8b52ee5b95c04e0
+ Hostname:
+     hypatia
+ Working directory: 
+     /home/rstf2/code/hande_master/test_suite/lanczos/hubbard_real_nontilted_2d_direct
+ Started running on 04/04/2016 at 23:10:48
+ Calculation UUID: c3dc64fa-0fe0-445d-be99-3e497db40cb8.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = hubbard_real {
+    electrons = 4,
+    lattice = { {2, 0}, {0, 2} },
+    ms = 2,
+}
+
+fci {
+    sys = sys,
+}
+fci {
+    sys = sys,
+    lanczos = {
+        sparse = false,
+        direct = true,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ Site positions given in terms of the primitive lattice vectors.
+
+ index   site           ms
+     1   (  0,  0)      1
+     2   (  0,  0)     -1
+     3   (  1,  0)      1
+     4   (  1,  0)     -1
+     5   (  0,  1)      1
+     6   (  0,  1)     -1
+     7   (  1,  1)      1
+     8   (  1,  1)     -1
+
+ Number of electrons: 4
+ Number of basis functions: 8
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 8,   
+         "nel": 4,   
+         "nvirt": 4,   
+         "Ms": 2,   
+         "nalpha": 3,   
+         "nbeta": 1,   
+         "nvirt_alpha": 1,   
+         "nvirt_beta": 3,   
+         "nsym": 1,   
+         "sym0": 1,   
+         "sym_max": 1,   
+         "nsym_tot": 1,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 1,   
+         "symmetry": 1,   
+         "max_number_excitations": 4,   
+         "lattice": {
+             "ndim": 2,   
+             "nsites": 4,   
+             "lattice": [[ 2, 0],[ 0, 2]],
+             "triangular_lattice": false,   
+             "bipartite_lattice": true,   
+             "connected_sites": {
+                 "1": [ 3, 5, 0, 0],
+                 "2": [ 4, 6, 0, 0],
+                 "3": [ 1, 7, 0, 0],
+                 "4": [ 2, 8, 0, 0],
+                 "5": [ 1, 7, 0, 0],
+                 "6": [ 2, 8, 0, 0],
+                 "7": [ 3, 5, 0, 0],
+                 "8": [ 4, 6, 0, 0]
+             },
+             "self_image": false,   
+             "finite_cluster": false    
+         },
+         "hubbard": {
+             "U": 1.00000000,   
+             "t": 1.00000000    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "nlanczos_eigv": 5,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": false    
+     },
+     "reference": {
+         "ex_level": 4    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=2.
+
+ Symmetry index      # dets
+         1               16
+
+ Performing exact diagonalisation...
+
+ LAPACK diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1    -7.270510361534
+      2    -3.531128874149
+      3    -3.531128874149
+      4    -3.000000000000
+      5    -3.000000000000
+      6     0.000000000000
+      7     0.501945495952
+      8     1.000000000000
+      9     1.000000000000
+     10     1.000000000000
+     11     1.000000000000
+     12     4.531128874149
+     13     4.531128874149
+     14     5.000000000000
+     15     5.000000000000
+     16     8.768564865582
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 8,   
+         "nel": 4,   
+         "nvirt": 4,   
+         "Ms": 2,   
+         "nalpha": 3,   
+         "nbeta": 1,   
+         "nvirt_alpha": 1,   
+         "nvirt_beta": 3,   
+         "nsym": 1,   
+         "sym0": 1,   
+         "sym_max": 1,   
+         "nsym_tot": 1,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 1,   
+         "symmetry": 1,   
+         "max_number_excitations": 4,   
+         "lattice": {
+             "ndim": 2,   
+             "nsites": 4,   
+             "lattice": [[ 2, 0],[ 0, 2]],
+             "triangular_lattice": false,   
+             "bipartite_lattice": true,   
+             "connected_sites": {
+                 "1": [ 3, 5, 0, 0],
+                 "2": [ 4, 6, 0, 0],
+                 "3": [ 1, 7, 0, 0],
+                 "4": [ 2, 8, 0, 0],
+                 "5": [ 1, 7, 0, 0],
+                 "6": [ 2, 8, 0, 0],
+                 "7": [ 3, 5, 0, 0],
+                 "8": [ 4, 6, 0, 0]
+             },
+             "self_image": false,   
+             "finite_cluster": false    
+         },
+         "hubbard": {
+             "U": 1.00000000,   
+             "t": 1.00000000    
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 64,   
+         "nlanczos_eigv": 5,   
+         "lanczos_string_len": 40,   
+         "direct_lanczos": true    
+     },
+     "reference": {
+         "ex_level": 4    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=2.
+
+ Symmetry index      # dets
+         1               16
+
+ Consider running on fewer processors or reducing block size in input.
+ Old block size was: 64
+ New block size is: 16
+ Performing direct Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2016/04/04 23:10:48.462 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:          9 (computed),          5 (wanted)
+Times the operator is applied:         16 (MAX:             1000 ).
+Problem size:                          16 (PE:   0),          16 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.307E-07 (abs)
+Maximum basis size:                    40
+Restarting scheme:                      0
+Number of re-orthogonalizations        17
+Number of (re)start loops:              1
+Number of eigenpairs locked:            0
+OP(MATVEC):             5.0000E-04 sec,  1.8432E+07 FLOP/S ( 9.2160E+03 FLOP)
+Re-Orthogonalization:   2.0000E-04 sec,  5.2300E+07 FLOP/S ( 1.0460E+04 FLOP)
+Restarting:             3.0000E-04 sec,  1.5360E+07 FLOP/S ( 4.6080E+03 FLOP)
+TRLAN on this PE:       2.1475E+05 sec,  1.2032E-01 FLOP/S ( 2.5838E+04 FLOP)
+
+ Lanczos diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1    -7.270510361534
+      2    -3.531128874149
+      3    -3.531128874149
+      4    -3.000000000000
+      5    -3.000000000000
+
+ ================================================================
+ Finished running on 04/04/2016 at 23:10:48
+ Wall time (seconds):                           0.03
+ CPU time (per processor, seconds):             0.01
+ ================================================================
+

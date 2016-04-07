@@ -1,0 +1,262 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr 04 2016 at 22:24:49
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ VCS BASE repository version:
+     da9c8759097cd4f728cbd232c8b52ee5b95c04e0
+ Hostname:
+     hypatia
+ Working directory: 
+     /home/rstf2/code/hande_master/test_suite/lanczos/hubbard_k_tilted_2d_sparse
+ Started running on 04/04/2016 at 23:10:47
+ Calculation UUID: b74c3e72-5300-45cc-aee2-33a4544a018d.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Input options
+ -------------
+
+sys = hubbard_k {
+    electrons = 4,
+    lattice = { {3, 3}, {3, -3} },
+    ms = 0,
+    sym = 3,
+    U = 2,
+}
+
+fci {
+    sys = sys,
+    fci = {
+        blacs_block_size = 8,
+    },
+    lanczos = {
+        nbasis = 20,
+        neigv = 8,
+        sparse = true,
+    },
+}
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point        ms       <i|h|i>
+     1   (  0,  0)      1       -4.00000000E+00
+     2   (  0,  0)     -1       -4.00000000E+00
+     3   (  0, -1)      1       -2.00000000E+00
+     4   (  0, -1)     -1       -2.00000000E+00
+     5   ( -1,  0)      1       -2.00000000E+00
+     6   ( -1,  0)     -1       -2.00000000E+00
+     7   (  1,  0)      1       -2.00000000E+00
+     8   (  1,  0)     -1       -2.00000000E+00
+     9   (  0,  1)      1       -2.00000000E+00
+    10   (  0,  1)     -1       -2.00000000E+00
+    11   ( -1, -1)      1       -1.00000000E+00
+    12   ( -1, -1)     -1       -1.00000000E+00
+    13   (  1, -1)      1       -1.00000000E+00
+    14   (  1, -1)     -1       -1.00000000E+00
+    15   ( -1,  1)      1       -1.00000000E+00
+    16   ( -1,  1)     -1       -1.00000000E+00
+    17   (  1,  1)      1       -1.00000000E+00
+    18   (  1,  1)     -1       -1.00000000E+00
+    19   (  1, -2)      1        1.00000000E+00
+    20   (  1, -2)     -1        1.00000000E+00
+    21   (  2, -1)      1        1.00000000E+00
+    22   (  2, -1)     -1        1.00000000E+00
+    23   (  2,  1)      1        1.00000000E+00
+    24   (  2,  1)     -1        1.00000000E+00
+    25   (  1,  2)      1        1.00000000E+00
+    26   (  1,  2)     -1        1.00000000E+00
+    27   (  0, -2)      1        2.00000000E+00
+    28   (  0, -2)     -1        2.00000000E+00
+    29   ( -2,  0)      1        2.00000000E+00
+    30   ( -2,  0)     -1        2.00000000E+00
+    31   (  2,  0)      1        2.00000000E+00
+    32   (  2,  0)     -1        2.00000000E+00
+    33   (  0,  2)      1        2.00000000E+00
+    34   (  0,  2)     -1        2.00000000E+00
+    35   (  3,  0)      1        4.00000000E+00
+    36   (  3,  0)     -1        4.00000000E+00
+
+ Number of electrons: 4
+ Number of basis functions: 36
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 2
+
+ Symmetry information
+ --------------------
+
+ The table below gives the label and inverse of each wavevector.
+
+ Index    k-point      Inverse
+   1      (  0,  0)        1
+   2      (  0, -1)        5
+   3      ( -1,  0)        4
+   4      (  1,  0)        3
+   5      (  0,  1)        2
+   6      ( -1, -1)        9
+   7      (  1, -1)        8
+   8      ( -1,  1)        7
+   9      (  1,  1)        6
+  10      (  1, -2)       11
+  11      (  2, -1)       10
+  12      (  2,  1)       13
+  13      (  1,  2)       12
+  14      (  0, -2)       17
+  15      ( -2,  0)       16
+  16      (  2,  0)       15
+  17      (  0,  2)       14
+  18      (  3,  0)       18
+
+ The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector.
+
+   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18
+   2  14   6   7   1  12  10   3   4  15   8  16   9  18  13  11   5  17
+   3   6  15   1   8  13   2  10   5  14   7   9  17  12  18   4  11  16
+   4   7   1  16   9   2  11   5  12   8  17  14   6  10   3  18  13  15
+   5   1   8   9  17   3   4  11  13   7  16   6  15   2  10  12  18  14
+   6  12  13   2   3   9  14  15   1  18  10   4   5  16  17   7   8  11
+   7  10   2  11   4  14   8   1  16   3   5  18  12  15   6  17   9  13
+   8   3  10   5  11  15   1   7  17   2   4  13  18   6  14   9  16  12
+   9   4   5  12  13   1  16  17   6  11  18   2   3   7   8  14  15  10
+  10  15  14   8   7  18   3   2  11   6   1  17  16  13  12   5   4   9
+  11   8   7  17  16  10   5   4  18   1   9  15  14   3   2  13  12   6
+  12  16   9  14   6   4  18  13   2  17  15   7   1  11   5  10   3   8
+  13   9  17   6  15   5  12  18   3  16  14   1   8   4  11   2  10   7
+  14  18  12  10   2  16  15   6   7  13   3  11   4  17   9   8   1   5
+  15  13  18   3  10  17   6  14   8  12   2   5  11   9  16   1   7   4
+  16  11   4  18  12   7  17   9  14   5  13  10   2   8   1  15   6   3
+  17   5  11  13  18   8   9  16  15   4  12   3  10   1   7   6  14   2
+  18  17  16  15  14  11  13  12  10   9   6   8   7   5   4   3   2   1
+
+ FCI
+ ---
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 36,   
+         "nel": 4,   
+         "nvirt": 32,   
+         "Ms": 0,   
+         "nalpha": 2,   
+         "nbeta": 2,   
+         "nvirt_alpha": 16,   
+         "nvirt_beta": 16,   
+         "nsym": 18,   
+         "sym0": 1,   
+         "sym_max": 18,   
+         "nsym_tot": 18,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 18,   
+         "symmetry": 3,   
+         "max_number_excitations": 4,   
+         "lattice": {
+             "ndim": 2,   
+             "nsites": 18,   
+             "lattice": [[ 3, 3],[ 3, -3]]
+         },
+         "hubbard": {
+             "U": 2.00000000,   
+             "t": 1.00000000,   
+             "ktwist": [0.00000000,0.00000000]
+         }
+     },
+     "fci_in": {
+         "write_hamiltonian": false,   
+         "hamiltonian_file":  "HAMIL",   
+         "write_determinants": false,   
+         "determinant_file":  "DETS",   
+         "print_fci_wfn": 0,   
+         "print_fci_wfn_file":  "FCI_WFN",   
+         "analyse_fci_wfn": 0,   
+         "block_size": 8,   
+         "nlanczos_eigv": 8,   
+         "lanczos_string_len": 20,   
+         "direct_lanczos": false    
+     },
+     "reference": {
+         "ex_level": 4    
+     }
+ }
+ -- End JSON block --
+
+ The table below gives the number of determinants for each symmetry with Ms=0.
+
+ Symmetry index      # dets
+         1             1305
+         2             1296
+         3             1296
+         4             1296
+         5             1296
+         6             1305
+         7             1305
+         8             1305
+         9             1305
+        10             1296
+        11             1296
+        12             1296
+        13             1296
+        14             1305
+        15             1305
+        16             1305
+        17             1305
+        18             1296
+
+ Number of non-zero elements in Hamiltonian matrix:   40176
+
+ Performing Lanczos diagonalisation...
+
+ TRLan (Lanczos) information:
+
+                                        2016/04/04 23:10:48.158 (+01:00)
+ TRLAN execution summary (exit status =           0 )
+Number of SMALLEST eigenpairs:         13 (computed),          8 (wanted)
+Times the operator is applied:        166 (MAX:             1296 ).
+Problem size:                        1296 (PE:   0),        1296 (Global)
+Convergence tolerance:           1.49E-08 (rel),       1.792E-07 (abs)
+Maximum basis size:                    20
+Restarting scheme:                      0
+Number of re-orthogonalizations       166
+Number of (re)start loops:             21
+Number of eigenpairs locked:            7
+OP(MATVEC):             3.7900E-02 sec,  1.4736E+10 FLOP/S ( 5.5849E+08 FLOP)
+Re-Orthogonalization:   2.9900E-01 sec,  4.8220E+07 FLOP/S ( 1.4418E+07 FLOP)
+Restarting:             1.0700E-02 sec,  9.3167E+08 FLOP/S ( 9.9688E+06 FLOP)
+TRLAN on this PE:       3.5080E-01 sec,  1.6672E+09 FLOP/S ( 5.8485E+08 FLOP)
+
+ Lanczos diagonalisation results
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  State     Energy
+      1   -10.760871688254
+      2   -10.760751060684
+      3   -10.746814339865
+      4   -10.417316268752
+      5   -10.000000000000
+      6    -9.841261650058
+      7    -9.669555300524
+      8    -9.654513523675
+
+ ================================================================
+ Finished running on 04/04/2016 at 23:10:48
+ Wall time (seconds):                           0.55
+ CPU time (per processor, seconds):             1.63
+ ================================================================
+

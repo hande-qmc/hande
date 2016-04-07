@@ -1,0 +1,357 @@
+
+   HANDE
+
+ ================================================================
+ Compiled on Apr 04 2016 at 22:24:49
+ Compiled using cuc3.intel13.mpi.pop64.(optimised)
+ VCS BASE repository version:
+     da9c8759097cd4f728cbd232c8b52ee5b95c04e0
+ Hostname:
+     hypatia
+ Working directory: 
+     /home/rstf2/code/hande_master/test_suite/fciqmc/np2/ueg_n10_rs2_e4_tau_search
+ Started running on 04/04/2016 at 22:53:00
+ Calculation UUID: b42566fa-d91d-4c15-ae14-ff871317c981.
+ Preprocessor settings:
+     DISABLE_HDF5 not defined.  HDF5 enabled.
+     DISABLE_LANCZOS not defined.  Lanczos enabled.
+     DISABLE_UUID not defined.  UUID enabled.
+     PARALLEL defined.  MPI parallelization enabled.
+     DISABLE_SCALAPACK not defined.  ScaLAPACK enabled.
+     SINGLE_PRECISION not defined.  Double precision used throughout.
+     USE_POPCNT not defined.  Internal POPCNT procedure used.
+     DET_SIZE = 32.
+     POP_SIZE = 64.
+ ================================================================
+
+ Number of MPI processes running on: 2
+ Running with 1 thread per MPI process.
+
+ Input options
+ -------------
+
+sys = ueg {
+    electrons = 6,
+    ms = 0,
+    sym = 15,
+    dim = 3,
+    cutoff = 2,
+    rs = 2.0,
+}
+
+fciqmc {
+    sys = sys,
+    qmc = {
+        tau = 0.1,
+        tau_search = true,
+        rng_seed = 122,
+        init_pop = 10,
+        mc_cycles = 10,
+        nreports = 50,
+        target_population = 90000,
+        state_size = 500000,
+        spawned_state_size = 50000,
+    },
+    reference = {
+        det = {1, 2, 3, 10, 11, 14},
+    },
+}
+-- Correlation energy (from HANDE FCI) is -0.176123766865 
+-- Do not follow this as an example: the timestep is deliberately too large so to have sufficiently 
+-- large blooms in order to trigger tau_search. Even after the timestep is rescaled, it is still 
+-- too large for a sane production calculation
+
+ -------------
+
+ Basis functions
+ ---------------
+
+ Spin given in units of 1/2.
+ k-points given in terms of the reciprocal lattice vectors of the crystal cell.
+
+ index   k-point            ms       <i|h|i>
+     1   (  0,  0,  0)      1        0.00000000E+00
+     2   (  0,  0,  0)     -1        0.00000000E+00
+     3   (  0,  0, -1)      1        5.75143889E-01
+     4   (  0,  0, -1)     -1        5.75143889E-01
+     5   (  0, -1,  0)      1        5.75143889E-01
+     6   (  0, -1,  0)     -1        5.75143889E-01
+     7   ( -1,  0,  0)      1        5.75143889E-01
+     8   ( -1,  0,  0)     -1        5.75143889E-01
+     9   (  1,  0,  0)      1        5.75143889E-01
+    10   (  1,  0,  0)     -1        5.75143889E-01
+    11   (  0,  1,  0)      1        5.75143889E-01
+    12   (  0,  1,  0)     -1        5.75143889E-01
+    13   (  0,  0,  1)      1        5.75143889E-01
+    14   (  0,  0,  1)     -1        5.75143889E-01
+    15   (  0, -1, -1)      1        1.15028778E+00
+    16   (  0, -1, -1)     -1        1.15028778E+00
+    17   ( -1,  0, -1)      1        1.15028778E+00
+    18   ( -1,  0, -1)     -1        1.15028778E+00
+    19   (  1,  0, -1)      1        1.15028778E+00
+    20   (  1,  0, -1)     -1        1.15028778E+00
+    21   (  0,  1, -1)      1        1.15028778E+00
+    22   (  0,  1, -1)     -1        1.15028778E+00
+    23   ( -1, -1,  0)      1        1.15028778E+00
+    24   ( -1, -1,  0)     -1        1.15028778E+00
+    25   (  1, -1,  0)      1        1.15028778E+00
+    26   (  1, -1,  0)     -1        1.15028778E+00
+    27   ( -1,  1,  0)      1        1.15028778E+00
+    28   ( -1,  1,  0)     -1        1.15028778E+00
+    29   (  1,  1,  0)      1        1.15028778E+00
+    30   (  1,  1,  0)     -1        1.15028778E+00
+    31   (  0, -1,  1)      1        1.15028778E+00
+    32   (  0, -1,  1)     -1        1.15028778E+00
+    33   ( -1,  0,  1)      1        1.15028778E+00
+    34   ( -1,  0,  1)     -1        1.15028778E+00
+    35   (  1,  0,  1)      1        1.15028778E+00
+    36   (  1,  0,  1)     -1        1.15028778E+00
+    37   (  0,  1,  1)      1        1.15028778E+00
+    38   (  0,  1,  1)     -1        1.15028778E+00
+    39   ( -1, -1, -1)      1        1.72543167E+00
+    40   ( -1, -1, -1)     -1        1.72543167E+00
+    41   (  1, -1, -1)      1        1.72543167E+00
+    42   (  1, -1, -1)     -1        1.72543167E+00
+    43   ( -1,  1, -1)      1        1.72543167E+00
+    44   ( -1,  1, -1)     -1        1.72543167E+00
+    45   (  1,  1, -1)      1        1.72543167E+00
+    46   (  1,  1, -1)     -1        1.72543167E+00
+    47   ( -1, -1,  1)      1        1.72543167E+00
+    48   ( -1, -1,  1)     -1        1.72543167E+00
+    49   (  1, -1,  1)      1        1.72543167E+00
+    50   (  1, -1,  1)     -1        1.72543167E+00
+    51   ( -1,  1,  1)      1        1.72543167E+00
+    52   ( -1,  1,  1)     -1        1.72543167E+00
+    53   (  1,  1,  1)      1        1.72543167E+00
+    54   (  1,  1,  1)     -1        1.72543167E+00
+    55   (  0,  0, -2)      1        2.30057556E+00
+    56   (  0,  0, -2)     -1        2.30057556E+00
+    57   (  0, -2,  0)      1        2.30057556E+00
+    58   (  0, -2,  0)     -1        2.30057556E+00
+    59   ( -2,  0,  0)      1        2.30057556E+00
+    60   ( -2,  0,  0)     -1        2.30057556E+00
+    61   (  2,  0,  0)      1        2.30057556E+00
+    62   (  2,  0,  0)     -1        2.30057556E+00
+    63   (  0,  2,  0)      1        2.30057556E+00
+    64   (  0,  2,  0)     -1        2.30057556E+00
+    65   (  0,  0,  2)      1        2.30057556E+00
+    66   (  0,  0,  2)     -1        2.30057556E+00
+
+ Number of electrons: 6
+ Number of basis functions: 66
+
+ Bit-length of integers used to store determinant bit-strings: 32
+ Number of integers used to store determinant bit-strings: 3
+
+ FCIQMC
+ ------
+
+ WARNING: renormalised excitation generators not implemented.
+ WARNING: If this upsets you, please send patches.
+
+ Memory allocated per core for main walker list (MB):   16.00
+ Number of elements per core in main walker list: 500000
+ Memory allocated per core for spawned walker lists (MB):    3.20
+ Number of elements per core in spawned walker list: 50000
+
+ -- Start JSON block --
+ {
+     "system": {
+         "nbasis": 66,   
+         "nel": 6,   
+         "nvirt": 60,   
+         "Ms": 0,   
+         "nalpha": 3,   
+         "nbeta": 3,   
+         "nvirt_alpha": 30,   
+         "nvirt_beta": 30,   
+         "nsym": 33,   
+         "sym0": 1,   
+         "sym_max": 33,   
+         "nsym_tot": 33,   
+         "sym0_tot": 1,   
+         "sym_max_tot": 33,   
+         "symmetry": 15,   
+         "max_number_excitations": 6,   
+         "ueg": {
+             "r_s": 2.00000000,   
+             "ecutoff": 2.00000000,   
+             "k_fermi": 0.95957915,   
+             "E_fermi": 0.46039607,   
+             "ktwist": [0.00000000,0.00000000,0.00000000],
+             "L": [5.85836755,5.85836755,5.85836755]
+         }
+     },
+     "qmc": {
+         "rng_seed": 122,   
+         "real_amplitudes": false,   
+         "real_amplitude_force_32": false,   
+         "spawn_cutoff": 0.01000000,   
+         "excit_gen": 0,   
+         "pattempt_single": 0.00000000,   
+         "pattempt_double": 1.00000000,   
+         "tau": 0.10000000,   
+         "tau_search": true,   
+         "vary_shift_from": 0.00000000,   
+         "vary_shift_from_proje": false,   
+         "initial_shift": 0.00000000,   
+         "shift_damping": 0.05000000,   
+         "walker_length": 500000,   
+         "spawned_walker_length": 50000,   
+         "D0_population": 10.00000000,   
+         "target_particles": 90000.00000000,   
+         "initiator_approx": false,   
+         "initiator_pop": 3.00000000,   
+         "ncycles": 10,   
+         "nreport": 50,   
+         "use_mpi_barriers": false    
+     },
+     "fciqmc": {
+         "select_ref_det_every_nreports": 2147483647,   
+         "init_spin_inv_D0": false,   
+         "ref_det_factor": 1.50000000,   
+         "non_blocking_comm": false,   
+         "doing_load_balancing": false,   
+         "trial_function": 0,   
+         "guiding_function": 0    
+     },
+     "semi_stoch": {
+         "start_iter": 1,   
+         "shift_iter": -1,   
+         "space_type": 0,   
+         "target_size": 0,   
+         "write_determ_space": false,   
+         "projection_mode": 0,   
+         "read_id": 2147483647,   
+         "write_id": 2147483647    
+     },
+     "restart": {
+         "read_restart": false,   
+         "read_id": 2147483647,   
+         "write_restart": false,   
+         "write_id": 2147483647,   
+         "write_freq": 2147483647,   
+         "write_restart_shift": false,   
+         "write_shift_id": 2147483647    
+     },
+     "load balancing": {
+         "nslots": 1,   
+         "pop": 1000,   
+         "percent": 0.05000000,   
+         "max_attempts": 2,   
+         "write_info": false    
+     },
+     "reference": {
+         "det": [ 1, 2, 3, 10, 11, 14],
+         "det_ms": 0,   
+         "det_symmetry": 15,   
+         "H00": 2.02890441,   
+         "hilbert_space_det": [ 1, 2, 3, 10, 11, 14],
+         "hilbert_space_det_ms": 0,   
+         "hilbert_space_det_symmetry": 15,   
+         "ex_level": 6    
+     }
+ }
+ -- End JSON block --
+
+ Information printed out every QMC report loop:
+
+ Shift: the energy offset calculated at the end of the report loop.
+ H_0j: <D_0|H|D_j>, Hamiltonian matrix element.
+ N_j: population of Hamiltonian particles on determinant D_j.
+ # H psips: current total population of Hamiltonian particles.
+ # states: number of many-particle states occupied.
+ # spawn_events: number of successful spawning events across all processors.
+ R_spawn: average rate of spawning across all processors.
+ time: average time per Monte Carlo cycle.
+
+ Note that all particle populations are averaged over the report loop.
+
+ # iterations   Shift              \sum H_0j N_j      N_0                  # H psips           # states  # spawn_events  R_spawn   time
+ #          0   0.0000000000E+00   0.0000000000E+00   1.0000000000E+01     1.0000000000E+01           1               0   0.0000   0.000
+ # Warning timestep changed to:  0.09500
+ # WARNING: more than 3 particles spawned in a single event 2 times in the last report loop.
+ # Mean number of particles created in blooms:      3.0
+ # This warning only prints  1 time(s). You may wish to reduce the time step.
+           10   0.0000000000E+00  -5.3247544778E-01   1.0200000000E+01     1.0500000000E+02          89              39   0.3013   0.000
+ # Warning timestep changed to:  0.09025
+           20   0.0000000000E+00  -1.1339553669E+00   1.2300000000E+01     3.5500000000E+02         324             122   0.3356   0.000
+ # Warning timestep changed to:  0.08574
+           30   0.0000000000E+00  -1.3424176935E+00   1.3000000000E+01     7.5800000000E+02         703             252   0.3218   0.000
+ # Warning timestep changed to:  0.08145
+           40   0.0000000000E+00  -1.3076437867E+00   1.4200000000E+01     1.2210000000E+03        1150             395   0.3185   0.001
+           50   0.0000000000E+00  -1.7943879248E+00   1.6900000000E+01     1.6730000000E+03        1588             536   0.3029   0.001
+           60   0.0000000000E+00  -2.3869026960E+00   1.7600000000E+01     2.1560000000E+03        2022             636   0.3008   0.002
+           70   0.0000000000E+00  -2.2699029888E+00   1.7800000000E+01     2.5740000000E+03        2393             770   0.2996   0.002
+           80   0.0000000000E+00  -2.1050287884E+00   1.8900000000E+01     3.1460000000E+03        2909            1000   0.3006   0.002
+           90   0.0000000000E+00  -2.4300078513E+00   1.9500000000E+01     3.4770000000E+03        3210            1023   0.3009   0.002
+          100   0.0000000000E+00  -2.7380527462E+00   2.1600000000E+01     3.6230000000E+03        3340            1108   0.2993   0.003
+          110   0.0000000000E+00  -2.5054418731E+00   2.3900000000E+01     4.0440000000E+03        3732            1247   0.3006   0.003
+          120   0.0000000000E+00  -2.2558666462E+00   2.4500000000E+01     4.2020000000E+03        3848            1291   0.3051   0.003
+          130   0.0000000000E+00  -2.4916772017E+00   2.8000000000E+01     4.3330000000E+03        3962            1342   0.3026   0.003
+          140   0.0000000000E+00  -2.9242078531E+00   3.0600000000E+01     4.6800000000E+03        4238            1449   0.3008   0.003
+          150   0.0000000000E+00  -3.6391255688E+00   3.8700000000E+01     4.9150000000E+03        4439            1520   0.3024   0.004
+          160   0.0000000000E+00  -4.5966758043E+00   4.2100000000E+01     5.2520000000E+03        4702            1609   0.3032   0.004
+          170   0.0000000000E+00  -4.9829921751E+00   4.5100000000E+01     5.1880000000E+03        4639            1648   0.3005   0.004
+          180   0.0000000000E+00  -6.0984135326E+00   5.1200000000E+01     5.3110000000E+03        4655            1652   0.2997   0.004
+          190   0.0000000000E+00  -6.9968300152E+00   5.4900000000E+01     5.6660000000E+03        4953            1710   0.2991   0.004
+          200   0.0000000000E+00  -7.9117882520E+00   5.9600000000E+01     6.0750000000E+03        5293            1947   0.3013   0.005
+          210   0.0000000000E+00  -8.2519808992E+00   6.6700000000E+01     6.2440000000E+03        5359            1981   0.2957   0.004
+          220   0.0000000000E+00  -1.0115916638E+01   7.8700000000E+01     6.4350000000E+03        5465            2025   0.2994   0.005
+          230   0.0000000000E+00  -1.1932883453E+01   9.1400000000E+01     7.2350000000E+03        6029            2235   0.2950   0.005
+          240   0.0000000000E+00  -1.4406298317E+01   1.0520000000E+02     7.8110000000E+03        6468            2449   0.2973   0.006
+          250   0.0000000000E+00  -1.5950658229E+01   1.1940000000E+02     8.4260000000E+03        6835            2678   0.2957   0.006
+          260   0.0000000000E+00  -1.9446190504E+01   1.3790000000E+02     8.9290000000E+03        7112            2769   0.2927   0.006
+          270   0.0000000000E+00  -2.2114393580E+01   1.5450000000E+02     9.5770000000E+03        7532            2977   0.2950   0.007
+          280   0.0000000000E+00  -2.4529067104E+01   1.7240000000E+02     1.0425000000E+04        8012            3291   0.2938   0.007
+          290   0.0000000000E+00  -2.7865249159E+01   1.9940000000E+02     1.1069000000E+04        8325            3543   0.2934   0.008
+          300   0.0000000000E+00  -3.1645583353E+01   2.2920000000E+02     1.1915000000E+04        8729            3771   0.2917   0.008
+          310   0.0000000000E+00  -3.6037358741E+01   2.6220000000E+02     1.3407000000E+04        9638            4334   0.2907   0.009
+          320   0.0000000000E+00  -4.0839267004E+01   2.9210000000E+02     1.4689000000E+04       10273            4723   0.2905   0.010
+          330   0.0000000000E+00  -4.7564033458E+01   3.2260000000E+02     1.6086000000E+04       11011            5233   0.2898   0.011
+          340   0.0000000000E+00  -5.3984528228E+01   3.6450000000E+02     1.7073000000E+04       11376            5447   0.2904   0.012
+          350   0.0000000000E+00  -6.0436023695E+01   4.1500000000E+02     1.8807000000E+04       12329            6050   0.2880   0.013
+          360   0.0000000000E+00  -6.8600828342E+01   4.7270000000E+02     2.0567000000E+04       12891            6731   0.2875   0.013
+          370   0.0000000000E+00  -7.9592793871E+01   5.3000000000E+02     2.2390000000E+04       13740            7249   0.2848   0.014
+          380   0.0000000000E+00  -8.9429824983E+01   5.9710000000E+02     2.4201000000E+04       14206            7825   0.2840   0.015
+          390   0.0000000000E+00  -1.0325040031E+02   6.7470000000E+02     2.6968000000E+04       15184            8786   0.2832   0.017
+          400   0.0000000000E+00  -1.1690284138E+02   7.6630000000E+02     3.0079000000E+04       16404            9902   0.2818   0.018
+          410   0.0000000000E+00  -1.3430165775E+02   8.6870000000E+02     3.3099000000E+04       17294           10972   0.2816   0.020
+          420   0.0000000000E+00  -1.5173757232E+02   9.8930000000E+02     3.6780000000E+04       18361           12143   0.2805   0.021
+          430   0.0000000000E+00  -1.7199177319E+02   1.1018000000E+03     4.0565000000E+04       19322           13499   0.2790   0.023
+          440   0.0000000000E+00  -1.9714921566E+02   1.2457000000E+03     4.5211000000E+04       20440           14941   0.2776   0.026
+          450   0.0000000000E+00  -2.2521465626E+02   1.3894000000E+03     5.0314000000E+04       21582           16649   0.2760   0.028
+          460   0.0000000000E+00  -2.5819157917E+02   1.5741000000E+03     5.6219000000E+04       23043           18945   0.2756   0.031
+          470   0.0000000000E+00  -2.9535429035E+02   1.8169000000E+03     6.3344000000E+04       24704           21151   0.2743   0.034
+          480   0.0000000000E+00  -3.3850822571E+02   2.0826000000E+03     7.0251000000E+04       25885           23671   0.2739   0.036
+          490   0.0000000000E+00  -3.8606860670E+02   2.3977000000E+03     7.8790000000E+04       27560           26720   0.2719   0.041
+          500   0.0000000000E+00  -4.4360073751E+02   2.7368000000E+03     8.8258000000E+04       28983           29702   0.2712   0.045
+
+ Blooming events occured: a more efficent calulation may be possible with a smaller timestep.
+ Total number of blooming events: 18
+ Maximum number of particles spawned in a blooming event:       3.00
+ Mean number of particles spawned in a blooming event:         3.00
+
+ Load balancing
+ ^^^^^^^^^^^^^^
+
+ The final distribution of walkers and determinants across the processors was:
+
+ Min # of particles on a processor:       4.128100E+04
+ Max # of particles on a processor:       4.697700E+04
+ Mean # of particles on a processor:      4.412900E+04
+
+ Min # of determinants on a processor:   14469
+ Max # of determinants on a processor:   14514
+ Mean # of determinants on a processor:   1.449150E+04
+
+ Min time taken by walker communication:         0.12s
+ Max time taken by walker communication:         0.99s
+ Mean time taken by walker communication:        0.56s
+
+ ================================================================
+ Finished running on 04/04/2016 at 22:53:05
+ Wall time (seconds):                           5.50
+ CPU time (per processor, seconds):             5.50
+ ================================================================
+
