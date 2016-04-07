@@ -242,6 +242,7 @@ contains
         type(restart_info_t) :: ri, ri_shift
         type(hamil_t) :: hamil
         type(json_out_t) :: js
+        character(36) :: uuid_restart
 
         ! Check input options
         restarting = present(qmc_state_restart) .or. restart_in%read_restart
@@ -256,7 +257,7 @@ contains
             call json_object_init(js, tag=.true.)
             call sys_t_json(js, sys)
             call qmc_in_t_json(js, qmc_in)
-            call restart_in_t_json(js, restart_in)
+            call restart_in_t_json(js, restart_in, uuid_restart)
             call reference_t_json(js, reference, sys)
             call json_write_key(js, 'sparse_hamil', sparse_hamil, .true.)
             call json_object_end(js, terminal=.true., tag=.true.)

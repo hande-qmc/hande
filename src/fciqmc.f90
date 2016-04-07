@@ -97,6 +97,7 @@ contains
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
+        character(36) :: uuid_restart
 
         logical :: soft_exit, write_restart_shift, error
         logical :: determ_parent, determ_child
@@ -119,8 +120,8 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, fciqmc_in=fciqmc_in, &
-                      qmc_state_restart=qmc_state_restart)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, &
+                      fciqmc_in=fciqmc_in, qmc_state_restart=qmc_state_restart)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -132,7 +133,7 @@ contains
             call qmc_in_t_json(js, qmc_in_loc)
             call fciqmc_in_t_json(js, fciqmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
-            call restart_in_t_json(js, restart_in)
+            call restart_in_t_json(js, restart_in, uuid_restart)
             call load_bal_in_t_json(js, load_bal_in)
             call reference_t_json(js, qs%ref, sys, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)

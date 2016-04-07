@@ -352,6 +352,7 @@ contains
         type(bloom_stats_t) :: bloom_stats
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
+        character(36) :: uuid_restart
 
         real :: t1, t2
 
@@ -377,7 +378,7 @@ contains
 
         ! Initialise data.
         call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, &
-                      qmc_state_restart=qmc_state_restart)
+                      uuid_restart, qmc_state_restart=qmc_state_restart)
 
         if (parent) then
             call json_object_init(js, tag=.true.)
@@ -389,7 +390,7 @@ contains
             call qmc_in_t_json(js, qmc_in_loc)
             call ccmc_in_t_json(js, ccmc_in)
             call semi_stoch_in_t_json(js, semi_stoch_in)
-            call restart_in_t_json(js, restart_in)
+            call restart_in_t_json(js, restart_in, uuid_restart)
             call reference_t_json(js, qs%ref, sys, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)
             write (js%io, '()')

@@ -559,7 +559,7 @@ contains
         ! In/Out:
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
-        !   qmc_in: qmc_in_t object containing qmc input values (including any defaults set).
+        !   qmc: qmc_in_t object containing qmc input values (including any defaults set).
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
 
@@ -603,7 +603,7 @@ contains
         ! In/Out:
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
-        !   fciqmc_in: fciqmc_in_t object containing fciqmc input values (including any defaults set).
+        !   fciqmc: fciqmc_in_t object containing fciqmc input values (including any defaults set).
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
@@ -631,7 +631,7 @@ contains
         ! In/Out:
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
-        !   semi_stoch_in: semi_stoch_in_t object containing semi-stochastic input values (including any defaults set).
+        !   semi_stoch: semi_stoch_in_t object containing semi-stochastic input values (including any defaults set).
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
@@ -660,7 +660,7 @@ contains
         ! In/Out:
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
-        !   ccmc_in: ccmc_in_t object containing ccmc input values (including any defaults set).
+        !   ccmc: ccmc_in_t object containing ccmc input values (including any defaults set).
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
@@ -678,20 +678,22 @@ contains
 
     end subroutine ccmc_in_t_json
 
-    subroutine restart_in_t_json(js, restart, terminal)
+    subroutine restart_in_t_json(js, restart, uuid_restart, terminal)
 
         ! Serialise a restart_in_t object in JSON format.
 
         ! In/Out:
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
-        !   restart_in: restart_in_t object containing restart input values (including any defaults set).
+        !   restart: restart_in_t object containing restart input values (including any defaults set).
+        !   uuid_restart: the UUID of the calculation that generated the restart file, if one was read.
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out
 
         type(json_out_t), intent(inout) :: js
         type(restart_in_t), intent(in) :: restart
+        character(36), intent(in) :: uuid_restart
         logical, intent(in), optional :: terminal
 
         call json_object_init(js, 'restart')
@@ -701,7 +703,8 @@ contains
         call json_write_key(js, 'write_id', restart%write_id)
         call json_write_key(js, 'write_freq', restart%write_freq)
         call json_write_key(js, 'write_restart_shift', restart%write_restart_shift)
-        call json_write_key(js, 'write_shift_id', restart%write_shift_id, .true.)
+        call json_write_key(js, 'write_shift_id', restart%write_shift_id, .not.restart%read_restart)
+        if (restart%read_restart) call json_write_key(js, 'uuid_restart', uuid_restart, .true.)
         call json_object_end(js, terminal)
 
     end subroutine restart_in_t_json
@@ -713,7 +716,7 @@ contains
         ! In/Out:
         !   js: json_out_t controlling the output unit and handling JSON internal state.  Unchanged on output.
         ! In:
-        !   load_bal_in: load_bal_in_t object containing load balancing input values (including any defaults set).
+        !   lb: load_bal_in_t object containing load balancing input values (including any defaults set).
         !   terminal (optional): if true, this is the last entry in the enclosing JSON object.  Default: false.
 
         use json_out

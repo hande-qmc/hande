@@ -99,6 +99,7 @@ contains
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
         type(dmqmc_in_t) :: dmqmc_in_loc
+        character(36) :: uuid_restart
 
         if (parent) then
             write (6,'(1X,"DMQMC")')
@@ -112,7 +113,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, dmqmc_in=dmqmc_in, &
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart, dmqmc_in=dmqmc_in, &
                       qmc_state_restart=qmc_state_restart)
 
         allocate(tot_nparticles_old(qs%psip_list%nspaces), stat=ierr)
@@ -162,7 +163,7 @@ contains
             call ipdmqmc_in_t_json(js, dmqmc_in_loc)
             call rdm_in_t_json(js, dmqmc_in%rdm)
             call operators_in_t_json(js)
-            call restart_in_t_json(js, restart_in)
+            call restart_in_t_json(js, restart_in, uuid_restart)
             call load_bal_in_t_json(js, load_bal_in)
             call reference_t_json(js, qs%ref, sys, terminal=.true.)
             call json_object_end(js, terminal=.true., tag=.true.)

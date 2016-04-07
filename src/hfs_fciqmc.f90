@@ -84,6 +84,7 @@ contains
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri
+        character(36) :: uuid_restart
 
         logical :: soft_exit, comms_found, error
 
@@ -95,7 +96,7 @@ contains
         end if
 
         ! Initialise data.
-        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs)
+        call init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qs, uuid_restart)
 
         allocate(nparticles_old(qs%psip_list%nspaces), stat=ierr)
         call check_allocate('nparticles_old', qs%psip_list%nspaces, ierr)
