@@ -120,7 +120,7 @@ Lua is straightforward to compile.  For example:
     $ wget -O - http://www.lua.org/ftp/lua-5.2.4.tar.gz | tar xvzf -
     $ cd lua-5.2.4
     $ make linux
-    $ make INSTALL_TOP=$HOME/local
+    $ make install INSTALL_TOP=$HOME/local
 
 will install the lua program and library to subdirectories in $HOME/local.  It is usually
 fine to compile lua using the GCC compiler and link HANDE against it using another
