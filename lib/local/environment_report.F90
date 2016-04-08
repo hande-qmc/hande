@@ -35,7 +35,7 @@ implicit none
 character(*), parameter :: HANDE_VCS_VERSION = _VCS_VERSION
 ! HANDE version.  When tagging a commit, update this (directly on master is probably best).  In the immediate commit after the tag,
 ! append -dev to it to 're-open' the code base for further development.
-character(*), parameter :: HANDE_VERSION = '1.0'
+character(*), parameter :: HANDE_VERSION = '1.0-dev'
 
 ! Global uuid
 character(36) :: GLOBAL_UUID
