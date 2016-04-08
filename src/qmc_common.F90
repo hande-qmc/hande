@@ -649,6 +649,10 @@ contains
         end do
         call dealloc_det_info_t(cdet)
 
+        ! Initialise spawning rate to zero.
+        qs%estimators%tot_nspawn_events = 0
+        qs%spawn_store%rspawn = 0.0_p
+
         ! Using non blocking communications?
         nb_comm_local = .false.
         if (present(nb_comm)) nb_comm_local = nb_comm
@@ -677,9 +681,6 @@ contains
         ntot_particles = qs%psip_list%nparticles
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
-
-        qs%estimators%tot_nspawn_events = 0
-        qs%spawn_store%rspawn = 0.0_p
 
         if (.not. nb_comm_local .and. parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
