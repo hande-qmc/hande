@@ -10,8 +10,8 @@ contains
 
 ! --- Initialisation routines ---
 
-    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, dmqmc_in, fciqmc_in, &
-                        qmc_state_restart)
+    subroutine init_qmc(sys, qmc_in, restart_in, load_bal_in, reference_in, annihilation_flags, qmc_state, uuid_restart, &
+                        dmqmc_in, fciqmc_in, qmc_state_restart)
 
         ! Initialisation for fciqmc calculations.
         ! Setup the spin polarisation for the system, initialise the RNG,
@@ -20,24 +20,26 @@ contains
 
         ! In:
         !    sys: system being studied.
+        !    qmc_in: input options relating to QMC methods.
         !    restart_in: input options for HDF5 restart files.
         !    load_bal_in: input options for load balancing.
-        !    fciqmc_in (optional): input options relating to FCIQMC.  Default
-        !       fciqmc_in_t settings are used if not present.
         !    reference_in: reference determinant.  If set (ie components
         !       allocated) then this is copied into qmc_state%ref.
         !       Otherwise a best guess is made based upon symmetry/spin/number
         !       of electrons/etc in set_reference_det.
-        !    qmc_in: input options relating to QMC methods.
         !    dmqmc_in (optional): input options relating to DMQMC.
+        !    fciqmc_in (optional): input options relating to FCIQMC.  Default
+        !       fciqmc_in_t settings are used if not present.
         ! In/Out:
         !    qmc_state_restart (optional): qmc_state_t object from a calculation
         !       to restart. Deallocated on exit.
         ! Out:
         !    annihilation_flags: calculation specific annihilation flags.
         !    qmc_state: qmc_state_t object.  On output the QMC state is
-        !       initialsed (potentially from a restart file) with components
+        !       initialised (potentially from a restart file) with components
         !       correctly allocated and useful information printed out...
+        !    uuid_restart: if using a restart file, the UUID of the calculations
+        !       that generated it.
 
         use checking, only: check_allocate
 
@@ -60,6 +62,7 @@ contains
         type(reference_t), intent(in) :: reference_in
         type(annihilation_flags_t), intent(out) :: annihilation_flags
         type(qmc_state_t), intent(out) :: qmc_state
+        character(36), intent(out) :: uuid_restart
         type(dmqmc_in_t), intent(in), optional :: dmqmc_in
         type(fciqmc_in_t), intent(in), optional :: fciqmc_in
         type(qmc_state_t), intent(inout), optional :: qmc_state_restart
@@ -123,7 +126,7 @@ contains
             qmc_state%shift = qmc_in%initial_shift
             ! Initial walker distributions
             if (restart_in%read_restart) then
-                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state)
+                call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state, uuid_restart)
             else if (doing_calc(dmqmc_calc)) then
                 ! Initial distribution handled later
                 qmc_state%psip_list%nstates = 0

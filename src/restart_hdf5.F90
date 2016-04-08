@@ -420,17 +420,20 @@ module restart_hdf5
 
         end subroutine dump_restart_hdf5
 
-        subroutine read_restart_hdf5(ri, nbasis, nb_comm, qs)
+        subroutine read_restart_hdf5(ri, nbasis, nb_comm, qs, uuid_restart)
 
             ! Read QMC data from restart file.
 
             ! In:
             !    ri: restart information.  ri%restart_stem and ri%read_id are used.
             !    nb_comm: true if using non-blocking communications.
+            !    nbasis: number of basis functions being used.
             ! In/Out:
             !    qs: qmc_state_t object.  Allocated on input, contains info
             !       from the restart file on exit.  If nb_comm is true, then
             !       information is also read into qs%spawn_store%spawn_recv.
+            ! Out:
+            !    uuid_restart: UUID of the calculation that generated the restart file
 
 #ifndef DISABLE_HDF5
             use hdf5
@@ -452,6 +455,7 @@ module restart_hdf5
             logical, intent(in) :: nb_comm
             integer, intent(in) :: nbasis
             type(qmc_state_t), intent(inout) :: qs
+            character(36), intent(out) :: uuid_restart
 
 #ifndef DISABLE_HDF5
             ! HDF5 kinds
@@ -488,6 +492,8 @@ module restart_hdf5
                 call hdf5_read(group_id, di0_length, i0_length_restart)
 
                 call hdf5_read(group_id, dcalc, calc_type_restart)
+
+                call hdf5_read(group_id, duuid, 36, uuid_restart)
 
                 ! [todo] - Allow restart files for one calculation types to be used to
                 ! [todo] - restart a (suitably compatible) different calculation.
