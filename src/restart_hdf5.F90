@@ -301,7 +301,7 @@ module restart_hdf5
             character(19) :: date_str
             integer :: ierr
             ! Used for array sizes
-            integer :: ishape(2)
+            integer(int_64) :: ishape(2)
             ! Temporary variables so for copying data to which we can also call c_ptr on.
             ! This allows us to use the same array functions for writing out (the small
             ! amount of) scalar data we have to write out.
@@ -349,31 +349,32 @@ module restart_hdf5
                 ! It would be convenient to use array slices here, but unfortunately they might (depending on
                 ! compiler) cause the entire psip array to be copied to a temporary.  Instead we pass the
                 ! unsliced arrays and indicate the limit of the final dimension of the array to be printed out.
-                ishape = shape(qs%psip_list%states)
+                ishape = shape(qs%psip_list%states, kind=int_64)
                 call hdf5_write(subgroup_id, ddets, kinds, ishape, qs%psip_list%states, qs%psip_list%nstates)
 
-                ishape=shape(qs%psip_list%pops)
+                ishape=shape(qs%psip_list%pops, kind=int_64)
                 call hdf5_write(subgroup_id, dpops, kinds, ishape, qs%psip_list%pops, qs%psip_list%nstates)
 
-                ishape=shape(qs%psip_list%dat)
+                ishape=shape(qs%psip_list%dat, kind=int_64)
                 call hdf5_write(subgroup_id, ddata, kinds, ishape, qs%psip_list%dat, qs%psip_list%nstates)
 
                 if (nb_comm) then
                     associate(sdata=>qs%spawn_store%spawn_recv%sdata, head=>qs%spawn_store%spawn_recv%head)
-                        call hdf5_write(subgroup_id, dspawn, kinds, shape(sdata(:,:head(0,0))), sdata(:,:head(0,0)))
+                        call hdf5_write(subgroup_id, dspawn, kinds, shape(sdata(:,:head(0,0)), kind=int_64), sdata(:,:head(0,0)))
                         call hdf5_write(subgroup_id, dnspawn, head(0,0))
                     end associate
                 end if
-                call hdf5_write(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map%map), qs%par_info%load%proc_map%map)
+                call hdf5_write(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map%map, kind=int_64), &
+                                 qs%par_info%load%proc_map%map)
 
                 ! Can't use c_loc on a assumed shape array.  It's small, so just
                 ! copy it.
                 allocate(tmp_pop(size(total_population)))
                 tmp_pop = total_population
-                call hdf5_write(subgroup_id, dtot_pop, kinds, shape(tmp_pop), tmp_pop)
+                call hdf5_write(subgroup_id, dtot_pop, kinds, shape(tmp_pop, kind=int_64), tmp_pop)
 
                 ! Always write as int_64 for the sake of conversions
-                call hdf5_write(subgroup_id, dscaling, kinds, [1], [int(qs%psip_list%pop_real_factor,int_64)])
+                call hdf5_write(subgroup_id, dscaling, kinds, [1_int_64], [int(qs%psip_list%pop_real_factor,int_64)])
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -382,7 +383,7 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dncycles, ncycles)
 
-                    call hdf5_write(subgroup_id, dshift, kinds, shape(qs%shift), qs%shift)
+                    call hdf5_write(subgroup_id, dshift, kinds, shape(qs%shift, kind=int_64), qs%shift)
 
                     call hdf5_write(subgroup_id, dhash_seed, qs%spawn_store%spawn%hash_seed)
 
@@ -395,12 +396,12 @@ module restart_hdf5
                 ! --- qmc/qs%ref group ---
                 call h5gcreate_f(group_id, gref, subgroup_id, ierr)
 
-                    call hdf5_write(subgroup_id, dref, kinds, shape(qs%ref%f0), qs%ref%f0)
+                    call hdf5_write(subgroup_id, dref, kinds, shape(qs%ref%f0, kind=int_64), qs%ref%f0)
 
-                    call hdf5_write(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0), qs%ref%hs_f0)
+                    call hdf5_write(subgroup_id, dhsref, kinds, shape(qs%ref%hs_f0, kind=int_64), qs%ref%hs_f0)
 
                     tmp = qs%estimators%D0_population
-                    call hdf5_write(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
+                    call hdf5_write(subgroup_id, dref_pop, kinds, shape(tmp, kind=int_64), tmp)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -559,7 +560,7 @@ module restart_hdf5
 
                 if (i0_length == i0_length_restart) then
                     if (nbasis == nbasis_restart) then
-                        call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states), qs%psip_list%states)
+                        call hdf5_read(subgroup_id, ddets, kinds, shape(qs%psip_list%states, kind=int_64), qs%psip_list%states)
                     else
                         ! Change array bounds to restart with a larger basis
                         ! Assume that basis functions 1..nbasis_restart correspond to the original basis
@@ -579,14 +580,14 @@ module restart_hdf5
 
                 call h5lexists_f(subgroup_id, dscaling, exists, ierr)
                 if (exists) then
-                    call hdf5_read(subgroup_id, dscaling, kinds, shape(restart_scale_factor), restart_scale_factor)
+                    call hdf5_read(subgroup_id, dscaling, kinds, shape(restart_scale_factor, kind=int_64), restart_scale_factor)
                 else
                     ! Assume the scaling factor is unchanged if absent
                     restart_scale_factor = qs%psip_list%pop_real_factor
                 end if
 
                 if (dtype_equal(subgroup_id, dpops, kinds%int_p)) then
-                    call hdf5_read(subgroup_id, dpops, kinds, shape(qs%psip_list%pops), qs%psip_list%pops)
+                    call hdf5_read(subgroup_id, dpops, kinds, shape(qs%psip_list%pops, kind=int_64), qs%psip_list%pops)
                 else
                     call convert_pops(subgroup_id, dpops, kinds, qs%psip_list%pops, restart_scale_factor(1))
                 end if
@@ -601,19 +602,20 @@ module restart_hdf5
                                                                             pl%pops, pl%nstates, pl%nparticles, spawn)
                 end associate
 
-                call hdf5_read(subgroup_id, ddata, kinds, shape(qs%psip_list%dat), qs%psip_list%dat)
+                call hdf5_read(subgroup_id, ddata, kinds, shape(qs%psip_list%dat, kind=int_64), qs%psip_list%dat)
 
-                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(qs%psip_list%tot_nparticles), qs%psip_list%tot_nparticles)
+                call hdf5_read(subgroup_id, dtot_pop, kinds, shape(qs%psip_list%tot_nparticles, kind=int_64), &
+                                qs%psip_list%tot_nparticles)
 
                 if (nb_comm) then
                     associate(recv=>qs%spawn_store%spawn_recv)
-                        call hdf5_read(subgroup_id, dspawn, kinds, shape(recv%sdata), recv%sdata)
+                        call hdf5_read(subgroup_id, dspawn, kinds, shape(recv%sdata, kind=int_64), recv%sdata)
                         call hdf5_read(subgroup_id, dnspawn, recv%head(0,0))
                     end associate
                 end if
 
                 call h5lexists_f(subgroup_id, dproc_map, exists, ierr)
-                if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map%map), &
+                if (exists) call hdf5_read(subgroup_id, dproc_map, kinds, shape(qs%par_info%load%proc_map%map, kind=int_64), &
                                            qs%par_info%load%proc_map%map)
 
                 call h5lexists_f(subgroup_id, dresort, exists, ierr)
@@ -631,7 +633,7 @@ module restart_hdf5
 
                     call hdf5_read(subgroup_id, dncycles, qs%mc_cycles_done)
 
-                    call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift), qs%shift)
+                    call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift, kind=int_64), qs%shift)
 
                     call h5lexists_f(subgroup_id, dvary, exists, ierr)
                     if (exists) then
@@ -648,7 +650,7 @@ module restart_hdf5
 
                     ! Already read the reference determinant - only need the population
 
-                    call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp), tmp)
+                    call hdf5_read(subgroup_id, dref_pop, kinds, shape(tmp, kind=int_64), tmp)
                     qs%estimators%D0_population = tmp(1)
 
                 call h5gclose_f(subgroup_id, ierr)
@@ -715,8 +717,8 @@ module restart_hdf5
                 reference%f0 = 0
                 reference%hs_f0 = 0
                 if (i0_length == i0_length_restart) then
-                    call hdf5_read(group_id, dref, kinds, shape(reference%f0), reference%f0)
-                    call hdf5_read(group_id, dhsref, kinds, shape(reference%hs_f0), reference%hs_f0)
+                    call hdf5_read(group_id, dref, kinds, shape(reference%f0, kind=int_64), reference%f0)
+                    call hdf5_read(group_id, dhsref, kinds, shape(reference%hs_f0, kind=int_64), reference%hs_f0)
                 else
                     call convert_ref(group_id, dref, kinds, reference%f0)
                     call convert_ref(group_id, dhsref, kinds, reference%hs_f0)
@@ -754,6 +756,7 @@ module restart_hdf5
             use checking
             use errors, only: warning, stop_all
             use parallel
+            use const, only: int_64
 
             use calc, only: ccmc_calc
             use load_balancing, only: init_proc_map_t
@@ -948,10 +951,10 @@ module restart_hdf5
                         call h5gcreate_f(group_id, gref, subgroup_id, ierr)
 
                         call convert_ref(orig_subgroup_id, dref, kinds, f0)
-                        call hdf5_write(subgroup_id, dref, kinds, shape(f0), f0)
+                        call hdf5_write(subgroup_id, dref, kinds, shape(f0, kind=int_64), f0)
 
                         call convert_ref(orig_subgroup_id, dhsref, kinds, f0)
-                        call hdf5_write(subgroup_id, dhsref, kinds, shape(f0), f0)
+                        call hdf5_write(subgroup_id, dhsref, kinds, shape(f0, kind=int_64), f0)
 
                         call h5ocopy_f(orig_group_id, hdf5_path(gref, dref_pop), group_id, hdf5_path(gref, dref_pop), ierr)
 
@@ -962,7 +965,7 @@ module restart_hdf5
                     ! ...and create the /qmc/psips group and fill in the constant (new) processor map and total population.
                     ! (scaling factor updated below)
                     call h5gcreate_f(group_id, gpsips, subgroup_id, ierr)
-                    call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map), pm_dummy%map)
+                    call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map, kind=int_64), pm_dummy%map)
                     call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, hdf5_path(gpsips, dtot_pop), ierr)
                     call hdf5_write(group_id, hdf5_path(gpsips, dresort), .true.)
                 call h5gclose_f(group_id, ierr)
@@ -1028,24 +1031,25 @@ module restart_hdf5
                                       'Compile HANDE with the CPPFLAG -DPOP_SIZE=64 to use 64-bit populations.', 2)
 
                     if (i0_length == i0_length_restart) then
-                        call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states), psip_read%states)
+                        call hdf5_read(orig_subgroup_id, ddets, kinds, shape(psip_read%states, kind=int_64), psip_read%states)
                     else
                         call convert_dets(orig_subgroup_id, ddets, kinds, psip_read%states)
                     end if
 
                     call h5lexists_f(orig_subgroup_id, dscaling, exists, ierr)
                     if (exists) then
-                        call hdf5_read(orig_subgroup_id, dscaling, kinds, shape(restart_scale_factor), restart_scale_factor)
+                        call hdf5_read(orig_subgroup_id, dscaling, kinds, shape(restart_scale_factor, kind=int_64), &
+                                        restart_scale_factor)
                     else
                         restart_scale_factor = 1
                     end if
 
                     if (dtype_equal(orig_subgroup_id, dpops, kinds%int_p)) then
-                        call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops), psip_read%pops)
+                        call hdf5_read(orig_subgroup_id, dpops, kinds, shape(psip_read%pops, kind=int_64), psip_read%pops)
                     else
                         call convert_pops(orig_subgroup_id, dpops, kinds, psip_read%pops, restart_scale_factor(1))
                     end if
-                    call hdf5_read(orig_subgroup_id, ddata, kinds, shape(psip_read%dat), psip_read%dat)
+                    call hdf5_read(orig_subgroup_id, ddata, kinds, shape(psip_read%dat, kind=int_64), psip_read%dat)
 
                     ! Distribute.
                     ! [todo] - non-blocking information.
@@ -1138,7 +1142,7 @@ module restart_hdf5
                     ! Note that the second dimension of the psip_* arrays is assumed to be identical and every element of the
                     ! arrays passed in is written out.
 
-                    use const, only: i0, int_p, p
+                    use const, only: i0, int_p, p, int_64
 
                     use hdf5
                     use hdf5_helper, only: hdf5_write, dset_shape, hdf5_kinds_t
@@ -1159,10 +1163,11 @@ module restart_hdf5
                     call h5gopen_f(group_id, gpsips, subgroup_id, ierr)
 
                     call h5lexists_f(subgroup_id, dscaling, exists, ierr)
-                    if (.not.exists) call hdf5_write(subgroup_id, dscaling, kinds, shape(pop_scaling_factor), pop_scaling_factor)
-                    call hdf5_write(subgroup_id, ddets, kinds, shape(psip_dets), psip_dets, append=.true.)
-                    call hdf5_write(subgroup_id, dpops, kinds, shape(psip_pop), psip_pop, append=.true.)
-                    call hdf5_write(subgroup_id, ddata, kinds, shape(psip_data), psip_data, append=.true.)
+                    if (.not.exists) call hdf5_write(subgroup_id, dscaling, kinds, shape(pop_scaling_factor, kind=int_64), &
+                                                        pop_scaling_factor)
+                    call hdf5_write(subgroup_id, ddets, kinds, shape(psip_dets, kind=int_64), psip_dets, append=.true.)
+                    call hdf5_write(subgroup_id, dpops, kinds, shape(psip_pop, kind=int_64), psip_pop, append=.true.)
+                    call hdf5_write(subgroup_id, ddata, kinds, shape(psip_data, kind=int_64), psip_data, append=.true.)
 
                     call h5gclose_f(subgroup_id, ierr)
                     call h5gclose_f(group_id, ierr)

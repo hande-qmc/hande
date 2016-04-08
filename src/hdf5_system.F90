@@ -295,26 +295,26 @@ module hdf5_system
 
             call hdf5_write(group_id, dms, sys%Ms)
 
-            call hdf5_write(group_id, dcas, kinds, [2], sys%CAS)
+            call hdf5_write(group_id, dcas, kinds, [2_int_64], sys%CAS)
 
                 ! --- basis subgroup ---
                 call h5gcreate_f(group_id, gbasis, subgroup_id, ierr)
 
                 associate(nbasis=>sys%basis%nbasis)
                     call hdf5_write(subgroup_id, dnbasis, sys%basis%nbasis)
-                    call hdf5_write(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
+                    call hdf5_write(subgroup_id, dbasis_spat_ind, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%spatial_index)
-                    call hdf5_write(subgroup_id, dbasis_sym, kinds, [nbasis],&
+                    call hdf5_write(subgroup_id, dbasis_sym, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%sym)
-                    call hdf5_write(subgroup_id, dbasis_sym_index, kinds, [nbasis],&
+                    call hdf5_write(subgroup_id, dbasis_sym_index, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%sym_index)
                     call hdf5_write(subgroup_id, dbasis_sym_spin_index, kinds,&
-                                [nbasis],  sys%basis%basis_fns(:)%sym_spin_index)
-                    call hdf5_write(subgroup_id, dbasis_ms, kinds, [nbasis],&
+                                [int(nbasis, kind=int_64)],  sys%basis%basis_fns(:)%sym_spin_index)
+                    call hdf5_write(subgroup_id, dbasis_ms, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%ms)
-                    call hdf5_write(subgroup_id, dbasis_lz, kinds, [nbasis],&
+                    call hdf5_write(subgroup_id, dbasis_lz, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%lz)
-                    call hdf5_write(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
+                    call hdf5_write(subgroup_id, dbasis_sp_eigv, kinds, [int(nbasis, kind=int_64)],&
                                 sys%basis%basis_fns(:)%sp_eigv)
 
                 end associate
@@ -326,7 +326,7 @@ module hdf5_system
 
                 call hdf5_write(subgroup_id, dfcidump, sys%read_in%fcidump)
                 call hdf5_write(subgroup_id, duhf, sys%read_in%uhf)
-                call hdf5_write(subgroup_id, decore, kinds, [1], &
+                call hdf5_write(subgroup_id, decore, kinds, [1_int_64], &
                                             [sys%read_in%Ecore])
                 call hdf5_write(subgroup_id, duselz, sys%read_in%uselz)
                 call hdf5_write(subgroup_id, dcomp, sys%read_in%comp)
@@ -479,19 +479,19 @@ module hdf5_system
                         allocate(sys%basis%basis_fns(nbasis),  stat=ierr)
                         call check_allocate('sys%basis%basis_fns', nbasis, ierr)
 
-                        call hdf5_read(subgroup_id, dbasis_spat_ind, kinds, [nbasis],&
+                        call hdf5_read(subgroup_id, dbasis_spat_ind, kinds, [int(nbasis, kind=int_64)],&
                                     sys%basis%basis_fns(:)%spatial_index)
-                        call hdf5_read(subgroup_id, dbasis_sym, kinds, [nbasis],&
+                        call hdf5_read(subgroup_id, dbasis_sym, kinds, [int(nbasis, kind=int_64)],&
                                     sys%basis%basis_fns(:)%sym)
-                        call hdf5_read(subgroup_id, dbasis_sym_index, kinds, [nbasis],&
+                        call hdf5_read(subgroup_id, dbasis_sym_index, kinds, [int(nbasis, kind=int_64)],&
                                     sys%basis%basis_fns(:)%sym_index)
                         call hdf5_read(subgroup_id, dbasis_sym_spin_index, kinds,&
-                                    [nbasis],  sys%basis%basis_fns(:)%sym_spin_index)
-                        call hdf5_read(subgroup_id, dbasis_ms, kinds, [nbasis],&
+                                    [int(nbasis, kind=int_64)],  sys%basis%basis_fns(:)%sym_spin_index)
+                        call hdf5_read(subgroup_id, dbasis_ms, kinds, [int(nbasis, kind=int_64)],&
                                     sys%basis%basis_fns(:)%ms)
-                        call hdf5_read(subgroup_id, dbasis_lz, kinds, [nbasis],&
+                        call hdf5_read(subgroup_id, dbasis_lz, kinds, [int(nbasis, kind=int_64)],&
                                     sys%basis%basis_fns(:)%lz)
-                        call hdf5_read(subgroup_id, dbasis_sp_eigv, kinds, [nbasis],&
+                        call hdf5_read(subgroup_id, dbasis_sp_eigv, kinds, [int(nbasis, kind=int_64)],&
                                     sys%basis%basis_fns(:)%sp_eigv)
                     end associate
 
@@ -499,7 +499,7 @@ module hdf5_system
 
                 sys%nvirt = sys%basis%nbasis - sys%nel
 
-                call hdf5_read(group_id, dcas, kinds, [2], cas)
+                call hdf5_read(group_id, dcas, kinds, [2_int_64], cas)
 
                 if (sys%CAS(1) /= -1 .or. sys%CAS(2) /= -1) then
                     call stop_all('read_system_hdf5', 'Attempted to start calculation &
@@ -514,7 +514,7 @@ module hdf5_system
 
                     call hdf5_read(subgroup_id, duhf, sys%read_in%uhf)
                     ! Workaround reading real value from HDF5.
-                    call hdf5_read(subgroup_id, decore, kinds, [1], &
+                    call hdf5_read(subgroup_id, decore, kinds, [1_int_64], &
                                                 ecore)
                     sys%read_in%Ecore = ecore(1)
                     call hdf5_read(subgroup_id, duselz, sys%read_in%uselz)
@@ -667,8 +667,9 @@ module hdf5_system
             use hdf5
             use hdf5_helper, only: hdf5_write, hdf5_kinds_t
             use base_types, only: alloc_rp1d
-            character(*), intent(in) :: dname
+            use const, only: int_64
 
+            character(*), intent(in) :: dname
             type(alloc_rp1d) :: integs(:,:)
             type(hdf5_kinds_t), intent(in) :: kinds
             integer(hid_t), intent(in) :: id
@@ -682,7 +683,7 @@ module hdf5_system
             do ispin = 1, shpe(1)
                 do isym = lbound(nbasis_sym_spin, dim=2), ubound(nbasis_sym_spin, dim=2)
                     call get_onebody_name(dname, ispin, isym, dentr_name)
-                    call hdf5_write(id, dentr_name, kinds, shape(integs(ispin, isym + 1)%v), integs(ispin, isym + 1)%v)
+                    call hdf5_write(id, dentr_name, kinds, shape(integs(ispin, isym + 1)%v, kind=int_64), integs(ispin, isym + 1)%v)
                 end do
             end do
 
@@ -701,6 +702,8 @@ module hdf5_system
             use hdf5
             use hdf5_helper, only: hdf5_write, hdf5_kinds_t
             use base_types, only: alloc_rp1d
+            use const, only: int_64
+
             character(*), intent(in) :: dname
 
             type(alloc_rp1d) :: integs(:)
@@ -712,7 +715,7 @@ module hdf5_system
             shpe = shape(integs)
             do ispin = 1, shpe(1)
                 call get_coulomb_name(dname, ispin, dentr_name)
-                call hdf5_write(id, dentr_name, kinds, shape(integs(ispin)%v), integs(ispin)%v)
+                call hdf5_write(id, dentr_name, kinds, shape(integs(ispin)%v, kind=int_64), integs(ispin)%v)
             end do
 
         end subroutine write_coulomb_integrals
@@ -738,6 +741,7 @@ module hdf5_system
             use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
             use molecular_integral_types, only: one_body_t
             use checking, only: check_allocate
+            use const, only: int_64
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dname
@@ -746,7 +750,8 @@ module hdf5_system
             integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
             type(one_body_t), intent(inout) :: store
 
-            integer :: ispin, isym, s(1), nspin, dummy(2)
+            integer :: ispin, isym, nspin, dummy(2)
+            integer(int_64) :: s(1)
             character(155) :: dentr_name
 
             if (uhf) then
@@ -785,6 +790,7 @@ module hdf5_system
             use hdf5
             use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
             use molecular_integral_types, only: two_body_t
+            use const, only: int_64
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dname
@@ -795,12 +801,12 @@ module hdf5_system
             integer(hsize_t) :: s(1)
             character(155) :: dentr_name
 
-            shpe = shape(store%integrals)
+            shpe = shape(store%integrals, kind=int_64)
 
             do ispin = 1, shpe(1)
                 call get_coulomb_name(dname, ispin, dentr_name)
-                call dset_shape(id, dentr_name, s)
-                call hdf5_read(id, dentr_name, kinds, shape(store%integrals(ispin)%v), store%integrals(ispin)%v)
+                call hdf5_read(id, dentr_name, kinds, shape(store%integrals(ispin)%v, kind=int_64), &
+                                store%integrals(ispin)%v)
             end do
 
         end subroutine read_coulomb_integrals
