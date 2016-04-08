@@ -731,7 +731,7 @@ contains
         use system, only: sys_t, ueg, read_in
         use proc_pointers, only: sc0_ptr, op0_ptr
         use calc, only: doing_calc, hfs_fciqmc_calc
-        use reference_determinant, only: reference_t, copy_reference_t, set_reference_det
+        use reference_determinant, only: reference_t, set_reference_det
         use checking, only: check_allocate
         use determinants, only: encode_det
 
@@ -742,7 +742,7 @@ contains
         integer :: ierr
 
         ! Note occ_list could be set and allocated in the input.
-        call copy_reference_t(reference_in, reference)
+        reference = reference_in
 
         ! Set the reference determinant to be the spin-orbitals with the lowest
         ! single-particle eigenvalues which satisfy the spin polarisation and, if

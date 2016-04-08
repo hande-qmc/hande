@@ -19,7 +19,7 @@ contains
 
         use fci_utils, only: fci_in_t, init_fci, generate_hamil, write_hamil, hamil_t
         use hamiltonian, only: get_hmatel
-        use reference_determinant, only: copy_reference_t, reference_t
+        use reference_determinant, only: reference_t
         use system, only: sys_t, copy_sys_spin_info
 
         use checking, only: check_allocate
@@ -45,7 +45,7 @@ contains
         if (parent) call check_fci_opts(sys, fci_in, .true.)
 
         call copy_sys_spin_info(sys, sys_bak)
-        call copy_reference_t(ref_in, ref)
+        ref = ref_in
 
         if (nprocs > 1) then
             if (fci_in%direct_lanczos) call stop_all('do_fci_lanczos', &

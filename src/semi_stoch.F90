@@ -154,7 +154,7 @@ contains
         use spawn_data, only: spawn_t
         use system, only: sys_t
         use utils, only: int_fmt
-        use reference_determinant, only: reference_t, copy_reference_t, dealloc_reference_t
+        use reference_determinant, only: reference_t, dealloc_reference_t
 
         type(semi_stoch_t), intent(inout) :: determ
         type(semi_stoch_in_t), intent(in) :: ss_in
@@ -231,7 +231,7 @@ contains
         else if (ss_in%space_type == reuse_determ_space) then
             call recreate_determ_space(dets_this_proc, determ%dets(:,:), spawn, determ%sizes(iproc))
         else if (ss_in%space_type == ci_determ_space) then
-            call copy_reference_t(reference, ci_ref)
+            ci_ref = reference
             ci_ref%ex_level = ss_in%ci_space%ex_level
             if (allocated(ss_in%ci_space%hs_occ_list0)) then
                 ci_ref%occ_list0 = ss_in%ci_space%hs_occ_list0
