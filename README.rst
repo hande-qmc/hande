@@ -11,7 +11,11 @@ chemistry code.
 Documentation
 -------------
 
-Extensive documentation can be found under the documentation subdirectory.
+Extensive documentation (including tutorials) can be found under the documentation
+subdirectory and on `readthedocs <https://hande.readthedocs.org>`_.
+
+.. image:: https://readthedocs.org/projects/hande/badge/?version=latest
+    :target: https://hande.readthedocs.org/en/latest/?badge=latest
 
 HANDE development team
 ----------------------
