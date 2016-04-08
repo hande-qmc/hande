@@ -1,3 +1,5 @@
+.. _generic_systems:
+
 Generic systems
 ===============
 
@@ -15,6 +17,7 @@ containing information about the single-particle basis set and the one- and two-
 integrals between these basis functions.  This file is in FCIDUMP format
 [Knowles89]_, which can be produced by several quantum chemistry packages including
 MOLPRO, Q-Chem (via additions from Alex Thom) and PSI4 (via a plugin from James Spencer).
+See :ref:`generating_integrals` for more details.
 
 Options
 ^^^^^^^
@@ -44,7 +47,7 @@ Options
 ``sym``
     type: integer.
 
-    Optional.
+    Required for deterministic calculations and highly recommended for Monte Carlo calculations.
 
     Set the symmetry of the system.  This is the index of a specific irreducible
     representation from the FCIDUMP file; see the output produced by creating a system for

@@ -1,0 +1,4 @@
+Recommended statistics from optimal block size:
+
+                               # H psips \sum H_0j N_j       N_0        Shift   Proj. Energy
+hubbard_semi_stoch_high.out  5216460(80)     -15356(2)  46576(5)  -0.32970(2)  -0.3296994(8)

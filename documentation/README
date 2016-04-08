@@ -27,9 +27,18 @@ we use the javascript files from the MathJax CDN, which requires a working netwo
 If you wish to have the HTML documentation available offline
 
     git clone https://github.com/mathjax/MathJax
-    make clean html
 
 The location of MathJax can be customised by altering the `mathjax_path` variable in the
-sphinx config file (`documentation/.sphinx/conf.py`) or by setting the MATHJAX_PATH
+sphinx config file (`documentation/conf.py`) or by setting the MATHJAX_PATH
 environment variable.  MathJax is not included by default as it and the necessary fonts
 are rather large.
+
+Developers:
+
+If you create new tutorial calculations or update existing ones, please run
+
+    make tutorials
+
+to regenerate the blocking output.  This is not run automatically as changing branches
+causes timestamps to be modified and we don't want to require all pyhande dependencies to
+be installed in order to generate the documentation.

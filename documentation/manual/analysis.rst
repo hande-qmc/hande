@@ -1,3 +1,5 @@
+.. _analysis:
+
 Analysis
 ========
 
@@ -34,14 +36,14 @@ The ``reblock_hande.py`` script (in the ``tools`` subdirectory) does this.  Run
 
 .. code-block:: bash
 
-    reblock_hande.py --help
+    $ reblock_hande.py --help
 
 to see the available options.  Estimates for the shift and projected energy are
 typically obtained using
 
 .. code-block:: bash
 
-    reblock_hande.py --start N out
+    $ reblock_hande.py --start N out
 
 respectively, where ``N`` is the iteration from which data should be blocked (i.e.
 after the calculation has equilibrated) and ``out`` is the file to which the

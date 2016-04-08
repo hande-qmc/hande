@@ -215,6 +215,7 @@ dmqmc options
         This feature is found to be unsuccessful for some larger lattices (for example,
         6x6x6, for the Heisenberg model). The weights output should be checked. Increasing
         the number of psips used may improve the weights calculated.
+
 ``find_weights_start``
     type: integer.
 

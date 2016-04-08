@@ -3,7 +3,7 @@ Usage
 
 .. code-block:: bash
 
-    hande.x [input_filename]
+    $ hande.x [input_filename]
 
 Output is sent to STDOUT and can be redirected as desired.
 
@@ -14,35 +14,37 @@ Using MPI only:
 
 .. code-block:: bash
 
-    mpirun -np n hande.x [input_filename]
+    $ mpirun -np n hande.x [input_filename]
 
-Where n is the number of processors to run on in parallel. On a HPC this may
-differ (for example mpirun -np n may be replaced with mpiexec), depending on 
-how the environment has been set up.
+where ``n`` is the number of processors to run on in parallel. On an HPC system this may
+differ (for example mpirun -np n may be replaced with mpiexec), depending on how the
+environment has been set up.
 
-Using OpenMP parallelism: 
+Using OpenMP parallelism:
 
 .. code-block:: bash
 
-    export OMP_NUM_THREADS=n
-    hande.x [input_filename]
+    $ export OMP_NUM_THREADS=n
+    $ hande.x [input_filename]
 
 OpenMP parallelism is currently only implemented for CCMC.
 
-Using OpenMP parallelism: 
+Using OpenMP and MPI parallelism:
 
 .. code-block:: bash
 
-    export OMP_NUM_THREADS=n
-    mpirun -np m hande.x [input_filename]
+    $ export OMP_NUM_THREADS=n
+    $ mpirun -np m hande.x [input_filename]
 
-Where m is the number of mpi processes and n is the number of OpenMP threads
-per mpi process.
-HANDE prints this information at the top of the output file, so one can easily
-check there environment is set up correctly:
+where ``m`` is the number of MPI processes and ``n`` is the number of OpenMP threads per
+MPI process.  HANDE prints this information at the top of the output, so one can easily
+check there environment is set up correctly.
 
-| Number of MPI processes running on: m
-| Running with n threads per MPI process.
+HANDE only performs I/O operations on the root processor when run on multiple processors.
 
-hande.x only performs i/o operations on the root processor when run on
-multiple processors.
+.. note::
+
+    Due to the implementation of efficient Monte Carlo algorithms, running the Monte Carlo
+    algorithms in HANDE on different numbers of processors (or using OpenMP) results in
+    different Markov chains and hence such calculations will not agree exactly but instead
+    statistically.

@@ -9,7 +9,7 @@ testcode can be run from the test_suite subdirectory:
 
 .. code-block:: bash
 
-    testcode.py
+    $ testcode.py
 
 As the full test suite is extensive, it can take a long time to run, so the ``quick``
 and even shorter ``vquick`` categories are provided that aim to test most functionality

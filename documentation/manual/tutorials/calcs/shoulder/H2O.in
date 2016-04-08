@@ -1,0 +1,15 @@
+import fcidump
+
+molecule h2o {
+    O
+    H 1 0.96
+    H 1 0.96 2 104.5
+}
+
+set {
+    basis cc-pVDZ
+    scf_type pk
+    integrals_file H2O_INTDUMP
+}
+
+energy('fcidump')

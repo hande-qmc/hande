@@ -6,16 +6,14 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 
-# JSS: hide the sphinx config, templates, etc. 
-CONFDIR       = .sphinx
 BUILDDIR      = build
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS   = -c $(CONFDIR) -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
+ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest
+.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest tutorial
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -39,12 +37,7 @@ help:
 clean:
 	-rm -rf $(BUILDDIR)/*
 
-EXTS = .f90 .F90
-SRCDIRS = ../src ../lib/local
-find_files = $(foreach ext,$(EXTS), $(wildcard $(dir)/*$(ext)))
-SRCFILES := $(foreach dir,$(SRCDIRS),$(find_files))
-
-html: 
+html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
@@ -126,7 +119,7 @@ changes:
 	@echo
 	@echo "The overview file is in $(BUILDDIR)/changes."
 
-linkcheck: 
+linkcheck:  tutorial
 	$(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) $(BUILDDIR)/linkcheck
 	@echo
 	@echo "Link check complete; look for any errors in the above output " \
@@ -136,3 +129,6 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
+
+tutorial:
+	$(MAKE) -C manual/tutorials/calcs

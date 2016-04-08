@@ -33,10 +33,10 @@ Parameters
 filenames : list of strings
     names of files containing HANDE QMC calculation output.
 
-.. note::
+    .. note::
 
-    Files compressed with gzip, bzip2 or xz (python 3 only) are automatically
-    decompressed.
+        Files compressed with gzip, bzip2 or xz (python 3 only) are
+        automatically decompressed.
 
 Returns
 -------
@@ -48,7 +48,7 @@ data : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
 
 See Also
 --------
-:func:``extract_data`` : underlying data extraction implementation.
+:func:`extract_data` : underlying data extraction implementation.
 '''
 
     data = []
@@ -64,10 +64,10 @@ Parameters
 filename : string
     name of file containing the HANDE QMC calculation output.
 
-.. note::
+    .. note::
 
-    Files compressed with gzip, bzip2 or xz (python 3 only) are automatically
-    decompressed.
+        Files compressed with gzip, bzip2 or xz (python 3 only) are
+        automatically decompressed.
 
 Returns
 -------

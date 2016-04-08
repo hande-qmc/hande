@@ -14,6 +14,7 @@ User's guide
    input/input
    interact
    analysis
+   integrals
    tips
    removed
    tutorials/tutorials
