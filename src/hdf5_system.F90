@@ -766,7 +766,7 @@ module hdf5_system
                 dummy = shape(nbasis_sym_spin)
                 do isym = 0, dummy(2) - 1
                     call get_onebody_name(dname, ispin, isym, dentr_name)
-                    s(1) = nbasis_sym_spin(ispin, isym) * (nbasis_sym_spin(ispin, isym) + 1) / 2
+                    s(1) = int(nbasis_sym_spin(ispin, isym), kind=int_64) * (int(nbasis_sym_spin(ispin, isym), kind=int_64) + 1_int_64) / 2_int_64
                     call hdf5_read(id, dentr_name, kinds, s, store%integrals(ispin, isym)%v)
                 end do
             end do
@@ -801,7 +801,7 @@ module hdf5_system
             integer(hsize_t) :: s(1)
             character(155) :: dentr_name
 
-            shpe = shape(store%integrals, kind=int_64)
+            shpe = shape(store%integrals)
 
             do ispin = 1, shpe(1)
                 call get_coulomb_name(dname, ispin, dentr_name)
