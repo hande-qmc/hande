@@ -1086,7 +1086,7 @@ contains
                     if (i <= nocc) sp_eigv(j) = sp_eigv(j) + 2*x
                     if (j <= nocc) sp_eigv(i) = sp_eigv(i) + 2*x
                 end if
-            else if ((i == b .and. j == a) .or. (i == j .and. a == b)) then
+            else if (((i == b .and. j == a) .or. (i == j .and. a == b)) .and. b > 0) then
                 ! <ij|ji>
                 if (.not. seen_ijji(i,a)) then
                     seen_ijji(i,a) = .true.
@@ -1094,7 +1094,7 @@ contains
                     if (i <= nocc) sp_eigv(a) = sp_eigv(a) - x
                     if (a <= nocc) sp_eigv(i) = sp_eigv(i) - x
                 end if
-            else if (i == a .and. j == 0 .and. b == 0) then
+            else if (i == a .and. j == 0 .and. b == 0 .and. i > 0) then
                 ! h_ii
                 sp_eigv(i) = sp_eigv(i) + x
             end if
