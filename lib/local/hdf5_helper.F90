@@ -19,6 +19,12 @@ module hdf5_helper
     ! as the speed loss should be minimal and the gain in ease of coding quite
     ! nice...
 
+    !!! DOUBLE WARNING WARNING WARNING !!!
+    ! All integral procedures requiring an array dimension only accept
+    ! 64-bit integers for this value. This is to avoid various issues
+    ! within very large systems using the hdf5 system initialisation
+    ! functionality.
+
     ! [todo] - Check error flags returned by HDF5 procedures.
 
 #ifndef DISABLE_HDF5
@@ -373,7 +379,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written as 64-bit integer
+            !        (i.e. as given by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    append (optional): if true, append to an existing dataset or create an
             !        extensible dataset if it doesn't already exist.
@@ -409,7 +416,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    append (optional): if true, append to an existing dataset or create an
             !        extensible dataset if it doesn't already exist.
@@ -476,9 +484,10 @@ module hdf5_helper
             ! In:
             !    id: file or group HD5 identifier.
             !    dset: dataset name.
-            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    lim (optional): Write out only arr(:,:lim).  Default: full array (as given
             !        in arr_shape) is written out.
@@ -523,7 +532,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    lim (optional): Write out only arr(:,:lim).  Default: full array (as given
             !        in arr_shape) is written out.
@@ -568,7 +578,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    lim (optional): Write out only arr(:,:,:lim).  Default: full array (as given
             !        in arr_shape) is written out.
@@ -613,7 +624,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    lim (optional): Write out only arr(:,:,:lim).  Default: full array (as given
             !        in arr_shape) is written out.
@@ -658,7 +670,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    append (optional): if true, append to an existing dataset or create an
             !        extensible dataset if it doesn't already exist.
@@ -694,7 +707,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    lim (optional): Write out only arr(:,:lim).  Default: full array (as given
             !        in arr_shape) is written out.
@@ -739,7 +753,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    append (optional): if true, append to an existing dataset or create an
             !        extensible dataset if it doesn't already exist.
@@ -775,7 +790,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
             !    lim (optional): Write out only arr(:,:lim).  Default: full array (as given
             !        in arr_shape) is written out.
@@ -1008,7 +1024,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1038,7 +1055,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1107,7 +1125,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1137,7 +1156,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1167,7 +1187,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1198,7 +1219,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1229,7 +1251,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1297,7 +1320,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1365,7 +1389,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1433,7 +1458,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
