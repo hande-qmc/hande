@@ -738,7 +738,7 @@ module hdf5_system
             ! NB. must be called after allocating integral arrays within store.
 
             use hdf5
-            use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
+            use hdf5_helper, only: hdf5_read, hdf5_kinds_t
             use molecular_integral_types, only: one_body_t
             use checking, only: check_allocate
             use const, only: int_64
@@ -766,7 +766,8 @@ module hdf5_system
                 dummy = shape(nbasis_sym_spin)
                 do isym = 0, dummy(2) - 1
                     call get_onebody_name(dname, ispin, isym, dentr_name)
-                    s(1) = int(nbasis_sym_spin(ispin, isym), kind=int_64) * (int(nbasis_sym_spin(ispin, isym), kind=int_64) + 1_int_64) / 2_int_64
+                    s(1) = int(nbasis_sym_spin(ispin, isym), kind=int_64) * &
+                           (int(nbasis_sym_spin(ispin, isym), kind=int_64) + 1_int_64) / 2_int_64
                     call hdf5_read(id, dentr_name, kinds, s, store%integrals(ispin, isym)%v)
                 end do
             end do
@@ -788,7 +789,7 @@ module hdf5_system
             ! NB. must be called after allocating integral arrays within store.
 
             use hdf5
-            use hdf5_helper, only: hdf5_read, hdf5_kinds_t, dset_shape
+            use hdf5_helper, only: hdf5_read, hdf5_kinds_t
             use molecular_integral_types, only: two_body_t
             use const, only: int_64
 
@@ -798,7 +799,6 @@ module hdf5_system
             type(two_body_t), intent(inout) :: store
 
             integer :: ispin, shpe(1)
-            integer(hsize_t) :: s(1)
             character(155) :: dentr_name
 
             shpe = shape(store%integrals)
