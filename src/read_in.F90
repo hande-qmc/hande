@@ -193,25 +193,6 @@ contains
             rhf_fac = 2  ! need to double count some integrals.
         end if
 
-        ! Sanity check
-        if (any(sys%cas /= -1) .and. parent) then
-            if (sys%cas(1) > sys%nel) then
-                write (error_unit,'(1X,"Number of electrons in the system: ",i0,".")') sys%nel
-                write (error_unit,'(1X,"Number of active electrons in CAS: ",i0,".")') sys%cas(1)
-                call stop_all('read_in_integrals', 'CAS cannot have more active electrons than in the system.')
-            end if
-            if (sys%cas(2) > (sys%basis%nbasis-(sys%nel-sys%cas(1)))/2) then
-                ! The maximum number of active spin orbitals is nbasis - # core orbitals.
-                ! The number of core orbitals is nel-cas(1).
-                ! CAS(2) is in terms of spatial orbitals.
-                write (error_unit,'(1X,"Number of spin-orbitals: ",i0,".")') sys%basis%nbasis
-                write (error_unit,'(1X,"Number of core electrons: ",i0,".")') sys%nel-sys%cas(1)
-                write (error_unit,'(1X,"Number of possible active spin-orbitals: ",i0,".")') sys%basis%nbasis-(sys%nel-sys%cas(1))
-                write (error_unit,'(1X,"Number of active spin-orbitals in CAS: ",i0,".")') 2*sys%cas(2)
-                call stop_all('read_in_integrals', 'CAS cannot have more active basis functions than in the system')
-            end if
-        end if
-
         if (sys%nel == 0 .and. sys%Ms == huge(1)) then
             if (parent) then
                 write (error_unit,'(1X,"WARNING: using the number of electrons in FCIDUMP file: '&
@@ -231,6 +212,25 @@ contains
                               //trim(sys%read_in%fcidump)//'.")')
             write (error_unit,'(1X,"FCIDUMP file indicates ",i0," electrons.")') nelec
             write (error_unit,'(1X,"Input file set ",i0," electrons.",/)') sys%nel
+        end if
+
+        ! Sanity check
+        if (any(sys%cas /= -1) .and. parent) then
+            if (sys%cas(1) > sys%nel) then
+                write (error_unit,'(1X,"Number of electrons in the system: ",i0,".")') sys%nel
+                write (error_unit,'(1X,"Number of active electrons in CAS: ",i0,".")') sys%cas(1)
+                call stop_all('read_in_integrals', 'CAS cannot have more active electrons than in the system.')
+            end if
+            if (sys%cas(2) > (sys%basis%nbasis-(sys%nel-sys%cas(1)))/2) then
+                ! The maximum number of active spin orbitals is nbasis - # core orbitals.
+                ! The number of core orbitals is nel-cas(1).
+                ! CAS(2) is in terms of spatial orbitals.
+                write (error_unit,'(1X,"Number of spin-orbitals: ",i0,".")') sys%basis%nbasis
+                write (error_unit,'(1X,"Number of core electrons: ",i0,".")') sys%nel-sys%cas(1)
+                write (error_unit,'(1X,"Number of possible active spin-orbitals: ",i0,".")') sys%basis%nbasis-(sys%nel-sys%cas(1))
+                write (error_unit,'(1X,"Number of active spin-orbitals in CAS: ",i0,".")') 2*sys%cas(2)
+                call stop_all('read_in_integrals', 'CAS cannot have more active basis functions than in the system')
+            end if
         end if
 
         ! Read in FCIDUMP file to get single-particle eigenvalues.
@@ -259,7 +259,7 @@ contains
                 end if
             end do
             if (not_found_sp_eigv) &
-                call stop_all('read_in_integrals',sys%read_in%fcidump//' file does not contain &
+                call stop_all('read_in_integrals',trim(sys%read_in%fcidump)//' file does not contain &
                               &single-particle eigenvalues.  Please implement &
                               &calculating them from the integrals.')
         end if
