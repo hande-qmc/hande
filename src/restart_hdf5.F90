@@ -389,7 +389,7 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dmove_freq, qs%spawn_store%spawn%move_freq)
 
-                    call hdf5_write(subgroup_id, dvary, kinds, shape(qs%vary_shift), qs%vary_shift)
+                    call hdf5_write(subgroup_id, dvary, kinds, shape(qs%vary_shift, kind=int_64), qs%vary_shift)
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -637,7 +637,7 @@ module restart_hdf5
 
                     call h5lexists_f(subgroup_id, dvary, exists, ierr)
                     if (exists) then
-                        call hdf5_read(subgroup_id, dvary, kinds, shape(qs%vary_shift), qs%vary_shift)
+                        call hdf5_read(subgroup_id, dvary, kinds, shape(qs%vary_shift, kind=int_64), qs%vary_shift)
                     else
                         ! If not present, keep old behaviour.
                         qs%vary_shift = .false.

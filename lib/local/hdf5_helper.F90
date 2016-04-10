@@ -387,14 +387,14 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: int_32, int_64
+            use const, only: int_32
 
             integer, parameter :: rank = 1
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_32), intent(in), target :: arr(arr_shape(1))
@@ -403,7 +403,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i32, rank, int(arr_shape,HSIZE_T), ptr, append)
+            call write_ptr(id, dset, kinds%i32, rank, arr_shape, ptr, append)
 
         end subroutine write_array_1d_int_32
 
@@ -431,7 +431,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_64), intent(in), target :: arr(arr_shape(1))
@@ -440,7 +440,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%i64, rank, int(arr_shape,HSIZE_T), ptr, append)
+            call write_ptr(id, dset, kinds%i64, rank, arr_shape, ptr, append)
 
         end subroutine write_array_1d_int_64
 
@@ -453,16 +453,19 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be written, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             !    arr: array to be written.
 
             ! NOTE: HDF5 can't handle boolean types, so instead we write out an integer
             ! which we interpret ourselves in a consistent fashion.
 
+            use hdf5, only: HSIZE_T
+
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(1)
+            integer(HSIZE_T), intent(in) :: arr_shape(1)
             logical, intent(in) :: arr(:)
 
             integer :: int_arr(size(arr))
@@ -499,14 +502,14 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: int_32, int_64
+            use const, only: int_32
 
             integer, parameter :: rank = 2
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(2)
+            integer(HSIZE_T), intent(in) :: arr_shape(2)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_32), intent(in), target :: arr(arr_shape(1), arr_shape(2))
@@ -517,7 +520,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            arr_dims = int(arr_shape, HSIZE_T)
+            arr_dims = arr_shape
             if (present(lim)) arr_dims(rank) = lim
             call write_ptr(id, dset, kinds%i32, rank, arr_dims, ptr, append)
 
@@ -552,7 +555,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(2)
+            integer(HSIZE_T), intent(in) :: arr_shape(2)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_64), intent(in), target :: arr(arr_shape(1), arr_shape(2))
@@ -563,7 +566,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            arr_dims = int(arr_shape, HSIZE_T)
+            arr_dims = arr_shape
             if (present(lim)) arr_dims(rank) = lim
             call write_ptr(id, dset, kinds%i64, rank, arr_dims, ptr, append)
 
@@ -591,14 +594,14 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: int_32, int_64
+            use const, only: int_32
 
             integer, parameter :: rank = 3
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(3)
+            integer(HSIZE_T), intent(in) :: arr_shape(3)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_32), intent(in), target :: arr(arr_shape(1), arr_shape(2), arr_shape(3))
@@ -609,7 +612,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            arr_dims = int(arr_shape, HSIZE_T)
+            arr_dims = arr_shape
             if (present(lim)) arr_dims(rank) = lim
             call write_ptr(id, dset, kinds%i32, rank, arr_dims, ptr, append)
 
@@ -644,7 +647,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(3)
+            integer(HSIZE_T), intent(in) :: arr_shape(3)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             integer(int_64), intent(in), target :: arr(arr_shape(1), arr_shape(2), arr_shape(3))
@@ -655,7 +658,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            arr_dims = int(arr_shape, HSIZE_T)
+            arr_dims = arr_shape
             if (present(lim)) arr_dims(rank) = lim
             call write_ptr(id, dset, kinds%i64, rank, arr_dims, ptr, append)
 
@@ -685,7 +688,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(dp), intent(in), target :: arr(arr_shape(1))
@@ -694,7 +697,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%dp, rank, int(arr_shape, HSIZE_T), ptr, append)
+            call write_ptr(id, dset, kinds%dp, rank, arr_shape, ptr, append)
 
         end subroutine write_array_1d_real_dp
 
@@ -727,7 +730,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(dp), intent(in), target :: arr(arr_shape(1), arr_shape(2))
@@ -738,7 +741,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            arr_dims = int(arr_shape, HSIZE_T)
+            arr_dims = arr_shape
             if (present(lim)) arr_dims(rank) = lim
             call write_ptr(id, dset, kinds%dp, rank, arr_dims, ptr, append)
 
@@ -768,7 +771,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(sp), intent(in), target :: arr(arr_shape(1))
@@ -777,7 +780,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call write_ptr(id, dset, kinds%sp, rank, int(arr_shape, HSIZE_T), ptr, append)
+            call write_ptr(id, dset, kinds%sp, rank, arr_shape, ptr, append)
 
         end subroutine write_array_1d_real_sp
 
@@ -810,7 +813,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             ! Note assumed-shape arrays (e.g. arr(:)) are not C interoperable and hence
             ! cannot be passed to c_loc.
             real(sp), intent(in), target :: arr(arr_shape(1), arr_shape(2))
@@ -821,7 +824,7 @@ module hdf5_helper
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            arr_dims = int(arr_shape, HSIZE_T)
+            arr_dims = arr_shape
             if (present(lim)) arr_dims(rank) = lim
             call write_ptr(id, dset, kinds%sp, rank, arr_dims, ptr, append)
 
@@ -1031,18 +1034,18 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: int_32, int_64
+            use const, only: int_32
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             integer(int_32), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call read_ptr(id, dset, kinds%i32, size(arr_shape), arr_shape, ptr)
 
         end subroutine read_array_1d_int_32
 
@@ -1067,13 +1070,13 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             integer(int_64), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call read_ptr(id, dset, kinds%i64, size(arr_shape), arr_shape, ptr)
 
         end subroutine read_array_1d_int_64
 
@@ -1086,7 +1089,8 @@ module hdf5_helper
             !    dset: dataset name.
             !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
             !        kinds used in HANDE and HDF5 types.
-            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            !    arr_shape: shape of array to be read, as 64-bit integers (i.e. as given
+            !        by shape(arr, kind=int_64)).
             ! Out:
             !    arr: array to be read.
 
@@ -1094,11 +1098,12 @@ module hdf5_helper
             ! which we interpret ourselves in a consistent fashion.
 
             use errors, only: stop_all
+            use hdf5, only: HSIZE_T
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer, intent(in) :: arr_shape(1)
+            integer(HSIZE_T), intent(in) :: arr_shape(1)
             logical, intent(out) :: arr(:)
 
             integer :: arr_int(size(arr))
@@ -1132,18 +1137,18 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: int_32, int_64
+            use const, only: int_32
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             integer(int_32), intent(out), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call read_ptr(id, dset, kinds%i32, size(arr_shape), arr_shape, ptr)
 
         end subroutine read_array_2d_int_32
 
@@ -1168,13 +1173,13 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             integer(int_64), intent(out), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call read_ptr(id, dset, kinds%i64, size(arr_shape), arr_shape, ptr)
 
         end subroutine read_array_2d_int_64
 
@@ -1194,19 +1199,19 @@ module hdf5_helper
 
             use, intrinsic :: iso_c_binding, only: c_ptr, c_loc
             use hdf5, only: hid_t, HSIZE_T
-            use const, only: int_32, int_64
+            use const, only: int_32
 
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             integer(int_32), intent(out), target :: arr(arr_shape(1), arr_shape(2),&
                                                         arr_shape(3))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i32, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call read_ptr(id, dset, kinds%i32, size(arr_shape), arr_shape, ptr)
 
         end subroutine read_array_3d_int_32
 
@@ -1231,14 +1236,14 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             integer(int_64), intent(out), target :: arr(arr_shape(1), arr_shape(2),&
                                                         arr_shape(3))
 
             type(c_ptr) :: ptr
 
             ptr = c_loc(arr)
-            call read_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
+            call read_ptr(id, dset, kinds%i64, size(arr_shape), arr_shape, ptr)
 
         end subroutine read_array_3d_int_64
 
@@ -1266,7 +1271,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             real(sp), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
@@ -1278,7 +1283,7 @@ module hdf5_helper
 
             if (dtype_equal(id, dset, kinds%sp)) then
                 ptr = c_loc(arr)
-                call read_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+                call read_ptr(id, dset, kinds%sp, size(arr_shape), arr_shape, ptr)
             else if (dtype_equal(id, dset, kinds%dp)) then
                 if (parent) call warning('read_array_1d_real_sp', &
                                          'Converting from double to single precision for dataset: '//dset//'.', 2)
@@ -1335,7 +1340,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             real(sp), intent(out), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr
@@ -1347,7 +1352,7 @@ module hdf5_helper
 
             if (dtype_equal(id, dset, kinds%sp)) then
                 ptr = c_loc(arr)
-                call read_ptr(id, dset, kinds%sp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+                call read_ptr(id, dset, kinds%sp, size(arr_shape), arr_shape, ptr)
             else if (dtype_equal(id, dset, kinds%dp)) then
                 if (parent) call warning('read_array_2d_real_sp', &
                                          'Converting from double to single precision for dataset: '//dset//'.', 2)
@@ -1404,7 +1409,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             real(dp), intent(out), target :: arr(arr_shape(1))
 
             type(c_ptr) :: ptr
@@ -1416,7 +1421,7 @@ module hdf5_helper
 
             if (dtype_equal(id, dset, kinds%dp)) then
                 ptr = c_loc(arr)
-                call read_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+                call read_ptr(id, dset, kinds%dp, size(arr_shape), arr_shape, ptr)
             else if (dtype_equal(id, dset, kinds%sp)) then
                 if (parent) call warning('read_array_1d_real_dp', &
                                          'Converting from single to double precision for dataset: '//dset//'.', 2)
@@ -1473,7 +1478,7 @@ module hdf5_helper
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dset
             type(hdf5_kinds_t), intent(in) :: kinds
-            integer(int_64), intent(in) :: arr_shape(:)
+            integer(HSIZE_T), intent(in) :: arr_shape(:)
             real(dp), intent(out), target :: arr(arr_shape(1), arr_shape(2))
 
             type(c_ptr) :: ptr
@@ -1485,7 +1490,7 @@ module hdf5_helper
 
             if (dtype_equal(id, dset, kinds%dp)) then
                 ptr = c_loc(arr)
-                call read_ptr(id, dset, kinds%dp, size(arr_shape), int(arr_shape, HSIZE_T), ptr)
+                call read_ptr(id, dset, kinds%dp, size(arr_shape), arr_shape, ptr)
             else if (dtype_equal(id, dset, kinds%sp)) then
                 if (parent) call warning('read_array_2d_real_dp', &
                                          'Converting from single to double precision for dataset: '//dset//'.', 2)
@@ -1584,7 +1589,7 @@ module hdf5_helper
             ! In:
             !    filename: file to check
             ! Out:
-            !    if_hdf5: True (false) if file is (not) an HDF5 file.  False if compiled without HDF5 support.
+            !    if_hdf5: True (false) if file is (not) an HDF5 file. False if compiled without HDF5 support.
             !    ierr: error code from h5fis_hdf5_f call.
 
             use, intrinsic :: iso_c_binding
