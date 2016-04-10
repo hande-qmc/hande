@@ -29,8 +29,8 @@ type det_info_t
     ! Ms=1 is spin-up.
     integer, pointer :: symunocc(:,:) ! (2,sym0_tot:sym_max_tot)
     ! is the determinant an initiator determinant or not? (used only in
-    ! i-FCIQMC). Bit string with ith bit representing initiator in space i.
-    ! (0 for initiator, 1 for not).
+    ! i-FCIQMC). The i-th bit is set if the determinant is not an initiator in
+    ! space i.
     integer :: initiator_flag
     ! Pointer (never allocated) to corresponding elements in particle_t%dat array.
     real(p), pointer :: data(:) => NULL()

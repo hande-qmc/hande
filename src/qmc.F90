@@ -308,6 +308,7 @@ contains
 
         case(read_in)
             if (sys%read_in%comp) then
+                ! [review] - JSS: no energy update?
                 update_proj_energy_ptr => null()
                 sc0_ptr => slater_condon0_mol_complex
                 energy_diff_ptr => null()

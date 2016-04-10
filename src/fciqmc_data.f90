@@ -81,11 +81,8 @@ contains
         integer :: i, j
         character(16) :: excit_header
 
-        if (present(comp)) then
-            comp_set = comp
-        else
-            comp_set = .false.
-        end if
+        comp_set = .false.
+        if (present(comp)) comp_set = comp
 
         ! Data table info.
         write (6,'(1X,"Information printed out every QMC report loop:",/)')

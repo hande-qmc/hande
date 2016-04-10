@@ -263,13 +263,13 @@ contains
 
         rep_loop_loc = 0.0_dp
 
-        if (present(comp)) then
-            comp_param = comp
-        else
-            comp_param = .false.
-        end if
+        comp_param = .false.
+        if (present(comp)) comp_param = comp
 
         if (comp_param) then
+            ! [review] - JSS: I think it's fine to do this branch in all cases
+            ! [review] - JSS: just for convenience.  The additional work is
+            ! [review] - JSS: minimal and the imaginary quantities will just be zero anyway.
             rep_loop_loc(proj_energy_ind) = real(qs%estimators%proj_energy_comp, p)
             rep_loop_loc(D0_pop_ind) = real(qs%estimators%D0_population_comp, p)
             rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators%proj_energy_comp)
@@ -364,13 +364,11 @@ contains
 
         ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
 
-        if (present(comp)) then
-            comp_param = comp
-        else
-            comp_param = .false.
-        end if
+        comp_param = .false.
+        if (present(comp)) comp_param = comp
 
         if (comp_param) then
+            ! [review] - JSS: again, no need for comp_param.
             qs%estimators%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
                                                     rep_loop_sum(proj_energy_imag_ind), p)
             qs%estimators%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
@@ -422,6 +420,7 @@ contains
             if (comp_param) then
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
                                     ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
+                ! [review] - JSS: shift(2) is not used in the complex code.  What is it meant to represent?
                 qs%shift(2) = qs%shift(1)
             else
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), &
@@ -434,6 +433,24 @@ contains
         end if
         ntot_particles_old = ntot_particles
         qs%estimators%hf_signed_pop = new_hf_signed_pop
+        ! [review] - JSS: So:
+        !      1. code duplication :(  How about do:
+        !             if (comp_param) then
+        !                 nparticles_wfn = sum(ntot_particles(:2))
+        !             else
+        !                 nparticles_wfn = ntot_particles(1)
+        !             end if
+        !         and then just use the same block for both real and complex for
+        !         setting the initial shift.  You can just do qs%vary_shift = .true. I think
+        !         we're just doing qs%vary_shift(1) due to replica spaces
+        !         - check how replica tricks using the shift.  (Currently it
+        !         appears not...!)
+        !      2. I am not sure that setting the target population to be the
+        !         total of the real and complex space is ideal.
+        !      3. Why set the shift from the real(proj/N_0) - this should be
+        !         equivalent to just the ratio of the real parts (though only on
+        !         average).  The key is to set the shift to something closer to
+        !         the true energy rather so this shouldn't matter too much.
         if (.not. comp_param) then
             if (ntot_particles(1) > qs%target_particles .and. .not.qs%vary_shift(1)) then
                 qs%vary_shift(1) = .true.

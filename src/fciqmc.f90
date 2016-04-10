@@ -231,6 +231,9 @@ contains
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
                     if (sys%read_in%comp) then
+                        ! [review] - JSS: if we pass in qs%estimators and the weighted_population array,
+                        ! [review] - JSS: then all update_proj_energy* procedures would have the same interface
+                        ! [review] - JSS: (bar hmatel/hmatel_comp, which would need some additional tlc).
                         call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                                                     cmplx(weighted_population(1), weighted_population(2), p), &
                                                     qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
@@ -264,8 +267,7 @@ contains
                                 if (determ_parent) then
                                     call create_excited_det(sys%basis, cdet%f, connection, f_child)
                                     determ_child = check_if_determ(determ%hash_table, determ%dets, f_child)
-                                    ! If the spawning is both from and to the
-                                    ! deterministic space, cancel it.
+                                    ! If the spawning is both from and to the deterministic space, cancel it.
                                     if (.not. determ_child) then
                                         call create_spawned_particle_ptr(sys%basis, qs%ref, cdet, connection, nspawned, &
                                                                          1, qs%spawn_store%spawn, f_child)
@@ -302,6 +304,7 @@ contains
                     end if
 
                 end do
+
                 associate(pl=>qs%psip_list, spawn=>qs%spawn_store%spawn, spawn_recv=>qs%spawn_store%spawn_recv)
                     if (fciqmc_in%non_blocking_comm) then
                         call receive_spawned_walkers(spawn_recv, req_data_s)
@@ -330,8 +333,6 @@ contains
             update_tau = bloom_stats%nblooms_curr > 0
 
             error = qs%spawn_store%spawn%error .or. qs%psip_list%error
-
-
 
             call end_report_loop(qmc_in, iter, update_tau, qs, nparticles_old, &
                                  nspawn_events, semi_stoch_in%shift_iter, semi_stoch_iter, soft_exit, &

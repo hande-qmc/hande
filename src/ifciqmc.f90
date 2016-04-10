@@ -29,6 +29,19 @@ contains
         integer, intent(out) :: parent_flag
         integer :: i
 
+        ! [review] - JSS: this code is fast enough and per-determinant so no need to use a procedure pointer -- just pass in the quadrature flag.
+        ! [review] - JSS: take the determ_flag test outside of the loop, i.e.:
+        !     parent_flag = 0_int_p
+        !     if (determ_flag == 0) then
+        !         ...
+        !     else if (quadrature_initiator) then
+        !         ...
+        !     else
+        !         ...
+        !     end if
+        ! [review] - JSS: Probably worth testing for speed but I think procedure
+        ! [review] - JSS: pointers add a maintenance burden that makes them less
+        ! [review] - JSS: attractive outside of very hot loops.
         parent_flag = 0_int_p
         do i = 1, size(parent_population)
             if (.not.((abs(parent_population(i)) > initiator_pop) .or. ( determ_flag == 0))) then
@@ -38,6 +51,7 @@ contains
             ! or is a deterministic state (which must always be an initiator).
             end if
         end do
+
     end subroutine set_parent_flag_real
 
     pure subroutine set_parent_flag_complex(parent_population, initiator_pop, determ_flag, parent_flag)
@@ -72,5 +86,7 @@ contains
             ! Otherwise has a high enough population to be an initiator in this space,
             ! or is a deterministic state (which must always be an initiator).
         end do
+
     end subroutine set_parent_flag_complex
+
 end module ifciqmc

@@ -194,7 +194,7 @@ contains
         ! work and test whether the spawning event is successful before
         ! finalising the excitation.
 
-        ! ONly for use with non-complex systems.
+        ! Only for use with non-complex systems.
 
         ! In/Out:
         !    rng: random number generator.
@@ -497,15 +497,17 @@ contains
         complex(p) :: hmatel
 
         ! 1. Generate random excitation.
+        ! [review] - JSS: remove commented-out code.
+        ! [review] - JSS: check - stop_all before this if complex system without read_in?
         !call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel_dummy, allowed)
         call gen_excit_mol_complex(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel, p), pgen, parent_sign)
-
         nspawn_im = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, aimag(hmatel), pgen, parent_sign)
 
     end subroutine spawn_complex
+
 !--- Attempt spawning based upon random excitation ---
 
     subroutine set_child_sign(hmatel, parent_sign, nspawn)
