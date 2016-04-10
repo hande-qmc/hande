@@ -23,7 +23,9 @@ module hdf5_helper
     ! All integral procedures requiring an array dimension only accept
     ! 64-bit integers for this value. This is to avoid various issues
     ! within very large systems using the hdf5 system initialisation
-    ! functionality.
+    ! functionality. This value is passed to a hsize_t type parameter,
+    ! so should detect any issues with size compatabilities at
+    ! compile-time.
 
     ! [todo] - Check error flags returned by HDF5 procedures.
 
