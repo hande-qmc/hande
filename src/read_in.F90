@@ -1031,7 +1031,7 @@ contains
         !   sp_eigv: calculated single-particle eigenvalues.
 
         use system, only: sys_t
-        use errors, only: stop_all
+        use errors, only: stop_all, warning
         use, intrinsic :: iso_fortran_env, only: iostat_end
 
         type(sys_t), intent(in) :: sys
@@ -1058,6 +1058,8 @@ contains
                                            'Calculation of single particle eigenvalues not implemented for UHF.')
         if (sys%read_in%comp) call stop_all('calculate_sp_eigv', &
                                             'Calculation of single particle eigenvalues not implemented for complex Hamiltonians.')
+
+        call warning('calculate_sp_eigv', 'Assuming orbitals are in energy order.  If not, calculated eigenvalues may be incorrect')
         
         ! Calculate single-particle eigenvalues according to
         ! \epsilon_i = h_ii + \sum_{j \in occ} (2 <ij|ij> - <ij|ji>)
