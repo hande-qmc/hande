@@ -138,23 +138,22 @@ Umrigar93
 
         #  We also try to provide some sort of error estimate for the inefficiency on the basis of the relative standard error error of the projected energy numerator..
         try:
-            try:
-                dtau = md['tau']
-            except:
+            if 'qmc' in md:
                 dtau = md['qmc']['tau']
+            else:
+                dtau = md['tau']
             err_proj_e = opt_block['standard error']['Proj. Energy']
             Np = opt_block['mean']['# H psips']
-	#Review - [VAN]: are you not forgetting the start iteration itself for N. Also I would need to check where reblocking actually starts: (probably really irrelevant)
-            N = calc['iterations'].iloc[-1] - start
+            # +1 below counts the start iteration itself.
+            N = calc['iterations'].iloc[-1] - start + 1
             inefficiency = err_proj_e * math.sqrt(Np*N*dtau)
-#    # Really we should care about the covariance etc. but it is really horrible for the
-#    # projected energy
+            # NB We do not know the covariance of the errors of N_0 and \sum H_0j N_j so this is an upper bound on the error estimate.
             err_err_proj_e = err_proj_e*math.sqrt( (opt_block['standard error error']['\sum H_0j N_j']/(opt_block['standard error']['\sum H_0j N_j']  ))**2  + ((opt_block['standard error error']['N_0'])/(opt_block['standard error']['N_0']))**2 )
             err_ineff = inefficiency*math.sqrt(((err_err_proj_e/err_proj_e)**2) + (opt_block['standard error']['# H psips']/(2*opt_block['mean']['# H psips']))**2)
             d = pd.DataFrame(data={'mean':inefficiency, 'standard error':err_ineff}, index = ['Inefficiency'])
             opt_block = opt_block.append(d)
-        except:
-            pass
+        except KeyError as e:
+            warnings.warn('Inefficiency not calculated owing to data unavailable from '+str(e))
 
         estimates = []
         for (name, row) in opt_block.iterrows():
