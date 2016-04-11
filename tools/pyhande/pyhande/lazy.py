@@ -82,28 +82,44 @@ Umrigar93
             data.append(df)
             metadata.append(md)
     if data:
-        # Check concatenating data is at least possibly sane.
-        step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
-        prev_iteration = data[0]['iterations'].iloc[-1]
-        calc_type = metadata[0]['calc_type']
-        calcs = []
-        calcs_metadata = [metadata[0]]
-        xcalc = [data[0]]
-        for i in range(1, len(data)):
-            if metadata[i]['calc_type'] != calc_type or \
-                    data[i]['iterations'].iloc[0] - step != prev_iteration or \
-                    data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2] != step:
-                # Different calculation
-                step = data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2]
-                calc_type = metadata[i]['calc_type']
-                calcs.append(pd.concat(xcalc))
-                xcalc = [data[i]]
-                calcs_metadata.append(metadata[i])
-            else:
-                # Continuation of same calculation (probably)
-                xcalc.append(data[i])
-            prev_iteration = data[i]['iterations'].iloc[-1]
-        calcs.append(pd.concat(xcalc))
+        if 'restart' in metadata[-1] and 'uuid_restart' in metadata[-1]['restart']:
+            # Use UUIDs to check if multiple calculations are restarts
+            calcs = []
+            calcs_metadata = [metadata[0]]
+            xcalc = [data[0]]
+            for i in range(1, len(data)):
+                if metadata[i]['restart']['uuid_restart'] == metadata[i-1]["UUID"]:
+                    # Restart
+                    xcalc.append(data[i])
+                else:
+                    # Different calculation
+                    calcs.append(pd.concat(xcalc))
+                    xcalc = [data[i]]
+                    calcs_metadata.append(metadata[i])
+            calcs.append(pd.concat(xcalc))
+        else:
+            # Check concatenating data is at least possibly sane.
+            step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
+            prev_iteration = data[0]['iterations'].iloc[-1]
+            calc_type = metadata[0]['calc_type']
+            calcs = []
+            calcs_metadata = [metadata[0]]
+            xcalc = [data[0]]
+            for i in range(1, len(data)):
+                if metadata[i]['calc_type'] != calc_type or \
+                        data[i]['iterations'].iloc[0] - step != prev_iteration or \
+                        data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2] != step:
+                    # Different calculation
+                    step = data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2]
+                    calc_type = metadata[i]['calc_type']
+                    calcs.append(pd.concat(xcalc))
+                    xcalc = [data[i]]
+                    calcs_metadata.append(metadata[i])
+                else:
+                    # Continuation of same calculation (probably)
+                    xcalc.append(data[i])
+                prev_iteration = data[i]['iterations'].iloc[-1]
+            calcs.append(pd.concat(xcalc))
     else:
         raise ValueError('No data found in '+' '.join(datafiles))
 
