@@ -1042,8 +1042,7 @@ contains
             end if
 
             if (ios == iostat_end) exit ! end of file
-            if (ios /= 0) call stop_all('calculate_sp_eigv', &
-                                        'Problem reading integrals file: '//trim(sys%read_in%fcidump))
+            if (ios /= 0) call stop_all('get_sp_eigv', 'Problem reading integrals file: '//trim(sys%read_in%fcidump))
             if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
                 ! \epsilon_i -- temporarily store for all basis functions
                 found_sp_eigv = .true.
@@ -1081,11 +1080,8 @@ contains
 
         if (.not. found_sp_eigv) then
             ! Using Fock energies calculated from other integrals
-            if (sys%read_in%uhf) call stop_all('calculate_sp_eigv', &
-                                               'Calculation of single particle eigenvalues not implemented for UHF.')
-
-            call warning('calculate_sp_eigv', &
-                         'Assuming orbitals are in energy order.  If not, calculated eigenvalues may be incorrect')
+            if (sys%read_in%uhf) call stop_all('get_sp_eigv', 'Calculation of single particle eigenvalues not implemented for UHF.')
+            call warning('get_sp_eigv', 'Assuming orbitals are in energy order.  If not, calculated eigenvalues may be incorrect')
         end if
 
     end subroutine get_sp_eigv
