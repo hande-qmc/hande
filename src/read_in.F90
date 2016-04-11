@@ -71,7 +71,7 @@ contains
         integer, allocatable :: seen_ijij(:), seen_iaib(:,:), sp_eigv_rank(:), sp_fcidump_rank(:)
         logical, allocatable :: seen_iha(:)
         real(p), allocatable :: sp_eigv(:)
-        logical :: not_found_sp_eigv, uhf
+        logical :: uhf
         integer :: int_err, max_err_msg
         character(1024) :: err_msg
 
@@ -234,32 +234,9 @@ contains
         end if
 
         ! Read in FCIDUMP file to get single-particle eigenvalues.
-        not_found_sp_eigv = .true.
         allocate(sp_eigv(norb), stat=ierr)
         call check_allocate('sp_eigv', norb, ierr)
-        ios = 0
-        if (parent) then
-            do
-                ! loop over lines.
-                if (sys%read_in%comp) then
-                        read (ir,*, iostat=ios) compint, i, a, j, b
-                        ! if complex will have complex formatting but sp_eigv should still be real.
-                        x=real(compint,p)
-                else
-                    read (ir,*, iostat=ios) x, i, a, j, b
-                end if
-                if (ios == iostat_end) exit ! reached end of file
-                if (ios /= 0) call stop_all('read_in_integrals', &
-                                             'Problem reading integrals file: '//trim(sys%read_in%fcidump))
-                if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
-                    ! \epsilon_i --- temporarily store for all basis functions,
-                    ! including inactive (frozen) orbitals.
-                    not_found_sp_eigv = .false.
-                    sp_eigv(i) = x
-                end if
-            end do
-            if (not_found_sp_eigv) call calculate_sp_eigv(sys, ir, sp_eigv)
-        end if
+        if (parent) call get_sp_eigv(sys, ir, sp_eigv)
 
 #ifdef PARALLEL
         call MPI_BCast(sp_eigv, norb, mpi_preal, root, MPI_COMM_WORLD, ierr)
@@ -1020,9 +997,9 @@ contains
 
     end subroutine read_in_one_body
 
-    subroutine calculate_sp_eigv(sys, ir, sp_eigv)
+    subroutine get_sp_eigv(sys, ir, sp_eigv)
         
-        ! Calculate single particle eigenvalues if not provided in the FCIDUMP
+        ! Get Fock energies: either read from FCIDUMP or calculate from other integrals if not provided
 
         ! In:
         !   sys: system being studied
@@ -1040,69 +1017,77 @@ contains
 
         integer :: ios, i, a, j, b
         real(p) :: x
+        complex(p) :: compint
 
         integer :: nocc
-        logical :: seen_ijij(size(sp_eigv), size(sp_eigv)), seen_ijji(size(sp_eigv), size(sp_eigv))
-
-        ! We don't need these, but it's the easiest way to skip the namelist to get the integrals we
-        ! want
-        integer :: norb, nelec, ms2, orbsym(1000), isym, syml(1000), symlz(1000), nprop(3), propbitlen
-        logical :: uhf
-        namelist /FCI/ norb, nelec, ms2, orbsym, uhf, isym, syml, symlz, nprop, propbitlen
-
-        ! This requires a *third* reading of the entire FCIDUMP, so is to be avoided if possible
-        rewind(ir)
-        read(ir,FCI)
-
-        if (sys%read_in%uhf) call stop_all('calculate_sp_eigv', &
-                                           'Calculation of single particle eigenvalues not implemented for UHF.')
-        if (sys%read_in%comp) call stop_all('calculate_sp_eigv', &
-                                            'Calculation of single particle eigenvalues not implemented for complex Hamiltonians.')
-
-        call warning('calculate_sp_eigv', 'Assuming orbitals are in energy order.  If not, calculated eigenvalues may be incorrect')
-        
-        ! Calculate single-particle eigenvalues according to
-        ! \epsilon_i = h_ii + \sum_{j \in occ} (2 <ij|ij> - <ij|ji>)
+        logical :: seen_ijij(size(sp_eigv), size(sp_eigv)), seen_ijji(size(sp_eigv), size(sp_eigv)), found_sp_eigv
 
         ! Assume first nelec/2 orbitals are doubly occupied
         nocc = sys%nel/2
 
+        found_sp_eigv = .false.
         sp_eigv = 0.0_p
         ! Don't know what duplicates may be in FCIDUMP: avoid double counting
         seen_ijij = .false.
         seen_ijji = .false.
 
         do
-            read (ir, *, iostat=ios) x, i, a, j, b
+            ! loop over lines.
+            if (sys%read_in%comp) then
+                read (ir,*, iostat=ios) compint, i, a, j, b
+                ! if complex will have complex formatting but sp_eigv should still be real.
+                x=real(compint,p)
+            else
+                read (ir,*, iostat=ios) x, i, a, j, b
+            end if
+
             if (ios == iostat_end) exit ! end of file
             if (ios /= 0) call stop_all('calculate_sp_eigv', &
                                         'Problem reading integrals file: '//trim(sys%read_in%fcidump))
-            if (i == j .and. a == b .and. i == a .and. i > 0) then
-                ! <ii|ii>
-                if (i <= nocc) sp_eigv(i) = sp_eigv(i) + x
-            else if (i == a .and. j == b .and. b > 0) then
-                ! <ij|ij>
-                if (.not. seen_ijij(i,j)) then
-                    seen_ijij(i,j) = .true.
-                    seen_ijij(j,i) = .true.
-                    if (i <= nocc) sp_eigv(j) = sp_eigv(j) + 2*x
-                    if (j <= nocc) sp_eigv(i) = sp_eigv(i) + 2*x
+            if (i > 0 .and. j == 0 .and. a == 0 .and. b == 0) then
+                ! \epsilon_i -- temporarily store for all basis functions
+                found_sp_eigv = .true.
+                sp_eigv(i) = x
+            else if (.not. found_sp_eigv) then
+                ! Calculate single-particle eigenvalues according to
+                ! \epsilon_i = h_ii + \sum_{j \in occ} (2 <ij|ij> - <ij|ji>)
+
+                if (i == j .and. a == b .and. i == a .and. i > 0) then
+                    ! <ii|ii>
+                    if (i <= nocc) sp_eigv(i) = sp_eigv(i) + x
+                else if (i == a .and. j == b .and. b > 0) then
+                    ! <ij|ij>
+                    if (.not. seen_ijij(i,j)) then
+                        seen_ijij(i,j) = .true.
+                        seen_ijij(j,i) = .true.
+                        if (i <= nocc) sp_eigv(j) = sp_eigv(j) + 2*x
+                        if (j <= nocc) sp_eigv(i) = sp_eigv(i) + 2*x
+                    end if
+                else if (((i == b .and. j == a) .or. (i == j .and. a == b)) .and. b > 0) then
+                    ! <ij|ji>
+                    if (.not. seen_ijji(i,a)) then
+                        seen_ijji(i,a) = .true.
+                        seen_ijji(a,i) = .true.
+                        if (i <= nocc) sp_eigv(a) = sp_eigv(a) - x
+                        if (a <= nocc) sp_eigv(i) = sp_eigv(i) - x
+                    end if
+                else if (i == a .and. j == 0 .and. b == 0 .and. i > 0) then
+                    ! h_ii
+                    sp_eigv(i) = sp_eigv(i) + x
                 end if
-            else if (((i == b .and. j == a) .or. (i == j .and. a == b)) .and. b > 0) then
-                ! <ij|ji>
-                if (.not. seen_ijji(i,a)) then
-                    seen_ijji(i,a) = .true.
-                    seen_ijji(a,i) = .true.
-                    if (i <= nocc) sp_eigv(a) = sp_eigv(a) - x
-                    if (a <= nocc) sp_eigv(i) = sp_eigv(i) - x
-                end if
-            else if (i == a .and. j == 0 .and. b == 0 .and. i > 0) then
-                ! h_ii
-                sp_eigv(i) = sp_eigv(i) + x
             end if
 
         end do
 
-    end subroutine calculate_sp_eigv
+        if (.not. found_sp_eigv) then
+            ! Using Fock energies calculated from other integrals
+            if (sys%read_in%uhf) call stop_all('calculate_sp_eigv', &
+                                               'Calculation of single particle eigenvalues not implemented for UHF.')
+
+            call warning('calculate_sp_eigv', &
+                         'Assuming orbitals are in energy order.  If not, calculated eigenvalues may be incorrect')
+        end if
+
+    end subroutine get_sp_eigv
 
 end module read_in_system
