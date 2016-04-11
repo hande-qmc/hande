@@ -29,7 +29,7 @@ contains
         !    error_msg: error message.
         !    print_backtrace (optional): whether to print a backtrace.  Default: false.
 
-        use, intrinsic :: iso_fortran_env, only: error_unit
+        use, intrinsic :: iso_fortran_env, only: error_unit, output_unit
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_loc
         use const, only: debug
 
@@ -69,6 +69,7 @@ contains
         write (error_unit,'(1X,a10)') 'EXITING...'
 
         flush(error_unit)
+        flush(output_unit)
 
         ! Abort all processors.
         ! error code is given to mpi_abort which (apparently) returns it to the invoking environment.
