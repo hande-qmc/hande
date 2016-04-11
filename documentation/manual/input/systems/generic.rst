@@ -32,18 +32,16 @@ Options
 ``electrons``
     type: integer.
 
-    Required unless ``int_file`` is in HDF5 format.  If specified, then ``ms`` **must** be
-    specified..
+    Optional.  If specified, then ``ms`` **must** be specified.
 
-    Number of electrons in the unit cell.
+    Number of electrons in the unit cell.  If not provided, the value in the FCIDUMP file is used.
 ``ms``
     type: integer.
 
-    Required unless ``int_file`` is in HDF5 format.  If specified, then ``electrons``
-    **must** be specified..
+    Optional.  If specified, then ``electrons`` **must** be specified.
 
     Set the spin polarisation of the system in units of electron spin (i.e. a single
-    electron can take values 1 or -1).
+    electron can take values 1 or -1).  If not provided, the value in the FCIDUMP file is used.
 ``sym``
     type: integer.
 
