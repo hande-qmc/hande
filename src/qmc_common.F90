@@ -960,7 +960,7 @@ contains
             ! Receive previous iterations report loop quantities.
             call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
                                                qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, error, &
-                                               update_tau, bloom_stats)
+                                               update_tau, bloom_stats, comp=comp_param)
             ! Send current report loop quantities.
             qs%par_info%report_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(qs%par_info%report_comm)

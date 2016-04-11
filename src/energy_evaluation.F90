@@ -147,7 +147,7 @@ contains
     end subroutine update_energy_estimators_send
 
     subroutine update_energy_estimators_recv(qmc_in, qs, ntypes, rep_request_s, ntot_particles_old, nparticles_proc, &
-                                             load_bal_in, doing_lb, comms_found, error, update_tau, bloom_stats)
+                                             load_bal_in, doing_lb, comms_found, error, update_tau, bloom_stats, comp)
 
         ! Receive report loop quantities from all other processors and reduce.
 
@@ -167,6 +167,8 @@ contains
         !    nparticles_proc: number of particles in each space on each processor.
         ! In (optional):
         !    doing_lb: true if performing load balancing.
+        !    comp: if true running a calculation with complex walkers and so complex
+        !        projected energy to pass for reporting.
         ! In/Out (optional):
         !    bloom_stats: Bloom stats.  The report loop quantities are accumulated into
         !       their respective components.
@@ -186,7 +188,7 @@ contains
         real(dp), intent(inout) :: ntot_particles_old(:)
         type(load_bal_in_t), intent(in) :: load_bal_in
         real(dp), intent(out) :: nparticles_proc(:,:)
-        logical, optional, intent(in) :: doing_lb
+        logical, optional, intent(in) :: doing_lb, comp
         logical, intent(out), optional :: comms_found, error
         logical, intent(out), optional :: update_tau
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
@@ -198,6 +200,10 @@ contains
         integer :: stat_ir_s(MPI_STATUS_SIZE, nprocs), stat_ir_r(MPI_STATUS_SIZE, nprocs), ierr
 #endif
         integer :: i, j, data_size
+        logical :: comp_loc
+
+        comp_loc = .false.
+        if (present(comp)) comp_loc = comp
 
         data_size = nprocs*ntypes+ nparticles_start_ind-1
 #ifdef PARALLEL
@@ -219,7 +225,7 @@ contains
                 rep_info_sum(i+j) = sum(rep_loop_reduce(i+j::data_size))
 
         call communicated_energy_estimators(qmc_in, qs, rep_info_sum, ntot_particles_old, load_bal_in, doing_lb, &
-                                            nparticles_proc, comms_found, error, update_tau, bloom_stats, .false.)
+                                    nparticles_proc, comms_found, error, update_tau, bloom_stats, comp_loc)
 
     end subroutine update_energy_estimators_recv
 
@@ -270,6 +276,11 @@ contains
             ! [review] - JSS: I think it's fine to do this branch in all cases
             ! [review] - JSS: just for convenience.  The additional work is
             ! [review] - JSS: minimal and the imaginary quantities will just be zero anyway.
+            ! [reply] - CJCS: I'm unsure; if %proj_energy and %D0_population were both completely
+            ! [reply] - CJCS: set to 0 in the complex case we could just do addition, but since we're
+            ! [reply] - CJCS: setting the real values to the real component of the complex for
+            ! [reply] - CJCS: convenience in communicated_energy_estimators we can't guarantee
+            ! [reply] - CJCS: the one we don't want will be unset.
             rep_loop_loc(proj_energy_ind) = real(qs%estimators%proj_energy_comp, p)
             rep_loop_loc(D0_pop_ind) = real(qs%estimators%D0_population_comp, p)
             rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators%proj_energy_comp)
@@ -356,27 +367,25 @@ contains
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found, error
         logical, intent(out), optional :: update_tau
-        logical :: comp_param
 
         real(dp) :: ntot_particles(size(ntot_particles_old)), new_hf_signed_pop
         real(p) :: pop_av
+        real(dp) :: nparticles_wfn
         integer :: i, ntypes
-
-        ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
+        logical :: comp_param
 
         comp_param = .false.
         if (present(comp)) comp_param = comp
 
-        if (comp_param) then
-            ! [review] - JSS: again, no need for comp_param.
-            qs%estimators%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
-                                                    rep_loop_sum(proj_energy_imag_ind), p)
-            qs%estimators%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
-                                                    rep_loop_sum(D0_pop_imag_ind), p)
-        else
-            qs%estimators%proj_energy = rep_loop_sum(proj_energy_ind)
-            qs%estimators%D0_population = rep_loop_sum(D0_pop_ind)
-        end if
+        ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
+
+        qs%estimators%proj_energy_comp = cmplx(rep_loop_sum(proj_energy_ind), &
+                                                rep_loop_sum(proj_energy_imag_ind), p)
+        qs%estimators%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
+                                                rep_loop_sum(D0_pop_imag_ind), p)
+        qs%estimators%proj_energy = rep_loop_sum(proj_energy_ind)
+        qs%estimators%D0_population = rep_loop_sum(D0_pop_ind)
+
         qs%spawn_store%rspawn = real(rep_loop_sum(rspawn_ind), p)
         if (present(update_tau)) then
             update_tau = abs(rep_loop_sum(update_tau_ind)) > depsilon
@@ -421,6 +430,16 @@ contains
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
                                     ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
                 ! [review] - JSS: shift(2) is not used in the complex code.  What is it meant to represent?
+                ! [reply] - CJCS: Shift in imaginary space, which is the same as in real space.
+                ! [reply] - CJCS: Mainly just definined for compatibility with general multiple space routines
+                ! [reply] -  eg. if we were doing replica tricks + complex could just call:
+                ! do idet = 1, ndets
+                !   do i = 1, nspaces
+                !       call death( pop(i, idet), qs%shift(i)...)
+                !   etc
+                ! [reply] - CJCS: rather than having a more complicated structure with shift have size nspaces/2.
+                ! [reply] - CJCS: The gain from removing the duplicate information seems negligible compared to
+                ! [reply] - CJCS: the gain in compatiblity.
                 qs%shift(2) = qs%shift(1)
             else
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), &
@@ -433,49 +452,52 @@ contains
         end if
         ntot_particles_old = ntot_particles
         qs%estimators%hf_signed_pop = new_hf_signed_pop
-        ! [review] - JSS: So:
-        !      1. code duplication :(  How about do:
-        !             if (comp_param) then
-        !                 nparticles_wfn = sum(ntot_particles(:2))
-        !             else
-        !                 nparticles_wfn = ntot_particles(1)
-        !             end if
-        !         and then just use the same block for both real and complex for
-        !         setting the initial shift.  You can just do qs%vary_shift = .true. I think
-        !         we're just doing qs%vary_shift(1) due to replica spaces
-        !         - check how replica tricks using the shift.  (Currently it
-        !         appears not...!)
         !      2. I am not sure that setting the target population to be the
         !         total of the real and complex space is ideal.
+        ! [reply] - CJCS: What's the alternative? And the benefit to be gained? So long as
+        ! [reply] - CJCS: we have an effective measure to base population control from and
+        ! [reply] - CJCS: don't bias the wavefunction one way or the other it shouldn't have
+        ! [reply] - CJCS: much impact. If we were to use only the real or imaginary population
+        ! [reply] - CJCS: we could change our sampling of the space depending upon the phase
+        ! [reply] - CJCS: the wavefunction settles on (which may not be consistent), making
+        ! [reply] - CJCS: array sizing much more difficult.
+        ! [reply] - CJCS: We could use the sum of complex magnitudes as a measure, which would
+        ! [reply] - CJCS: be robust to potential phase rotations from the standpoint of the
+        ! [reply] - CJCS: derivation of shift control (exponential growth of the groundstate
+        ! [reply] - CJCS: wavefunction, so ignoring wavefunction phase). However, this hasn't
+        ! [reply] - CJCS: shown itself to be a major problem thus far.
         !      3. Why set the shift from the real(proj/N_0) - this should be
         !         equivalent to just the ratio of the real parts (though only on
         !         average).  The key is to set the shift to something closer to
         !         the true energy rather so this shouldn't matter too much.
-        if (.not. comp_param) then
-            if (ntot_particles(1) > qs%target_particles .and. .not.qs%vary_shift(1)) then
-                qs%vary_shift(1) = .true.
-                if (qmc_in%vary_shift_from_proje) then
-                    ! Set shift to be instantaneous projected energy.
-                    associate(est=>qs%estimators)
-                        qs%shift = est%proj_energy/est%D0_population
-                        if (doing_calc(hfs_fciqmc_calc)) then
-                            qs%shift(2) = est%proj_hf_O_hpsip/est%D0_population + est%proj_hf_H_hfpsip/est%D0_population &
-                                                                 - (est%proj_energy*est%D0_hf_population)/est%D0_population**2
-                        end if
-                    end associate
-                else
-                    qs%shift = qmc_in%vary_shift_from
-                end if
-            end if
-        else if (((ntot_particles(1) + ntot_particles(2)) > qs%target_particles) .and. .not.qs%vary_shift(1)) then
-            qs%vary_shift(1) = .true.
-            qs%vary_shift(2) = .true.
-            qs%shift(1) = qmc_in%vary_shift_from
-            qs%shift(2) = qmc_in%vary_shift_from
+        ! [reply] - CJCS: Depending upon the system, we can end up with the phase of the
+        ! [reply] - CJCS: reference being fairly far away from 0 (although stable in a reasonable
+        ! [reply] - CJCS: calculation). In this case there's a fairly big difference between the
+        ! [reply] - CJCS: two values.
+
+        if (comp_param) then
+            nparticles_wfn = ntot_particles(1) + ntot_particles(2)
+        else
+            nparticles_wfn = ntot_particles(1)
+        end if
+
+        if (nparticles_wfn > qs%target_particles .and. .not.qs%vary_shift(1)) then
+            qs%vary_shift = .true.
             if (qmc_in%vary_shift_from_proje) then
+                ! Set shift to be instantaneous projected energy.
                 associate(est=>qs%estimators)
-                    qs%shift = real(est%proj_energy_comp/est%D0_population_comp, p)
+                    if (comp_param) then
+                        qs%shift = real(est%proj_energy_comp/est%D0_population_comp, p)
+                    else
+                        qs%shift = est%proj_energy/est%D0_population
+                    end if
+                    if (doing_calc(hfs_fciqmc_calc)) then
+                        qs%shift(2) = est%proj_hf_O_hpsip/est%D0_population + est%proj_hf_H_hfpsip/est%D0_population &
+                                                             - (est%proj_energy*est%D0_hf_population)/est%D0_population**2
+                    end if
                 end associate
+            else
+                qs%shift = qmc_in%vary_shift_from
             end if
         end if
 

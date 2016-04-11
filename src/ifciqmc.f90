@@ -42,6 +42,7 @@ contains
         ! [review] - JSS: Probably worth testing for speed but I think procedure
         ! [review] - JSS: pointers add a maintenance burden that makes them less
         ! [review] - JSS: attractive outside of very hot loops.
+        ! [reply] - CJCS: Sounds sensible, will test.
         parent_flag = 0_int_p
         do i = 1, size(parent_population)
             if (.not.((abs(parent_population(i)) > initiator_pop) .or. ( determ_flag == 0))) then

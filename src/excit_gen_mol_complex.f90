@@ -14,7 +14,6 @@ contains
 
 !--- Excitation generation ---
 
-! [review] - JSS: no_renorm excitation generator or a stop_all somewhere to prevent this option?
     subroutine gen_excit_mol_complex(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability

@@ -309,6 +309,9 @@ contains
         case(read_in)
             if (sys%read_in%comp) then
                 ! [review] - JSS: no energy update?
+                ! [reply] - CJCS: energy update currently not compatible with generic interface, once implement your
+                ! [reply] - CJCS: suggestions in fciqmc.f90 will be set. For now set to null() to ensure I knew if it
+                ! [reply] - CJCS: was called.
                 update_proj_energy_ptr => null()
                 sc0_ptr => slater_condon0_mol_complex
                 energy_diff_ptr => null()
@@ -321,6 +324,10 @@ contains
 
             select case(qmc_in%excit_gen)
             case(excit_gen_no_renorm)
+                if (sys%read_in%comp) then
+                    call stop_all('init_proc_pointers', 'Selected excitation generator not implemented for complex &
+                                        &wavefunctions.')
+                end if
                 gen_excit_ptr%full => gen_excit_mol_no_renorm
                 decoder_ptr => decode_det_occ
             case(excit_gen_renorm)
