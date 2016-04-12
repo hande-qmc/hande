@@ -1074,28 +1074,29 @@ contains
         !    data_proc: processor on which the integral store is already filled.
 
         use parallel
-        use const, only: p, int_64
+        use const, only: p, dp, int_64
 
         type(two_body_t), intent(inout) :: store
         integer, intent(in) :: data_proc
 #ifdef PARALLEL
-        integer :: i, ierr, nblocks
+        integer :: i, ierr, nblocks, nnext
         integer(int_64) :: nmain
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
 
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
-            if (size(store%integrals(i)%v) > block_size) then
+            if (size(store%integrals(i)%v, kind=int_64) > block_size) then
                 ! Broadcasting more elements than mpi supports by default- can only take 32-bit
                 ! size parameter in MPI_BCast.
                 associate(ints=>store%integrals(i)%v)
                     ! Instead use custom type and broadcast nblocks worth
-                    nblocks = int(real(size(ints),p)/real(block_size,p), p)
+                    nblocks = int(real(size(ints, kind=int_64),dp)/real(block_size,dp), p)
                     nmain = nblocks * block_size
+                    nnext = int(size(ints, kind=int_64) - nmain)
                     call MPI_BCast(ints(:nmain), nblocks, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
                     ! Finally broadcast the remaining values not included in previous block.
-                    call MPI_BCast(ints(nmain+1:), (size(ints)-nmain), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                    call MPI_BCast(ints(nmain+1:), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
                 end associate
             else
                 call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
