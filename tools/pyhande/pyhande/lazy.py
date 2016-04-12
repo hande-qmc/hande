@@ -144,8 +144,8 @@ Umrigar93
                 dtau = md['tau']
             err_proj_e = opt_block['standard error']['Proj. Energy']
             Np = opt_block['mean']['# H psips']
-            # +1 below counts the start iteration itself.
-            N = calc['iterations'].iloc[-1] - start + 1
+            reblocked_iters = calc.ix[indx, 'iterations']
+            N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
             inefficiency = err_proj_e * math.sqrt(Np*N*dtau)
             # NB We do not know the covariance of the errors of N_0 and \sum H_0j N_j so this is an upper bound on the error estimate.
             err_err_proj_e = err_proj_e*math.sqrt( (opt_block['standard error error']['\sum H_0j N_j']/(opt_block['standard error']['\sum H_0j N_j']  ))**2  + ((opt_block['standard error error']['N_0'])/(opt_block['standard error']['N_0']))**2 )
