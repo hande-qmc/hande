@@ -1074,16 +1074,32 @@ contains
         !    data_proc: processor on which the integral store is already filled.
 
         use parallel
+        use const, only: p, int_64
 
         type(two_body_t), intent(inout) :: store
         integer, intent(in) :: data_proc
 #ifdef PARALLEL
-        integer :: i, ierr
+        integer :: i, ierr, nblocks
+        integer(int_64) :: nmain
         ! Yes, I know I *could* use an MPI derived type, but coding this took 10
         ! minutes rather than several hours and the loss of elegance is minimal.
+
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
-            call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+            if (size(store%integrals(i)%v) > block_size) then
+                ! Broadcasting more elements than mpi supports by default- can only take 32-bit
+                ! size parameter in MPI_BCast.
+                associate(ints=>store%integrals(i)%v)
+                    ! Instead use custom type and broadcast nblocks worth
+                    nblocks = int(real(size(ints),p)/real(block_size,p), p)
+                    nmain = nblocks * block_size
+                    call MPI_BCast(ints(:nmain), nblocks, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
+                    ! Finally broadcast the remaining values not included in previous block.
+                    call MPI_BCast(ints(nmain+1:), (size(ints)-nmain), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                end associate
+            else
+                call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+            end if
         end do
 #else
         integer :: i
