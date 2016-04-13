@@ -579,20 +579,6 @@ module hdf5_system
             end if
 
             if (parent) then
-                if (verbose_t) then
-                    call write_basis_fn_header(sys)
-                    do i = 1, sys%basis%nbasis
-                        call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
-                                                new_line=.true.)
-                    end do
-                    write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
-                else
-                    call write_basis_fn_title()
-                end if
-
-                call print_basis_metadata(sys%basis, sys%nel, .false.)
-                call print_pg_symmetry_info(sys)
-
                 ! --- sys/read_in/integrals subsubgroup ---
                 call h5gopen_f(file_id, hdf5_path(gsys, gread_in, gintegrals), subsubgroup_id, ierr)
 
@@ -612,7 +598,6 @@ module hdf5_system
                             kinds, sys%read_in%coulomb_integrals_imag)
                     end if
                 call h5gclose_f(subsubgroup_id, ierr)
-
                 call h5fclose_f(file_id, ierr)
                 call h5close_f(ierr)
             end if
@@ -623,6 +608,21 @@ module hdf5_system
             if (sys%read_in%comp) then
                 call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
                 call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
+            end if
+            if (parent) then
+                if (verbose_t) then
+                    call write_basis_fn_header(sys)
+                    do i = 1, sys%basis%nbasis
+                        call write_basis_fn(sys, sys%basis%basis_fns(i), ind=i, &
+                                                new_line=.true.)
+                    end do
+                    write (6,'(/,1X,a8,f18.12)') 'E_core =', sys%read_in%Ecore
+                else
+                    call write_basis_fn_title()
+                end if
+
+                call print_basis_metadata(sys%basis, sys%nel, .false.)
+                call print_pg_symmetry_info(sys)
             end if
 
             if (sys%read_in%dipole_int_file /= '') then

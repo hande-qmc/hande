@@ -1111,8 +1111,8 @@ contains
 
                     if (parent) then
                         write(6,'(1X,a21,/,1X,21("-"),/)') 'Integral Broadcasting'
-                        write(6,'(1X,"Integral array larger than predefined max_block_size (usually &
-                                &2^31-1).",/,1X,"Using contiguous MPI types for broadcast.",/)')
+                        write(6,'(1X,"Integral array larger than predefined max_block_size (2^31-1).",&
+                                    &/,1X,"Using contiguous MPI types for broadcast.",/)')
                         write(6,'(1X,"Broadcasting coulomb integrals using ",i4," blocks of size ",&
                                     &es11.4E3,".")') nblocks, real(optimal_block_size)
                         write(6,'(1X,"This corresponds to ", es11.4E3," integrals in the main broadcast "&
