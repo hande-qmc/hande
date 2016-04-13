@@ -546,9 +546,11 @@ contains
 
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
 
-        ! Verify that the specified file exists and check whether it is HDF5 or text.
-        inquire(file=sys%read_in%fcidump, exist=t_exists)
-        if (.not.t_exists) call stop_all('lua_read_in', 'FCIDUMP does not exist: '//trim(sys%read_in%fcidump))
+        if (parent) then
+            ! Verify that the specified file exists and check whether it is HDF5 or text.
+            inquire(file=sys%read_in%fcidump, exist=t_exists)
+            if (.not.t_exists) call stop_all('lua_read_in', 'FCIDUMP does not exist: '//trim(sys%read_in%fcidump))
+        end if
         call ishdf5_wrapper(sys%read_in%fcidump, hdf5, err)
 
         if (hdf5) then
