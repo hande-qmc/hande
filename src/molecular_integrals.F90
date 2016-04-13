@@ -1075,12 +1075,15 @@ contains
 
         use parallel
         use const, only: p, dp, int_64
+        use mpi, only: mpi_type_free
+        use checking, only: check_allocate, check_deallocate
 
         type(two_body_t), intent(inout) :: store
         integer, intent(in) :: data_proc
 #ifdef PARALLEL
-        integer :: i, ierr, nblocks, nnext
+        integer :: i, ierr, nblocks, nnext, mpi_preal_block, optimal_block_size
         integer(int_64) :: nmain
+        real(p), allocatable :: remainder(:)
 
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
@@ -1090,15 +1093,37 @@ contains
                 ! Broadcasting more elements than mpi supports by default- can only take 32-bit
                 ! size parameter in MPI_BCast.
                 associate(ints=>store%integrals(i)%v)
-                    ! Instead use custom type and broadcast nblocks worth
-                    nblocks = int(real(size(ints, kind=int_64))/real(block_size))
-                    nmain = nblocks * block_size
+                    ! Instead use custom type and calculate optimal number/size of blocks to minimise
+                    ! size of remainder elements to be broadcast. Since this requires passing an array
+                    ! slice into mpi_bcast can lead to formation of a temporary array (depending on
+                    ! compiler), we want to minimise size of this call.
+                    ! Using a constant contiguous type size block_size gives a maximum remainder size
+                    ! of block_size - 1.
+                    ! In comparison, calculating the optimal block size reduces this maximum to
+                    ! nblocks - 1.
+                    call get_optimal_integral_block(size(ints, kind=int_64), max_block_size, nblocks, &
+                                                optimal_block_size, mpi_preal_block)
+                    nmain = int(nblocks, kind=int_64) * int(optimal_block_size, kind=int_64)
                     nnext = int(size(ints, kind=int_64) - nmain)
+
+                    print *, 'Broadcasting integrals using', nblocks, 'blocks of size', optimal_block_size, '.'
+                    print *, 'This corresponds to', nmain, 'integrals in the main broadcast, and', nnext, 'in the remainder.'
+
+
                     call MPI_BCast(ints, nblocks, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
                     ! Finally broadcast the remaining values not included in previous block.
                     ! In some compilers (intel) array slicing leads to creation of temporary array. This
-                    ! will have maximum size block_size, so care should be taken with this parameter.
-                    call MPI_BCast(ints(nmain+1:), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                    ! will be of size nints, so we store the remainder in a separate allocatable array
+                    ! and minimise its size.
+                    allocate(remainder(nnext), stat=ierr)
+                    call check_allocate('remainder', nnext, ierr)
+                    remainder(:) = ints(nmain+1:)
+                    call MPI_BCast(remainder, nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                    ints(nmain+1:) = remainder(:)
+                    ! Finally tidy up mpi types and temporary arrays.
+                    deallocate(remainder, stat=ierr)
+                    call check_deallocate('remainder', ierr)
+                    call mpi_type_free(mpi_preal_block, ierr)
                 end associate
             else
                 call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
@@ -1113,5 +1138,42 @@ contains
 #endif
 
     end subroutine broadcast_two_body_t
+
+#ifdef PARALLEL
+    subroutine get_optimal_integral_block(nints, max_block_size, nblocks, optimal_block_size, &
+                                        mpi_preal_block)
+        ! For a given number of integrals and maximum block size calculate block number and
+        ! size that minises the size of integral remainder to be broadcast.
+        ! In:
+        !   nints: total number of integrals to be broadcast.
+        !   max_block_size: maximum number of integral values to broadcast in a single block.
+        ! Out:
+        !   nblocks: number of contiguous type blocks to broadcast in.
+        !   optimal_block_size: optimal number of elements to broadcast in each block.
+        !   mpi_preal_block: custom mpi type identifier for type of size specified in
+        !       optimal_block_size.
+
+
+
+        use const, only: int_32, int_64
+        use mpi, only: mpi_type_contiguous, mpi_type_commit
+        use parallel
+        integer(int_64), intent(in) :: nints
+        integer, intent(in) :: max_block_size
+        integer, intent(out) :: nblocks, optimal_block_size, mpi_preal_block
+        integer :: ierr
+
+        ! First calculate the largest number of max_block_sizes that don't exceed nints.
+        nblocks = nints / max_block_size
+        ! Now use more blocks than this.
+        nblocks = nblocks + 1
+        ! Finally calculate the block size that gives the smallest residual array size to be
+        ! broadcast.
+        optimal_block_size = int(nints / nblocks, kind=int_32)
+        ! Initialise the mpi custom type of appropriate size for this block.
+        call mpi_type_contiguous(optimal_block_size, mpi_preal, mpi_preal_block, ierr)
+        call mpi_type_commit(mpi_preal_block, ierr)
+    end subroutine get_optimal_integral_block
+#endif
 
 end module molecular_integrals

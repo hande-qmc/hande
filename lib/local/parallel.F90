@@ -113,9 +113,8 @@ integer, parameter :: mpi_preal = MPI_REAL8
 ! Size above which to use custom MPI type for broadcasting integer arrays.
 ! Use 32 bit default integer since if this is 64 bit then won't have solved
 ! any problems and probably better to fail on compilation.
-integer, parameter :: block_size = (2_int_64**16)-1_int_64
-! Custom MPI type for bradcasting above block_size
-integer :: mpi_preal_block
+integer, parameter :: max_block_size = (2_int_64**31)-1_int_64
+
 #endif
 
 contains
@@ -136,8 +135,6 @@ contains
         if (ierr /= mpi_success) call stop_all('init_parallel','Error initialising MPI.')
         call mpi_comm_size(mpi_comm_world, nprocs, ierr)
         call mpi_comm_rank(mpi_comm_world, iproc, ierr)
-        call mpi_type_contiguous(block_size, mpi_preal, mpi_preal_block, ierr)
-        call mpi_type_commit(mpi_preal_block, ierr)
 #else
         iproc = 0
         nprocs = 1
@@ -190,7 +187,6 @@ contains
         use mpi, only: mpi_type_free
         integer :: ierr
 
-        call mpi_type_free(mpi_preal_block, ierr)
         call mpi_finalize(ierr)
         if (ierr /= mpi_success) call stop_all('end_parallel','Error terminating MPI.')
 #endif
