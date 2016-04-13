@@ -1,0 +1,15 @@
+sys = read_in {
+    int_file = "INTDUMP",
+    nel = 10,
+    ms = 0,
+    sym = 0,
+}
+
+fci {
+    sys = sys,
+}
+
+-- INTDUMP is from the fci/H2O-RHF-sto-2g test but with
+-- the single-particle eigenvalues removed to test the
+-- calculation thereof -- the two tests give exactly the
+-- same eigenspectrum.
