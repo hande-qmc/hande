@@ -251,21 +251,67 @@ contains
 
     end subroutine get_uuid
 
-    subroutine end_report(wall_time, cpu_time_used, io)
+    subroutine wrapper_end_report(init_string, start_wall_time, start_cpu_time, highlight, io)
+        ! Wrapper around end_report function to avoid replication of time
+        ! calculations.
+
+        ! In:
+        !    init_string: string to write at start of report.
+        !    start_wall_time: wall time at start of timed period.
+        !    start_cpu_time: cpu time at start of timed period.
+        !    highlight: whether to highlight report.
+        !    io (optional): unit to which the environment information is written.
+        !        Default: 6.
+
+        use parallel, only: parent
+
+        integer, intent(in) :: start_wall_time
+        integer :: end_wall_time, count_rate, count_max, io_unit
+        real :: end_cpu_time, wall_time
+        real, intent(in) :: start_cpu_time
+        logical, intent(in) :: highlight
+        character(*), intent(in) :: init_string
+        integer, intent(in), optional :: io
+
+        io_unit = 6
+        if (present(io)) io_unit = io
+
+        ! Calculation time.
+        call cpu_time(end_cpu_time)
+        call system_clock(end_wall_time, count_rate, count_max)
+        if (end_wall_time < start_wall_time) then
+           ! system_clock returns the time modulo count_max.
+           ! Have ticked over to the next "block" (assume only one as this
+           ! happens roughly once every 1 2/3 years with gfortran!)
+           end_wall_time = end_wall_time + count_max
+        end if
+        wall_time = real(end_wall_time-start_wall_time)/count_rate
+        if (parent) call end_report(init_string, wall_time, end_cpu_time-start_cpu_time, highlight, io_unit)
+
+    end subroutine wrapper_end_report
+
+    subroutine end_report(init_string, wall_time, cpu_time_used, highlight, io)
 
         ! Print out date at end of calculation and how long it took.
 
         ! In:
+        !    init_string: string to write at start of report.
         !    wall_time: number of seconds between the start and end of the
         !        calculation.
         !    cpu_time_used: number of seconds took by process and any and all
         !       child processes.
+        !    highlight: whether or not to highlight the report by surrounding
+        !        with '======' on lines either side.
         !    io (optional): unit to which the environment information is written.
         !        Default: 6.
+
 
         real, intent(in) :: wall_time, cpu_time_used
         integer, intent(in), optional :: io
         integer :: date_values(8), io_unit
+        character(*) :: init_string
+        logical, intent(in) :: highlight
+
 
         if (present(io)) then
             io_unit = io
@@ -273,16 +319,24 @@ contains
             io_unit = 6
         end if
 
-        write (io_unit,'(1X,64("="))')
+        if (highlight) then
+            write (io_unit,'(1X,64("="))')
+        else
+            write (io_unit,'(1X,64("-"))')
+        end if
 
         call date_and_time(VALUES=date_values)
 
-        write (io_unit,'(1X,a19,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
-                   "Finished running on", date_values(3:1:-1), "at", date_values(5:7)
+        write (io_unit,'(1X,a,1X,i2.2,"/",i2.2,"/",i4.4,1X,a2,1X,i2.2,2(":",i2.2))') &
+                   init_string, date_values(3:1:-1), "at", date_values(5:7)
         write (io_unit,'(1X,a20,17X,f14.2)') "Wall time (seconds):", wall_time
         write (io_unit,'(1X,a34,3X,f14.2)') "CPU time (per processor, seconds):", cpu_time_used
 
-        write (io_unit,'(1X,64("="),/)')
+        if (highlight) then
+            write (io_unit,'(1X,64("="),/)')
+        else
+            write (io_unit,'(1X,64("-"),/)')
+        end if
 
     end subroutine end_report
 

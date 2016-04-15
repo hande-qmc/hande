@@ -307,17 +307,22 @@ contains
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         logical :: new, new_basis, verbose
         integer :: err
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
                                                                 'ms', 'sym', 'twist', 'verbose']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -354,6 +359,8 @@ contains
 
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
+
+        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_hubbard_k
 
@@ -437,6 +444,7 @@ contains
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr) :: L
@@ -444,12 +452,17 @@ contains
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         logical :: new, new_basis, verbose
         integer :: err
 
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
                                                                 'finite', 'ms', 'verbose']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
+
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
 
@@ -482,6 +495,8 @@ contains
 
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
+
+        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function real_lattice_wrapper
 
@@ -518,18 +533,23 @@ contains
         use parallel, only: parent
         use errors, only: stop_all
         use hdf5_system, only: read_system_hdf5
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
         character(15), parameter :: keys(11) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
                                                                 'sym', 'ms', 'CAS', 'complex', 'verbose']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -588,6 +608,8 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
+        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
+
     end function lua_read_in
 
     function lua_heisenberg(L) result(nreturn) bind(c)
@@ -620,18 +642,23 @@ contains
         use real_lattice, only: init_real_space
         use check_input, only: check_sys
         use parallel, only: parent
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         logical :: new, new_basis, verbose
         integer :: err
 
         character(24), parameter :: keys(9) = [character(24) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
                                                                 'staggered_magnetic_field', 'triangular', 'finite', 'verbose']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -664,6 +691,8 @@ contains
 
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
+
+        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_heisenberg
 
@@ -700,18 +729,23 @@ contains
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         logical :: new_basis, new, verbose
         integer :: err
 
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
                                                'ms', 'sym', 'twist', 'verbose']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -759,6 +793,8 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
+        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
+
     end function lua_ueg
 
     function lua_ringium(L) result(nreturn) bind(c)
@@ -788,17 +824,22 @@ contains
         use ringium_system, only: init_symmetry_ringium
         use check_input, only: check_sys
         use parallel, only: parent
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_state) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         logical :: new_basis, new, verbose
         integer :: err
 
         character(10), parameter :: keys(7) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'sym', 'verbose']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -836,6 +877,8 @@ contains
 
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
+
+        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_ringium
 

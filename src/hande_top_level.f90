@@ -48,24 +48,12 @@ contains
         !     start_wall_time: system_clock at the start of the calculation.
 
         use parallel, only: parent, end_parallel
-        use report, only: end_report
+        use report, only: wrapper_end_report
 
         real, intent(in) :: start_cpu_time
         integer, intent(in) :: start_wall_time
-        real :: end_cpu_time, wall_time
-        integer :: end_wall_time, count_rate, count_max
 
-        ! Calculation time.
-        call cpu_time(end_cpu_time)
-        call system_clock(end_wall_time, count_rate, count_max)
-        if (end_wall_time < start_wall_time) then
-            ! system_clock returns the time modulo count_max.
-            ! Have ticked over to the next "block" (assume only one as this
-            ! happens roughly once every 1 2/3 years with gfortran!)
-            end_wall_time = end_wall_time + count_max
-        end if
-        wall_time = real(end_wall_time-start_wall_time)/count_rate
-        if (parent) call end_report(wall_time, end_cpu_time-start_cpu_time)
+        if (parent) call wrapper_end_report("Finished running on", start_wall_time, start_cpu_time, .true.)
 
         call end_parallel()
 

@@ -110,6 +110,7 @@ contains
         use system, only: sys_t, read_in
 
         use hdf5_system, only: dump_system_hdf5, get_filename
+        use report, only: wrapper_end_report
 
         type(c_ptr), value :: L
         integer(c_int) :: nresult
@@ -117,10 +118,14 @@ contains
         type(flu_State) :: lua_state
         type(sys_t), pointer :: sys
 
-        integer :: opts, err
+        integer :: opts, err, start_wall_time
+        real :: start_cpu_time
         character(255) :: filename
 
         character(8), parameter :: keys(2) = [character(8) :: 'sys', 'filename']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -142,6 +147,8 @@ contains
 
         nresult = 1
         call flu_pushstring(lua_state, filename)
+
+        call wrapper_end_report("Writing system to HDF5 file finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_write_read_in_system
 
