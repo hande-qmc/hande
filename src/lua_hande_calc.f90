@@ -36,17 +36,22 @@ contains
         use lua_hande_utils, only: warn_unused_args
         use reference_determinant, only: reference_t
         use system, only: sys_t
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
 
         type(flu_State) :: lua_state
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
         logical :: use_sparse_hamil, lanczos
         character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'lanczos', 'reference']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
@@ -67,6 +72,8 @@ contains
         end if
 
         nresult = 0
+
+        call wrapper_end_report("FCI calculation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_fci
 
@@ -97,6 +104,7 @@ contains
 
         use calc, only: calc_type, mc_hilbert_space
         use hilbert_space, only: estimate_hilbert_space
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -106,8 +114,12 @@ contains
         type(sys_t), pointer :: sys
         integer :: truncation_level, nattempts, ncycles, rng_seed
         integer, allocatable :: ref_det(:)
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         character(12), parameter :: keys(2) = [character(12) :: 'sys', 'hilbert']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
@@ -129,6 +141,8 @@ contains
 
         ! [todo] - return estimate of space and error to lua.
         nresult = 0
+
+        call wrapper_end_report("MC Hilbert space estimation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_hilbert_space
 
@@ -159,6 +173,7 @@ contains
 
         use calc, only: calc_type, mc_canonical_estimates
         use canonical_estimates, only: estimate_canonical
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nresult
         type(c_ptr), value :: l
@@ -166,10 +181,14 @@ contains
         type(flu_state) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts, rng_seed, ncycles, nattempts
+        integer :: opts, rng_seed, ncycles, nattempts, start_wall_time
+        real :: start_cpu_time
         logical :: fermi_temperature, all_spin_sectors
         real(p) :: beta
         character(19), parameter :: keys(2) = [character(19) :: 'sys', 'canonical_estimates']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -184,6 +203,8 @@ contains
 
         ! [todo] - return estimate of various canonical mean-field energies and error to lua.
         nresult = 0
+
+        call wrapper_end_report("Calculation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_canonical_estimates
 
@@ -223,6 +244,7 @@ contains
 
         use calc, only: calc_type, simple_fciqmc_calc, fciqmc_calc
         use system, only: set_spin_polarisation
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -235,8 +257,12 @@ contains
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
         logical :: use_sparse_hamil, have_qmc_state
 
-        integer :: opts, err
+        integer :: opts, err, start_wall_time
+        real :: start_cpu_time
         character(12), parameter :: keys(6) = [character(12) :: 'sys', 'qmc', 'restart', 'reference', 'sparse', 'qmc_state']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -263,6 +289,8 @@ contains
 
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
+
+        call wrapper_end_report("Simple FCIQMC calculation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_simple_fciqmc
 
@@ -302,6 +330,7 @@ contains
 
         use calc, only: calc_type, fciqmc_calc
         use system, only: set_spin_polarisation
+        use report, only: wrapper_end_report
 
         integer(c_int)  :: nresult
         type(c_ptr), value :: L
@@ -318,9 +347,13 @@ contains
 
         logical :: have_restart_state
 
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
                                                                 'load_bal', 'reference', 'qmc_state']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -354,6 +387,8 @@ contains
         ! Return qmc_state to the user.
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
+
+        call wrapper_end_report("FCIQMC calculation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_fciqmc
 
@@ -391,6 +426,7 @@ contains
 
         use calc, only: calc_type, ccmc_calc
         use system, only: set_spin_polarisation
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -406,8 +442,12 @@ contains
         type(qmc_state_t), pointer :: qmc_state_restart, qmc_state_out
 
         logical :: have_restart_state
-        integer :: opts
+        integer :: opts, start_wall_time
+        real :: start_cpu_time
         character(10), parameter :: keys(6) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -437,6 +477,8 @@ contains
 
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
+
+        call wrapper_end_report("CCMC calculation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_ccmc
 
@@ -480,6 +522,7 @@ contains
         use checking, only: check_allocate
         use real_lattice, only: create_next_nearest_orbs
         use system, only: set_spin_polarisation
+        use report, only: wrapper_end_report
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -495,10 +538,14 @@ contains
         type(qmc_state_t), pointer :: qmc_state_out, qmc_state_restart
 
         logical :: have_restart_state
-        integer :: opts, ierr
+        integer :: opts, ierr, start_wall_time
+        real :: start_cpu_time
         real(p), allocatable :: sampling_probs(:)
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
                                                                 'restart', 'reference', 'qmc_state']
+
+        call cpu_time(start_cpu_time)
+        call system_clock(start_wall_time)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -552,6 +599,8 @@ contains
             nresult = nresult + 1
             call aot_table_from_1Darray(lua_state, opts, sampling_probs)
         end if
+
+        call wrapper_end_report("DMQMC calculation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_dmqmc
 
