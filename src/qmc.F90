@@ -124,6 +124,7 @@ contains
             allocate(qmc_state%vary_shift(qmc_state%psip_list%nspaces), stat=ierr)
             call check_allocate('qmc_state%vary_shift', qmc_state%psip_list%nspaces, ierr)
             qmc_state%shift = qmc_in%initial_shift
+            qmc_state%vary_shift = .false.
             ! Initial walker distributions
             if (restart_in%read_restart) then
                 call read_restart_hdf5(ri, sys%basis%nbasis, fciqmc_in_loc%non_blocking_comm, qmc_state, uuid_restart)
@@ -657,7 +658,10 @@ contains
 
         ! Decide whether the shift should be turned on from the start.
         qmc_state%target_particles = qmc_in%target_particles
-        qmc_state%vary_shift = qmc_state%psip_list%tot_nparticles >= qmc_state%target_particles
+        ! If a calculation has been restarted after the shift was varying, we
+        ! still want to vary the shift even if the number of particles is
+        ! instantaneously below the target.
+        qmc_state%vary_shift = qmc_state%psip_list%tot_nparticles >= qmc_state%target_particles .or. qmc_state%vary_shift
 
         if (doing_calc(hfs_fciqmc_calc)) then
 #ifdef PARALLEL

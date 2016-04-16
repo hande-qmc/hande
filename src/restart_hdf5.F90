@@ -51,6 +51,7 @@ module restart_hdf5
     !            ncycles               # number of Monte Carlo cycles performed
     !            hash seed             # hash seed passed to hash function to assign a state to a processor
     !            move frequency        # (log2 of the) frequency at which the processor location is modified in CCMC
+    !            vary shift            # Whether the shift was varying before the calculation stopped
     !      reference/
     !                reference determinant # reference determinant
     !                reference population  # population on reference
@@ -129,7 +130,8 @@ module restart_hdf5
                                dref_pop = 'reference population @ t-1', &
                                dhsref = 'Hilbert space reference determinant', &
                                dscaling = 'population scale factor', &
-                               dnbasis = 'nbasis'
+                               dnbasis = 'nbasis',                  &
+                               dvary = 'vary shift'
 
     contains
 
@@ -386,6 +388,8 @@ module restart_hdf5
 
                     call hdf5_write(subgroup_id, dmove_freq, qs%spawn_store%spawn%move_freq)
 
+                    call hdf5_write(subgroup_id, dvary, kinds, shape(qs%vary_shift), qs%vary_shift)
+
                 call h5gclose_f(subgroup_id, ierr)
 
                 ! --- qmc/qs%ref group ---
@@ -628,6 +632,14 @@ module restart_hdf5
                     call hdf5_read(subgroup_id, dncycles, qs%mc_cycles_done)
 
                     call hdf5_read(subgroup_id, dshift, kinds, shape(qs%shift), qs%shift)
+
+                    call h5lexists_f(subgroup_id, dvary, exists, ierr)
+                    if (exists) then
+                        call hdf5_read(subgroup_id, dvary, kinds, shape(qs%vary_shift), qs%vary_shift)
+                    else
+                        ! If not present, keep old behaviour.
+                        qs%vary_shift = .false.
+                    end if
 
                 call h5gclose_f(subgroup_id, ierr)
 
@@ -1189,17 +1201,23 @@ module restart_hdf5
             use const, only: dp
             use qmc_data, only: qmc_state_t
 
-            type(qmc_state_t), intent(in) :: qs
+            type(qmc_state_t), intent(inout) :: qs
             logical, intent(inout) :: dump_restart_shift
             real(dp), intent(in) :: ntot_particles(qs%psip_list%nspaces)
             integer, intent(in) :: ireport, ncycles, dump_freq, nbasis
             type(restart_info_t), intent(in) :: ri_freq, ri_shift
             logical, intent(in) :: nb_comm
 
+            logical :: vary_shift(size(qs%vary_shift))
+
             if (dump_restart_shift .and. any(qs%vary_shift)) then
                 dump_restart_shift = .false.
+                ! We want the restart file to not have vary_shift true.
+                vary_shift = qs%vary_shift
+                qs%vary_shift = .false.
                 call dump_restart_hdf5(ri_shift, qs, qs%mc_cycles_done+ncycles*ireport, &
                                        ntot_particles, nbasis, nb_comm)
+                qs%vary_shift = vary_shift
             else if (mod(ireport*ncycles,dump_freq) == 0) then
                 call dump_restart_hdf5(ri_freq, qs, qs%mc_cycles_done+ncycles*ireport, &
                                        ntot_particles, nbasis, nb_comm)

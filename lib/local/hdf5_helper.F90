@@ -48,6 +48,7 @@ module hdf5_helper
         module procedure write_boolean
         module procedure write_array_1d_int_32
         module procedure write_array_1d_int_64
+        module procedure write_array_1d_boolean
         module procedure write_array_2d_int_32
         module procedure write_array_2d_int_64
         module procedure write_array_3d_int_32
@@ -64,6 +65,7 @@ module hdf5_helper
         module procedure read_boolean
         module procedure read_array_1d_int_32
         module procedure read_array_1d_int_64
+        module procedure read_array_1d_boolean
         module procedure read_array_2d_int_32
         module procedure read_array_2d_int_64
         module procedure read_array_3d_int_32
@@ -433,6 +435,39 @@ module hdf5_helper
             call write_ptr(id, dset, kinds%i64, rank, int(arr_shape,HSIZE_T), ptr, append)
 
         end subroutine write_array_1d_int_64
+
+        subroutine write_array_1d_boolean(id, dset, kinds, arr_shape, arr)
+
+            ! Write a 1D boolean array to an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be written (i.e. as given by shape(arr)).
+            !    arr: array to be written.
+
+            ! NOTE: HDF5 can't handle boolean types, so instead we write out an integer
+            ! which we interpret ourselves in a consistent fashion.
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(1)
+            logical, intent(in) :: arr(:)
+
+            integer :: int_arr(size(arr))
+
+            where (arr)
+                int_arr = hande_hdf5_true
+            elsewhere
+                int_arr = hande_hdf5_false
+            end where
+
+            call hdf5_write(id, dset, kinds, arr_shape, int_arr)
+
+        end subroutine write_array_1d_boolean
 
         subroutine write_array_2d_int_32(id, dset, kinds, arr_shape, arr, lim, append)
 
@@ -1023,6 +1058,45 @@ module hdf5_helper
             call read_ptr(id, dset, kinds%i64, size(arr_shape), int(arr_shape,HSIZE_T), ptr)
 
         end subroutine read_array_1d_int_64
+
+        subroutine read_array_1d_boolean(id, dset, kinds, arr_shape, arr)
+
+            ! Read a 1D boolean array from an open HDF5 file/group.
+
+            ! In:
+            !    id: file or group HD5 identifier.
+            !    dset: dataset name.
+            !    kinds: hdf5_kinds_t object containing the mapping between the non-default &
+            !        kinds used in HANDE and HDF5 types.
+            !    arr_shape: shape of array to be read (i.e. as given by shape(arr)).
+            ! Out:
+            !    arr: array to be read.
+
+            ! NOTE: HDF5 can't handle boolean types, so instead we read an integer
+            ! which we interpret ourselves in a consistent fashion.
+
+            use errors, only: stop_all
+
+            integer(hid_t), intent(in) :: id
+            character(*), intent(in) :: dset
+            type(hdf5_kinds_t), intent(in) :: kinds
+            integer, intent(in) :: arr_shape(1)
+            logical, intent(out) :: arr(:)
+
+            integer :: arr_int(size(arr))
+
+            call hdf5_read(id, dset, kinds, arr_shape, arr_int)
+
+            where (arr_int == hande_hdf5_true)
+                arr = .true.
+            elsewhere (arr_int == hande_hdf5_false)
+                arr = .false.
+            end where
+
+            if (any(arr_int /= hande_hdf5_true .and. arr_int /= hande_hdf5_false)) &
+                call stop_all('read_array_1d_boolean', 'Illegal boolean flag detected.')
+
+        end subroutine read_array_1d_boolean
 
         subroutine read_array_2d_int_32(id, dset, kinds, arr_shape, arr)
 
