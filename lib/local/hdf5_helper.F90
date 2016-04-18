@@ -28,7 +28,7 @@ module hdf5_helper
     implicit none
 
     private
-    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape, hdf5_path, check_ifhdf5
+    public :: hdf5_kinds_t, hdf5_kinds_init, hdf5_write, hdf5_read, dtype_equal, dset_shape, hdf5_path, ishdf5_wrapper
 
 
     ! HDF5 kinds equivalent to the kinds defined in const.  Set in
@@ -1506,6 +1506,26 @@ module hdf5_helper
 #endif
         end subroutine check_ifhdf5
 
+        subroutine ishdf5_wrapper(filename, if_hdf5, ierr)
 
+            ! Wrapper around hdf5_helper wrapper to h5fis_hdf5_f to ensure only check on
+            ! parent processor.
+
+            ! In:
+            !   filename: integral filename which could be in hdf5 file format.
+            ! Out:
+            !   if_hdf5: logical parameter showing whether integral file is in hdf5 format.
+
+            use parallel
+
+            character(*), intent(in) :: filename
+            logical, intent(out) :: if_hdf5
+            integer, intent(inout) :: ierr
+
+            if (parent) call check_ifhdf5(filename, if_hdf5, ierr)
+#ifdef PARALLEL
+            call MPI_BCAST(if_hdf5, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
+#endif
+        end subroutine ishdf5_wrapper
 
 end module hdf5_helper
