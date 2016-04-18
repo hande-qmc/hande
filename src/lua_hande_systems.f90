@@ -525,7 +525,8 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args, ishdf5_wrapper
+        use lua_hande_utils, only: warn_unused_args
+        use hdf5_helper, only: ishdf5_wrapper
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
         use system, only: sys_t, read_in, init_system

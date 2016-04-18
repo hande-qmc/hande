@@ -4,6 +4,8 @@ module lua_hande_utils
 
 implicit none
 
+integer, parameter :: lua_registryindex = -1001000
+
 contains
 
     subroutine warn_unused_args(lua_state, valid_keys, pos)
@@ -172,5 +174,69 @@ contains
         call aot_get_val(ptr, ierr, lua_state, table, key=trim(name))
 
     end subroutine get_userdata
+
+    subroutine register_timing(lua_state, tag, time)
+
+        ! Add information about time taken by a function to the timer object in the registry
+
+        ! In/Out:
+        !   lua_state: flu/lua state to which the HANDE API is added.
+        ! In:
+        !   tag: string naming the function being timed
+        !   time: time taken by the function
+
+        use flu_binding, only: flu_pushinteger, flu_settable, flu_State
+        use aot_table_module, only: aot_table_length, aot_table_open, aot_table_set_val, aot_table_close
+
+        type(flu_State), intent(inout) :: lua_state
+        character(*), intent(in) :: tag
+        real, intent(in) :: time
+
+        integer :: timer, entries, handle, ierr
+
+        call aot_table_open(lua_state, lua_registryindex, timer, "timer")
+
+        entries = aot_table_length(lua_state, timer)
+        call flu_pushinteger(lua_state, entries+1)
+        call aot_table_open(lua_state, thandle=handle)
+        call aot_table_set_val(tag, lua_state, handle, key="tag")
+        call aot_table_set_val(time, lua_state, handle, key="time")
+        call flu_settable(lua_state, timer)
+
+        call aot_table_close(lua_state, timer)
+
+    end subroutine register_timing
+
+    subroutine timing_summary(lua_state)
+
+        ! Print a breakdown of the time used by each system setup or calculation.
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+
+        use flu_binding!, only: flu_State, flu_pushnil, flu_next, flu_pop
+        use aot_table_module, only: aot_table_open, aot_table_close, aot_get_val, aot_table_top
+
+        type(flu_State), intent(inout) :: lua_state
+
+        integer :: timer, ierr, strlen
+        real :: time
+!        character, pointer :: key(:)
+        character(100) :: key
+
+        call aot_table_open(lua_state, lua_registryindex, timer, "timer")
+        
+        ! Traversal of timer table
+        call flu_pushnil(lua_state)
+        do while (flu_next(lua_state, timer))
+            call aot_get_val(time, ierr, lua_state, aot_table_top(lua_state), "time")
+            call aot_get_val(key, ierr, lua_state, aot_table_top(lua_state), "tag")
+            print *, trim(key), time
+            call flu_pop(lua_state, 1)
+        end do
+
+        call aot_table_close(lua_state, timer)
+
+    end subroutine timing_summary
 
 end module lua_hande_utils

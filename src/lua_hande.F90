@@ -67,6 +67,7 @@ contains
 
         use aotus_module, only: open_config_chunk
         use flu_binding, only: flu_State, fluL_newstate, flu_close
+        use lua_hande_utils, only: timing_summary
 
         use errors, only: stop_all, warning
         use parallel
@@ -116,6 +117,7 @@ contains
 
             call open_config_chunk(lua_state, buffer, lua_err, err_string)
             if (lua_err == 0) then
+                call timing_summary(lua_state)
                 call flu_close(lua_state)
             else
                 write (6,*) 'aotus/lua error code:', lua_err
@@ -140,12 +142,14 @@ contains
         ! In/Out:
         !    lua_state: flu/Lua state to which the HANDE API is added.
 
-        use flu_binding, only: flu_State, flu_register
+        use flu_binding, only: flu_State, flu_register, flu_pushstring, flu_settable, flu_createtable
         use tests, only: test_lua_api
 
         use lua_hande_system
         use lua_hande_calc
         use lua_hande_fns
+
+        use lua_hande_utils, only: lua_registryindex
 
         type(flu_State), intent(inout) :: lua_state
 
@@ -181,6 +185,11 @@ contains
         ! Metatables for objects returned to lua
         call create_metatable(lua_state, "sys", lua_dealloc_sys)
         call create_metatable(lua_state, "qmc_state", lua_dealloc_qmc_state)
+
+        ! Timer table in the registry to give a break down of calculation time
+        call flu_pushstring(lua_state, "timer")
+        call flu_createtable(lua_state, 0, 0)
+        call flu_settable(lua_state, lua_registryindex)
 
     end subroutine register_lua_hande_api
 

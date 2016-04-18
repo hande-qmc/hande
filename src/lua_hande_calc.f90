@@ -33,7 +33,7 @@ contains
         use fci_lapack, only: do_fci_lapack
         use fci_utils, only: fci_in_t
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use reference_determinant, only: reference_t
         use system, only: sys_t
         use report, only: wrapper_end_report
@@ -43,7 +43,7 @@ contains
 
         type(flu_State) :: lua_state
         integer :: opts, start_wall_time
-        real :: start_cpu_time
+        real :: start_cpu_time, t2
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
@@ -73,6 +73,8 @@ contains
 
         nresult = 0
 
+        call cpu_time(t2)
+        call register_timing(lua_state, "FCI calculation", t2-start_cpu_time)
         call wrapper_end_report("FCI calculation finished at", start_wall_time, start_cpu_time, .false.)
 
     end function lua_fci
