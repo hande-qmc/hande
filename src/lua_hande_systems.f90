@@ -300,29 +300,27 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t, hub_k, init_system
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
-        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts, start_wall_time
-        real :: start_cpu_time
+        integer :: opts
+        real :: t1, t2
         logical :: new, new_basis, verbose
         integer :: err
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
                                                                 'ms', 'sym', 'twist', 'verbose']
 
-        call cpu_time(start_cpu_time)
-        call system_clock(start_wall_time)
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -360,7 +358,8 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
-        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
+        call cpu_time(t2)
+        call register_timing(lua_state, "Momentum space hubbard model initialisation", t2-t1)
 
     end function lua_hubbard_k
 
@@ -437,14 +436,13 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
-        use system, only: sys_t, chung_landau, init_system
+        use lua_hande_utils, only: warn_unused_args, register_timing
+        use system, only: sys_t, chung_landau, hub_real, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
-        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr) :: L
@@ -452,16 +450,15 @@ contains
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts, start_wall_time
-        real :: start_cpu_time
+        integer :: opts
+        real :: t1, t2
         logical :: new, new_basis, verbose
         integer :: err
 
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
                                                                 'finite', 'ms', 'verbose']
 
-        call cpu_time(start_cpu_time)
-        call system_clock(start_wall_time)
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -496,7 +493,15 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
-        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
+        call cpu_time(t2)
+        select case (system_type)
+        case (hub_real)
+            call register_timing(lua_state, "Real space hubbard model initialisation", t2-t1)
+        case (chung_landau)
+            call register_timing(lua_state, "Chung-landau initialisation", t2-t1)
+        case default
+            call stop_all("real_lattice_wrapper", "Unknown system type")
+        end select
 
     end function real_lattice_wrapper
 
@@ -525,7 +530,7 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use hdf5_helper, only: ishdf5_wrapper
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
@@ -534,23 +539,21 @@ contains
         use parallel, only: parent
         use errors, only: stop_all
         use hdf5_system, only: read_system_hdf5
-        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts, start_wall_time
-        real :: start_cpu_time
+        integer :: opts
+        real :: t1, t2
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
         character(15), parameter :: keys(11) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
                                                                 'sym', 'ms', 'CAS', 'complex', 'verbose']
 
-        call cpu_time(start_cpu_time)
-        call system_clock(start_wall_time)
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -609,7 +612,8 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
-        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
+        call cpu_time(t2)
+        call register_timing(lua_state, "Generic system initialisation", t2-t1)
 
     end function lua_read_in
 
@@ -637,29 +641,27 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t, heisenberg, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
         use check_input, only: check_sys
         use parallel, only: parent
-        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts, start_wall_time
-        real :: start_cpu_time
+        integer :: opts
+        real :: t1, t2
         logical :: new, new_basis, verbose
         integer :: err
 
         character(24), parameter :: keys(9) = [character(24) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
                                                                 'staggered_magnetic_field', 'triangular', 'finite', 'verbose']
 
-        call cpu_time(start_cpu_time)
-        call system_clock(start_wall_time)
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -693,7 +695,8 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
-        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
+        call cpu_time(t2)
+        call register_timing(lua_state, "Heisenberg model initialisation", t2-t1)
 
     end function lua_heisenberg
 
@@ -722,7 +725,7 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t, ueg, init_system
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
@@ -730,23 +733,21 @@ contains
         use check_input, only: check_sys
         use parallel, only: parent
         use errors, only: stop_all
-        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_State) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts, start_wall_time
-        real :: start_cpu_time
+        integer :: opts
+        real :: t1, t2
         logical :: new_basis, new, verbose
         integer :: err
 
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
                                                'ms', 'sym', 'twist', 'verbose']
 
-        call cpu_time(start_cpu_time)
-        call system_clock(start_wall_time)
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -794,7 +795,8 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
-        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
+        call cpu_time(t2)
+        call register_timing(lua_state, "UEG initialisation", t2-t1)
 
     end function lua_ueg
 
@@ -819,28 +821,26 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t, ringium, init_system
         use basis, only: init_model_basis_fns
         use ringium_system, only: init_symmetry_ringium
         use check_input, only: check_sys
         use parallel, only: parent
-        use report, only: wrapper_end_report
 
         integer(c_int) :: nreturn
         type(c_ptr), value :: L
         type(flu_state) :: lua_state
 
         type(sys_t), pointer :: sys
-        integer :: opts, start_wall_time
-        real :: start_cpu_time
+        integer :: opts
+        real :: t1, t2
         logical :: new_basis, new, verbose
         integer :: err
 
         character(10), parameter :: keys(7) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'sym', 'verbose']
 
-        call cpu_time(start_cpu_time)
-        call system_clock(start_wall_time)
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -879,7 +879,8 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
-        call wrapper_end_report("System initialisation finished at", start_wall_time, start_cpu_time, .false.)
+        call cpu_time(t2)
+        call register_timing(lua_state, "Ringium initialisation", t2-t1)
 
     end function lua_ringium
 

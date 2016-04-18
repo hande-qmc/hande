@@ -32,7 +32,7 @@ contains
         use restart_hdf5, only: restart_info_t, init_restart_info_t, redistribute_restart_hdf5
         use system, only: sys_t
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
 
         integer(c_int) :: nresult
         type(c_ptr), value :: L
@@ -41,9 +41,12 @@ contains
 
         integer :: opts, nprocs_target, read_id, write_id, err
         logical :: read_exists, write_exists
+        real :: t1, t2
         type(restart_info_t) :: ri
         type(sys_t), pointer :: sys
         character(6), parameter :: keys(4) = [character(6) :: 'sys', 'read', 'write', 'nprocs']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(l)
         opts = aot_table_top(lua_state)
@@ -80,6 +83,9 @@ contains
 
         nresult = 0
 
+        call cpu_time(t2)
+        call register_timing(lua_state, "Restart fiel redistribution", t2-t1)
+
     end function lua_redistribute_restart
 
     function lua_write_read_in_system(L) result(nresult) bind(c)
@@ -103,14 +109,13 @@ contains
 
         use aot_table_module, only: aot_table_top, aot_get_val, aot_table_close
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
 
         use errors, only: warning
         use parallel, only: parent
         use system, only: sys_t, read_in
 
         use hdf5_system, only: dump_system_hdf5, get_filename
-        use report, only: wrapper_end_report
 
         type(c_ptr), value :: L
         integer(c_int) :: nresult
@@ -118,14 +123,13 @@ contains
         type(flu_State) :: lua_state
         type(sys_t), pointer :: sys
 
-        integer :: opts, err, start_wall_time
-        real :: start_cpu_time
+        integer :: opts, err
+        real :: t1, t2
         character(255) :: filename
 
         character(8), parameter :: keys(2) = [character(8) :: 'sys', 'filename']
 
-        call cpu_time(start_cpu_time)
-        call system_clock(start_wall_time)
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -148,7 +152,8 @@ contains
         nresult = 1
         call flu_pushstring(lua_state, filename)
 
-        call wrapper_end_report("Writing system to HDF5 file finished at", start_wall_time, start_cpu_time, .false.)
+        call cpu_time(t2)
+        call register_timing(lua_state, "HDF5 system file creation", t2-t1)
 
     end function lua_write_read_in_system
 
