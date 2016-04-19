@@ -109,13 +109,12 @@ integer, parameter :: mpi_preal = MPI_REAL
 #else
 integer, parameter :: mpi_preal = MPI_REAL8
 #endif
+#endif
 
 ! Size above which to use custom MPI type for broadcasting integer arrays.
 ! Use 32 bit default integer since if this is 64 bit then won't have solved
 ! any problems and probably better to fail on compilation.
 integer, parameter :: max_block_size = (2_int_64**31)-1_int_64
-
-#endif
 
 contains
 

@@ -152,12 +152,13 @@ contains
 
         use checking, only: check_allocate
         use const, only: int_64
+        use parallel, only: max_block_size, parent
 
         logical, intent(in) :: uhf, comp, imag
         integer, intent(in) :: nbasis, op_sym
         type(two_body_t), intent(out) :: store
 
-        integer :: ierr, ispin, nspin
+        integer :: ierr, ispin, nspin, mem_reqd
         integer(int_64):: npairs, nintgrls
 
         store%op_sym = op_sym
@@ -195,6 +196,19 @@ contains
         else
             nintgrls = (npairs*(npairs+1))/2
         end if
+
+        if (nintgrls > max_block_size .and. parent .and. (.not.comp .or. .not.imag)) then
+#ifdef SINGLE_PRECISION
+            mem_reqd = (nintgrls*4*nspin)/10**6
+#else
+            mem_reqd = (nintgrls*8*nspin)/10**6
+#endif
+            if (comp) mem_reqd = 2 * mem_reqd
+            write(6,'(/,1X,a,i0)') 'Memory required for all two body integrals (MB) on each processor: ', &
+                            mem_reqd
+            write(6,'(1X, a,/)') 'It is left to the user to ensure that this does not exceed available resources.'
+        end if
+
         do ispin = 1, nspin
             allocate(store%integrals(ispin)%v(nintgrls), stat=ierr)
             call check_allocate('two_body_store_component', nintgrls, ierr)
@@ -1075,7 +1089,6 @@ contains
 
         use parallel
         use const, only: p, dp, int_64
-        use mpi, only: mpi_type_free
         use checking, only: check_allocate, check_deallocate
         use errors, only: warning
 
@@ -1172,7 +1185,6 @@ contains
 
 
         use const, only: int_32, int_64
-        use mpi, only: mpi_type_contiguous, mpi_type_commit
         use parallel
         integer(int_64), intent(in) :: nints
         integer, intent(out) :: nblocks, optimal_block_size, mpi_preal_block
