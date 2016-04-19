@@ -218,28 +218,34 @@ contains
         use flu_binding, only: flu_State, flu_pushnil, flu_next, flu_pop
         use aot_table_module, only: aot_table_open, aot_table_close, aot_get_val, aot_table_top
 
+        use parallel, only: parent
+
         type(flu_State), intent(inout) :: lua_state
 
         integer :: timer, ierr
         real :: time
         character(100) :: key
 
-        write (6,'(1x,"Timing breakdown",/,1x,16("-"),/)')
+        if (parent) then
 
-        call aot_table_open(lua_state, lua_registryindex, timer, "timer")
-        
-        ! Traversal of timer table
-        call flu_pushnil(lua_state)
-        do while (flu_next(lua_state, timer))
-            call aot_get_val(time, ierr, lua_state, aot_table_top(lua_state), "time")
-            call aot_get_val(key, ierr, lua_state, aot_table_top(lua_state), "tag")
-            write (6,'(1x,a,": ",f0.2)') trim(key), time
-            call flu_pop(lua_state, 1)
-        end do
+            write (6,'(1x,"Timing breakdown",/,1x,16("-"),/)')
 
-        write (6,'()')
+            call aot_table_open(lua_state, lua_registryindex, timer, "timer")
+            
+            ! Traversal of timer table
+            call flu_pushnil(lua_state)
+            do while (flu_next(lua_state, timer))
+                call aot_get_val(time, ierr, lua_state, aot_table_top(lua_state), "time")
+                call aot_get_val(key, ierr, lua_state, aot_table_top(lua_state), "tag")
+                write (6,'(1x,a,": ",f0.2)') trim(key), time
+                call flu_pop(lua_state, 1)
+            end do
 
-        call aot_table_close(lua_state, timer)
+            write (6,'()')
+
+            call aot_table_close(lua_state, timer)
+
+        end if
 
     end subroutine timing_summary
 
