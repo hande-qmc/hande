@@ -4,6 +4,7 @@ from os import path
 import numpy
 import pandas as pd
 import sys
+import warnings
 
 try:
     import pyblock
