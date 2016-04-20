@@ -157,20 +157,29 @@ calcs : list of :class:`pandas.DataFrame`
 
     if 'restart' in metadata[-1] and 'uuid_restart' in metadata[-1]['restart']:
         # Use UUIDs to check if multiple calculations are restarts
-        calcs = []
-        calcs_metadata = [metadata[0]]
-        xcalc = [data[0]]
-        for i in range(1, len(data)):
-            if metadata[i]['restart']['uuid_restart'] == metadata[i-1]["UUID"]:
-                # Restart
-                xcalc.append(data[i])
-            else:
-                # Different calculation
-                calcs.append(pd.concat(xcalc))
-                xcalc = [data[i]]
-                calcs_metadata.append(metadata[i])
-        calcs.append(pd.concat(xcalc))
+        # This works regardless of the order the calculations are passed in.
+        # Use lists as elements of data so they are mutable
+        data = [[d] for d in data]
+        for md,d in zip(metadata, data):
+            # If a calculation is not from a restart, the uuid_restart
+            # key will be absent.
+            if 'uuid_restart' in md['restart']:
+                for md_prev, d_prev in zip(metadata,data):
+                    if md['restart']['uuid_restart'] == md_prev['UUID']:
+                        # Concatenate restarted calculation
+                        d_prev.extend(d)
+                        # Reset UUID information in metadata so a subsequent
+                        # restart will pick up the concatenated calculation
+                        md_prev['UUID'] = md['UUID']
+                        md['UUID'] = None
+                        break
+        # Drop second half of restarted calculations
+        calcs = [pd.concat(d, ignore_index=True)
+                    for (md, d) in zip(metadata, data) if md['UUID']]
+        calcs_metadata = [md for md in metadata if md['UUID']]
+
     else:
+        # Assume any restarted calculations are in the right order and contiguous
         # Check concatenating data is at least possibly sane.
         step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
         prev_iteration = data[0]['iterations'].iloc[-1]
@@ -192,5 +201,5 @@ calcs : list of :class:`pandas.DataFrame`
                 # Continuation of same calculation (probably)
                 xcalc.append(data[i])
             prev_iteration = data[i]['iterations'].iloc[-1]
-        calcs.append(pd.concat(xcalc))
+        calcs.append(pd.concat(xcalc, ignore_index=True))
     return calcs_metadata, calcs
