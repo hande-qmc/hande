@@ -105,9 +105,12 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     data_pairs = []
     md_generic = {'input':[]}
 
-    calc_block = re.compile('^ (FCI|FCIQMC|CCMC|DMQMC|Simple FCIQMC|'
-                            'Hilbert space|Canonical energy)$')
+    calc_types = '(FCI|FCIQMC|CCMC|DMQMC|Simple FCIQMC|'\
+                            'Hilbert space|Canonical energy)'
+    calc_block = re.compile('^ '+calc_types+'$')
     fci_block = re.compile('Exact|Lanczos|LAPACK|LANCZOS|RDM')
+    timing_pattern = re.compile('^ '+calc_types+
+                                ' (?:estimation|calculation): ([0-9.]+)$')
 
     # input block delimiters
     input_pattern = 'Input options'
@@ -115,6 +118,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     have_input = False
 
     calc_type = ''
+    timings = []
     (f, compressed) = _open_file(filename)
     for line in f:
 
@@ -175,6 +179,16 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                             data_pairs[-1][0][key] = float('nan')
                         else:
                             data_pairs[-1][0][key] = float(md_val)
+            # Timing summary
+            if 'Timing breakdown' in line:
+                # Skip underline and blank line
+                f.next(); f.next()
+                for line in f:
+                    if not line.strip():
+                        break
+                    m = timing_pattern.match(line)
+                    if m: 
+                        timings.append((m.group(1), float(m.group(2))))
             # Generic footer
             for (key, val) in md_generic_footer.items():
                 if val in line:
@@ -193,6 +207,9 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
 
     for (md, dat) in data_pairs:
         md.update(md_generic)
+    if timings:
+        for (md, dat), (calc_type, time) in zip(data_pairs, timings):
+            md.update({'calculation_time':time})
 
     return data_pairs
 

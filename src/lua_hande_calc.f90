@@ -201,7 +201,7 @@ contains
         nresult = 0
 
         call cpu_time(t2)
-        call register_timing(lua_state, "Canonical estimation", t2-t1)
+        call register_timing(lua_state, "Canonical energy estimation", t2-t1)
 
     end function lua_canonical_estimates
 

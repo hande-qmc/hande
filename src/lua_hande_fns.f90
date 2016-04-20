@@ -84,7 +84,7 @@ contains
         nresult = 0
 
         call cpu_time(t2)
-        call register_timing(lua_state, "Restart fiel redistribution", t2-t1)
+        call register_timing(lua_state, "Restart file redistribution", t2-t1)
 
     end function lua_redistribute_restart
 
