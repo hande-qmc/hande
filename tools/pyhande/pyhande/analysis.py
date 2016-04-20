@@ -257,19 +257,24 @@ Shepherd14
 def inefficiency(opt_block, dtau, iterations):
     '''Estimate the inefficiency of a calculation from the blocked data.
 
-The statistical error of an ideal FCIQMC calculation decreases with the square-root
-of number of steps, total number of particles and (at sufficiently low values) timestep.
+The statistical error of an ideal FCIQMC calculation decreases with the
+square-root of number of steps, :math:`N`, total number of particles,
+:math:`N_p` and (at sufficiently low values) timestep, :math:`\\delta\\tau`.
 
-We define the inefficiency as a quantity independent of these, which depends on purely
-the algorithm and system studied, and can be used to determine the expected runtime to
-achieve a given error.  We provide an estimate of this from the optimal blocked projected energy
+We define the inefficiency, :math:`a`, as a quantity independent of these, which
+depends on purely the algorithm and system studied, and can be used to determine
+the expected runtime to achieve a given error.  We provide an estimate of this
+from the best estimate of the error in the projected energy, :math:`\\sigma_E`:
 
-            inefficiency = err_proj_e * math.sqrt(Np*N*dtau)
+.. math::
 
-Error bars are (over)-estimated with a simple error propagation, but since no information
-about the covariance of the error estimates is available, this will always be an overestimate.
+    a = \\sigma_E \\sqrt{N_p N \\delta\\tau}
 
-Used in [Vigor16].
+Error bars are (over)-estimated with a simple error propagation, but since no
+information about the covariance of the error estimates is available, this will
+always be an overestimate.
+
+Used in [Vigor16]_.
 
 Credit to William Vigor for the original pyhande implementation.
 
