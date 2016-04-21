@@ -155,7 +155,8 @@ calcs : list of :class:`pandas.DataFrame`
     Output of each QMC calculation, with parts of a restarted calculation combined.
 '''
 
-    if 'restart' in metadata[-1] and 'uuid_restart' in metadata[-1]['restart']:
+    if any(md['restart'].get('uuid_restart','') for md in metadata) and \
+            all(md['UUID'] for md in metadata):
         # Use UUIDs to check if multiple calculations are restarts
         # This works regardless of the order the calculations are passed in.
         # Use lists as elements of data so they are mutable
