@@ -340,13 +340,11 @@ module hdf5_system
                     call h5gcreate_f(subgroup_id, gintegrals, subsubgroup_id, ierr)
 
                     call write_1body_integrals(subsubgroup_id, done_body, kinds, &
-                            sys%read_in%pg_sym%nbasis_sym_spin, &
                             sys%read_in%one_e_h_integrals%integrals)
                     call write_coulomb_integrals(subsubgroup_id, dcoulomb_ints, kinds, &
                             sys%read_in%coulomb_integrals%integrals)
                     if (sys%read_in%comp) then
                         call write_1body_integrals(subsubgroup_id, done_body_im, kinds, &
-                                sys%read_in%pg_sym%nbasis_sym_spin, &
                                 sys%read_in%one_e_h_integrals_imag%integrals)
                         call write_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, kinds, &
                                 sys%read_in%coulomb_integrals_imag%integrals)
@@ -583,15 +581,13 @@ module hdf5_system
                 call h5gopen_f(file_id, hdf5_path(gsys, gread_in, gintegrals), subsubgroup_id, ierr)
 
                     call read_1body_integrals(subsubgroup_id, done_body, kinds, &
-                        sys%read_in%uhf, sys%read_in%pg_sym%nbasis_sym_spin, &
                         sys%read_in%one_e_h_integrals)
 
                     call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints, &
                         kinds, sys%read_in%coulomb_integrals)
 
                     if (sys%read_in%comp) then
-                        call read_1body_integrals(subsubgroup_id, done_body_im, &
-                            kinds, sys%read_in%uhf, sys%read_in%pg_sym%nbasis_sym_spin, &
+                        call read_1body_integrals(subsubgroup_id, done_body_im, kinds, &
                             sys%read_in%one_e_h_integrals_imag)
 
                         call read_coulomb_integrals(subsubgroup_id, dcoulomb_ints_im, &
@@ -653,7 +649,7 @@ module hdf5_system
 ! --- utility functions to aid reading out of specific data structures ---
 
 #ifndef DISABLE_HDF5
-        subroutine write_1body_integrals(id, dname, kinds, nbasis_sym_spin, integs)
+        subroutine write_1body_integrals(id, dname, kinds, integs)
 
             ! Writes one-body integral values out in spin & symmetry chunks, as stored.
             ! In:
@@ -670,20 +666,18 @@ module hdf5_system
             use const, only: int_64
 
             character(*), intent(in) :: dname
-            type(alloc_rp1d) :: integs(:,:)
+            type(alloc_rp1d), allocatable :: integs(:,:)
             type(hdf5_kinds_t), intent(in) :: kinds
             integer(hid_t), intent(in) :: id
-            integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
 
-            integer :: shpe(2), ispin, isym
+            integer :: ispin, isym
 
             character(155) :: dentr_name
 
-            shpe = shape(integs)
-            do ispin = 1, shpe(1)
-                do isym = lbound(nbasis_sym_spin, dim=2), ubound(nbasis_sym_spin, dim=2)
+            do ispin = lbound(integs, dim=1), ubound(integs, dim=1)
+                do isym = lbound(integs, dim=2), ubound(integs, dim=2)
                     call get_onebody_name(dname, ispin, isym, dentr_name)
-                    call hdf5_write(id, dentr_name, kinds, shape(integs(ispin, isym + 1)%v, kind=int_64), integs(ispin, isym + 1)%v)
+                    call hdf5_write(id, dentr_name, kinds, shape(integs(ispin, isym)%v, kind=int_64), integs(ispin, isym)%v)
                 end do
             end do
 
@@ -706,21 +700,20 @@ module hdf5_system
 
             character(*), intent(in) :: dname
 
-            type(alloc_rp1d) :: integs(:)
+            type(alloc_rp1d), allocatable :: integs(:)
             type(hdf5_kinds_t), intent(in) :: kinds
             integer(hid_t), intent(in) :: id
-            integer :: shpe(1), ispin
+            integer :: ispin
             character(155) :: dentr_name
 
-            shpe = shape(integs)
-            do ispin = 1, shpe(1)
+            do ispin = lbound(integs, dim=1), ubound(integs, dim=1)
                 call get_coulomb_name(dname, ispin, dentr_name)
                 call hdf5_write(id, dentr_name, kinds, shape(integs(ispin)%v, kind=int_64), integs(ispin)%v)
             end do
 
         end subroutine write_coulomb_integrals
 
-        subroutine read_1body_integrals(id, dname, kinds, uhf, nbasis_sym_spin, store)
+        subroutine read_1body_integrals(id, dname, kinds, store)
 
             ! Reads one body integrals from hdf5 previously output by hande.
 
@@ -729,8 +722,6 @@ module hdf5_system
             !   dname: name of dataset values will belong to.
             !   kinds: derived tpe containing HDF5 types which correspond to the
             !       non-standard integer and real kinds used in HANDE.
-            !   uhf: bool, sets whether integrals results from uhf calculation.
-            !   nbasis_sym_spin: (i,j) gives no. basis functions with spin i, sym j.
             ! In/Out:
             !   store: Fully allocated one_body_t passed in, returned with all
             !       appropriate integral values stored.
@@ -746,28 +737,18 @@ module hdf5_system
             integer(hid_t), intent(in) :: id
             character(*), intent(in) :: dname
             type(hdf5_kinds_t), intent(in) :: kinds
-            logical, intent(in) :: uhf
-            integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
             type(one_body_t), intent(inout) :: store
 
             integer :: ispin, isym, nspin, dummy(2)
             integer(int_64) :: s(1)
             character(155) :: dentr_name
 
-            if (uhf) then
-                nspin = 2
-            else
-                nspin = 1
-            end if
-
-            do ispin = 1, nspin
+            do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
                 ! Workaround behaviour of lbound/ubound on allocatable arrays
                 ! (sometimes 0-indexed, sometimes not)
-                dummy = shape(nbasis_sym_spin)
-                do isym = 0, dummy(2) - 1
-                    call get_onebody_name(dname, ispin, isym, dentr_name)
-                    s(1) = int(nbasis_sym_spin(ispin, isym), kind=int_64) * &
-                           (int(nbasis_sym_spin(ispin, isym), kind=int_64) + 1_int_64) / 2_int_64
+                do isym = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
+                   call get_onebody_name(dname, ispin, isym, dentr_name)
+                    s = shape(store%integrals(ispin, isym)%v, kind=int_64)
                     call hdf5_read(id, dentr_name, kinds, s, store%integrals(ispin, isym)%v)
                 end do
             end do
@@ -798,12 +779,10 @@ module hdf5_system
             type(hdf5_kinds_t), intent(in) :: kinds
             type(two_body_t), intent(inout) :: store
 
-            integer :: ispin, shpe(1)
+            integer :: ispin
             character(155) :: dentr_name
 
-            shpe = shape(store%integrals)
-
-            do ispin = 1, shpe(1)
+            do ispin = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
                 call get_coulomb_name(dname, ispin, dentr_name)
                 call hdf5_read(id, dentr_name, kinds, shape(store%integrals(ispin)%v, kind=int_64), &
                                 store%integrals(ispin)%v)
