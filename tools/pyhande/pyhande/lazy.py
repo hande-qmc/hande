@@ -155,31 +155,32 @@ calcs : list of :class:`pandas.DataFrame`
     Output of each QMC calculation, with parts of a restarted calculation combined.
 '''
 
-    if any(md['restart'].get('uuid_restart','') for md in metadata) and \
-            all(md['UUID'] for md in metadata):
-        # Use UUIDs to check if multiple calculations are restarts
-        # This works regardless of the order the calculations are passed in.
-        # Use lists as elements of data so they are mutable
-        data = [[d] for d in data]
-        for md,d in zip(metadata, data):
-            # If a calculation is not from a restart, the uuid_restart
-            # key will be absent.
-            if 'uuid_restart' in md['restart']:
-                for md_prev, d_prev in zip(metadata,data):
-                    if md['restart']['uuid_restart'] == md_prev['UUID']:
-                        # Concatenate restarted calculation
-                        d_prev.extend(d)
-                        # Reset UUID information in metadata so a subsequent
-                        # restart will pick up the concatenated calculation
-                        md_prev['UUID'] = md['UUID']
-                        md['UUID'] = None
-                        break
-        # Drop second half of restarted calculations
-        calcs = [pd.concat(d, ignore_index=True)
-                    for (md, d) in zip(metadata, data) if md['UUID']]
-        calcs_metadata = [md for md in metadata if md['UUID']]
+    restart_uuids = [md['restart'].get('uuid_restart','') for md in metadata]
+    uuids = [md['UUID'] for md in metadata]
+    if any(restart_uuids) and all(uuids):
+        data = list(data)
+        metadata = list(metadata)
+        calcs = []
+        calcs_metadata = []
+        while uuids:
+            for indx in range(len(uuids)):
+                if uuids[indx] not in restart_uuids:
+                    # Found the end of a chain.
+                    break
+            uuid = uuids.pop(indx)
+            restart = restart_uuids.pop(indx)
+            calc = [data.pop(indx)]
+            calcs_metadata.append(metadata.pop(indx))
+            while restart and restart in uuids:
+                indx = uuids.index(restart)
+                uuid = uuids.pop(indx)
+                restart = restart_uuids.pop(indx)
+                calc.append(data.pop(indx))
+                metadata.pop(indx)
+            calcs.append(pd.concat(calc[::-1]))
 
     else:
+        # Don't have UUID information.
         # Assume any restarted calculations are in the right order and contiguous
         # Check concatenating data is at least possibly sane.
         step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
