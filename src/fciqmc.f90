@@ -66,7 +66,7 @@ contains
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
-        use energy_evaluation, only: update_proj_energy_mol_complex, get_sanitized_projected_energy
+        use energy_evaluation, only: get_sanitized_projected_energy
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in

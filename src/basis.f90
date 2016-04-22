@@ -14,8 +14,8 @@ contains
         ! Initialise a variable of type basis_fn_t.
         ! In:
         !    sys: system being studied.
-        !    l (optional): quantum numbers of the basis function.  Used only in
-        !        model Hamiltonians.
+        !    l (optional): quantum numbers of the basis function.  Used in
+        !        model Hamiltonians and real periodic systems.
         !        Momentum space formulation:
         !            wavevector in units of the reciprocal lattice vectors of
         !            the crystal cell.

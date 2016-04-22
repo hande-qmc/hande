@@ -58,14 +58,33 @@ type pg_sym_t
 end type pg_sym_t
 
 type mom_sym_t
-    ! Index of the symmetry corresponding to the Gamma-point.
-    integer :: gamma_sym
+    ! Index of the symmetry corresponding to the Gamma-point, or if periodic real system the
+    ! symmetry corresponding to gamma sym itself.
+    integer(int_64) :: gamma_sym
 
     ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
+    ! Only used for Hubbard model.
     integer, allocatable :: sym_table(:,:) ! (nsym, nsym)
 
     ! inv_sym(i) = j means that k_i + k_j = 0 (ie k_j is the inverse of k_i).
+    ! Only used for Hubbard model.
     integer, allocatable :: inv_sym(:) ! nsym
+
+    ! Index of gamma point in real periodic systems.
+    integer :: gamma_point(3) = [0, 0, 0]
+    ! Dimensions of supercell used in translationally symmetric systems.
+    ! Used only in read_in translationally symmetric systems.
+    integer :: nprop(3) = [0, 0, 0]
+
+    ! Bit length of each symmetry property within isym for translationally
+    ! symmetric systems.
+    ! Used only in read_in translationally symmetric systems.
+    integer :: propbitlen = 0
+
+    ! nbands_kpoint(p,q,r) corresponds to the number of spatial orbitals with translational
+    ! symmetry p,q,r.
+    ! Used only in read_in translationally symmetric systems.
+    integer, allocatable :: nbands_kpoint(:,:,:) ! (ndim, ndim, ndim)
 end type mom_sym_t
 
 contains

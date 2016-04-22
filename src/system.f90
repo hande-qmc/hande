@@ -286,6 +286,10 @@ type sys_read_in_t
 
     ! Is system complex?
     logical :: comp = .false.
+    ! Are we using translational symmetry (for periodic systems).
+    logical :: translational_symmetry = .false.
+    ! Data about momentum/translational symmetry.
+    type(mom_sym_t) :: mom_sym
 
     ! Size above which to use custom MPI type for broadcasting integer arrays.
     ! This is needed if size of array exceeds values that can be stored in a
@@ -366,7 +370,7 @@ type sys_t
     integer :: sym0_tot = 1
     integer :: sym_max_tot
 
-    ! System uses Bloch states for basis functions (i.e. hub_k and UEG)?
+    ! System uses Bloch states for basis functions (i.e. hub_k, UEG and periodic read_in)?
     logical :: momentum_space = .false.
 
     ! Complete active space of basis.  Valid only in systems where the

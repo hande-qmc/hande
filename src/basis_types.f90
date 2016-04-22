@@ -9,8 +9,9 @@ module basis_types
     type basis_fn_t
         ! Set of quantum numbers describing the basis function.
         ! l is used in two different contexts depending upon whether the orbitals
-        ! are defined in momentum space or in real space.  Applies only to model
-        ! Hamiltonians (e.g. Hubbard model).
+        ! are defined in momentum space or in real space.  Applies to model
+        ! Hamiltonians (e.g. Hubbard model) and momentum space read_in
+        ! Hamiltonians (ie. periodic systems).
         ! Momentum space:
         !     l is the wavevector in terms of the reciprocal lattice vectors of the crystal cell.
         ! Real space:

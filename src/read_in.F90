@@ -33,6 +33,7 @@ contains
         use molecular_integrals
         use point_group_symmetry, only: init_pg_symmetry, cross_product_pg_sym, &
                                         is_gamma_irrep_pg_sym, pg_sym_conj
+        use momentum_symmetry, only: init_momentum_symmetry
         use system, only: sys_t
 
         use checking, only: check_allocate, check_deallocate
@@ -47,14 +48,16 @@ contains
         logical, intent(in), optional :: store_info, verbose
 
         logical :: t_store, t_verbose
+        integer :: cas(2)
+        logical :: momentum_sym
 
         ! System data
         ! We don't know how many orbitals we have until we read in the FCI
         ! namelist, so have to hardcode the array sizes.
         ! It's reasonably safe to assume that we'll never use more than 1000
         ! orbitals!
-        integer :: norb, nelec, ms2, orbsym(1000), isym, syml(1000), symlz(1000), nprop(3), propbitlen
-
+        integer :: norb, nelec, ms2,  isym, syml(1000), symlz(1000), nprop(3), propbitlen
+        integer(int_64) :: orbsym(1000)
         ! all basis functions, including inactive ones.
         type(basis_fn_t), allocatable :: all_basis_fns(:)
 
@@ -90,6 +93,9 @@ contains
         ! Set orbsym to be zero to ensure sensible behaviour if no symmetry
         ! information is provided in FCIDUMP.
         orbsym(:) = 0
+        ! Set variables for translational symmetry to easily-detectable values.
+        nprop = [-1, -1, -1]
+        propbitlen = -1
 
         t_store = .true.
         if (present(store_info)) t_store = store_info
@@ -129,9 +135,9 @@ contains
         !       If not provided in FCIDUMP assume no symmetry in system.
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
-        !  * NPROP: Dimensions of the supercell used in translationally symmetric systems.
-        !  * PROPBITLEN: Length in bits of each kpoint index in reciprocal space in
-        !    translationally symmetric systems. Translational symmetry not yet implemented.
+        !  * NPROP: Dimensions of supercell used in translationally symmetric systems.
+        !  * PROPBITLEN: Length in bits of each property in translationally symmetric
+        !    systems.
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
         !    nuclear-nuclear and other non-electron contributions to the
@@ -191,11 +197,13 @@ contains
         call MPI_BCast(norb, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(nelec, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(ms2, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
-        call MPI_BCast(orbsym, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(orbsym, 1000, MPI_INTEGER8, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(isym, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(sys%read_in%uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(syml, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
         call MPI_BCast(symlz, 1000, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(propbitlen, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+        call MPI_BCast(nprop, 3, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
 #endif
 
         ! NOTE: nbasis is currently the number of spin-orbitals in the FCIDUMP file.
@@ -254,6 +262,22 @@ contains
                 call stop_all('read_in_integrals', 'CAS cannot have more active basis functions than in the system')
             end if
         end if
+
+        ! Determine if appropriate information is available to use translational symmetry
+        momentum_sym = sum(nprop - [-1, -1, -1]) <= depsilon .and. propbitlen /= -1
+        if (momentum_sym) then
+            ! Stop calculation if system isn't complex, as we haven't allowed for this.
+            if (.not. sys%read_in%comp) call stop_all('read_in_integrals', &
+                    'Real FCIDUMP with translational symmetry not currently supported.&
+                    & Please implement.')
+            sys%lattice%ndim = 3
+            sys%momentum_space = .true.
+            if (minval(orbsym) < 0) then
+                if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning translational symmetry off.'
+                orbsym(:) = 0_int_64
+            endif
+        end if
+        ! Set system properties required later
 
         ! Read in FCIDUMP file to get single-particle eigenvalues.
         allocate(sp_eigv(norb), stat=ierr)
@@ -347,14 +371,19 @@ contains
 
         ! Was a symmetry found for all basis functions?  If not, then we must
         ! turn symmetry off.
-        if (minval(sys%basis%basis_fns(:)%sym) < 0) then
+        if (.not. momentum_sym .and. minval(sys%basis%basis_fns(:)%sym) < 0) then
             if (parent) write (6,'(1X,a62,/)') 'Unconverged symmetry found.  Turning point group symmetry off.'
             forall (i=1:sys%basis%nbasis) sys%basis%basis_fns(i)%sym = 0
         end if
 
         ! Set up symmetry information.
-        if (t_store) call init_pg_symmetry(sys)
-
+        if (t_store) then
+            if (momentum_sym) then
+                call init_momentum_symmetry(sys)
+            else
+                call init_pg_symmetry(sys)
+            end if
+        end if
         ! Initialise integral stores.
         if (t_store) then
             call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
@@ -806,35 +835,55 @@ contains
         !    allocated to (at least) the size of the basis.  On exit the
         !    individual basis_fn_t elements have been initialised and symmetry and
         !    spatial_index information assigned.
+        !    If we have momentum symmetry, will have assigned l values rather than
+        !    sym.
 
         use basis, only: basis_fn_t, init_basis_fn
         use system, only: sys_t
+        use const, only: int_32, int_64
+        use momentum_sym_read_in, only: decompose_abelian_sym
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: norb
-        integer, intent(in) :: orbsym(:)
+        integer(int_64), intent(in) :: orbsym(:)
         integer, intent(in) :: lz(:)
         real(p), intent(in) :: sp_eigv(:)
         integer, intent(in) :: sp_eigv_rank(:)
         type(basis_fn_t), intent(inout) :: basis_arr(:)
 
-        integer :: i, rank
+        integer :: i, rank, l(3)
 
         do i = 1, norb
             rank = sp_eigv_rank(i)
             if (sys%read_in%uhf) then
                 if (mod(i,2) == 0) then
-                    call init_basis_fn(sys, basis_arr(i), sym=orbsym(rank)-1, lz=lz(rank), ms=-1)
+                    if (sys%momentum_space) then
+                        call decompose_abelian_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, l)
+                        call init_basis_fn(sys, basis_arr(i), l=l, lz=lz(rank), ms=-1)
+                    else
+                        call init_basis_fn(sys, basis_arr(i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=-1)
+                    end if
                 else
-                    call init_basis_fn(sys, basis_arr(i), sym=orbsym(rank)-1, lz=lz(rank), ms=1)
+                    if (sys%momentum_space) then
+                        call decompose_abelian_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, l)
+                        call init_basis_fn(sys, basis_arr(i), l=l, lz=lz(rank), ms=1)
+                    else
+                        call init_basis_fn(sys, basis_arr(i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=1)
+                    end if
                 end if
                 ! Assume orbitals are ordered appropriately in FCIDUMP...
                 basis_arr(i)%spatial_index = (i+1)/2
                 basis_arr(i)%sp_eigv = sp_eigv(rank)
             else
                 ! Need to initialise both up- and down-spin basis functions.
-                call init_basis_fn(sys, basis_arr(2*i), sym=orbsym(rank)-1, lz=lz(rank), ms=-1)
-                call init_basis_fn(sys, basis_arr(2*i-1), sym=orbsym(rank)-1, lz=lz(rank), ms=1)
+                if (sys%momentum_space) then
+                    call decompose_abelian_sym(orbsym(rank), sys%read_in%mom_sym%propbitlen, l)
+                    call init_basis_fn(sys, basis_arr(2*i), l=l, lz=lz(rank), ms=-1)
+                    call init_basis_fn(sys, basis_arr(2*i-1), l=l, lz=lz(rank), ms=1)
+                else
+                    call init_basis_fn(sys, basis_arr(2*i), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=-1)
+                    call init_basis_fn(sys, basis_arr(2*i-1), sym=int(orbsym(rank)-1, kind=int_32), lz=lz(rank), ms=1)
+                end if
                 basis_arr(2*i-1)%spatial_index = i
                 basis_arr(2*i)%spatial_index = i
                 basis_arr(2*i-1)%sp_eigv = sp_eigv(rank)

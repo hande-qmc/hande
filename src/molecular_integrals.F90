@@ -415,7 +415,7 @@ contains
 
     end function get_one_body_int_mol_real
 
-    pure function get_one_body_int_mol_complex(store, i, j, basis_fns, pg_sym, im_store) result(intgrl)
+    pure function get_one_body_int_mol_complex(store, i, j, basis_fns, mom_sym, im_store) result(intgrl)
 
         ! In:
         !    store: one-body integral real component store.
@@ -433,22 +433,21 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
-        use point_group_symmetry, only: pg_sym_conj, cross_product_pg_sym, is_gamma_irrep_pg_sym
-        use symmetry_types, only: pg_sym_t
+        use momentum_sym_read_in, only: cross_product_read_in_abelian, is_gamma_sym_periodic_read_in
+        use symmetry_types, only: mom_sym_t
 
         complex(p) :: intgrl
         real(p) :: re, im
         type(basis_fn_t), intent(in) :: basis_fns(:)
-        type(pg_sym_t), intent(in) :: pg_sym
+        type(mom_sym_t), intent(in) :: mom_sym
         type(one_body_t), intent(in) :: store, im_store
         integer, intent(in) :: i, j
 
-        integer :: sym
+        integer :: sym(3)
 
-        sym = cross_product_pg_sym(pg_sym, pg_sym_conj(pg_sym, basis_fns(i)%sym),basis_fns(j)%sym)
-        sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
+        call cross_product_read_in_abelian(mom_sym%nprop, basis_fns(i)%l, basis_fns(j)%l, sym)
 
-        if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+        if (is_gamma_sym_periodic_read_in(mom_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
             re = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
             im = get_one_body_int_mol_nonzero(im_store, i, j, basis_fns)
             intgrl = cmplx(re, im, p)
@@ -955,7 +954,7 @@ contains
 
     end function get_two_body_int_mol_real
 
-    pure function get_two_body_int_mol_complex(store, i, j, a, b, basis_fns, pg_sym, im_store) result(intgrl)
+    pure function get_two_body_int_mol_complex(store, i, j, a, b, basis_fns, mom_sym, im_store) result(intgrl)
 
         ! In:
         !    store: store for two-body integral real component.
@@ -974,23 +973,23 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
-        use point_group_symmetry, only: cross_product_pg_basis, cross_product_pg_sym, is_gamma_irrep_pg_sym, pg_sym_conj
-        use symmetry_types, only: pg_sym_t
+        use momentum_sym_read_in, only: cross_product_abelian_basis, is_gamma_sym_periodic_read_in, &
+                                        cross_product_read_in_abelian
+        use symmetry_types, only: mom_sym_t
 
         complex(p) :: intgrl
         real(p) :: re, im
         type(two_body_t), intent(in) :: store, im_store
         type(basis_fn_t), intent(in) :: basis_fns(:)
-        type(pg_sym_t), intent(in) :: pg_sym
+        type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: i, j, a, b
 
-        integer :: sym_ij, sym_ab, sym
+        integer :: sym_ij(3), sym_ab(3), sym(3)
 
-        sym_ij = pg_sym_conj(pg_sym, cross_product_pg_basis(pg_sym, i, j, basis_fns))
-        sym_ab = cross_product_pg_basis(pg_sym, a, b, basis_fns)
-        sym = cross_product_pg_sym(pg_sym, sym_ij, sym_ab)
-        sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
-        if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
+        call cross_product_abelian_basis(mom_sym, i, j, basis_fns, sym_ij)
+        call cross_product_abelian_basis(mom_sym, a, b, basis_fns, sym_ab)
+        call cross_product_read_in_abelian(mom_sym%nprop, sym_ij, sym_ab, sym)
+        if (is_gamma_sym_periodic_read_in(mom_sym, sym) .and. basis_fns(i)%ms == basis_fns(a)%ms &
                                        .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             re = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
             im = get_two_body_int_mol_nonzero(im_store, i, j, a, b, basis_fns)
