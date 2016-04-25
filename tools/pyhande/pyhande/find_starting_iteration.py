@@ -78,7 +78,7 @@ starting_iterations: list of float/double
     input in outputfiles.
 '''
 
-    #Checking whether the input is valid. If not, set to default values.
+    # Check whether the input is valid. If not, set to default values.
     if (frac_screen_interval <= 0):
         warnings.warn("frac_screen_interval > 0 is not satisfied, \
             frac_screen_interval set to default: 500")
@@ -105,6 +105,12 @@ starting_iterations: list of float/double
             frac_screen_interval.")
         number_of_reblockings = frac_screen_interval
 
+    # [review] - JSS: this assumes all data sets are from CCMC or FCIQMC
+    # [review] - JSS: calculations.  Fix to only get CCMC/FCIQMC data.
+    # [review] - JSS: actually, I think the best way is to assume the user has
+    # [review] - JSS: already done these three lines and require just the data
+    # [review] - JSS: list from concat_calcs to be passed in.  This also removes
+    # [review] - JSS: the need for the data to be extracted multiple times...
     hande_outs = pyhande.extract.extract_data_sets(outputfiles)
     metadata_sets, data_sets = zip(*hande_outs)
     metadata_list, data = \
@@ -115,34 +121,42 @@ starting_iterations: list of float/double
     for it in range(0,len(data)):
         #finding the point the shift began to vary, at the 
         #"shift_variation_start" iteration.
+        # [review] - JSS: simpler way to do this -- see std_analysis.
         start_not_found = True
         shift_variation_start = 0
         i = 0
+        # [review] - JSS: don't include debug output (and not compatible with python 2 and 3)
         print data[it]['Shift'].size
+        # [review] - JSS: bold move not indenting the while block...
         while ((start_not_found == True) and (data[it]['Shift'].size > i)):  
 	    if(math.fabs(data[it]['Shift'].iloc[i] != data[it]['Shift'].iloc[0])):  
                 start_not_found = False
 	        shift_variation_start = i
 	    i += 1
+        # [review] - JSS: also bold here.
         if (start_not_found == True) :
+            # [review] - JSS: use RuntimeError for this kind of issue.
 	    raise BaseException("ERROR: Shift has not started to vary in \
                 dataset!")
+        # [review] - JSS: not necessary to delete variables explicitly (at least usually)
         del start_not_found
         del i
 
         #Check we have enough data to screen:
         if(data[it]['Shift'].size - shift_variation_start) < \
             (frac_screen_interval):
-        #i.e. data where shift is not equal to initial value is less than 
-        #frac_screen_interval, i.e. we cannot screen adequately. 
+            # i.e. data where shift is not equal to initial value is less than
+            # frac_screen_interval, i.e. we cannot screen adequately.
             warnings.warn("Files " + outputfiles + " contain less data than \
 	        we wanted to screen. Will continues but frac_screen_interval \
 	        is less than one data point.")
 
-        #finding the MC iteration at which shift starts to vary 
+        # Find the MC iteration at which shift starts to vary.
+        # [review] - JSS: indent continuation lines for clarity (your editor should do this automatically...)
         iteration_shift_variation_start = \
 	    data[it]['iterations'].iloc[shift_variation_start]
 
+        # [review] - JSS: indent
         step = int((data[it]['iterations'].iloc[-1] - \
 	    iteration_shift_variation_start )/frac_screen_interval) 
 		
@@ -160,8 +174,8 @@ starting_iterations: list of float/double
                     extract_psips=True)
 
                 if info[it].no_opt_block:
-		    #add a large enough (imaginary) shift error error \
-		    #so this does not win in this search.
+                    # Add a large enough (imaginary) shift error error
+                    # so this does not win in this search.
             	    shift_error_errors.append(float('inf'))
 	        else:
             	    shift_error_error = \
@@ -186,6 +200,7 @@ starting_iterations: list of float/double
                     pyblock.pd_utils.optimal_block(info[it].reblock['Shift'])
                 data_points_in_block = int(info[it].data_len[0] / \
 		    info[it].data_len[opt_ind])
+                # [review] - JSS: if statement over 5 lines with various indent levels - no chance of easy comprehension.
                 if ((iteration_shift_variation_start + min_index*step + \
 		    number_of_reblocks_to_cut_off*data_points_in_block* \
 		    (data[it]['iterations'].iloc[1] - \
