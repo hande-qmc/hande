@@ -82,28 +82,7 @@ Umrigar93
             data.append(df)
             metadata.append(md)
     if data:
-        # Check concatenating data is at least possibly sane.
-        step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
-        prev_iteration = data[0]['iterations'].iloc[-1]
-        calc_type = metadata[0]['calc_type']
-        calcs = []
-        calcs_metadata = [metadata[0]]
-        xcalc = [data[0]]
-        for i in range(1, len(data)):
-            if metadata[i]['calc_type'] != calc_type or \
-                    data[i]['iterations'].iloc[0] - step != prev_iteration or \
-                    data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2] != step:
-                # Different calculation
-                step = data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2]
-                calc_type = metadata[i]['calc_type']
-                calcs.append(pd.concat(xcalc))
-                xcalc = [data[i]]
-                calcs_metadata.append(metadata[i])
-            else:
-                # Continuation of same calculation (probably)
-                xcalc.append(data[i])
-            prev_iteration = data[i]['iterations'].iloc[-1]
-        calcs.append(pd.concat(xcalc))
+        calcs_metadata, calcs = concat_calcs(metadata, data)
     else:
         raise ValueError('No data found in '+' '.join(datafiles))
 
@@ -157,3 +136,72 @@ Umrigar93
                                       covariance, opt_block, no_opt_block))
 
     return return_vals
+
+def concat_calcs(metadata, data):
+    '''Concatenate data from restarted calculations to analyse together.
+
+Parameters
+----------
+metadata : list of dicts
+    Extracted metadata for each calculation.
+data : list of :class:`pandas.DataFrame`
+    Output of each QMC calculation.
+
+Returns
+-------
+calcs_metadata : list of dicts
+    Metadata for each calculation, with duplicates from restarting dropped.
+calcs : list of :class:`pandas.DataFrame`
+    Output of each QMC calculation, with parts of a restarted calculation combined.
+'''
+
+    restart_uuids = [md['restart'].get('uuid_restart','') for md in metadata]
+    uuids = [md['UUID'] for md in metadata]
+    if any(restart_uuids) and all(uuids):
+        data = list(data)
+        metadata = list(metadata)
+        calcs = []
+        calcs_metadata = []
+        while uuids:
+            for indx in range(len(uuids)):
+                if uuids[indx] not in restart_uuids:
+                    # Found the end of a chain.
+                    break
+            uuid = uuids.pop(indx)
+            restart = restart_uuids.pop(indx)
+            calc = [data.pop(indx)]
+            calcs_metadata.append(metadata.pop(indx))
+            while restart and restart in uuids:
+                indx = uuids.index(restart)
+                uuid = uuids.pop(indx)
+                restart = restart_uuids.pop(indx)
+                calc.append(data.pop(indx))
+                metadata.pop(indx)
+            calcs.append(pd.concat(calc[::-1]))
+
+    else:
+        # Don't have UUID information.
+        # Assume any restarted calculations are in the right order and contiguous
+        # Check concatenating data is at least possibly sane.
+        step = data[0]['iterations'].iloc[-1] - data[0]['iterations'].iloc[-2]
+        prev_iteration = data[0]['iterations'].iloc[-1]
+        calc_type = metadata[0]['calc_type']
+        calcs = []
+        calcs_metadata = [metadata[0]]
+        xcalc = [data[0]]
+        for i in range(1, len(data)):
+            if metadata[i]['calc_type'] != calc_type or \
+                    data[i]['iterations'].iloc[0] - step != prev_iteration or \
+                    data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2] != step:
+                # Different calculation
+                step = data[i]['iterations'].iloc[-1] - data[i]['iterations'].iloc[-2]
+                calc_type = metadata[i]['calc_type']
+                calcs.append(pd.concat(xcalc))
+                xcalc = [data[i]]
+                calcs_metadata.append(metadata[i])
+            else:
+                # Continuation of same calculation (probably)
+                xcalc.append(data[i])
+            prev_iteration = data[i]['iterations'].iloc[-1]
+        calcs.append(pd.concat(xcalc, ignore_index=True))
+    return calcs_metadata, calcs

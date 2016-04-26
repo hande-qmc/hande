@@ -157,7 +157,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
                     if val.search(line):
                         md_generic[key] = next(f).strip()
                 elif val in line:
-                        md_generic[key] = line.split()[-1]
+                    md_generic[key] = line.split()[-1].strip('.')
             # Parse input block.
             if input_pattern in line:
                 # skip next line and then start getting the input block.
