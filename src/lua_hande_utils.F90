@@ -225,25 +225,33 @@ contains
         integer :: timer, ierr
         real :: time
         character(100) :: key
+        integer :: i, key_len
 
         if (parent) then
 
             write (6,'(1x,"Timing breakdown",/,1x,16("-"),/)')
+            write (6,'(1X,"Time for each calculation section (seconds):",/)')
 
-            call aot_table_open(lua_state, lua_registryindex, timer, "timer")
-            
             ! Traversal of timer table
-            call flu_pushnil(lua_state)
-            do while (flu_next(lua_state, timer))
-                call aot_get_val(time, ierr, lua_state, aot_table_top(lua_state), "time")
-                call aot_get_val(key, ierr, lua_state, aot_table_top(lua_state), "tag")
-                write (6,'(1x,a,": ",f0.2)') trim(key), time
-                call flu_pop(lua_state, 1)
+            ! First pass: get max key length.  Second pass: output with nicely aligned columns.
+            key_len = 0
+            do i = 1, 2
+                call aot_table_open(lua_state, lua_registryindex, timer, "timer")
+                call flu_pushnil(lua_state)
+                do while (flu_next(lua_state, timer))
+                    call aot_get_val(time, ierr, lua_state, aot_table_top(lua_state), "time")
+                    call aot_get_val(key, ierr, lua_state, aot_table_top(lua_state), "tag")
+                    if (i == 1) then
+                        key_len = max(key_len, len_trim(key))
+                    else
+                        write (6,'(1x,a,": ",f0.2)') key(:key_len), time
+                    end if
+                    call flu_pop(lua_state, 1)
+                end do
+                call aot_table_close(lua_state, timer)
             end do
 
             write (6,'()')
-
-            call aot_table_close(lua_state, timer)
 
         end if
 
