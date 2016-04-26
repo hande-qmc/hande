@@ -110,7 +110,7 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     calc_block = re.compile('^ '+calc_types+'$')
     fci_block = re.compile('Exact|Lanczos|LAPACK|LANCZOS|RDM')
     timing_pattern = re.compile('^ '+calc_types+
-                                ' (?:estimation|calculation): ([0-9.]+)$')
+                                ' (?:estimation|calculation) *: ([0-9.]+)$')
 
     # input block delimiters
     input_pattern = 'Input options'
@@ -182,6 +182,8 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
             # Timing summary
             if 'Timing breakdown' in line:
                 # Skip underline and blank line
+                next(f)
+                next(f)
                 next(f)
                 next(f)
                 for line in f:
