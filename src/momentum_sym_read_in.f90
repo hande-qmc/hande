@@ -8,6 +8,49 @@ implicit none
 
 contains
 
+    subroutine init_basis_momentum_symmetry_info(sys)
+
+        use checking, only: check_allocate, check_deallocate
+        use errors, only: stop_all
+
+        type(sys_t), intent(inout) :: sys
+        integer, allocatable :: nbasis_sym(:), current_index(:)
+        integer :: i, ierr
+
+        allocate(nbasis_sym(sys%nsym), stat=ierr)
+        call check_allocate('nbasis_sym',sys%nsym,ierr)
+
+        nbasis_sym = 0
+
+        do i = 1, sys%basis%nbasis/2
+            nbasis_sym(sys%basis%basis_fns(2*i-1)%sym) = &
+                nbasis_sym(sys%basis%basis_fns(2*i-1)%sym) + 1
+        end do
+        if (.not. all(nbasis_sym == nbasis_sym(1))) call stop_all('init_basis_momentum_sym_info', 'Read in system has different &
+                    &number of bands per kpoint.')
+        sys%read_in%mom_sym%nbands = nbasis_sym(1)
+
+        deallocate(nbasis_sym, stat=ierr)
+        call check_deallocate('nbasis_sym',ierr)
+
+        allocate(sys%read_in%mom_sym%basis_sym(sys%nsym,sys%read_in%mom_sym%nbands), stat=ierr)
+        call check_allocate('basis_sym',sys%nsym*sys%read_in%mom_sym%nbands,ierr)
+
+        allocate(current_index(sys%nsym), stat=ierr)
+        call check_allocate('current_index',sys%nsym,ierr)
+        current_index = 1
+
+        associate(basis_sym=>sys%read_in%mom_sym%basis_sym, basis_fns=>sys%basis%basis_fns)
+            do i = 1, sys%basis%nbasis/2
+                basis_sym(basis_fns(2*i-1)%sym, current_index(basis_fns(2*i-1)%sym)) = i
+                current_index(basis_fns(2*i-1)%sym) = current_index(basis_fns(2*i-1)%sym) + 1
+            end do
+        end associate
+
+        deallocate(current_index, stat=ierr)
+        call check_deallocate('current_index',ierr)
+    end subroutine init_basis_momentum_symmetry_info
+
     pure function symmetry_orb_list_read_in(sys, orb_list) result(isym)
         use const, only: int_64, p
         type(sys_t), intent(in) :: sys
@@ -40,7 +83,7 @@ contains
         integer, intent(in) :: sym(3)
         logical :: is_gamma_sym
 
-        is_gamma_sym = all(sym == mom_sym%gamma_point)
+        is_gamma_sym = all(modulo(sym, mom_sym%nprop) == mom_sym%gamma_point)
     end function is_gamma_sym_periodic_read_in
 
 ! Various possible cross products to be cut down later when decide what we actually need.
@@ -101,10 +144,10 @@ contains
 
         ! Use Iand and mask to select only bits in first propbitlen bits of
         ! isym.
-        abel_sym(1) = int(Iand(isym, 2_int_64**(propbitlen-1)), int_32)
+        abel_sym(1) = int(Iand(isym, 2_int_64 ** propbitlen - 1), int_32)
         ! Bit shift to access correct bits of isym.
         abel_sym(2) = int(Iand(Ishft(isym, -propbitlen), &
-                            2_int_64 ** (propbitlen - 1)), int_32)
+                            2_int_64 ** (propbitlen) - 1), int_32)
         abel_sym(3) = int(Ishft(isym, -(propbitlen * 2)), int_32)
 
     end subroutine decompose_abelian_sym
@@ -129,17 +172,20 @@ contains
         integer, intent(in) :: a(3), nprop(3)
         integer :: ind
         ! Want to start from index 1 at gamma point (0,0,0)
-        ind = 1 + a(1) + (nprop(1) - 1) * a(2) + (nprop(1) - 1) * (nprop(2) - 1) * a(3)
+        ind = 1 + a(1) + nprop(1) * a(2) + nprop(1) * nprop(2) * a(3)
     end function get_kpoint_index
 
     pure subroutine get_kpoint_numbers(ind, nprop, a)
 
         integer, intent(in) :: ind, nprop(3)
         integer, intent(out) :: a(3)
+        integer :: scratch
 
-        a(1) = modulo(ind, nprop(2)-1)
-        a(2) = modulo(ind - a(1), (nprop(1)-1))
-        a(3) = (ind - a(1) - a(2)*(nprop(1)-1)) / ((nprop(1)-1)*(nprop(2)-1))
+        scratch = real(ind-1)/real(nprop(1)*nprop(2))
+        a(3) = int(scratch)
+        scratch = ind - 1 - a(3) * nprop(1) * nprop(2)
+        a(2) = int(real(scratch)/real(nprop(1)))
+        a(1) = scratch - a(2) * nprop(1)
 
     end subroutine get_kpoint_numbers
 

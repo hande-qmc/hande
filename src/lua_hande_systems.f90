@@ -620,7 +620,7 @@ contains
                 if (parent) call check_sys(sys)
                 call read_in_integrals(sys, verbose=verbose)
                 call init_generic_system_basis(sys)
-                call print_pg_symmetry_info(sys)
+                if (.not. sys%momentum_space) call print_pg_symmetry_info(sys)
             end if
         end if
 

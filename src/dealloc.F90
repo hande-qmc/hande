@@ -165,7 +165,7 @@ contains
 
         use system, only: sys_read_in_t
         use molecular_integrals, only: end_one_body_t, end_two_body_t
-        use symmetry_types, only: dealloc_pg_sym_t
+        use symmetry_types, only: dealloc_pg_sym_t, dealloc_mom_sym_t
 
         type(sys_read_in_t), intent(inout) :: read_in
 
@@ -173,6 +173,7 @@ contains
         call end_one_body_t(read_in%one_body_op_integrals)
         call end_two_body_t(read_in%coulomb_integrals)
         call dealloc_pg_sym_t(read_in%pg_sym)
+        call dealloc_mom_sym_t(read_in%mom_sym)
 
     end subroutine dealloc_sys_read_in_t
 

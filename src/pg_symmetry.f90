@@ -222,36 +222,6 @@ contains
 
     end subroutine init_pg_symmetry
 
-    subroutine end_pg_symmetry(sys)
-
-        ! Deallocate arrays containing point group symmetry information.
-        
-        ! In/Out:
-        !    sys: system being studied.  On output the symmetry arrays are deallocated.
-
-        use checking, only: check_deallocate
-
-        use system, only: sys_t
-
-        type(sys_t), intent(inout) :: sys
-
-        integer :: ierr
-
-        if (allocated(sys%read_in%pg_sym%nbasis_sym)) then
-            deallocate(sys%read_in%pg_sym%nbasis_sym, stat=ierr)
-            call check_deallocate('sys%read_in%pg_sym%nbasis_sym', ierr)
-        end if
-        if (allocated(sys%read_in%pg_sym%nbasis_sym_spin)) then
-            deallocate(sys%read_in%pg_sym%nbasis_sym_spin, stat=ierr)
-            call check_deallocate('sys%read_in%pg_sym%nbasis_sym_spin', ierr)
-        end if
-        if (allocated(sys%read_in%pg_sym%sym_spin_basis_fns)) then
-            deallocate(sys%read_in%pg_sym%sym_spin_basis_fns, stat=ierr)
-            call check_deallocate('sys%read_in%pg_sym%sym_spin_basis_fns', ierr)
-        end if
-
-    end subroutine end_pg_symmetry
-
     subroutine print_pg_symmetry_info(sys)
 
         ! Write out point group symmetry information.

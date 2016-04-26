@@ -81,10 +81,11 @@ type mom_sym_t
     ! Used only in read_in translationally symmetric systems.
     integer :: propbitlen = 0
 
-    ! nbands_kpoint(p,q,r) corresponds to the number of spatial orbitals with translational
-    ! symmetry p,q,r.
-    ! Used only in read_in translationally symmetric systems.
-    integer, allocatable :: nbands_kpoint(:,:,:) ! (ndim, ndim, ndim)
+    ! Number of bands per kpoint. Only used for read_in periodic systems.
+    integer :: nbands
+    ! Indexes of basis' of sym index. Done by spatial index, assuming using RHF.
+    ! Only used for read_in periodic systems.
+    integer, allocatable :: basis_sym(:,:) ! nsym, nbands
 end type mom_sym_t
 
 contains
@@ -115,6 +116,7 @@ contains
 
         if (allocated(mom_sym%sym_table)) deallocate(mom_sym%sym_table)
         if (allocated(mom_sym%inv_sym)) deallocate(mom_sym%inv_sym)
+        if (allocated(mom_sym%basis_sym)) deallocate(mom_sym%basis_sym)
 
     end subroutine dealloc_mom_sym_t
 

@@ -31,10 +31,13 @@ contains
         use checking, only: check_allocate
         use errors, only: stop_all
         use ueg_system, only: init_ueg_indexing
+        use momentum_sym_read_in, only: get_kpoint_index, get_kpoint_numbers, &
+                                        is_gamma_sym_periodic_read_in, &
+                                        init_basis_momentum_symmetry_info
 
         type(sys_t), intent(inout) :: sys
 
-        integer :: i, j, k, ierr
+        integer :: i, j, k, ierr, a(3)
         integer :: ksum(sys%lattice%ndim)
         character(4) :: fmt1
 
@@ -110,6 +113,76 @@ contains
                 write (6,'()')
             end if
 
+        case(read_in)
+            sys%nsym = product(sys%read_in%mom_sym%nprop) ! two spin orbitals per wavevector
+            sys%sym_max = sys%nsym
+            sys%nsym_tot = sys%nsym
+            sys%sym_max_tot = sys%sym_max
+            ! Multiple wavevectors in each irrep; constant number per kpoint
+            ! though. Number of wavevectors depends on kpoint grid used, but
+            ! absolute maximum less than 1000 (10x10x10) due to hard coded
+            ! limits in read_in.
+            ! Storing product table and inverse also feasible.
+            allocate(sys%read_in%mom_sym%sym_table(sys%nsym, sys%nsym), stat=ierr)
+            call check_allocate('sym_table',sys%nsym*sys%nsym,ierr)
+            allocate(sys%read_in%mom_sym%inv_sym(sys%nsym), stat=ierr)
+            call check_allocate('inv_sym',sys%nsym,ierr)
+
+            call init_basis_momentum_symmetry_info(sys)
+
+            sys%read_in%mom_sym%gamma_sym = 0
+            do i = 1, sys%nsym
+                call get_kpoint_numbers(i, sys%read_in%mom_sym%nprop, a)
+
+                if (all(a == 0)) sys%read_in%mom_sym%gamma_sym = i
+            end do
+            if (sys%read_in%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
+
+            do i = 1, sys%nsym
+                do j = i, sys%nsym
+                    call get_kpoint_numbers(i, sys%read_in%mom_sym%nprop, a)
+                    call get_kpoint_numbers(j, sys%read_in%mom_sym%nprop, ksum)
+                    ksum = modulo(ksum + a, sys%read_in%mom_sym%nprop)
+                    do k = 1, sys%nsym
+                        call get_kpoint_numbers(k, sys%read_in%mom_sym%nprop, a)
+                        if (is_gamma_sym_periodic_read_in(sys%read_in%mom_sym, ksum - a)) then
+                            sys%read_in%mom_sym%sym_table(i,j) = k
+                            sys%read_in%mom_sym%sym_table(j,i) = k
+                            if (k == sys%read_in%mom_sym%gamma_sym) then
+                                sys%read_in%mom_sym%inv_sym(i) = j
+                                sys%read_in%mom_sym%inv_sym(j) = i
+                            end if
+                            exit
+                        end if
+                    end do
+                end do
+            end do
+
+            if (parent) then
+                write (6,'(1X,a20,/,1X,20("-"),/)') "Symmetry information"
+                write (6,'(1X,a63,/)') 'The table below gives the label and inverse of each wavevector.'
+                write (6,'(1X,a5,4X,a7)', advance='no') 'Index','k-point'
+                do i = 1, sys%lattice%ndim
+                    write (6,'(3X)', advance='no')
+                end do
+                write (6,'(a7)') 'Inverse'
+                do i = 1, sys%nsym
+                    write (6,'(i4,5X)', advance='no') i
+                    call write_basis_fn(sys, sys%basis%basis_fns(2*i), new_line=.false., print_full=.false.)
+                    write (6,'(5X,i4)') sys%read_in%mom_sym%inv_sym(i)
+                end do
+                write (6,'()')
+                write (6,'(1X,a83,/)') &
+                    "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
+                do i = 1, sys%nsym
+                    do j = 1, sys%nsym
+                        write (6,'(i0)', advance='no') sys%read_in%mom_sym%sym_table(j,i)
+                    end do
+                    write (6,'()')
+                end do
+                write (6,'()')
+            end if
+
         case(ueg)
 
             ! Trickier.
@@ -141,31 +214,6 @@ contains
         end select
 
     end subroutine init_momentum_symmetry
-
-    subroutine end_momentum_symmetry(sys)
-
-        ! Clean up after symmetry.
-
-        ! In/Out:
-        !   sys: system being studied.  Symmetry information deallocated on exit
-
-        use checking, only: check_deallocate
-        use system, only: sys_t
-
-        type(sys_t), intent(inout) :: sys
-
-        integer :: ierr
-
-        if (allocated(sys%hubbard%mom_sym%sym_table)) then
-            deallocate(sys%hubbard%mom_sym%sym_table, stat=ierr)
-            call check_deallocate('sym_table',ierr)
-        end if
-        if (allocated(sys%hubbard%mom_sym%inv_sym)) then
-            deallocate(sys%hubbard%mom_sym%inv_sym, stat=ierr)
-            call check_deallocate('inv_sym',ierr)
-        end if
-
-    end subroutine end_momentum_symmetry
 
     elemental function cross_product_k(sys, s1, s2) result(prod)
 
