@@ -300,7 +300,7 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t, hub_k, init_system
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
@@ -314,10 +314,13 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
+        real :: t1, t2
         logical :: new, new_basis, verbose
         integer :: err
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
                                                                 'ms', 'sym', 'twist', 'verbose']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -354,6 +357,9 @@ contains
 
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "Momentum space hubbard model initialisation", t2-t1)
 
     end function lua_hubbard_k
 
@@ -430,8 +436,8 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
-        use system, only: sys_t, chung_landau, init_system
+        use lua_hande_utils, only: warn_unused_args, register_timing
+        use system, only: sys_t, chung_landau, hub_real, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
         use check_input, only: check_sys
@@ -445,11 +451,15 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
+        real :: t1, t2
         logical :: new, new_basis, verbose
         integer :: err
 
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'nel', 'electrons', 'lattice', 'U', 't', &
                                                                 'finite', 'ms', 'verbose']
+
+        call cpu_time(t1)
+
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
 
@@ -483,6 +493,16 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
+        call cpu_time(t2)
+        select case (system_type)
+        case (hub_real)
+            call register_timing(lua_state, "Real space hubbard model initialisation", t2-t1)
+        case (chung_landau)
+            call register_timing(lua_state, "Chung-landau initialisation", t2-t1)
+        case default
+            call stop_all("real_lattice_wrapper", "Unknown system type")
+        end select
+
     end function real_lattice_wrapper
 
     function lua_read_in(L) result(nreturn) bind(c)
@@ -510,7 +530,8 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args, ishdf5_wrapper
+        use lua_hande_utils, only: warn_unused_args, register_timing
+        use hdf5_helper, only: ishdf5_wrapper
         use point_group_symmetry, only: print_pg_symmetry_info
         use read_in_system, only: read_in_integrals
         use system, only: sys_t, read_in, init_system
@@ -525,11 +546,14 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
+        real :: t1, t2
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
         character(15), parameter :: keys(11) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
                                                                 'sym', 'ms', 'CAS', 'complex', 'verbose']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -588,6 +612,9 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
+        call cpu_time(t2)
+        call register_timing(lua_state, "Generic system initialisation", t2-t1)
+
     end function lua_read_in
 
     function lua_heisenberg(L) result(nreturn) bind(c)
@@ -614,7 +641,7 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t, heisenberg, init_system
         use basis, only: init_model_basis_fns
         use real_lattice, only: init_real_space
@@ -627,11 +654,14 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
+        real :: t1, t2
         logical :: new, new_basis, verbose
         integer :: err
 
         character(24), parameter :: keys(9) = [character(24) :: 'sys', 'ms', 'J', 'lattice', 'magnetic_field', &
                                                                 'staggered_magnetic_field', 'triangular', 'finite', 'verbose']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -665,6 +695,9 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
+        call cpu_time(t2)
+        call register_timing(lua_state, "Heisenberg model initialisation", t2-t1)
+
     end function lua_heisenberg
 
     function lua_ueg(L) result(nreturn) bind(c)
@@ -692,7 +725,7 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t, ueg, init_system
         use basis, only: init_model_basis_fns
         use momentum_symmetry, only: init_momentum_symmetry
@@ -707,11 +740,14 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
+        real :: t1, t2
         logical :: new_basis, new, verbose
         integer :: err
 
         character(10), parameter :: keys(10) = [character(10) :: 'sys', 'cutoff', 'dim', 'rs', 'nel', 'electrons', &
                                                'ms', 'sym', 'twist', 'verbose']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -759,6 +795,9 @@ contains
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
 
+        call cpu_time(t2)
+        call register_timing(lua_state, "UEG initialisation", t2-t1)
+
     end function lua_ueg
 
     function lua_ringium(L) result(nreturn) bind(c)
@@ -782,7 +821,7 @@ contains
         use aot_top_module, only: aot_top_get_val
         use aot_table_module, only: aot_table_top, aot_get_val, aot_exists, aot_table_close
 
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t, ringium, init_system
         use basis, only: init_model_basis_fns
         use ringium_system, only: init_symmetry_ringium
@@ -795,10 +834,13 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts
+        real :: t1, t2
         logical :: new_basis, new, verbose
         integer :: err
 
         character(10), parameter :: keys(7) = [character(10) :: 'sys', 'nel', 'electrons', 'radius', 'maxlz', 'sym', 'verbose']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys, new)
@@ -836,6 +878,9 @@ contains
 
         call push_sys(lua_state, sys, new_basis)
         nreturn = 1
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "Ringium initialisation", t2-t1)
 
     end function lua_ringium
 

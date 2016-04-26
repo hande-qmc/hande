@@ -4,6 +4,9 @@ module lua_hande_utils
 
 implicit none
 
+! Pseudo-index in the lua stack at which the registry is located.  As defined in lua.h.
+integer, parameter :: lua_registryindex = -1001000
+
 contains
 
     subroutine warn_unused_args(lua_state, valid_keys, pos)
@@ -173,25 +176,85 @@ contains
 
     end subroutine get_userdata
 
-    subroutine ishdf5_wrapper(filename, if_hdf5, ierr)
-        ! Wrapper around hdf5_helper wrapper to h5fis_hdf5_f to ensure only check on
-        ! parent processor.
+    subroutine register_timing(lua_state, tag, time)
+
+        ! Add information about time taken by a function to the timer object in the registry
+
+        ! In/Out:
+        !   lua_state: flu/lua state to which the HANDE API is added.
         ! In:
-        !   filename: integral filename which could be in hdf5 file format.
-        ! Out:
-        !   if_hdf5: logical parameter showing whether integral file is in hdf5 format.
+        !   tag: string naming the function being timed
+        !   time: time taken by the function
 
-        use parallel
-        use hdf5_helper, only: check_ifhdf5
+        use flu_binding, only: flu_pushinteger, flu_settable, flu_State
+        use aot_table_module, only: aot_table_length, aot_table_open, aot_table_set_val, aot_table_close
 
-        character(*), intent(in) :: filename
-        logical, intent(out) :: if_hdf5
-        integer, intent(inout) :: ierr
+        type(flu_State), intent(inout) :: lua_state
+        character(*), intent(in) :: tag
+        real, intent(in) :: time
 
-        if (parent) call check_ifhdf5(filename, if_hdf5, ierr)
-#ifdef PARALLEL
-        call MPI_BCAST(if_hdf5, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
-#endif
-    end subroutine ishdf5_wrapper
+        integer :: timer, entries, handle
+
+        call aot_table_open(lua_state, lua_registryindex, timer, "timer")
+
+        entries = aot_table_length(lua_state, timer)
+        call flu_pushinteger(lua_state, entries+1)
+        call aot_table_open(lua_state, thandle=handle)
+        call aot_table_set_val(tag, lua_state, handle, key="tag")
+        call aot_table_set_val(time, lua_state, handle, key="time")
+        call flu_settable(lua_state, timer)
+
+        call aot_table_close(lua_state, timer)
+
+    end subroutine register_timing
+
+    subroutine timing_summary(lua_state)
+
+        ! Print a breakdown of the time used by each system setup or calculation.
+
+        ! In/Out:
+        !   lua_state: flu/Lua state to which the HANDE API is added.
+
+        use flu_binding, only: flu_State, flu_pushnil, flu_next, flu_pop
+        use aot_table_module, only: aot_table_open, aot_table_close, aot_get_val, aot_table_top
+
+        use parallel, only: parent
+
+        type(flu_State), intent(inout) :: lua_state
+
+        integer :: timer, ierr
+        real :: time
+        character(100) :: key
+        integer :: i, key_len
+
+        if (parent) then
+
+            write (6,'(1x,"Timing breakdown",/,1x,16("-"),/)')
+            write (6,'(1X,"Time for each calculation section (seconds):",/)')
+
+            ! Traversal of timer table
+            ! First pass: get max key length.  Second pass: output with nicely aligned columns.
+            key_len = 0
+            do i = 1, 2
+                call aot_table_open(lua_state, lua_registryindex, timer, "timer")
+                call flu_pushnil(lua_state)
+                do while (flu_next(lua_state, timer))
+                    call aot_get_val(time, ierr, lua_state, aot_table_top(lua_state), "time")
+                    call aot_get_val(key, ierr, lua_state, aot_table_top(lua_state), "tag")
+                    if (i == 1) then
+                        key_len = max(key_len, len_trim(key))
+                    else
+                        write (6,'(1x,a,": ",f0.2)') key(:key_len), time
+                    end if
+                    call flu_pop(lua_state, 1)
+                end do
+                call aot_table_close(lua_state, timer)
+            end do
+
+            write (6,'()')
+
+        end if
+
+    end subroutine timing_summary
 
 end module lua_hande_utils

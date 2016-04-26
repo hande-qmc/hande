@@ -33,7 +33,7 @@ contains
         use fci_lapack, only: do_fci_lapack
         use fci_utils, only: fci_in_t
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use reference_determinant, only: reference_t
         use system, only: sys_t
 
@@ -42,11 +42,14 @@ contains
 
         type(flu_State) :: lua_state
         integer :: opts
+        real :: t1, t2
         type(sys_t), pointer :: sys
         type(fci_in_t) :: fci_in
         type(reference_t) :: ref
         logical :: use_sparse_hamil, lanczos
         character(12), parameter :: keys(4) = [character(12) :: 'sys', 'fci', 'lanczos', 'reference']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
@@ -67,6 +70,9 @@ contains
         end if
 
         nresult = 0
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "FCI calculation", t2-t1)
 
     end function lua_fci
 
@@ -92,7 +98,7 @@ contains
         use parallel, only: parent
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t
 
         use calc, only: calc_type, mc_hilbert_space
@@ -107,7 +113,10 @@ contains
         integer :: truncation_level, nattempts, ncycles, rng_seed
         integer, allocatable :: ref_det(:)
         integer :: opts
+        real :: t1, t2
         character(12), parameter :: keys(2) = [character(12) :: 'sys', 'hilbert']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(l)
         call get_sys_t(lua_state, sys)
@@ -129,6 +138,9 @@ contains
 
         ! [todo] - return estimate of space and error to lua.
         nresult = 0
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "Hilbert space estimation", t2-t1)
 
     end function lua_hilbert_space
 
@@ -154,7 +166,7 @@ contains
 
         use errors, only: stop_all
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use system, only: sys_t
 
         use calc, only: calc_type, mc_canonical_estimates
@@ -167,9 +179,12 @@ contains
 
         type(sys_t), pointer :: sys
         integer :: opts, rng_seed, ncycles, nattempts
+        real :: t1, t2
         logical :: fermi_temperature, all_spin_sectors
         real(p) :: beta
         character(19), parameter :: keys(2) = [character(19) :: 'sys', 'canonical_estimates']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -184,6 +199,9 @@ contains
 
         ! [todo] - return estimate of various canonical mean-field energies and error to lua.
         nresult = 0
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "Canonical energy estimation", t2-t1)
 
     end function lua_canonical_estimates
 
@@ -216,7 +234,7 @@ contains
 
         use simple_fciqmc, only: do_simple_fciqmc
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, restart_in_t, qmc_state_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -236,7 +254,10 @@ contains
         logical :: use_sparse_hamil, have_qmc_state
 
         integer :: opts, err
+        real :: t1, t2
         character(12), parameter :: keys(6) = [character(12) :: 'sys', 'qmc', 'restart', 'reference', 'sparse', 'qmc_state']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -263,6 +284,9 @@ contains
 
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "Simple FCIQMC calculation", t2-t1)
 
     end function lua_simple_fciqmc
 
@@ -295,7 +319,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t
         use fciqmc, only: do_fciqmc
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, fciqmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -319,8 +343,11 @@ contains
         logical :: have_restart_state
 
         integer :: opts
+        real :: t1, t2
         character(10), parameter :: keys(8) = [character(10) :: 'sys', 'qmc', 'fciqmc', 'semi_stoch', 'restart', &
                                                                 'load_bal', 'reference', 'qmc_state']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -355,6 +382,9 @@ contains
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
 
+        call cpu_time(t2)
+        call register_timing(lua_state, "FCIQMC calculation", t2-t1)
+
     end function lua_fciqmc
 
     function lua_ccmc(L) result(nresult) bind(c)
@@ -384,7 +414,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t
         use ccmc, only: do_ccmc
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t, load_bal_in_t, qmc_state_t
         use reference_determinant, only: reference_t
         use system, only: sys_t
@@ -407,7 +437,10 @@ contains
 
         logical :: have_restart_state
         integer :: opts
+        real :: t1, t2
         character(10), parameter :: keys(6) = [character(10) :: 'sys', 'qmc', 'ccmc', 'restart', 'reference', 'qmc_state']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -437,6 +470,9 @@ contains
 
         call push_qmc_state(lua_state, qmc_state_out)
         nresult = 1
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "CCMC calculation", t2-t1)
 
     end function lua_ccmc
 
@@ -470,7 +506,7 @@ contains
         use dmqmc_data, only: dmqmc_in_t, dmqmc_estimates_t
         use dmqmc, only: do_dmqmc
         use lua_hande_system, only: get_sys_t
-        use lua_hande_utils, only: warn_unused_args
+        use lua_hande_utils, only: warn_unused_args, register_timing
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t
         use reference_determinant, only: reference_t
         use system, only: sys_t, heisenberg, read_in, ueg
@@ -496,9 +532,12 @@ contains
 
         logical :: have_restart_state
         integer :: opts, ierr
+        real :: t1, t2
         real(p), allocatable :: sampling_probs(:)
         character(10), parameter :: keys(9) = [character(10) :: 'sys', 'qmc', 'dmqmc', 'ipdmqmc', 'operators', 'rdm', &
                                                                 'restart', 'reference', 'qmc_state']
+
+        call cpu_time(t1)
 
         lua_state = flu_copyptr(L)
         call get_sys_t(lua_state, sys)
@@ -552,6 +591,9 @@ contains
             nresult = nresult + 1
             call aot_table_from_1Darray(lua_state, opts, sampling_probs)
         end if
+
+        call cpu_time(t2)
+        call register_timing(lua_state, "DMQMC calculation", t2-t1)
 
     end function lua_dmqmc
 
