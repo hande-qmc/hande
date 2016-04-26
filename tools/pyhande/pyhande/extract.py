@@ -182,7 +182,8 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
             # Timing summary
             if 'Timing breakdown' in line:
                 # Skip underline and blank line
-                f.next(); f.next()
+                next(f)
+                next(f)
                 for line in f:
                     if not line.strip():
                         break
@@ -208,7 +209,8 @@ data_pairs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
     for (md, dat) in data_pairs:
         md.update(md_generic)
     if timings:
-        for (md, dat), (calc_type, time) in zip(data_pairs, timings):
+        # Assume order calculations are run in is the same as the timing report.
+        for ((md, dat), (calc_type, time)) in zip(data_pairs, timings):
             md.update({'calculation_time':time})
 
     return data_pairs
