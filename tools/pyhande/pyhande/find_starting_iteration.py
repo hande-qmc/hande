@@ -1,4 +1,6 @@
+from os import path
 import warnings
+import sys
 
 try:
     import pyblock
@@ -6,7 +8,11 @@ except ImportError:
     sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../pyblock'))
     import pyblock
 
-import reblock_hande
+try:
+    import reblock_hande
+except ImportError:
+    sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../../tools'))
+    import reblock_hande
 import math
 import matplotlib.pyplot as plt
 import pyhande.lazy
@@ -88,11 +94,11 @@ starting_iterations: list of float/double
         warnings.warn("number_of_reblocks_to_cut_off >= 0 is not satisfied, \
             number_of_reblocks_to_cut_off set to default: 1")
         number_of_reblocks_to_cut_off = 1
-    
+        
     if (pos_min_frac < 0.00001) or (pos_min_frac > 1.0):
-	warnings.warn("0.00001 < pos_min_frac < 1 not satisfied, \
-	    pos_min_frac set to default: 0.5")
-	pos_min_frac  = 0.5
+        warnings.warn("0.00001 < pos_min_frac < 1 not satisfied, \
+            pos_min_frac set to default: 0.5")
+        pos_min_frac  = 0.5
 
     if (number_of_reblockings <= 0):
         warnings.warn("number_of_reblockings > 0 not satisfied, \
@@ -129,14 +135,14 @@ starting_iterations: list of float/double
         print data[it]['Shift'].size
         # [review] - JSS: bold move not indenting the while block...
         while ((start_not_found == True) and (data[it]['Shift'].size > i)):  
-	    if(math.fabs(data[it]['Shift'].iloc[i] != data[it]['Shift'].iloc[0])):  
+            if(math.fabs(data[it]['Shift'].iloc[i] != data[it]['Shift'].iloc[0])):  
                 start_not_found = False
-	        shift_variation_start = i
-	    i += 1
+                shift_variation_start = i
+            i += 1
         # [review] - JSS: also bold here.
         if (start_not_found == True) :
             # [review] - JSS: use RuntimeError for this kind of issue.
-	    raise BaseException("ERROR: Shift has not started to vary in \
+            raise BaseException("ERROR: Shift has not started to vary in \
                 dataset!")
         # [review] - JSS: not necessary to delete variables explicitly (at least usually)
         del start_not_found
@@ -148,38 +154,38 @@ starting_iterations: list of float/double
             # i.e. data where shift is not equal to initial value is less than
             # frac_screen_interval, i.e. we cannot screen adequately.
             warnings.warn("Files " + outputfiles + " contain less data than \
-	        we wanted to screen. Will continues but frac_screen_interval \
-	        is less than one data point.")
+                we wanted to screen. Will continues but frac_screen_interval \
+                is less than one data point.")
 
         # Find the MC iteration at which shift starts to vary.
         # [review] - JSS: indent continuation lines for clarity (your editor should do this automatically...)
         iteration_shift_variation_start = \
-	    data[it]['iterations'].iloc[shift_variation_start]
+            data[it]['iterations'].iloc[shift_variation_start]
 
         # [review] - JSS: indent
         step = int((data[it]['iterations'].iloc[-1] - \
-	    iteration_shift_variation_start )/frac_screen_interval) 
-		
+            iteration_shift_variation_start )/frac_screen_interval) 
+        	
         shift_error_errors = []
         starting_iteration_found = False
 
         for k in range(0, int(frac_screen_interval/number_of_reblockings)):
-		
-	    for j in range(k*number_of_reblockings, (k+1)*number_of_reblockings):
-	        if verbose:
-            	    print "Looping through point #" + str(j) + \
-		        " to find a starting iteration."
+	
+            for j in range(k*number_of_reblockings, (k+1)*number_of_reblockings):
+                if verbose:
+                    print "Looping through point #" + str(j) + \
+                        " to find a starting iteration."
                 info = pyhande.lazy.std_analysis(outputfiles, start = \
-		    (iteration_shift_variation_start + j*step), \
+                    (iteration_shift_variation_start + j*step), \
                     extract_psips=True)
 
                 if info[it].no_opt_block:
                     # Add a large enough (imaginary) shift error error
                     # so this does not win in this search.
-            	    shift_error_errors.append(float('inf'))
-	        else:
-            	    shift_error_error = \
-		        info[it].opt_block["standard error error"]["Shift"]
+                    shift_error_errors.append(float('inf'))
+                else:
+                    shift_error_error = \
+                        info[it].opt_block["standard error error"]["Shift"]
                     shift_error_errors.append(shift_error_error)
             
             min_error_error = float('inf')
@@ -191,29 +197,29 @@ starting_iterations: list of float/double
             if min_index == len(shift_error_errors):
                 raise ValueError("Calculation to find minimum error in error \
                     failed!")
-		    
-	    if int(min_index * pos_min_frac) < j:
+
+            if int(min_index * pos_min_frac) < j:
                 info = pyhande.lazy.std_analysis(outputfiles, start =  
-		    (iteration_shift_variation_start + (min_index*step)), \
-		    extract_psips=True)
-	        opt_ind = \
+                    (iteration_shift_variation_start + (min_index*step)), \
+                    extract_psips=True)
+                opt_ind = \
                     pyblock.pd_utils.optimal_block(info[it].reblock['Shift'])
                 data_points_in_block = int(info[it].data_len[0] / \
-		    info[it].data_len[opt_ind])
+                    info[it].data_len[opt_ind])
                 # [review] - JSS: if statement over 5 lines with various indent levels - no chance of easy comprehension.
                 if ((iteration_shift_variation_start + min_index*step + \
-		    number_of_reblocks_to_cut_off*data_points_in_block* \
-		    (data[it]['iterations'].iloc[1] - \
+                    number_of_reblocks_to_cut_off*data_points_in_block* \
+                    (data[it]['iterations'].iloc[1] - \
                     data[it]['iterations'].iloc[0])) \
-		    >= data[it]['iterations'].iloc[-1]) :
+                    >= data[it]['iterations'].iloc[-1]) :
                     raise ValueError("Too much cut off! Try again with \
-		        a smaller (positive) number_of_reblocks_to_cut_off, \
-	                or data is not fit for analysis.")
-	        starting_iteration = (min_index*step + \
-		    data[it]['iterations'].iloc[shift_variation_start + \
-		    number_of_reblocks_to_cut_off*data_points_in_block])
+                        a smaller (positive) number_of_reblocks_to_cut_off, \
+                        or data is not fit for analysis.")
+                starting_iteration = (min_index*step + \
+                    data[it]['iterations'].iloc[shift_variation_start + \
+                    number_of_reblocks_to_cut_off*data_points_in_block])
                 starting_iteration_found = True
-	        break
+                break
 
 
         if not starting_iteration_found :
@@ -239,6 +245,6 @@ starting_iterations: list of float/double
             plt.show()
 
         starting_iterations.append(starting_iteration)
-		
+
     return starting_iterations
 
