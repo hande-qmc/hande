@@ -43,6 +43,7 @@ contains
         associate(basis_sym=>sys%read_in%mom_sym%basis_sym, basis_fns=>sys%basis%basis_fns)
             do i = 1, sys%basis%nbasis/2
                 basis_sym(basis_fns(2*i-1)%sym, current_index(basis_fns(2*i-1)%sym)) = i
+                basis_fns(2*i-1:2*i)%sym_spin_index = current_index(basis_fns(2*i-1)%sym)
                 current_index(basis_fns(2*i-1)%sym) = current_index(basis_fns(2*i-1)%sym) + 1
             end do
         end associate
@@ -88,34 +89,17 @@ contains
 
 ! Various possible cross products to be cut down later when decide what we actually need.
 
-    pure function cross_product_translational_sym(mom_sym, s1, s2) result(prod)
-
-        use const, only: int_64
-        use symmetry_types, only: mom_sym_t
-
-        integer(int_64), intent(in) :: s1, s2
-        type(mom_sym_t), intent(in) :: mom_sym
-        integer(int_64) :: prod
-        integer :: abelian1(3), abelian2(3), res(3)
-
-        call decompose_abelian_sym(s1, mom_sym%propbitlen, abelian1)
-        call decompose_abelian_sym(s2, mom_sym%propbitlen, abelian2)
-        call cross_product_read_in_abelian(mom_sym%nprop, abelian1, abelian2, res)
-        call compose_abelian_sym(res, mom_sym%propbitlen, prod)
-
-    end function cross_product_translational_sym
-
-    pure subroutine cross_product_abelian_basis(mom_sym, b1, b2, basis_fns, prod)
+    pure function cross_product_abelian_basis(mom_sym, b1, b2, basis_fns) result(prod)
         use basis_types, only: basis_fn_t
         use symmetry_types, only: mom_sym_t
         type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: b1, b2
         type(basis_fn_t), intent(in) :: basis_fns(:)
-        integer, intent(out) :: prod(3)
+        integer :: prod
 
-        call cross_product_read_in_abelian(mom_sym%nprop, basis_fns(b1)%l, basis_fns(b2)%l, prod)
+        prod = mom_sym%sym_table(basis_fns(b1)%sym, basis_fns(b2)%sym)
 
-    end subroutine cross_product_abelian_basis
+    end function cross_product_abelian_basis
 
     pure subroutine cross_product_read_in_abelian(nprop, a1, a2, prod)
 

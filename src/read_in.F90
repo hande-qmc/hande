@@ -394,15 +394,23 @@ contains
         end if
         ! Initialise integral stores.
         if (t_store) then
-            call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                                 .false., sys%read_in%one_e_h_integrals)
-            call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                                 .false., sys%read_in%coulomb_integrals)
-            if (sys%read_in%comp) then
-                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                    .true., sys%read_in%one_e_h_integrals_imag)
-                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym,&
-                                 .true., sys%read_in%coulomb_integrals_imag)
+            if (sys%momentum_space) then
+                call init_one_body_t_periodic(sys%sym0, sys%sym_max, sys%read_in%mom_sym%nbands, &
+                                            .false., sys%read_in%one_e_h_integrals)
+                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
+                                     .false., sys%read_in%coulomb_integrals)
+                if (sys%read_in%comp) then
+                    call init_one_body_t_periodic(sys%sym0, sys%sym_max, sys%read_in%mom_sym%nbands, &
+                                                .true., sys%read_in%one_e_h_integrals_imag)
+                    call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
+                                     sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
+                end if
+            else
+                call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
+                                     .false., sys%read_in%one_e_h_integrals)
+                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
+                                     .false., sys%read_in%coulomb_integrals)
+
             end if
         end if
 
@@ -563,14 +571,14 @@ contains
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
                                     x = x + get_one_body_int_mol(sys%read_in%one_e_h_integrals, ii, aa, &
                                                                  sys%basis%basis_fns, sys%read_in%pg_sym)
-                                    call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                                                int_err > max_err_msg, sys%read_in%one_e_h_integrals, ierr)
+                                    call store_one_body_int(ii, aa, x, sys, int_err > max_err_msg, &
+                                                            sys%read_in%one_e_h_integrals, ierr)
                                     int_err = int_err + ierr
                                     if (sys%read_in%comp) then
                                         y = y + get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, ii, aa, &
                                                                      sys%basis%basis_fns, sys%read_in%pg_sym)
-                                        call store_one_body_int_mol(ii, aa, y, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                                                    int_err > max_err_msg, sys%read_in%one_e_h_integrals_imag, ierr)
+                                        call store_one_body_int(ii, aa, y, sys, int_err > max_err_msg, &
+                                                                sys%read_in%one_e_h_integrals_imag, ierr)
                                         int_err = int_err + ierr
                                     end if
 
@@ -668,16 +676,14 @@ contains
                                             x = x*rhf_fac + &
                                                 get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), &
                                                                      active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
-                                            call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        sys%read_in%pg_sym, int_err > max_err_msg, &
+                                            call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             if (sys%read_in%comp) then
                                                 y = y*rhf_fac + &
                                                     get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), &
                                                                          active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
-                                                call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
-                                                                            sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
                                                                             sys%read_in%one_e_h_integrals_imag, ierr)
                                                 int_err = int_err + ierr
                                             end if
@@ -703,8 +709,7 @@ contains
                                             ! Update <j|h|a> with contribution <ij|ai>.
                                             x = get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), active(2), &
                                                                      sys%basis%basis_fns, sys%read_in%pg_sym)  - x
-                                            call store_one_body_int_mol(active(1), active(2), x, sys%basis%basis_fns, &
-                                                                        sys%read_in%pg_sym, int_err > max_err_msg, &
+                                            call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             if (sys%read_in%comp) then
@@ -712,8 +717,7 @@ contains
                                                 ! and store_one_body... function ordering adjustments.
                                                 y = get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), active(2), &
                                                                          sys%basis%basis_fns, sys%read_in%pg_sym)  - y
-                                                call store_one_body_int_mol(active(1), active(2), y, sys%basis%basis_fns, &
-                                                                            sys%read_in%pg_sym, int_err > max_err_msg, &
+                                                call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
                                                                             sys%read_in%one_e_h_integrals_imag, ierr)
                                                 int_err = int_err + ierr
                                             end if
@@ -724,12 +728,12 @@ contains
                                 end if
                             case(4)
                                 ! Have <ij|ab> involving active orbitals.
-                                call store_two_body_int_mol(ii, jj, aa, bb, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                                            int_err > max_err_msg, sys%read_in%coulomb_integrals, ierr)
+                                call store_two_body_int(ii, jj, aa, bb, x, sys, int_err > max_err_msg, &
+                                                        sys%read_in%coulomb_integrals, ierr)
                                 int_err = int_err + ierr
                                 if (sys%read_in%comp) then
-                                    call store_two_body_int_mol(ii, jj, aa, bb, y, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                                            int_err > max_err_msg, sys%read_in%coulomb_integrals_imag, ierr)
+                                    call store_two_body_int(ii, jj, aa, bb, y, sys, int_err > max_err_msg, &
+                                                sys%read_in%coulomb_integrals_imag, ierr)
                                     int_err = int_err + ierr
                                 end if
                             end select
@@ -931,7 +935,7 @@ contains
         use point_group_symmetry, only: cross_product_pg_basis
         use symmetry_types, only: pg_sym_t
         use molecular_integrals, only: one_body_t, init_one_body_t,              &
-                                       end_one_body_t, store_one_body_int_mol, &
+                                       end_one_body_t, store_one_body_int_pg_sym, &
                                        zero_one_body_int_store, broadcast_one_body_t
 
         use errors, only: stop_all
@@ -1043,7 +1047,7 @@ contains
                 else if (ii < 1 .and. ii == aa) then
                     core_term = core_term + rhf_fac*x
                 else if (min(ii,aa) >= 1 .and. max(ii,aa) <= sys%basis%nbasis) then
-                    call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
+                    call store_one_body_int_pg_sym(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
                                             int_err > max_err_msg, store, ierr)
                     int_err = int_err + ierr
                 end if
