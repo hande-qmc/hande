@@ -176,7 +176,7 @@ contains
                     "The matrix below gives the result of k_i+k_j to within a reciprocal lattice vector."
                 do i = 1, sys%nsym
                     do j = 1, sys%nsym
-                        write (6,'(i0)', advance='no') sys%read_in%mom_sym%sym_table(j,i)
+                        write (6,'(2X,i0)', advance='no') sys%read_in%mom_sym%sym_table(j,i)
                     end do
                     write (6,'()')
                 end do

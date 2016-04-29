@@ -17,7 +17,7 @@ contains
         integer, allocatable :: nbasis_sym(:), current_index(:)
         integer :: i, ierr
 
-        allocate(nbasis_sym(sys%nsym), stat=ierr)
+        allocate(nbasis_sym(1:sys%nsym), stat=ierr)
         call check_allocate('nbasis_sym',sys%nsym,ierr)
 
         nbasis_sym = 0

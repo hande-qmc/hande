@@ -357,7 +357,12 @@ contains
 
         call decode_det(sys%basis, f, d%occ_list)
 
-        d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
+        if (sys%momentum_space) then
+            d%symunocc(:,:) = sys%read_in%mom_sym%nbands
+        else
+            d%symunocc = sys%read_in%pg_sym%nbasis_sym_spin
+        end if
+
         do i = 1, sys%nel
             associate(orb=>d%occ_list(i))
                 ims = (sys%basis%basis_fns(orb)%ms+3)/2

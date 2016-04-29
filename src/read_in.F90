@@ -188,7 +188,6 @@ contains
             uhf = .false.
             ! read system data
             read (ir, FCI)
-            print *, uhf
             sys%read_in%uhf = uhf
             if (norb == 0) call stop_all('read_in_integrals', &
                 'norb not provided in FCIDUMP header.')
@@ -569,14 +568,14 @@ contains
                                 end if
                             else if (all( (/ ii, aa /) > 0)) then
                                 if (.not.seen_iha(tri_ind_reorder(ii,aa))) then
-                                    x = x + get_one_body_int_mol(sys%read_in%one_e_h_integrals, ii, aa, &
-                                                                 sys%basis%basis_fns, sys%read_in%pg_sym)
+                                    x = x + get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, ii, aa, &
+                                                                 sys)
                                     call store_one_body_int(ii, aa, x, sys, int_err > max_err_msg, &
                                                             sys%read_in%one_e_h_integrals, ierr)
                                     int_err = int_err + ierr
                                     if (sys%read_in%comp) then
-                                        y = y + get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, ii, aa, &
-                                                                     sys%basis%basis_fns, sys%read_in%pg_sym)
+                                        y = y + get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, ii, aa, &
+                                                                     sys)
                                         call store_one_body_int(ii, aa, y, sys, int_err > max_err_msg, &
                                                                 sys%read_in%one_e_h_integrals_imag, ierr)
                                         int_err = int_err + ierr
@@ -674,15 +673,15 @@ contains
                                         if (mod(seen_iaib(core(1), tri_ind_reorder(active(1),active(2))),2) == 0) then
                                             ! Update <a|h|b> with contribution <ia|ib>.
                                             x = x*rhf_fac + &
-                                                get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), &
-                                                                     active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
+                                                get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), &
+                                                                     active(2), sys)
                                             call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             if (sys%read_in%comp) then
                                                 y = y*rhf_fac + &
-                                                    get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), &
-                                                                         active(2), sys%basis%basis_fns, sys%read_in%pg_sym)
+                                                    get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
+                                                                         active(2), sys)
                                                 call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
                                                                             sys%read_in%one_e_h_integrals_imag, ierr)
                                                 int_err = int_err + ierr
@@ -707,16 +706,16 @@ contains
                                                             pg_sym_conj(sys%read_in%pg_sym, sys%basis%basis_fns(active(1))%sym), &
                                                             sys%basis%basis_fns(active(2))%sym))) then
                                             ! Update <j|h|a> with contribution <ij|ai>.
-                                            x = get_one_body_int_mol(sys%read_in%one_e_h_integrals, active(1), active(2), &
-                                                                     sys%basis%basis_fns, sys%read_in%pg_sym)  - x
+                                            x = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals, active(1), active(2), &
+                                                                     sys)  - x
                                             call store_one_body_int(active(1), active(2), x, sys, int_err > max_err_msg, &
                                                                         sys%read_in%one_e_h_integrals, ierr)
                                             int_err = int_err + ierr
                                             if (sys%read_in%comp) then
                                                 ! Possible sign change due to ordering of active(1) & active(2) accounted for in get_one_body...
                                                 ! and store_one_body... function ordering adjustments.
-                                                y = get_one_body_int_mol(sys%read_in%one_e_h_integrals_imag, active(1), active(2), &
-                                                                         sys%basis%basis_fns, sys%read_in%pg_sym)  - y
+                                                y = get_one_body_int_mol_real(sys%read_in%one_e_h_integrals_imag, active(1), &
+                                                                        active(2), sys)  - y
                                                 call store_one_body_int(active(1), active(2), y, sys, int_err > max_err_msg, &
                                                                             sys%read_in%one_e_h_integrals_imag, ierr)
                                                 int_err = int_err + ierr

@@ -545,7 +545,25 @@ contains
 
     end subroutine store_one_body_int_nonzero
 
-    pure function get_one_body_int_mol_real(store, i, j, basis_fns, pg_sym) result(intgrl)
+    pure function get_one_body_int_mol_real(store, i, j, sys) result(intgrl)
+        use system, only: sys_t
+
+        real(p) :: intgrl
+        type(sys_t), intent(in) :: sys
+        type(one_body_t), intent(in) :: store
+        integer, intent(in) :: i, j
+
+        if (sys%momentum_space) then
+            intgrl = get_one_body_int_mol_real_periodic(store, i, j, &
+                                sys%basis%basis_fns, sys%read_in%mom_sym)
+        else
+            intgrl = get_one_body_int_mol_real_pg_sym(store, i, j, &
+                        sys%basis%basis_fns, sys%read_in%pg_sym)
+        end if
+
+    end function get_one_body_int_mol_real
+
+    pure function get_one_body_int_mol_real_pg_sym(store, i, j, basis_fns, pg_sym) result(intgrl)
 
         ! In:
         !    store: one-body integral store.
@@ -582,7 +600,41 @@ contains
             intgrl = 0.0_p
         end if
 
-    end function get_one_body_int_mol_real
+    end function get_one_body_int_mol_real_pg_sym
+
+    pure function get_one_body_int_mol_real_periodic(store, i, j, basis_fns, mom_sym) result(intgrl)
+
+        ! In:
+        !    store: one-body integral store.
+        !    i,j: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
+        !    pg_sym: information on the symmetries of the basis functions.
+        ! Returns:
+        !    <i|o|j>, the corresponding one-body matrix element, where o is a
+        !    one-body operator given by store.
+        !
+        ! NOTE:
+        !    If <i|o|j> is known the be non-zero by spin and spatial symmetry,
+        !    then it is faster to call get_one_body_int_mol_nonzero.
+        !    It is also faster to call RHF- or UHF-specific routines.
+
+        use basis_types, only: basis_fn_t
+        use momentum_sym_read_in, only: cross_product_abelian_basis
+        use symmetry_types, only: mom_sym_t
+
+        real(p) :: intgrl
+        type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(mom_sym_t), intent(in) :: mom_sym
+        type(one_body_t), intent(in) :: store
+        integer, intent(in) :: i, j
+
+        if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+            intgrl = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
+        else
+            intgrl = 0.0_p
+        end if
+
+    end function get_one_body_int_mol_real_periodic
 
     pure function get_one_body_int_mol_complex(store, i, j, basis_fns, mom_sym, im_store) result(intgrl)
 
@@ -612,11 +664,7 @@ contains
         type(one_body_t), intent(in) :: store, im_store
         integer, intent(in) :: i, j
 
-        integer :: sym(3)
-
-        call cross_product_read_in_abelian(mom_sym%nprop, basis_fns(i)%l, basis_fns(j)%l, sym)
-
-        if (mom_sym%inv_sym(basis_fns(i)%sym) == basis_fns(j)%sym) then
+        if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
             re = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
             im = get_one_body_int_mol_nonzero(im_store, i, j, basis_fns)
             intgrl = cmplx(re, im, p)
@@ -1146,8 +1194,6 @@ contains
                 write (error, '("<ij|o|ab> should be zero by symmetry: &
                                 &<",2i3,"|",2i3,"> =",f16.10)') i, j, a, b, intgrl
                 call warning('store_two_body_int_periodic', trim(error), -1)
-                print *, basis_fns(i)%sym, basis_fns(j)%sym, basis_fns(a)%sym, basis_fns(b)%sym
-                print *, sym_ij, sym_ab
            end if
             ierr = 1
         end if
@@ -1179,8 +1225,26 @@ contains
 
     end subroutine store_two_body_int_nonzero
 
-    pure function get_two_body_int_mol_real(store, i, j, a, b, basis_fns, pg_sym) result(intgrl)
+    pure function get_two_body_int_mol_real(store, i, j, a, b, sys) result(intgrl)
 
+        use system, only: sys_t
+
+        real(p) :: intgrl
+        type(two_body_t), intent(in) :: store
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: i, j, a, b
+
+        if (sys%momentum_space) then
+            intgrl = get_two_body_int_mol_real_periodic(store, i, j, a, b, &
+                                sys%basis%basis_fns, sys%read_in%mom_sym)
+        else
+            intgrl = get_two_body_int_mol_real_pg_sym(store, i, j, a, b, &
+                                sys%basis%basis_fns, sys%read_in%pg_sym)
+        end if
+
+    end function get_two_body_int_mol_real
+
+    pure function get_two_body_int_mol_real_pg_sym(store, i, j, a, b, basis_fns, pg_sym) result(intgrl)
         ! In:
         !    store: two-body integral store.
         !    i,j,a,b: (indices of) spin-orbitals.
@@ -1219,7 +1283,46 @@ contains
             intgrl = 0.0_p
         end if
 
-    end function get_two_body_int_mol_real
+    end function get_two_body_int_mol_real_pg_sym
+
+    pure function get_two_body_int_mol_real_periodic(store, i, j, a, b, basis_fns, mom_sym) result(intgrl)
+        ! In:
+        !    store: two-body integral store.
+        !    i,j,a,b: (indices of) spin-orbitals.
+        !    basis_fns: list of single-particle basis functions.
+        !    mom_sym: information on the symmetries of the basis functions.
+        ! Returns:
+        !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
+        !    the (j,b) co-density involving a two-body operator o_2 given by
+        !    store.
+        !
+        ! NOTE:
+        !    If <ij|ab> is known the be non-zero by spin and spatial symmetry,
+        !    then it is faster to call get_two_body_int_mol_nonzero.
+        !    It is also faster to call RHF- or UHF-specific routines.
+
+        use basis_types, only: basis_fn_t
+        use momentum_sym_read_in, only: cross_product_abelian_basis
+        use symmetry_types, only: mom_sym_t
+
+        real(p) :: intgrl
+        type(two_body_t), intent(in) :: store
+        type(basis_fn_t), intent(in) :: basis_fns(:)
+        type(mom_sym_t), intent(in) :: mom_sym
+        integer, intent(in) :: i, j, a, b
+
+        integer :: sym_ij, sym_ab
+
+        sym_ij = cross_product_abelian_basis(mom_sym, i, j, basis_fns)
+        sym_ab = cross_product_abelian_basis(mom_sym, a, b, basis_fns)
+        if (sym_ij == sym_ab .and. basis_fns(i)%ms == basis_fns(a)%ms &
+                                       .and. basis_fns(j)%ms == basis_fns(b)%ms) then
+            intgrl = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
+        else
+            intgrl = 0.0_p
+        end if
+
+    end function get_two_body_int_mol_real_periodic
 
     pure function get_two_body_int_mol_complex(store, i, j, a, b, basis_fns, mom_sym, im_store) result(intgrl)
 
@@ -1240,8 +1343,7 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
-        use momentum_sym_read_in, only: cross_product_abelian_basis, is_gamma_sym_periodic_read_in, &
-                                        cross_product_read_in_abelian
+        use momentum_sym_read_in, only: cross_product_abelian_basis
         use symmetry_types, only: mom_sym_t
 
         complex(p) :: intgrl
@@ -1251,7 +1353,7 @@ contains
         type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: i, j, a, b
 
-        if (mom_sym%inv_sym(cross_product_abelian_basis(mom_sym, i, j, basis_fns)) == &
+        if (cross_product_abelian_basis(mom_sym, i, j, basis_fns) == &
                 cross_product_abelian_basis(mom_sym, a, b, basis_fns) .and. &
                 basis_fns(j)%ms == basis_fns(b)%ms) then
             re = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)

@@ -278,7 +278,7 @@ contains
         !        between a determinant and a single excitation of it for systems
         !        defined by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol
+        use molecular_integrals, only: get_one_body_int_mol_real
         use system, only: sys_t
 
         use const, only: p
@@ -288,7 +288,7 @@ contains
         integer, intent(in) :: i, a
         logical, intent(in) :: perm
 
-        intgrl = get_one_body_int_mol(sys%read_in%one_body_op_integrals, i, a, sys%basis%basis_fns, sys%read_in%pg_sym)
+        intgrl = get_one_body_int_mol_real(sys%read_in%one_body_op_integrals, i, a, sys)
 
         if (perm) intgrl = -intgrl
 

@@ -146,7 +146,7 @@ contains
         !        determinant and a single excitation of it for systems defined
         !        by integrals read in from an FCIDUMP file.
 
-        use molecular_integrals, only: get_one_body_int_mol, get_two_body_int_mol
+        use molecular_integrals, only: get_one_body_int_mol_real, get_two_body_int_mol_real
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -163,15 +163,15 @@ contains
             ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
 
             associate(one_e_ints=>sys%read_in%one_e_h_integrals, coulomb_ints=>sys%read_in%coulomb_integrals)
-                hmatel = get_one_body_int_mol(one_e_ints, i, a, sys%basis%basis_fns, sys%read_in%pg_sym)
+                hmatel = get_one_body_int_mol_real(one_e_ints, i, a, sys)
 
                 do iel = 1, sys%nel
                     if (occ_list(iel) /= i) &
                         hmatel = hmatel &
-                            + get_two_body_int_mol(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
-                                                    sys%basis%basis_fns, sys%read_in%pg_sym) &
-                            - get_two_body_int_mol(coulomb_ints, i, occ_list(iel), occ_list(iel), a, &
-                                                    sys%basis%basis_fns, sys%read_in%pg_sym)
+                            + get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
+                                                    sys) &
+                            - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), occ_list(iel), a, &
+                                                    sys)
                 end do
             end associate
 
@@ -254,7 +254,7 @@ contains
         !
         ! Note that we don't actually need to directly refer to |D>.
 
-        use molecular_integrals, only: get_two_body_int_mol
+        use molecular_integrals, only: get_two_body_int_mol_real
         use system, only: sys_t
         use point_group_symmetry, only: cross_product_pg_sym
 
@@ -265,8 +265,8 @@ contains
 
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns, sys%read_in%pg_sym) &
-                 - get_two_body_int_mol(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns, sys%read_in%pg_sym)
+        hmatel = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, a, b, sys) &
+                 - get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, b, a, sys)
 
         if (perm) hmatel = -hmatel
 
