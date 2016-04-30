@@ -74,9 +74,14 @@ Umrigar93
     for (md, df) in hande_out:
         if any(calc in md['calc_type'] for calc in ('FCIQMC', 'CCMC')):
             if reweight_history > 0:
-                df = pyhande.weight.reweight(df, md['mc_cycles'],
-                    md['tau'], reweight_history, mean_shift,
-                    arith_mean=arith_mean)
+                if 'mc_cycles' in md:
+                    df = pyhande.weight.reweight(df, md['mc_cycles'],
+                        md['tau'], reweight_history, mean_shift,
+                        arith_mean=arith_mean)
+                else:
+                    df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
+                        md['qmc']['tau'], reweight_history, mean_shift,
+                        arith_mean=arith_mean)
                 df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
                 df['W * N_0'] = df['N_0'] * df['Weight']
             data.append(df)
