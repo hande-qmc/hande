@@ -8,11 +8,14 @@ except ImportError:
     sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../pyblock'))
     import pyblock
 
+# [review] - JSS: why is reblock_hande being imported?  This is not used and we shouldn't import scripts.
+# [review] - JSS: also circular as reblock_hande imports pyhande...
 try:
     import reblock_hande
 except ImportError:
     sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../../tools'))
     import reblock_hande
+
 import math
 import matplotlib.pyplot as plt
 import pyhande.lazy
@@ -20,15 +23,14 @@ import pyhande.extract
 
 def find_starting_iteration(outputfiles, frac_screen_interval=500,  
     number_of_reblockings = 50, number_of_reblocks_to_cut_off = 1, 
-    pos_min_frac = 0.5, verbose = False, show_graph = False) :
+    pos_min_frac = 0.5, verbose = False, show_graph = False):
+    '''Find the best iteration to start analysing CCMC/FCIQMC data.
 
-    '''
-!!!Use with caution, check whether output is sensible and adjust 
-parameters if necessary!!!
+.. warning::
 
-Function to find the best iteration to start analysing CCMC/FCIQMC 
-data. The output of this function can be passed to reblock_hande as the
-starting iteration. 
+    Use with caution, check whether output is sensible and adjust 
+    parameters if necessary.
+
 The best iteration is found by first finding the iteration that if used as the 
 starting iteration gives the lowest error in the error of the shift. To be
 conservative, an extra few blocks from the reblocking analysis can be cut off as
@@ -124,61 +126,50 @@ starting_iterations: list of float/double
 
     starting_iterations = []
 
-    for it in range(0,len(data)):
-        #finding the point the shift began to vary, at the 
-        #"shift_variation_start" iteration.
+    for it in range(len(data)):
+        # Find the point the shift began to vary.
         # [review] - JSS: simpler way to do this -- see std_analysis.
         start_not_found = True
         shift_variation_start = 0
         i = 0
-        # [review] - JSS: don't include debug output (and not compatible with python 2 and 3)
-        print data[it]['Shift'].size
-        # [review] - JSS: bold move not indenting the while block...
-        while ((start_not_found == True) and (data[it]['Shift'].size > i)):  
-            if(math.fabs(data[it]['Shift'].iloc[i] != data[it]['Shift'].iloc[0])):  
+        while start_not_found and data[it]['Shift'].size > i:
+            if(math.fabs(data[it]['Shift'].iloc[i] != data[it]['Shift'].iloc[0])):
                 start_not_found = False
                 shift_variation_start = i
             i += 1
-        # [review] - JSS: also bold here.
         if (start_not_found == True) :
-            # [review] - JSS: use RuntimeError for this kind of issue.
-            raise BaseException("ERROR: Shift has not started to vary in \
-                dataset!")
-        # [review] - JSS: not necessary to delete variables explicitly (at least usually)
-        del start_not_found
-        del i
+            raise RuntimeError("Shift has not started to vary in dataset!")
 
-        #Check we have enough data to screen:
+        # Check we have enough data to screen:
         if(data[it]['Shift'].size - shift_variation_start) < \
-            (frac_screen_interval):
+                (frac_screen_interval):
             # i.e. data where shift is not equal to initial value is less than
             # frac_screen_interval, i.e. we cannot screen adequately.
-            warnings.warn("Files " + outputfiles + " contain less data than \
+            warnings.warn("Files %s contain less data than \
                 we wanted to screen. Will continues but frac_screen_interval \
-                is less than one data point.")
+                is less than one data point." % (','.join(outputfiles)))
 
         # Find the MC iteration at which shift starts to vary.
-        # [review] - JSS: indent continuation lines for clarity (your editor should do this automatically...)
         iteration_shift_variation_start = \
-            data[it]['iterations'].iloc[shift_variation_start]
+                data[it]['iterations'].iloc[shift_variation_start]
 
-        # [review] - JSS: indent
         step = int((data[it]['iterations'].iloc[-1] - \
-            iteration_shift_variation_start )/frac_screen_interval) 
+                iteration_shift_variation_start )/frac_screen_interval) 
         	
         shift_error_errors = []
         starting_iteration_found = False
 
-        for k in range(0, int(frac_screen_interval/number_of_reblockings)):
+        for k in range(int(frac_screen_interval/number_of_reblockings)):
 	
             for j in range(k*number_of_reblockings, (k+1)*number_of_reblockings):
                 if verbose:
-                    print "Looping through point #" + str(j) + \
-                        " to find a starting iteration."
+                    print("Looping through point # %i to find a "
+                          "starting iteration." % (j,))
                 info = pyhande.lazy.std_analysis(outputfiles, start = \
                     (iteration_shift_variation_start + j*step), \
                     extract_psips=True)
 
+                # [review] - JSS: not sure about this -- info does not share the same indexing as data...
                 if info[it].no_opt_block:
                     # Add a large enough (imaginary) shift error error
                     # so this does not win in this search.
@@ -222,8 +213,8 @@ starting_iterations: list of float/double
                 break
 
 
-        if not starting_iteration_found :
-            raise BaseException("Failed to find starting iteration. The data \
+        if not starting_iteration_found:
+            raise RuntimeError("Failed to find starting iteration. The data \
             might not be converged.")
 
         if show_graph == True:
@@ -247,4 +238,3 @@ starting_iterations: list of float/double
         starting_iterations.append(starting_iteration)
 
     return starting_iterations
-
