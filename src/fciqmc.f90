@@ -47,6 +47,7 @@ contains
         use calc, only: doing_calc
         use death, only: stochastic_death
         use importance_sampling, only: importance_sampling_weight
+        use ifciqmc
         use non_blocking_comm_m, only: init_non_blocking_comm, end_non_blocking_comm
         use spawning, only: create_spawned_particle_initiator
         use qmc, only: init_qmc
@@ -245,7 +246,8 @@ contains
                                                     qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
                     end if
                     ! Is this determinant an initiator?
-                    call set_parent_flag_ptr(real_population, qmc_in%initiator_pop, determ%flags(idet), cdet%initiator_flag)
+                    call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), qmc_in%quadrature_initiator, &
+                                          cdet%initiator_flag)
 
                     do ispace  = 1, qs%psip_list%nspaces
 
@@ -425,6 +427,7 @@ contains
         use determinants, only: det_info_t
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
+        use ifciqmc
         use qmc_data, only: qmc_in_t, qmc_state_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
@@ -477,7 +480,7 @@ contains
             end if
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
-            call set_parent_flag_ptr(real_pop, qmc_in%initiator_pop, 1, cdet%initiator_flag)
+            call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, qmc_in%quadrature_initiator, cdet%initiator_flag)
 
             do ispace = 1, qs%psip_list%nspaces
 

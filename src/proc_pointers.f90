@@ -168,14 +168,6 @@ abstract interface
         real(p) :: opmatel
     end function i_operator
 
-    pure subroutine i_set_parent_flag(parent_population, initiator_pop, determ_flag, parent_flag)
-        import :: p
-        real(p), intent(in) :: parent_population(:), initiator_pop
-        integer, intent(in) :: determ_flag
-        integer, intent(out) :: parent_flag
-    end subroutine i_set_parent_flag
-
-
     ! generic procedures...
     subroutine i_sub()
     end subroutine i_sub
@@ -205,8 +197,6 @@ procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
-
-procedure(i_set_parent_flag), pointer :: set_parent_flag_ptr => null()
 
 ! Single structure for all types of excitation generator so we can use the same
 ! interface for spawning routines which use different types of generator.

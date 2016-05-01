@@ -124,7 +124,7 @@ type qmc_in_t
     ! Population above which a determinant is an initiator.
     real(p) :: initiator_pop = 3.0_p
     ! How to apply the initiator approximation in complex spaces.
-    logical :: quadrature_initiator = .true.
+    logical :: quadrature_initiator = .false.
 
     ! number of monte carlo cycles/report loop
     integer :: ncycles

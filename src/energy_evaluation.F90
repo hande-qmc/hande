@@ -273,14 +273,6 @@ contains
         if (present(comp)) comp_param = comp
 
         if (comp_param) then
-            ! [review] - JSS: I think it's fine to do this branch in all cases
-            ! [review] - JSS: just for convenience.  The additional work is
-            ! [review] - JSS: minimal and the imaginary quantities will just be zero anyway.
-            ! [reply] - CJCS: I'm unsure; if %proj_energy and %D0_population were both completely
-            ! [reply] - CJCS: set to 0 in the complex case we could just do addition, but since we're
-            ! [reply] - CJCS: setting the real values to the real component of the complex for
-            ! [reply] - CJCS: convenience in communicated_energy_estimators we can't guarantee
-            ! [reply] - CJCS: the one we don't want will be unset.
             rep_loop_loc(proj_energy_ind) = real(qs%estimators%proj_energy_comp, p)
             rep_loop_loc(D0_pop_ind) = real(qs%estimators%D0_population_comp, p)
             rep_loop_loc(proj_energy_imag_ind) = aimag(qs%estimators%proj_energy_comp)
