@@ -170,7 +170,7 @@ algorithms and control the core settings in the algorithms.
 
     Optional.
 
-    Possible values: 'renorm', 'no_renorm'.
+    Possible values: 'renorm', 'no_renorm', 'cauchy_schwarz', 'cauchy_schwarz_orderN'
 
     ============  =================                    =========
     System        Implemented                          Default
@@ -181,7 +181,8 @@ algorithms and control the core settings in the algorithms.
     hubbard_real  renorm, no_renorm                    renorm
     ueg           no_renorm, cauchy_schwarz            no_renorm
     ringium       no_renorm                            no_renorm
-    read_in       renorm, no_renorm                    renorm
+    read_in       renorm, no_renorm, cauchy_schwarz    renorm
+                  cauchy_schwarz_orderM  
     ============  =================                    =========
 
     The type of excitation generator to use.  Note that not all types are implemented for
@@ -201,7 +202,12 @@ algorithms and control the core settings in the algorithms.
 
     The 'cauchy_schwarz' excitation generator generates excitations using an upper bound for
     the value of the Hamiltonian matrix element.  This involves some precalcalated alias
-    tables, but should reduce both noise and shoulder heights.  Only available for the UEG.
+    tables, but should reduce both noise and shoulder heights.  Only available for the UEG
+    and read_in systems, and in the latter it does not currently use symmetry information.
+
+    The 'cauchy_schwarz_orderM' uses a more refined upper bound for the Hamiltonian matrix
+    elements, but which requires O(Number of basis functions) for each particle being spawned from.
+    
 
 ``pattempt_single``
     type: float.

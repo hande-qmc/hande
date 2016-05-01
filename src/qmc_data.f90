@@ -40,12 +40,10 @@ enum, bind(c)
     ! Weight the excitations according to a Cauchy-Schwarz limit on the bounds of the integrals
     ! This is O(N).
     enumerator :: excit_gen_cauchy_schwarz_virt
-    ! The version O(M) which chooses occ orbitals first.
-    enumerator :: excit_gen_cauchy_schwarz_occ
-    ! The version O(N) which chooses occ orbitals first, and excites with probabilities akin to that of the reference.
-    enumerator :: excit_gen_cauchy_schwarz_occ_ref
-    ! O(1) version of Cauchy-Schwarz (with occasional failed excitations generated)
+    ! The version O(M/64) which chooses occ orbitals first.
     enumerator :: excit_gen_cauchy_schwarz
+    ! The version O(M) which chooses occ orbitals first, and excites with probabilities akin to that of the reference.
+    enumerator :: excit_gen_cauchy_schwarz_occ
 end enum
 
 ! Types of semi-stochastic space.

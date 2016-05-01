@@ -1,3 +1,4 @@
+! A module containing excitations generators for molecules which weight excitations according to the exchange matrix elements.
 module excit_gen_cauchy_schwarz_mol
 
 use const, only: i0, p
@@ -12,7 +13,15 @@ contains
     subroutine create_weighted_excitation_list(sys, from, to_list, nto, weights, weighttot)
         ! Generate a list of allowed excitations from from to one of to_list with their weights based on
         ! sqrt(|<from to  | to  from>|)
-
+        !
+        ! In:
+        !    sys:   The system in which the orbitals live
+        !    from:  integer specifying the from orbital
+        !    to_list:   a list of integers specifying the basis functions we're allowed to excite to
+        !    nto:   The length of to_list
+        ! Out:
+        !    weights:   A list of reals (length nto), with the weight of each of the to_list orbitals
+        !    weighttot: The sum of all the weights.
         use system, only: sys_t
         use molecular_integrals, only: get_two_body_int_mol
         type(sys_t), intent(in) :: sys
@@ -189,6 +198,23 @@ contains
     end subroutine generate_alias_tables        
 
     subroutine init_excit_mol_cauchy_schwarz_occ_ref(sys, ref, cs)
+        ! Generate excitation tables from the reference for the 
+        ! gen_excit_mol_cauchy_schwarz_occ_ref excitation generator.
+        ! This creates a random excitation from a det and calculates both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+        ! This is an O(M/64) version which pretends the determinant excited from is the reference,
+        ! then modifies the selected orbitals to be those of the determinant given.
+        ! Each occupied and virtual not present in the det we're actually given will be
+        ! mapped to the one of the equivalent free numerical index in the reference.
+
+        ! In:
+        !    sys: system object being studied.
+        !    ref: the reference from which we are exciting.
+        ! In/Out:
+        !    cs: an empty excit_gen_cauchy_schwarz_t object which gets filled with
+        !           the alias tables required to generate excitations.
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
@@ -207,7 +233,7 @@ contains
         allocate(cs%aliasY(maxv,sys%nel))
         allocate(cs%ia_weights(maxv,sys%nel))
         allocate(cs%ia_weights_tot(sys%nel))
-        allocate(cs%occ_list(sys%nel+1))  !The +1 is a pad
+        allocate(cs%occ_list(sys%nel+1))  !The +1 is a pad to allow loops to look better
         allocate(cs%virt_list_a(sys%nvirt_alpha))
         allocate(cs%virt_list_b(sys%nvirt_beta))
 
@@ -248,13 +274,15 @@ contains
             call generate_alias_tables(nv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%aliasP(:,i), cs%aliasY(:,i))        
         enddo
     end subroutine init_excit_mol_cauchy_schwarz_occ_ref
+
+
     subroutine gen_excit_mol_cauchy_schwarz_occ_ref(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! Weight the double excitations according the the Cauchy-Schwarz bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
-        ! This is an O(N) version which pretends the determinant excited from is the reference,
+        ! This is an O(M/64) version which pretends the determinant excited from is the reference,
         ! then modifies the selected orbitals to be those of the determinant given.
         ! Each occupied and virtual not present in the det we're actually given will be
         ! mapped to the one of the equivalent free numerical index in the reference.
@@ -369,22 +397,15 @@ contains
                     ! Use the alias method to select i with the appropriate probability
                     b = cs%virt_list_a(b_ind) 
                 endif 
-!                write(6,*) "AI, BI", a_ind,b_ind
-!                write(6,*) "WIA",cs%ia_weights(:,i_ind)
-!                write(6,*) "WJB",cs%ia_weights(:,j_ind)
 
                 ! 3b. Probability of generating this excitation.
 
                 ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
-!                write(6,*) "WT", cs%ia_weights_tot(i_ind),cs%ia_weights_tot(j_ind), ij_spin
                 if (ij_spin==0) then 
                     !not possible to have chosen the reversed excitation
                     pgen=cs%ia_weights(a_ind,i_ind) / cs%ia_weights_tot(i_ind) &
                             * cs%ia_weights(b_ind,j_ind) / cs%ia_weights_tot(j_ind)
                 else !i and j have same spin, so could have been selected in the other order.
-!                    write(6,*) cs%ia_weights(a_ind, i_ind) , cs%ia_weights(b_ind, j_ind), &
-!                             cs%ia_weights(b_ind, i_ind) , cs%ia_weights(a_ind, j_ind) , &
-!                             cs%ia_weights_tot(i_ind),cs%ia_weights_tot(j_ind)
                     pgen= (   cs%ia_weights(a_ind, i_ind) * cs%ia_weights(b_ind, j_ind) &
                             + cs%ia_weights(b_ind, i_ind) * cs%ia_weights(a_ind, j_ind) ) &
                          /   (cs%ia_weights_tot(i_ind)*cs%ia_weights_tot(j_ind))
@@ -400,10 +421,6 @@ contains
     !  This is currently done with an O(N) step, but might be sped up at least.
 
                     call get_excitation_locations(cs%occ_list, cdet%occ_list, ref_store, cdet_store, sys%nel, nex)
-!                    write(6,*) "ref",cs%occ_list
-!                    write(6,*) "det",cdet%occ_list
-!                    write(6,*) "ref_store",ref_store(:nex)
-!                    write(6,*) "det_store",cdet_store(:nex)
     ! These orbitals might not be aligned in the most efficient way:
     !  They may not match in spin, so first deal with this
 
@@ -424,12 +441,6 @@ contains
                             cdet_store(jj) = t 
                         endif
                     enddo
-                    if (nex>0) then
-!                        write(6,*) "ref_storeI",ref_store(:nex)
-!                        write(6,*) "det_storeI",cdet_store(:nex)
-!                        write(6,*) "ref_store ",(cs%occ_list(ref_store(ii)),ii=1,nex)
-!                        write(6,*) "det_store ",(cdet%occ_list(cdet_store(ii)),ii=1,nex)
-                    endif
     ! At this point we may want to align the orbitals even further to avoid strange cases where selection 
     ! probabilities are zero, but let's leave that for another day.
 
@@ -466,8 +477,6 @@ contains
                         connection%from_orb(2) = t
                     endif
 
-
-!                    write(6,"(A,5I,F18.12)") "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
 
                     ! 4b. Parity of permutation required to line up determinants.
                     ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
@@ -542,12 +551,15 @@ contains
         ij_spin = sys%basis%basis_fns(i)%Ms + sys%basis%basis_fns(j)%Ms
 
     end subroutine choose_ij_ind
+
+
     subroutine gen_excit_mol_cauchy_schwarz_occ(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
         ! Weight the double excitations according the the Cauchy-Schwarz bound
         ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+        ! This requires a lookup of O(M) two-electron integrals in its setup.
 
         ! In:
         !    sys: system object being studied.
@@ -623,7 +635,6 @@ contains
             ! 2b. Select orbitals to excite from
             
             call choose_ij_mol(rng, sys, cdet%occ_list, i, j, ij_sym, ij_spin)
-!            write(6,*) "IJ:", i, j
 
             !now we've chosen i and j. 
  
@@ -657,19 +668,14 @@ contains
                 b = cdet%unocc_list_alpha(b_ind) 
             endif 
 
-!            write(6,*) "WIA",ia_weights
-!            write(6,*) "WJB",jb_weights
             ! 3b. Probability of generating this excitation.
 
             ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
           
-!            write(6,*) "WT", ia_weights_tot,jb_weights_tot, ij_spin
             if (ij_spin==0) then 
                 !not possible to have chosen the reversed excitation
                 pgen=ia_weights(a_ind)/ia_weights_tot*jb_weights(b_ind)/jb_weights_tot
             else !i and j have same spin, so could have been selected in the other order.
-!                write(6,*) ia_weights(a_ind),jb_weights(b_ind),ia_weights(b_ind),jb_weights(a_ind), &
-!                           ia_weights_tot,jb_weights_tot
                 pgen=       (ia_weights(a_ind)*jb_weights(b_ind) + ia_weights(b_ind)*jb_weights(a_ind) ) &
                         /   (ia_weights_tot*jb_weights_tot)
             endif
@@ -693,7 +699,6 @@ contains
                 connection%to_orb(1)=b 
             endif
             if (allowed_excitation) then
-!                write(6,"(A,5I,F18.12)") "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
@@ -878,7 +883,6 @@ contains
                 connection%to_orb(2)=a
                 connection%to_orb(1)=b 
             endif
-!            write(6,"(A,5I,F18.12)") "EXC",cdet%f,connection%from_orb, connection%to_orb,pgen
             if (allowed_excitation) then
 
                 ! 4b. Parity of permutation required to line up determinants.

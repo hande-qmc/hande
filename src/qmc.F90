@@ -53,7 +53,7 @@ contains
         use restart_hdf5, only: read_restart_hdf5, restart_info_t, init_restart_info_t, get_reference_hdf5
 
         use qmc_data, only: qmc_in_t, fciqmc_in_t, restart_in_t, load_bal_in_t, annihilation_flags_t, qmc_state_t, &
-                            neel_singlet, excit_gen_cauchy_schwarz_occ_ref, excit_gen_cauchy_schwarz
+                            neel_singlet, excit_gen_cauchy_schwarz
         use reference_determinant, only: reference_t
         use dmqmc_data, only: dmqmc_in_t
         use excit_gens, only: dealloc_excit_gen_data_t
@@ -181,7 +181,7 @@ contains
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
-        if(qmc_in%excit_gen==excit_gen_cauchy_schwarz_occ_ref) then
+        if(qmc_in%excit_gen==excit_gen_cauchy_schwarz) then
             call init_excit_mol_cauchy_schwarz_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
             ! TODO this needs to be deallocated somewhere
         endif
@@ -212,7 +212,7 @@ contains
         use parallel, only: parent
         use qmc_data, only: qmc_in_t, fciqmc_in_t, single_basis, neel_singlet, neel_singlet_guiding, &
                             excit_gen_renorm, excit_gen_no_renorm, excit_gen_cauchy_schwarz_virt, excit_gen_cauchy_schwarz_occ, &
-                            excit_gen_cauchy_schwarz_occ_ref, excit_gen_cauchy_schwarz
+                            excit_gen_cauchy_schwarz
         use dmqmc_data, only: dmqmc_in_t, free_electron_dm
         use reference_determinant, only: reference_t
 
@@ -384,7 +384,7 @@ contains
             case(excit_gen_cauchy_schwarz_occ)
                 gen_excit_ptr%full => gen_excit_mol_cauchy_schwarz_occ
                 decoder_ptr => decode_det_spinocc_spinunocc
-            case(excit_gen_cauchy_schwarz_occ_ref)
+            case(excit_gen_cauchy_schwarz)
                 gen_excit_ptr%full => gen_excit_mol_cauchy_schwarz_occ_ref
                 decoder_ptr => decode_det_spinocc_spinunocc
             case default

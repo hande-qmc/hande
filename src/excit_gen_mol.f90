@@ -1030,5 +1030,4 @@ contains
 
     end function calc_pgen_double_mol_no_renorm
 
-
 end module excit_gen_mol

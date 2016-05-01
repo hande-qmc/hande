@@ -360,6 +360,20 @@ contains
     end function calc_pgen_ueg_no_renorm
 
     subroutine init_excit_ueg_cauchy_schwarz(sys, ref, cs)
+        ! Initialize the cs data for the gen_excit_ueg_cauchy_schwarz excitation generator.
+        ! This creates a random excitation from cdet and calculate both the probability
+        ! of selecting that excitation and the Hamiltonian matrix element.
+        ! Weight the double excitations according the the Cauchy-Schwarz bound
+        ! <ij|ab> <= Sqrt(<ia|ai><jb|bj>)
+        ! This version uses the excitation weights from the reference rather than
+        ! recalculating for each determinant.
+
+        ! In:
+        !    sys: system object being studied.
+        !    ref: the reference 
+        ! Out:
+        !    cs: excit_gen_cauchy_schwarz_t which will be initialized with 
+        !           the alias tables for the excitations.
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
@@ -476,9 +490,6 @@ contains
             ! 2. Select orbitals to excite from and into.
             call choose_ij_k(rng, sys, cdet%occ_list, i, j,  ij_k, ij_spin)
 
-!            write(6,*) "IJ:", i, j
-            
-
             !now we've chosen i and j. 
 
             ! We now need to select the orbitals to excite into which we do with weighting:
@@ -495,7 +506,6 @@ contains
             ! convert from spatial orbital back to spin orbital
 
             a = 2*a_ind - mod(i,2)
-!            write(6,*) "a, a_ind", a, a_ind
 
             ! Excitation is forbidden if a is already occupied!
             ibp = sys%basis%bit_lookup(1,a)
@@ -522,7 +532,6 @@ contains
                 !convert to an ind
                     b_ind = (b+1)/2
 
-!                    write(6,*) "b, b_ind", b,b_ind
                     ! Excitation is forbidden if b is already occupied!
                     ibp = sys%basis%bit_lookup(1,b)
                     ibe = sys%basis%bit_lookup(2,b)
@@ -559,7 +568,6 @@ contains
                     connection%to_orb(2)=a
                     connection%to_orb(1)=b 
                 endif
-!                write(6,"(A5,Z16.16, 4I5,F18.12)") "EXC ",cdet%f,connection%from_orb, connection%to_orb,pgen
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
