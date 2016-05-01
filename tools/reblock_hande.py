@@ -24,7 +24,7 @@ except ImportError:
     import pyhande
 
 def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1,
-                       width=0, out_method='to_string'):
+                       width=0, out_method='to_string', inefficiency=False):
     '''Run a reblocking analysis on HANDE output and print to STDOUT.
 
 See :func:`pyblock.pd_utils.reblock` and :func:`pyblock.blocking.reblock` for
@@ -58,6 +58,9 @@ width : int
 out_method : string
     Output method for printing out tables.  Either 'to_string' to print a
     space-separate table or 'to_csv' to print a CSV table.
+inefficiency : bool
+    Attempt to calculate the inefficiency factor for the calculations, and
+    include it in the output.
 
 Returns
 -------
@@ -103,7 +106,8 @@ opt_block: :class:`pandas.DataFrame`
     for calc in files:
         try:
             info = pyhande.lazy.std_analysis(calc, start_iteration,
-                                             extract_psips=True)
+                                             extract_psips=True,
+                                             calc_inefficiency=inefficiency)
             for (i, i_info) in enumerate(info):
                 if verbose >= v_analysis:
                     msg = 'Analysing file(s): %s.' % (' '.join(calc))
@@ -221,6 +225,9 @@ reblock_plot : string
                         'before wrapping them.  A non-positive value disables '
                         'wrapping.  Default: current terminal width if printing '
                         'to a terminal, -1 if redirecting.')
+    parser.add_argument('-i','--inefficiency', default=False, action='store_true',
+                        help='Calculate the inefficiency factor for the calculation '
+                        'if possible.')
     parser.add_argument('filenames', nargs=argparse.REMAINDER,
                         help='Space-separated list of files to analyse.')
 
@@ -263,7 +270,7 @@ None.
     options = parse_args(args)
     run_hande_blocking(options.filenames, options.start_iteration,
                        options.plotfile, options.verbose, options.width,
-                       options.output)
+                       options.output, options.inefficiency)
 
 if __name__ == '__main__':
 

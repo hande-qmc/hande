@@ -11,7 +11,7 @@ import pyhande.weight
 import math
 
 def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
-                reweight_history=0, mean_shift=0.0, arith_mean=False):
+                reweight_history=0, mean_shift=0.0, arith_mean=False, calc_inefficiency=False ):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -131,18 +131,19 @@ Umrigar93
         # Summary (including pretty printing of estimates).
         (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
 
-        # Calculate quantities needed for the inefficiency.
-        if 'qmc' in md:
-            dtau = md['qmc']['tau']
-        else:
-            dtau = md['tau']
-        reblocked_iters = calc.ix[indx, 'iterations']
-        N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
-        
-        # This returns a data frame with inefficiency data from the projected energy estimators if available
-        ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
-        if ineff is not None:
-            opt_block = opt_block.append(ineff)
+        if calc_inefficiency:
+            # Calculate quantities needed for the inefficiency.
+            if 'qmc' in md:
+                dtau = md['qmc']['tau']
+            else:
+                dtau = md['tau']
+            reblocked_iters = calc.ix[indx, 'iterations']
+            N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
+            
+            # This returns a data frame with inefficiency data from the projected energy estimators if available
+            ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
+            if ineff is not None:
+                opt_block = opt_block.append(ineff)
 
 
         estimates = []

@@ -304,10 +304,14 @@ Vigor16
     try:
         err_proj_e = opt_block['standard error']['Proj. Energy']
         Np = opt_block['mean']['# H psips']
+        err_Np = opt_block['standard error']['# H psips']
         inefficiency = err_proj_e * numpy.sqrt(Np*iterations*dtau)
         # NB We do not know the covariance of the errors of N_0 and \sum H_0j N_j so this is an upper bound on the error estimate.
-        err_err_proj_e = err_proj_e*numpy.sqrt( (opt_block['standard error error']['\sum H_0j N_j']/(opt_block['standard error']['\sum H_0j N_j']  ))**2  + ((opt_block['standard error error']['N_0'])/(opt_block['standard error']['N_0']))**2 )
-        err_ineff = inefficiency*numpy.sqrt(((err_err_proj_e/err_proj_e)**2) + (opt_block['standard error']['# H psips']/(2*opt_block['mean']['# H psips']))**2)
+        err_err_proj_e = err_proj_e * numpy.sqrt( (opt_block['standard error error']['\sum H_0j N_j'] / opt_block['standard error']['\sum H_0j N_j'] )**2
+                                                 +(opt_block['standard error error']['N_0'] / opt_block['standard error']['N_0'])**2 )
+        # In principle the number of iterations is also a variable with error, but we don't have a way to estimate it alas.
+        err_ineff = inefficiency * numpy.sqrt(  (err_err_proj_e / err_proj_e)**2
+                                              + (0.5 * err_Np / err_Np)**2 )
         d = pd.DataFrame(data={'mean':inefficiency, 'standard error':err_ineff}, index = ['Inefficiency'])
         return d
     except KeyError as e:
