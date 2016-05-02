@@ -286,6 +286,34 @@ algorithms and control the core settings in the algorithms.
 
         The comparative efficacy of these two approaches is currently under investigation.
 
+``quasi_newton``
+    type: boolean.
+
+    Optional. Default: False.
+
+    Turn on quasi-Newton steps.  Conventional FCIQMC and related methods take steps which are
+    the equivalent of a scaled steepest-descent approach, which results in very long equilibration
+    times, and requires smaller values of tau for stability.
+    The quasi-Newton approach scales the steps according to the inverse difference in Fock energy to
+    the reference determinant, reducing the contributions from very high-energy determinants.
+    The population dynamics of this approach are different, and do not show plateaux, but do
+    converge to the same ground state.
+
+``quasi_newton_thresh``
+    type: float.
+    
+    Optional. Default: 1e-5
+
+    The quasi-Newton approach scales the steps according to the inverse difference in Fock energy to
+    the reference determinant (with energy F_0).  Any determinant with energy less than
+    F_0 + quasi_newton_thresh will have weighting 1/quasi_newton_value
+``quasi_newton_value``
+    type: float.
+
+    Optional. Default: 1.0
+
+    See quasi_newton_thresh
+
 ``tau_search``
     type: boolean.
 
