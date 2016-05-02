@@ -421,17 +421,6 @@ contains
             if (comp_param) then
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
                                     ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
-                ! [review] - JSS: shift(2) is not used in the complex code.  What is it meant to represent?
-                ! [reply] - CJCS: Shift in imaginary space, which is the same as in real space.
-                ! [reply] - CJCS: Mainly just definined for compatibility with general multiple space routines
-                ! [reply] -  eg. if we were doing replica tricks + complex could just call:
-                ! do idet = 1, ndets
-                !   do i = 1, nspaces
-                !       call death( pop(i, idet), qs%shift(i)...)
-                !   etc
-                ! [reply] - CJCS: rather than having a more complicated structure with shift have size nspaces/2.
-                ! [reply] - CJCS: The gain from removing the duplicate information seems negligible compared to
-                ! [reply] - CJCS: the gain in compatiblity.
                 qs%shift(2) = qs%shift(1)
             else
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), &
@@ -444,28 +433,6 @@ contains
         end if
         ntot_particles_old = ntot_particles
         qs%estimators%hf_signed_pop = new_hf_signed_pop
-        !      2. I am not sure that setting the target population to be the
-        !         total of the real and complex space is ideal.
-        ! [reply] - CJCS: What's the alternative? And the benefit to be gained? So long as
-        ! [reply] - CJCS: we have an effective measure to base population control from and
-        ! [reply] - CJCS: don't bias the wavefunction one way or the other it shouldn't have
-        ! [reply] - CJCS: much impact. If we were to use only the real or imaginary population
-        ! [reply] - CJCS: we could change our sampling of the space depending upon the phase
-        ! [reply] - CJCS: the wavefunction settles on (which may not be consistent), making
-        ! [reply] - CJCS: array sizing much more difficult.
-        ! [reply] - CJCS: We could use the sum of complex magnitudes as a measure, which would
-        ! [reply] - CJCS: be robust to potential phase rotations from the standpoint of the
-        ! [reply] - CJCS: derivation of shift control (exponential growth of the groundstate
-        ! [reply] - CJCS: wavefunction, so ignoring wavefunction phase). However, this hasn't
-        ! [reply] - CJCS: shown itself to be a major problem thus far.
-        !      3. Why set the shift from the real(proj/N_0) - this should be
-        !         equivalent to just the ratio of the real parts (though only on
-        !         average).  The key is to set the shift to something closer to
-        !         the true energy rather so this shouldn't matter too much.
-        ! [reply] - CJCS: Depending upon the system, we can end up with the phase of the
-        ! [reply] - CJCS: reference being fairly far away from 0 (although stable in a reasonable
-        ! [reply] - CJCS: calculation). In this case there's a fairly big difference between the
-        ! [reply] - CJCS: two values.
 
         if (comp_param) then
             nparticles_wfn = ntot_particles(1) + ntot_particles(2)

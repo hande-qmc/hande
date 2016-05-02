@@ -232,11 +232,6 @@ contains
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
                     if (sys%read_in%comp) then
-                        ! [review] - JSS: if we pass in qs%estimators and the weighted_population array,
-                        ! [review] - JSS: then all update_proj_energy* procedures would have the same interface
-                        ! [review] - JSS: (bar hmatel/hmatel_comp, which would need some additional tlc).
-                        ! [reply] - CJCS: Sounds nice, still haven't got a nice solution for hmatel compatibility
-                        ! [reply] - CJCS: in interfaces. 
                         call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                                                     cmplx(weighted_population(1), weighted_population(2), p), &
                                                     qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &

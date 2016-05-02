@@ -307,10 +307,6 @@ contains
 
         case(read_in)
             if (sys%read_in%comp) then
-                ! [review] - JSS: no energy update?
-                ! [reply] - CJCS: energy update currently not compatible with generic interface, once implement your
-                ! [reply] - CJCS: suggestions in fciqmc.f90 will be set. For now set to null() to ensure I knew if it
-                ! [reply] - CJCS: was called.
                 update_proj_energy_ptr => null()
                 sc0_ptr => slater_condon0_mol_complex
                 energy_diff_ptr => null()
