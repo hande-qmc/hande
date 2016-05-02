@@ -1822,6 +1822,28 @@ contains
     end subroutine create_spawned_particle_rdm
 
     function get_spawned_particle_weighting(sys, qs, fspawnee, connection ) result(weight)
+    ! The step in FCIQMC-like methods can be modified by a non-identity transformation
+    ! to weight the particles being created to take a quasi-Newton step.
+    ! This routine determines the weight to apply to the the resulting particle from this.
+    ! In:
+    !   sys:    specifies the system
+    !   qs:     specifies the qmc_state to determine if weighting is needed
+    !   fspawnee:  if connection is absent, then this is the determinant TO
+    !               which spawning will occur.
+    !              if connection is present, then this is the determinant FROM 
+    !               which spawning occurs, and connection will be used to form
+    !               the actual spawnee
+    !   connection: (optional) If present, specifies the connection from fspawnee
+    !               required to make the actual spawnee
+    !
+    ! Returns:
+    !   weight: The weighting required.
+    !
+    ! At present this uses an inefficient O(N) sum of the diagonal elements
+    ! of the Fock matrix, and the weight is 1/(F(spawnee)-F(reference))
+    ! If the difference in Fock energy between the reference and the spawnee is less than
+    ! qs%quasi_newton_thresh, then the weight 1/(qs%quasi_newton_value) is used instead.
+    
         use qmc_data, only:  qmc_state_t
         use system, only: sys_t
         use determinants, only: decode_det, det_info_t
