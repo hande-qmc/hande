@@ -4,6 +4,7 @@ from os import path
 import numpy
 import pandas as pd
 import sys
+import warnings
 
 try:
     import pyblock
@@ -250,3 +251,69 @@ Shepherd14
         return numpy.nan
     else:
         return numpy.mean(10**bin_edges[hist_max:hist_max+2])
+
+
+
+def inefficiency(opt_block, dtau, iterations):
+    '''Estimate the inefficiency of a calculation from the blocked data.
+
+The statistical error of an ideal FCIQMC calculation decreases with the
+square-root of number of steps, :math:`N`, total number of particles,
+:math:`N_p` and (at sufficiently low values) timestep, :math:`\\delta\\tau`.
+
+We define the inefficiency, :math:`a`, as a quantity independent of these, which
+depends on purely the algorithm and system studied, and can be used to determine
+the expected runtime to achieve a given error.  We provide an estimate of this
+from the best estimate of the error in the projected energy, :math:`\\sigma_E`:
+
+.. math::
+
+    a = \\sigma_E \\sqrt{N_p N \\delta\\tau}
+
+Error bars are (over)-estimated with a simple error propagation, but since no
+information about the covariance of the error estimates is available, this will
+always be an overestimate.
+
+Used in [Vigor16]_.
+
+Credit to William Vigor for the original pyhande implementation.
+
+Parameters
+----------
+data : :class:`pandas.DataFrame`
+    Optimally blocked HANDE QMC data.
+    func:`pyhande.analysis.qmc_summary` can be used to
+    extract this from reblocked HANDE data.
+dtau : float
+    length of an imaginary time timestep.
+iterations : integer
+    number of iterations (timeteps) in the reblocked data.
+Returns
+-------
+ineff : :class:`pandas.DataFrame`
+    A data frame with index 'inefficiency' and columns
+    'mean' and 'standard error'
+    or None if the appropriate data is not available.
+
+References
+----------
+Vigor16
+    W. A. Vigor, et al., J. Chem. Phys. 144, 094110 (2016); doi: 10.1063/1.4943113 
+'''
+         
+    try:
+        err_proj_e = opt_block['standard error']['Proj. Energy']
+        Np = opt_block['mean']['# H psips']
+        err_Np = opt_block['standard error']['# H psips']
+        inefficiency = err_proj_e * numpy.sqrt(Np*iterations*dtau)
+        # NB We do not know the covariance of the errors of N_0 and \sum H_0j N_j so this is an upper bound on the error estimate.
+        err_err_proj_e = err_proj_e * numpy.sqrt( (opt_block['standard error error']['\sum H_0j N_j'] / opt_block['standard error']['\sum H_0j N_j'] )**2
+                                                 +(opt_block['standard error error']['N_0'] / opt_block['standard error']['N_0'])**2 )
+        # In principle the number of iterations is also a variable with error, but we don't have a way to estimate it alas.
+        err_ineff = inefficiency * numpy.sqrt(  (err_err_proj_e / err_proj_e)**2
+                                              + (0.5 * err_Np / err_Np)**2 )
+        d = pd.DataFrame(data={'mean':inefficiency, 'standard error':err_ineff}, index = ['Inefficiency'])
+        return d
+    except KeyError as e:
+        warnings.warn('Inefficiency not calculated owing to data unavailable from '+str(e))
+        return None
