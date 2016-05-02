@@ -10,11 +10,7 @@ except ImportError:
 
 # [review] - JSS: why is reblock_hande being imported?  This is not used and we shouldn't import scripts.
 # [review] - JSS: also circular as reblock_hande imports pyhande...
-try:
-    import reblock_hande
-except ImportError:
-    sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../../tools'))
-    import reblock_hande
+# [reply] - VAN: true, I have deleted that. It belonged to another script.
 
 import math
 import matplotlib.pyplot as plt
