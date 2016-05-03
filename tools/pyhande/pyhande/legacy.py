@@ -4,11 +4,6 @@ import re
 def extract_metadata(fh):
     '''Extract metadata from a legacy output file.
 
-.. note::
-
-    The metadata is in the original format and **not** in the format obtained
-    from the new JSON output.
-
 Parameters
 ----------
 fh : file
@@ -78,7 +73,7 @@ metadata : dict
     for line in fh:
         if '# iterations' in line:
             # Finished with body! (Only worry about stopping early if there's
-            # potentially lots of output left...
+            # potentially lots of output left...)
             break
         for (key, pattern) in md_body.items():
             if pattern in line:
@@ -91,7 +86,75 @@ metadata : dict
                 else:
                     metadata[key] = line.split()[-1]
 
-    return metadata
+    return convert_metadata(metadata)
+
+def convert_metadata(legacy_metadata):
+    '''Convert metadata from original/legacy format to the JSON format.
+
+Parameters
+---------
+legacy_metadata : dict
+    Metadata in legacy format (i.e. a single dict).
+
+Returns
+-------
+metadata : dict
+    Metadata in JSON format (i.e. a nested dict).
+'''
+
+    json_keys = {
+        "system": ["nbasis", "nel", "nvirt", "Ms", "nalpha", "nbeta",
+            "nvirt_alpha", "nvirt_beta", "nsym", "sym0", "sym_max", "nsym_tot",
+            "sym0_tot", "sym_max_tot", "symmetry", "max_number_excitations",
+            "lattice", "read_in", "hubbard", "heisenberg", "ueg"],
+        "qmc": ["rng_seed", "real_amplitudes", "real_amplitude_force_32",
+            "spawn_cutoff", "excit_gen", "pattempt_single", "pattempt_double",
+            "tau", "tau_search", "vary_shift_from", "vary_shift_from_proje",
+            "initial_shift", "shift_damping", "walker_length",
+            "spawned_walker_length", "D0_population", "target_particles",
+            "initiator_approx", "initiator_pop", "ncycles", "nreport",
+            "use_mpi_barriers"],
+        "ccmc": ["move_freq", "cluster_multispawn_threshold", "full_nc",
+            "linked"],
+        "dmqmc": ["beta_loops", "replica_tricks", "start_av_rdm",
+            "weighted_sampling", "vary_weights", "find_weights",
+            "find_weights_start", "calc_excit_dist", "all_sym_sectors",
+            "all_spin_sectors", "initiator_level"],
+        "ipdmqmc": ["propagate_to_beta", "initial_matrix",
+            "grand_canonical_initialisation", "symmetric", "chem_pot",
+            "metropolis_attempts"],
+        "operators": ["energy", "energy_squared", "kinetic_energy",
+            "potential_energy", "H0_energy", "HI_energy", "correlation_fn",
+            "staggered_magnetisation", "rdm_r2", "full_r2"],
+        "rdm": ["nrdms", "spawned_length", "doing_rdm", "calc_ground_rdm",
+            "calc_inst_rdm", "doing_concurrence", "doing_vn_entropy",
+            "output_rdm"],
+        "fciqmc": ["select_ref_det_every_nreports", "init_spin_inv_D0",
+             "ref_det_factor", "non_blocking_comm", "doing_load_balancing",
+             "trial_function", "guiding_function"],
+        "semi_stoch": ["start_iter", "shift_iter", "space_type", "target_size",
+             "write_determ_space", "projection_mode", "read_id", "write_id",
+             "ci_space"],
+        "restart": ["read_restart", "read_id", "write_restart", "write_id",
+             "write_freq", "write_restart_shift", "write_shift_id"],
+        "load balancing": ["nslots", "pop", "percent", "max_attempts",
+             "write_info"],
+        "reference": ["det", "det_ms", "det_symmetry", "H00",
+             "hilbert_space_det", "hilbert_space_det_ms",
+             "hilbert_space_det_symmetry", "ex_level"],
+        "fci": ["write_hamiltonian", "hamiltonian_file", "write_determinants",
+            "determinant_file", "print_fci_wfn", "print_fci_wfn_file",
+            "analyse_fci_wfn", "block_size", "nlanczos_eigv",
+            "lanczos_string_len", "direct_lanczos"],
+         }
+
+    metadata = {key:{} for key in json_keys.keys()}
+    for main_key, keys in metadata:
+        for key in keys:
+            if key in legacy_metadata:
+                metadata[main_key][key] = legacy_metadata[key]
+
+    return legacy_metadata
 
 def extract_input(metadata, variable):
     '''Extract input information about specific variable.
