@@ -102,6 +102,11 @@ metadata : dict
     Metadata in JSON format (i.e. a nested dict).
 '''
 
+    # Handle changed names of metadata.
+    if "mc_cycles" in legacy_metadata:
+        legacy_metadata["ncycles"] = legacy_metadata["mc_cycles"]
+
+    # Convert single dict to nested.
     json_keys = {
         "system": ["nbasis", "nel", "nvirt", "Ms", "nalpha", "nbeta",
             "nvirt_alpha", "nvirt_beta", "nsym", "sym0", "sym_max", "nsym_tot",

@@ -280,12 +280,7 @@ None.
         if 'DMQMC' in md['calc_type'] and not md['dmqmc']['find_weights']:
             metadata.append(md)
             # Convert the iteration number to the beta value.
-            if 'qmc' in md:
-                # New style JSON-based metadata
-                tau = md['qmc']['tau']
-            else:
-                # Grudgingly support hacked old metadata extraction.
-                tau = md['tau']
+            tau = md['qmc']['tau']
             df.rename(columns={'iterations' : 'Beta'}, inplace=True)
             df['Beta'] = df['Beta']*tau
             data.append(df)
