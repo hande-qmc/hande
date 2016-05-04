@@ -154,12 +154,12 @@ metadata : dict
          }
 
     metadata = {key:{} for key in json_keys.keys()}
-    for main_key, keys in metadata:
-        for key in keys:
+    for main_key in metadata:
+        for key in json_keys[main_key]:
             if key in legacy_metadata:
                 metadata[main_key][key] = legacy_metadata[key]
 
-    return legacy_metadata
+    return metadata
 
 def extract_input(metadata, variable):
     '''Extract input information about specific variable.
