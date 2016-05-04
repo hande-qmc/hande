@@ -105,6 +105,7 @@ vquick =   ccmc/np1/Ne-RHF-cc-pVDZ-Lz-CCSDTQ5-multispawn-short
            fci/H2-RHF-cc-pVTZ-Lz/
            fci/H2O-RHF-sto-2g
            fci/H2O-RHF-sto-2g-complex
+           fci/H2O-RHF-sto-2g-contiguous-broadcast
            fci/heisenberg_1d_fci
            fci/heisenberg_1d_fci_rdm
            fci/heisenberg_1d_finite_cluster_fci
