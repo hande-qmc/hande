@@ -75,14 +75,9 @@ Umrigar93
     for (md, df) in hande_out:
         if any(calc in md['calc_type'] for calc in ('FCIQMC', 'CCMC')):
             if reweight_history > 0:
-                if 'mc_cycles' in md:
-                    df = pyhande.weight.reweight(df, md['mc_cycles'],
-                        md['tau'], reweight_history, mean_shift,
-                        arith_mean=arith_mean)
-                else:
-                    df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
-                        md['qmc']['tau'], reweight_history, mean_shift,
-                        arith_mean=arith_mean)
+                df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
+                    md['qmc']['tau'], reweight_history, mean_shift,
+                    arith_mean=arith_mean)
                 df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
                 df['W * N_0'] = df['N_0'] * df['Weight']
             data.append(df)
@@ -133,10 +128,7 @@ Umrigar93
 
         if calc_inefficiency:
             # Calculate quantities needed for the inefficiency.
-            if 'qmc' in md:
-                dtau = md['qmc']['tau']
-            else:
-                dtau = md['tau']
+            dtau = md['qmc']['tau']
             reblocked_iters = calc.ix[indx, 'iterations']
             N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
             
@@ -144,7 +136,6 @@ Umrigar93
             ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
             if ineff is not None:
                 opt_block = opt_block.append(ineff)
-
 
         estimates = []
         for (name, row) in opt_block.iterrows():
