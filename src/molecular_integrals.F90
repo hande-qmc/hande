@@ -200,7 +200,7 @@ contains
             nintgrls = (npairs*(npairs+1))/2
         end if
 
-        if (nintgrls > sys%read_in%max_block_size .and. parent .and. (.not.store%comp .or. .not.store%imag)) then
+        if (nintgrls > sys%read_in%max_broadcast_chunk .and. parent .and. (.not.store%comp .or. .not.store%imag)) then
 #ifdef SINGLE_PRECISION
             mem_reqd = (nintgrls*4*nspin)/10**6
 #else
@@ -1080,7 +1080,7 @@ contains
 
     end subroutine broadcast_one_body_t
 
-    subroutine broadcast_two_body_t(store, data_proc, max_block_size)
+    subroutine broadcast_two_body_t(store, data_proc, max_broadcast_chunk)
 
         ! Broadcast the integral store from data_proc to all processors.
         ! In/Out:
@@ -1089,7 +1089,7 @@ contains
         !       copy of the integral store.
         ! In:
         !    data_proc: processor on which the integral store is already filled.
-        !    max_block_size: maximum number of integral values to broadcast together in
+        !    max_broadcast_chunk: maximum number of integral values to broadcast together in
         !       contiguous mpi datatype.
         use parallel
         use const, only: p, dp, int_64
@@ -1097,7 +1097,7 @@ contains
         use errors, only: warning
 
         type(two_body_t), intent(inout) :: store
-        integer, intent(in) :: data_proc, max_block_size
+        integer, intent(in) :: data_proc, max_broadcast_chunk
 #ifdef PARALLEL
         integer :: i, ierr, nblocks, nnext, mpi_preal_block, optimal_block_size
         integer(int_64) :: nmain
@@ -1107,7 +1107,7 @@ contains
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
             ! Only use chunked broadcasting if have more elements than can broadcast in
             ! single MPI call.
-            if (size(store%integrals(i)%v, kind=int_64) > max_block_size) then
+            if (size(store%integrals(i)%v, kind=int_64) > max_broadcast_chunk) then
                 ! Broadcasting more elements than mpi supports by default- can only take 32-bit
                 ! size parameter in MPI_BCast.
 
@@ -1121,15 +1121,15 @@ contains
                     ! of block_size - 1.
                     ! In comparison, calculating the optimal block size reduces this maximum to
                     ! nblocks - 1 (this is currently used).
-                    call get_optimal_integral_block(size(ints, kind=int_64), max_block_size, nblocks, &
+                    call get_optimal_integral_block(size(ints, kind=int_64), max_broadcast_chunk, nblocks, &
                                                 optimal_block_size, mpi_preal_block)
                     nmain = int(nblocks, kind=int_64) * int(optimal_block_size, kind=int_64)
                     nnext = int(size(ints, kind=int_64) - nmain)
 
                     if (parent) then
                         write(6,'(1X,a21,/,1X,21("-"),/)') 'Integral Broadcasting'
-                        write(6,'(1X,"Integral array larger than max_block_size ",i0,".",&
-                                    &/,1X,"Using contiguous MPI types for broadcast.",/)') max_block_size
+                        write(6,'(1X,"Integral array larger than max_broadcast_chunk ",i0,".",&
+                                    &/,1X,"Using contiguous MPI types for broadcast.",/)') max_broadcast_chunk
                         write(6,'(1X,"Broadcasting coulomb integrals using ",i4," blocks of size ",&
                                     &es11.4E3,".")') nblocks, real(optimal_block_size)
                         write(6,'(1X,"This corresponds to ", es11.4E3," integrals in the main broadcast "&
@@ -1174,13 +1174,13 @@ contains
     end subroutine broadcast_two_body_t
 
 #ifdef PARALLEL
-    subroutine get_optimal_integral_block(nints, max_block_size, nblocks, optimal_block_size, &
+    subroutine get_optimal_integral_block(nints, max_broadcast_chunk, nblocks, optimal_block_size, &
                                         mpi_preal_block)
         ! For a given number of integrals and maximum block size calculate block number and
         ! size that (approximately) minimises the size of integral remainder to be broadcast.
         ! In:
         !   nints: total number of integrals to be broadcast.
-        !   max_block_size: maximum number of integral values to broadcast in a single
+        !   max_broadcast_chunk: maximum number of integral values to broadcast in a single
         !       mpi contiguous type.
         ! Out:
         !   nblocks: number of contiguous type blocks to broadcast in.
@@ -1193,12 +1193,12 @@ contains
         use const, only: int_32, int_64
         use parallel
         integer(int_64), intent(in) :: nints
-        integer, intent(in) :: max_block_size
+        integer, intent(in) :: max_broadcast_chunk
         integer, intent(out) :: nblocks, optimal_block_size, mpi_preal_block
         integer :: ierr
 
-        ! First calculate the largest number of max_block_sizes that don't exceed nints.
-        nblocks = nints / max_block_size
+        ! First calculate the largest number of max_broadcast_chunk that don't exceed nints.
+        nblocks = nints / max_broadcast_chunk
         ! Now use more blocks than this.
         nblocks = nblocks + 1
         ! Finally calculate the block size that gives the smallest residual array size to be

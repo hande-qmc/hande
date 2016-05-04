@@ -107,6 +107,18 @@ Options
     and if the FCIDUMP supplied is complex-formatted. Currently only compatible with
     fci calculations.
 
+``max_integral_chunk``
+    type: integer
+
+    Optional. Default :math:`2^{31} - 1`.
+
+    Maximum number of MPI objects to broadcast in a single call for two body integrals.
+    Above this value a contiguous MPI type is used instead.
+
+    .. warning::
+
+        This functionality is included only for ease of testing. It should not be used
+        for production calculations.
 
 :math:`L_z` symmetry
 --------------------

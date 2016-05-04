@@ -290,7 +290,7 @@ type sys_read_in_t
     ! Size above which to use custom MPI type for broadcasting integer arrays.
     ! This is needed if size of array exceeds values that can be stored in a
     ! 32 bit integer.
-    integer :: max_block_size = (2_int_64**31)-1_int_64
+    integer :: max_broadcast_chunk = (2_int_64**31)-1_int_64
 
 end type sys_read_in_t
 

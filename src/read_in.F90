@@ -711,10 +711,10 @@ contains
         call MPI_BCast(sys%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
         call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
-        call broadcast_two_body_t(sys%read_in%coulomb_integrals, root, sys%read_in%max_block_size)
+        call broadcast_two_body_t(sys%read_in%coulomb_integrals, root, sys%read_in%max_broadcast_chunk)
         if (sys%read_in%comp) then
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
-            call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_block_size)
+            call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
         end if
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then

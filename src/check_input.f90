@@ -63,8 +63,8 @@ contains
 
         if (sys%system == ringium .and. sys%ringium%radius < depsilon) call stop_all(this, 'Ringium must have a positive radius.')
 
-        if (sys%system == read_in .and. sys%read_in%max_block_size /= ((2_int_64**31) - 1_int_64)) &
-            call warning(this, '# Not using default max_block_size. This option is only intended for testing of &
+        if (sys%system == read_in .and. sys%read_in%max_broadcast_chunk /= ((2_int_64**31) - 1_int_64)) &
+            call warning(this, '# Not using default max_broadcast_chunk. This option is only intended for testing of &
                 &broadcasting functionality and gives no benefit to functionality.')
 
     end subroutine check_sys

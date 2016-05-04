@@ -599,10 +599,10 @@ module hdf5_system
 
             ! Broadcast integrals.
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
-            call broadcast_two_body_t(sys%read_in%coulomb_integrals, root, sys%read_in%max_block_size)
+            call broadcast_two_body_t(sys%read_in%coulomb_integrals, root, sys%read_in%max_broadcast_chunk)
             if (sys%read_in%comp) then
                 call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
-                call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_block_size)
+                call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_broadcast_chunk)
             end if
             if (parent) then
                 if (verbose_t) then
