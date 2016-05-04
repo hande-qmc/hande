@@ -287,6 +287,11 @@ type sys_read_in_t
     ! Is system complex?
     logical :: comp = .false.
 
+    ! Size above which to use custom MPI type for broadcasting integer arrays.
+    ! This is needed if size of array exceeds values that can be stored in a
+    ! 32 bit integer.
+    integer :: max_block_size = (2_int_64**31)-1_int_64
+
 end type sys_read_in_t
 
 type sys_ringium_t

@@ -564,16 +564,15 @@ module hdf5_system
             call init_excitations(sys%basis)
             call init_pg_symmetry(sys, .true.)
 
-            call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
+            call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                 .false., sys%read_in%one_e_h_integrals)
-            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
+            call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                 .false., sys%read_in%coulomb_integrals)
             if (sys%read_in%comp) then
-                call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                                    sys%read_in%pg_sym%nbasis_sym_spin, .true., &
-                                    sys%read_in%one_e_h_integrals_imag)
-                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
-                                     sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
+                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
+                                    .true., sys%read_in%one_e_h_integrals_imag)
+                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym,&
+                                    .true., sys%read_in%coulomb_integrals_imag)
             end if
 
             if (parent) then
@@ -600,10 +599,10 @@ module hdf5_system
 
             ! Broadcast integrals.
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
-            call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
+            call broadcast_two_body_t(sys%read_in%coulomb_integrals, root, sys%read_in%max_block_size)
             if (sys%read_in%comp) then
                 call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
-                call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
+                call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_block_size)
             end if
             if (parent) then
                 if (verbose_t) then
@@ -634,8 +633,8 @@ module hdf5_system
                         sp_fcidump_rank(i) = i
                     end do
                 end if
-                call read_in_one_body(sys%read_in%dipole_int_file, sys%basis%nbasis, sys%basis%basis_fns, &
-                                      sys%read_in%pg_sym, sys%read_in%uhf, sp_fcidump_rank, sys%nel - sys%cas(1), &
+                call read_in_one_body(sys%read_in%dipole_int_file, sys, &
+                                      sp_fcidump_rank, sys%nel, &
                                       sys%read_in%one_body_op_integrals, sys%read_in%dipole_core)
                 deallocate(sp_fcidump_rank, stat=ierr)
                 call check_deallocate('sp_fcidump_rank', ierr)

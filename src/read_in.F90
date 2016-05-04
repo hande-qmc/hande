@@ -335,16 +335,15 @@ contains
 
         ! Initialise integral stores.
         if (t_store) then
-            call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
+            call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                  .false., sys%read_in%one_e_h_integrals)
-            call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
+            call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                  .false., sys%read_in%coulomb_integrals)
             if (sys%read_in%comp) then
-                call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, &
-                    sys%read_in%pg_sym%nbasis_sym_spin, .true., &
-                    sys%read_in%one_e_h_integrals_imag)
-                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
-                                 sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
+                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
+                    .true., sys%read_in%one_e_h_integrals_imag)
+                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym,&
+                                 .true., sys%read_in%coulomb_integrals_imag)
             end if
         end if
 
@@ -712,10 +711,10 @@ contains
         call MPI_BCast(sys%read_in%Ecore, 1, mpi_preal, root, MPI_COMM_WORLD, ierr)
 #endif
         call broadcast_one_body_t(sys%read_in%one_e_h_integrals, root)
-        call broadcast_two_body_t(sys%read_in%coulomb_integrals, root)
+        call broadcast_two_body_t(sys%read_in%coulomb_integrals, root, sys%read_in%max_block_size)
         if (sys%read_in%comp) then
             call broadcast_one_body_t(sys%read_in%one_e_h_integrals_imag, root)
-            call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root)
+            call broadcast_two_body_t(sys%read_in%coulomb_integrals_imag, root, sys%read_in%max_block_size)
         end if
 
         if (size(sys%basis%basis_fns) /= size(all_basis_fns) .and. parent .and. t_verbose) then
@@ -741,8 +740,8 @@ contains
         end if
 
         if (t_store .and. sys%read_in%dipole_int_file /= '') then
-            call read_in_one_body(sys%read_in%dipole_int_file, sys%basis%nbasis, sys%basis%basis_fns, sys%read_in%pg_sym, &
-                                  sys%read_in%uhf, sp_fcidump_rank, active_basis_offset, sys%read_in%one_body_op_integrals, &
+            call read_in_one_body(sys%read_in%dipole_int_file, sys, &
+                                  sp_fcidump_rank, active_basis_offset, sys%read_in%one_body_op_integrals, &
                                   sys%read_in%dipole_core)
         end if
 
@@ -823,7 +822,7 @@ contains
 
     end subroutine init_basis_fns_read_in
 
-    subroutine read_in_one_body(integral_file, nbasis, basis_fns, pg_sym, uhf, sp_fcidump_rank, active_basis_offset, &
+    subroutine read_in_one_body(integral_file, sys, sp_fcidump_rank, active_basis_offset, &
                                 store, core_term)
 
         ! Read in an integral file containing the integrals <i|O|a>, where O is
@@ -839,11 +838,11 @@ contains
 
         ! In:
         !    integral_file: file containing integrals.
-        !    nbasis: number of (spin) basis functions.
-        !    basis_fns: list of single-particle basis functions.
-        !    pg_sym: information on the symmetries of the basis functions.
-        !    uhf: true if integrals generated from a unrestricted (UHF)
-        !         calculation.
+        !    sys: object containing information on the system. We use:
+        !           -sys%basis%nbasis
+        !           -sys%basis%basis_fns
+        !           -sys%read_in%uhf
+        !           -sys%read_in%pg_sym
         !    sp_fcidump_rank: ranking array which converts index in the
         !         integrals file(s) to the (energy-ordered) index used in HANDE,
         !         i.e. sp_fcidump_rank(a) = i, where a is the a-th
@@ -868,14 +867,13 @@ contains
         use parallel
         use utils, only: get_free_unit, int_fmt
         use errors, only: warning
+        use system, only: sys_t
 
         use, intrinsic :: iso_fortran_env, only: iostat_end
 
         character(*), intent(in) :: integral_file
-        logical, intent(in) :: uhf
-        integer, intent(in) :: nbasis, sp_fcidump_rank(0:), active_basis_offset
-        type(basis_fn_t), intent(in) :: basis_fns(:)
-        type(pg_sym_t), intent(in) :: pg_sym
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: sp_fcidump_rank(0:), active_basis_offset
         type(one_body_t), intent(out) :: store
         real(p), intent(out) :: core_term
 
@@ -890,7 +888,7 @@ contains
         int_err = 0
         max_err_msg = 10
 
-        if (uhf) then
+        if (sys%read_in%uhf) then
             rhf_fac = 1
         else
             rhf_fac = 2  ! need to double count some integrals.
@@ -917,7 +915,7 @@ contains
             end do
             ! We only use Abelian symmetries so all representations are their own
             ! inverse.
-            op_sym = cross_product_pg_basis(pg_sym, ii,aa,basis_fns)
+            op_sym = cross_product_pg_basis(sys%read_in%pg_sym, ii,aa,sys%basis%basis_fns)
         else
             ! We'll broadcast the symmetry and the integrals to all other
             ! processors later.
@@ -926,7 +924,7 @@ contains
 
         ! Allocate integral store on *all* processors.
         if (allocated(store%integrals)) call end_one_body_t(store)
-        call init_one_body_t(uhf, op_sym, pg_sym%nbasis_sym_spin, .false., store)
+        call init_one_body_t(sys, op_sym, .false., store)
         ! Integrals might be allowed by symmetry (and hence stored) but still
         ! be zero (and so not be included in the integral file).  To protect
         ! ourselves against accessing uninitialised memory:
@@ -973,8 +971,9 @@ contains
                     core_term = core_term + x
                 else if (ii < 1 .and. ii == aa) then
                     core_term = core_term + rhf_fac*x
-                else if (min(ii,aa) >= 1 .and. max(ii,aa) <= nbasis) then
-                    call store_one_body_int_mol(ii, aa, x, basis_fns, pg_sym, int_err > max_err_msg, store, ierr)
+                else if (min(ii,aa) >= 1 .and. max(ii,aa) <= sys%basis%nbasis) then
+                    call store_one_body_int_mol(ii, aa, x, sys%basis%basis_fns, sys%read_in%pg_sym, &
+                                            int_err > max_err_msg, store, ierr)
                     int_err = int_err + ierr
                 end if
             end do

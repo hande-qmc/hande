@@ -523,6 +523,7 @@ contains
         !        sym = S,
         !        CAS = {cas1, cas2}
         !        complex = true/false,
+        !        max_block_size = block_size,
         !    }
 
         use, intrinsic :: iso_c_binding, only: c_ptr, c_int
@@ -550,8 +551,8 @@ contains
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
-        character(15), parameter :: keys(11) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
-                                                                'sym', 'ms', 'CAS', 'complex', 'verbose']
+        character(15), parameter :: keys(12) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+                                                                'sym', 'ms', 'CAS', 'complex', 'verbose', 'max_block_size']
 
         call cpu_time(t1)
 
@@ -569,6 +570,8 @@ contains
         call aot_get_val(sys%read_in%fcidump, err, lua_state, opts, 'int_file')
 
         call aot_get_val(sys%read_in%dipole_int_file, err, lua_state, opts, 'dipole_int_file')
+
+        call aot_get_val(sys%read_in%max_block_size, err, lua_state, opts, 'max_block_size')
 
         if (parent) then
             ! Verify that the specified file exists and check whether it is HDF5 or text.
