@@ -47,7 +47,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 5:
         print('Usage:', sys.argv[0], 'fci_file beta_min beta_max nbeta')
         print(r'Evaluate E(\beta) from the output of an FCI calculation '
-              'contained in fci_file produced by hubbard.x, between beta_min '
+              'contained in fci_file produced by HANDE, between beta_min '
               'and beta_max in steps of (beta_max-beta_min)/(nbeta-1).')
         sys.exit(1)
 
