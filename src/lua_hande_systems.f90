@@ -551,7 +551,7 @@ contains
         logical :: new, new_basis, verbose, hdf5, t_exists
         integer :: err
 
-        character(15), parameter :: keys(12) = [character(15) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
+        character(20), parameter :: keys(12) = [character(20) :: 'sys', 'nel', 'electrons', 'int_file', 'dipole_int_file', 'Lz', &
                                                                 'sym', 'ms', 'CAS', 'complex', 'verbose', 'max_broadcast_chunk']
 
         call cpu_time(t1)

@@ -3,7 +3,7 @@ sys = read_in {
     nel = 10,
     ms = 0,
     sym = 0,
-    max_integral_chunk = 10,
+    max_broadcast_chunk = 10,
 }
 
 fci {
