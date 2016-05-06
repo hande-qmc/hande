@@ -1101,7 +1101,6 @@ contains
 #ifdef PARALLEL
         integer :: i, ierr, nblocks, nnext, mpi_preal_block, optimal_block_size
         integer(int_64) :: nmain
-        real(p), allocatable :: remainder(:)
 
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
@@ -1142,17 +1141,10 @@ contains
                     ! In some compilers (intel) array slicing into mpi calls leads to creation
                     ! of a temporary array the size of the full integral list, so we instead
                     ! copy the remainder to a separate allocatable array and minimise its size.
-                    allocate(remainder(1:nnext), stat=ierr)
-                    call check_allocate('remainder', nnext, ierr)
-                    ! Copy last nnext values into remainder array.
-                    remainder = ints(nmain+1:size(ints, kind=int_64))
-                    ! Broadcast remainder array.
-                    call MPI_BCast(remainder, nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
-                    ! Copy values back to integral array on all nodes.
-                    ints(nmain+1:size(ints, kind=int_64)) = remainder
-                    ! Finally tidy up mpi types and temporary arrays.
-                    deallocate(remainder, stat=ierr)
-                    call check_deallocate('remainder', ierr)
+
+                    ! Broadcast remainder.
+                    call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                    ! Finally tidy up mpi types.
                     call mpi_type_free(mpi_preal_block, ierr)
                     if (parent) then
                         write(6, '(/,1X,"Broadcasting completed.")')
