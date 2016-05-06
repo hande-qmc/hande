@@ -1,32 +1,21 @@
 #!/usr/bin/env python
 
 import numpy
+import sys
+import os
+
+_script_dir = os.path.dirname(os.path.abspath(__file__))
 try:
     import matplotlib.pyplot as plt
     USE_MATPLOTLIB = True
 except ImportError:
     USE_MATPLOTLIB = False
-import sys
+try:
+    import pyhande
+except ImportError:
+    sys.path.append(os.path.join(_script_dir, '../pyhande'))
+    import pyhande
 
-def extract_spectrum(fci_file):
-
-    f = open(fci_file)
-
-    have_data = False
-    spectrum = []
-    for line in f:
-        if not line.strip():
-            # empty line signals end of spectrum output
-            have_data = False
-        elif have_data:
-            spectrum.append(float(line.split()[-1]))
-        elif 'Total energy' in line:
-            # start of spectrum output
-            have_data = True
-
-    f.close()
-
-    return spectrum
 
 def finite_temp_energy(beta, spectrum):
 
@@ -37,6 +26,7 @@ def finite_temp_energy(beta, spectrum):
         s1 += e*eigv
         s2 += e
     return s1/s2
+
 
 def propogate_spectrum(beta_min, beta_max, nbeta, spectrum):
 
@@ -56,7 +46,9 @@ if __name__ == '__main__':
 
     if len(sys.argv) != 5:
         print('Usage:', sys.argv[0], 'fci_file beta_min beta_max nbeta')
-        print(r'Evaluate E(\beta) from the output of an FCI calculation contained in fci_file produced by hubbard.x, between beta_min and beta_max in steps of (beta_max-beta_min)/(nbeta-1).')
+        print(r'Evaluate E(\beta) from the output of an FCI calculation '
+              'contained in fci_file produced by HANDE, between beta_min '
+              'and beta_max in steps of (beta_max-beta_min)/(nbeta-1).')
         sys.exit(1)
 
     (fci_file, beta_min, beta_max, nbeta) = sys.argv[1:]
@@ -64,5 +56,13 @@ if __name__ == '__main__':
     beta_max = float(beta_max)
     nbeta = float(nbeta)
 
-    spectrum = extract_spectrum(fci_file)
+    spectrum = None
+    for (md, calc) in pyhande.extract.extract_data(fci_file):
+        print md, calc
+        if md['calc_type'] == 'FCI':
+            spectrum = calc
+            break
+    if spectrum is None:
+        raise RuntimeError('%s does not contain an FCI calculation.'%(fci_file))
+
     propogate_spectrum(beta_min, beta_max, nbeta, spectrum)
