@@ -38,12 +38,14 @@ contains
         use hamiltonian_ringium, only: slater_condon2_ringium_excit
         use dSFMT_interface, only: dSFMT_t
         use excit_gen_ueg, only: choose_ij_k
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -65,11 +67,11 @@ contains
             call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
             ! 4. find the connecting matrix element.
-            hmatel = slater_condon2_ringium_excit(sys, connection%from_orb(1), connection%from_orb(2), &
+            hmatel%r = slater_condon2_ringium_excit(sys, connection%from_orb(1), connection%from_orb(2), &
                         connection%to_orb(1), connection%to_orb(2), connection%perm)
         else
             pgen = 1.0_p
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
         end if
 
     end subroutine gen_excit_ringium_no_renorm

@@ -28,15 +28,16 @@ contains
         use determinants, only: decode_det
         use excitations, only: excit_t, get_excitation
         use system, only: sys_t
+        use hamiltonian_data
 
-        complex(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
 
         type(excit_t) :: excitation
         integer :: occ_list(sys%nel)
 
-        hmatel = cmplx(0.0, 0.0, p)
+        hmatel%c = cmplx(0.0, 0.0, p)
 
         ! Test to see if matrix element is non-zero.
         excitation = get_excitation(sys%nel, sys%basis, f1, f2)
@@ -50,13 +51,13 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel = cmplx(slater_condon0_mol_complex(sys, f1), 0.0_p, p)
+                hmatel%c = cmplx(slater_condon0_mol_complex(sys, f1), 0.0_p, p)
 
             case(1)
 
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
                 call decode_det(sys%basis, f1, occ_list)
-                hmatel = slater_condon1_mol_complex(sys, occ_list, excitation%from_orb(1), &
+                hmatel%c = slater_condon1_mol_complex(sys, occ_list, excitation%from_orb(1), &
                                             excitation%to_orb(1), excitation%perm)
 
             case(2)
@@ -64,7 +65,7 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
-                hmatel = slater_condon2_mol_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                hmatel%c = slater_condon2_mol_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             case default
                 ! If f1 & f2 differ by more than two spin orbitals integral value is zero.

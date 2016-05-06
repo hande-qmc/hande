@@ -41,6 +41,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
@@ -49,11 +50,11 @@ contains
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         integer :: bit_position, bit_element
 
-        hmatel = 0.0_p
+        hmatel%r = 0.0_p
 
         if (excitation%nexcit == 0) then
             ! Have reference determinant.
@@ -66,8 +67,8 @@ contains
             bit_element = sys%basis%bit_lookup(2,excitation%from_orb(1))
 
             if (btest(sys%real_lattice%connected_orbs(bit_element, excitation%to_orb(1)), bit_position)) then
-                 hmatel = -sys%heisenberg%J/2
-                 proj_energy_sum = proj_energy_sum + hmatel*pop
+                 hmatel%r = -sys%heisenberg%J/2
+                 proj_energy_sum = proj_energy_sum + hmatel%r*pop
              end if
         end if
 
@@ -121,6 +122,7 @@ contains
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use system, only: sys_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f0(:)
@@ -129,7 +131,7 @@ contains
         real(p), intent(in) :: pop
         real(p), intent(inout) :: D0_pop_sum, proj_energy_sum
         type(excit_t), intent(inout) :: excitation
-        real(p), intent(out) :: hmatel
+        type(hmatel_t), intent(out) :: hmatel
 
         integer :: n, lattice_1_up, lattice_2_up
 
@@ -158,7 +160,7 @@ contains
 
         ! Firstly, consider the diagonal term:
         ! We have <D_j|H|D_j> stored, so this is simple:
-        hmatel = wfn_dat(n) * cdet%data(1)
+        hmatel%r = wfn_dat(n) * cdet%data(1)
 
         ! Now consider off-diagonal contributions, |D_i> /= |D_j>.
         ! To create a connected |D_i> from |D_j>, simply find a pair of anti-parallel
@@ -176,12 +178,12 @@ contains
         ! matrix element is -J/2, and we can put this together...
 
         ! From 0-1 bonds where the 1 is on sublattice 1, we have:
-        hmatel = hmatel - (sys%heisenberg%J * lattice_1_up * wfn_dat(n-1))/2
+        hmatel%r = hmatel%r - (sys%heisenberg%J * lattice_1_up * wfn_dat(n-1))/2
 
         ! And from 1-0 bond where the 1 is on sublattice 2, we have:
-        hmatel = hmatel - (sys%heisenberg%J * lattice_2_up * wfn_dat(n+1))/2
+        hmatel%r = hmatel%r - (sys%heisenberg%J * lattice_2_up * wfn_dat(n+1))/2
 
-        proj_energy_sum = proj_energy_sum + hmatel * pop
+        proj_energy_sum = proj_energy_sum + hmatel%r * pop
 
         ! Now we just need to find the contribution to the denominator. The total
         ! denominator is

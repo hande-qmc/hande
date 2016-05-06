@@ -78,7 +78,7 @@ contains
 
         use determinants, only: spin_orb_list, encode_det, write_det
         use determinant_enumeration, only: enumerate_determinants, print_dets_list
-        use hamiltonian, only: get_hmatel
+        use hamiltonian, only: get_hmatel, get_hmatel_complex
         use reference_determinant, only: reference_t, set_reference_det
         use symmetry, only: symmetry_orb_list
 
@@ -87,6 +87,7 @@ contains
         use parallel, only: parent
 
         use system, only: sys_t, set_spin_polarisation
+        use hamiltonian_data
 
         type(sys_t), intent(inout) :: sys
         type(fci_in_t), intent(in) :: fci_in
@@ -98,6 +99,7 @@ contains
         integer :: iunit, ref_ms, ref_sym
         logical :: spin_flip
         integer(i0) :: f0(sys%basis%string_len)
+        type(hmatel_t) :: hmatel
 
         if (parent) then
             write (6,'(1X,"FCI")')
@@ -135,7 +137,13 @@ contains
         end if
         if (allocated(ref%occ_list0)) then
             call encode_det(sys%basis, ref%occ_list0, f0)
-            ref%H00 = get_hmatel(sys, f0, f0)
+            if (sys%read_in%comp) then
+                hmatel = get_hmatel_complex(sys, f0, f0)
+                ref%H00 = hmatel%c
+            else
+                hmatel = get_hmatel(sys, f0, f0)
+                ref%H00 = hmatel%r
+            end if
         end if
 
         if (parent) call fci_json(sys, fci_in, ref)
@@ -229,6 +237,7 @@ contains
 
         use real_lattice
         use system, only: sys_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: ndets
@@ -239,7 +248,7 @@ contains
         integer :: ierr
         integer :: i, j, ii, jj, ilocal, iglobal, jlocal, jglobal, nnz, imode
         logical :: sparse_mode
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
 
         hamil%comp = sys%read_in%comp
         if (present(use_sparse_hamil)) then
@@ -298,9 +307,13 @@ contains
                             jlocal = j - 1 + jj
                             jglobal = (j-1)*proc_blacs_info%nproc_cols + proc_blacs_info%procy*proc_blacs_info%block_size + jj
                             if (hamil%comp) then
-                                hamil%cmat(ilocal, jlocal) = get_hmatel_complex(sys, dets(:,iglobal), dets(:,jglobal))
+                                hmatel = get_hmatel_complex(sys, dets(:,iglobal), dets(:,jglobal))
+                                hamil%cmat(ilocal, jlocal) = hmatel%c
+
                             else
-                                hamil%rmat(ilocal, jlocal) = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
+                                hmatel = get_hmatel(sys, dets(:,iglobal), dets(:,jglobal))
+                                hamil%rmat(ilocal, jlocal) = hmatel%r
+
                             end if
                         end do
                     end do
@@ -324,11 +337,11 @@ contains
                         !$omp do private(j, hmatel) schedule(dynamic, 200)
                         do j = ii, ndets
                             hmatel = get_hmatel(sys, dets(:,i), dets(:,j))
-                            if (abs(hmatel) > depsilon) then
+                            if (abs(hmatel%r) > depsilon) then
                                 !$omp critical
                                 nnz = nnz + 1
                                 if (imode == 2) then
-                                    hamil%smat%mat(nnz) = hmatel
+                                    hamil%smat%mat(nnz) = hmatel%r
                                     hamil%smat%col_ind(nnz) = j
                                     if (hamil%smat%row_ptr(i) == 0) hamil%smat%row_ptr(i) = nnz
                                 end if
@@ -362,9 +375,13 @@ contains
                 !$omp do private(j) schedule(dynamic, 200)
                 do j = ii, ndets
                     if (hamil%comp) then
-                        hamil%cmat(i,j) = get_hmatel_complex(sys,dets(:,i),dets(:,j))
+                        hmatel = get_hmatel_complex(sys,dets(:,i),dets(:,j))
+                        hamil%cmat(i,j) = hmatel%c
+
                     else
-                        hamil%rmat(i,j) = get_hmatel(sys,dets(:,i),dets(:,j))
+                        hmatel = get_hmatel(sys,dets(:,i),dets(:,j))
+                        hamil%rmat(i,j) = hmatel%r
+
                     end if
                 end do
                 !$omp end do

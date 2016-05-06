@@ -611,6 +611,7 @@ contains
         use proc_pointers, only: update_proj_energy_ptr
         use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
         use system, only: sys_t
+        use hamiltonian_data
 
 
         type(sys_t), intent(in) :: sys
@@ -623,8 +624,7 @@ contains
         real(dp) :: ntot_particles(qs%psip_list%nspaces)
         real(p) :: real_population(qs%psip_list%nspaces), weighted_population(qs%psip_list%nspaces)
         type(det_info_t) :: cdet
-        real(p) :: hmatel
-        complex(p) :: hmatel_comp
+        type(hmatel_t) :: hmatel
         type(excit_t) :: D0_excit
         logical :: nb_comm_local
 #ifdef PARALLEL
@@ -655,7 +655,7 @@ contains
                 call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                             cmplx(weighted_population(1), weighted_population(2), p), &
                             qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
-                            D0_excit, hmatel_comp)
+                            D0_excit, hmatel)
             else
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
                                         qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, &

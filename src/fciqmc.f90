@@ -66,6 +66,7 @@ contains
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use energy_evaluation, only: update_proj_energy_mol_complex
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -94,7 +95,7 @@ contains
         integer(int_p) ::  ndeath, ndeath_im
         integer :: nattempts_current_det, nspawn_events
         type(excit_t) :: connection
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         real(p), allocatable :: real_population(:), weighted_population(:)
         integer :: send_counts(0:nprocs-1), req_data_s(0:nprocs-1)
         type(annihilation_flags_t) :: annihilation_flags
@@ -107,7 +108,6 @@ contains
         real :: t1, t2
 
         logical :: update_tau, restarting
-        complex(p) :: hmatel_comp
 
         if (parent) then
             write (6,'(1X,"FCIQMC")')
@@ -235,7 +235,7 @@ contains
                         call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                                                     cmplx(weighted_population(1), weighted_population(2), p), &
                                                     qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
-                                                    connection, hmatel_comp)
+                                                    connection, hmatel)
                     else
                         call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
                                                     qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
@@ -427,6 +427,7 @@ contains
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
         use energy_evaluation, only: update_proj_energy_mol_complex
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -437,13 +438,12 @@ contains
         integer(int_p), intent(inout) :: ndeath
 
         type(excit_t) :: connection
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         integer :: idet, iparticle, nattempts_current_det, ispace
         integer(int_p) :: nspawned, nspawned_im, scratch
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
-        complex(p) :: hmatel_comp
 
         allocate(cdet%f(sys%basis%tensor_label_len))
         allocate(cdet%data(1))
@@ -468,7 +468,7 @@ contains
                 call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
                                             cmplx(real_pop(1), real_pop(2), p), &
                                             qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
-                                            connection, hmatel_comp)
+                                            connection, hmatel)
             else
                 call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop(1), qs%estimators%D0_population, &
                                             qs%estimators%proj_energy, connection, hmatel)

@@ -59,6 +59,7 @@ contains
         use excit_gens, only: excit_gen_data_t
         use hamiltonian_ueg, only: slater_condon2_ueg_excit
         use system, only: sys_t
+        use hamiltonian_data
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use bit_utils
@@ -67,7 +68,8 @@ contains
         type(excit_gen_data_t), intent(in) :: excit_gen_data
         type(det_info_t), intent(in) :: cdet
         type(dSFMT_t), intent(inout) :: rng
-        real(p), intent(out) :: pgen, hmatel
+        real(p), intent(out) :: pgen
+        type(hmatel_t), intent(out) :: hmatel
         type(excit_t), intent(out) :: connection
         logical, intent(out) :: allowed_excitation
 
@@ -88,7 +90,7 @@ contains
             pgen = calc_pgen_ueg_no_renorm(sys, max_na, ij_spin)
 
             call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
-            hmatel = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%to_orb(2), &
+            hmatel%r = slater_condon2_ueg_excit(sys, connection%from_orb(1), connection%to_orb(1), connection%to_orb(2), &
                 connection%perm)
 
 
@@ -96,7 +98,7 @@ contains
 
             ! Carelessly selected ij with no available excitations.  Not worth
             ! renormalising.  Discard: return a null excitation.
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
             pgen = 1.0_p
 
         end if

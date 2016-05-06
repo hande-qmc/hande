@@ -403,6 +403,7 @@ contains
         use spawn_data, only: spawn_t
         use dmqmc_data, only: dmqmc_in_t
         use symmetry, only: symmetry_orb_list
+        use hamiltonian_data
 
         type(sys_t), intent(inout) :: sys
         type(qmc_state_t), intent(in) :: qmc_state
@@ -416,7 +417,8 @@ contains
         integer :: thread_id = 0, proc
         integer(i0) :: f_new(sys%basis%string_len)
         real(p), target :: tmp_data(1)
-        real(p) :: pgen, hmatel, E_new, E_old, prob
+        real(p) :: pgen, E_new, E_old, prob
+        type(hmatel_t) :: hmatel
         real(dp) :: r
         type(det_info_t) :: cdet
         type(excit_t) :: connection
@@ -458,7 +460,7 @@ contains
                         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
                         ! Check that we didn't generate a null excitation.
                         ! [todo] - Modify accordingly if pgen is ever calculated in for the ueg.
-                        if (abs(hmatel) < depsilon) cycle
+                        if (abs(hmatel%r) < depsilon) cycle
                         nsuccess = nsuccess + 1
                         call create_excited_det(sys%basis, cdet%f, connection, f_new)
                     end if

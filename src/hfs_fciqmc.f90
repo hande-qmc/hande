@@ -61,6 +61,7 @@ contains
         use restart_hdf5, only: dump_restart_hdf5, restart_info_t, init_restart_info_t
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t
         use reference_determinant, only: reference_t
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -79,7 +80,7 @@ contains
         integer :: nspawn_events
         type(excit_t) :: connection
         type(dSFMT_t) :: rng
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(excit_t), parameter :: null_excit = excit_t( 0, [0,0], [0,0], .false.)
         type(qmc_state_t), target :: qs
         type(annihilation_flags_t) :: annihilation_flags

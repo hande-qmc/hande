@@ -492,6 +492,7 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: update_proj_energy_ptr
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
@@ -501,7 +502,7 @@ contains
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
@@ -538,6 +539,7 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: update_proj_energy_ptr, sc0_ptr
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(excit_t), intent(inout) :: excitation
@@ -547,7 +549,7 @@ contains
         real(p), intent(inout) :: trace(:)
         real(p), intent(inout) :: energy
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
@@ -564,6 +566,7 @@ contains
         ! For the Heisenberg model only.
         ! Add the contribution from the current density matrix element to the
         ! thermal energy squared estimate.
+
 
         ! In:
         !    sys: system being studied.
@@ -1406,6 +1409,7 @@ contains
         use system, only: sys_t
         use excitations, only: excit_t
         use proc_pointers, only: sc0_ptr, update_proj_energy_ptr, trial_dm_ptr
+        use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
         type(det_info_t), intent(in) :: cdet
@@ -1414,7 +1418,8 @@ contains
         real(p), intent(in) :: tdiff
         real(p), intent(inout) :: HI_energy
 
-        real(p) :: diff_ijab, hmatel, trace(2), energy
+        real(p) :: diff_ijab, trace(2), energy
+        type(hmatel_t) :: hmatel
         ! Importance sampling (in the FCIQMC-sense) isn't used in DMQMC...
         real(p) :: trial_wfn_dat(0)
 
@@ -1425,12 +1430,12 @@ contains
         ! Hamiltonian matrix element.
         call update_proj_energy_ptr(sys, cdet%f2, trial_wfn_dat, cdet, pop, trace(1), energy, excitation, hmatel)
         if (excitation%nexcit == 0) then
-            hmatel = sc0_ptr(sys, cdet%f)
+            hmatel%r = sc0_ptr(sys, cdet%f)
         else
             diff_ijab = trial_dm_ptr(sys, cdet%f) - trial_dm_ptr(sys, cdet%f2)
         end if
 
-        HI_energy = HI_energy + exp(-tdiff*diff_ijab)*hmatel*pop
+        HI_energy = HI_energy + exp(-tdiff*diff_ijab)*hmatel%r*pop
 
     end subroutine update_dmqmc_HI_energy
 

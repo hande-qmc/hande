@@ -32,14 +32,15 @@ contains
         use excitations, only: excit_t, get_excitation
         use hamiltonian_hub_real, only: slater_condon1_hub_real
         use system, only: sys_t
+        use hamiltonian_data
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         logical :: non_zero
         type(excit_t) :: excitation
 
-        hmatel = 0.0_p
+        hmatel%r = 0.0_p
         non_zero = .false.
 
         ! Test to see if Hamiltonian matrix element is non-zero.
@@ -61,12 +62,12 @@ contains
         case(0)
 
             ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-            hmatel = slater_condon0_chung_landau(sys, f1)
+            hmatel%r = slater_condon0_chung_landau(sys, f1)
 
         case(1)
 
             ! Identical to the Hubbard model in a local orbital basis.
-            hmatel = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
+            hmatel%r = slater_condon1_hub_real(sys, excitation%from_orb(1), excitation%to_orb(1), excitation%perm)
 
 !        case(2)
 

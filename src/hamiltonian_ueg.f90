@@ -24,8 +24,9 @@ contains
 
         use excitations, only: excit_t, get_excitation
         use system, only: sys_t
+        use hamiltonian_data
 
-        real(p) :: hmatel
+        type(hmatel_t) :: hmatel
         type(sys_t), intent(in) :: sys
         integer(i0), intent(in) :: f1(sys%basis%string_len), f2(sys%basis%string_len)
         type(excit_t) :: excitation
@@ -50,18 +51,18 @@ contains
         case(0)
 
             ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-            hmatel = slater_condon0_ueg(sys, f1)
+            hmatel%r = slater_condon0_ueg(sys, f1)
 
         case(2)
 
             ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
             ! Two electron operator
-            hmatel = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
+            hmatel%r = slater_condon2_ueg(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                       & excitation%to_orb(1), excitation%to_orb(2),excitation%perm)
         case default
 
-            hmatel = 0.0_p
+            hmatel%r = 0.0_p
 
         end select
 
