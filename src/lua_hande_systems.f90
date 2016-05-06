@@ -892,7 +892,7 @@ contains
         ! In/Out:
         !   L: lua state (bare C pointer).
 
-        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_loc
+        use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_f_pointer, c_null_ptr
         use flu_binding, only: flu_State, flu_copyptr, flu_pushstring, flu_pushlightuserdata, flu_settable
         use aot_table_ops_module, only: aot_table_top
         use aot_table_module, only: aot_get_val, aot_table_close
@@ -922,7 +922,7 @@ contains
 
         ! Update table with deallocated pointer.
         call flu_pushstring(lua_state, "sys")
-        call flu_pushlightuserdata(lua_state, c_loc(sys))
+        call flu_pushlightuserdata(lua_state, c_null_ptr)
         call flu_settable(lua_state, sys_table)
 
         call aot_table_close(lua_state, sys_table)
