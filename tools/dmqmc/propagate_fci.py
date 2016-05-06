@@ -56,5 +56,13 @@ if __name__ == '__main__':
     beta_max = float(beta_max)
     nbeta = float(nbeta)
 
-    spectrum = pyhande.extract.extract_data(fci_file)[0][1]
+    spectrum = None
+    for (md, calc) in pyhande.extract.extract_data(fci_file):
+        print md, calc
+        if md['calc_type'] == 'FCI':
+            spectrum = calc
+            break
+    if spectrum is None:
+        raise RuntimeError('%s does not contain an FCI calculation.'%(fci_file))
+
     propogate_spectrum(beta_min, beta_max, nbeta, spectrum)
