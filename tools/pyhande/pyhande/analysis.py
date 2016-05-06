@@ -311,7 +311,7 @@ Vigor16
                                                  +(opt_block['standard error error']['N_0'] / opt_block['standard error']['N_0'])**2 )
         # In principle the number of iterations is also a variable with error, but we don't have a way to estimate it alas.
         err_ineff = inefficiency * numpy.sqrt(  (err_err_proj_e / err_proj_e)**2
-                                              + (0.5 * err_Np / err_Np)**2 )
+                                              + (0.5 * err_Np / Np)**2 )
         d = pd.DataFrame(data={'mean':inefficiency, 'standard error':err_ineff}, index = ['Inefficiency'])
         return d
     except KeyError as e:
