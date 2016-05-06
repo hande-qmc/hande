@@ -1138,11 +1138,14 @@ contains
 
                     call MPI_BCast(ints, nblocks, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
                     ! Finally broadcast the remaining values not included in previous block.
-                    ! In some compilers (intel) array slicing into mpi calls leads to creation
-                    ! of a temporary array the size of the full integral list, so we instead
-                    ! copy the remainder to a separate allocatable array and minimise its size.
+                    ! In some compilers (intel) passing array slices into mpi calls leads to
+                    ! creation of a temporary array the size of the full integral list. To
+                    ! avoid this we instead use assumed-size property of arrays in MPI.
+                    ! If we move to the mpi_f08 binding in future assumed-shape arrays are used
+                    ! so this approach will no longer work. However, the explicit interface
+                    ! to MPI_BCast will enable array slicing without risk of array temporary
+                    ! creation.
 
-                    ! Broadcast remainder.
                     call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
                     ! Finally tidy up mpi types.
                     call mpi_type_free(mpi_preal_block, ierr)
