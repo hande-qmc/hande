@@ -200,6 +200,7 @@ contains
             nintgrls = (npairs*(npairs+1))/2
         end if
 
+        ! [review] - JSS: is it worth printing this out even if max_broadcast_chunk is not exceeded?
         if (nintgrls > sys%read_in%max_broadcast_chunk .and. parent .and. (.not.store%comp .or. .not.store%imag)) then
 #ifdef SINGLE_PRECISION
             mem_reqd = (nintgrls*4*nspin)/10**6
@@ -1091,6 +1092,7 @@ contains
         !    data_proc: processor on which the integral store is already filled.
         !    max_broadcast_chunk: maximum number of integral values to broadcast together in
         !       contiguous mpi datatype.
+
         use parallel
         use const, only: p, dp, int_64
         use checking, only: check_allocate, check_deallocate
@@ -1171,6 +1173,7 @@ contains
 #ifdef PARALLEL
     subroutine get_optimal_integral_block(nints, max_broadcast_chunk, nblocks, optimal_block_size, &
                                         mpi_preal_block)
+
         ! For a given number of integrals and maximum block size calculate block number and
         ! size that (approximately) minimises the size of integral remainder to be broadcast.
         ! In:
@@ -1181,9 +1184,7 @@ contains
         !   nblocks: number of contiguous type blocks to broadcast in.
         !   optimal_block_size: optimal number of elements to broadcast in each block.
         !   mpi_preal_block: custom mpi type identifier for type of size specified in
-        !       optimal_block_size.
-
-
+        !       optimal_block_size.  Must be freed with MPI_Type_Free when no longer needed.
 
         use const, only: int_32, int_64
         use parallel
@@ -1202,6 +1203,7 @@ contains
         ! Initialise the mpi custom type of appropriate size for this block.
         call mpi_type_contiguous(optimal_block_size, mpi_preal, mpi_preal_block, ierr)
         call mpi_type_commit(mpi_preal_block, ierr)
+
     end subroutine get_optimal_integral_block
 #endif
 
