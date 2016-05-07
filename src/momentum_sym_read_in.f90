@@ -33,16 +33,17 @@ contains
         deallocate(nbasis_sym, stat=ierr)
         call check_deallocate('nbasis_sym',ierr)
 
-        allocate(sys%read_in%mom_sym%basis_sym(sys%nsym,sys%read_in%mom_sym%nbands), stat=ierr)
-        call check_allocate('basis_sym',sys%nsym*sys%read_in%mom_sym%nbands,ierr)
+        allocate(sys%read_in%mom_sym%sym_spin_basis(sys%read_in%mom_sym%nbands, 2, sys%nsym), stat=ierr)
+        call check_allocate('basis_sym',sys%nsym*sys%read_in%mom_sym%nbands*2, ierr)
 
         allocate(current_index(sys%nsym), stat=ierr)
         call check_allocate('current_index',sys%nsym,ierr)
         current_index = 1
 
-        associate(basis_sym=>sys%read_in%mom_sym%basis_sym, basis_fns=>sys%basis%basis_fns)
+        associate(sym_spin_basis=>sys%read_in%mom_sym%sym_spin_basis, basis_fns=>sys%basis%basis_fns)
             do i = 1, sys%basis%nbasis/2
-                basis_sym(basis_fns(2*i-1)%sym, current_index(basis_fns(2*i-1)%sym)) = i
+                sym_spin_basis(current_index(basis_fns(2*i-1)%sym), 2, basis_fns(2*i-1)%sym) = 2*i-1
+                sym_spin_basis(current_index(basis_fns(2*i)%sym), 1, basis_fns(2*i)%sym) = 2*i
                 basis_fns(2*i-1:2*i)%sym_spin_index = current_index(basis_fns(2*i-1)%sym)
                 current_index(basis_fns(2*i-1)%sym) = current_index(basis_fns(2*i-1)%sym) + 1
             end do
@@ -87,9 +88,28 @@ contains
         is_gamma_sym = all(modulo(sym, mom_sym%nprop) == mom_sym%gamma_point)
     end function is_gamma_sym_periodic_read_in
 
+    pure function mom_sym_conj(mom_sym, sym) result(rsym)
+        use symmetry_types, only: mom_sym_t
+        type(mom_sym_t), intent(in) :: mom_sym
+        integer, intent(in) :: sym
+        integer :: rsym
+
+        rsym = mom_sym%inv_sym(sym)
+    end function mom_sym_conj
+
 ! Various possible cross products to be cut down later when decide what we actually need.
 
-    pure function cross_product_abelian_basis(mom_sym, b1, b2, basis_fns) result(prod)
+    pure function cross_product_periodic_read_in(mom_sym, a1, a2) result(prod)
+        use symmetry_types, only: mom_sym_t
+        type(mom_sym_t), intent(in) :: mom_sym
+        integer, intent(in) :: a1, a2
+        integer :: prod
+
+        prod = mom_sym%sym_table(a1, a2)
+
+    end function cross_product_periodic_read_in
+
+    pure function cross_product_periodic_basis(mom_sym, b1, b2, basis_fns) result(prod)
         use basis_types, only: basis_fn_t
         use symmetry_types, only: mom_sym_t
         type(mom_sym_t), intent(in) :: mom_sym
@@ -97,9 +117,9 @@ contains
         type(basis_fn_t), intent(in) :: basis_fns(:)
         integer :: prod
 
-        prod = mom_sym%sym_table(basis_fns(b1)%sym, basis_fns(b2)%sym)
+        prod = cross_product_periodic_read_in(mom_sym, basis_fns(b1)%sym, basis_fns(b2)%sym)
 
-    end function cross_product_abelian_basis
+    end function cross_product_periodic_basis
 
     pure subroutine cross_product_read_in_abelian(nprop, a1, a2, prod)
 

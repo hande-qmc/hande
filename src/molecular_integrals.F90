@@ -452,6 +452,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use symmetry_types, only: mom_sym_t
+        use momentum_sym_read_in, only: cross_product_periodic_read_in, mom_sym_conj
 
         use const, only: depsilon
         use errors, only: warning, stop_all
@@ -474,9 +475,10 @@ contains
         ! Currently inefficient for complex as will check symmetry when storing real and
         ! imaginary components of same integral.
 
-        ! as dealing with complex plain waves, sym(i*) = inv_sym(i), so just need sym(i) == sym(a)
+        ! as dealing with complex plane waves, sym(i*) = inv_sym(i), so just need sym(i) == sym(a)
 
-        if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+        if (mom_sym_conj(mom_sym, basis_fns(i)%sym) == mom_sym%inv_sym(basis_fns(j)%sym) &
+            .and. basis_fns(i)%ms == basis_fns(j)%ms) then
             ! Integral is (should be!) non-zero by symmetry.
             if (store%uhf) call stop_all('store_one_body_int_mol_periodic', &
                         'Attempting UHF in periodic system; not currently supported')
@@ -619,7 +621,7 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
-        use momentum_sym_read_in, only: cross_product_abelian_basis
+        use momentum_sym_read_in, only: mom_sym_conj
         use symmetry_types, only: mom_sym_t
 
         real(p) :: intgrl
@@ -628,7 +630,8 @@ contains
         type(one_body_t), intent(in) :: store
         integer, intent(in) :: i, j
 
-        if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+        if (mom_sym_conj(mom_sym, basis_fns(i)%sym) == mom_sym%inv_sym(basis_fns(j)%sym) &
+                .and. basis_fns(i)%ms == basis_fns(j)%ms) then
             intgrl = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
         else
             intgrl = 0.0_p
@@ -654,7 +657,7 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
-        use momentum_sym_read_in, only: cross_product_read_in_abelian, is_gamma_sym_periodic_read_in
+        use momentum_sym_read_in, only: mom_sym_conj
         use symmetry_types, only: mom_sym_t
 
         complex(p) :: intgrl
@@ -664,7 +667,8 @@ contains
         type(one_body_t), intent(in) :: store, im_store
         integer, intent(in) :: i, j
 
-        if (basis_fns(i)%sym == basis_fns(j)%sym .and. basis_fns(i)%ms == basis_fns(j)%ms) then
+        if (mom_sym_conj(mom_sym, basis_fns(i)%sym) == mom_sym%inv_sym(basis_fns(j)%sym) &
+                .and. basis_fns(i)%ms == basis_fns(j)%ms) then
             re = get_one_body_int_mol_nonzero(store, i, j, basis_fns)
             im = get_one_body_int_mol_nonzero(im_store, i, j, basis_fns)
             intgrl = cmplx(re, im, p)
@@ -1163,7 +1167,7 @@ contains
 
         use basis_types, only: basis_fn_t
         use symmetry_types, only: mom_sym_t
-        use momentum_sym_read_in, only: cross_product_abelian_basis
+        use momentum_sym_read_in, only: cross_product_periodic_basis, mom_sym_conj
 
         use const, only: depsilon
         use errors, only: warning
@@ -1183,10 +1187,10 @@ contains
 
         ! Should integral be non-zero by symmetry?
 
-        sym_ij = cross_product_abelian_basis(mom_sym, i, j, basis_fns)
-        sym_ab = cross_product_abelian_basis(mom_sym, a, b, basis_fns)
+        sym_ij = cross_product_periodic_basis(mom_sym, i, j, basis_fns)
+        sym_ab = cross_product_periodic_basis(mom_sym, a, b, basis_fns)
         ! as dealing with complex plain waves, sym(i*) = inv_sym(i), so just need sym(ij) == sym(ab)
-        if (sym_ij == sym_ab .and. basis_fns(i)%ms == basis_fns(a)%ms &
+        if (mom_sym_conj(mom_sym, sym_ij) == mom_sym%inv_sym(sym_ab) .and. basis_fns(i)%ms == basis_fns(a)%ms &
                                        .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             call store_two_body_int_nonzero(i, j, a, b, intgrl, basis_fns, store, ierr)
         else if (abs(intgrl) > depsilon) then
@@ -1302,7 +1306,7 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
-        use momentum_sym_read_in, only: cross_product_abelian_basis
+        use momentum_sym_read_in, only: cross_product_periodic_basis, mom_sym_conj
         use symmetry_types, only: mom_sym_t
 
         real(p) :: intgrl
@@ -1313,9 +1317,9 @@ contains
 
         integer :: sym_ij, sym_ab
 
-        sym_ij = cross_product_abelian_basis(mom_sym, i, j, basis_fns)
-        sym_ab = cross_product_abelian_basis(mom_sym, a, b, basis_fns)
-        if (sym_ij == sym_ab .and. basis_fns(i)%ms == basis_fns(a)%ms &
+        sym_ij = cross_product_periodic_basis(mom_sym, i, j, basis_fns)
+        sym_ab = cross_product_periodic_basis(mom_sym, a, b, basis_fns)
+        if (mom_sym_conj(mom_sym, sym_ij) == mom_sym%inv_sym(sym_ab) .and. basis_fns(i)%ms == basis_fns(a)%ms &
                                        .and. basis_fns(j)%ms == basis_fns(b)%ms) then
             intgrl = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
         else
@@ -1343,7 +1347,7 @@ contains
         !    It is also faster to call RHF- or UHF-specific routines.
 
         use basis_types, only: basis_fn_t
-        use momentum_sym_read_in, only: cross_product_abelian_basis
+        use momentum_sym_read_in, only: cross_product_periodic_basis, mom_sym_conj
         use symmetry_types, only: mom_sym_t
 
         complex(p) :: intgrl
@@ -1353,9 +1357,12 @@ contains
         type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: i, j, a, b
 
-        if (cross_product_abelian_basis(mom_sym, i, j, basis_fns) == &
-                cross_product_abelian_basis(mom_sym, a, b, basis_fns) .and. &
-                basis_fns(j)%ms == basis_fns(b)%ms) then
+        integer :: sym_ij, sym_ab
+
+        sym_ij = cross_product_periodic_basis(mom_sym, i, j, basis_fns)
+        sym_ab = cross_product_periodic_basis(mom_sym, a, b, basis_fns)
+        if (mom_sym_conj(mom_sym, sym_ij) == mom_sym%inv_sym(sym_ab) .and. basis_fns(j)%ms == basis_fns(b)%ms &
+                                .and. basis_fns(i)%ms == basis_fns(a)%ms) then
             re = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
             im = get_two_body_int_mol_nonzero(im_store, i, j, a, b, basis_fns)
             intgrl = cmplx(re, im, p)

@@ -55,6 +55,7 @@ contains
 
         use point_group_symmetry, only: cross_product_pg_sym
         use momentum_symmetry, only: cross_product_hub_k, cross_product_ueg
+        use momentum_sym_read_in, only: cross_product_periodic_read_in
         use system
 
         integer :: prod
@@ -67,7 +68,11 @@ contains
         case(ueg)
             prod = cross_product_ueg(sys, s1, s2)
         case(read_in)
-            prod = cross_product_pg_sym(sys%read_in%pg_sym, s1, s2)
+            if (sys%momentum_space) then
+                prod = cross_product_periodic_read_in(sys%read_in%mom_sym, s1, s2)
+            else
+                prod = cross_product_pg_sym(sys%read_in%pg_sym, s1, s2)
+            end if
         case default
             ! symmetry not implemented
             prod = sys%sym0
