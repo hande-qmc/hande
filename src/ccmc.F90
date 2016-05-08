@@ -309,7 +309,7 @@ contains
         use spawn_data, only: calc_events_spawn_t, write_memcheck_report
 
         use qmc_data, only: qmc_in_t, ccmc_in_t, semi_stoch_in_t, restart_in_t
-        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t
+        use qmc_data, only: load_bal_in_t, qmc_state_t, annihilation_flags_t, estimators_t
         use qmc_data, only: qmc_in_t_json, ccmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_ccmc_opts
@@ -355,6 +355,7 @@ contains
         type(annihilation_flags_t) :: annihilation_flags
         type(restart_info_t) :: ri, ri_shift
         character(36) :: uuid_restart
+        type(estimators_t) :: estimators_cycle
 
         real :: t1, t2
 
@@ -364,7 +365,7 @@ contains
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
-        real(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old
+        real(p) :: proj_energy_old
 
         if (parent) then
             write (6,'(1X,"CCMC")')
@@ -613,16 +614,16 @@ contains
                 !$omp        max_cluster_size, cdet, cluster, &
                 !$omp        D0_normalisation, D0_pos, nD0_select, qs,               &
                 !$omp        sys, bloom_threshold, bloom_stats,                      &
-                !$omp        proj_energy_cycle, min_cluster_size,       &
+                !$omp        estimators_cycle, min_cluster_size,       &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
                 !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
                 !$omp        right_cluster, nprocs, ms_stats, qmc_in, load_bal_in,   &
-                !$omp        nparticles_change, ndeath, D0_population_cycle)
+                !$omp        nparticles_change, ndeath)
                 it = get_thread_id()
                 iexcip_pos = 0
                 seen_D0 = .false.
-                D0_population_cycle = 0.0_p
-                proj_energy_cycle = 0.0_p
+                estimators_cycle%D0_population = 0.0_p
+                estimators_cycle%proj_energy = 0.0_p
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn)
                 do iattempt = 1, nclusters
 
@@ -671,8 +672,8 @@ contains
                             ! the cluster.
                             connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%ref%f0)
                             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet(it), &
-                                     cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect, &
-                                     D0_population_cycle, proj_energy_cycle, connection, junk)
+                                     [cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect], &
+                                     estimators_cycle, connection, junk)
                         end if
 
                         ! Spawning
@@ -749,8 +750,8 @@ contains
                 !$omp end parallel
 
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
-                qs%estimators%D0_population = qs%estimators%D0_population + D0_population_cycle
-                qs%estimators%proj_energy = qs%estimators%proj_energy + proj_energy_cycle
+                qs%estimators%D0_population = qs%estimators%D0_population + estimators_cycle%D0_population
+                qs%estimators%proj_energy = qs%estimators%proj_energy + estimators_cycle%proj_energy
 
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.

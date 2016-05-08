@@ -65,7 +65,6 @@ contains
                             fciqmc_in_t_json, semi_stoch_in_t_json, restart_in_t_json, load_bal_in_t_json
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
-        use energy_evaluation, only: update_proj_energy_mol_complex
         use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
@@ -231,15 +230,8 @@ contains
                     ! start of the i-FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    if (sys%read_in%comp) then
-                        call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-                                                    cmplx(weighted_population(1), weighted_population(2), p), &
-                                                    qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
-                                                    connection, hmatel)
-                    else
-                        call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
-                                                    qs%estimators%D0_population, qs%estimators%proj_energy, connection, hmatel)
-                    end if
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
+                                                qs%estimators, connection, hmatel)
                     ! Is this determinant an initiator?
                     call set_parent_flag(real_population, qmc_in%initiator_pop, determ%flags(idet), qmc_in%quadrature_initiator, &
                                           cdet%initiator_flag)
@@ -426,7 +418,6 @@ contains
         use qmc_data, only: qmc_in_t, qmc_state_t
         use system, only: sys_t
         use qmc_common, only: decide_nattempts
-        use energy_evaluation, only: update_proj_energy_mol_complex
         use hamiltonian_data
 
         type(sys_t), intent(in) :: sys
@@ -464,15 +455,8 @@ contains
             ! already looping over the determinants.
             connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
 
-            if (sys%read_in%comp) then
-                call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
-                                            cmplx(real_pop(1), real_pop(2), p), &
-                                            qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
-                                            connection, hmatel)
-            else
-                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop(1), qs%estimators%D0_population, &
-                                            qs%estimators%proj_energy, connection, hmatel)
-            end if
+            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_pop, qs%estimators, &
+                                        connection, hmatel)
             ! Is this determinant an initiator?
             ! [todo] - pass determ_flag rather than 1.
             call set_parent_flag(real_pop, qmc_in%initiator_pop, 1, qmc_in%quadrature_initiator, cdet%initiator_flag)

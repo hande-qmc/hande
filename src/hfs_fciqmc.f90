@@ -163,9 +163,8 @@ contains
                     ! start of the FCIQMC cycle than at the end, as we're
                     ! already looping over the determinants.
                     connection = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_population(1),  &
-                                                qs%estimators%D0_population, qs%estimators%proj_energy, &
-                                                connection, hmatel)
+                    call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, real_population,  &
+                                                qs%estimators, connection, hmatel)
                     ! [todo] - JSS: pass real populations through to HFS projected energy update
                     call update_proj_hfs_ptr(sys, cdet%f, int(qs%psip_list%pops(1,idet)),&
                                              int(qs%psip_list%pops(2,idet)), cdet%data,  &
