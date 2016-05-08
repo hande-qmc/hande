@@ -932,15 +932,11 @@ contains
         type(sys_t), intent(in) :: sys
         integer, intent(in) :: a
 
-        integer :: ims, isym
-
         ! We explicitly reject excitations i->a where a is already
         ! occupied, so the generation probability, pgen, is simple:
         !   pgen = p_single p(i) p(a|i)
         !        = p_single 1/nel 1/nbasis_sym_spin(ms_i, sym_i)
 
-        ims = (sys%basis%basis_fns(a)%Ms+3)/2
-        isym = sys%basis%basis_fns(a)%sym
         pgen = 1.0_p/(sys%nel*sys%read_in%mom_sym%nbands)
 
     end function calc_pgen_single_periodic_no_renorm
