@@ -139,7 +139,8 @@ contains
 
             if (sys%read_in%mom_sym%sym_table(&
             sys%basis%basis_fns(connection%from_orb(1))%sym, sys%basis%basis_fns(connection%from_orb(2))%sym) /=&
-            sys%read_in%mom_sym%sym_table(sys%basis%basis_fns(connection%to_orb(1))%sym, sys%basis%basis_fns(connection%to_orb(2))%sym)) &
+            sys%read_in%mom_sym%sym_table(sys%basis%basis_fns(connection%to_orb(1))%sym, &
+                sys%basis%basis_fns(connection%to_orb(2))%sym)) &
                 call stop_all('gen_excit_periodic',"Double excitation doesn't conserve sym...")
         end if
 

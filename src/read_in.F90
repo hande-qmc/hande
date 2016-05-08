@@ -396,20 +396,18 @@ contains
             if (sys%momentum_space) then
                 call init_one_body_t_periodic(sys%sym0, sys%sym_max, sys%read_in%mom_sym%nbands, &
                                             .false., sys%read_in%one_e_h_integrals)
-                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
-                                     .false., sys%read_in%coulomb_integrals)
+                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%coulomb_integrals)
                 if (sys%read_in%comp) then
                     call init_one_body_t_periodic(sys%sym0, sys%sym_max, sys%read_in%mom_sym%nbands, &
                                                 .true., sys%read_in%one_e_h_integrals_imag)
-                    call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym,&
-                                     sys%read_in%comp, .true., sys%read_in%coulomb_integrals_imag)
+                    call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
+                                     .true., sys%read_in%coulomb_integrals_imag)
                 end if
             else
-                call init_one_body_t(sys%read_in%uhf, sys%read_in%pg_sym%gamma_sym, sys%read_in%pg_sym%nbasis_sym_spin, &
+                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                      .false., sys%read_in%one_e_h_integrals)
-                call init_two_body_t(sys%read_in%uhf, sys%basis%nbasis, sys%read_in%pg_sym%gamma_sym, sys%read_in%comp, &
+                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
                                      .false., sys%read_in%coulomb_integrals)
-
             end if
         end if
 
