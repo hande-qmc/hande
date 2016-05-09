@@ -529,6 +529,7 @@ module hdf5_system
 #ifdef PARALLEL
             ! Distribute values needed for initialisation on other processes.
             call MPI_BCast(sys%nel, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
+            call MPI_BCast(sys%ms, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%symmetry, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%read_in%uhf, 1, MPI_LOGICAL, root, MPI_COMM_WORLD, ierr)
             call MPI_BCast(sys%basis%nbasis, 1, MPI_INTEGER, root, MPI_COMM_WORLD, ierr)

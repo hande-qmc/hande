@@ -1,7 +1,5 @@
 system = {
     int_file = "INTDUMP.H2O.CC-PVDZ",
-    nel = 10,
-    ms = 0,
     sym = 0,
 }
 
