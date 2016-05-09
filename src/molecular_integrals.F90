@@ -200,8 +200,7 @@ contains
             nintgrls = (npairs*(npairs+1))/2
         end if
 
-        ! [review] - JSS: is it worth printing this out even if max_broadcast_chunk is not exceeded?
-        if (nintgrls > sys%read_in%max_broadcast_chunk .and. parent .and. (.not.store%comp .or. .not.store%imag)) then
+        if (parent .and. (.not.store%comp .or. .not.store%imag)) then
 #ifdef SINGLE_PRECISION
             mem_reqd = (nintgrls*4*nspin)/10**6
 #else

@@ -178,8 +178,6 @@ contains
         use errors
 
 #ifdef PARALLEL
-        ! [review] - JSS: ?!  appears unused.
-        use mpi, only: mpi_type_free
         integer :: ierr
 
         call mpi_finalize(ierr)
