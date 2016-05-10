@@ -1147,7 +1147,7 @@ contains
                     ! to MPI_BCast will enable array slicing without risk of array temporary
                     ! creation.
 
-                    call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                    if (nnext > 0) call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
                     ! Finally tidy up mpi types.
                     call mpi_type_free(mpi_preal_block, ierr)
                     if (parent) then
