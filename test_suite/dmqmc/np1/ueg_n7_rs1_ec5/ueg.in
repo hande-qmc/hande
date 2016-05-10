@@ -1,0 +1,99 @@
+sys = ueg {
+    nel = 7,
+    ms = 7,
+    sym = 1,
+    dim = 3,
+    cutoff = 4,
+    rs = 1,
+}
+
+qmc = {
+    tau = 0.001,
+    rng_seed = 7,
+    init_pop = 1e3,
+    mc_cycles = 10,
+    nreports = 100,
+    target_population = 1e3,
+    state_size = -200,
+    spawned_state_size = -100,
+}
+
+target_beta = 1
+
+ipdmqmc = {
+    initial_matrix = 'free_electron',
+    grand_canonical_initialisation = true,
+}
+
+dmqmc_base = {
+    fermi_temperature = true,
+    all_sym_sectors = true,
+    beta_loops = 1,
+}
+
+ipdmqmc = {
+    initial_matrix = 'free_electron',
+    grand_canonical_initialisation = true,
+    target_beta = target_beta,
+}
+
+operators = {
+    energy = true,
+    excit_dist = true,
+}
+
+-- Initial Run
+dmqmc {
+    sys = sys,
+    qmc = qmc,
+    dmqmc = dmqmc_base,
+    ipdmqmc = ipdmqmc,
+    operators = {
+        energy = true,
+        excit_dist = true,
+    },
+}
+
+-- Find weights
+dmqmc_rw = dmqmc_base
+dmqmc_rw.find_weights = true
+-- Vary weights / "average" weights for last iteration only.
+vw = math.floor(target_beta/qmc['tau'])
+dmqmc_rw.find_weights_start = vw
+dmqmc_rw.vary_weights = vw
+dmqmc_rw.beta_loops = 3
+operators.excit_dist = false
+
+qmc_state, weights = dmqmc {
+    sys = sys,
+    qmc = qmc,
+    dmqmc = dmqmc_rw,
+    ipdmqmc = ipdmqmc,
+    operators = operators,
+}
+
+qmc_state:free()
+
+-- Check excit dist
+dmqmc_rw.find_weights = "false"
+dmqmc_rw.sampling_weights = weights
+operators.excit_dist = true
+dmqmc_rw.beta_loops = 1
+dmqmc {
+    sys = sys,
+    qmc = qmc,
+    dmqmc = dmqmc_rw,
+    ipdmqmc = ipdmqmc,
+    operators = operators,
+}
+
+-- Run "production" calc
+dmqmc_rw.beta_loops = 2
+operators.excit_dist = false
+dmqmc {
+    sys = sys,
+    qmc = qmc,
+    dmqmc = dmqmc_rw,
+    ipdmqmc = ipdmqmc,
+    operators = operators,
+}
