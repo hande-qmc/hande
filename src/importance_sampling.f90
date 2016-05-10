@@ -212,8 +212,6 @@ contains
         type(excit_t), intent(in) :: connection
         real(p), allocatable, intent(in) :: trial_func(:)
         real(p), intent(inout) :: hmatel
-        integer(i0) :: f_new(sys%basis%string_len)
-        integer :: excit_level_old, excit_level_new
 
         call interaction_picture_reweighting_hartree_fock(sys, cdet, connection, trial_func, hmatel)
 
