@@ -202,9 +202,9 @@ contains
 
         if (parent .and. (.not.store%comp .or. .not.store%imag)) then
 #ifdef SINGLE_PRECISION
-            mem_reqd = (nintgrls*4*nspin)/10**6
+            mem_reqd = int((nintgrls*4*nspin)/10**6)
 #else
-            mem_reqd = (nintgrls*8*nspin)/10**6
+            mem_reqd = int((nintgrls*8*nspin)/10**6)
 #endif
             if (store%comp) mem_reqd = 2 * mem_reqd
             write(6,'(1X,a,i0)') 'Memory required for all two body integrals (MB) on each processor: ', &
@@ -1193,7 +1193,7 @@ contains
         integer :: ierr
 
         ! First calculate the largest number of max_broadcast_chunk that don't exceed nints.
-        nblocks = nints / max_broadcast_chunk
+        nblocks = int(nints / max_broadcast_chunk)
         ! Now use more blocks than this.
         nblocks = nblocks + 1
         ! Finally calculate the block size that gives the smallest residual array size to be

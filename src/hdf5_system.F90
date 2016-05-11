@@ -738,7 +738,7 @@ module hdf5_system
             type(hdf5_kinds_t), intent(in) :: kinds
             type(one_body_t), intent(inout) :: store
 
-            integer :: ispin, isym, nspin, dummy(2)
+            integer :: ispin, isym
             integer(int_64) :: s(1)
             character(155) :: dentr_name
 
