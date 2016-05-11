@@ -143,7 +143,7 @@ module hdf5_helper
 
             use hdf5, only: hsize_t, h5pcreate_f, h5pset_chunk_f, h5pset_deflate_f, H5P_DATASET_CREATE_F
 
-            integer(hid_t), intent(in) :: arr_rank
+            integer, intent(in) :: arr_rank
             integer(hsize_t), intent(in) :: arr_dim(:)
             integer(hid_t), intent(out) :: plist_id
             integer, intent(in), optional :: chunk_size, compress_lvl
