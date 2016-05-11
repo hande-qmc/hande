@@ -24,6 +24,7 @@ contains
         !    of all the orbitals in the list).
 
         use momentum_symmetry, only: symmetry_orb_list_hub_k, symmetry_orb_list_ueg
+        use momentum_sym_read_in, only: symmetry_orb_list_periodic_read_in
         use point_group_symmetry, only: symmetry_orb_list_mol
         use system
 
@@ -37,7 +38,11 @@ contains
         case(ueg)
             isym = symmetry_orb_list_ueg(sys, orb_list)
         case(read_in)
-            isym = symmetry_orb_list_mol(sys%read_in%pg_sym, sys%basis, orb_list)
+            if (sys%momentum_space) then
+                isym = symmetry_orb_list_periodic_read_in(sys%read_in%mom_sym, sys%basis, orb_list)
+            else
+                isym = symmetry_orb_list_mol(sys%read_in%pg_sym, sys%basis, orb_list)
+            end if
         case default
             ! symmetry not implemented
             isym = sys%sym0

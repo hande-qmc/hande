@@ -53,22 +53,23 @@ contains
         call check_deallocate('current_index',ierr)
     end subroutine init_basis_momentum_symmetry_info
 
-    pure function symmetry_orb_list_read_in(sys, orb_list) result(isym)
+    pure function symmetry_orb_list_periodic_read_in(mom_sym, basis, orb_list) result(isym)
         use const, only: int_64, p
-        type(sys_t), intent(in) :: sys
+        use symmetry_types, only: mom_sym_t
+        type(mom_sym_t), intent(in) :: mom_sym
+        type(basis_t), intent(in) :: basis
         integer, intent(in) :: orb_list(:)
-        integer :: isym(3)
+        integer :: isym
 
         integer :: i
 
-        call decompose_abelian_sym(sys%read_in%mom_sym%gamma_sym, &
-                sys%read_in%mom_sym%propbitlen, isym)
+        isym = int(mom_sym%gamma_sym)
         do i = lbound(orb_list, dim = 1), ubound(orb_list, dim = 1)
-            call cross_product_read_in_abelian(sys%read_in%mom_sym%nprop, &
-                sys%basis%basis_fns(orb_list(i))%l, isym, isym)
+            isym = cross_product_periodic_read_in(mom_sym, &
+                basis%basis_fns(orb_list(i))%sym, isym)
         end do
 
-    end function symmetry_orb_list_read_in
+    end function symmetry_orb_list_periodic_read_in
 
     pure subroutine get_kpoint_inverse(s1, nprop, inv)
         ! Takes quantum numbers corresponding to a single kpoint and finds inverse reciprocal
