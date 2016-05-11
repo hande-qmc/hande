@@ -207,7 +207,7 @@ contains
                 write (6,'(4X,a9,8X)', advance='no') "# H psips"
             end if
         end if
-        write (6,'(3X,"# states  # spawn_events  R_spawn   time")')
+        write (6,'(3X,"# states  # spawn_events  R_spawn    time")')
 
     end subroutine write_fciqmc_report_header
 
@@ -361,7 +361,7 @@ contains
                                              qs%estimators%proj_energy, qs%estimators%D0_population, &
                                              ntot_particles
         end if
-        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f6.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, &
+        write (6,'(2X,i10,4X,i12,2X,f7.4,2X,f7.3)') qs%estimators%tot_nstates, qs%estimators%tot_nspawn_events, &
                                              qs%spawn_store%rspawn, elapsed_time/qmc_in%ncycles
 
     end subroutine write_fciqmc_report
