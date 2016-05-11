@@ -22,7 +22,7 @@ contains
         ! Create a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element. This
         ! function is specifically for use with systems with complex coefficients
-        ! and hamiltonian elements.
+        ! and hamiltonian elements as well as periodic symmetry.
 
         ! In:
         !    sys: system object being studied.
@@ -95,15 +95,6 @@ contains
                 hmatel%c = cmplx(0.0_p, 0.0_p, p)
                 pgen = 1.0_p
             end if
-
-            if (&
-            sys%basis%basis_fns(connection%from_orb(1))%ms /= sys%basis%basis_fns(connection%to_orb(1))%ms) &
-                call stop_all('gen_excit_periodic',"Single excitation doesn't conserve spin...")
-
-            if (&
-            sys%basis%basis_fns(connection%from_orb(1))%sym /= sys%basis%basis_fns(connection%to_orb(1))%sym) &
-                call stop_all('gen_excit_periodic',"Single excitation doesn't conserve symmetry...")
-
         else
             ! 2b. Select orbitals to excite from and orbitals to excite into.
             call choose_ij_periodic(rng, sys, cdet%occ_list, connection%from_orb(1), connection%from_orb(2), ij_sym, ij_spin)
@@ -132,28 +123,16 @@ contains
                 hmatel%c = cmplx(0.0_p, 0.0_p, p)
                 pgen = 1.0_p
             end if
-            if (&
-            sys%basis%basis_fns(connection%from_orb(1))%ms + sys%basis%basis_fns(connection%from_orb(2))%ms /=&
-            sys%basis%basis_fns(connection%to_orb(1))%ms + sys%basis%basis_fns(connection%to_orb(2))%ms) &
-                call stop_all('gen_excit_periodic',"Double excitation doesn't conserve spin...")
-
-            if (sys%read_in%mom_sym%sym_table(&
-            sys%basis%basis_fns(connection%from_orb(1))%sym, sys%basis%basis_fns(connection%from_orb(2))%sym) /=&
-            sys%read_in%mom_sym%sym_table(sys%basis%basis_fns(connection%to_orb(1))%sym, &
-                sys%basis%basis_fns(connection%to_orb(2))%sym)) &
-                call stop_all('gen_excit_periodic',"Double excitation doesn't conserve sym...")
         end if
-
-
-        if (sum(cdet%symunocc(1,:))/= sum(cdet%symunocc(2,:))) &
-            call stop_all('gen_excit_periodic',"Determinant exciting from doesn't conserve spin...")
 
     end subroutine gen_excit_periodic_complex
 
     subroutine gen_excit_periodic_complex_no_renorm(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
-        ! of selecting that excitation and the Hamiltonian matrix element.
+        ! of selecting that excitation and the Hamiltonian matrix element. This
+        ! function is specifically for use with systems with complex coefficients
+        ! and hamiltonian elements as well as periodic symmetry.
 
         ! This doesn't exclude the case where, having selected all orbitals
         ! involved in the excitation, the final orbital selected is already
@@ -262,7 +241,7 @@ contains
     subroutine choose_ia_periodic(rng, sys, op_sym, f, occ_list, symunocc, i, a, allowed_excitation)
 
         ! Randomly choose a single excitation, i->a, of a determinant for
-        ! molecular systems.
+        ! periodic systems.
 
         ! In:
         !    sys: system object being studied.
@@ -281,7 +260,7 @@ contains
         !    a: previously unoccupied orbital into which an electron is excited.
         !        Not set if allowed_excitation is false.
         !    allowed_excitation: false if there are no possible single
-        !        excitations from the determinant which conserve spin and spatial
+        !        excitations from the determinant which conserve spin and periodic
         !        symmetry.
 
         use momentum_sym_read_in, only: cross_product_periodic_read_in
@@ -312,7 +291,7 @@ contains
         end do
 
         if (allowed_excitation) then
-            ! We could wrap around find_ia_mol, but it's more efficient to have
+            ! We could wrap around find_ia_periodic, but it's more efficient to have
             ! a custom generator instead.  The cost of an extra few lines is worth
             ! the speed...
 
@@ -358,8 +337,10 @@ contains
         ! Out:
         !    i, j: orbitals in determinant from which two electrons are excited.
         !        Note that i,j are ordered such that i<j.
-        !    ij_sym: symmetry conjugate of the irreducible representation spanned by the codensity
-        !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the excitation.)
+        !    ij_sym: symmetry of the irreducible representation spanned by the codensity
+        !        \phi_i*\phi_j. (We assume that ij is going to be in the bra of the
+        !        excitation, but due to momentum symmetry is easier to sym_ij = sym_ab
+        !        than check conj(sym_ij) = inv(sym_ab).)
         !    ij_spin: spin label of the combined ij codensity.
         !        ij_spin = -2   i,j both down
         !                =  0   i up and j down or vice versa
@@ -412,12 +393,12 @@ contains
         !    sys: system object being studied.
         !    f: bit string representation of the Slater determinant from which
         !        an electron is excited.
-        !    sym: irreducible representation spanned by the (i,j) codensity.
+        !    sym: representation spanned by the (i,j) codensity.
         !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
         !        and j are down, +2 if both are up and 0 otherwise.
         !    symunocc: number of unoccupied orbitals of each spin and
-        !        irreducible representation.  The same indexing scheme as
-        !        nbasis_sym_spin (in the point_group_symmetry module) is used.
+        !        representation.  The same indexing scheme as nbasis_sym_spin
+        !        (in the point_group_symmetry module) is used.
         ! In/Out:
         !    rng: random number generator.
         ! Out:
@@ -425,7 +406,7 @@ contains
         !        Note that a,b are ordered such that a<b.
         !        Not set if allowed_excitation is false.
         !    allowed_excitation: false if there are no possible (a,b) pairs
-        !        which conserve spin and spatial symmetry given the choice of
+        !        which conserve spin and momentum symmetry given the choice of
         !        (i,j).
 
         use system, only: sys_t
@@ -503,7 +484,7 @@ contains
         end select
 
         if (allowed_excitation) then
-            ! We could wrap around find_ab_mol, but it's more efficient to have
+            ! We could wrap around find_ab_periodic, but it's more efficient to have
             ! a custom generator instead.  The cost of an extra few lines is worth
             ! the speed...
 
@@ -551,7 +532,7 @@ contains
     subroutine find_ia_periodic(rng, sys, op_sym, f, occ_list, i, a, allowed_excitation)
 
         ! Randomly choose a single excitation, i->a, of a determinant for
-        ! molecular systems.  This routine does not reject a randomly selected
+        ! periodic systems.  This routine does not reject a randomly selected
         ! a if that orbital is already occupied, which makes the excitation
         ! generation and calculation of the generation probability simpler and
         ! faster.  The downside is that the sampling is substantially more
@@ -592,7 +573,7 @@ contains
         ! Select an occupied orbital at random.
         i = occ_list(int(get_rand_close_open(rng)*sys%nel)+1)
 
-        ! Conserve symmetry (spatial and spin) in selecting a.
+        ! Conserve symmetry (momentum and spin) in selecting a.
         ims = (sys%basis%basis_fns(i)%Ms+3)/2
         isym = cross_product_periodic_read_in(sys%read_in%mom_sym, sys%basis%basis_fns(i)%sym,op_sym)
         ind = int(sys%read_in%mom_sym%nbands*get_rand_close_open(rng))+1
@@ -611,7 +592,7 @@ contains
 
         ! Select a random pair of orbitals to excite into as part of a double
         ! excitation, given that the (i,j) pair of orbitals to excite from have
-        ! already been selected.  The spin and irreducible representation
+        ! already been selected.  The spin and representation
         ! spanned by the fourth orbital is completely determined by the choice
         ! of the first three orbitals in the double excitation.  This routine
         ! does not explicitly reject excitations where the fourth orbital chosen
@@ -624,7 +605,7 @@ contains
         ! In:
         !    f: bit string representation of the Slater determinant from which
         !        an electron is excited.
-        !    sym: sym conjugate of the irreducible representation spanned by the (i,j) codensity.
+        !    sym: sym of the irreducible representation spanned by the (i,j) codensity.
         !    spin: spin label of the selected (i,j) pair.  Set to -2 if both ia
         !        and j are down, +2 if both are up and 0 otherwise.
         !    basis: set of one-particle basis functions and related information.
@@ -636,7 +617,7 @@ contains
         !        Note that a,b are ordered such that a<b.
         !        Not necessarily set if allowed_excitation is false.
         !    allowed_excitation: false if there are no possible (a,b) pairs
-        !        which conserve spin and spatial symmetry given the choice of
+        !        which conserve spin and momentum symmetry given the choice of
         !        (i,j) or given the choice of (i,j,a).
 
         use basis_types, only: basis_t
@@ -736,7 +717,7 @@ contains
         !    occ_list: integer list of occupied spin-orbitals in the determinant.
         !        (min length: sys%nel.)
         !    symunocc: number of unoccupied orbitals of each spin and
-        !        irreducible representation.  The same indexing scheme as
+        !        symmetry.  The same indexing scheme as
         !        nbasis_sym_spin (in the point_group_symmetry module) is used.
         !    a: previously unoccupied orbital into which an electron is excited.
         ! Returns:
@@ -773,7 +754,8 @@ contains
         ni = sys%nel
         do i = 1, sys%nel
             ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
-            isym = cross_product_periodic_read_in(sys%read_in%mom_sym, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
+            isym = cross_product_periodic_read_in(sys%read_in%mom_sym, &
+                    sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims,isym) == 0) ni = ni - 1
         end do
 

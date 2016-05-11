@@ -9,6 +9,12 @@ implicit none
 contains
 
     subroutine init_basis_momentum_symmetry_info(sys)
+        ! Initialises all required information for use of basis kpoint symmetry.
+
+        ! In/Out:
+        !   sys: system being studied. On output all information about basis function
+        !       symmetry in read_in%mom_sym set as required.
+
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -51,9 +57,21 @@ contains
 
         deallocate(current_index, stat=ierr)
         call check_deallocate('current_index',ierr)
+
     end subroutine init_basis_momentum_symmetry_info
 
     pure function symmetry_orb_list_periodic_read_in(mom_sym, basis, orb_list) result(isym)
+
+        ! In:
+        !   mom_sym: basis function symmetry information.
+        !   orb_list: list of orbitals (eg. in determinant).
+        ! Returns:
+        !   symmetry index of list (direct product of representation of all
+        !       substituent orbitals.
+
+        ! For momentum symmetry in real (read in from an FCIDUMP), periodic
+        ! systems.
+
         use const, only: int_64, p
         use symmetry_types, only: mom_sym_t
         type(mom_sym_t), intent(in) :: mom_sym
@@ -71,36 +89,59 @@ contains
 
     end function symmetry_orb_list_periodic_read_in
 
-    pure subroutine get_kpoint_inverse(s1, nprop, inv)
-        ! Takes quantum numbers corresponding to a single kpoint and finds inverse reciprocal
-        ! lattice vector.
-        integer, intent(in) :: s1, nprop
-        integer, intent(out) :: inv
-
-        inv = nprop - s1
-    end subroutine get_kpoint_inverse
-
     pure function is_gamma_sym_periodic_read_in(mom_sym, sym) result(is_gamma_sym)
+        ! Checks if symmetry given is the gamma point symmetry.
+        ! In:
+        !   mom_sym: basis function symmetry information.
+        !   sym: kpoint to compare, expressed via 3 integers.
+        ! Returns:
+        !   true: if symmetry provided is gamma sym.
+        !   false: otherwise.
+
+        ! For momentum symmetry in real (read in from an FCIDUMP), periodic
+        ! systems.
+
         use symmetry_types, only: mom_sym_t
         type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: sym(3)
         logical :: is_gamma_sym
 
         is_gamma_sym = all(modulo(sym, mom_sym%nprop) == mom_sym%gamma_point)
+
     end function is_gamma_sym_periodic_read_in
 
     pure function mom_sym_conj(mom_sym, sym) result(rsym)
+        ! Returns symmetry of complex conjugate of provided sym.
+        ! Since using complex plane waves, e^(ik.r), this will in
+        ! general be e^(-ik.r) so just return inverse symmetry.
+
+        ! In:
+        !   mom_sym: basis function symmetry information.
+        !   sym: symmetry to compare.
+        ! Returns:
+        !   Symmetry of complex conjugate of sym.
+
+        ! For momentum symmetry in real (read in from an FCIDUMP), periodic
+        ! systems.
+
         use symmetry_types, only: mom_sym_t
         type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: sym
         integer :: rsym
 
         rsym = mom_sym%inv_sym(sym)
+
     end function mom_sym_conj
 
-! Various possible cross products to be cut down later when decide what we actually need.
+!--- Cross products ---
 
     pure function cross_product_periodic_read_in(mom_sym, a1, a2) result(prod)
+        ! In:
+        !   mom_sym: basis function symmetry information.
+        !   a1, a2: symmetries to return cross product of.
+        ! Returns:
+        !   Direct product of symmetries a1 & a2.
+
         use symmetry_types, only: mom_sym_t
         type(mom_sym_t), intent(in) :: mom_sym
         integer, intent(in) :: a1, a2
@@ -111,6 +152,13 @@ contains
     end function cross_product_periodic_read_in
 
     pure function cross_product_periodic_basis(mom_sym, b1, b2, basis_fns) result(prod)
+        ! In:
+        !   mom_sym: basis function symmetry information.
+        !   b1, b2: indicies of spinorbitals.
+        ! Returns:
+        !   Symmetry index corresponding to the product of
+        !       symmetries of b1 & b2.
+
         use basis_types, only: basis_fn_t
         use symmetry_types, only: mom_sym_t
         type(mom_sym_t), intent(in) :: mom_sym
@@ -122,24 +170,20 @@ contains
 
     end function cross_product_periodic_basis
 
-    pure subroutine cross_product_read_in_abelian(nprop, a1, a2, prod)
-
-        use const, only: int_64
-
-        integer, intent(in) :: a1(3), a2(3), nprop(3)
-        integer, intent(out) :: prod(3)
-
-        prod = modulo(a1 + a2, nprop)
-
-    end subroutine cross_product_read_in_abelian
-
-! Indexing conversion routines:
+!--- Indexing conversion routines: ---
 
     pure subroutine decompose_abelian_sym(isym, propbitlen, abel_sym)
         ! Takes symmetry index for translationally symmetric wavefunction and
         ! returns abelian representation of three "quantum numbers". In accordance
         ! with approach used in NECI, values stored according to:
         !   isym = 1 + \sum_i sym(i) * 2 ** (propbitlen * (i-1))
+
+        ! In:
+        !   isym: symmetry index provided in FCIDUMP file.
+        !   propbitlen: length of bit representation of each "quantum number"
+        !       within isym.
+        ! Out:
+        !   abel_sym: array of 3 quantum numbers stored in isym.
 
         use const, only: int_32, int_64
 
@@ -157,30 +201,31 @@ contains
 
     end subroutine decompose_abelian_sym
 
-    pure subroutine compose_abelian_sym(abel_sym, propbitlen, isym)
-        ! Takes abelian symmetry "quantum numbers" and combines into single value.
-        ! Opposite effect to decompose_abelian_sym.
-        use const, only: int_32, int_64
-
-        integer, intent(in) :: abel_sym(3)
-        integer, intent(in) :: propbitlen
-        integer(int_64), intent(out) :: isym
-
-        isym = abel_sym(1) + Ishft(abel_sym(2), propbitlen) + &
-                    Ishft(abel_sym(3), propbitlen*2)
-    end subroutine compose_abelian_sym
-
     pure function get_kpoint_index(a, nprop) result(ind)
         ! Converts from abelian symmetry quantum numbers into unique index.
         ! If we know size of unit cell, can calculate unique index by tiling
-        ! first along axis 1, then 2, then 3.
+        ! first along axis 1, then 2, then 3 in 3 dimensions.
+        ! In:
+        !   a: array containing representation of kpoint wavevectors.
+        !   nprop: condition of periodic bounary conditions used, ie the
+        !       supercell dimension.
+        ! Returns:
+        !   Index of given kpoint within indexing scheme.
         integer, intent(in) :: a(3), nprop(3)
         integer :: ind
         ! Want to start from index 1 at gamma point (0,0,0)
         ind = 1 + a(1) + nprop(1) * a(2) + nprop(1) * nprop(2) * a(3)
+
     end function get_kpoint_index
 
     pure subroutine get_kpoint_numbers(ind, nprop, a)
+        ! Get kpoint index, in 3D array, from index defined in get_kpoint_index.
+        ! In:
+        !   ind: index to decode.
+        !   nprop: condition of periodic bounary conditions used, ie the
+        !       supercell dimension.
+        ! Out:
+        !   a: array containing kpoint identifier in terms of 3 "quantum numbers".
 
         integer, intent(in) :: ind, nprop(3)
         integer, intent(out) :: a(3)

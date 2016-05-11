@@ -138,7 +138,7 @@ contains
             end do
             if (sys%read_in%mom_sym%gamma_sym == 0) call stop_all('init_momentum_symmetry', 'Gamma-point symmetry not found.')
 
-            do i = 1, sys%nsym
+            do i = sys%sym0, sys%nsym
                 do j = i, sys%nsym
                     call get_kpoint_numbers(i, sys%read_in%mom_sym%nprop, a)
                     call get_kpoint_numbers(j, sys%read_in%mom_sym%nprop, ksum)
