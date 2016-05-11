@@ -1,8 +1,8 @@
 module excit_gen_periodic
 
-! Module for random excitation generators and related routines for the molecular
+! Module for random excitation generators and related routines for the periodic
 ! system (ie one read in from an FCIDUMP file) with complex integral values. Most
-! related routines are reused from excit_gen_mol to avoid duplication.
+! routines are analogues of those within excit_gen_mol.
 
 ! See top-level comments in spawning about the overall aim of the spawning step.
 
@@ -46,8 +46,8 @@ contains
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
-        use hamiltonian_molecular_complex, only: slater_condon1_mol_excit_complex, &
-                                                slater_condon2_mol_excit_complex
+        use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
+                                                slater_condon2_periodic_excit_complex
         use system, only: sys_t
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
@@ -85,7 +85,7 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel%c = slater_condon1_mol_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
+                hmatel%c = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
                                                   connection%perm)
             else
                 ! We have a highly restrained system and this det has no single
@@ -113,7 +113,7 @@ contains
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
                 ! 5b. Find the connecting matrix element.
-                hmatel%c = slater_condon2_mol_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
+                hmatel%c = slater_condon2_periodic_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
                                                   connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Carelessly selected ij with no possible excitations.  Such
@@ -155,15 +155,15 @@ contains
         !    connection: excitation connection between the current determinant
         !        and the child determinant, on which progeny are gened.
         !    hmatel: < D | H | D' >, the Hamiltonian matrix element between a
-        !       determinant and a connected determinant in molecular systems.
+        !       determinant and a connected determinant in periodic systems.
         !    allowed_excitation: false if a valid symmetry allowed excitation was not generated
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
         use excitations, only: find_excitation_permutation1, find_excitation_permutation2
         use excit_gens, only: excit_gen_data_t
-        use hamiltonian_molecular_complex, only: slater_condon1_mol_excit_complex, &
-                                                slater_condon2_mol_excit_complex
+        use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
+                                                slater_condon2_periodic_excit_complex
         use system, only: sys_t
         use hamiltonian_data
 
@@ -197,7 +197,7 @@ contains
                 call find_excitation_permutation1(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5a. Find the connecting matrix element.
-                hmatel%c = slater_condon1_mol_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
+                hmatel%c = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, connection%from_orb(1), connection%to_orb(1), &
                             connection%perm)
             else
                 ! Forbidden---connection%to_orb(1) is already occupied.
@@ -224,7 +224,7 @@ contains
                 call find_excitation_permutation2(sys%basis%excit_mask, cdet%f, connection)
 
                 ! 5b. Find the connecting matrix element.
-                hmatel%c = slater_condon2_mol_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
+                hmatel%c = slater_condon2_periodic_excit_complex(sys, connection%from_orb(1), connection%from_orb(2), &
                                                   connection%to_orb(1), connection%to_orb(2), connection%perm)
             else
                 ! Forbidden---connection%to_orb(2) is already occupied.
@@ -489,7 +489,7 @@ contains
             ! the speed...
 
             do
-                ! Find a.  See notes in find_ab_mol.
+                ! Find a.  See notes in find_ab_periodic.
                 a = int(get_rand_close_open(rng)*na) + 1
                 ! convert to down or up orbital
                 a = fac*a-shift

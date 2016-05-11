@@ -802,7 +802,7 @@ contains
 
     end subroutine update_proj_energy_mol
 
-    pure subroutine update_proj_energy_mol_complex(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
+    pure subroutine update_proj_energy_periodic_complex(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 
         ! Add the contribution of the current determinant to the projected
         ! energy. This function is specifically for systems with complex
@@ -835,8 +835,9 @@ contains
 
         use determinants, only: det_info_t
         use excitations, only: excit_t
-        use hamiltonian_molecular_complex, only: slater_condon1_mol_excit_complex, slater_condon2_mol_excit_complex
-        use point_group_symmetry, only: cross_product_pg_basis
+        use hamiltonian_periodic_complex, only: slater_condon1_periodic_excit_complex, &
+                                                slater_condon2_periodic_excit_complex
+        use momentum_sym_read_in, only: cross_product_periodic_basis
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -862,7 +863,7 @@ contains
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms == sys%basis%basis_fns(excitation%to_orb(1))%Ms .and. &
                     sys%basis%basis_fns(excitation%from_orb(1))%sym == sys%basis%basis_fns(excitation%to_orb(1))%sym) then
-                hmatel%c = slater_condon1_mol_excit_complex(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
+                hmatel%c = slater_condon1_periodic_excit_complex(sys, cdet%occ_list, excitation%from_orb(1), excitation%to_orb(1), &
                                                   excitation%perm)
                 estimators%proj_energy_comp = estimators%proj_energy_comp + hmatel%c*cmplx(pop(1),pop(2),p)
             end if
@@ -872,11 +873,12 @@ contains
             ! Is excitation symmetry allowed?
             if (sys%basis%basis_fns(excitation%from_orb(1))%Ms+sys%basis%basis_fns(excitation%from_orb(2))%Ms == &
                     sys%basis%basis_fns(excitation%to_orb(1))%Ms+sys%basis%basis_fns(excitation%to_orb(2))%Ms) then
-                ij_sym = cross_product_pg_basis(sys%read_in%pg_sym, excitation%from_orb(1), excitation%from_orb(2), &
+                ij_sym = cross_product_periodic_basis(sys%read_in%mom_sym, excitation%from_orb(1), excitation%from_orb(2), &
                                                 sys%basis%basis_fns)
-                ab_sym = cross_product_pg_basis(sys%read_in%pg_sym, excitation%to_orb(1), excitation%to_orb(2), sys%basis%basis_fns)
+                ab_sym = cross_product_periodic_basis(sys%read_in%mom_sym, excitation%to_orb(1), excitation%to_orb(2), &
+                    sys%basis%basis_fns)
                 if (ij_sym == ab_sym) then
-                    hmatel%c = slater_condon2_mol_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                    hmatel%c = slater_condon2_periodic_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
                                                       excitation%perm)
                     estimators%proj_energy_comp = estimators%proj_energy_comp + hmatel%c*cmplx(pop(1),pop(2),p)
@@ -884,7 +886,7 @@ contains
             end if
         end select
 
-    end subroutine update_proj_energy_mol_complex
+    end subroutine update_proj_energy_periodic_complex
 
     pure subroutine update_proj_energy_ueg(sys, f0, wfn_dat, cdet, pop, estimators, excitation, hmatel)
 

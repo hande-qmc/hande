@@ -1,4 +1,4 @@
-module hamiltonian_molecular_complex
+module hamiltonian_periodic_complex
 
 ! Module for evaluating Hamiltonian matrix elements for molecular systems (ie
 ! systems where the integrals have been read in from file).
@@ -8,11 +8,11 @@ use const, only: p, i0
 implicit none
 
 private
-public :: get_hmatel_mol_comp, slater_condon1_mol_excit_complex, slater_condon2_mol_excit_complex
-public :: slater_condon0_mol_complex
+public :: get_hmatel_periodic_complex, slater_condon1_periodic_excit_complex
+public :: slater_condon2_periodic_excit_complex, slater_condon0_periodic_complex
 contains
 
-    pure function get_hmatel_mol_comp(sys, f1, f2) result(hmatel)
+    pure function get_hmatel_periodic_complex(sys, f1, f2) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -21,7 +21,7 @@ contains
         ! Returns:
         !    Hamiltonian matrix element between the two determinants,
         !    < D1 | H | D2 >, where the determinants are formed from
-        !    molecular orbitals read in from an FCIDUMP file.
+        !    orbitals read in from an FCIDUMP file.
         !
         ! Used in the read_in system only.
 
@@ -51,13 +51,13 @@ contains
             case(0)
 
                 ! < D | H | D > = \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
-                hmatel%c = cmplx(slater_condon0_mol_complex(sys, f1), 0.0_p, p)
+                hmatel%c = cmplx(slater_condon0_periodic_complex(sys, f1), 0.0_p, p)
 
             case(1)
 
                 ! < D | H | D_i^a > = < i | h(a) | a > + \sum_j < ij || aj >
                 call decode_det(sys%basis, f1, occ_list)
-                hmatel%c = slater_condon1_mol_complex(sys, occ_list, excitation%from_orb(1), &
+                hmatel%c = slater_condon1_periodic_complex(sys, occ_list, excitation%from_orb(1), &
                                             excitation%to_orb(1), excitation%perm)
 
             case(2)
@@ -65,7 +65,7 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
-                hmatel%c = slater_condon2_mol_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
+                hmatel%c = slater_condon2_periodic_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             case default
                 ! If f1 & f2 differ by more than two spin orbitals integral value is zero.
@@ -74,9 +74,9 @@ contains
 
         end if
 
-    end function get_hmatel_mol_comp
+    end function get_hmatel_periodic_complex
 
-    pure function slater_condon0_mol_complex(sys, f) result(hmatel)
+    pure function slater_condon0_periodic_complex(sys, f) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -99,17 +99,17 @@ contains
         ! < D | H | D > = Ecore + \sum_i < i | h(i) | i > + \sum_i \sum_{j>i} < ij || ij >
         call decode_det(sys%basis, f, occ_list)
 
-        hmatel_comp = slater_condon0_mol_orb_list_complex(sys, occ_list)
+        hmatel_comp = slater_condon0_periodic_orb_list_complex(sys, occ_list)
 
         ! As Hamiltonian should be Hermitian < D | H | D > must be real, so for easier compatability..
         hmatel = real(hmatel_comp, p)
         ! If wanted to check this could try to write test; as inside pure procedure more
         ! trouble than worth. Further optimisation could remove accretion of imaginary
-        ! component in slater_condon_mol_orb_list_complex.
+        ! component in slater_condon_periodic_orb_list_complex.
 
-    end function slater_condon0_mol_complex
+    end function slater_condon0_periodic_complex
 
-    pure function slater_condon0_mol_orb_list_complex(sys, occ_list) result(hmatel)
+    pure function slater_condon0_periodic_orb_list_complex(sys, occ_list) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -150,10 +150,10 @@ contains
             end do
         end associate
 
-    end function slater_condon0_mol_orb_list_complex
+    end function slater_condon0_periodic_orb_list_complex
 
 
-    pure function slater_condon1_mol_complex(sys, occ_list, i, a, perm) result(hmatel)
+    pure function slater_condon1_periodic_complex(sys, occ_list, i, a, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -204,9 +204,9 @@ contains
             if (perm) hmatel = -hmatel
         end if
 
-    end function slater_condon1_mol_complex
+    end function slater_condon1_periodic_complex
 
-    pure function slater_condon1_mol_excit_complex(sys, occ_list, i, a, perm) result(hmatel)
+    pure function slater_condon1_periodic_excit_complex(sys, occ_list, i, a, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -265,9 +265,9 @@ contains
 
         if (perm) hmatel = -hmatel
 
-    end function slater_condon1_mol_excit_complex
+    end function slater_condon1_periodic_excit_complex
 
-    pure function slater_condon2_mol_complex(sys, i, j, a, b, perm) result(hmatel)
+    pure function slater_condon2_periodic_complex(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -306,9 +306,9 @@ contains
 
         if (perm) hmatel = -hmatel
 
-    end function slater_condon2_mol_complex
+    end function slater_condon2_periodic_complex
 
-    elemental function slater_condon2_mol_excit_complex(sys, i, j, a, b, perm) result(hmatel)
+    elemental function slater_condon2_periodic_excit_complex(sys, i, j, a, b, perm) result(hmatel)
 
         ! In:
         !    sys: system to be studied.
@@ -331,7 +331,7 @@ contains
         !
         ! WARNING: This function assumes that the D_{ij}^{ab} is a symmetry allowed
         ! excitation from D (and so the matrix element is *not* zero by
-        ! symmetry).  This is less safe that slater_condon2_mol but much faster
+        ! symmetry).  This is less safe that slater_condon2_periodic but much faster
         ! as it allows symmetry checking to be skipped in the integral lookups.
 
         use molecular_integrals, only: get_two_body_int_mol_nonzero
@@ -359,6 +359,6 @@ contains
         end if
         if (perm) hmatel = -hmatel
 
-    end function slater_condon2_mol_excit_complex
+    end function slater_condon2_periodic_excit_complex
 
-end module hamiltonian_molecular_complex
+end module hamiltonian_periodic_complex

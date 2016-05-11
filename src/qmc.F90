@@ -192,7 +192,7 @@ contains
         use hamiltonian_hub_real, only: slater_condon0_hub_real
         use hamiltonian_heisenberg, only: diagonal_element_heisenberg, diagonal_element_heisenberg_staggered
         use hamiltonian_molecular, only: slater_condon0_mol, double_counting_correction_mol, hf_hamiltonian_energy_mol
-        use hamiltonian_molecular_complex, only: slater_condon0_mol_complex
+        use hamiltonian_periodic_complex, only: slater_condon0_periodic_complex
         use hamiltonian_ringium, only: slater_condon0_ringium
         use hamiltonian_ueg, only: slater_condon0_ueg, kinetic_energy_ueg, exchange_energy_ueg, potential_energy_ueg
         use heisenberg_estimators
@@ -308,8 +308,8 @@ contains
 
         case(read_in)
             if (sys%read_in%comp) then
-                update_proj_energy_ptr => update_proj_energy_mol_complex
-                sc0_ptr => slater_condon0_mol_complex
+                update_proj_energy_ptr => update_proj_energy_periodic_complex
+                sc0_ptr => slater_condon0_periodic_complex
                 energy_diff_ptr => null()
                 spawner_ptr => spawn_complex
             else

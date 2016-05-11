@@ -400,14 +400,11 @@ contains
                 if (sys%read_in%comp) then
                     call init_one_body_t_periodic(sys%sym0, sys%sym_max, sys%read_in%mom_sym%nbands, &
                                                 .true., sys%read_in%one_e_h_integrals_imag)
-                    call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                                     .true., sys%read_in%coulomb_integrals_imag)
+                    call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%coulomb_integrals_imag)
                 end if
             else
-                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                                     .false., sys%read_in%one_e_h_integrals)
-                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, &
-                                     .false., sys%read_in%coulomb_integrals)
+                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%one_e_h_integrals)
+                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%coulomb_integrals)
             end if
         end if
 
