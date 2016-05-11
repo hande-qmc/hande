@@ -207,7 +207,7 @@ contains
                 write (6,'(4X,a9,8X)', advance='no') "# H psips"
             end if
         end if
-        write (6,'(3X,"# states  # spawn_events  R_spawn   time")')
+        write (6,'(3X,"# states  # spawn_events  R_spawn    time")')
 
     end subroutine write_fciqmc_report_header
 
