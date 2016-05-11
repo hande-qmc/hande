@@ -64,7 +64,7 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(dets_tmp(dims(1), dims(2)))
-        call hdf5_read(id, dset, kinds, shape(dets_tmp), dets_tmp)
+        call hdf5_read(id, dset, kinds, shape(dets_tmp, kind=int_64), dets_tmp)
 
         dets = 0
 
@@ -105,7 +105,7 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(dets_tmp(dims(1),dims(2)))
-        call hdf5_read(id, dset, kinds, shape(dets_tmp), dets_tmp)
+        call hdf5_read(id, dset, kinds, shape(dets_tmp, kind=int_64), dets_tmp)
 
         ! Assume the old (small) basis corresponds to the first orbitals in the new basis
         dets = 0
@@ -142,7 +142,7 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(f0_tmp(dims(1)))
-        call hdf5_read(id, dset, kinds, shape(f0_tmp), f0_tmp)
+        call hdf5_read(id, dset, kinds, shape(f0_tmp, kind=int_64), f0_tmp)
 
         f0 = 0
         f0 = transfer(f0_tmp, f0, size(f0))
@@ -184,7 +184,7 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(pops_tmp(dims(1),dims(2)))
-        call hdf5_read(id, dset, kinds, shape(pops_tmp), pops_tmp)
+        call hdf5_read(id, dset, kinds, shape(pops_tmp, kind=int_64), pops_tmp)
 
         pops(:,:dims(2)) = pops_tmp
 
@@ -221,7 +221,7 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(dets_tmp(dims(1), dims(2)))
-        call hdf5_read(id, dset, kinds, shape(dets_tmp), dets_tmp)
+        call hdf5_read(id, dset, kinds, shape(dets_tmp, kind=int_64), dets_tmp)
 
         dets = 0
 
@@ -262,7 +262,7 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(f0_tmp(dims(1)))
-        call hdf5_read(id, dset, kinds, shape(f0_tmp), f0_tmp)
+        call hdf5_read(id, dset, kinds, shape(f0_tmp, kind=int_64), f0_tmp)
 
         f0 = 0
         f0 = transfer(f0_tmp, f0, size(f0))
@@ -305,7 +305,7 @@ contains
 
         call dset_shape(id, dset, dims)
         allocate(pops_tmp(dims(1),dims(2)))
-        call hdf5_read(id, dset, kinds, shape(pops_tmp), pops_tmp)
+        call hdf5_read(id, dset, kinds, shape(pops_tmp, kind=int_64), pops_tmp)
 
         if (scale_factor == 2_int_64**31) then
             ! Need to change real population scaling factor

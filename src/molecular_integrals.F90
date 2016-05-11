@@ -36,7 +36,7 @@ contains
 
 !--- Memory allocation and deallocation ---
 
-    subroutine init_one_body_t(uhf, op_sym, nbasis_sym_spin, imag, store)
+    subroutine init_one_body_t(sys, op_sym, imag, store)
 
         ! Allocate memory required for the integrals involving a one-body
         ! operator.
@@ -53,54 +53,56 @@ contains
         !       interals.  Note that the integral store is *not* zeroed.
 
         use checking, only: check_allocate
+        use system, only: sys_t
 
-        logical, intent(in) :: uhf
+        type(sys_t), intent(in) :: sys
         integer, intent(in) :: op_sym
-        integer, allocatable, intent(in) :: nbasis_sym_spin(:,:)
         logical, intent(in) :: imag
         type(one_body_t), intent(out) :: store
 
         integer :: ierr, i, s, ispin, nspin
 
         store%op_sym = op_sym
-        store%uhf = uhf
+        store%uhf = sys%read_in%uhf
         store%imag = imag
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
-        if (uhf) then
+        if (store%uhf) then
             nspin = 2
         else
             nspin = 1
         end if
 
-        ! Allocate general store for the one-electron integrals.
-        allocate(store%integrals(nspin,lbound(nbasis_sym_spin, dim=2):ubound(nbasis_sym_spin, dim=2)), stat=ierr)
-        call check_allocate('one_body_store', nspin*size(nbasis_sym_spin, dim=2), ierr)
+        associate(nbasis_sym_spin=>sys%read_in%pg_sym%nbasis_sym_spin)
+            ! Allocate general store for the one-electron integrals.
+            allocate(store%integrals(nspin,lbound(nbasis_sym_spin, dim=2):ubound(nbasis_sym_spin, dim=2)), stat=ierr)
+            call check_allocate('one_body_store', nspin*size(nbasis_sym_spin, dim=2), ierr)
 
-        ! <i|o|j> is only non-zero if the integrand is totally symmetric, ie
-        ! \Gamma_i \cross \Gamma_o \cross \Gamma_j = \Gamma_1.
-        ! Currently all operators we consider are Hermitian.
-        ! => Store only lower triangle of each symmetry block in o_{ij}.
-        ! Within the block each state is labelled by its symmetry and spin
-        ! index.  If \Gamma_o \= \Gamma_1, then i and j are of different
-        ! symmetries.  We get around this by arranging index_i=<index_j.  In this
-        ! case some memory is wasted (as we store the diagonal elements in both
-        ! the i and j symmetry blocks) and if the number of states with the same
-        ! symmetry as i is greater than those with with same symmetry as j, but
-        ! this effect will be small.
-        !
-        ! o_{ij} is only non-zero if i and j are of the same spin.
-        ! Furthermore, o_{i,alpha, j,alpha} = o_{i,beta, j, beta} in RHF
-        ! calculations.
-        ! => store spin blocks separately and only store both in UHF
-        ! calculations.
-        do ispin = 1, nspin
-            do i = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
-                s = (nbasis_sym_spin(ispin,i)*(nbasis_sym_spin(ispin,i)+1))/2
-                allocate(store%integrals(ispin,i)%v(s), stat=ierr)
-                call check_allocate('one_body_store_component', s, ierr)
+            ! <i|o|j> is only non-zero if the integrand is totally symmetric, ie
+            ! \Gamma_i \cross \Gamma_o \cross \Gamma_j = \Gamma_1.
+            ! Currently all operators we consider are Hermitian.
+            ! => Store only lower triangle of each symmetry block in o_{ij}.
+            ! Within the block each state is labelled by its symmetry and spin
+            ! index.  If \Gamma_o \= \Gamma_1, then i and j are of different
+            ! symmetries.  We get around this by arranging index_i=<index_j.  In this
+            ! case some memory is wasted (as we store the diagonal elements in both
+            ! the i and j symmetry blocks) and if the number of states with the same
+            ! symmetry as i is greater than those with with same symmetry as j, but
+            ! this effect will be small.
+            !
+            ! o_{ij} is only non-zero if i and j are of the same spin.
+            ! Furthermore, o_{i,alpha, j,alpha} = o_{i,beta, j, beta} in RHF
+            ! calculations.
+            ! => store spin blocks separately and only store both in UHF
+            ! calculations.
+            do ispin = 1, nspin
+                do i = lbound(store%integrals, dim=2), ubound(store%integrals, dim=2)
+                    s = (nbasis_sym_spin(ispin,i)*(nbasis_sym_spin(ispin,i)+1))/2
+                    allocate(store%integrals(ispin,i)%v(s), stat=ierr)
+                    call check_allocate('one_body_store_component', s, ierr)
+                end do
             end do
-        end do
+        end associate
 
     end subroutine init_one_body_t
 
@@ -130,43 +132,45 @@ contains
 
     end subroutine end_one_body_t
 
-    subroutine init_two_body_t(uhf, nbasis, op_sym, comp, imag, store)
+    subroutine init_two_body_t(sys, op_sym, imag, store)
 
         ! Allocate memory required for the integrals involving a two-body
         ! operator.
 
         ! In:
-        !    uhf: whether integral store is from a UHF calculation or RHF
-        !       calculation.
-        !    nbasis: number of single-particle spin functions.
+        !    sys: sys_t object containing info on current system. We use:
+        !           -sys%read_in%uhf
+        !           -sys%basis%nbasis
+        !           -sys%read_in%comp
         !    op_sym: bit string representations of irreducible representations
-        !    of a point group.  See point_group_symmetry.
-        !    comp: whether integral store is from a calculation using complex
-        !       orbitals and integrals. If true, the store will contain either
-        !       the real or imaginary components of the complex two body integrals.
+        !       of a point group.  See point_group_symmetry.
         !    imag: whether integral store contains imaginary component of complex
         !       integrals.
         ! Out:
         !    store: two-body integral store with components allocated to hold
-        !    interals.  Note that the integral store is *not* zeroed.
+        !       interals.  Note that the integral store is *not* zeroed.
 
         use checking, only: check_allocate
         use const, only: int_64
+        use parallel, only: parent
+        use system, only: sys_t
 
-        logical, intent(in) :: uhf, comp, imag
-        integer, intent(in) :: nbasis, op_sym
+        logical, intent(in) :: imag
+        integer, intent(in) :: op_sym
+        type(sys_t), intent(in) :: sys
         type(two_body_t), intent(out) :: store
 
-        integer :: ierr, ispin, nspin
+        integer :: ierr, ispin, nspin, mem_reqd
         integer(int_64):: npairs, nintgrls
 
+
         store%op_sym = op_sym
-        store%uhf = uhf
+        store%uhf = sys%read_in%uhf
         store%imag = imag
-        store%comp = comp
+        store%comp = sys%read_in%comp
         ! if rhf then need to store only integrals for spatial orbitals.
         ! ie < i,alpha j,beta | a,alpha b,beta > = < i,alpha j,alpha | a,alpha b,alpha >
-        if (uhf) then
+        if (store%uhf) then
             nspin = 4
         else
             nspin = 1
@@ -187,14 +191,27 @@ contains
         ! spin-channel, where 2M is the number of spin-orbitals.
         ! NOTE:
         ! Compression due to spatial symmetry not yet implemented.
-        npairs = ((nbasis/2)*(nbasis/2 + 1))/2
+        npairs = ((sys%basis%nbasis/2)*(sys%basis%nbasis/2 + 1))/2
         ! If complex twice as many integrals so need twice the size of array
         ! as <ia|jb> != <ib|ja>
-        if (comp) then
+        if (store%comp) then
             nintgrls = (npairs*(npairs+1))
         else
             nintgrls = (npairs*(npairs+1))/2
         end if
+
+        if (parent .and. (.not.store%comp .or. .not.store%imag)) then
+#ifdef SINGLE_PRECISION
+            mem_reqd = int((nintgrls*4*nspin)/10**6)
+#else
+            mem_reqd = int((nintgrls*8*nspin)/10**6)
+#endif
+            if (store%comp) mem_reqd = 2 * mem_reqd
+            write(6,'(1X,a,i0)') 'Memory required for all two body integrals (MB) on each processor: ', &
+                            mem_reqd
+            write(6,'(1X, a,/)') 'It is left to the user to ensure that this does not exceed available resources.'
+        end if
+
         do ispin = 1, nspin
             allocate(store%integrals(ispin)%v(nintgrls), stat=ierr)
             call check_allocate('two_body_store_component', nintgrls, ierr)
@@ -1063,27 +1080,84 @@ contains
 
     end subroutine broadcast_one_body_t
 
-    subroutine broadcast_two_body_t(store, data_proc)
+    subroutine broadcast_two_body_t(store, data_proc, max_broadcast_chunk)
 
         ! Broadcast the integral store from data_proc to all processors.
         ! In/Out:
         !    store: two-body integral store.  On input the integrals are only
-        !    stored on data_proc.  On output all processors have an identical copy of
-        !    the integral store.
+        !       stored on data_proc.  On output all processors have an identical
+        !       copy of the integral store.
         ! In:
         !    data_proc: processor on which the integral store is already filled.
+        !    max_broadcast_chunk: maximum number of integral values to broadcast together in
+        !       contiguous mpi datatype.
 
         use parallel
+        use const, only: p, dp, int_64
+        use checking, only: check_allocate, check_deallocate
+        use errors, only: warning
 
         type(two_body_t), intent(inout) :: store
-        integer, intent(in) :: data_proc
+        integer, intent(in) :: data_proc, max_broadcast_chunk
 #ifdef PARALLEL
-        integer :: i, ierr
-        ! Yes, I know I *could* use an MPI derived type, but coding this took 10
-        ! minutes rather than several hours and the loss of elegance is minimal.
+        integer :: i, ierr, nblocks, nnext, mpi_preal_block, optimal_block_size
+        integer(int_64) :: nmain
+
         call MPI_BCast(store%op_sym, 1, mpi_integer, data_proc, MPI_COMM_WORLD, ierr)
         do i = lbound(store%integrals, dim=1), ubound(store%integrals, dim=1)
-            call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+            ! Only use chunked broadcasting if have more elements than can broadcast in
+            ! single MPI call.
+            if (size(store%integrals(i)%v, kind=int_64) > max_broadcast_chunk) then
+                ! Broadcasting more elements than mpi supports by default- can only take 32-bit
+                ! size parameter in MPI_BCast.
+
+                associate(ints=>store%integrals(i)%v)
+                    ! Instead use custom contiguous type and calculate optimal number/size of
+                    ! blocks to minimise size of remaining elements to be broadcast. Passing
+                    ! an array slice into mpi_bcast can lead to formation of a temporary array
+                    ! the size of the full array (depending on compiler), so we have to work
+                    ! around this and minimise size of this call.
+                    ! Using a constant contiguous type size block_size gives a maximum remainder size
+                    ! of block_size - 1.
+                    ! In comparison, calculating the optimal block size reduces this maximum to
+                    ! nblocks - 1 (this is currently used).
+                    call get_optimal_integral_block(size(ints, kind=int_64), max_broadcast_chunk, nblocks, &
+                                                optimal_block_size, mpi_preal_block)
+                    nmain = int(nblocks, kind=int_64) * int(optimal_block_size, kind=int_64)
+                    nnext = int(size(ints, kind=int_64) - nmain)
+
+                    if (parent) then
+                        write(6,'(1X,"Integral Broadcasting",/,1X,21("-"),/)')
+                        write(6,'(1X,"Integral array larger than max_broadcast_chunk ",i0,".",&
+                                    &/,1X,"Using contiguous MPI types for broadcast.",/)') max_broadcast_chunk
+                        write(6,'(1X,"Broadcasting coulomb integrals using ",i4," blocks of size ",&
+                                    &es11.4E3,".")') nblocks, real(optimal_block_size)
+                        write(6,'(1X,"This corresponds to ", es11.4E3," integrals in the main broadcast "&
+                                    &,/,1X,"and ", es11.4E3," in the remainder.")') real(nmain), real(nnext)
+
+                    end if
+
+                    call MPI_BCast(ints, nblocks, mpi_preal_block, data_proc, MPI_COMM_WORLD, ierr)
+                    ! Finally broadcast the remaining values not included in previous block.
+                    ! In some compilers (intel) passing array slices into mpi calls leads to
+                    ! creation of a temporary array the size of the full integral list. To
+                    ! avoid this we instead use assumed-size property of arrays in MPI.
+                    ! If we move to the mpi_f08 binding in future assumed-shape arrays are used
+                    ! so this approach will no longer work. However, the explicit interface
+                    ! to MPI_BCast will enable array slicing without risk of array temporary
+                    ! creation.
+
+                    if (nnext > 0) call MPI_BCast(ints(nmain+1), nnext, mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+                    ! Finally tidy up mpi types.
+                    call mpi_type_free(mpi_preal_block, ierr)
+                    if (parent) then
+                        write(6, '(/,1X,"Broadcasting completed.")')
+                        write(6,'(/,1X,21("-"),/)')
+                    end if
+                end associate
+            else
+                call MPI_BCast(store%integrals(i)%v, size(store%integrals(i)%v), mpi_preal, data_proc, MPI_COMM_WORLD, ierr)
+            end if
         end do
 #else
         integer :: i
@@ -1094,5 +1168,42 @@ contains
 #endif
 
     end subroutine broadcast_two_body_t
+
+#ifdef PARALLEL
+    subroutine get_optimal_integral_block(nints, max_broadcast_chunk, nblocks, optimal_block_size, &
+                                        mpi_preal_block)
+
+        ! For a given number of integrals and maximum block size calculate block number and
+        ! size that (approximately) minimises the size of integral remainder to be broadcast.
+        ! In:
+        !   nints: total number of integrals to be broadcast.
+        !   max_broadcast_chunk: maximum number of integral values to broadcast in a single
+        !       mpi contiguous type.
+        ! Out:
+        !   nblocks: number of contiguous type blocks to broadcast in.
+        !   optimal_block_size: optimal number of elements to broadcast in each block.
+        !   mpi_preal_block: custom mpi type identifier for type of size specified in
+        !       optimal_block_size.  Must be freed with MPI_Type_Free when no longer needed.
+
+        use const, only: int_32, int_64
+        use parallel
+        integer(int_64), intent(in) :: nints
+        integer, intent(in) :: max_broadcast_chunk
+        integer, intent(out) :: nblocks, optimal_block_size, mpi_preal_block
+        integer :: ierr
+
+        ! First calculate the largest number of max_broadcast_chunk that don't exceed nints.
+        nblocks = int(nints / max_broadcast_chunk)
+        ! Now use more blocks than this.
+        nblocks = nblocks + 1
+        ! Finally calculate the block size that gives the smallest residual array size to be
+        ! broadcast.
+        optimal_block_size = int(nints / nblocks, kind=int_32)
+        ! Initialise the mpi custom type of appropriate size for this block.
+        call mpi_type_contiguous(optimal_block_size, mpi_preal, mpi_preal_block, ierr)
+        call mpi_type_commit(mpi_preal_block, ierr)
+
+    end subroutine get_optimal_integral_block
+#endif
 
 end module molecular_integrals

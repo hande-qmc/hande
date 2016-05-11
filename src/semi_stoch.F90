@@ -1266,6 +1266,7 @@ contains
         use spawning, only: assign_particle_processor
         use system, only: sys_t
         use utils, only: get_unique_filename
+        use const, only: int_64
 
         integer(i0), intent(out) :: dets_this_proc(:,:)
         type(semi_stoch_t), intent(inout) :: determ
@@ -1327,7 +1328,7 @@ contains
 
             ! Perform the reading in of determinants to determ%dets.
             if (dtype_equal(file_id, 'dets', kinds%i0)) then
-                call hdf5_read(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
+                call hdf5_read(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)
             else
                 call convert_dets(file_id, 'dets', kinds, determ%dets)
             end if
@@ -1400,6 +1401,7 @@ contains
         use hdf5_helper, only: hdf5_kinds_t, hdf5_write, hdf5_kinds_init
         use calc, only: GLOBAL_META
         use utils, only: get_unique_filename
+        use const, only: int_64
 
         type(semi_stoch_t), intent(in) :: determ
         integer, intent(in) :: write_id
@@ -1436,7 +1438,7 @@ contains
         call hdf5_write(file_id, 'uuid', GLOBAL_META%uuid)
 
         ! Write deterministic states to file.
-        call hdf5_write(file_id, 'dets', kinds, shape(determ%dets), determ%dets)
+        call hdf5_write(file_id, 'dets', kinds, shape(determ%dets, kind=int_64), determ%dets)
 
         ! Close HDF5 file and HDF5.
         call h5fclose_f(file_id, ierr)

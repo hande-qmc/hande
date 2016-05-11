@@ -292,3 +292,6 @@ is not possible.  Issues and, where known, workarounds we have found are:
 * Compiling with GCC and linking the Intel MKL library leads to segmentation faults or
   incorrect answers for FCI calculation on systems with complex-valued integrals when
   run in parallel.  Either use a different ScaLAPACK library, or use the Intel compilers.
+
+* Using some versions of Intel MPI 5.1 with very large molecular systems (more than 2GB of
+  integrals) causes crashes due to an overflow in a broadcast operation.  This is fixed in 5.1.3.
