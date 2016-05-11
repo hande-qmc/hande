@@ -207,7 +207,7 @@ contains
             mem_reqd = (nintgrls*8*nspin)/10**6
 #endif
             if (store%comp) mem_reqd = 2 * mem_reqd
-            write(6,'(/,1X,a,i0)') 'Memory required for all two body integrals (MB) on each processor: ', &
+            write(6,'(1X,a,i0)') 'Memory required for all two body integrals (MB) on each processor: ', &
                             mem_reqd
             write(6,'(1X, a,/)') 'It is left to the user to ensure that this does not exceed available resources.'
         end if
@@ -1127,7 +1127,7 @@ contains
                     nnext = int(size(ints, kind=int_64) - nmain)
 
                     if (parent) then
-                        write(6,'(1X,a21,/,1X,21("-"),/)') 'Integral Broadcasting'
+                        write(6,'(1X,"Integral Broadcasting",/,1X,21("-"),/)')
                         write(6,'(1X,"Integral array larger than max_broadcast_chunk ",i0,".",&
                                     &/,1X,"Using contiguous MPI types for broadcast.",/)') max_broadcast_chunk
                         write(6,'(1X,"Broadcasting coulomb integrals using ",i4," blocks of size ",&
