@@ -1683,7 +1683,8 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, state, Hii, proj_energy, population, tot_population, ndeath)
+    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, state, Hii, proj_energy, population, &
+                                        tot_population, ndeath)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
