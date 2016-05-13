@@ -583,7 +583,7 @@ contains
 
         if (hdf5) then
             call init_system(sys)
-            call read_system_hdf5(sys)
+            call read_system_hdf5(sys, verbose)
             if (parent) call check_sys(sys)
             new_basis = .true.
         else
