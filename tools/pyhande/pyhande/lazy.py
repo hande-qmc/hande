@@ -72,16 +72,15 @@ Umrigar93
     # Concat all QMC data (We did say 'lazy', so assumptions are being made...)
     data = []
     metadata = []
-    for (md, df) in hande_out:
-        if any(calc in md['calc_type'] for calc in ('FCIQMC', 'CCMC')):
-            if reweight_history > 0:
-                df = pyhande.weight.reweight(df, md['qmc']['ncycles'],
-                    md['qmc']['tau'], reweight_history, mean_shift,
-                    arith_mean=arith_mean)
-                df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
-                df['W * N_0'] = df['N_0'] * df['Weight']
-            data.append(df)
-            metadata.append(md)
+    for (md, df) in filter_calcs(hande_out, ('FCIQMC', 'CCMC')):
+        if reweight_history > 0:
+            df = pyhande.weight.reweight(df, md['mc_cycles'],
+                md['qmc']['tau'], reweight_history, mean_shift,
+                arith_mean=arith_mean)
+            df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
+            df['W * N_0'] = df['N_0'] * df['Weight']
+        data.append(df)
+        metadata.append(md)
     if data:
         calcs_metadata, calcs = concat_calcs(metadata, data)
     else:
@@ -148,6 +147,28 @@ Umrigar93
                                       covariance, opt_block, no_opt_block))
 
     return return_vals
+
+def filter_calcs(outputs, calc_types):
+    '''Select calculations corresponding to a given list of calculation types.
+
+Parameters
+----------
+outputs : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
+    List of (metadata, data) tuples for each calculation, as created in
+    :func:`pyhande.extract.extract_data_sets`.
+calc_types : iterable of strings
+    Calculation types (e.g. 'FCIQMC', 'CCMC', etc.) to select.
+
+Returns
+-------
+filtered : list of (dict, :class:`pandas.DataFrame` or :class:`pandas.Series`)
+    As in :func:`pyhande.extract.extract_data_sets` but containing only the
+    desired calculations.
+'''
+
+    calc_filter = lambda md: any(md['calc_type'] for calc in calc_types)
+    filtered = [(md, calc) for (md, calc) in outputs if calc_filter(md)]
+    return filtered
 
 def concat_calcs(metadata, data):
     '''Concatenate data from restarted calculations to analyse together.
