@@ -114,20 +114,14 @@ starting_iterations: list of float/double
 
     for (md, data) in zip(calcs_md, calcs_data):
         # Find the point the shift began to vary.
-        # [review] - JSS: simpler way to do this -- see std_analysis.
-        start_not_found = True
-        shift_variation_start = 0
-        i = 0
-        while start_not_found and data['Shift'].size > i:
-            if(math.fabs(data['Shift'].iloc[i] != data['Shift'].iloc[0])):
-                start_not_found = False
-                shift_variation_start = i
-            i += 1
-        if (start_not_found == True) :
+        variable_shift = data['Shift'] != data['Shift'].iloc[0]
+        if variable_shift.any():
+            shift_variation_indx = data[variable_shift]['iterations'].index[0]
+        else:
             raise RuntimeError("Shift has not started to vary in dataset!")
 
         # Check we have enough data to screen:
-        if(data['Shift'].size - shift_variation_start) < \
+        if(data['Shift'].size - shift_variation_indx) < \
                 (frac_screen_interval):
             # i.e. data where shift is not equal to initial value is less than
             # frac_screen_interval, i.e. we cannot screen adequately.
@@ -137,7 +131,7 @@ starting_iterations: list of float/double
 
         # Find the MC iteration at which shift starts to vary.
         iteration_shift_variation_start = \
-                data['iterations'].iloc[shift_variation_start]
+                data['iterations'].iloc[shift_variation_indx]
 
         step = int((data['iterations'].iloc[-1] - \
                 iteration_shift_variation_start )/frac_screen_interval) 
@@ -192,7 +186,7 @@ starting_iterations: list of float/double
                         a smaller (positive) number_of_reblocks_to_cut_off, \
                         or data is not fit for analysis.")
                 starting_iteration = (min_index*step + \
-                    data['iterations'].iloc[shift_variation_start + \
+                    data['iterations'].iloc[shift_variation_indx + \
                     number_of_reblocks_to_cut_off*data_points_in_block])
                 starting_iteration_found = True
                 break
