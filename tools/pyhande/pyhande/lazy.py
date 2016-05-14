@@ -11,7 +11,8 @@ import pyhande.weight
 import math
 
 def std_analysis(datafiles, start=0, select_function=None, extract_psips=False,
-                reweight_history=0, mean_shift=0.0, arith_mean=False, calc_inefficiency=False ):
+                reweight_history=0, mean_shift=0.0, arith_mean=False,
+                calc_inefficiency=False ):
     '''Perform a 'standard' analysis of HANDE output files.
 
 Parameters
@@ -66,6 +67,34 @@ References
 Umrigar93
     Umrigar et al., J. Chem. Phys. 99, 2865 (1993).
 '''
+    (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
+                                  arith_mean)
+    return lazy_block(calcs, calcs_md, start, select_function, extract_psips,
+                      calc_inefficiency)
+
+def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
+    '''Extract zero-temperature QMC (i.e. FCIQMC and CCMC) calculations.
+
+Reweighting information is added to the calculation data if requested.
+
+.. note::
+
+    :func:`std_analysis` is recommended unless custom processing is required
+    before blocking analysis is performed.
+
+Parameters
+----------
+datafiles, reweight_history, mean_shift, arith_mean :
+    See :func:`std_analysis`.
+
+Returns
+-------
+calcs : list of :class:`pandas.DataFrame`
+    Calculation outputs for just the zero-temperature/ground-state QMC
+    calculations contained in `datafiles`.
+metadata : list of dict
+    Metadata corresponding to each calculation in `calcs`.
+'''
 
     hande_out = pyhande.extract.extract_data_sets(datafiles)
 
@@ -85,13 +114,39 @@ Umrigar93
         calcs_metadata, calcs = concat_calcs(metadata, data)
     else:
         raise ValueError('No data found in '+' '.join(datafiles))
+    return (calcs, calcs_metadata)
+
+def lazy_block(calcs, calcs_metadata, start=0, select_function=None, extract_psips=False,
+               calc_inefficiency=False):
+    '''Standard blocking analysis on zero-temperature QMC calcaulations.
+
+.. note::
+
+    :func:`std_analysis` is recommended unless custom processing is required
+    before blocking analysis is performed.
+
+Parameters
+----------
+calcs : list of :class:`pandas.DataFrame`
+    Zero-temperature QMC calculation output.
+calcs_metadata : list of dict
+    Metadata corresponding to each calculation in `calcs`.
+start, select_function, extract_psips, calc_inefficiency:
+    See :func:`std_analysis`.
+
+Returns
+--------
+info : list of :func:`collections.namedtuple`
+    See :func:`std_analysis`.
+'''
 
     tuple_fields = ('metadata data data_len reblock covariance opt_block '
                    'no_opt_block'.split())
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
     return_vals = []
-    for calc,md in zip(calcs,calcs_metadata):
+    for (calc, md) in zip(calcs, calcs_metadata):
         # Reblock Monte Carlo data over desired window.
+        reweight_calc = 'W * N_0' in calc
         if select_function is None:
             indx = calc['iterations'] > start
         else:
@@ -100,7 +155,7 @@ Umrigar93
         if extract_psips:
             to_block.append('# H psips')
         to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
-        if reweight_history > 0:
+        if reweight_calc:
             to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
 
         mc_data = calc.ix[indx, to_block]
@@ -115,7 +170,7 @@ Umrigar93
         reblock = pd.concat([reblock, proje], axis=1)
         to_block.append('Proj. Energy')
 
-        if reweight_history > 0:
+        if reweight_calc:
             proje = pyhande.analysis.projected_energy(reblock, covariance, 
                         data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
                         col_name='Weighted Proj. E.')
@@ -131,7 +186,8 @@ Umrigar93
             reblocked_iters = calc.ix[indx, 'iterations']
             N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
             
-            # This returns a data frame with inefficiency data from the projected energy estimators if available
+            # This returns a data frame with inefficiency data from the
+            # projected energy estimators if available.
             ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
             if ineff is not None:
                 opt_block = opt_block.append(ineff)
@@ -142,7 +198,6 @@ Umrigar93
                     pyblock.error.pretty_fmt_err(row['mean'], row['standard error'])
                            )
         opt_block['estimate'] = estimates
-
         return_vals.append(info_tuple(md, calc, data_len, reblock,
                                       covariance, opt_block, no_opt_block))
 
