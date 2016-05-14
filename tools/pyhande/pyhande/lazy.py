@@ -69,8 +69,8 @@ Umrigar93
 '''
     (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
                                   arith_mean)
-    return lazy_block(calcs, calcs_md, start, select_function, extract_psips,
-                      calc_inefficiency)
+    return [lazy_block(calc, md, start, select_function, extract_psips,
+                      calc_inefficiency) for (calc, md) in zip(calcs, calcs_md)]
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
     '''Extract zero-temperature QMC (i.e. FCIQMC and CCMC) calculations.
@@ -116,7 +116,7 @@ metadata : list of dict
         raise ValueError('No data found in '+' '.join(datafiles))
     return (calcs, calcs_metadata)
 
-def lazy_block(calcs, calcs_metadata, start=0, select_function=None, extract_psips=False,
+def lazy_block(calc, md, start=0, select_function=None, extract_psips=False,
                calc_inefficiency=False):
     '''Standard blocking analysis on zero-temperature QMC calcaulations.
 
@@ -127,81 +127,79 @@ def lazy_block(calcs, calcs_metadata, start=0, select_function=None, extract_psi
 
 Parameters
 ----------
-calcs : list of :class:`pandas.DataFrame`
+calc : :class:`pandas.DataFrame`
     Zero-temperature QMC calculation output.
-calcs_metadata : list of dict
-    Metadata corresponding to each calculation in `calcs`.
+md : dict
+    Metadata for the calculation in `calc`.
 start, select_function, extract_psips, calc_inefficiency:
     See :func:`std_analysis`.
 
 Returns
 --------
-info : list of :func:`collections.namedtuple`
+info : :func:`collections.namedtuple`
     See :func:`std_analysis`.
 '''
 
     tuple_fields = ('metadata data data_len reblock covariance opt_block '
                    'no_opt_block'.split())
     info_tuple = collections.namedtuple('HandeInfo', tuple_fields)
-    return_vals = []
-    for (calc, md) in zip(calcs, calcs_metadata):
-        # Reblock Monte Carlo data over desired window.
-        reweight_calc = 'W * N_0' in calc
-        if select_function is None:
-            indx = calc['iterations'] > start
-        else:
-            indx = select_function(calc)
-        to_block = []
-        if extract_psips:
-            to_block.append('# H psips')
-        to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
-        if reweight_calc:
-            to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
+    # Reblock Monte Carlo data over desired window.
+    reweight_calc = 'W * N_0' in calc
+    if select_function is None:
+        indx = calc['iterations'] > start
+    else:
+        indx = select_function(calc)
+    to_block = []
+    if extract_psips:
+        to_block.append('# H psips')
+    to_block.extend(['\sum H_0j N_j', 'N_0', 'Shift'])
+    if reweight_calc:
+        to_block.extend(['W * \sum H_0j N_j', 'W * N_0'])
 
-        mc_data = calc.ix[indx, to_block]
+    mc_data = calc.ix[indx, to_block]
 
-        if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
-            warnings.warn('The blocking analysis starts from before the shift '
-                         'begins to vary.')
+    if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
+        warnings.warn('The blocking analysis starts from before the shift '
+                     'begins to vary.')
 
-        (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
-        
-        proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
+    (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
+    
+    proje = pyhande.analysis.projected_energy(reblock, covariance, data_len)
+    reblock = pd.concat([reblock, proje], axis=1)
+    to_block.append('Proj. Energy')
+
+    if reweight_calc:
+        proje = pyhande.analysis.projected_energy(reblock, covariance, 
+                    data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
+                    col_name='Weighted Proj. E.')
         reblock = pd.concat([reblock, proje], axis=1)
-        to_block.append('Proj. Energy')
+        to_block.append('Weighted Proj. E.')
+    
+    # Summary (including pretty printing of estimates).
+    (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
 
-        if reweight_calc:
-            proje = pyhande.analysis.projected_energy(reblock, covariance, 
-                        data_len, sum_key='W * \sum H_0j N_j', ref_key='W * N_0',
-                        col_name='Weighted Proj. E.')
-            reblock = pd.concat([reblock, proje], axis=1)
-            to_block.append('Weighted Proj. E.')
+    if calc_inefficiency:
+        # Calculate quantities needed for the inefficiency.
+        dtau = md['qmc']['tau']
+        reblocked_iters = calc.ix[indx, 'iterations']
+        N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
         
-        # Summary (including pretty printing of estimates).
-        (opt_block, no_opt_block) = pyhande.analysis.qmc_summary(reblock, to_block)
+        # This returns a data frame with inefficiency data from the
+        # projected energy estimators if available.
+        ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
+        if ineff is not None:
+            opt_block = opt_block.append(ineff)
 
-        if calc_inefficiency:
-            # Calculate quantities needed for the inefficiency.
-            dtau = md['qmc']['tau']
-            reblocked_iters = calc.ix[indx, 'iterations']
-            N = reblocked_iters.iloc[-1] - reblocked_iters.iloc[0]
-            
-            # This returns a data frame with inefficiency data from the
-            # projected energy estimators if available.
-            ineff = pyhande.analysis.inefficiency(opt_block, dtau, N)
-            if ineff is not None:
-                opt_block = opt_block.append(ineff)
+    estimates = []
+    for (name, row) in opt_block.iterrows():
+        estimates.append(
+                pyblock.error.pretty_fmt_err(row['mean'], row['standard error'])
+                       )
+    opt_block['estimate'] = estimates
+    info = info_tuple(md, calc, data_len, reblock, covariance, opt_block,
+                      no_opt_block)
 
-        estimates = []
-        for (name, row) in opt_block.iterrows():
-            estimates.append(
-                    pyblock.error.pretty_fmt_err(row['mean'], row['standard error'])
-                           )
-        opt_block['estimate'] = estimates
-        return_vals.append(info_tuple(md, calc, data_len, reblock,
-                                      covariance, opt_block, no_opt_block))
-
-    return return_vals
+    return info
 
 def filter_calcs(outputs, calc_types):
     '''Select calculations corresponding to a given list of calculation types.
