@@ -17,9 +17,9 @@ import matplotlib.pyplot as plt
 import pyhande.lazy
 import pyhande.extract
 
-def find_starting_iteration(outputfiles, frac_screen_interval=500,  
-    number_of_reblockings = 50, number_of_reblocks_to_cut_off = 1, 
-    pos_min_frac = 0.5, verbose = False, show_graph = False):
+def find_starting_iteration(calcs_data, calcs_md, frac_screen_interval=500,  
+    number_of_reblockings=50, number_of_reblocks_to_cut_off=1, pos_min_frac=0.5,
+    verbose=False, show_graph=False):
     '''Find the best iteration to start analysing CCMC/FCIQMC data.
 
 .. warning::
@@ -47,9 +47,10 @@ the search has failed.
 
 Parameters
 ----------
-outputfiles: list of strings
-    List of CCMC/FCIQMC output file names. If more than one, they should be
-    restarted versions from each other for this to make sense.
+calcs_data : list of :class:`pandas.DataFrame`
+    [todo]
+calcs_md : list of dicts
+    [todo]
 frac_screen_interval: integer
     Number of intervals the iterations from where the shift started to vary to
     the end are divided up into. Has to be greater than zero.
@@ -109,27 +110,16 @@ starting_iterations: list of float/double
             frac_screen_interval.")
         number_of_reblockings = frac_screen_interval
 
-    # [review] - JSS: this assumes all data sets are from CCMC or FCIQMC
-    # [review] - JSS: calculations.  Fix to only get CCMC/FCIQMC data.
-    # [review] - JSS: actually, I think the best way is to assume the user has
-    # [review] - JSS: already done these three lines and require just the data
-    # [review] - JSS: list from concat_calcs to be passed in.  This also removes
-    # [review] - JSS: the need for the data to be extracted multiple times...
-    hande_outs = pyhande.extract.extract_data_sets(outputfiles)
-    metadata_sets, data_sets = zip(*hande_outs)
-    metadata_list, data = \
-        pyhande.lazy.concat_calcs(metadata_sets, data_sets)		
-
     starting_iterations = []
 
-    for it in range(len(data)):
+    for (md, data) in zip(calcs_md, calcs_data):
         # Find the point the shift began to vary.
         # [review] - JSS: simpler way to do this -- see std_analysis.
         start_not_found = True
         shift_variation_start = 0
         i = 0
-        while start_not_found and data[it]['Shift'].size > i:
-            if(math.fabs(data[it]['Shift'].iloc[i] != data[it]['Shift'].iloc[0])):
+        while start_not_found and data['Shift'].size > i:
+            if(math.fabs(data['Shift'].iloc[i] != data['Shift'].iloc[0])):
                 start_not_found = False
                 shift_variation_start = i
             i += 1
@@ -137,7 +127,7 @@ starting_iterations: list of float/double
             raise RuntimeError("Shift has not started to vary in dataset!")
 
         # Check we have enough data to screen:
-        if(data[it]['Shift'].size - shift_variation_start) < \
+        if(data['Shift'].size - shift_variation_start) < \
                 (frac_screen_interval):
             # i.e. data where shift is not equal to initial value is less than
             # frac_screen_interval, i.e. we cannot screen adequately.
@@ -147,9 +137,9 @@ starting_iterations: list of float/double
 
         # Find the MC iteration at which shift starts to vary.
         iteration_shift_variation_start = \
-                data[it]['iterations'].iloc[shift_variation_start]
+                data['iterations'].iloc[shift_variation_start]
 
-        step = int((data[it]['iterations'].iloc[-1] - \
+        step = int((data['iterations'].iloc[-1] - \
                 iteration_shift_variation_start )/frac_screen_interval) 
         	
         shift_error_errors = []
@@ -161,18 +151,17 @@ starting_iterations: list of float/double
                 if verbose:
                     print("Looping through point # %i to find a "
                           "starting iteration." % (j,))
-                info = pyhande.lazy.std_analysis(outputfiles, start = \
-                    (iteration_shift_variation_start + j*step), \
-                    extract_psips=True)
+                start = iteration_shift_variation_start + j*step
+                info = pyhande.lazy.lazy_block(data, md, start,
+                                               extract_psips=True)
 
-                # [review] - JSS: not sure about this -- info does not share the same indexing as data...
-                if info[it].no_opt_block:
+                if info.no_opt_block:
                     # Add a large enough (imaginary) shift error error
                     # so this does not win in this search.
                     shift_error_errors.append(float('inf'))
                 else:
                     shift_error_error = \
-                        info[it].opt_block["standard error error"]["Shift"]
+                        info.opt_block["standard error error"]["Shift"]
                     shift_error_errors.append(shift_error_error)
             
             min_error_error = float('inf')
@@ -186,49 +175,47 @@ starting_iterations: list of float/double
                     failed!")
 
             if int(min_index * pos_min_frac) < j:
-                info = pyhande.lazy.std_analysis(outputfiles, start =  
-                    (iteration_shift_variation_start + (min_index*step)), \
-                    extract_psips=True)
+                start = iteration_shift_variation_start + (min_index*step)
+                info = pyhande.lazy.lazy_block(data, md, start,
+                                               extract_psips=True)
                 opt_ind = \
-                    pyblock.pd_utils.optimal_block(info[it].reblock['Shift'])
-                data_points_in_block = int(info[it].data_len[0] / \
-                    info[it].data_len[opt_ind])
+                    pyblock.pd_utils.optimal_block(info.reblock['Shift'])
+                data_points_in_block = int(info.data_len[0] / \
+                    info.data_len[opt_ind])
                 # [review] - JSS: if statement over 5 lines with various indent levels - no chance of easy comprehension.
                 if ((iteration_shift_variation_start + min_index*step + \
                     number_of_reblocks_to_cut_off*data_points_in_block* \
-                    (data[it]['iterations'].iloc[1] - \
-                    data[it]['iterations'].iloc[0])) \
-                    >= data[it]['iterations'].iloc[-1]) :
+                    (data['iterations'].iloc[1] - \
+                    data['iterations'].iloc[0])) \
+                    >= data['iterations'].iloc[-1]) :
                     raise ValueError("Too much cut off! Try again with \
                         a smaller (positive) number_of_reblocks_to_cut_off, \
                         or data is not fit for analysis.")
                 starting_iteration = (min_index*step + \
-                    data[it]['iterations'].iloc[shift_variation_start + \
+                    data['iterations'].iloc[shift_variation_start + \
                     number_of_reblocks_to_cut_off*data_points_in_block])
                 starting_iteration_found = True
                 break
-
 
         if not starting_iteration_found:
             raise RuntimeError("Failed to find starting iteration. The data \
             might not be converged.")
 
-        if show_graph == True:
+        if show_graph:
             starting_iteration_list = []
             starting_no_correlation = []
-            for iteration in range(0,data[it]['Shift'].size):
+            for iteration in range(0,data['Shift'].size):
                 starting_iteration_list.append(starting_iteration)
                 starting_no_correlation.append(iteration_shift_variation_start \
                     + min_index*step)
             plt.xlabel('Iterations')
             plt.ylabel('Shift')
-            plt.plot(data[it]['iterations'], data[it]['Shift'], 'xb', \
-                label='data') 
-            plt.plot(starting_iteration_list, data[it]['Shift'], 'r', \
-                label = 'suggested starting iteration')
-            plt.plot(starting_no_correlation, data[it]['Shift'], 'g', \
-                label = 'starting iteration without subtracting reblocks')
-            plt.legend(loc = 'best')
+            plt.plot(data['iterations'], data['Shift'], 'xb', label='data') 
+            plt.plot(starting_iteration_list, data['Shift'], 'r', 
+                     label='suggested starting iteration')
+            plt.plot(starting_no_correlation, data['Shift'], 'g', \
+                     label='starting iteration without subtracting reblocks')
+            plt.legend(loc='best')
             plt.show()
 
         starting_iterations.append(starting_iteration)
