@@ -163,28 +163,24 @@ starting_iteration: integer
             raise ValueError("Failed to find minimum error in the shift error!")
 
         if int(min_index * pos_min_frac) < j:
+            # [todo] - don't redo this...
             start = iteration_shift_variation_start + (min_index*step)
             info = pyhande.lazy.lazy_block(data, md, start, extract_psips=True)
             opt_ind = pyblock.pd_utils.optimal_block(info.reblock['Shift'])
-            data_points_in_block = 2**opt_ind
-            # [review] - JSS: if statement over 5 lines with various indent levels - no chance of easy comprehension.
-            if ((iteration_shift_variation_start + min_index*step + \
-                number_of_reblocks_to_cut_off*data_points_in_block* \
-                (data['iterations'].iloc[1] - \
-                data['iterations'].iloc[0])) \
-                >= data['iterations'].iloc[-1]) :
-                raise ValueError("Too much cut off! Try again with \
-                    a smaller (positive) number_of_reblocks_to_cut_off, \
-                    or data is not fit for analysis.")
-            starting_iteration = (min_index*step + \
-                data['iterations'].iloc[shift_variation_indx + \
-                number_of_reblocks_to_cut_off*data_points_in_block])
+            # Also discard the frst n=number_of_reblocks_to_cut_off of data to
+            # be conservative.  This amounts to removing n autocorrelation
+            # lengths.
+            discard_indx = 2**opt_ind * number_of_reblocks_to_cut_off
+            starting_iteration = data['iterations'].iloc[shift_variation_indx+discard_indx] + min_index*step
+            if data['iterations'].iloc[-1] <= starting_iteration:
+                raise ValueError("Too much cut off! Data is not converged or "
+                                 "use a smaller number_of_reblocks_to_cut_off.")
             starting_iteration_found = True
             break
 
     if not starting_iteration_found:
-        raise RuntimeError("Failed to find starting iteration. The data \
-        might not be converged.")
+        raise RuntimeError("Failed to find starting iteration. The calculation "
+                           "might not be converged.")
 
     if show_graph:
         plt.xlabel('Iterations')
