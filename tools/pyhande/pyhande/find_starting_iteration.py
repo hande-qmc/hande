@@ -11,7 +11,6 @@ except ImportError:
 import math
 import matplotlib.pyplot as plt
 import pyhande.lazy
-import pyhande.extract
 
 def find_starting_iteration(data, md, frac_screen_interval=500,
     number_of_reblockings=50, number_of_reblocks_to_cut_off=1, pos_min_frac=0.5,
