@@ -187,19 +187,13 @@ starting_iteration: integer
         might not be converged.")
 
     if show_graph:
-        starting_iteration_list = []
-        starting_no_correlation = []
-        for iteration in range(0,data['Shift'].size):
-            starting_iteration_list.append(starting_iteration)
-            starting_no_correlation.append(iteration_shift_variation_start \
-                + min_index*step)
         plt.xlabel('Iterations')
         plt.ylabel('Shift')
-        plt.plot(data['iterations'], data['Shift'], 'xb', label='data')
-        plt.plot(starting_iteration_list, data['Shift'], 'r',
-                 label='suggested starting iteration')
-        plt.plot(starting_no_correlation, data['Shift'], 'g', \
-                 label='starting iteration without subtracting reblocks')
+        plt.plot(data['iterations'], data['Shift'], 'b-', label='data')
+        plt.axvline(starting_iteration, color='r',
+                    label='Suggested starting iteration')
+        plt.axvline(iteration_shift_variation_start + min_index*step, color='g',
+                    label='Starting iteration without discarding reblocks')
         plt.legend(loc='best')
         plt.show()
 
