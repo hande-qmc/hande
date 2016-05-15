@@ -82,32 +82,20 @@ starting_iteration: integer
     Iteration from which to start reblocking analysis for this calculation.
 '''
 
-    # Check whether the input is valid. If not, set to default values.
-    if (frac_screen_interval <= 0):
-        warnings.warn("frac_screen_interval > 0 is not satisfied, \
-            frac_screen_interval set to default: 500")
-        frac_screen_interval = 500
+    if frac_screen_interval <= 0:
+        raise RuntimeError("frac_screen_interval <= 0")
 
-    if (number_of_reblocks_to_cut_off < 0):
-        warnings.warn("number_of_reblocks_to_cut_off >= 0 is not satisfied, \
-            number_of_reblocks_to_cut_off set to default: 1")
-        number_of_reblocks_to_cut_off = 1
+    if number_of_reblocks_to_cut_off < 0:
+        raise RuntimeError("number_of_reblocks_to_cut_off < 0")
 
-    if (pos_min_frac < 0.00001) or (pos_min_frac > 1.0):
-        warnings.warn("0.00001 < pos_min_frac < 1 not satisfied, \
-            pos_min_frac set to default: 0.5")
-        pos_min_frac  = 0.5
+    if pos_min_frac < 0.00001 or pos_min_frac > 1.0:
+        raise RuntimeError("0.00001 < pos_min_frac < 1 not satisfied")
 
-    if (number_of_reblockings <= 0):
-        warnings.warn("number_of_reblockings > 0 not satisfied, \
-            number_of_reblockings set to default: 50")
-        number_of_reblockings = 50
+    if number_of_reblockings <= 0:
+        raise RuntimeError("number_of_reblockings <= 0")
 
-    if (number_of_reblockings > frac_screen_interval):
-        warnings.warn("number_of_reblockings has to be less than or equal to \
-            frac_screen_interval, it is now set to be equal to \
-            frac_screen_interval.")
-        number_of_reblockings = frac_screen_interval
+    if number_of_reblockings > frac_screen_interval:
+        raise RuntimeError("number_of_reblockings > frac_screen_interval")
 
     # Find the point the shift began to vary.
     variable_shift = data['Shift'] != data['Shift'].iloc[0]
@@ -117,13 +105,12 @@ starting_iteration: integer
         raise RuntimeError("Shift has not started to vary in dataset!")
 
     # Check we have enough data to screen:
-    if(data['Shift'].size - shift_variation_indx) < \
-            (frac_screen_interval):
+    if data['Shift'].size - shift_variation_indx < frac_screen_interval:
         # i.e. data where shift is not equal to initial value is less than
         # frac_screen_interval, i.e. we cannot screen adequately.
-        warnings.warn("Files %s contain less data than \
-            we wanted to screen. Will continues but frac_screen_interval \
-            is less than one data point." % (','.join(outputfiles)))
+        warnings.warn("Calculation contains less data than "
+            "frac_screen_interval. Will continue but frac_screen_interval is "
+            "less than one data point.")
 
     # Find the MC iteration at which shift starts to vary.
     iteration_shift_variation_start = \
