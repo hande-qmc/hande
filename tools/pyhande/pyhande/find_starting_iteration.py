@@ -138,31 +138,29 @@ starting_iteration: integer
     for k in range(int(frac_screen_interval/number_of_reblockings)):
 
         for j in range(k*number_of_reblockings, (k+1)*number_of_reblockings):
-            if verbose:
-                print("Looping through point # %i to find a "
-                      "starting iteration." % (j,))
             start = iteration_shift_variation_start + j*step
-            info = pyhande.lazy.lazy_block(data, md, start,
-                                           extract_psips=True)
+            info = pyhande.lazy.lazy_block(data, md, start, extract_psips=True)
 
             if info.no_opt_block:
                 # Add a large enough (imaginary) shift error error
                 # so this does not win in this search.
                 shift_error_errors.append(float('inf'))
             else:
-                shift_error_error = \
-                    info.opt_block["standard error error"]["Shift"]
-                shift_error_errors.append(shift_error_error)
+                s_err_err = info.opt_block["standard error error"]["Shift"]
+                shift_error_errors.append(s_err_err)
+
+            if verbose:
+                print("Blocking attempt: %i. Error in the shift error: %f"
+                        % (j, shift_error_errors[-1]))
 
         min_error_error = float('inf')
         min_index = len(shift_error_errors)
         for j_min_ind in range(len(shift_error_errors) - 1, 0, -1):
-            if(shift_error_errors[j_min_ind] < min_error_error):
+            if shift_error_errors[j_min_ind] < min_error_error:
                 min_index = j_min_ind
                 min_error_error = shift_error_errors[j_min_ind]
         if min_index == len(shift_error_errors):
-            raise ValueError("Calculation to find minimum error in error \
-                failed!")
+            raise ValueError("Failed to find minimum error in the shift error!")
 
         if int(min_index * pos_min_frac) < j:
             start = iteration_shift_variation_start + (min_index*step)
