@@ -20,52 +20,57 @@ def find_starting_iteration(data, md, frac_screen_interval=500,
 
 .. warning::
 
-    Use with caution, check whether output is sensible and adjust
-    parameters if necessary.
+    Use with caution, check whether output is sensible and adjust parameters if
+    necessary.
 
-The best iteration is found by first finding the iteration that if used as the
-starting iteration gives the lowest error in the error of the shift. To be
-conservative, an extra few blocks from the reblocking analysis can be cut off as
-well, the number can be set by the user as "number_of_reblocks_to_cut_off". To
-be efficient, first the point is found where the shift started to vary. Any
-iteration before that point is discarded. The remaining iterations are then
-divided up into "frac_screen_interval" intervals, set by the user. A certain
-number ("number_of_reblockings", set by user) of reblocking analyses are done,
-starting at the point where the shift started to vary and then progressing in
-steps set by the lengths of an interval. If, after having done this certain
-number of reblocking analyses with different starting points, the minimum error
-in the error is in the first "pos_min_frac" fraction of the points used as
-starting points so far, the search for the minimum is ended. If this is not the
-case, the search continues with another "number_of_reblocking" trial starting
-points. If the interval has been reached and the minimum is not in the first
-"pos_min_frac" fraction of the data (excluding the iterations before the shift),
-the search has failed.
+First, consider only data from when the shift begins to vary.  The error in the
+error on the shift is artificially high due to the equilibration period.  The
+error in the error hence initially decreases as the start of the blocking
+analysis is increased before beginning to increase once data from after
+equilibration begins to be discarded.  We are thus interested in finding the
+minimum in the error in the error of the shift.
+
+The best estimate of the iteration to start the blocking analysis is found by:
+
+1. discard data during the constant shift phase.
+2. estimate the error in the error of the shift by blocking the remaining data
+   :math:`n` times, where the blocking analysis considers the last :math:`1-i/f`
+   fraction of the data and where :math:`i` is the number of blocking analyses
+   already performed, :math:`n`  is `number_of_reblockings`  and :math:`f` is
+   `frac_screen_interval`.
+3. find the iteration which gives the minimum estimate of the error in the error
+   of the shift.  If this is in the first `pos_min_frac` fraction of the
+   blocking attempts, go to 4, otherwise repeat 2 and perform an additional
+   `number_of_reblockings` attempts.
+4. To be extra conservative, discard the first `number_of_reblocks_to_cut_off`
+   blocks from the start iteration, where each block corresponds to roughly the
+   autocorrelation time, and return the resultant iteration number as the
+   estimate of the best place to start blocking from.
 
 Parameters
 ----------
 data : :class:`pandas.DataFrame`
-    [todo]
+    Calculation output for a FCIQMC or CCMC calculation.
 md : dict
-    [todo]
-frac_screen_interval: integer
+    Metadata corresponding to the calculation in `data`.
+frac_screen_interval : int
     Number of intervals the iterations from where the shift started to vary to
     the end are divided up into. Has to be greater than zero.
-number_of_reblockings: integer
+number_of_reblockings : int
     Number of reblocking analyses done in steps set by the width of an interval
     before it is checked whether suitable minimum error in the error has been
     found. Has to be greater than zero.
-number_of_reblocks_to_cut_off: integer
+number_of_reblocks_to_cut_off : integer
     Number of reblocking analysis blocks to cut off additionally to the data
     before the best iteration with the lowest error in the error. Has to be non
     negative. It is highly recommended to not set this to zero.
-pos_min_frac: float/double
+pos_min_frac : float
     The minimum has to be in the first pos_min_frac part of the tested data to
     be taken as the true minimum. Has be to greater than a small number (here
-    0.00001) and can at most be
-    equal to one.
-verbose: boolean
+    0.00001) and can at most be equal to one.
+verbose : bool
     Determines whether extra information is printed out.
-show_graph: boolean
+show_graph : bool
     Determines whether a window showing the shift vs iteration graph pops up
     highlighting where the minimum was found and - after also excluding some
     reblocking blocks - which iteration was found as the best starting iteration
