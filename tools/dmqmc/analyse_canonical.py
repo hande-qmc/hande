@@ -2,15 +2,14 @@
 
 import pandas as pd
 import os
+import pkgutil
 import sys
 import warnings
-try:
-    import pyhande
-except ImportError:
+
+if not pkgutil.find_loader('pyhande'):
     _script_dir = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(os.path.join(_script_dir, '../pyhande'))
-    import pyhande
-
+import pyhande
 
 def main(filename):
     ''' Analyse the output from a canonical estimates calculation.

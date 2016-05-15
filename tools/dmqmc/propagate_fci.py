@@ -4,18 +4,16 @@ import numpy
 import sys
 import os
 
-_script_dir = os.path.dirname(os.path.abspath(__file__))
 try:
     import matplotlib.pyplot as plt
     USE_MATPLOTLIB = True
 except ImportError:
     USE_MATPLOTLIB = False
-try:
-    import pyhande
-except ImportError:
-    sys.path.append(os.path.join(_script_dir, '../pyhande'))
-    import pyhande
 
+if not pkgutil.find_loader('pyhande'):
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.append(os.path.join(_script_dir, '../pyhande'))
+import pyhande
 
 def finite_temp_energy(beta, spectrum):
 
