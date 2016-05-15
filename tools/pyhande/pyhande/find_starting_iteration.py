@@ -164,12 +164,9 @@ starting_iteration: integer
 
         if int(min_index * pos_min_frac) < j:
             start = iteration_shift_variation_start + (min_index*step)
-            info = pyhande.lazy.lazy_block(data, md, start,
-                                           extract_psips=True)
-            opt_ind = \
-                pyblock.pd_utils.optimal_block(info.reblock['Shift'])
-            data_points_in_block = int(info.data_len[0] / \
-                info.data_len[opt_ind])
+            info = pyhande.lazy.lazy_block(data, md, start, extract_psips=True)
+            opt_ind = pyblock.pd_utils.optimal_block(info.reblock['Shift'])
+            data_points_in_block = 2**opt_ind
             # [review] - JSS: if statement over 5 lines with various indent levels - no chance of easy comprehension.
             if ((iteration_shift_variation_start + min_index*step + \
                 number_of_reblocks_to_cut_off*data_points_in_block* \
