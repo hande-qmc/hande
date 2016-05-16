@@ -3,14 +3,13 @@
 from os import path
 import numpy
 import pandas as pd
+import pkgutil
 import sys
 import warnings
 
-try:
-    import pyblock
-except ImportError:
+if not pkgutil.find_loader('pyblock'):
     sys.path.append(path.join(path.abspath(path.dirname(__file__)), '../../pyblock'))
-    import pyblock
+import pyblock
 
 def projected_energy(reblock_data, covariance, data_length,
                      sum_key='\sum H_0j N_j', ref_key='N_0',

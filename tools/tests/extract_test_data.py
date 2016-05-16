@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 
 import os
+import pkgutil
 import sys
-try:
-    import pyhande
-except ImportError:
+if not pkgutil.find_loader('pyhande'):
     # Try to find pyhande in the hande directory tree.
     _script_dir = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(os.path.join(_script_dir, '../pyhande'))
-    import pyhande
 import pyhande.testcode
-
 
 def main(filename):
 

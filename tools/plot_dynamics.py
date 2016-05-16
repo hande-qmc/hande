@@ -5,18 +5,17 @@ Plot the population dynamics and energy profile of a HANDE QMC output file.'''
 
 import argparse
 import os
+import pkgutil
 import sys
 
 import matplotlib.pyplot as pyplot
 import numpy as np
 import pandas as pd
 
-try:
-    import pyhande
-except ImportError:
+if not pkgutil.find_loader('pyblock'):
     _script_dir = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(os.path.join(_script_dir, '../pyhande'))
-    import pyhande
+import pyhande
 
 def main(datafile, plotfile):
 

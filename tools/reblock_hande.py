@@ -6,22 +6,20 @@ should be analysed directly with pyhande.'''
 
 import argparse
 import os
+import pkgutil
 import pprint
 import sys
 
 import pandas as pd
 
-_script_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
-try:
-    import pyblock
-except ImportError:
+_script_dir = os.path.abspath(os.path.dirname(__file__))
+if not pkgutil.find_loader('pyblock'):
     sys.path.append(os.path.join(_script_dir, 'pyblock'))
-    import pyblock
-try:
-    import pyhande
-except ImportError:
+if not pkgutil.find_loader('pyhande'):
     sys.path.append(os.path.join(_script_dir, 'pyhande'))
-    import pyhande
+
+import pyblock
+import pyhande
 
 def run_hande_blocking(files, start_iteration, reblock_plot=None, verbose=1,
                        width=0, out_method='to_string', inefficiency=False):

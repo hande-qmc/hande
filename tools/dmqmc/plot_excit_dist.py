@@ -2,15 +2,15 @@
 '''Plot excitation distribution from dmqmc output.'''
 
 import os
+import pkgutil
 import sys
 import matplotlib.pyplot as pl
 import argparse
-try:
-    import pyhande as ph
-except ImportError:
+
+if not pkgutil.find_loader('pyhande'):
     _script_dir = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(os.path.join(_script_dir, '../pyhande'))
-    import pyhande as ph
+import pyhande as ph
 
 
 def plot_excit_dist(filename, plotfile, calc, max_excit):
