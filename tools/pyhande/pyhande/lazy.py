@@ -26,8 +26,10 @@ Parameters
 ----------
 datafiles : list of strings
     names of files containing HANDE QMC calculation output.
-start : int
-    iteration from which the blocking analysis is performed.
+start : int or None
+    iteration from which the blocking analysis is performed.  If None, then
+    attempt to automatically determine the a good iteration using
+    :func:`find_starting_iteration`.
 select_function : function 
     function which returns a boolean mask for the iterations to include in the
     analysis.  Not used if set to None (default).  Overrides ``start``.  See
@@ -76,8 +78,14 @@ Umrigar93
 '''
     (calcs, calcs_md) = zeroT_qmc(datafiles, reweight_history, mean_shift,
                                   arith_mean)
-    return [lazy_block(calc, md, start, select_function, extract_psips,
-                      calc_inefficiency) for (calc, md) in zip(calcs, calcs_md)]
+    infos = []
+    for (calc, md) in zip(calcs, calcs_md):
+        if start is None:
+            start = find_starting_iteration(calc, md)
+        md['pyhande'] = {'reblock_start': start}
+        infos.append(lazy_block(calc, md, start, select_function, extract_psips,
+                      calc_inefficiency))
+    return infos
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
     '''Extract zero-temperature QMC (i.e. FCIQMC and CCMC) calculations.
