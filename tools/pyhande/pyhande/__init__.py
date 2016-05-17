@@ -14,7 +14,6 @@ submodule for more details.
 import pyhande.analysis
 import pyhande.canonical
 import pyhande.extract
-import pyhande.find_starting_iteration
 import pyhande.lazy
 import pyhande.utils
 import pyhande.weight
