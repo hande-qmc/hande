@@ -198,7 +198,6 @@ procedure(i_sub), pointer :: dmqmc_initial_distribution_ptr => null()
 procedure(i_create_spawned_particle), pointer :: create_spawned_particle_ptr => null()
 procedure(i_create_spawned_particle_dm), pointer :: create_spawned_particle_dm_ptr => null()
 
-
 ! Single structure for all types of excitation generator so we can use the same
 ! interface for spawning routines which use different types of generator.
 type gen_excit_ptr_t
@@ -212,7 +211,7 @@ type(gen_excit_ptr_t) :: gen_excit_ptr, gen_excit_hfs_ptr
 
 abstract interface
     subroutine i_spawner(rng, sys, qmc_state, spawn_cutoff, real_factor, d, parent_sign, gen_excit_ptr, weights, &
-                         nspawned, connection)
+                         nspawned, nspawned_im, connection)
         use dSFMT_interface, only: dSFMT_t
         use qmc_data, only: qmc_state_t
         use system, only: sys_t
@@ -228,6 +227,7 @@ abstract interface
         type(gen_excit_ptr_t), intent(in) :: gen_excit_ptr
         real(p), allocatable, intent(in) :: weights(:)
         integer(int_p), intent(out) :: nspawned
+        integer(int_p), intent(out) :: nspawned_im
         type(excit_t), intent(out) :: connection
     end subroutine i_spawner
 end interface

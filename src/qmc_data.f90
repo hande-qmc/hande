@@ -123,6 +123,8 @@ type qmc_in_t
     logical :: initiator_approx = .false.
     ! Population above which a determinant is an initiator.
     real(p) :: initiator_pop = 3.0_p
+    ! How to apply the initiator approximation in complex spaces.
+    logical :: quadrature_initiator = .false.
 
     ! number of monte carlo cycles/report loop
     integer :: ncycles
@@ -394,7 +396,8 @@ type particle_t
     real(dp), allocatable :: nparticles_proc(:,:) ! (sampling_size,nprocs)
     ! Walker information: main list.
     ! sampling_size is one for each quantity sampled (i.e. 1 for standard
-    ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling).
+    ! FCIQMC/initiator-FCIQMC, 2 for FCIQMC+Hellmann--Feynman sampling or
+    ! complex FCIQMC).
     integer :: nspaces = 1
     ! number of additional elements stored for each determinant in dat for
     ! (e.g.) importance sampling.
@@ -473,6 +476,15 @@ type estimators_t
     integer :: tot_nstates = 0
     ! The total number of successful spawning events, across all processors.
     integer :: tot_nspawn_events = 0
+
+    ! If performing calculations with real and imaginary walkers must be able to
+    ! accumulate complex values. When broadcasting between processors within
+    ! update_energy_estimators these are each converted into two real values, then
+    ! back to a complex value. When performing complex calculations this value
+    ! can be freely updated except when within update_energy_estimators, where
+    ! extra care must be taken.
+    complex(p) :: proj_energy_comp
+    complex(p) :: D0_population_comp
 
     ! Hellmann--Feynman sampling (several terms must be accumulated and averaged separately):
     ! Signed population of Hellmann--Feynman particles
@@ -596,6 +608,7 @@ contains
         call json_write_key(js, 'target_particles', qmc%target_particles)
         call json_write_key(js, 'initiator_approx', qmc%initiator_approx)
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
+        call json_write_key(js, 'quadrature_initiator', qmc%quadrature_initiator)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)

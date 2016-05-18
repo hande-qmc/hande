@@ -262,6 +262,23 @@ algorithms and control the core settings in the algorithms.
 
     Set the (absolute) population above which a state is considered to be an initiator
     state.  A value of 0 is equivalent to disabling the initiator approximation.
+``quadrature_initiator``
+    type: logical.
+
+    Optional. Default: true.
+
+    The initiator approximation in a complex spaces could be applied in (at least) two different
+    ways.
+    If this parameter is true, the magnitude of the instantaneous complex coefficient at each site
+    is used to determine initiator properties for both real and imaginary parents.
+
+    If this parameter is false, the magnitude of the real and imaginary populations are compared
+    separately and initiator flags for real and imaginary set individually.
+
+    .. note::
+
+        The comparative efficacy of these two approaches is currently under investigation.
+
 ``tau_search``
     type: boolean.
 

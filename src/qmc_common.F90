@@ -602,7 +602,8 @@ contains
         !       non-blocking calculations.
 
         use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, decode_det
-        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send
+        use energy_evaluation, only: local_energy_estimators, update_energy_estimators_send, &
+                                    update_proj_energy_mol_complex
         use excitations, only: excit_t, get_excitation
         use fciqmc_data, only: write_fciqmc_report
         use importance_sampling, only: importance_sampling_weight
@@ -611,17 +612,19 @@ contains
         use qmc_data, only: qmc_in_t, qmc_state_t, nb_rep_t
         use system, only: sys_t
 
+
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
         type(qmc_state_t), intent(inout), target :: qs
         logical, optional, intent(in) :: nb_comm
         integer, optional, intent(in) :: spawn_elsewhere
 
-        integer :: idet
+        integer :: idet, ispace
         real(dp) :: ntot_particles(qs%psip_list%nspaces)
-        real(p) :: real_population(qs%psip_list%nspaces), weighted_population
+        real(p) :: real_population(qs%psip_list%nspaces), weighted_population(qs%psip_list%nspaces)
         type(det_info_t) :: cdet
         real(p) :: hmatel
+        complex(p) :: hmatel_comp
         type(excit_t) :: D0_excit
         logical :: nb_comm_local
 #ifdef PARALLEL
@@ -634,18 +637,30 @@ contains
         ! update_proj_energy.
         qs%estimators%proj_energy = 0.0_p
         qs%estimators%D0_population = 0.0_p
+        qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+        qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
         call alloc_det_info_t(sys, cdet)
         do idet = 1, qs%psip_list%nstates
             cdet%f = qs%psip_list%states(:,idet)
             call decode_det(sys%basis, cdet%f, cdet%occ_list)
             cdet%data => qs%psip_list%dat(:,idet)
             real_population = real(qs%psip_list%pops(:,idet),p)/qs%psip_list%pop_real_factor
-            weighted_population = importance_sampling_weight(qs%trial, cdet, real_population(1))
+            do ispace = 1, qs%psip_list%nspaces
+                weighted_population(ispace) = importance_sampling_weight(qs%trial, cdet, real_population(ispace))
+            end do
             ! WARNING!  We assume only the bit string, occ list and data field
             ! are required to update the projected estimator.
             D0_excit = get_excitation(sys%nel, sys%basis, cdet%f, qs%ref%f0)
-            call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population, &
-                                        qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, hmatel)
+            if (sys%read_in%comp) then
+                call update_proj_energy_mol_complex(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, &
+                            cmplx(weighted_population(1), weighted_population(2), p), &
+                            qs%estimators%D0_population_comp, qs%estimators%proj_energy_comp, &
+                            D0_excit, hmatel_comp)
+            else
+                call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet, weighted_population(1), &
+                                        qs%estimators%D0_population, qs%estimators%proj_energy, D0_excit, &
+                                        hmatel)
+            end if
         end do
         call dealloc_det_info_t(cdet)
 
@@ -686,7 +701,7 @@ contains
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
             ! analysis.
-            call write_fciqmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false.)
+            call write_fciqmc_report(qmc_in, qs, 0, ntot_particles, 0.0, .true., .false., comp=sys%read_in%comp)
         end if
 
     end subroutine initial_fciqmc_status
@@ -709,10 +724,12 @@ contains
         qs%estimators%proj_energy = 0.0_p
         qs%spawn_store%rspawn = 0.0_p
         qs%estimators%D0_population = 0.0_p
+        qs%estimators%proj_energy_comp = cmplx(0.0, 0.0, p)
+        qs%estimators%D0_population_comp = cmplx(0.0, 0.0, p)
 
     end subroutine init_report_loop
 
-    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts)
+    subroutine init_mc_cycle(psip_list, spawn, nattempts, ndeath, min_attempts, ndeath_im, complx)
 
         ! Initialise a Monte Carlo cycle (basically zero/reset cycle-level
         ! quantities).
@@ -729,7 +746,10 @@ contains
         !        cycle.  Reset to 0 on output.
         ! In (optional):
         !    min_attempts: if present, set nattempts to be at least this value.
-        !    nb_comm: true if using non-blocking communications.
+        !    complx: true if using real and imaginary psips.
+        ! Out (optional):
+        !    ndeath_im: number of imaginary particle deaths that occur in a Monte
+        !       Carlo cycle.  Reset to 0 on output.
 
         use calc, only: doing_calc, ct_fciqmc_calc, ccmc_calc, dmqmc_calc
         use qmc_data, only: particle_t
@@ -738,9 +758,15 @@ contains
         type(particle_t), intent(inout) :: psip_list
         type(spawn_t), intent(inout) :: spawn
         integer(int_64), intent(in), optional :: min_attempts
+        logical, intent(in), optional :: complx
         integer(int_64), intent(out) :: nattempts
         integer(int_p), intent(out) :: ndeath
+        integer(int_p), intent(out), optional :: ndeath_im
 
+        logical :: complx_loc
+
+        complx_loc = .false.
+        if (present(complx)) complx_loc = complx
 
         ! Reset the current position in the spawning array to be the
         ! slot preceding the first slot.
@@ -748,7 +774,7 @@ contains
 
         ! Reset death counter
         ndeath = 0_int_p
-
+        if (present(ndeath_im)) ndeath_im = 0_int_p
         ! Number of spawning attempts that will be made.
         ! For FCIQMC, this is used for accounting later, not for controlling the
         ! spawning.
@@ -768,6 +794,7 @@ contains
             ! Each particle gets to attempt to spawn onto a connected
             ! determinant and a chance to die/clone.
             nattempts = nint(2*psip_list%nparticles(1), int_64)
+            if (complx_loc) nattempts = nattempts + abs(nint(2*psip_list%nparticles(2), int_64))
         end if
 
         if (present(min_attempts)) nattempts = max(nattempts, min_attempts)
@@ -835,7 +862,8 @@ contains
 
     subroutine end_report_loop(qmc_in, iteration, update_tau, qs, ntot_particles,              &
                                 nspawn_events, semi_stoch_shift_it, semi_stoch_start_it, soft_exit, &
-                                load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, error)
+                                load_bal_in, update_estimators, bloom_stats, doing_lb, nb_comm, &
+                                comp, error)
 
         ! In:
         !    qmc_in: input optons relating to QMC methods.
@@ -863,6 +891,7 @@ contains
         !    doing_lb: true if doing load balancing.
         !    nb_comm: true if using non-blocking communications.
         !    load_bal_in: input options for load balancing.
+        !    comp: true if doing qmc calculation with real and imaginary walkers.
         ! In/Out (optional):
         !    bloom_stats: particle blooming statistics to accumulate.
         !    error: true if an error has occured and we need to quit.
@@ -881,7 +910,7 @@ contains
         logical, intent(inout) :: update_tau
         type(qmc_state_t), intent(inout) :: qs
         integer, intent(in) :: nspawn_events
-        logical, optional, intent(in) :: update_estimators
+        logical, optional, intent(in) :: update_estimators, comp
         type(bloom_stats_t), optional, intent(inout) :: bloom_stats
         real(dp), intent(inout) :: ntot_particles(qs%psip_list%nspaces)
         integer, intent(in) :: semi_stoch_shift_it
@@ -892,7 +921,7 @@ contains
         logical, optional, intent(in) :: doing_lb, nb_comm
         logical, optional, intent(inout) :: error
 
-        logical :: update, vary_shift_before, nb_comm_local, comms_found
+        logical :: update, vary_shift_before, nb_comm_local, comms_found, comp_param
         real(dp) :: rep_info_copy(nprocs*qs%psip_list%nspaces+nparticles_start_ind-1)
 
         ! Only update the timestep if not in vary shift mode.
@@ -911,20 +940,27 @@ contains
 
         ! Update the energy estimators (shift & projected energy).
         update = .true.
+        ! Check if complex parameter passed to function, and if not set to
+        ! value that will have no effect.
+        if (present(comp)) then
+            comp_param = comp
+        else
+            comp_param = .false.
+        end if
         if (present(update_estimators)) update = update_estimators
         if (update .and. .not. nb_comm_local) then
             call update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles, load_bal_in, doing_lb, &
-                                          comms_found, error, update_tau, bloom_stats)
+                                      comms_found, error, update_tau, bloom_stats, comp_param)
         else if (update) then
             ! Save current report loop quantitites.
             ! Can't overwrite the send buffer before message completion
             ! so copy information somewhere else.
             call local_energy_estimators(qs, rep_info_copy, nspawn_events, comms_found, error, update_tau, &
-                                          bloom_stats, qs%par_info%report_comm%nb_spawn(2))
+                                          bloom_stats, qs%par_info%report_comm%nb_spawn(2), comp_param)
             ! Receive previous iterations report loop quantities.
             call update_energy_estimators_recv(qmc_in, qs, qs%psip_list%nspaces, qs%par_info%report_comm%request, ntot_particles, &
                                                qs%psip_list%nparticles_proc, load_bal_in, doing_lb, comms_found, error, &
-                                               update_tau, bloom_stats)
+                                               update_tau, bloom_stats, comp=comp_param)
             ! Send current report loop quantities.
             qs%par_info%report_comm%rep_info = rep_info_copy
             call update_energy_estimators_send(qs%par_info%report_comm)
