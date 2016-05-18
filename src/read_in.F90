@@ -158,6 +158,7 @@ contains
 
         ! Only do i/o on root processor.
         if (parent) then
+            uhf = .false.
             ir = get_free_unit()
             inquire(file=sys%read_in%fcidump, exist=t_exists)
             if (.not.t_exists) call stop_all('read_in_integrals', 'FCIDUMP does not &
