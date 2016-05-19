@@ -876,7 +876,7 @@ contains
                 ij_sym = cross_product_periodic_basis(sys%read_in%mom_sym, excitation%from_orb(1), excitation%from_orb(2), &
                                                 sys%basis%basis_fns)
                 ab_sym = cross_product_periodic_basis(sys%read_in%mom_sym, excitation%to_orb(1), excitation%to_orb(2), &
-                    sys%basis%basis_fns)
+                                                sys%basis%basis_fns)
                 if (ij_sym == ab_sym) then
                     hmatel%c = slater_condon2_periodic_excit_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                                       excitation%to_orb(1), excitation%to_orb(2),     &
