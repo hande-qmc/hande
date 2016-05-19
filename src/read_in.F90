@@ -391,6 +391,8 @@ contains
             end if
         end if
         ! Initialise integral stores.
+        ! If using momentum symmetry don't use value of op_sym currently, so can set to read_in value (which
+        ! will be default value) even if not valid in system.
         if (t_store) then
             call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%one_e_h_integrals)
             call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%coulomb_integrals)
