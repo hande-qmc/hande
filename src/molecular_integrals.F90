@@ -37,6 +37,22 @@ contains
 !--- Memory allocation and deallocation ---
 
     subroutine init_one_body_t(sys, op_sym, imag, store)
+        use system, only: sys_t
+
+        type(sys_t), intent(in) :: sys
+        integer, intent(in) :: op_sym
+        logical, intent(in) :: imag
+        type(one_body_t), intent(out) :: store
+
+        if (sys%momentum_space) then
+            call init_one_body_t_periodic(sys%sym0, sys%sym_max, sys%read_in%mom_sym%nbands, imag, store)
+        else
+            call init_one_body_t_pg_sym(sys, op_sym, imag, store)
+        end if
+    end subroutine init_one_body_t
+
+
+    subroutine init_one_body_t_pg_sym(sys, op_sym, imag, store)
 
         ! Allocate memory required for the integrals involving a one-body
         ! operator.
@@ -104,7 +120,7 @@ contains
             end do
         end associate
 
-    end subroutine init_one_body_t
+    end subroutine init_one_body_t_pg_sym
 
     subroutine init_one_body_t_periodic(sym0, sym_max, nbands, imag, store)
 
@@ -351,6 +367,20 @@ contains
 ! 1. < i | o_1 | j >
 
     subroutine store_one_body_int(i, j, intgrl, sys, suppress_err_msg, store, ierr)
+        ! Interface function between symmetry-specific integral storage routines.
+        ! In:
+        !    i,j: (indices of) spin-orbitals.
+        !    intgrl: <i|o_1|j>, where o_1 is a one-body operator.
+        !    suppress_err_msg: if true, don't print out any error messages.
+        !    sys: information of system being studied. Must have symmetry
+        !       (pg or momentum as appropriate) and basis function initialised.
+        ! In/out:
+        !    store: one-body integral store.  On exit the <i|o_1|j> is also
+        !       stored.
+        ! Out:
+        !    ierr: 0 if no error is encountered, 1 if integral should be non-zero
+        !       by symmetry but is larger than depsilon.
+
         use system, only: sys_t
         use molecular_integral_types, only: one_body_t
         integer, intent(in) :: i, j
@@ -475,7 +505,8 @@ contains
         ! Currently inefficient for complex as will check symmetry when storing real and
         ! imaginary components of same integral.
 
-        ! as dealing with complex plane waves, sym(i*) = inv_sym(i), so just need sym(i) == sym(a)
+        ! As dealing with complex plane waves for translational symmetry, sym(i*) = inv_sym(i),
+        ! so just need sym(i) == sym(a). Just in case this isn't always the case keep check.
 
         if (mom_sym_conj(mom_sym, basis_fns(i)%sym) == mom_sym%inv_sym(basis_fns(j)%sym) &
             .and. basis_fns(i)%ms == basis_fns(j)%ms) then
@@ -1059,6 +1090,23 @@ contains
     end function two_body_int_indx_complex
 
     subroutine store_two_body_int(i, j, a, b, intgrl, sys, suppress_err_msg, store, ierr)
+        ! Interface between symmetry-specific subroutines to store two body
+        ! integral values.
+
+        ! In:
+        !    i,j,a,b: (indices of) spin-orbitals.
+        !    intgrl: <ij|o_2|ab>, where o_2 is a two-electron operator.  Note
+        !       the integral is expressed in *PHYSICIST'S NOTATION*.
+        !    sys: information on the system being studied. Requires symmetry
+        !       information (pg or momentum as appropriate) and basis function
+        !       info to be set.
+        !    suppress_err_msg: if true, don't print out any error messages.
+        ! In/out:
+        !    store: two-body integral store.  On exit the <ij|o_2|ab> is also
+        !       stored.
+        ! Out:
+        !    ierr: 0 if no error is encountered, 1 if integral should be non-zero
+        !       by symmetry but is larger than depsilon.
 
         use system, only: sys_t
 
@@ -1229,26 +1277,7 @@ contains
 
     end subroutine store_two_body_int_nonzero
 
-    pure function get_two_body_int_mol_real(store, i, j, a, b, sys) result(intgrl)
-
-        use system, only: sys_t
-
-        real(p) :: intgrl
-        type(two_body_t), intent(in) :: store
-        type(sys_t), intent(in) :: sys
-        integer, intent(in) :: i, j, a, b
-
-        if (sys%momentum_space) then
-            intgrl = get_two_body_int_mol_real_periodic(store, i, j, a, b, &
-                                sys%basis%basis_fns, sys%read_in%mom_sym)
-        else
-            intgrl = get_two_body_int_mol_real_pg_sym(store, i, j, a, b, &
-                                sys%basis%basis_fns, sys%read_in%pg_sym)
-        end if
-
-    end function get_two_body_int_mol_real
-
-    pure function get_two_body_int_mol_real_pg_sym(store, i, j, a, b, basis_fns, pg_sym) result(intgrl)
+    pure function get_two_body_int_mol_real(store, i, j, a, b, basis_fns, pg_sym) result(intgrl)
         ! In:
         !    store: two-body integral store.
         !    i,j,a,b: (indices of) spin-orbitals.
@@ -1287,46 +1316,7 @@ contains
             intgrl = 0.0_p
         end if
 
-    end function get_two_body_int_mol_real_pg_sym
-
-    pure function get_two_body_int_mol_real_periodic(store, i, j, a, b, basis_fns, mom_sym) result(intgrl)
-        ! In:
-        !    store: two-body integral store.
-        !    i,j,a,b: (indices of) spin-orbitals.
-        !    basis_fns: list of single-particle basis functions.
-        !    mom_sym: information on the symmetries of the basis functions.
-        ! Returns:
-        !    < i j | o_2 | a b >, the integral between the (i,a) co-density and
-        !    the (j,b) co-density involving a two-body operator o_2 given by
-        !    store.
-        !
-        ! NOTE:
-        !    If <ij|ab> is known the be non-zero by spin and spatial symmetry,
-        !    then it is faster to call get_two_body_int_mol_nonzero.
-        !    It is also faster to call RHF- or UHF-specific routines.
-
-        use basis_types, only: basis_fn_t
-        use momentum_sym_read_in, only: cross_product_periodic_basis, mom_sym_conj
-        use symmetry_types, only: mom_sym_t
-
-        real(p) :: intgrl
-        type(two_body_t), intent(in) :: store
-        type(basis_fn_t), intent(in) :: basis_fns(:)
-        type(mom_sym_t), intent(in) :: mom_sym
-        integer, intent(in) :: i, j, a, b
-
-        integer :: sym_ij, sym_ab
-
-        sym_ij = cross_product_periodic_basis(mom_sym, i, j, basis_fns)
-        sym_ab = cross_product_periodic_basis(mom_sym, a, b, basis_fns)
-        if (mom_sym_conj(mom_sym, sym_ij) == mom_sym%inv_sym(sym_ab) .and. basis_fns(i)%ms == basis_fns(a)%ms &
-                                       .and. basis_fns(j)%ms == basis_fns(b)%ms) then
-            intgrl = get_two_body_int_mol_nonzero(store, i, j, a, b, basis_fns)
-        else
-            intgrl = 0.0_p
-        end if
-
-    end function get_two_body_int_mol_real_periodic
+    end function get_two_body_int_mol_real
 
     pure function get_two_body_int_mol_complex(store, i, j, a, b, basis_fns, mom_sym, im_store) result(intgrl)
 

@@ -169,9 +169,9 @@ contains
                     if (occ_list(iel) /= i) &
                         hmatel = hmatel &
                             + get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), a, occ_list(iel), &
-                                                    sys) &
+                                                    sys%basis%basis_fns, sys%read_in%pg_sym) &
                             - get_two_body_int_mol_real(coulomb_ints, i, occ_list(iel), occ_list(iel), a, &
-                                                    sys)
+                                                    sys%basis%basis_fns, sys%read_in%pg_sym)
                 end do
             end associate
 
@@ -265,8 +265,8 @@ contains
 
         ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
-        hmatel = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, a, b, sys) &
-                 - get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, b, a, sys)
+        hmatel = get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, a, b, sys%basis%basis_fns, sys%read_in%pg_sym) &
+                 - get_two_body_int_mol_real(sys%read_in%coulomb_integrals, i, j, b, a, sys%basis%basis_fns, sys%read_in%pg_sym)
 
         if (perm) hmatel = -hmatel
 

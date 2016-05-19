@@ -268,11 +268,10 @@ contains
 
         ! Determine if appropriate information is available to use translational symmetry
         momentum_sym = sum(abs(nprop - [-1, -1, -1])) >= depsilon .and. propbitlen /= -1
-        if (momentum_sym) then
-            ! Stop calculation if system isn't complex, as we haven't allowed for this.
-            !if (.not. sys%read_in%comp) call stop_all('read_in_integrals', &
-            !        'Real FCIDUMP with translational symmetry not currently supported.&
-            !        & Please implement.')
+        if (momentum_sym .and. sys%read_in%comp) then
+            ! If system isn't complex but contains symmetry information, must havew real supercell with
+            ! single kpoint. In this case using momentum symmetry or pg symmetry will make no difference,
+            ! so we use pg_sym for easy compatibility with conventional routines.
             sys%lattice%ndim = 3
             sys%momentum_space = .true.
             sys%read_in%mom_sym%nprop = nprop
@@ -393,18 +392,11 @@ contains
         end if
         ! Initialise integral stores.
         if (t_store) then
-            if (sys%momentum_space) then
-                call init_one_body_t_periodic(sys%sym0, sys%sym_max, sys%read_in%mom_sym%nbands, &
-                                            .false., sys%read_in%one_e_h_integrals)
-                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%coulomb_integrals)
-                if (sys%read_in%comp) then
-                    call init_one_body_t_periodic(sys%sym0, sys%sym_max, sys%read_in%mom_sym%nbands, &
-                                                .true., sys%read_in%one_e_h_integrals_imag)
-                    call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%coulomb_integrals_imag)
-                end if
-            else
-                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%one_e_h_integrals)
-                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%coulomb_integrals)
+            call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%one_e_h_integrals)
+            call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .false., sys%read_in%coulomb_integrals)
+            if (sys%read_in%comp) then
+                call init_one_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%one_e_h_integrals_imag)
+                call init_two_body_t(sys, sys%read_in%pg_sym%gamma_sym, .true., sys%read_in%coulomb_integrals_imag)
             end if
         end if
 
