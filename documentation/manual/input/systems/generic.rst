@@ -63,9 +63,10 @@ Options
     Optional.  Default: 'FCIDUMP'.
 
     Specify the FCIDUMP file containing the integrals and information relating to the
-    single-particle basis.  This can also be an HDF5 file previously produced by HANDE from a FCIDUMP via the
-    ``write_read_in_system`` function (see :ref:`utils_hdf5_system_dump`), which is both
-    more compact in size and considerably faster to process.
+    single-particle basis. For details of the format see :ref:`fcidump_format`.
+    This can also be an HDF5 file previously produced by HANDE from a FCIDUMP via the
+    ``write_read_in_system`` function (see :ref:`utils_hdf5_system_dump`), which is
+    both more compact in size and considerably faster to process.
 ``dipole_int_file``
     type: string.
 
@@ -125,16 +126,18 @@ Options
 
 For cylindrically symmetrical systems, the :math:`L_z` (z-component of orbital angular momentum)
 operator commutes with the Hamiltonian, and this can be a convenient symmetry to conserve.
-:math:`L_z` is measured in units of :math:`\hbar`.  Normal FCIDUMP files do not contain orbitals which are
-eigenfunctions of the :math:`L_z` operator, so they must be transformed using post-processing.  The
-TransLz  script from the `NECI <https://github.com/ghb24/NECI_STABLE>`_ project can be
-used for this purpose. The FCIDUMP file header format has been modified to include
+:math:`L_z` is measured in units of :math:`\hbar`.  Normal FCIDUMP files do not contain orbitals
+which are eigenfunctions of the :math:`L_z` operator, so they must be transformed using
+post-processing.  The TransLz  script from the `NECI <https://github.com/ghb24/NECI_STABLE>`_
+project can be used for this purpose. The FCIDUMP file header format has been modified to include
 additional parameters: SYML, and SYMLZ which have a list of values, one for each orbital.
+
 SYML gives the magnitude of L for the orbital if known (or -20 if not) but is not used.
-SYMLZ give the eigenvalue of :math:`L_z` (the :math:`m_l` value).  Orbitals with defined values of :math:`L_z` are
-likely to be complex-valued, but luckily the integrals involving them are not, so although
-the FCIDUMP file must be translated, it still retains the same format (see comments in
-``src/read_in.F90`` and ``src/molecular_integrals.F90`` for details if you wish to create
+
+SYMLZ give the eigenvalue of :math:`L_z` (the :math:`m_l` value).  Orbitals with defined values of 
+:math:`L_z` are likely to be complex-valued, but luckily the integrals involving them are not, so
+althoughthe FCIDUMP file must be translated, it still retains the same format (see comments in
+``src/read_in.F90``, ``src/molecular_integrals.F90`` and :ref:`fcidump_format` for details if you wish to create
 FCIDUMP files by other means).  
 
 .. warning::
