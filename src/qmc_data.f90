@@ -105,6 +105,9 @@ type qmc_in_t
     ! shift.
     real(p) :: shift_damping = 0.050_p
 
+    logical :: vary_shift
+    logical :: vary_shift_present = .false.
+
     ! Array sizes: main and spawned particle lists.
     ! If these are < 0, then the values represent the number of MB to be used.
     ! CARE: as we don't modify qmc_in_t objects, one should inspect the sizes
