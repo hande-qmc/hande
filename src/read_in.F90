@@ -129,9 +129,9 @@ contains
         !       If not provided in FCIDUMP assume no symmetry in system.
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
-        !  * NPROP: Dimensions of supercell used in translationally symmetric systems.
-        !  * PROPBITLEN: Length in bits of each property (?) in translationally symmetric
-        !    systems. Translational symmetry not yet implemented.
+        !  * NPROP: Dimensions of the supercell used in translationally symmetric systems.
+        !  * PROPBITLEN: Length in bits of each kpoint index in reciprocal space in
+        !    translationally symmetric systems. Translational symmetry not yet implemented.
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
         !    nuclear-nuclear and other non-electron contributions to the

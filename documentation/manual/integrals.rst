@@ -29,7 +29,7 @@ FCIDUMP format
 ==============
 
 The format of FCIDUMP files used by HANDE is partially defined in [Knowles89]_. It consists
-of a namelist, containing various pieces of information aboutthe system, and a body containing
+of a namelist header, containing various pieces of information about the system, and a body containing
 all integral values.
 
 ``&FCI``
@@ -40,8 +40,9 @@ all integral values.
     implement the extension where ``&END`` is used to
     terminate the namelist instead.
 
-``x``, ``i``, ``a``, ``j``, ``b``
-    ``x`` is a float or complex value if a basis with complex Hamiltonian elements is used
+``x``  ``i``  ``a``  ``j``  ``b``
+    Format for integral values within body of the FCIDUMP. 
+    ``x`` is a float or complex value as appropriate for the system.
     ``i``, ``j``, ``a`` and ``b`` are integers.
 
 &FCI namelist
@@ -79,19 +80,22 @@ all integral values.
     Currently unused.  Defined solely for compatibility with NECI
     FCIDUMP files.  Array containing L (angular momentum) for each orbital.
     Set to :math:`-1` if L is not a good quantum number.
-    If not provided in FCIDUMP assume no :math:`L_z` symmetry in system.
 
 ``SYMLZ``
     Array containing :math:`L_z` (angular momentum along the z-axis) for each orbital.
     For example :math:`d_xz` would have :math:`L=2` and :math:`L_z=1`, and
     :math:`d_yz L=2`, :math:`L_z=-1`.
+    If not provided in FCIDUMP assume no :math:`L_z` symmetry in system.
 
 ``NPROP``
-    Dimensions of supercell used in translationally symmetric systems.
+    Currently unused.  Defined solely for compatibility with NECI
+    FCIDUMP files. Dimensions of the supercell used in translationally
+    symmetric systems.
 
 ``PROPBITLEN``
-    Length in bits of each property (?) in translationally symmetric
-    systems. Translational symmetry not yet implemented.
+    Currently unused.  Defined solely for compatibility with NECI
+    FCIDUMP files. Length in bits of each kpoint index dimension in
+    translationally symmetric systems.
 
 Integrals
 ^^^^^^^^^
