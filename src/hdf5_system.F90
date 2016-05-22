@@ -362,7 +362,7 @@ module hdf5_system
 #else
             filename = ''
             if (parent)  call warning('dump_system_hdf5', '# Not compiled with HDF5 support. Cannot write out &
-                                    sysdump file.')
+                                      &sysdump file.')
 #endif
         end subroutine dump_system_hdf5
 
