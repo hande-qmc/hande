@@ -1492,8 +1492,6 @@ contains
         integer :: excitor_sign, excitor_level
         logical :: linked, single_unlinked, allowed_excitation
         real(p) :: invdiagel
-        integer :: occ_list(sys%nel), occ_list_ref(sys%nel)
-        integer :: iel, jel, i, j
 
         ! 1. Generate random excitation.
         ! Note CCMC is not (yet, if ever) compatible with the 'split' excitation
@@ -2177,8 +2175,6 @@ contains
         integer(i0) :: new_det(sys%basis%string_len)
         integer(i0) :: excitor(sys%basis%string_len)
         real(p) :: invdiagel
-        integer :: occ_list(sys%nel), occ_list_ref(sys%nel)
-        integer :: iel, jel
 
 
         ! 1) Choose an order for the excitors

@@ -190,7 +190,7 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
-            if(qs%estimators%D0_population==0) then
+            if(abs(qs%estimators%D0_population)<1e-100_p) then
                proj_energy_old = 0
             else
                proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
