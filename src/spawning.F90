@@ -96,8 +96,9 @@ contains
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
-        if(allowed) then
-           hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection )
+        ! [review] - JSS: why only scale in spawn_standard and not in other spawn_* procedures?
+        if (allowed) then
+           hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
         endif
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
@@ -1821,28 +1822,30 @@ contains
 
     end subroutine create_spawned_particle_rdm
 
-    function get_spawned_particle_weighting(sys, qs, fspawnee, connection ) result(weight)
-    ! The step in FCIQMC-like methods can be modified by a non-identity transformation
-    ! to weight the particles being created to take a quasi-Newton step.
-    ! This routine determines the weight to apply to the the resulting particle from this.
-    ! In:
-    !   sys:    specifies the system
-    !   qs:     specifies the qmc_state to determine if weighting is needed
-    !   fspawnee:  if connection is absent, then this is the determinant TO
-    !               which spawning will occur.
-    !              if connection is present, then this is the determinant FROM 
-    !               which spawning occurs, and connection will be used to form
-    !               the actual spawnee
-    !   connection: (optional) If present, specifies the connection from fspawnee
-    !               required to make the actual spawnee
-    !
-    ! Returns:
-    !   weight: The weighting required.
-    !
-    ! At present this uses an inefficient O(N) sum of the diagonal elements
-    ! of the Fock matrix, and the weight is 1/(F(spawnee)-F(reference))
-    ! If the difference in Fock energy between the reference and the spawnee is less than
-    ! qs%quasi_newton_thresh, then the weight 1/(qs%quasi_newton_value) is used instead.
+    function get_spawned_particle_weighting(sys, qs, fspawnee, connection) result(weight)
+
+        ! The step in FCIQMC-like methods can be modified by a non-identity transformation
+        ! to weight the particles being created to take a quasi-Newton step.
+        ! This routine determines the weight to apply to the the resulting particle from this.
+
+        ! In:
+        !   sys:    specifies the system
+        !   qs:     specifies the qmc_state to determine if weighting is needed
+        !   fspawnee:  if connection is absent, then this is the determinant TO
+        !               which spawning will occur.
+        !              if connection is present, then this is the determinant FROM 
+        !               which spawning occurs, and connection will be used to form
+        !               the actual spawnee
+        !   connection: (optional) If present, specifies the connection from fspawnee
+        !               required to make the actual spawnee
+        !
+        ! Returns:
+        !   weight: The weighting required.
+
+        ! At present this uses an inefficient O(N) sum of the diagonal elements
+        ! of the Fock matrix, and the weight is 1/(F(spawnee)-F(reference))
+        ! If the difference in Fock energy between the reference and the spawnee is less than
+        ! qs%quasi_newton_thresh, then the weight 1/(qs%quasi_newton_value) is used instead.
     
         use qmc_data, only:  qmc_state_t
         use system, only: sys_t
@@ -1858,23 +1861,32 @@ contains
         integer :: occ_list(sys%nel), occ_list_ref(sys%nel)
         integer(i0) :: fexcit(sys%basis%string_len)
         integer :: iel
+
         if (qs%quasi_newton) then
-            if(present(connection)) then
-               call create_excited_det(sys%basis, fspawnee, connection, fexcit)
+            if (present(connection)) then
+                call create_excited_det(sys%basis, fspawnee, connection, fexcit)
             else
-               fexcit = fspawnee
+                fexcit = fspawnee
             endif
             call decode_det(sys%basis, fexcit, occ_list)
+            ! [review] - JSS: entirely unnecessary (and expensive step).  Stored in qs%ref%occ_list0.
             call decode_det(sys%basis, qs%ref%f0, occ_list_ref)
 
-            diagel =0._p                                                                                        
+            diagel = 0.0_p                                                                                        
+            ! [review] - JSS: worth adding F_0 to reference_t?
+            ! [review] - JSS: optimisation: calculate F_i for the parent determinant |i> and hence reduce this to an O(1) cost
+            ! [review] - JSS: with the O(N) calculation of F_i amortized over all spawning attempts from |i> *and* avoiding an
+            ! [review] - JSS: additional decode call.  (Bonus -- precompute F_i - F_0 and add to det_info_t...)
+            ! [review] - JSS: This might be much faster as F_i is computed anyway for death...
             do iel = 1, sys%nel                                                                                 
-                diagel=diagel+sys%basis%basis_fns(occ_list(iel))%sp_eigv-sys%basis%basis_fns(occ_list_ref(iel))%sp_eigv 
+                diagel = diagel+sys%basis%basis_fns(occ_list(iel))%sp_eigv-sys%basis%basis_fns(occ_list_ref(iel))%sp_eigv 
             end do                                                                                              
-            if (diagel< qs%quasi_newton_thresh) diagel = qs%quasi_newton_value
+            if (diagel < qs%quasi_newton_thresh) diagel = qs%quasi_newton_value
             weight = 1 / diagel
         else
-            weight = 1
+            weight = 1.0_p
         end if
+
     end function get_spawned_particle_weighting
+
 end module spawning

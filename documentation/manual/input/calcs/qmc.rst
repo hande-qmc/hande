@@ -301,12 +301,19 @@ algorithms and control the core settings in the algorithms.
 
 ``quasi_newton_thresh``
     type: float.
+
+    ..
+
+        [review] - JSS: other parameters (initiator, multispawn) use xxx_threshold rather than
+        [review] - JSS: xxx_thresh.  Consistency would be helpful to the user, I think.
     
     Optional. Default: 1e-5
 
     The quasi-Newton approach scales the steps according to the inverse difference in Fock energy to
-    the reference determinant (with energy F_0).  Any determinant with energy less than
-    F_0 + quasi_newton_thresh will have weighting 1/quasi_newton_value
+    the reference determinant (with Fock energy :math:`F_0`).  Any determinant with energy
+    less than :math:`F_0 + \Delta_{\mathrm{QN}}`, where :math:`\Delta_{\mathrm{QN}}` is the value
+    given to ``quasi_newton_thresh``, will have weighting :math:`v_{\mathrm{QN}}^{-1}`,
+    where :math:`v_{\mathrm{QN}}` is the value given by ``quasi_newton_value``.
 ``quasi_newton_value``
     type: float.
 

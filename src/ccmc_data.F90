@@ -228,4 +228,5 @@ contains
         end do
 
     end subroutine convert_excitor_to_determinant
+
 end module ccmc_data

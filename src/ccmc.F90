@@ -1500,31 +1500,31 @@ contains
         call gen_excit_ptr%full(rng, sys, qs%excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         if (allowed_excitation) then
-           if (linked_ccmc) then
-               ! For Linked Coupled Cluster we reject any spawning where the
-               ! Hamiltonian is not linked to every cluster operator
-               ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
-               ! (and similarly for composite clusters)
-               if (cluster%nexcitors > 0) then
-                   ! Check whether this is an unlinked diagram - if so, the matrix element is 0 and
-                   ! no spawning is attempted
-                   call linked_excitation(sys%basis, qs%ref%f0, connection, cluster, linked, single_unlinked, funlinked)
-                   if (.not. linked) then
-                       hmatel%r = 0.0_p
-                   else if (single_unlinked) then
-                       ! Single excitation: need to modify the matrix element
-                       ! Subtract off the matrix element from the cluster without
-                       ! the unlinked a_i operator
-                       hmatel%r = hmatel%r - unlinked_commutator(sys, qs%ref%f0, connection, cluster, cdet%f, funlinked)
-                   end if
-               end if
-           end if
-           invdiagel = get_spawned_particle_weighting(sys, qs, cdet%f, connection)
+            if (linked_ccmc) then
+                ! For Linked Coupled Cluster we reject any spawning where the
+                ! Hamiltonian is not linked to every cluster operator
+                ! The matrix element to be evaluated is not <D_j|H a_i|D0> but <D_j|[H,a_i]|D0>
+                ! (and similarly for composite clusters)
+                if (cluster%nexcitors > 0) then
+                    ! Check whether this is an unlinked diagram - if so, the matrix element is 0 and
+                    ! no spawning is attempted
+                    call linked_excitation(sys%basis, qs%ref%f0, connection, cluster, linked, single_unlinked, funlinked)
+                    if (.not. linked) then
+                        hmatel%r = 0.0_p
+                    else if (single_unlinked) then
+                        ! Single excitation: need to modify the matrix element
+                        ! Subtract off the matrix element from the cluster without
+                        ! the unlinked a_i operator
+                        hmatel%r = hmatel%r - unlinked_commutator(sys, qs%ref%f0, connection, cluster, cdet%f, funlinked)
+                    end if
+                end if
+            end if
+            invdiagel = get_spawned_particle_weighting(sys, qs, cdet%f, connection)
         else
-           invdiagel = 1
+            invdiagel = 1
         end if
         ! 2, Apply additional factors.
-        hmatel = hmatel%r*cluster%amplitude*invdiagel*cluster%cluster_to_det_sign
+        hmatel%r = hmatel%r*cluster%amplitude*invdiagel*cluster%cluster_to_det_sign
         pgen = pgen*cluster%pselect*nspawnings_total
 
         ! 3. Attempt spawning.
@@ -1605,11 +1605,14 @@ contains
         ! parent excitor to the qs%ref and that formed from applying the
         ! child excitor.
         invdiagel = get_spawned_particle_weighting(sys, qs, cdet%f)
+        ! [review] - JSS: the changes to the death (here, in stochastic_death and in the non-composite version) are confusing.  Will
+        ! [review] - JSS: detail in email.
         if (linked_ccmc) then
             select case (cluster%nexcitors)
             case(0)
                 ! Death on the reference is unchanged 
                 KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
+                ! [review] - JSS: commented-out code: big no-no.
 !                KiiAi = (-qs%shift(1))*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
@@ -1749,6 +1752,7 @@ contains
         invdiagel = get_spawned_particle_weighting(sys, qs, state)
         if (isD0) then
             KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
+            ! [review] - JSS: commented out code.
 !            KiiAi = (-qs%shift(1))*population
         else
             if (linked_ccmc) then
@@ -1781,6 +1785,7 @@ contains
             ! Also need to update total population
             tot_population = tot_population + real(abs(population)-abs(old_pop),p)/qs%psip_list%pop_real_factor
             ndeath = ndeath + abs(nkill)
+            ! [review] - JSS: commented out debug code.
 !            write(6,*) "D", state, real(nkill,p)/qs%psip_list%pop_real_factor
         end if
 
@@ -2276,7 +2281,7 @@ contains
 
             invdiagel = get_spawned_particle_weighting(sys, qs, fexcit)
             ! correct hmatel for cluster amplitude
-            hmatel = hmatel%r * invdiagel *cluster%amplitude
+            hmatel%r = hmatel%r * invdiagel * cluster%amplitude
             excitor_level = get_excitation_level(fexcit, qs%ref%f0)
             call convert_excitor_to_determinant(fexcit, excitor_level, excitor_sign, qs%ref%f0)
             if (excitor_sign < 0) hmatel%r = -hmatel%r

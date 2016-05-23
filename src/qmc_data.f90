@@ -141,6 +141,7 @@ type qmc_in_t
     ! If true then allow the use of MPI barrier calls.
     logical :: use_mpi_barriers = .false.
 
+    ! [review] - JSS: add to JSON output.
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
 
@@ -548,6 +549,7 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
+    ! [review] - JSS: unnecessary (unused?) duplication with qmc_in_t.
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
     ! The lower threshold for a quasiNewton enegy difference
