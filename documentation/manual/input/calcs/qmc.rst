@@ -306,6 +306,9 @@ algorithms and control the core settings in the algorithms.
 
         [review] - JSS: other parameters (initiator, multispawn) use xxx_threshold rather than
         [review] - JSS: xxx_thresh.  Consistency would be helpful to the user, I think.
+        [review] - JSS: should also note the weighting for determinants above the threshold.
+        [review] - JSS: Actually, this description isn't most enlightening about how it
+        [review] - JSS: enters the algorithm and whether the user need to change it (I suspect not).
     
     Optional. Default: 1e-5
 
