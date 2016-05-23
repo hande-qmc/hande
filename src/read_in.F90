@@ -82,6 +82,14 @@ contains
         isym = 0
         syml = 0
         symlz = 0
+        ! Set namelist parameters to defaults that can't be confused for actual input.
+        nelec = 0
+        ms2 = huge(0)
+        norb = 0
+        uhf = .false.
+        ! Set orbsym to be zero to ensure sensible behaviour if no symmetry
+        ! information is provided in FCIDUMP.
+        orbsym(:) = 0
 
         t_store = .true.
         if (present(store_info)) t_store = store_info
@@ -98,12 +106,17 @@ contains
 
         ! &FCI namelist:
         !  * NORB: number of orbitals in the basis.  See note on basis indices below.
+        !       Must be provided in FCIDUMP.
         !  * NELEC: number of electrons in system.
+        !       Must be provided either in FCIDUMP or input file.
         !  * MS2: spin polarisation.
+        !       Must be provided either in FCIDUMP or input file.
         !  * ORBSYM: array containing symmetry label of each orbital.  See
         !    symmetry notes below and in pg_symmetry.
+        !       If not provided in FCIDUMP assume no symmetry in system.
         !  * UHF: true if FCIDUMP file was produced from an unrestricted
         !    Hartree-Fock calculation.  See note on basis indices below.
+        !       If not provided in FCIDUMP assumed to be an RHF calculation.
         !    NOTE:
         !         We assume that in UHF calculations the number of spin-up basis
         !         functions is equal to the number of spin-down basis functions.
@@ -113,11 +126,12 @@ contains
         !  * SYML: currently unused.  Defined solely for compatibility with NECI
         !    FCIDUMP files.  Array containing L (angular momentum) for each orbital.
         !    Set to -1 if L is not a good quantum number.
+        !       If not provided in FCIDUMP assume no symmetry in system.
         !  * SYMLZ:  Array containing Lz (angular momentum along the z-axis) for each orbital.
         !    For example d_xz would have L=2 and Lz=1, and dyz L=2, Lz=-1.
-        !  * NPROP: Dimensions of supercell used in translationally symmetric systems.
-        !  * PROPBITLEN: Length in bits of each property (?) in translationally symmetric
-        !    systems. Translational symmetry not yet implemented.
+        !  * NPROP: Dimensions of the supercell used in translationally symmetric systems.
+        !  * PROPBITLEN: Length in bits of each kpoint index in reciprocal space in
+        !    translationally symmetric systems. Translational symmetry not yet implemented.
         ! Integrals:
         !  * if i = j = a = b = 0, E_core = x , where E_core contains the
         !    nuclear-nuclear and other non-electron contributions to the
@@ -167,6 +181,9 @@ contains
             ! read system data
             read (ir, FCI)
             sys%read_in%uhf = uhf
+            if (norb == 0) call stop_all('read_in_integrals', &
+                'norb not provided in FCIDUMP header.')
+
         end if
 
 #ifdef PARALLEL
@@ -194,13 +211,18 @@ contains
         end if
 
         if (sys%nel == 0 .and. sys%Ms == huge(1)) then
-            if (parent) then
-                write (error_unit,'(1X,"WARNING: using the number of electrons in FCIDUMP file: '&
-                    //trim(sys%read_in%fcidump)//'.")')
-                write (error_unit,'(1X,"FCIDUMP file indicates ",i0," electrons.")') nelec
+            if (nelec == 0 .or. ms2 == huge(1)) then
+                call stop_all('read_in_integrals', 'Nelec and ms not provided in FCIDUMP file or '&
+                    &'input file. Please specify in one of these locations.')
+            else
+                if (parent) then
+                    write (error_unit,'(1X,"WARNING: using the number of electrons in FCIDUMP file: '&
+                        //trim(sys%read_in%fcidump)//'.")')
+                    write (error_unit,'(1X,"FCIDUMP file indicates ",i0," electrons.")') nelec
+                end if
+                sys%nel = nelec
+                sys%Ms = ms2
             end if
-            sys%nel = nelec
-            sys%Ms = ms2
         else if (sys%Ms == huge(1) .and. parent) then
             call stop_all('read_in_integrals', 'Only provided nel not Ms in input file. Please '&
                 &'either provide both nel and Ms or provide neither to use values from FCIDUMP')

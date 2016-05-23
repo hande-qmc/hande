@@ -438,8 +438,8 @@ contains
 
         type(excit_t) :: connection
         real(p) :: hmatel
-        integer :: idet, iparticle, nattempts_current_det, ispace, scratch
-        integer(int_p) :: nspawned, nspawned_im
+        integer :: idet, iparticle, nattempts_current_det, ispace
+        integer(int_p) :: nspawned, nspawned_im, scratch
         integer(int_p) :: int_pop(spawn_recv%ntypes)
         real(p) :: real_pop(spawn_recv%ntypes)
         real(dp) :: list_pop
