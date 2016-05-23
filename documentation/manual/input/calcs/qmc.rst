@@ -205,6 +205,11 @@ algorithms and control the core settings in the algorithms.
     tables, but should reduce both noise and shoulder heights.  Only available for the UEG
     and read_in systems, and in the latter it does not currently use symmetry information.
 
+    ..
+
+        [review] - JSS: O(Number of basis functions) what?  space?  time?  both?
+        [review] - JSS: Not convinced this is a more refined upper bound.
+ 
     The 'cauchy_schwarz_orderM' uses a more refined upper bound for the Hamiltonian matrix
     elements, but which requires O(Number of basis functions) for each particle being spawned from.
     

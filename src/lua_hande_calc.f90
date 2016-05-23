@@ -897,7 +897,7 @@ contains
         !     real_amplitudes = true/false,
         !     real_amplitude_force_32 = true/false,
         !     spawn_cutoff = cutoff,
-        !     excit_gen = 'renorm'/'no_renorm',
+        !     excit_gen = 'renorm', 'no_renorm', 'cauchy_schwarz', 'cauchy_schwarz_orderM', 'cauchy_schwarz_virt'
         !     tau_search = true/false,
         !     pattempt_single = prob,
         !     pattempt_double = prob,
@@ -908,7 +908,6 @@ contains
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
         !     vary_shift = true/false,
-        !     excit_gen = 'renorm', 'no_renorm', 'cauchy_schwarz', 'cauchy_schwarz_orderM', 'cauchy_schwarz_virt'
         ! }
 
         ! In/Out:

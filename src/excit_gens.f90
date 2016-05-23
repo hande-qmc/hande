@@ -4,9 +4,11 @@ implicit none
 
 !Data for the Cauchy_Schwarz excit gen
 
+! [review] - JSS: unclear why a new named parameter for int_32.
 !The integer types have been chosen to be int_32
 integer(int_32), parameter :: int_bas = int_32
 
+! [review] - JSS: document what each component holds.
 type excit_gen_cauchy_schwarz_t
     real(p), allocatable :: aliasP(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
     integer(int_bas), allocatable :: aliasY(:,:) !(max(sys%nvirt_alpha,sys%nvirt_beta),sys%nel)
@@ -62,6 +64,8 @@ contains
         type(excit_gen_data_t), intent(inout) :: excit_gen_data
 
         if (allocated(excit_gen_data%ueg_ternary_conserve)) deallocate(excit_gen_data%ueg_ternary_conserve)
+
+        ! [review] - JSS: deallocate excit_gen_cauchy_schwarz_t.
 
     end subroutine dealloc_excit_gen_data_t
 

@@ -181,12 +181,14 @@ contains
             qmc_state%shift_damping = qmc_in%shift_damping
         end if
 
-        if(qmc_in%excit_gen==excit_gen_cauchy_schwarz) then
+        if (qmc_in%excit_gen==excit_gen_cauchy_schwarz) then
             call init_excit_mol_cauchy_schwarz_occ_ref(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
+            ! [review] - JSS: see deallocation hooks for qmc_state_t.
             ! TODO this needs to be deallocated somewhere
         endif
-        if(qmc_in%excit_gen==excit_gen_cauchy_schwarz) then
+        if (qmc_in%excit_gen==excit_gen_cauchy_schwarz) then
             call init_excit_ueg_cauchy_schwarz(sys, qmc_state%ref, qmc_state%excit_gen_data%excit_gen_cs)
+            ! [review] - JSS: see deallocation hooks for qmc_state_t.
             ! TODO this needs to be deallocated somewhere
         endif
     end subroutine init_qmc
@@ -379,6 +381,7 @@ contains
                 gen_excit_ptr%full => gen_excit_mol
                 decoder_ptr => decode_det_occ_symunocc
             case(excit_gen_cauchy_schwarz_virt)
+                ! [review] - JSS: check why read_in requires decode_det_spinocc_spinunocc but ueg doesn't. 
                 gen_excit_ptr%full => gen_excit_mol_cauchy_schwarz_virt
                 decoder_ptr => decode_det_spinocc_spinunocc
             case(excit_gen_cauchy_schwarz_occ)

@@ -360,6 +360,7 @@ contains
     end function calc_pgen_ueg_no_renorm
 
     subroutine init_excit_ueg_cauchy_schwarz(sys, ref, cs)
+
         ! Initialize the cs data for the gen_excit_ueg_cauchy_schwarz excitation generator.
         ! This creates a random excitation from cdet and calculate both the probability
         ! of selecting that excitation and the Hamiltonian matrix element.
@@ -374,6 +375,7 @@ contains
         ! Out:
         !    cs: excit_gen_cauchy_schwarz_t which will be initialized with 
         !           the alias tables for the excitations.
+
         use system, only: sys_t
         use qmc_data, only: reference_t
         use sort, only: qsort
@@ -382,12 +384,8 @@ contains
         type(reference_t), intent(in) :: ref
         type(excit_gen_cauchy_schwarz_t), intent(inout) :: cs
 
-!locals
         integer :: i, j, maxv, nbas
         integer :: vlist(sys%basis%nbasis-1)   !List of 'virtuals' for each orbital
-
-
-        
 
         nbas = sys%basis%nbasis    
         maxv = nbas / 2
@@ -397,19 +395,23 @@ contains
         allocate(cs%ia_weights(maxv,nbas))
         allocate(cs%ia_weights_tot(nbas))
 
-
         do i=1, nbas
             do j=1, maxv     !make a temporary array of 'virtuals' for this occ.
-               vlist(j)=j*2 - mod(i,2)      !get the virtual of the right spin
-            enddo
+               vlist(j) = j*2 - mod(i,2)      !get the virtual of the right spin
+            end do
             call create_weighted_excitation_list_ueg(sys, i, vlist, maxv, cs%ia_weights(:,i), cs%ia_weights_tot(i))
             call generate_alias_tables(maxv, cs%ia_weights(:,i), cs%ia_weights_tot(i), cs%aliasP(:,i), cs%aliasY(:,i))        
-        enddo
+        end do
+
     end subroutine init_excit_ueg_cauchy_schwarz
+
     subroutine create_weighted_excitation_list_ueg(sys, from, to_list, nto, weights, weighttot)
+
         ! Generate a list of allowed excitations from from to one of to_list with their weights based on
         ! sqrt(|<from to  | to  from>|) 
         ! The case where to == from is set to weight 0
+
+        ! [review] - JSS: doc args.
 
         use system, only: sys_t
         use molecular_integrals, only: get_two_body_int_mol
@@ -426,12 +428,17 @@ contains
                 weight = sys%ueg%coulomb_int(sys%lattice%box_length(1), sys%basis, from, to_list(i))
             else
                 weight = 0
-            endif
-            weight = abs(weight)        !since the value of the integral in the UEG is uniquely determined from the i->a excitation, we can use exactly the abs value here.
+            end if
+            ! [review] - JSS: I think this comment should be in the procedure-level comments (especially as they claim the sqrt is used).
+            ! [review] - JSS: specifically, because momentum is conserved, |q| = | k_i - k_a | = | k_j - k_b | and hence
+            ! [review] - JSS: for the (non-zero) integral <ij|ab>, <ia|ai> = <jb|bj>.
+            weight = abs(weight) ! since the value of the integral in the UEG is uniquely determined from the i->a excitation, we can use exactly the abs value here.
             weights(i) = weight
             weighttot = weighttot + weight
-        enddo
+        end do
+
     end subroutine create_weighted_excitation_list_ueg
+
     subroutine gen_excit_ueg_cauchy_schwarz(rng, sys, excit_gen_data, cdet, pgen, connection, hmatel, allowed_excitation)
 
         ! Create a random excitation from cdet and calculate both the probability
@@ -490,8 +497,6 @@ contains
             ! 2. Select orbitals to excite from and into.
             call choose_ij_k(rng, sys, cdet%occ_list, i, j,  ij_k, ij_spin)
 
-            !now we've chosen i and j. 
-
             ! We now need to select the orbitals to excite into which we do with weighting:
             ! p(ab|ij) = p(a|i) p(b|j) + p(a|j) p(b|i)
 
@@ -512,7 +517,7 @@ contains
             ibe = sys%basis%bit_lookup(2,a)
             allowed_excitation = .not.btest(cdet%f(ibe), ibp)
 
-            if(allowed_excitation) then
+            if (allowed_excitation) then
                 !b is now fully determined (but we have to work out which one it is)
                 ! Ok, b is now completely defined.
                 kb = ij_k - sys%basis%basis_fns(a)%l
@@ -536,38 +541,39 @@ contains
                     ibp = sys%basis%bit_lookup(1,b)
                     ibe = sys%basis%bit_lookup(2,b)
                     allowed_excitation = .not.btest(cdet%f(ibe), ibp)
-                endif
-            endif
+                end if
+            end if
             
-            if(allowed_excitation) then
+            if (allowed_excitation) then
 
                 ! 3b. Probability of generating this excitation.
 
+                ! [review] - JSS: isn't this p(a|i) p(b|ija) + p(b|i)p(a|ijb) ?
                 ! Calculate p(ab|ij) = p(a|i) p(j|b) + p(b|i)p(a|j)
               
                 if (ij_spin==0) then 
-                    !not possible to have chosen the reversed excitation
-                    pgen=cs%ia_weights(a_ind,i) / cs%ia_weights_tot(i)   !p(j|b)=1
-                else !i and j have same spin, so could have been selected in the other order.
-                    pgen= (   cs%ia_weights(a_ind, i) + cs%ia_weights(b_ind, i) )  &
-                                 /(cs%ia_weights_tot(i))
-                endif
+                    ! Not possible to have chosen the reversed excitation.
+                    pgen=cs%ia_weights(a_ind,i) / cs%ia_weights_tot(i)   ! p(j|b)=1
+                else
+                    ! i and j have same spin, so could have been selected in the other order.
+                    pgen= ( cs%ia_weights(a_ind, i) + cs%ia_weights(b_ind, i) )  / (cs%ia_weights_tot(i))
+                end if
 
-                pgen = pgen *2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ij)
+                pgen = pgen * 2.0_p/(sys%nel*(sys%nel-1)) ! pgen(ij)
 
                 allowed_excitation = (a/=b)
 
-            endif
+            end if
             if (allowed_excitation) then
-                connection%from_orb(1)=i
-                connection%from_orb(2)=j
+                connection%from_orb(1) = i
+                connection%from_orb(2) = j
                 if (a<b) then
-                    connection%to_orb(1)=a
-                    connection%to_orb(2)=b 
+                    connection%to_orb(1) = a
+                    connection%to_orb(2) = b 
                 else
-                    connection%to_orb(2)=a
-                    connection%to_orb(1)=b 
-                endif
+                    connection%to_orb(2) = a
+                    connection%to_orb(1) = b 
+                end if
 
                 ! 4b. Parity of permutation required to line up determinants.
                 ! NOTE: connection%from_orb and connection%to_orb *must* be ordered.
@@ -585,5 +591,7 @@ contains
                 pgen = 1.0_p
             end if
         end associate
+
     end subroutine gen_excit_ueg_cauchy_schwarz
+
 end module excit_gen_ueg
