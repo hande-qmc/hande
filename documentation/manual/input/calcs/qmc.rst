@@ -307,3 +307,13 @@ algorithms and control the core settings in the algorithms.
     processors take longer to perform their work than others. This is turned
     off by default because such calls may have an initialisation time which
     scales badly to many processors.
+``vary_shift``
+    type: boolean.
+
+    Optional.
+
+    If present, overrides any value of ``vary_shift`` set in a restart file.
+
+    .. note::
+
+        The shift will still be varied when ``target_population``, if set, is reached.
