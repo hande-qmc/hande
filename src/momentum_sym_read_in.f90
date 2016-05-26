@@ -151,6 +151,7 @@ contains
 
     end function cross_product_periodic_read_in
 
+    ! [review] - FDM: Is this function just a duplicate of the one above?
     pure function cross_product_periodic_basis(mom_sym, b1, b2, basis_fns) result(prod)
         ! In:
         !   mom_sym: basis function symmetry information.
@@ -172,6 +173,7 @@ contains
 
 !--- Indexing conversion routines: ---
 
+    ! [review] - FDM: I think this (and the following two) function(s) could do with an expanded explanation.
     pure subroutine decompose_abelian_sym(isym, propbitlen, abel_sym)
         ! Takes symmetry index for translationally symmetric wavefunction and
         ! returns abelian representation of three "quantum numbers". In accordance
@@ -201,6 +203,9 @@ contains
 
     end subroutine decompose_abelian_sym
 
+    ! [review] - FDM: I think this module could do with some more linebreaks to
+    ! [review] - FDM: keep formatting consistent (between function names and docstrings and
+    ! [review] - FDM: module use statements and variable declarations for instance.
     pure function get_kpoint_index(a, nprop) result(ind)
         ! Converts from abelian symmetry quantum numbers into unique index.
         ! If we know size of unit cell, can calculate unique index by tiling

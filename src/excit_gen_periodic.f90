@@ -282,6 +282,9 @@ contains
         allowed_excitation = .false.
         do i = 1, sys%nel
             ims = (sys%basis%basis_fns(occ_list(i))%Ms+3)/2
+            ! [review] - FDM: Not so familiar with conventions but is this
+            ! [review] - FDM: (Gamma_i x Gamma_op)* or (Gamma_i* Gamma_op)* (so is * the complex
+            ! [review] - FDM: conjugate in both cases?
             ! In principle here we should have (Gamma_i* Gamma_op)*.  We'll assume Gamma_op*=Gamma_op
             isym = cross_product_periodic_read_in(sys%read_in%mom_sym, sys%basis%basis_fns(occ_list(i))%sym, op_sym)
             if (symunocc(ims, isym) /= 0) then
@@ -304,6 +307,7 @@ contains
                 isym = cross_product_periodic_read_in(sys%read_in%mom_sym, sys%basis%basis_fns(i)%sym, op_sym)
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
+                    ! [review] - FDM: Overindented?
                         ! It's cheaper to draw additional random numbers than
                         ! decode the full list of unoccupied orbitals,
                         ! especially as the number of basis functions is usually

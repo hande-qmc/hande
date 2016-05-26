@@ -1,5 +1,6 @@
 module hamiltonian_periodic_complex
 
+! [review] - FDM: I think this needs updating?
 ! Module for evaluating Hamiltonian matrix elements for molecular systems (ie
 ! systems where the integrals have been read in from file).
 
@@ -65,6 +66,7 @@ contains
                 ! < D | H | D_{ij}^{ab} > = < ij || ab >
 
                 ! Two electron operator
+                ! [review] - FDM: Why is this purely complex?
                 hmatel%c = slater_condon2_periodic_complex(sys, excitation%from_orb(1), excitation%from_orb(2), &
                                             & excitation%to_orb(1), excitation%to_orb(2), excitation%perm)
             case default
