@@ -9,12 +9,12 @@ implicit none
 contains
 
     subroutine init_basis_momentum_symmetry_info(sys)
+
         ! Initialises all required information for use of basis kpoint symmetry.
 
         ! In/Out:
         !   sys: system being studied. On output all information about basis function
         !       symmetry in read_in%mom_sym set as required.
-
 
         use checking, only: check_allocate, check_deallocate
         use errors, only: stop_all
@@ -83,13 +83,13 @@ contains
 
         isym = int(mom_sym%gamma_sym)
         do i = lbound(orb_list, dim = 1), ubound(orb_list, dim = 1)
-            isym = cross_product_periodic_read_in(mom_sym, &
-                basis%basis_fns(orb_list(i))%sym, isym)
+            isym = cross_product_periodic_read_in(mom_sym, basis%basis_fns(orb_list(i))%sym, isym)
         end do
 
     end function symmetry_orb_list_periodic_read_in
 
     pure function is_gamma_sym_periodic_read_in(mom_sym, sym) result(is_gamma_sym)
+
         ! Checks if symmetry given is the gamma point symmetry.
         ! In:
         !   mom_sym: basis function symmetry information.
@@ -111,6 +111,7 @@ contains
     end function is_gamma_sym_periodic_read_in
 
     pure function mom_sym_conj(mom_sym, sym) result(rsym)
+
         ! Returns symmetry of complex conjugate of provided sym.
         ! Since using complex plane waves, e^(ik.r), this will in
         ! general be e^(-ik.r) so just return inverse symmetry.
@@ -136,6 +137,7 @@ contains
 !--- Cross products ---
 
     pure function cross_product_periodic_read_in(mom_sym, a1, a2) result(prod)
+
         ! In:
         !   mom_sym: basis function symmetry information.
         !   a1, a2: symmetries to return cross product of.
@@ -153,6 +155,7 @@ contains
 
     ! [review] - FDM: Is this function just a duplicate of the one above?
     pure function cross_product_periodic_basis(mom_sym, b1, b2, basis_fns) result(prod)
+
         ! In:
         !   mom_sym: basis function symmetry information.
         !   b1, b2: indicies of spinorbitals.
@@ -174,7 +177,12 @@ contains
 !--- Indexing conversion routines: ---
 
     ! [review] - FDM: I think this (and the following two) function(s) could do with an expanded explanation.
+    ! [review] - JSS: Some examples would be indeed be welcome.
+    ! [review] - JSS: Translational symmetry is not Abelian!
+
     pure subroutine decompose_abelian_sym(isym, propbitlen, abel_sym)
+
+        ! [review] - JSS: I think you'll find it's in accordance with JSS and AJWT efforts in CPMD and VASP...
         ! Takes symmetry index for translationally symmetric wavefunction and
         ! returns abelian representation of three "quantum numbers". In accordance
         ! with approach used in NECI, values stored according to:
@@ -206,7 +214,11 @@ contains
     ! [review] - FDM: I think this module could do with some more linebreaks to
     ! [review] - FDM: keep formatting consistent (between function names and docstrings and
     ! [review] - FDM: module use statements and variable declarations for instance.
+    ! [review] - JSS: I agree.  I think I inserted several of these whilst reviewing...
+
     pure function get_kpoint_index(a, nprop) result(ind)
+
+        ! [review] - JSS: Translational symmetry is not Abelian!
         ! Converts from abelian symmetry quantum numbers into unique index.
         ! If we know size of unit cell, can calculate unique index by tiling
         ! first along axis 1, then 2, then 3 in 3 dimensions.
@@ -216,6 +228,7 @@ contains
         !       supercell dimension.
         ! Returns:
         !   Index of given kpoint within indexing scheme.
+
         integer, intent(in) :: a(3), nprop(3)
         integer :: ind
         ! Want to start from index 1 at gamma point (0,0,0)
@@ -223,7 +236,9 @@ contains
 
     end function get_kpoint_index
 
+    ! [review] - JSS: this is a horrible name.  What about get_kpoint_vector (more descriptive)?
     pure subroutine get_kpoint_numbers(ind, nprop, a)
+
         ! Get kpoint index, in 3D array, from index defined in get_kpoint_index.
         ! In:
         !   ind: index to decode.

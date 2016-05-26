@@ -1,12 +1,16 @@
 module momentum_symmetry
 
 ! Module for handling crystal momentum symmetry.
+! [review] - JSS: some detailed comments explaining translational symmetry (for Hubbard, UEG and read-in) would be welcome for the
+! non-initiated, especially with a contrast to point group symmetry.
 
 ! NOTE:
+! [review] - JSS: this is no longer true.
 ! Currently implemented assuming that there is one band per k-point (as in the
 ! Hubbard model or UEG, for instance).  Generalising to multiple bands would be
 ! relatively straightforward.
 
+! [review] - JSS: this is no longer true.
 ! Stored symmetry information *only* for the Hubbard model.  UEG symmetry is
 ! done on the fly due to the size of the basis---see ueg module.
 

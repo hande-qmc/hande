@@ -37,6 +37,9 @@ contains
 !--- Memory allocation and deallocation ---
 
     subroutine init_one_body_t(sys, op_sym, imag, store)
+        
+        ! [review] - JSS: docs.
+
         use system, only: sys_t
 
         type(sys_t), intent(in) :: sys
@@ -49,8 +52,8 @@ contains
         else
             call init_one_body_t_pg_sym(sys, op_sym, imag, store)
         end if
-    end subroutine init_one_body_t
 
+    end subroutine init_one_body_t
 
     subroutine init_one_body_t_pg_sym(sys, op_sym, imag, store)
 
@@ -122,6 +125,8 @@ contains
 
     end subroutine init_one_body_t_pg_sym
 
+    ! [review] - JSS: very similar initialisation code (not performance critical) - unnecessary duplication.
+
     subroutine init_one_body_t_periodic(sym0, sym_max, nbands, imag, store)
 
         ! Allocate memory required for the integrals involving a one-body
@@ -145,6 +150,7 @@ contains
         integer :: ierr, i, s, ispin, nspin
 
         store%op_sym = 0
+        ! [review] - JSS: no UHF?!
         store%uhf = .false.
         store%imag = imag
         ! as rhf then need to store only integrals for spatial orbitals.
@@ -171,6 +177,7 @@ contains
         ! calculations.
         ! => store spin blocks separately and only store both in UHF
         ! calculations.
+        ! [review] - JSS: I think some refactoring can combine init_one_body_t_periodic (with nbasis_sym_spin = nbands) and init_one_body_t_pg_sym.
         s = (nbands*(nbands+1))/2
         do i = sym0, sym_max
             allocate(store%integrals(1,i)%v(s), stat=ierr)
@@ -390,6 +397,11 @@ contains
         type(one_body_t) :: store
         integer, intent(out) :: ierr
 
+        ! [review] - JSS: does this **really** need to be split up like this?
+        ! [review] - JSS: For non-performance critical tasks (like this...) I
+        ! [review] - JSS: think that the additional compexity is not worth it.
+        ! [review] - JSS: Perhaps some (slowish) wrappers that abstract the different
+        ! [review] - JSS: kinds of symmetry would help?
         if (sys%momentum_space) then
             call store_one_body_int_periodic(i, j, intgrl, sys%basis%basis_fns, sys%read_in%mom_sym, &
                                         suppress_err_msg, store, ierr)
@@ -500,6 +512,7 @@ contains
 
         ierr = 0
 
+        ! [review] - JSS: check before merging?
         ! Don't include op_sym currently as haven't checked compatiblity with translational.
 
         ! Currently inefficient for complex as will check symmetry when storing real and

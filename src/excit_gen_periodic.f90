@@ -1,5 +1,9 @@
 module excit_gen_periodic
 
+! [review] - JSS: this seems to be a copy-and-paste of excit_gen_mol with just the symmetry calculations changed.  Correct?
+! [review] - JSS: Is there a better way to combine them so we can avoid having to implement multiple excitation generators for both?
+! [review] - JSS: I appreciate not but I would like us to think a bit more about it.
+
 ! Module for random excitation generators and related routines for the periodic
 ! system (ie one read in from an FCIDUMP file) with complex integral values. Most
 ! routines are analogues of those within excit_gen_mol.
@@ -307,16 +311,15 @@ contains
                 isym = cross_product_periodic_read_in(sys%read_in%mom_sym, sys%basis%basis_fns(i)%sym, op_sym)
                 if (symunocc(ims, isym) /= 0) then
                     ! Found i.  Now find a...
-                    ! [review] - FDM: Overindented?
-                        ! It's cheaper to draw additional random numbers than
-                        ! decode the full list of unoccupied orbitals,
-                        ! especially as the number of basis functions is usually
-                        ! much larger than the number of electrons.
-                        do
-                            ind = int(sys%read_in%mom_sym%nbands*get_rand_close_open(rng))+1
-                            a = sys%read_in%mom_sym%sym_spin_basis(ind, ims, isym)
-                            if (.not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
-                        end do
+                    ! It's cheaper to draw additional random numbers than
+                    ! decode the full list of unoccupied orbitals,
+                    ! especially as the number of basis functions is usually
+                    ! much larger than the number of electrons.
+                    do
+                        ind = int(sys%read_in%mom_sym%nbands*get_rand_close_open(rng))+1
+                        a = sys%read_in%mom_sym%sym_spin_basis(ind, ims, isym)
+                        if (.not.btest(f(sys%basis%bit_lookup(2,a)), sys%basis%bit_lookup(1,a))) exit
+                    end do
                     exit
                 end if
             end do
@@ -437,8 +440,7 @@ contains
             do isyma = sys%sym0, sys%sym_max
                 isymb = cross_product_periodic_read_in(sys%read_in%mom_sym, sys%read_in%mom_sym%inv_sym(isyma), sym)
                 if ( symunocc(1,isyma) > 0 .and. &
-                        ( symunocc(1,isymb) > 1 .or. &
-                        ( symunocc(1,isymb) == 1 .and. (isyma /= isymb))) ) then
+                        ( symunocc(1,isymb) > 1 .or. ( symunocc(1,isymb) == 1 .and. (isyma /= isymb)) ) ) then
                     allowed_excitation = .true.
                     exit
                 end if

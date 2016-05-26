@@ -331,14 +331,14 @@ module hdf5_system
                         allocate(lscratch(1:nbasis, 1:3), stat=ierr)
                         call check_allocate('lscratch', nbasis*3, ierr)
 
+                        ! [review] - JSS: why the transpose?
                         do ibasis = 1, nbasis
                             do il = 1, 3
                                 lscratch(ibasis, il) = sys%basis%basis_fns(ibasis)%l(il)
                             end do
                         end do
 
-                        call hdf5_write(subgroup_id, dbasis_l_numbers, kinds, [int(nbasis, kind=int_64), &
-                                    3_int_64], lscratch)
+                        call hdf5_write(subgroup_id, dbasis_l_numbers, kinds, [int(nbasis, kind=int_64), 3_int_64], lscratch)
                         deallocate(lscratch, stat=ierr)
                         call check_deallocate('lscratch', ierr)
                     end if
@@ -357,6 +357,8 @@ module hdf5_system
                 call hdf5_write(subgroup_id, duselz, sys%read_in%uselz)
                 call hdf5_write(subgroup_id, dcomp, sys%read_in%comp)
 
+                ! [review] - JSS: probably best to print out information for both point groups so
+                ! [review] - JSS: one need not check if a data group exists when doing batch processing.
                 ! Need to pass this values to be able to reinitiate symmetry
                 if (sys%momentum_space) then
                     call hdf5_write(subgroup_id, dnprop, kinds, [3_int_64], &

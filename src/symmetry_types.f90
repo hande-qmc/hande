@@ -58,8 +58,12 @@ type pg_sym_t
 end type pg_sym_t
 
 type mom_sym_t
+    ! [review] - JSS: the different behaviour for periodic 'real' (suggest use non-model instead to avoid
+    ! [review] - JSS: confusion with real vs complex) vs other momentum symmetries is unclear.
+    ! [review] - JSS: Is it that gamma_sym can be an index to basis_fns?
     ! Index of the symmetry corresponding to the Gamma-point, or if periodic real system the
     ! symmetry corresponding to gamma sym itself.
+    ! [review] - JSS: what about if the gamma-point isn't included in the grid (e.g. Monkhorst-Pack)?
     integer(int_64) :: gamma_sym
 
     ! sym_table(i,j) = k means that k_i + k_j = k_k to within a primitive reciprocal lattice vector.
@@ -81,11 +85,14 @@ type mom_sym_t
     ! [review] - FDM: I think a more detailed description of both propbitlen and nbands would be useful.
     ! Bit length of each symmetry property within isym for translationally
     ! symmetric systems.
+    ! [review] - JSS: think we need an example of both nprop and propbitlen.
     ! Used only in read_in translationally symmetric systems.
     integer :: propbitlen = 0
 
     ! Number of bands per kpoint. Only used for read_in periodic systems.
     integer :: nbands
+    ! [review] - JSS: basis'?
+    ! [review] - JSS: what about UHF?
     ! Indexes of basis' of sym index. Done by spatial index, assuming using RHF.
     ! Only used for read_in periodic systems.
     integer, allocatable :: sym_spin_basis(:,:,:) ! (nbands,2,nsym)

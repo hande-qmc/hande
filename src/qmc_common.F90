@@ -228,7 +228,7 @@ contains
                                         sys%basis%basis_fns(occ_list(i))%sym, &
                                         sys%basis%basis_fns(occ_list(j))%sym)
                         if (sys%momentum_space) then
-                        ! For momentum symmetry need to take care as symmetries are not self-inverse.
+                            ! For momentum symmetry need to take care as symmetries are not self-inverse.
                             isymb = cross_product(sys, sys%read_in%mom_sym%inv_sym(isyma), isymb)
                         else
                             isymb = cross_product(sys, isyma, isymb)

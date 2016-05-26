@@ -540,6 +540,7 @@ contains
                         hmatel = get_hmatel(sys, determ%dets(:,i), dets_this_proc(:,j))
                         diag_elem = i == j + displs(iproc)
                         ! Take the Hartree-Fock energy off the diagonal elements.
+                        ! [review] - JSS: what's the plan with compex FCIQMC and semi-stochastic?
                         if (diag_elem) hmatel%r = hmatel%r - H00
                         if (abs(hmatel%r) > depsilon) then
                             nnz = nnz + 1
