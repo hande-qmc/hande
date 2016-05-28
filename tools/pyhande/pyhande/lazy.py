@@ -176,8 +176,9 @@ info : :func:`collections.namedtuple`
     mc_data = calc.ix[indx, to_block]
 
     if mc_data['Shift'].iloc[0] == mc_data['Shift'].iloc[1]:
-        warnings.warn('The blocking analysis starts from before the shift '
-                     'begins to vary.')
+        if calc['Shift'][~indx].iloc[-1] == mc_data['Shift'].iloc[0]:
+            warnings.warn('The blocking analysis starts from before the shift '
+                          'begins to vary.')
 
     (data_len, reblock, covariance) = pyblock.pd_utils.reblock(mc_data)
     
