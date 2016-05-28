@@ -80,11 +80,13 @@ Umrigar93
                                   arith_mean)
     infos = []
     for (calc, md) in zip(calcs, calcs_md):
-        if start is None:
-            start = find_starting_iteration(calc, md)
-        md['pyhande'] = {'reblock_start': start}
-        infos.append(lazy_block(calc, md, start, select_function, extract_psips,
-                      calc_inefficiency))
+        calc_start = start
+        if calc_start is None:
+            calc_start = find_starting_iteration(calc, md, verbose=True)
+        md['pyhande'] = {'reblock_start': calc_start}
+        print('Block from: %i' % calc_start)
+        infos.append(lazy_block(calc, md, calc_start, select_function,
+                     extract_psips, calc_inefficiency))
     return infos
 
 def zeroT_qmc(datafiles, reweight_history=0, mean_shift=0.0, arith_mean=False):
