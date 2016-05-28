@@ -437,8 +437,8 @@ starting_iteration: integer
                     opt_ind = pyblock.pd_utils.optimal_block(info.reblock['Shift'])
 
             if verbose:
-                print("Blocking attempt: %i. Error in the shift error: %f"
-                        % (j, s_err_err))
+                print("Blocking attempt: %i. Blocking from: %i. "
+                      "Error in the shift error: %f" % (j, start, s_err_err))
 
         if min_index == -1:
             raise ValueError("Failed to find minimum error in the shift error!")
