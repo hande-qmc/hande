@@ -417,7 +417,8 @@ starting_iteration: integer
             iteration_shift_variation_start )/frac_screen_interval)
 
     min_index = -1
-    min_error_error = float('inf')
+    err_keys = ['Shift',  'N_0', '\sum H_0j N_j', '# H psips']
+    min_error_error = pd.Series([float('inf')]*len(err_keys), index=err_keys)
     starting_iteration_found = False
 
     for k in range(int(frac_screen_interval/number_of_reblockings)):
@@ -432,17 +433,21 @@ starting_iteration: integer
                 s_err_err = float('inf')
             else:
                 s_err_err = info.opt_block["standard error error"]["Shift"]
-                if s_err_err <= min_error_error:
+                err_err = info.opt_block.loc[err_keys, 'standard error error']
+                if (err_err <= min_error_error).all():
                     min_index = j
-                    min_error_error = s_err_err
-                    opt_ind = pyblock.pd_utils.optimal_block(info.reblock['Shift'])
+                    min_error_error = err_err.copy()
+                    opt_ind = pyblock.pd_utils.optimal_block(info.reblock[err_keys])
 
             if verbose:
                 print("Blocking attempt: %i. Blocking from: %i. "
                       "Error in the shift error: %f" % (j, start, s_err_err))
 
         if min_index == -1:
-            raise ValueError("Failed to find minimum error in the shift error!")
+            raise ValueError(
+                    "Failed to find minimum error in the error for: %s!"
+                    % (','.join(err_keys))
+                )
 
         if int(min_index * pos_min_frac) < j:
             # Also discard the frst n=number_of_reblocks_to_cut_off of data to
