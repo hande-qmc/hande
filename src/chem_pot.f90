@@ -133,14 +133,14 @@ contains
         ! Returns:
         !    mu: chemical potential of system at inverse temperature beta.
 
-        use system, only: sys_t
+        use system, only: sys_t, ueg
         use errors, only: stop_all
 
         type(sys_t), intent(in) :: sys
         real(p), intent(in) :: beta
 
         integer :: it, max_it
-        real(p) :: mu, mu_old, nav, nav_deriv
+        real(p) :: mu, mu_old, nav, nav_deriv, scale_factor
 
         max_it = 10000 ! In case it doesn't converge.
 
@@ -156,6 +156,16 @@ contains
         ! polarised or unpolarised systems
         mu_old = sys%basis%basis_fns(2*sys%nalpha)%sp_eigv
 
+        if (sys%system == ueg) then
+            ! At high density and large basis sets (at higher temperatures) the chemical
+            ! potential can grow to be quite large, so rescale the threshold by an appropriate
+            ! amount to avoid numerical precision issues.
+            scale_factor = sys%ueg%ef
+        else
+            ! [todo] - Update if necessary.
+            scale_factor = 1.0_p
+        end if
+
         if (sys%ms /= sys%nel .and. sys%ms /= 0) then
             call stop_all('find_chem_pot', 'Spin polarisation requested not supported - please implement.')
         end if
@@ -164,7 +174,7 @@ contains
             nav = particle_number(sys, beta, mu_old)
             nav_deriv = deriv_particle_number(sys, beta, mu_old)
             mu = mu_old - (nav-sys%nel)/nav_deriv
-            if (abs(mu-mu_old) < depsilon) then
+            if (abs(mu-mu_old) / scale_factor < depsilon) then
                 ! Found the root!
                 exit
             else
