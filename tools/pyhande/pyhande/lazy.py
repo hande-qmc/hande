@@ -28,7 +28,7 @@ datafiles : list of strings
     names of files containing HANDE QMC calculation output.
 start : int or None
     iteration from which the blocking analysis is performed.  If None, then
-    attempt to automatically determine the a good iteration using
+    attempt to automatically determine a good iteration using
     :func:`find_starting_iteration`.
 select_function : function 
     function which returns a boolean mask for the iterations to include in the
