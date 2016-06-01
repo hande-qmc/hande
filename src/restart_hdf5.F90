@@ -940,7 +940,6 @@ module restart_hdf5
                 call h5ocopy_f(orig_id, grng, new_id, grng, ierr)
                 ! ...and non-psip-specific groups in the /qmc group.
                 call h5gcreate_f(new_id, gqmc, group_id, ierr)
-                call h5gopen_f(new_id, gqmc, group_id, ierr)
                     ! /qmc/state and /qmc/reference
                     call h5ocopy_f(orig_group_id, gstate, group_id, gstate, ierr)
                     if (i0_length == i0_length_restart) then
@@ -968,6 +967,7 @@ module restart_hdf5
                     call hdf5_write(group_id, hdf5_path(gpsips, dproc_map), kinds, shape(pm_dummy%map, kind=int_64), pm_dummy%map)
                     call h5ocopy_f(orig_group_id, hdf5_path(gpsips, dtot_pop), group_id, hdf5_path(gpsips, dtot_pop), ierr)
                     call hdf5_write(group_id, hdf5_path(gpsips, dresort), .true.)
+                    call h5gclose_f(subgroup_id, ierr)
                 call h5gclose_f(group_id, ierr)
 
                 ! Update info.  NOTE: we don't modify the date/time/UUID, just processor count...
@@ -978,6 +978,7 @@ module restart_hdf5
                 call h5fclose_f(new_id, ierr)
             end do
 
+            call h5gclose_f(orig_group_id, ierr)
             call h5fclose_f(orig_id, ierr)
 
             ! Read the old restart file for each processor in turn and place the psip
