@@ -3,6 +3,17 @@ module excit_gen_periodic
 ! [review] - JSS: this seems to be a copy-and-paste of excit_gen_mol with just the symmetry calculations changed.  Correct?
 ! [review] - JSS: Is there a better way to combine them so we can avoid having to implement multiple excitation generators for both?
 ! [review] - JSS: I appreciate not but I would like us to think a bit more about it.
+! [review] - AJWT: Indeed - I think we need a common data structure with the following:
+! [review] - AJWT: sys%read_in%pg_sym%nbasis_sym_spin() and sys%read_in%mom_sym%nbands are used interchangeable
+! [review] - AJWT: sys%read_in%mom_sym%gamma_sym and sys%read_in%pg_sym%gamma_sym
+! [review] - AJWT: cross_product_periodic_read_in cross_product_pg_sym
+! [review] - AJWT: calc_pgen_single_* calc_pgen_double_*
+! [review] - AJWT: slater_condon2_periodic_excit_complex slater_condon2_mol_excit
+! [review] - AJWT: slater_condon1_mol_excit, slater_condon1_mol_excit
+! [review] - AJWT: choose_ij_periodic choose_ij_mol
+! [review] - AJWT: choose_ab_periodic choose_ab_mol
+
+! [review] - AJWT: Also pg_sym_t and mom_sym_t 
 
 ! Module for random excitation generators and related routines for the periodic
 ! system (ie one read in from an FCIDUMP file) with complex integral values. Most

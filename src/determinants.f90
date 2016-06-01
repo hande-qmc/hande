@@ -357,6 +357,9 @@ contains
 
         call decode_det(sys%basis, f, d%occ_list)
 
+! [review] - AJWT: I think we should probably have (somewhere in sys) an object which 
+! [review] - AJWT: contains the initialization of what symunocc should be, rather than
+! [review] - AJWT: specializing it here.
         if (sys%momentum_space) then
             d%symunocc(:,:) = sys%read_in%mom_sym%nbands
         else

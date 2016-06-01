@@ -521,6 +521,10 @@ contains
         ! As dealing with complex plane waves for translational symmetry, sym(i*) = inv_sym(i),
         ! so just need sym(i) == sym(a). Just in case this isn't always the case keep check.
 
+! [review] - AJWT: why not use the same basic code as store_one_body_int_pg_sym:
+! [review] - AJWT: sym = cross_product_pg_sym(pg_sym, pg_sym_conj(pg_sym, basis_fns(i)%sym), basis_fns(j)%sym)
+! [review] - AJWT: sym = cross_product_pg_sym(pg_sym, sym, store%op_sym)
+! [review] - AJWT:  if (is_gamma_irrep_pg_sym(pg_sym, sym) .and. basis_fns(i)%ms == basis_fns(j)%ms) then
         if (mom_sym_conj(mom_sym, basis_fns(i)%sym) == mom_sym%inv_sym(basis_fns(j)%sym) &
             .and. basis_fns(i)%ms == basis_fns(j)%ms) then
             ! Integral is (should be!) non-zero by symmetry.
