@@ -326,19 +326,18 @@ error in the error hence initially decreases as the start of the blocking
 analysis is increased before beginning to increase once data from after
 equilibration begins to be discarded.  We are thus interested in finding the
 minimum in the error in the error of the shift. To be more conservative, we also
-find the minimum in the error in the error of the numerator of the projected
-energy, the reference and total population. We then consider the minimum out of
-these four minima which is at the highest number of iterations.
+find the minimum in the error in the error of # H psips, N_0, \sum H_0j N_j. We 
+then consider the minimum out of these four minima which is at the highest 
+number of iterations.
 
 The best estimate of the iteration to start the blocking analysis is found by:
 
 1. discard data during the constant shift phase.
-2. estimate the error in the error of the shift, numerator of projected energy,
-   reference and total population by blocking the remaining data :math:`n` 
-   times, where the blocking analysis considers the last :math:`1-i/f` fraction 
-   of the data and where :math:`i` is the number of blocking analyses already 
-   performed, :math:`n`  is `number_of_reblockings`  and :math:`f` is
-   `frac_screen_interval`.
+2. estimate the error in the error of the shift, # H psips, N_0, \sum H_0j N_j,
+   by blocking the remaining data :math:`n` times, where the blocking analysis 
+   considers the last :math:`1-i/f` fraction of the data and where :math:`i` is 
+   the number of blocking analyses already performed, :math:`n`  is 
+   `number_of_reblockings`  and :math:`f` is `frac_screen_interval`.
 3. find the iteration which gives the minimum estimate of the error in the error
    of the shift, numerator of projected energy, reference and total population.
    We then focus on the minimum out of these four minima which is at the highest
