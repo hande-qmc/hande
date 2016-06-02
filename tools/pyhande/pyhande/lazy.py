@@ -120,7 +120,7 @@ metadata : list of dict
     metadata = []
     for (md, df) in filter_calcs(hande_out, ('FCIQMC', 'CCMC')):
         if reweight_history > 0:
-            df = pyhande.weight.reweight(df, md['mc_cycles'],
+            df = pyhande.weight.reweight(df, md['qmc']['mc_cycles'],
                 md['qmc']['tau'], reweight_history, mean_shift,
                 arith_mean=arith_mean)
             df['W * \sum H_0j N_j'] = df['\sum H_0j N_j'] * df['Weight']
