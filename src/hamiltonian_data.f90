@@ -7,6 +7,11 @@ use const, only: p
 
 implicit none
 
+! --- WARNING ---
+! Only one component of hamil_t is in use at a time, depending upon the context.
+! The other component is NOT initialised and so cannot be relied on to be zero.
+! --- WARNING ---
+
 type hmatel_t
     ! Derived type to contain all information on a particular hmatel, to
     ! allow compatibility between real and complex interfaces.
