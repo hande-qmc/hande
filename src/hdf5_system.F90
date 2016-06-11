@@ -593,6 +593,10 @@ module hdf5_system
 
             ! Allocate basis on non-parent processors.
             if (.not. parent) then
+                ! [review] - JSS: some very odd indentation going on here.
+                ! [review] - JSS: e.g. the start and end of this if block don't line up!
+                ! [review] - JSS: the lines from here to '! Do system initialisation that ...' (inclusive)
+                ! [review] - JSS: need to be dshifted one level in (4 spaces).
                     allocate(sys%basis%basis_fns(sys%basis%nbasis),  stat = ierr)
                     call check_allocate('sys%basis%basis_fns', sys%basis%nbasis, ierr)
                     sys%nvirt = sys%basis%nbasis - sys%nel
