@@ -1480,7 +1480,7 @@ contains
         use qmc_data, only: estimators_t
 
         type(sys_t), intent(in) :: sys
-        integer, intent(in) :: f(:)
+        integer(i0), intent(in) :: f(:)
         type(det_info_t), intent(in) :: cdet
         type(excit_t), intent(out) :: excitation
         real(p), intent(in) :: pop
