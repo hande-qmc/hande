@@ -340,6 +340,7 @@ contains
         type(cluster_t), allocatable :: left_cluster(:), right_cluster(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
+        ! [review] - FDM: Is this (junk) a good name?
         type(hmatel_t) :: junk
         real(p) :: bloom_threshold
         type(json_out_t) :: js

@@ -627,6 +627,7 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
+! [review] - AJWT: estimators replaces ...
         !    D0_pop_sum: running total of N_0, the population on the reference
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
@@ -685,6 +686,7 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
+! [review] - AJWT: estimators replaces ...
         !    D0_pop_sum: running total of N_0, the population on the reference
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
@@ -743,6 +745,7 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
+! [review] - AJWT: estimators replaces ...
         !    D0_pop_sum: running total of N_0, the population on the reference
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
@@ -821,6 +824,7 @@ contains
         ! This procedure is for molecular systems (i.e. those defined by an
         ! FCIDUMP file).
 
+! [review] - AJWT: update the docs ...
         ! In:
         !    sys: system being studied.
         !    f0: reference determinant.
@@ -858,6 +862,7 @@ contains
 
         integer :: ij_sym, ab_sym
 
+! [review] - AJWT: Is it work having a complex const?
         hmatel%c = cmplx(0.0, 0.0, p)
 
         select case(excitation%nexcit)
@@ -912,6 +917,7 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
+! [review] - AJWT: update the docs ...
         !    D0_pop_sum: running total of N_0, the population on the reference
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
@@ -971,6 +977,7 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
+! [review] - AJWT: update the docs ...
         !    D0_pop_sum: running total of N_0, the population on the reference
         !        determinant, |D_0>.  Updated only if cdet is |D_0>.
         !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.

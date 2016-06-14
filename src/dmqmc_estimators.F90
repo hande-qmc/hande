@@ -1472,6 +1472,8 @@ contains
 
     subroutine update_proj_energy_dmqmc(sys, f, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel)
 
+        ! [review] - JSS: docs
+
         use determinants, only: det_info_t
         use system, only: sys_t
         use excitations, only: excit_t
@@ -1489,6 +1491,8 @@ contains
         type(estimators_t) :: dummy_estimators
         real(p), intent(in) :: trial_wfn_dat(0)
 
+        ! [review] - JSS: I think it's a shame estimators_t doesn't work for both DMQMC and ground-state QMC, especially as the
+        ! [review] - JSS: fields of interest are very similar.  It's not clear why this separation is done...
         dummy_estimators%proj_energy = energy
         dummy_estimators%D0_population = trace
 
