@@ -815,7 +815,6 @@ contains
         ! This procedure is for molecular systems (i.e. those defined by an
         ! FCIDUMP file).
 
-! [review] - AJWT: update the docs ...
         ! In:
         !    sys: system being studied.
         !    f0: reference determinant.
@@ -852,7 +851,6 @@ contains
 
         integer :: ij_sym, ab_sym
 
-! [review] - AJWT: Is it work having a complex const?
         hmatel%c = cmplx(0.0, 0.0, p)
 
         select case(excitation%nexcit)
