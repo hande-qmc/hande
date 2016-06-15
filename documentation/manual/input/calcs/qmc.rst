@@ -312,7 +312,9 @@ algorithms and control the core settings in the algorithms.
 
     Optional.
 
-    If present, overrides any value of ``vary_shift`` set in a restart file.
+    If present, overrides any value of ``vary_shift`` set by a previous calculation
+    contained either in a restart file or a qmc_state object.  If set to true, the shift
+    is set to ``initial_shift``.
 
     .. note::
 
