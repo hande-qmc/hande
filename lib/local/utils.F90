@@ -342,6 +342,8 @@ contains
         !    filename.
         !    id (optional): value of x used in the filename.
 
+        use parallel
+
         character(*), intent(in) :: stem, suffix
         logical, intent(in) :: tnext
         integer, intent(in) :: istart
@@ -350,6 +352,10 @@ contains
 
         integer :: i
         logical :: exists
+
+#ifdef PARALLEL
+        integer :: max_i, ierr
+#endif
 
         if (istart >= 0) then
 
@@ -362,6 +368,16 @@ contains
                 inquire(file=filename,exist=exists)
                 i = i + 1
             end do
+
+#ifdef PARALLEL
+            ! Make sure the same file has been found by all processes.
+            ! This typically fails if a calculation has been redistributed onto more processes.
+            call mpi_allreduce(i, max_i, 1, MPI_INTEGER, MPI_MAX, MPI_COMM_WORLD, ierr)
+            i = max_i
+            call append_ext(stem, i-1, filename)
+            if (present(id)) id = i-1
+            filename = trim(filename)//suffix
+#endif
 
             if (.not.tnext) then
                 ! actually want the last file which existed.
