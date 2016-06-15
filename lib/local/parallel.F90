@@ -147,25 +147,19 @@ contains
 
         ! Print out information about the parallel environment.
 
-        use utils, only: int_fmt
-
-        character(4) :: fmt1, fmt2
-
-        fmt1 = int_fmt(nprocs,1)
-        fmt2 = int_fmt(nthreads,1)
         if (nprocs == 1) then
-            write (6,'(1X,"Number of MPI processes running on:"'//fmt1//')') nprocs
+            write (6,'(1X,"Number of MPI processes running on: ", i0)') nprocs
             if (nthreads == 1) then
-                write (6,'(1X,"Running with"'//fmt2//'" thread.",/)') nthreads
+                write (6,'(1X,"Running with 1 thread.",/)')
             else
-                write (6,'(1X,"Running with"'//fmt2//'" threads.",/)') nthreads
+                write (6,'(1X,"Running with ", i0, " threads.",/)') nthreads
             end if
         else
-            write (6,'(1X,"Number of MPI processes running on:"'//fmt1//')') nprocs
+            write (6,'(1X,"Number of MPI processes running on: ", i0)') nprocs
             if (nthreads == 1) then
-                write (6,'(1X,"Running with"'//fmt2//'" thread per MPI process.",/)') nthreads
+                write (6,'(1X,"Running with 1 thread per MPI process.",/)')
             else
-                write (6,'(1X,"Running with"'//fmt2//'" threads per MPI process.",/)') nthreads
+                write (6,'(1X,"Running with", i0, " threads per MPI process.",/)') nthreads
             end if
         end if
 
