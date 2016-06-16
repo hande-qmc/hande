@@ -1178,8 +1178,8 @@ contains
         type(ccmc_in_t), intent(out) :: ccmc_in
 
         integer :: ccmc_table, err
-        character(28), parameter :: keys(4) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
-                                                                'full_non_composite', 'linked']
+        character(28), parameter :: keys(5) = [character(28) :: 'move_frequency', 'cluster_multispawn_threshold', &
+                                                                'full_non_composite', 'linked', 'vary_shift_reference']
 
         if (aot_exists(lua_state, opts, 'ccmc')) then
 
