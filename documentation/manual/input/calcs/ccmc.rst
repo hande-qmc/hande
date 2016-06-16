@@ -133,3 +133,11 @@ ccmc options
     the excitation sampled from the Hamiltonian has an orbital in common with each excitor 
     in the cluster operator. Using this option can give substantial reductions in the 
     plateau height.
+``vary_shift_reference``
+    type: boolean.
+
+    Optional.  Default: false.
+
+    Vary the shift to keep the population at the reference, :math:`N_0`, constant, rather
+    than the total population :math:`N_p`.  This can lead to stable calculations even when
+    the selected ``target_population`` is below the plateau.
