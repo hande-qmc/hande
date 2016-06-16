@@ -697,6 +697,9 @@ contains
         qs%estimators%tot_nstates = qs%psip_list%nstates
 #endif
 
+        ! Ensure D0_population from last cycle is set appropriately if restarting
+        qs%estimators%D0_population_old = qs%estimators%D0_population*qmc_in%ncycles
+
         if (.not. nb_comm_local .and. parent) then
             ! See also the format used in write_fciqmc_report if this is changed.
             ! We prepend a # to make it easy to skip this point when do data
