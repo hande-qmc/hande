@@ -324,7 +324,7 @@ contains
 
     end subroutine append_ext
 
-   subroutine get_unique_filename(stem, suffix, tnext, istart, filename, id)
+   subroutine get_unique_filename(stem, suffix, tnext, istart, filename, id, reduce)
 
         ! Find a filename which is either the "newest" or the next to be used.
         ! The filename is assumed to be stem.xsuffix, where x is an integer.
@@ -338,6 +338,8 @@ contains
         !    istart: the integer of the first x value to check.
         !        If istart is negative, then the filename is set to be stem.x,
         !        where x = |istart+1|.  This overrides everything else.
+        !    reduce (optional): Ensure that all processes get the same file id if
+        !        running in parallel.  Defaults to true.
         ! Out:
         !    filename.
         !    id (optional): value of x used in the filename.
@@ -349,9 +351,10 @@ contains
         integer, intent(in) :: istart
         character(*), intent(out) :: filename
         integer, optional, intent(out) :: id
+        logical, optional, intent(in) :: reduce
 
         integer :: i
-        logical :: exists
+        logical :: exists, reduce_loc
 
 #ifdef PARALLEL
         integer :: max_i, ierr
@@ -370,13 +373,17 @@ contains
             end do
 
 #ifdef PARALLEL
-            ! Make sure the same file has been found by all processes.
-            ! This typically fails if a calculation has been redistributed onto more processes.
-            call mpi_allreduce(i, max_i, 1, MPI_INTEGER, MPI_MAX, MPI_COMM_WORLD, ierr)
-            i = max_i
-            call append_ext(stem, i-1, filename)
-            if (present(id)) id = i-1
-            filename = trim(filename)//suffix
+            reduce_loc = .true.
+            if (present(reduce)) reduce_loc = reduce
+            if (reduce_loc) then
+                ! Make sure the same file has been found by all processes.
+                ! This typically fails if a calculation has been redistributed onto more processes.
+                call mpi_allreduce(i, max_i, 1, MPI_INTEGER, MPI_MAX, MPI_COMM_WORLD, ierr)
+                i = max_i
+                call append_ext(stem, i-1, filename)
+                if (present(id)) id = i-1
+                filename = trim(filename)//suffix
+            end if
 #endif
 
             if (.not.tnext) then

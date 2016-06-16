@@ -1304,7 +1304,7 @@ contains
                 id = -read_id-1
             end if
 
-            call get_unique_filename("SEMI.STOCH", ".H5", .false., min(id,0), filename)
+            call get_unique_filename("SEMI.STOCH", ".H5", .false., min(id,0), filename, reduce=.false.)
             if (print_info) write(6,'(1X,"# Reading deterministic space states from",1X,a,".")') trim(filename)
 
             inquire(file=trim(filename), exist=exists)
