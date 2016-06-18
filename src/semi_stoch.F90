@@ -1424,7 +1424,7 @@ contains
             id = -write_id-1
         end if
 
-        call get_unique_filename("SEMI.STOCH", ".H5", .true., min(id,0), filename)
+        call get_unique_filename("SEMI.STOCH", ".H5", .true., min(id,0), filename, reduce=.false.)
         if (print_info) write(6,'(1X,"# Writing deterministic space states to",1X,a,".")') trim(filename)
 
         ! Open HDF5 and create HDF5 kinds.
