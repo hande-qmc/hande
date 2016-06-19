@@ -439,6 +439,9 @@ contains
                                      qs%estimators%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         end if
+        ! [review] - JSS: slight discrepancy -- store D0_population_old summed over the report loop but D0_population is averaged
+        ! [review] - JSS: over the report loop below.  Is this for convenience in evaluating the shift?  If so, how about moving the
+        ! [review] - JSS: averaging code up?
         qs%estimators%D0_population_old = qs%estimators%D0_population
         ntot_particles_old = ntot_particles
         qs%estimators%hf_signed_pop = new_hf_signed_pop
