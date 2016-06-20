@@ -118,6 +118,8 @@ type qmc_in_t
     real(p) :: D0_population = 0
     ! Number of particles before which varyshift mode is turned on.
     real(p) :: target_particles = huge(1.0_p)
+    ! Whether target_particles refers to the total population or to the reference.
+    logical :: target_reference = .false.
 
     ! Using the initiator approximation?
     logical :: initiator_approx = .false.
@@ -610,6 +612,7 @@ contains
         call json_write_key(js, 'spawned_walker_length', qmc%spawned_walker_length)
         call json_write_key(js, 'D0_population', qmc%D0_population)
         call json_write_key(js, 'target_particles', qmc%target_particles)
+        call json_write_key(js, 'target_reference', qmc%target_reference)
         call json_write_key(js, 'initiator_approx', qmc%initiator_approx)
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
         call json_write_key(js, 'quadrature_initiator', qmc%quadrature_initiator)

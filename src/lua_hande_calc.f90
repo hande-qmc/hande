@@ -855,14 +855,14 @@ contains
         character(len=10) :: str
         logical :: skip, no_renorm
 
-        character(23), parameter :: keys(23) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(23), parameter :: keys(24) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'initial_shift', &
                                                                  'shift_damping', 'initiator', 'initiator_threshold', &
                                                                  'quadrature_initiator', 'use_mpi_barriers', 'vary_shift_from', &
-                                                                 'excit_gen']
+                                                                 'excit_gen', 'reference_target']
 
         if (present(short)) then
             skip = short
@@ -903,6 +903,13 @@ contains
         call aot_get_val(qmc_in%initiator_pop, err, lua_state, qmc_table, 'initiator_threshold')
         call aot_get_val(qmc_in%quadrature_initiator, err, lua_state, qmc_table, 'quadrature_initiator')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
+
+        if (aot_exists(lua_state, qmc_table, 'reference_target')) then
+            qmc_in%target_reference = .true.
+            call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'reference_target')
+            if (aot_exists(lua_state, qmc_table, 'target_population') .and. parent) call stop_all('read_qmc_in', &
+                'Cannot provide both target_population and reference_target')
+        end if
 
         if (aot_exists(lua_state, qmc_table, 'no_renorm')) then
             call aot_get_val(no_renorm, err, lua_state, qmc_table, 'no_renorm')

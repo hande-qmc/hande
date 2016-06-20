@@ -463,7 +463,9 @@ contains
             nparticles_wfn = ntot_particles(1)
         end if
 
-        if (nparticles_wfn > qs%target_particles .and. .not.qs%vary_shift(1)) then
+        if (.not. qs%vary_shift(1) .and. &
+            ((nparticles_wfn > qs%target_particles .and. .not. qmc_in%target_reference) .or. &
+            (qs%estimators%D0_population > qs%target_particles .and. qmc_in%target_reference))) then
             qs%vary_shift = .true.
             if (qmc_in%vary_shift_from_proje) then
                 ! Set shift to be instantaneous projected energy.
