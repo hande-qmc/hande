@@ -424,6 +424,19 @@ contains
             end if
         end associate
 
+        ! average energy quantities over report loop.
+        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
+        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+        ! Similarly for the HFS estimator
+        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
+        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
+        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
+        ! Similarly for complex quantities.
+        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
+        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
+        ! average spawning rate over report loop and processor.
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
+
         if (qs%vary_shift(1)) then
             if (vary_shift_reference_loc) then
                 call update_shift(qmc_in, qs, qs%shift(1), qs%estimators%D0_population_old, qs%estimators%D0_population, &
@@ -439,9 +452,7 @@ contains
                                      qs%estimators%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         end if
-        ! [review] - JSS: slight discrepancy -- store D0_population_old summed over the report loop but D0_population is averaged
-        ! [review] - JSS: over the report loop below.  Is this for convenience in evaluating the shift?  If so, how about moving the
-        ! [review] - JSS: averaging code up?
+
         qs%estimators%D0_population_old = qs%estimators%D0_population
         ntot_particles_old = ntot_particles
         qs%estimators%hf_signed_pop = new_hf_signed_pop
@@ -471,19 +482,6 @@ contains
                 qs%shift = qmc_in%vary_shift_from
             end if
         end if
-
-        ! average energy quantities over report loop.
-        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
-        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
-        ! Similarly for the HFS estimator
-        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
-        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
-        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
-        ! Similarly for complex quantities.
-        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
-        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
-        ! average spawning rate over report loop and processor.
-        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
 
     end subroutine communicated_energy_estimators
 
