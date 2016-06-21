@@ -139,5 +139,7 @@ ccmc options
     Optional.  Default: false.
 
     Vary the shift to keep the population at the reference, :math:`N_0`, constant, rather
-    than the total population :math:`N_p`.  This can lead to stable calculations even when
-    the selected ``target_population`` is below the plateau.
+    than the total population :math:`N_p`.  If ``target_population`` is below the plateau
+    (or an equivalently low ``reference_target`` is specified) then, whilst the reference
+    population will be controlled, the total population will continue to grow until a stable
+    distribution is reached.
