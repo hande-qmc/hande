@@ -118,6 +118,8 @@ type qmc_in_t
     real(p) :: D0_population = 0
     ! Number of particles before which varyshift mode is turned on.
     real(p) :: target_particles = huge(1.0_p)
+    ! Whether target_particles refers to the total population or to the reference.
+    logical :: target_reference = .false.
 
     ! Using the initiator approximation?
     logical :: initiator_approx = .false.
@@ -219,6 +221,8 @@ type ccmc_in_t
     logical :: full_nc = .false.
     ! Sample only linked clusters in CCMC?
     logical :: linked = .false.
+    ! If true, vary shift to control reference, not total, population
+    logical :: vary_shift_reference = .false.
 end type ccmc_in_t
 
 type restart_in_t
@@ -462,6 +466,8 @@ end type spawned_particle_t
 type estimators_t
     ! Population of walkers on reference determinant/trace of density matrix.
     real(p) :: D0_population
+    ! Population of walkers on reference determinant/trace of density matrix at previous timestep.
+    real(p) :: D0_population_old
     ! projected energy
     ! This stores during an FCIQMC report loop
     !   \sum_{i/=0} <D_0|H|D_i> N_i
@@ -606,6 +612,7 @@ contains
         call json_write_key(js, 'spawned_walker_length', qmc%spawned_walker_length)
         call json_write_key(js, 'D0_population', qmc%D0_population)
         call json_write_key(js, 'target_particles', qmc%target_particles)
+        call json_write_key(js, 'target_reference', qmc%target_reference)
         call json_write_key(js, 'initiator_approx', qmc%initiator_approx)
         call json_write_key(js, 'initiator_pop', qmc%initiator_pop)
         call json_write_key(js, 'quadrature_initiator', qmc%quadrature_initiator)
@@ -727,7 +734,8 @@ contains
         call json_write_key(js, 'move_freq', ccmc%move_freq)
         call json_write_key(js, 'cluster_multispawn_threshold', ccmc%cluster_multispawn_threshold)
         call json_write_key(js, 'full_nc', ccmc%full_nc)
-        call json_write_key(js, 'linked', ccmc%linked, .true.)
+        call json_write_key(js, 'linked', ccmc%linked)
+        call json_write_key(js, 'vary_shift_reference', ccmc%vary_shift_reference, .true.)
         call json_object_end(js, terminal)
 
     end subroutine ccmc_in_t_json

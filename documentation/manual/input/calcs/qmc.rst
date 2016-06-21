@@ -105,6 +105,13 @@ algorithms and control the core settings in the algorithms.
     where :math:`S` is the shift, :math:`t` the current imaginary time, :math:`\tau` the
     timestep, :math:`A` ``mc_cycles``, :math:`\xi` ``shift_damping``, and :math:`N_p` the
     number of particles.
+``reference_target``
+    type: float.
+
+    Optional.  Default: none.
+
+    Set a target reference population to be reached before the shift is allowed to vary.
+    Cannot be used in conjunction with ``target_population``.
 ``real_amplitudes``
     type: boolean.
 

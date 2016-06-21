@@ -53,7 +53,7 @@ contains
     ! All other elements are set to zero.
 
     subroutine update_energy_estimators(qmc_in, qs, nspawn_events, ntot_particles_old, load_bal_in, doing_lb, &
-                                        comms_found, error, update_tau, bloom_stats, comp)
+                                        comms_found, error, update_tau, bloom_stats, vary_shift_reference, comp)
 
         ! Update the shift and average the shift and projected energy
         ! estimators.
@@ -65,6 +65,11 @@ contains
         !    nspawn_events: The total number of spawning events to this process.
         !    doing_lb (optional): true if performing load balancing.
         !    load_bal_in: input options for load balancing.
+        !    vary_shift_reference (optional): if true, vary shift to control reference, not total, population
+        !    comp (optional): true if running calculation with real and complex walkers. This means that:
+        !       - pairwise combine total populations when calculating shift variation and generate a
+        !         combined shift for both.
+        !       - have complex proj energy estimator to pass real and imaginary components of via mpi.
         ! In/Out:
         !    qs: qmc state. Estimators are updated on output.
         !    ntot_particles_old: total number (across all processors) of
@@ -80,10 +85,6 @@ contains
         !       any one processor wants to rescale tau).
         !    bloom_stats (optional): Bloom stats.  The report loop quantities are accumulated into
         !       their respective components.
-        !    comp (optional): true if running calculation with real and complex walkers. This means that:
-        !       - pairwise combine total populations when calculating shift variation and generate a
-        !         combined shift for both.
-        !       - have complex proj energy estimator to pass real and imaginary components of via mpi.
 
         use bloom_handler, only: bloom_stats_t
         use qmc_data, only: qmc_in_t, load_bal_in_t, qmc_state_t
@@ -100,6 +101,7 @@ contains
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(inout), optional :: update_tau
         type(load_bal_in_t), intent(in) :: load_bal_in
+        logical, intent(in), optional :: vary_shift_reference
 
         real(dp) :: rep_loop_loc(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
         real(dp) :: rep_loop_sum(qs%psip_list%nspaces*nprocs+nparticles_start_ind-1)
@@ -118,8 +120,8 @@ contains
 #endif
 
         call communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, doing_lb, &
-                                            qs%psip_list%nparticles_proc, comms_found, error, update_tau, &
-                                            bloom_stats, comp)
+                                            qs%psip_list%nparticles_proc, comms_found, error, update_tau, bloom_stats, &
+                                            vary_shift_reference, comp)
 
     end subroutine update_energy_estimators
 
@@ -313,9 +315,9 @@ contains
 
     end subroutine local_energy_estimators
 
-    subroutine communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, &
-                                              doing_lb, nparticles_proc, comms_found, error, update_tau, &
-                                              bloom_stats, comp)
+    subroutine communicated_energy_estimators(qmc_in, qs, rep_loop_sum, ntot_particles_old, load_bal_in, doing_lb, &
+                                              nparticles_proc, comms_found, error, update_tau, bloom_stats, &
+                                              vary_shift_reference, comp)
 
         ! Update report loop quantites with information received from other
         ! processors.
@@ -335,6 +337,8 @@ contains
         !    nparticles_proc: number of particles in each space on each processor.
         ! In (optional):
         !    doing_lb: true if performing load balancing.
+        !    vary_shift_reference: if true, vary the shift to control the reference, rather than the
+        !    total, population.
         !    comp: true if qmc calculation with real and imaginary walkers.
         ! In/Out (optional):
         !    bloom_stats: blooming stats.
@@ -355,7 +359,7 @@ contains
         real(dp), intent(inout) :: ntot_particles_old(:)
         real(dp), intent(out) :: nparticles_proc(:,:)
         type(load_bal_in_t), intent(in) :: load_bal_in
-        logical, optional, intent(in) :: doing_lb, comp
+        logical, optional, intent(in) :: doing_lb, vary_shift_reference, comp
         type(bloom_stats_t), intent(inout), optional :: bloom_stats
         logical, intent(out), optional :: comms_found, error
         logical, intent(out), optional :: update_tau
@@ -364,10 +368,13 @@ contains
         real(p) :: pop_av
         real(dp) :: nparticles_wfn
         integer :: i, ntypes
-        logical :: comp_param
+        logical :: comp_param, vary_shift_reference_loc
 
         comp_param = .false.
         if (present(comp)) comp_param = comp
+
+        vary_shift_reference_loc = .false.
+        if (present(vary_shift_reference)) vary_shift_reference_loc = vary_shift_reference
 
         ntypes = size(ntot_particles_old) ! Just to save passing in another parameter...
 
@@ -417,20 +424,36 @@ contains
             end if
         end associate
 
+        ! average energy quantities over report loop.
+        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
+        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
+        ! Similarly for the HFS estimator
+        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
+        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
+        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
+        ! Similarly for complex quantities.
+        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
+        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
+        ! average spawning rate over report loop and processor.
+        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
+
         if (qs%vary_shift(1)) then
-            if (comp_param) then
+            if (vary_shift_reference_loc) then
+                call update_shift(qmc_in, qs, qs%shift(1), qs%estimators%D0_population_old, qs%estimators%D0_population, &
+                                  qmc_in%ncycles)
+            else if (comp_param) then
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
                                     ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
-                qs%shift(2) = qs%shift(1)
             else
-                call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), &
-                                    qmc_in%ncycles)
-                if (doing_calc(hfs_fciqmc_calc)) then
-                    call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
-                                         qs%estimators%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
-                end if
+                call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1), ntot_particles(1), qmc_in%ncycles)
+            end if
+            if (doing_calc(hfs_fciqmc_calc)) then
+                call update_hf_shift(qmc_in, qs, qs%shift(2), ntot_particles_old(1), ntot_particles(1), &
+                                     qs%estimators%hf_signed_pop, new_hf_signed_pop, qmc_in%ncycles)
             end if
         end if
+
+        qs%estimators%D0_population_old = qs%estimators%D0_population
         ntot_particles_old = ntot_particles
         qs%estimators%hf_signed_pop = new_hf_signed_pop
 
@@ -440,7 +463,9 @@ contains
             nparticles_wfn = ntot_particles(1)
         end if
 
-        if (nparticles_wfn > qs%target_particles .and. .not.qs%vary_shift(1)) then
+        if (.not. qs%vary_shift(1) .and. &
+            ((nparticles_wfn > qs%target_particles .and. .not. qmc_in%target_reference) .or. &
+            (qs%estimators%D0_population > qs%target_particles .and. qmc_in%target_reference))) then
             qs%vary_shift = .true.
             if (qmc_in%vary_shift_from_proje) then
                 ! Set shift to be instantaneous projected energy.
@@ -459,19 +484,6 @@ contains
                 qs%shift = qmc_in%vary_shift_from
             end if
         end if
-
-        ! average energy quantities over report loop.
-        qs%estimators%proj_energy = qs%estimators%proj_energy/qmc_in%ncycles
-        qs%estimators%D0_population = qs%estimators%D0_population/qmc_in%ncycles
-        ! Similarly for the HFS estimator
-        qs%estimators%D0_hf_population = qs%estimators%D0_hf_population/qmc_in%ncycles
-        qs%estimators%proj_hf_O_hpsip = qs%estimators%proj_hf_O_hpsip/qmc_in%ncycles
-        qs%estimators%proj_hf_H_hfpsip = qs%estimators%proj_hf_H_hfpsip/qmc_in%ncycles
-        ! Similarly for complex quantities.
-        qs%estimators%proj_energy_comp = qs%estimators%proj_energy_comp/qmc_in%ncycles
-        qs%estimators%D0_population_comp = qs%estimators%D0_population_comp/qmc_in%ncycles
-        ! average spawning rate over report loop and processor.
-        qs%spawn_store%rspawn = qs%spawn_store%rspawn/(qmc_in%ncycles*nprocs)
 
     end subroutine communicated_energy_estimators
 
