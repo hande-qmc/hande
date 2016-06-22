@@ -382,8 +382,8 @@ contains
                                                 rep_loop_sum(proj_energy_imag_ind), p)
         qs%estimators%D0_population_comp = cmplx(rep_loop_sum(D0_pop_ind), &
                                                 rep_loop_sum(D0_pop_imag_ind), p)
-        qs%estimators%proj_energy = rep_loop_sum(proj_energy_ind)
-        qs%estimators%D0_population = rep_loop_sum(D0_pop_ind)
+        qs%estimators%proj_energy = real(rep_loop_sum(proj_energy_ind), p)
+        qs%estimators%D0_population = real(rep_loop_sum(D0_pop_ind), p)
 
         qs%spawn_store%rspawn = real(rep_loop_sum(rspawn_ind), p)
         if (present(update_tau)) then
@@ -439,8 +439,8 @@ contains
 
         if (qs%vary_shift(1)) then
             if (vary_shift_reference_loc) then
-                call update_shift(qmc_in, qs, qs%shift(1), qs%estimators%D0_population_old, qs%estimators%D0_population, &
-                                  qmc_in%ncycles)
+                call update_shift(qmc_in, qs, qs%shift(1), real(qs%estimators%D0_population_old, dp), &
+                                  real(qs%estimators%D0_population, dp), qmc_in%ncycles)
             else if (comp_param) then
                 call update_shift(qmc_in, qs, qs%shift(1), ntot_particles_old(1) + ntot_particles_old(2), &
                                     ntot_particles(1) + ntot_particles(2), qmc_in%ncycles)
