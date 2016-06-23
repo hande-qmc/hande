@@ -105,6 +105,9 @@ type qmc_in_t
     ! shift.
     real(p) :: shift_damping = 0.050_p
 
+    logical :: vary_shift
+    logical :: vary_shift_present = .false.
+
     ! Array sizes: main and spawned particle lists.
     ! If these are < 0, then the values represent the number of MB to be used.
     ! CARE: as we don't modify qmc_in_t objects, one should inspect the sizes
@@ -606,6 +609,7 @@ contains
         call json_write_key(js, 'tau_search', qmc%tau_search)
         call json_write_key(js, 'vary_shift_from', qmc%vary_shift_from)
         call json_write_key(js, 'vary_shift_from_proje', qmc%vary_shift_from_proje)
+        if (qmc%vary_shift_present) call json_write_key(js, 'vary_shift', qmc%vary_shift)
         call json_write_key(js, 'initial_shift', qmc%initial_shift)
         call json_write_key(js, 'shift_damping', qmc%shift_damping)
         call json_write_key(js, 'walker_length', qmc%walker_length)

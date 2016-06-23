@@ -827,6 +827,7 @@ contains
         !     quadrature_initiator = true/false,
         !     use_mpi_barriers = true/false,
         !     vary_shift_from = shift or "proje",
+        !     vary_shift = true/false,
         ! }
 
         ! In/Out:
@@ -855,14 +856,14 @@ contains
         character(len=10) :: str
         logical :: skip, no_renorm
 
-        character(23), parameter :: keys(24) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
+        character(23), parameter :: keys(25) = [character(23) :: 'tau', 'init_pop', 'mc_cycles', 'nreports', 'state_size', &
                                                                  'spawned_state_size', 'rng_seed', 'target_population', &
                                                                  'real_amplitudes', 'spawn_cutoff', 'no_renorm', 'tau_search', &
                                                                  'real_amplitude_force_32', &
                                                                  'pattempt_single', 'pattempt_double', 'initial_shift', &
                                                                  'shift_damping', 'initiator', 'initiator_threshold', &
                                                                  'quadrature_initiator', 'use_mpi_barriers', 'vary_shift_from', &
-                                                                 'excit_gen', 'reference_target']
+                                                                 'excit_gen', 'reference_target', 'vary_shift']
 
         if (present(short)) then
             skip = short
@@ -909,6 +910,11 @@ contains
             call aot_get_val(qmc_in%target_particles, err, lua_state, qmc_table, 'reference_target')
             if (aot_exists(lua_state, qmc_table, 'target_population') .and. parent) call stop_all('read_qmc_in', &
                 'Cannot provide both target_population and reference_target')
+        end if
+
+        qmc_in%vary_shift_present = aot_exists(lua_state, qmc_table, 'vary_shift')
+        if (qmc_in%vary_shift_present) then
+            call aot_get_val(qmc_in%vary_shift, err, lua_state, qmc_table, 'vary_shift')
         end if
 
         if (aot_exists(lua_state, qmc_table, 'no_renorm')) then

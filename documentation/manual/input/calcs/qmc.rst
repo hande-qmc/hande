@@ -314,3 +314,15 @@ algorithms and control the core settings in the algorithms.
     processors take longer to perform their work than others. This is turned
     off by default because such calls may have an initialisation time which
     scales badly to many processors.
+``vary_shift``
+    type: boolean.
+
+    Optional.
+
+    If present, overrides any value of ``vary_shift`` set by a previous calculation
+    contained either in a restart file or a qmc_state object.  If set to true, the shift
+    is set to ``initial_shift``.
+
+    .. note::
+
+        The shift will still be varied when ``target_population``, if set, is reached.
