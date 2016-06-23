@@ -1,4 +1,5 @@
-# I used  PrgEnv-cray, with cce replaced by hdf5-cray/cce/833, and hdf5-cray/1813.
+# The default cray environment should work. Replace the path to lua.h in cppflags and link
+# to liblua.a as appropriate.
 [main]
 fc = ftn
 cc = cc
