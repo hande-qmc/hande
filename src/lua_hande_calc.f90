@@ -906,7 +906,7 @@ contains
         call aot_get_val(qmc_in%quadrature_initiator, err, lua_state, qmc_table, 'quadrature_initiator')
         call aot_get_val(qmc_in%use_mpi_barriers, err, lua_state, qmc_table, 'use_mpi_barriers')
         call aot_get_val(qmc_in%quasi_newton, err, lua_state, qmc_table, 'quasi_newton')
-        call aot_get_val(qmc_in%quasi_newton_thresh, err, lua_state, qmc_table, 'quasi_newton_thresh')
+        call aot_get_val(qmc_in%quasi_newton_threshold, err, lua_state, qmc_table, 'quasi_newton_threshold')
         call aot_get_val(qmc_in%quasi_newton_value, err, lua_state, qmc_table, 'quasi_newton_value')
 
         if (aot_exists(lua_state, qmc_table, 'reference_target')) then

@@ -141,12 +141,11 @@ type qmc_in_t
     ! If true then allow the use of MPI barrier calls.
     logical :: use_mpi_barriers = .false.
 
-    ! [review] - JSS: add to JSON output.
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
 
     ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_thresh = 1.e-5_p
+    real(p) :: quasi_newton_threshold = 1.e-5_p
 
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
@@ -550,10 +549,13 @@ type qmc_state_t
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
     ! [review] - JSS: unnecessary (unused?) duplication with qmc_in_t.
+    ! [reply] - AJWT: qmc_in isn't passed to the spawning routines, and while this
+    ! [reply] - AJWT: is a variable saying how to perform the calculation, rather
+    ! [reply] - AJWT: than the state, both seem to be included here.
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
     ! The lower threshold for a quasiNewton enegy difference
-    real(p) :: quasi_newton_thresh = 1.e-5_p
+    real(p) :: quasi_newton_threshold = 1.e-5_p
     ! The value to set the quasiNewton energy difference to if lower than the
     ! threshold
     real(p) :: quasi_newton_value = 1_p
@@ -644,6 +646,9 @@ contains
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
         call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
+        call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
+        call json_write_key(js, 'quaxsi_newton_threshold', qmc%quasi_newton_threshold)
+        call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
         call json_object_end(js, terminal)
 
     end subroutine qmc_in_t_json

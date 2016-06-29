@@ -62,6 +62,7 @@ contains
         use qmc_data, only: qmc_in_t, restart_in_t, load_bal_in_t, qmc_state_t, annihilation_flags_t
         use reference_determinant, only: reference_t
         use hamiltonian_data
+        use energy_evaluation, only: get_sanitized_projected_energy
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -126,7 +127,7 @@ contains
 
         do ireport = 1, qmc_in%nreport
 
-            proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
+            proj_energy_old = get_sanitized_projected_energy(qs)
             ! Zero report cycle quantities.
             qs%estimators%proj_energy = 0.0_p
             qs%estimators%proj_hf_O_hpsip = 0.0_p

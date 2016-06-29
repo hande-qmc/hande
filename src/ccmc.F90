@@ -315,6 +315,7 @@ contains
         use check_input, only: check_qmc_opts, check_ccmc_opts
         use json_out, only: json_out_t, json_object_init, json_object_end
         use hamiltonian_data
+        use energy_evaluation, only: get_sanitized_projected_energy
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -475,7 +476,7 @@ contains
         do ireport = 1, qmc_in%nreport
 
             ! Projected energy from last report loop to correct death
-            proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
+            proj_energy_old = get_sanitized_projected_energy(qs)
 
             call init_report_loop(qs, bloom_stats)
 
@@ -1544,7 +1545,7 @@ contains
 
     end subroutine spawner_ccmc
 
-    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc,  sys, qs, cdet, cluster, proj_energy)
+    subroutine stochastic_ccmc_death(rng, spawn, linked_ccmc, sys, qs, cdet, cluster, proj_energy)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
         ! with probability
@@ -1561,6 +1562,11 @@ contains
         !   <D_s|[..[H,T],..T]|D_0>
         ! which changes the death probabilities, and also means the shift only
         ! applies on the reference determinant.
+
+        ! Quasinewtwon approaches scale this death step, but doing this naively
+        ! would break population control.  Instead, we split H-S into 
+        ! (H - E_proj) + (E_proj - S).
+        ! The former is scaled and produces the step.  The latter effects the population control.
 
         ! In:
         !    sys: system being studied.
@@ -1605,18 +1611,15 @@ contains
         ! parent excitor to the qs%ref and that formed from applying the
         ! child excitor.
         invdiagel = get_spawned_particle_weighting(sys, qs, cdet%f)
-        ! [review] - JSS: the changes to the death (here, in stochastic_death and in the non-composite version) are confusing.  Will
-        ! [review] - JSS: detail in email.
         if (linked_ccmc) then
             select case (cluster%nexcitors)
             case(0)
-                ! Death on the reference is unchanged 
+                ! Death on the reference has H_ii - E_HF = 0.
                 KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
-                ! [review] - JSS: commented-out code: big no-no.
-!                KiiAi = (-qs%shift(1))*cluster%amplitude
             case(1)
                 ! Evaluating the commutator gives
                 ! <D1|[H,a1]|D0> = <D1|H|D1> - <D0|H|D0>
+                ! (this is scaled for quasinewton approaches)
                 KiiAi = (cdet%data(1) * invdiagel + proj_energy - qs%shift(1))*cluster%amplitude
             case(2)
                 ! Evaluate the commutator
@@ -1625,6 +1628,7 @@ contains
                 ! <D3|[[H,a1],a2]|D0> = <D3|H|D3> - <D2|H|D2> - <D1|H|D1> + <D0|H|D0>
                 KiiAi = (sc0_ptr(sys, cdet%f) - sc0_ptr(sys, cluster%excitors(1)%f) &
                     - sc0_ptr(sys, cluster%excitors(2)%f) + qs%ref%H00)*cluster%amplitude
+                ! (this is scaled for quasinewton approaches)
                 KiiAi = KiiAi*invdiagel                                             
             case default
                 ! At most two cluster operators can be linked to the diagonal
@@ -1634,6 +1638,7 @@ contains
         else
             select case (cluster%nexcitors)
             case(0)
+                ! Death on the reference has H_ii - E_HF = 0.
                 KiiAi = (( - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
             case(1)
                 KiiAi = ((cdet%data(1) - proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*cluster%amplitude
@@ -1752,8 +1757,6 @@ contains
         invdiagel = get_spawned_particle_weighting(sys, qs, state)
         if (isD0) then
             KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
-            ! [review] - JSS: commented out code.
-!            KiiAi = (-qs%shift(1))*population
         else
             if (linked_ccmc) then
                 KiiAi = (Hii*invdiagel + proj_energy - qs%shift(1))*population
@@ -1785,8 +1788,6 @@ contains
             ! Also need to update total population
             tot_population = tot_population + real(abs(population)-abs(old_pop),p)/qs%psip_list%pop_real_factor
             ndeath = ndeath + abs(nkill)
-            ! [review] - JSS: commented out debug code.
-!            write(6,*) "D", state, real(nkill,p)/qs%psip_list%pop_real_factor
         end if
 
     end subroutine stochastic_ccmc_death_nc

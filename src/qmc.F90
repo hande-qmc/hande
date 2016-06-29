@@ -147,7 +147,7 @@ contains
         if (present(qmc_state_restart)) call dealloc_excit_gen_data_t(qmc_state_restart%excit_gen_data)
         call init_excit_gen(sys, qmc_in, qmc_state%ref, qmc_state%excit_gen_data)
         qmc_state%quasi_newton = qmc_in%quasi_newton
-        qmc_state%quasi_newton_thresh = qmc_in%quasi_newton_thresh
+        qmc_state%quasi_newton_threshold = qmc_in%quasi_newton_threshold
         qmc_state%quasi_newton_value = qmc_in%quasi_newton_value
     end subroutine init_qmc
 

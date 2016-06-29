@@ -96,7 +96,6 @@ contains
         ! 1. Generate random excitation.
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
-        ! [review] - JSS: why only scale in spawn_standard and not in other spawn_* procedures?
         if (allowed) then
            hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
         endif
@@ -177,6 +176,10 @@ contains
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
+
+        if (allowed) then
+           hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+        endif
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
@@ -264,6 +267,10 @@ contains
         ! 1. Generate enough of a random excitation to determinant the
         ! generation probability and |H_ij|.
         call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, abs_hmatel, allowed)
+
+        if (allowed) then
+           abs_hmatel%r = abs_hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+        endif
 
         ! 2. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel%r/pgen, rng)
@@ -361,6 +368,11 @@ contains
 
         ! 2. Transform Hamiltonian matrix element by trial function.
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel%r)
+
+        if (allowed) then
+           tilde_hmatel%r = tilde_hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+        endif
+
 
         ! 3. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs(tilde_hmatel%r)/pgen, rng)
@@ -514,6 +526,11 @@ contains
             call stop_all('spawn_complex', 'Attempting to use complex spawning in non-read_in system. Not currently implemented.')
         end if
         call gen_excit_mol_complex(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
+
+
+        if (allowed) then
+           hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+        endif
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel%c, p), pgen, parent_sign)
@@ -1845,7 +1862,7 @@ contains
         ! At present this uses an inefficient O(N) sum of the diagonal elements
         ! of the Fock matrix, and the weight is 1/(F(spawnee)-F(reference))
         ! If the difference in Fock energy between the reference and the spawnee is less than
-        ! qs%quasi_newton_thresh, then the weight 1/(qs%quasi_newton_value) is used instead.
+        ! qs%quasi_newton_threshold then the weight 1/(qs%quasi_newton_value) is used instead.
     
         use qmc_data, only:  qmc_state_t
         use system, only: sys_t
@@ -1881,7 +1898,7 @@ contains
             do iel = 1, sys%nel                                                                                 
                 diagel = diagel+sys%basis%basis_fns(occ_list(iel))%sp_eigv-sys%basis%basis_fns(occ_list_ref(iel))%sp_eigv 
             end do                                                                                              
-            if (diagel < qs%quasi_newton_thresh) diagel = qs%quasi_newton_value
+            if (diagel < qs%quasi_newton_threshold) diagel = qs%quasi_newton_value
             weight = 1 / diagel
         else
             weight = 1.0_p

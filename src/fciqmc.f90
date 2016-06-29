@@ -66,6 +66,7 @@ contains
         use reference_determinant, only: reference_t, reference_t_json
         use check_input, only: check_qmc_opts, check_fciqmc_opts, check_load_bal_opts
         use hamiltonian_data
+        use energy_evaluation, only: update_proj_energy_mol_complex, get_sanitized_projected_energy
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -189,14 +190,8 @@ contains
         call cpu_time(t1)
 
         do ireport = 1, qmc_in%nreport
- 
-            ! [review] - JSS: this will have to be done for all algorithms.
-            ! [review] - JSS: Put into procedure?
-            if (abs(qs%estimators%D0_population)<1e-100_p) then
-               proj_energy_old = 0
-            else
-               proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
-            endif
+
+            proj_energy_old = get_sanitized_projected_energy(qs)
 
             ! Zero report cycle quantities.
             call init_report_loop(qs, bloom_stats)

@@ -299,30 +299,24 @@ algorithms and control the core settings in the algorithms.
     The population dynamics of this approach are different, and do not show plateaux, but do
     converge to the same ground state.
 
-``quasi_newton_thresh``
+``quasi_newton_threshold``
     type: float.
-
-    ..
-
-        [review] - JSS: other parameters (initiator, multispawn) use xxx_threshold rather than
-        [review] - JSS: xxx_thresh.  Consistency would be helpful to the user, I think.
-        [review] - JSS: should also note the weighting for determinants above the threshold.
-        [review] - JSS: Actually, this description isn't most enlightening about how it
-        [review] - JSS: enters the algorithm and whether the user need to change it (I suspect not).
     
     Optional. Default: 1e-5
 
+    Used when quasi_newton is true.
     The quasi-Newton approach scales the steps according to the inverse difference in Fock energy to
-    the reference determinant (with Fock energy :math:`F_0`).  Any determinant with energy
+    the reference determinant (with Fock energy :math:`F_0`) for each determinant.  Any determinant with energy
     less than :math:`F_0 + \Delta_{\mathrm{QN}}`, where :math:`\Delta_{\mathrm{QN}}` is the value
-    given to ``quasi_newton_thresh``, will have weighting :math:`v_{\mathrm{QN}}^{-1}`,
+    given to ``quasi_newton_threshold``, will have weighting :math:`v_{\mathrm{QN}}^{-1}`,
     where :math:`v_{\mathrm{QN}}` is the value given by ``quasi_newton_value``.
+    For systems with a small HOMO-LUMO gap, making this larger may stabilize the convergence.
 ``quasi_newton_value``
     type: float.
 
     Optional. Default: 1.0
 
-    See quasi_newton_thresh
+    See quasi_newton_threshold
 
 ``tau_search``
     type: boolean.

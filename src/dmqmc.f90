@@ -62,6 +62,7 @@ contains
         use idmqmc, only: set_parent_flag_dmqmc
         use hash_table, only: free_hash_table
         use chem_pot, only: find_chem_pot
+        use energy_evaluation, only: get_sanitized_projected_energy
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -217,7 +218,7 @@ contains
 
             do ireport = 1, nreport
 
-                proj_energy_old = qs%estimators%proj_energy/qs%estimators%D0_population
+                proj_energy_old = get_sanitized_projected_energy(qs)
                 call init_dmqmc_report_loop(dmqmc_in%calc_excit_dist, bloom_stats, dmqmc_estimates, qs%spawn_store%rspawn)
                 tot_nparticles_old = qs%psip_list%tot_nparticles
 
