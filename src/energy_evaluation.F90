@@ -1247,7 +1247,7 @@ contains
 
     end subroutine update_proj_hfs_one_body_mol
 
-    function get_sanitized_projected_energy(qs) result(proje)
+    pure function get_sanitized_projected_energy(qs) result(proje)
         
         ! From a qmc_state, qs, return either the value of the projected energy,
         ! or 0 if this is undefined.
@@ -1256,7 +1256,8 @@ contains
         !    qs: qmc state containing estimators.
 
         ! Returns:
-        !   real containing projected energy.
+        !   real containing (instantaneous) projected energy.
+
         use qmc_data, only: qmc_state_t
         real(p) ::  proje
         type(qmc_state_t), intent(in) ::  qs
@@ -1265,7 +1266,8 @@ contains
            proje = 0
         else
            proje = qs%estimators%proj_energy/qs%estimators%D0_population
-        endif
+        end if
+
     end function get_sanitized_projected_energy 
 
 end module energy_evaluation

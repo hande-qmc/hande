@@ -98,7 +98,7 @@ contains
 
         if (allowed) then
            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
-        endif
+        end if
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
 
@@ -179,7 +179,7 @@ contains
 
         if (allowed) then
            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
-        endif
+        end if
 
         ! 3. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
@@ -270,7 +270,7 @@ contains
 
         if (allowed) then
            abs_hmatel%r = abs_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
-        endif
+        end if
 
         ! 2. Attempt spawning.
         nspawn = stochastic_round_spawned_particle(spawn_cutoff, real_factor*qmc_state%tau*abs_hmatel%r/pgen, rng)
@@ -371,7 +371,7 @@ contains
 
         if (allowed) then
            tilde_hmatel%r = tilde_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
-        endif
+        end if
 
 
         ! 3. Attempt spawning.
@@ -527,10 +527,9 @@ contains
         end if
         call gen_excit_mol_complex(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
-
         if (allowed) then
            hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
-        endif
+        end if
 
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, real(hmatel%c, p), pgen, parent_sign)

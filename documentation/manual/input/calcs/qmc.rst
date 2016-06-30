@@ -308,7 +308,7 @@ algorithms and control the core settings in the algorithms.
     
     Optional. Default: 1e-5
 
-    Used when quasi_newton is true.
+    Used when ``quasi_newton`` is true.
     The quasi-Newton approach scales the steps according to the inverse difference in Fock energy to
     the reference determinant (with Fock energy :math:`F_0`) for each determinant.  Any determinant with energy
     less than :math:`F_0 + \Delta_{\mathrm{QN}}`, where :math:`\Delta_{\mathrm{QN}}` is the value
@@ -320,7 +320,7 @@ algorithms and control the core settings in the algorithms.
 
     Optional. Default: 1.0
 
-    See quasi_newton_threshold
+    See ``quasi_newton_threshold``.
 
 ``tau_search``
     type: boolean.
