@@ -465,7 +465,7 @@ contains
                     ! which have been excited from.
                     ! [review] - JSS: this could/should be done once per determinant/excitor rather than once per excit gen.
                     do ii=1, nex
-                        associate(bfns=>sys%basis%basis_fns, cs%occ_list(ref_store(ii))=>ref_orb, cdet%occ_list=>det)
+                        associate(bfns=>sys%basis%basis_fns, ref_orb=>cs%occ_list(ref_store(ii)), det=>cdet%occ_list)
                             if (bfns(ref_orb)%Ms /= bfns(det(cdet_store(ii)))%Ms) then
                                 jj = ii + 1
                                 do while (bfns(ref_orb)%Ms /= bfns(det(cdet_store(jj)))%Ms)

@@ -476,7 +476,7 @@ contains
         ref_sind = 0 ! the position in ref_store of the last non-matching orbital
 
         
-        do i=1, nel ! this will index in ref
+fdo:    do i=1, nel ! this will index in ref
             do while (det_list(j)<ref_list(i))
                 ! det's orb isn't in ref, so we store its index in det_store
                 det_sind = det_sind + 1
@@ -492,7 +492,7 @@ contains
                 ! both are equal so we increment j
                 j = j + 1
             end if
-            if (j > nel) exit
+            if (j > nel) exit fdo
         end do fdo 
 
         ! Deal with whatever's left over in ref.  i is currently the last orbital we dealt with.
