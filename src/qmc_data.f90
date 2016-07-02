@@ -548,10 +548,6 @@ type qmc_state_t
     real(p) :: target_particles = huge(1.0_p)
     ! Stores information used by the excitation generator
     type(excit_gen_data_t) :: excit_gen_data
-    ! [review] - JSS: unnecessary (unused?) duplication with qmc_in_t.
-    ! [reply] - AJWT: qmc_in isn't passed to the spawning routines, and while this
-    ! [reply] - AJWT: is a variable saying how to perform the calculation, rather
-    ! [reply] - AJWT: than the state, both seem to be included here.
     ! If true, use a quasiNewton step
     logical :: quasi_newton = .false.
     ! The lower threshold for a quasiNewton enegy difference
