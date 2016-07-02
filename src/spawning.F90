@@ -1886,8 +1886,6 @@ contains
                 fexcit = fspawnee
             endif
             call decode_det(sys%basis, fexcit, occ_list)
-            ! [review] - JSS: entirely unnecessary (and expensive step).  Stored in qs%ref%occ_list0.
-            call decode_det(sys%basis, qs%ref%f0, occ_list_ref)
 
             diagel = 0.0_p                                                                                        
             ! [review] - JSS: worth adding F_0 to reference_t?
@@ -1896,7 +1894,7 @@ contains
             ! [review] - JSS: additional decode call.  (Bonus -- precompute F_i - F_0 and add to det_info_t...)
             ! [review] - JSS: This might be much faster as F_i is computed anyway for death...
             do iel = 1, sys%nel                                                                                 
-                diagel = diagel+sys%basis%basis_fns(occ_list(iel))%sp_eigv-sys%basis%basis_fns(occ_list_ref(iel))%sp_eigv 
+                diagel = diagel+sys%basis%basis_fns(occ_list(iel))%sp_eigv-sys%basis%basis_fns(qs%ref%occ_list0(iel))%sp_eigv
             end do                                                                                              
             if (diagel < qs%quasi_newton_threshold) diagel = qs%quasi_newton_value
             weight = 1 / diagel
