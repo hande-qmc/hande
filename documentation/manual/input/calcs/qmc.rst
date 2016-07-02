@@ -299,6 +299,10 @@ algorithms and control the core settings in the algorithms.
     The population dynamics of this approach are different, and do not show plateaux, but do
     converge to the same ground state.
 
+    .. note::
+
+        Not currently available for DMQMC.
+
 ``quasi_newton_threshold``
     type: float.
     
