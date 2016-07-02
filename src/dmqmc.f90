@@ -63,6 +63,7 @@ contains
         use hash_table, only: free_hash_table
         use chem_pot, only: find_chem_pot
         use energy_evaluation, only: get_sanitized_projected_energy
+        use errors, only: stop_all
 
         type(sys_t), intent(inout) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -112,6 +113,7 @@ contains
             restarting = present(qmc_state_restart) .or. restart_in%read_restart
             call check_qmc_opts(qmc_in, .not. present(qmc_state_restart), restarting)
             call check_dmqmc_opts(sys, dmqmc_in)
+            if (qmc_in%quasi_newton) call stop_all('do_dmqmc', 'Quasi-Newton not implemented for DMQMC.')
         end if
 
         ! Initialise data.
@@ -247,6 +249,9 @@ contains
                         ! to refer to the correct element in the density matrix.
                         call decoder_ptr(sys, cdet1%f, cdet1)
                         call decoder_ptr(sys, cdet2%f, cdet2)
+                        ! Quasi-Newton not yet implemented -- see also stochastic_death call.
+                        cdet1%fock_sum = 1.0_p
+                        cdet2%fock_sum = 1.0_p
 
                         ! If using multiple symmetry sectors then find the
                         ! symmetry labels of this particular det.
@@ -321,9 +326,9 @@ contains
                             ! when running a DMQMC algorithm, stores the average
                             ! of the two diagonal elements corresponding to the
                             ! two indicies of the density matrix.
-                            call stochastic_death(rng, sys, qs, qs%psip_list%states(:,idet), qs%psip_list%dat(ireplica,idet), &
-                                           proj_energy_old, qs%shift(ireplica), &
-                                           qs%psip_list%pops(ireplica,idet), qs%psip_list%nparticles(ireplica), ndeath)
+                            call stochastic_death(rng, sys, qs, cdet1%fock_sum, qs%psip_list%dat(ireplica,idet), proj_energy_old, &
+                                                  qs%shift(ireplica), qs%psip_list%pops(ireplica,idet), &
+                                                  qs%psip_list%nparticles(ireplica), ndeath)
                         end do
                     end do
 

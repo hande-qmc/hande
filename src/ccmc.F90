@@ -295,7 +295,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
         use ccmc_data
-        use determinants, only: det_info_t, dealloc_det_info_t
+        use determinants, only: det_info_t, dealloc_det_info_t, sum_sp_eigenvalues
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use fciqmc_data, only: write_fciqmc_report, &
                                write_fciqmc_report_header
@@ -357,7 +357,6 @@ contains
         type(restart_info_t) :: ri, ri_shift
         character(36) :: uuid_restart
         type(estimators_t) :: estimators_cycle
-        real(p) :: proj_energy_cycle, D0_population_cycle
 
         real :: t1, t2
 
@@ -367,7 +366,7 @@ contains
 
         integer(i0) :: fexcit(sys%basis%string_len)
         logical :: seen_D0
-        real(p) :: proj_energy_old
+        real(p) :: D0_population_cycle, proj_energy_cycle, proj_energy_old, dfock
 
         if (parent) then
             write (6,'(1X,"CCMC")')
@@ -660,6 +659,8 @@ contains
                                                           cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
                     end if
 
+                    if (qs%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues(sys, cdet(it)%occ_list) - qs%ref%fock_sum
+
                     if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &
                             (ccmc_in%linked .and. cluster(it)%excitation_level == huge(0))) then
                         ! cluster%excitation_level == huge(0) indicates a cluster
@@ -743,13 +744,13 @@ contains
 
                 if (ccmc_in%full_nc .and. qs%psip_list%nstates > 0) then
                     ! Do death exactly and directly for non-composite clusters
-                    !$omp do schedule(dynamic,200) reduction(+:ndeath,nparticles_change)
+                    !$omp do schedule(dynamic,200) private(dfock) reduction(+:ndeath,nparticles_change)
                     do iattempt = 1, qs%psip_list%nstates
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
-                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, &
-                                              qs%psip_list%states(:,iattempt), &
+                        if (qs%quasi_newton) dfock = sum_sp_eigenvalues(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
+                        call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
                                               nparticles_change(1), ndeath)
                     end do
@@ -1464,12 +1465,11 @@ contains
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t
-        use spawning, only: attempt_to_spawn, get_spawned_particle_weighting
+        use spawning, only: attempt_to_spawn, calc_qn_spawned_weighting
         use system, only: sys_t
         use const, only: depsilon
         use qmc_data, only: qmc_in_t, qmc_state_t
         use hamiltonian_data
-        use determinants, only: decode_det                  
 
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
@@ -1520,7 +1520,7 @@ contains
                     end if
                 end if
             end if
-            invdiagel = get_spawned_particle_weighting(sys, qs, cdet%f, connection)
+            invdiagel = calc_qn_spawned_weighting(sys, qs, cdet%fock_sum, connection)
         else
             invdiagel = 1
         end if
@@ -1587,10 +1587,9 @@ contains
         use proc_pointers, only: sc0_ptr, create_spawned_particle_ptr
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use spawn_data, only: spawn_t
-        use spawning, only: get_spawned_particle_weighting
+        use spawning, only: calc_qn_weighting
         use system, only: sys_t
         use qmc_data, only: qmc_state_t
-        use determinants, only: decode_det                  
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: linked_ccmc
@@ -1610,7 +1609,7 @@ contains
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the qs%ref and that formed from applying the
         ! child excitor.
-        invdiagel = get_spawned_particle_weighting(sys, qs, cdet%f)
+        invdiagel = calc_qn_weighting(qs, cdet%fock_sum)
         if (linked_ccmc) then
             select case (cluster%nexcitors)
             case(0)
@@ -1689,7 +1688,7 @@ contains
 
     end subroutine stochastic_ccmc_death
 
-    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, state, Hii, proj_energy, population, &
+    subroutine stochastic_ccmc_death_nc(rng, linked_ccmc,  sys, qs, isD0, dfock, Hii, proj_energy, population, &
                                         tot_population, ndeath)
 
         ! Attempt to 'die' (ie create an excip on the current excitor, cdet%f)
@@ -1715,11 +1714,11 @@ contains
         ! In:
         !    linked_ccmc: if true then only sample linked clusters.
         !    qs: qmc_state_t object. The shift and timestep are used.
-        !    state: the bitstring of the state that is dying
         !    isD0: true if the current excip is the null (reference) excitor
-
-        !    Hii: the diagonal matrix element of the determinant formed by applying the excip to the
-        !       reference
+        !    dfock: difference in the Fock energy of the determinant formed by applying the excitor to
+        !       the reference and the Fock energy of the reference.
+        !    Hii: the diagonal matrix element of the determinant formed by applying the excitor to the
+        !       reference.
         !    proj_energy: projected energy.  This should be the average value from the last
         !        report loop, not the running total in qs%estimators.
         ! In/Out:
@@ -1730,31 +1729,28 @@ contains
 
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
-        use determinants, only: decode_det                  
         use system, only: sys_t
-        use spawning, only: get_spawned_particle_weighting
+        use spawning, only: calc_qn_weighting
 
         type(sys_t), intent(in) :: sys
         logical, intent(in) :: linked_ccmc
         type(qmc_state_t), intent(in) :: qs
         logical, intent(in) :: isD0
-        real(p), intent(in) :: Hii, proj_energy
+        real(p), intent(in) :: Hii, dfock, proj_energy
         type(dSFMT_t), intent(inout) :: rng
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
-        integer(i0), intent(in) :: state(:) 
 
         real(p) :: pdeath, KiiAi
         integer(int_p) :: nkill, old_pop
         real(p) :: invdiagel
-
 
         ! Spawning onto the same excitor so no change in sign due to
         ! a difference in the sign of the determinant formed from applying the
         ! parent excitor to the reference and that formed from applying the
         ! child excitor.
 
-        invdiagel = get_spawned_particle_weighting(sys, qs, state)
+        invdiagel = calc_qn_weighting(qs, dfock)
         if (isD0) then
             KiiAi = ((- proj_energy)*invdiagel + (proj_energy - qs%shift(1)))*population
         else
@@ -2140,18 +2136,17 @@ contains
         !        not necessarily easy to get from the connection)
 
         use ccmc_data, only: cluster_t, convert_excitor_to_determinant
-        use determinants, only: det_info_t
+        use determinants, only: det_info_t, sum_sp_eigenvalues
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
-        use spawning, only: attempt_to_spawn, get_spawned_particle_weighting
+        use spawning, only: attempt_to_spawn, calc_qn_weighting, calc_qn_spawned_weighting
         use system, only: sys_t
         use const, only: depsilon
         use hamiltonian, only: get_hmatel
         use bit_utils, only: count_set_bits
         use qmc_data, only: qmc_in_t, qmc_state_t
         use hamiltonian_data
-        use determinants, only: decode_det                  
 
         type(sys_t), intent(in) :: sys
         type(qmc_in_t), intent(in) :: qmc_in
@@ -2280,7 +2275,12 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-            invdiagel = get_spawned_particle_weighting(sys, qs, fexcit)
+            if (cluster%nexcitors == 1) then
+                invdiagel = calc_qn_weighting(qs, cdet%fock_sum)
+            else
+                rdet%fock_sum = sum_sp_eigenvalues(sys, rdet%occ_list)
+                invdiagel = calc_qn_spawned_weighting(sys, qs, rdet%fock_sum, connection)
+            end if
             ! correct hmatel for cluster amplitude
             hmatel%r = hmatel%r * invdiagel * cluster%amplitude
             excitor_level = get_excitation_level(fexcit, qs%ref%f0)

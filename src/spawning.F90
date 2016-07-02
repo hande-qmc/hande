@@ -97,7 +97,7 @@ contains
         call gen_excit_ptr%full(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, hmatel, allowed)
 
         if (allowed) then
-           hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
         endif
         ! 2. Attempt spawning.
         nspawn = attempt_to_spawn(rng, qmc_state%tau, spawn_cutoff, real_factor, hmatel%r, pgen, parent_sign)
@@ -178,7 +178,7 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, hmatel%r)
 
         if (allowed) then
-           hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
         endif
 
         ! 3. Attempt spawning.
@@ -269,7 +269,7 @@ contains
         call gen_excit_ptr%init(rng, sys, qmc_state%excit_gen_data, cdet, pgen, connection, abs_hmatel, allowed)
 
         if (allowed) then
-           abs_hmatel%r = abs_hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+           abs_hmatel%r = abs_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
         endif
 
         ! 2. Attempt spawning.
@@ -370,7 +370,7 @@ contains
         call gen_excit_ptr%trial_fn(sys, cdet, connection, weights, tilde_hmatel%r)
 
         if (allowed) then
-           tilde_hmatel%r = tilde_hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+           tilde_hmatel%r = tilde_hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
         endif
 
 
@@ -529,7 +529,7 @@ contains
 
 
         if (allowed) then
-           hmatel%r = hmatel%r * get_spawned_particle_weighting(sys, qmc_state, cdet%f, connection)
+           hmatel%r = hmatel%r * calc_qn_spawned_weighting(sys, qmc_state, cdet%fock_sum, connection)
         endif
 
         ! 2. Attempt spawning.
@@ -1839,7 +1839,7 @@ contains
 
     end subroutine create_spawned_particle_rdm
 
-    function get_spawned_particle_weighting(sys, qs, fspawnee, connection) result(weight)
+    pure function calc_qn_spawned_weighting(sys, qs, spawner_dfock, connection) result(weight)
 
         ! The step in FCIQMC-like methods can be modified by a non-identity transformation
         ! to weight the particles being created to take a quasi-Newton step.
@@ -1848,19 +1848,14 @@ contains
         ! In:
         !   sys:    specifies the system
         !   qs:     specifies the qmc_state to determine if weighting is needed
-        !   fspawnee:  if connection is absent, then this is the determinant TO
-        !               which spawning will occur.
-        !              if connection is present, then this is the determinant FROM 
-        !               which spawning occurs, and connection will be used to form
-        !               the actual spawnee
-        !   connection: (optional) If present, specifies the connection from fspawnee
-        !               required to make the actual spawnee
+        !   spawner_dfock: \sum_i (f_i - f^0_i) where f_i (f^0_i) is the Fock eigenvalue of the i-th occupied
+        !       orbital in the spawner (reference) determinant.
+        !   connection: the connection (excitation) from the spawner required to make the actual spawnee.
         !
         ! Returns:
         !   weight: The weighting required.
 
-        ! At present this uses an inefficient O(N) sum of the diagonal elements
-        ! of the Fock matrix, and the weight is 1/(F(spawnee)-F(reference))
+        ! At present this uses the weight is 1/(F(spawnee)-F(reference)).
         ! If the difference in Fock energy between the reference and the spawnee is less than
         ! qs%quasi_newton_threshold then the weight 1/(qs%quasi_newton_value) is used instead.
     
@@ -1872,36 +1867,55 @@ contains
         real(p) :: weight
         type(sys_t), intent(in) :: sys
         type(qmc_state_t), intent(in) :: qs
-        integer(i0), intent(in) :: fspawnee(sys%basis%string_len)
-        type(excit_t), intent(in), optional :: connection
+        real(p), intent(in) :: spawner_dfock
+        type(excit_t), intent(in) :: connection
         real(p) :: diagel
-        integer :: occ_list(sys%nel), occ_list_ref(sys%nel)
-        integer(i0) :: fexcit(sys%basis%string_len)
         integer :: iel
 
         if (qs%quasi_newton) then
-            if (present(connection)) then
-                call create_excited_det(sys%basis, fspawnee, connection, fexcit)
-            else
-                fexcit = fspawnee
-            endif
-            call decode_det(sys%basis, fexcit, occ_list)
-
-            diagel = 0.0_p                                                                                        
-            ! [review] - JSS: worth adding F_0 to reference_t?
-            ! [review] - JSS: optimisation: calculate F_i for the parent determinant |i> and hence reduce this to an O(1) cost
-            ! [review] - JSS: with the O(N) calculation of F_i amortized over all spawning attempts from |i> *and* avoiding an
-            ! [review] - JSS: additional decode call.  (Bonus -- precompute F_i - F_0 and add to det_info_t...)
-            ! [review] - JSS: This might be much faster as F_i is computed anyway for death...
-            do iel = 1, sys%nel                                                                                 
-                diagel = diagel+sys%basis%basis_fns(occ_list(iel))%sp_eigv-sys%basis%basis_fns(qs%ref%occ_list0(iel))%sp_eigv
-            end do                                                                                              
+            diagel = spawner_dfock
+            associate(basis_fns=>sys%basis%basis_fns, to=>connection%to_orb, from=>connection%from_orb)
+                do iel = 1, connection%nexcit
+                    diagel = diagel + basis_fns(to(iel))%sp_eigv - basis_fns(from(iel))%sp_eigv
+                end do
+            end associate
             if (diagel < qs%quasi_newton_threshold) diagel = qs%quasi_newton_value
-            weight = 1 / diagel
+            weight = 1.0_p / diagel
         else
             weight = 1.0_p
         end if
 
-    end function get_spawned_particle_weighting
+    end function calc_qn_spawned_weighting
+
+    pure function calc_qn_weighting(qs, dfock) result(weight)
+
+        ! In:
+        !    qs: qmc_state_t object containing Quasi-Newton parameters.
+        !    dfock: difference in the Fock energy of a given determinant and the reference, i.e. \sum_i (f_i - f^0_i).
+        ! Returns:
+        !     Weighting for the determinant.
+
+        ! If Quasi-Newton is disabled, the weight is unity.  Otherwise, we use a simple weight 1/dfock.  If dfock is
+        ! less than quasi_newton_threshold, 1/quasi_newton_value is used instead.
+
+        ! See also calc_qn_spawned_weighting.
+
+        use qmc_data, only:  qmc_state_t
+
+        real(p) :: weight
+        type(qmc_state_t), intent(in) :: qs
+        real(p), intent(in) :: dfock
+
+        if (qs%quasi_newton) then
+            if (dfock < qs%quasi_newton_threshold) then
+                weight = 1.0_p / qs%quasi_newton_value
+            else
+                weight = 1.0_p / dfock
+            end if
+        else
+            weight = 1.0_p
+        end if
+
+    end function calc_qn_weighting
 
 end module spawning

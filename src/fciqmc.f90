@@ -40,7 +40,7 @@ contains
 
         use bloom_handler, only: init_bloom_stats_t, bloom_mode_fixedn, bloom_stats_warning, &
                                  bloom_stats_t, accumulate_bloom_stats, write_bloom_report
-        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t
+        use determinants, only: det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues
         use excitations, only: excit_t, create_excited_det, get_excitation
         use annihilation, only: direct_annihilation, direct_annihilation_received_list, &
                                 direct_annihilation_spawned_list, deterministic_annihilation
@@ -220,6 +220,7 @@ contains
                     cdet%data => qs%psip_list%dat(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
+                    if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues(sys, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     do ispace = 1, qs%psip_list%nspaces
@@ -289,13 +290,11 @@ contains
 
                     ! Clone or die.
                     if (.not. determ_parent) then
-                        call stochastic_death(rng, sys, qs, qs%psip_list%states(:,idet), qs%psip_list%dat(1,idet),&
-                                       proj_energy_old, qs%shift(1), &
+                        call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet),proj_energy_old, qs%shift(1), &
                                        qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
                         if (sys%read_in%comp) then
-                            call stochastic_death(rng, sys,  qs, qs%psip_list%states(:,idet), qs%psip_list%dat(2,idet), &
-                                           proj_energy_old, qs%shift(1), &
-                                           qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
+                            call stochastic_death(rng, sys,  qs, cdet%fock_sum, qs%psip_list%dat(2,idet), proj_energy_old, &
+                                            qs%shift(1), qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
                             ndeath = abs(ndeath) + abs(ndeath_im)
                             ndeath_im = 0_int_p
                         end if
@@ -420,7 +419,7 @@ contains
 
         use proc_pointers, only: sc0_ptr
         use death, only: stochastic_death
-        use determinants, only: det_info_t
+        use determinants, only: det_info_t, sum_sp_eigenvalues
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, get_excitation
         use ifciqmc
@@ -459,6 +458,7 @@ contains
             cdet%data(1) = sc0_ptr(sys, cdet%f) - qs%ref%H00
 
             call decoder_ptr(sys, cdet%f, cdet)
+            if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues(sys, cdet%occ_list) - qs%ref%fock_sum
 
             ! It is much easier to evaluate the projected energy at the
             ! start of the i-FCIQMC cycle than at the end, as we're
@@ -500,8 +500,8 @@ contains
 
                 ! Clone or die.
                 ! list_pop is meaningless as particle_t%nparticles is updated upon annihilation.
-                call stochastic_death(rng, sys, qs, cdet%f, cdet%data(1), proj_energy_old,  qs%shift(1), int_pop(ispace), &
-                    list_pop, ndeath)
+                call stochastic_death(rng, sys, qs, cdet%fock_sum, cdet%data(1), proj_energy_old,  qs%shift(1), int_pop(ispace), &
+                                      list_pop, ndeath)
 
                 ! Update population of walkers on current determinant.
                 spawn_recv%sdata(spawn_recv%bit_str_len+1:spawn_recv%bit_str_len+spawn_recv%ntypes, idet) = int_pop

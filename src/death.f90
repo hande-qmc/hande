@@ -8,7 +8,7 @@ implicit none
 
 contains
 
-    subroutine stochastic_death(rng, sys, qs, state, Kii, proj_energy, loc_shift, population, tot_population, ndeath)
+    subroutine stochastic_death(rng, sys, qs, dfock, Kii, proj_energy, loc_shift, population, tot_population, ndeath)
 
         ! Particles will attempt to die with probability
         !  p_d = tau*M_ii
@@ -20,7 +20,7 @@ contains
         ! In:
         !    sys: the system
         !    qs: qmc_state_t object. tau and dmqmc_factor are used.
-        !    state: the bitstring of the state that is dying
+        !    dfock: \sum_i (f_i - f^0_i), where f_i (f^0_i) is the Fock eigenvalue of the i-th orbital occupied in D_i (D_0).
         !    Kii: < D_i | H | D_i > - E_0, where D_i is the determinant on
         !         which the particles reside.
         !    proj_energy: projected energy.  This should be the average value from the last
@@ -44,16 +44,15 @@ contains
         use dSFMT_interface, only: dSFMT_t, get_rand_close_open
         use qmc_data, only: qmc_state_t
         use system, only: sys_t
-        use spawning, only: get_spawned_particle_weighting
+        use spawning, only: calc_qn_weighting
 
         type(sys_t), intent(in) :: sys
-        real(p), intent(in) :: Kii, proj_energy
+        real(p), intent(in) :: Kii, dfock, proj_energy
         type(qmc_state_t), intent(in) :: qs
         type(dSFMT_t), intent(inout) :: rng
         real(p), intent(in) :: loc_shift
         integer(int_p), intent(inout) :: population, ndeath
         real(dp), intent(inout) :: tot_population
-        integer(i0), intent(in) :: state(:) 
 
         real(p) :: pd
         real(dp) :: r
@@ -76,7 +75,7 @@ contains
         ! has a factor of 1/2 included for convenience already, for conveniece elsewhere.
         ! Hence we have to multiply by an extra factor of 2 to account for the extra 1/2 in tau.
 
-        weight = get_spawned_particle_weighting(sys, qs, state)
+        weight = calc_qn_weighting(qs, dfock)
         pd = qs%tau*((Kii-proj_energy)*weight+(proj_energy-loc_shift))*qs%dmqmc_factor
 
         ! This will be the same for all particles on the determinant, so we can
