@@ -32,6 +32,9 @@ type det_info_t
     ! i-FCIQMC). The i-th bit is set if the determinant is not an initiator in
     ! space i.
     integer :: initiator_flag
+    ! \sum_i F_i - F_0, where F_i is the single-particle eigenvalue of the i-th occupied orbital 
+    ! and F_0 is the corresponding sum for the reference determinant.
+    real(p) :: fock_sum
     ! Pointer (never allocated) to corresponding elements in particle_t%dat array.
     real(p), pointer :: data(:) => NULL()
     ! Pointer to an existing cluster_t variable.  Used *only* in CCMC and so
@@ -40,6 +43,11 @@ type det_info_t
     ! FCIQMC and CCMC.
     type(cluster_t), pointer :: cluster
 end type det_info_t
+
+interface sum_sp_eigenvalues
+    module procedure :: sum_sp_eigenvalues_occ_list
+    module procedure :: sum_sp_eigenvalues_bit_string
+end interface sum_sp_eigenvalues
 
 contains
 
@@ -570,7 +578,7 @@ contains
 
     end subroutine update_sys_spin_info
 
-    pure function sum_sp_eigenvalues(sys, occ_list) result(spe_sum)
+    pure function sum_sp_eigenvalues_occ_list(sys, occ_list) result(spe_sum)
 
         ! In:
         !    sys: system being studied.
@@ -592,6 +600,26 @@ contains
             spe_sum = spe_sum + sys%basis%basis_fns(occ_list(iorb))%sp_eigv
         end do
 
-    end function sum_sp_eigenvalues
+    end function sum_sp_eigenvalues_occ_list
+
+    pure function sum_sp_eigenvalues_bit_string(sys, f) result(spe_sum)
+
+        ! In:
+        !    sys: system being studied.
+        !    f: bit-string representation of a determinant.
+        ! Returns:
+        !    Sum of the single particle energies.
+
+        use system, only: sys_t
+
+        real(p) :: spe_sum
+        type(sys_t), intent(in) :: sys
+        integer(i0), intent(in) :: f(:)
+        integer :: occ(sys%nel)
+
+        call decode_det(sys%basis, f, occ)
+        spe_sum = sum_sp_eigenvalues_occ_list(sys, occ)
+
+    end function sum_sp_eigenvalues_bit_string
 
 end module determinants
