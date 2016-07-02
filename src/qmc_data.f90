@@ -645,10 +645,10 @@ contains
         call json_write_key(js, 'quadrature_initiator', qmc%quadrature_initiator)
         call json_write_key(js, 'ncycles', qmc%ncycles)
         call json_write_key(js, 'nreport', qmc%nreport)
-        call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_write_key(js, 'quasi_newton', qmc%quasi_newton)
-        call json_write_key(js, 'quaxsi_newton_threshold', qmc%quasi_newton_threshold)
+        call json_write_key(js, 'quasi_newton_threshold', qmc%quasi_newton_threshold)
         call json_write_key(js, 'quasi_newton_value', qmc%quasi_newton_value)
+        call json_write_key(js, 'use_mpi_barriers', qmc%use_mpi_barriers, .true.)
         call json_object_end(js, terminal)
 
     end subroutine qmc_in_t_json
