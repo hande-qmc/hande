@@ -280,11 +280,11 @@ contains
         !    a: index of spin-orbital basis function.
         !
         ! Returns:
-        !    The Coulumb integral < i j | a b > = 1/|k_i - k_a|^2 for the 3D
-        !    UEG.  Note that we assume i, j, a and b are such that spin and
-        !    crystal momentum is conserved and hence the integral is not zero by
-        !    symmetry.  We also assume that i,j /= a,b (ie the integral is not
-        !    a Hartree integral).
+        !    The Coulumb integral < i j | a b > = (4\pi)/(\Omega |k_i - k_a|^2) 
+        !    for the 3D UEG.  Note that we assume i, j, a and b are such that 
+        !    spin and crystal momentum is conserved and hence the integral is 
+        !    not zero by symmetry.  We also assume that i,j /= a,b (ie the 
+        !    integral is not a Hartree integral).
 
         use basis, only: basis_t
 
