@@ -33,6 +33,8 @@ type reference_t
     ! Value of <D0|O|D0>, where O is the operator we are sampling.
     ! (Applicable/set only if Hellmann--Feynman sampling is in operation.)
     real(p) :: O00
+    ! \sum_i f_i, where f_i is the single-particle (often Fock) eigenvalue of the i-th occupied orbital.
+    real(p) :: fock_sum
 end type reference_t
 
 contains
@@ -319,6 +321,7 @@ contains
                 call json_write_key(js, 'det_symmetry', symmetry_orb_list(sys, ref%occ_list0))
             end if
             call json_write_key(js, 'H00', ref%H00)
+            call json_write_key(js, 'F0', ref%fock_sum)
         end if
         if (allocated(ref%hs_occ_list0)) then
             call json_write_key(js, 'hilbert_space_det', ref%hs_occ_list0)
