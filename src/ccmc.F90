@@ -340,8 +340,7 @@ contains
         type(cluster_t), allocatable :: left_cluster(:), right_cluster(:)
         type(multispawn_stats_t), allocatable :: ms_stats(:)
         type(dSFMT_t), allocatable :: rng(:)
-        ! [review] - FDM: Is this (junk) a good name?
-        type(hmatel_t) :: junk
+        type(hmatel_t) :: hmatel
         real(p) :: bloom_threshold
         type(json_out_t) :: js
         type(qmc_in_t) :: qmc_in_loc
@@ -608,7 +607,7 @@ contains
                 ! errors relate to the procedure pointers...
                 !$omp parallel &
                 ! --DEFAULT(NONE) DISABLED-- !$omp default(none) &
-                !$omp private(it, iexcip_pos, nspawned, connection, junk,       &
+                !$omp private(it, iexcip_pos, nspawned, connection, hmatel,       &
                 !$omp         nspawnings_total, fexcit, i,     &
                 !$omp         seen_D0) &
                 !$omp shared(nattempts, rng, cumulative_abs_nint_pops, tot_abs_nint_pop,  &
@@ -674,7 +673,7 @@ contains
                             connection = get_excitation(sys%nel, sys%basis, cdet(it)%f, qs%ref%f0)
                             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet(it), &
                                      [cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect], &
-                                     estimators_cycle, connection, junk)
+                                     estimators_cycle, connection, hmatel)
                         end if
 
                         ! Spawning

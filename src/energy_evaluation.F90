@@ -627,11 +627,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-! [review] - AJWT: estimators replaces ...
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -686,11 +683,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-! [review] - AJWT: estimators replaces ...
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -745,11 +739,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-! [review] - AJWT: estimators replaces ...
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -824,7 +815,6 @@ contains
         ! This procedure is for molecular systems (i.e. those defined by an
         ! FCIDUMP file).
 
-! [review] - AJWT: update the docs ...
         ! In:
         !    sys: system being studied.
         !    f0: reference determinant.
@@ -833,10 +823,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-        !    D0_pop_sum_comp: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum_comp: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel_comp: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -862,7 +850,6 @@ contains
 
         integer :: ij_sym, ab_sym
 
-! [review] - AJWT: Is it work having a complex const?
         hmatel%c = cmplx(0.0, 0.0, p)
 
         select case(excitation%nexcit)
@@ -917,11 +904,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-! [review] - AJWT: update the docs ...
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         !    excitation: excitation connecting the determinant to the reference determinant.
         ! Out:
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the
@@ -977,11 +961,8 @@ contains
         !        from.  Only the bit string field needs to be set.
         !    pop: population on current determinant.
         ! In/Out:
-! [review] - AJWT: update the docs ...
-        !    D0_pop_sum: running total of N_0, the population on the reference
-        !        determinant, |D_0>.  Updated only if cdet is |D_0>.
-        !    proj_energy_sum: running total of \sum_{i \neq 0} <D_i|H|D_0> N_i.
-        !        Updated only if <D_i|H|D_0> is non-zero.
+        !    estimators: estimators_t object containing running totals of N_0
+        !        and proj energy contribution.
         ! Out:
         !    excitation: excitation connecting the determinant to the reference determinant.
         !    hmatel: <D_i|H|D_0>, the Hamiltonian matrix element between the

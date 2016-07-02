@@ -1472,7 +1472,23 @@ contains
 
     subroutine update_proj_energy_dmqmc(sys, f, trial_wfn_dat, cdet, pop, trace, energy, excitation, hmatel)
 
-        ! [review] - JSS: docs
+        ! Update projected energy contribution from current density matrix element.
+
+        ! In:
+        !    sys: system being studied.
+        !    f: one bit string of density matrix element under consideration.
+        !    trial_wfn_dat: info on trial wavefunction in use.
+        !    cdet: det_info_t object containing bit strings of densitry matrix
+        !    pop: number of particles on the current density matrix
+        !        element.
+        ! In/Out:
+        !    trace: total population on diagonal elements of density matrix
+        !    energy: current thermal energy estimate.
+        ! Out:
+        !    excitation: excit_t type variable which stores information on
+        !        the excitation between the two bitstring ends, corresponding
+        !        to the two labels for the density matrix element.
+        !    hmatel: Hamiltonian matrix element between f and the reference.
 
         use determinants, only: det_info_t
         use system, only: sys_t
@@ -1493,6 +1509,9 @@ contains
 
         ! [review] - JSS: I think it's a shame estimators_t doesn't work for both DMQMC and ground-state QMC, especially as the
         ! [review] - JSS: fields of interest are very similar.  It's not clear why this separation is done...
+        ! [reply] - CJCS: True, it seems like it's largely a question of naming the various fields well for clarity- unsure if
+        ! [reply] - CJCS: there's a better solution in which we can use the same type for both but maintain an intuitive naming
+        ! [reply] - CJCS: scheme.
         dummy_estimators%proj_energy = energy
         dummy_estimators%D0_population = trace
 
