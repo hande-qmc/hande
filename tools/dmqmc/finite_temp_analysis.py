@@ -96,21 +96,15 @@ data : :class:`pandas.DatFrame`
     Raw dmqmc data.
 results : :class:`pandas.DataFrame`
     The mean estimates, obtained by averaging over beta loops, as a function of
-    beta, which is used as the index.
+    beta, which is used as the index. On output estimates for f_xc and its error
+    are appended.
+
 dtau : float
     Time step used in simulation.
 its : int
     Number of iterations performed per beta loop.
 nbloops : int
     Number of completed beta loops in total simulation.
-
-Returns
--------
-results : :class:`pandas.DataFrame`
-    The mean estimates, obtained by averaging over beta loops, as a function of
-    beta, which is used as the index. On output estimates for f_xc and its error
-    are appended.
-
 '''
 
     ratio = (data['\\sum\\rho_{ij}VI_{ji}'] / data['Trace']).values
@@ -141,8 +135,6 @@ results : :class:`pandas.DataFrame`
     # presence in timestep as well.
     results['f_xc'] = I / results['Beta'].values
     results['f_xc_error'] = I_error / results['Beta'].values
-
-    return results
 
 
 def analyse_renyi_entropy(means, covariances, nsamples):
@@ -431,7 +423,7 @@ None.
         # output.
         its_per_loop = target_beta/(cycles*tau) + 1
         nbloops = int(len(data)/its_per_loop)
-        results = free_energy_error_analysis(estimates, results, cycles*tau,
+        free_energy_error_analysis(estimates, results, cycles*tau,
                                                         its_per_loop, nbloops)
 
     # Finally, output the results!
