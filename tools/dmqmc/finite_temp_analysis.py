@@ -86,7 +86,7 @@ None.
     return results
 
 
-def free_energy_error_analysis(data, results, dtau, its, nbloops):
+def free_energy_error_analysis(data, results, dtau):
     '''Calculate the mean and error estimates for the exchange correlation
        free energy (appropriately defined)
 
@@ -98,43 +98,37 @@ results : :class:`pandas.DataFrame`
     The mean estimates, obtained by averaging over beta loops, as a function of
     beta, which is used as the index. On output estimates for f_xc and its error
     are appended.
-
 dtau : float
     Time step used in simulation.
-its : int
-    Number of iterations performed per beta loop.
-nbloops : int
-    Number of completed beta loops in total simulation.
 '''
-
-    ratio = (data['\\sum\\rho_{ij}VI_{ji}'] / data['Trace']).values
-
     # Integral is evaulated as cumulative integral of integral for each
     # temperature/imaginary time value. Naturally I(tau=0) = 0.
     I = scipy.integrate.cumtrapz(results['VI'], dx=dtau, initial=0)
 
     # An estimate for the error can be found by considering the variance of each
     # simulations estimate for the Integral.
-    I_single = [scipy.integrate.cumtrapz(ratio[i*its:(i+1)*its], dx=dtau,
-                                             initial=0) for i in range(nbloops)]
+    grouped = pyhande.utils.groupby_beta_loops(data.reset_index(), name='Beta')
+    I_single = [scipy.integrate.cumtrapz(d[r'\sum\rho_{ij}VI_{ji}']/d['Trace'],
+                dx=dtau, initial=0) for (i, d) in grouped]
 
     # Place cumulative integrals in frame so variance can be easily calculated.
     frame = pd.DataFrame(I_single)
-    I_single_mean = frame.mean().values
-    I_error = ((frame.var() / nbloops).values)**0.5
+    I_single_mean = frame.mean()
+    I_error = ((frame.var() / len(grouped)))**0.5
 
     # Some sort of check for poor estimation of mean/error.
     # Check if last point's 'ratio' error (not quite the normal definition) is
     # significant (so comparible to the stochastic error).
-    err = abs(I[-1]-I_single_mean[-1])
-    if (abs(err) > I_error[-1]):
+    err = abs(I[-1]-I_single_mean.iloc[-1])
+    if (abs(err) > I_error.iloc[-1]):
         warnings.warn("Ratio error of %f is not insignificant - check results."
                       %err)
 
     # Need to multiply integral by kT. Any scaling factor drops out due to
     # presence in timestep as well.
-    results['f_xc'] = I / results['Beta'].values
-    results['f_xc_error'] = I_error / results['Beta'].values
+    results.reset_index(drop=True, inplace=True)
+    results['f_xc'] = I / results['Beta'].iloc[-1]
+    results['f_xc_error'] = I_error/results['Beta'].iloc[-1]
 
 
 def analyse_renyi_entropy(means, covariances, nsamples):
@@ -419,12 +413,7 @@ None.
 
     # If requested, calculate excess free-energy.
     if options.with_free_energy:
-        # Need to modify spacing for integration grid to account for reduced
-        # output.
-        its_per_loop = target_beta/(cycles*tau) + 1
-        nbloops = int(len(data)/its_per_loop)
-        free_energy_error_analysis(estimates, results, cycles*tau,
-                                                        its_per_loop, nbloops)
+        free_energy_error_analysis(estimates, results, cycles*tau)
 
     # Finally, output the results!
     # For anal-retentiveness, print the energy first after beta and then all
