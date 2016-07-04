@@ -77,7 +77,7 @@ contains
         !    < D_i | H | D_i >, the diagonal Hamiltonian matrix elements, for
         !        the Hubbard model in momentum space.
 
-        use determinants, only: decode_det, sum_sp_eigenvalues
+        use determinants, only: decode_det, sum_sp_eigenvalues_occ_list
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -91,7 +91,7 @@ contains
         hmatel = 0.0_p
 
         ! One electron operator: kinetic term
-        hmatel = sum_sp_eigenvalues(sys, occ_list)
+        hmatel = sum_sp_eigenvalues_occ_list(sys, occ_list)
 
         ! Two electron operator: Coulomb term.
         hmatel = hmatel + exchange_energy_ueg(sys, occ_list)
@@ -108,7 +108,7 @@ contains
         ! Returns:
         !    < D_i | T | D_i >, the kinetic energy for the ueg.
 
-        use determinants, only: decode_det, sum_sp_eigenvalues
+        use determinants, only: decode_det, sum_sp_eigenvalues_occ_list
         use system, only: sys_t
 
         real(p) :: hmatel
@@ -120,7 +120,7 @@ contains
 
         ! < D | T | D > = \sum_i < i | h(i) | i >
         ! One electron operator: kinetic term
-        hmatel = sum_sp_eigenvalues(sys, occ_list)
+        hmatel = sum_sp_eigenvalues_occ_list(sys, occ_list)
 
     end function kinetic_energy_ueg
 

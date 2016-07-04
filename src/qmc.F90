@@ -770,7 +770,7 @@ contains
         use calc, only: doing_calc, hfs_fciqmc_calc
         use reference_determinant, only: reference_t, set_reference_det
         use checking, only: check_allocate
-        use determinants, only: encode_det, sum_sp_eigenvalues
+        use determinants, only: encode_det, sum_sp_eigenvalues_occ_list
 
         type(sys_t), intent(in) :: sys
         type(reference_t), intent(in) :: reference_in
@@ -810,7 +810,7 @@ contains
         ! Energy of reference determinant.
         reference%H00 = sc0_ptr(sys, reference%f0)
         if (doing_calc(hfs_fciqmc_calc)) reference%O00 = op0_ptr(sys, reference%f0)
-        reference%fock_sum = sum_sp_eigenvalues(sys, reference%occ_list0)
+        reference%fock_sum = sum_sp_eigenvalues_occ_list(sys, reference%occ_list0)
 
     end subroutine init_reference
 

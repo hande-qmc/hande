@@ -44,11 +44,6 @@ type det_info_t
     type(cluster_t), pointer :: cluster
 end type det_info_t
 
-interface sum_sp_eigenvalues
-    module procedure :: sum_sp_eigenvalues_occ_list
-    module procedure :: sum_sp_eigenvalues_bit_string
-end interface sum_sp_eigenvalues
-
 contains
 
 !--- Initialisation and finalisation of module-level variables ---

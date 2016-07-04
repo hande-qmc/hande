@@ -46,7 +46,7 @@ contains
 
         use annihilation, only: direct_annihilation
         use death, only: stochastic_death, stochastic_hf_cloning
-        use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues
+        use determinants, only:det_info_t, alloc_det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list
         use energy_evaluation, only: update_energy_estimators
         use excitations, only: excit_t, get_excitation
         use fciqmc_data, only: write_fciqmc_report_header, write_fciqmc_report
@@ -159,7 +159,7 @@ contains
                     cdet%data => qs%psip_list%dat(:,idet)
 
                     call decoder_ptr(sys, cdet%f, cdet)
-                    if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues(sys, cdet%occ_list) - qs%ref%fock_sum
+                    if (qs%quasi_newton) cdet%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet%occ_list) - qs%ref%fock_sum
 
                     ! Extract the real sign from the encoded sign.
                     real_population = real(qs%psip_list%pops(1,idet),p)/qs%psip_list%pop_real_factor

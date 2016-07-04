@@ -295,7 +295,7 @@ contains
         use bloom_handler, only: init_bloom_stats_t, bloom_stats_t, bloom_mode_fractionn, &
                                  accumulate_bloom_stats, write_bloom_report, bloom_stats_warning
         use ccmc_data
-        use determinants, only: det_info_t, dealloc_det_info_t, sum_sp_eigenvalues
+        use determinants, only: det_info_t, dealloc_det_info_t, sum_sp_eigenvalues_occ_list, sum_sp_eigenvalues_bit_string
         use excitations, only: excit_t, get_excitation_level, get_excitation
         use fciqmc_data, only: write_fciqmc_report, &
                                write_fciqmc_report_header
@@ -659,7 +659,7 @@ contains
                                                           cumulative_abs_nint_pops, tot_abs_nint_pop, cdet(it), cluster(it))
                     end if
 
-                    if (qs%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues(sys, cdet(it)%occ_list) - qs%ref%fock_sum
+                    if (qs%quasi_newton) cdet(it)%fock_sum = sum_sp_eigenvalues_occ_list(sys, cdet(it)%occ_list) - qs%ref%fock_sum
 
                     if (cluster(it)%excitation_level <= qs%ref%ex_level+2 .or. &
                             (ccmc_in%linked .and. cluster(it)%excitation_level == huge(0))) then
@@ -749,7 +749,9 @@ contains
                         ! Note we use the (encoded) population directly in stochastic_ccmc_death_nc
                         ! (unlike the stochastic_ccmc_death) to avoid unnecessary decoding/encoding
                         ! steps (cf comments in stochastic_death for FCIQMC).
-                        if (qs%quasi_newton) dfock = sum_sp_eigenvalues(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
+                        if (qs%quasi_newton) then
+                            dfock = sum_sp_eigenvalues_bit_string(sys, qs%psip_list%states(:,iattempt)) - qs%ref%fock_sum
+                        end if
                         call stochastic_ccmc_death_nc(rng(it), ccmc_in%linked, sys, qs, iattempt==D0_pos, dfock, &
                                               qs%psip_list%dat(1,iattempt), proj_energy_old, qs%psip_list%pops(1, iattempt), &
                                               nparticles_change(1), ndeath)
@@ -2136,7 +2138,7 @@ contains
         !        not necessarily easy to get from the connection)
 
         use ccmc_data, only: cluster_t, convert_excitor_to_determinant
-        use determinants, only: det_info_t, sum_sp_eigenvalues
+        use determinants, only: det_info_t, sum_sp_eigenvalues_bit_string
         use dSFMT_interface, only: dSFMT_t
         use excitations, only: excit_t, create_excited_det, get_excitation_level
         use proc_pointers, only: gen_excit_ptr_t, decoder_ptr
@@ -2274,7 +2276,7 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-            fock_sum = sum_sp_eigenvalues(sys, fexcit)
+            fock_sum = sum_sp_eigenvalues_bit_string(sys, fexcit)
             invdiagel = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
             hmatel%r = hmatel%r * invdiagel * cluster%amplitude
