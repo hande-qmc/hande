@@ -2175,8 +2175,7 @@ contains
         logical :: allowed, sign_change, linked, single_unlinked
         integer(i0) :: new_det(sys%basis%string_len)
         integer(i0) :: excitor(sys%basis%string_len)
-        real(p) :: invdiagel
-
+        real(p) :: invdiagel, fock_sum
 
         ! 1) Choose an order for the excitors
         ! The number of clusters with disallowed partitions is relatively small (20% in
@@ -2275,12 +2274,8 @@ contains
             ! apply additional factors to pgen
             pgen = pgen*cluster%pselect*nspawnings_total/npartitions
 
-            if (cluster%nexcitors == 1) then
-                invdiagel = calc_qn_weighting(qs, cdet%fock_sum)
-            else
-                rdet%fock_sum = sum_sp_eigenvalues(sys, rdet%occ_list)
-                invdiagel = calc_qn_spawned_weighting(sys, qs, rdet%fock_sum, connection)
-            end if
+            fock_sum = sum_sp_eigenvalues(sys, fexcit)
+            invdiagel = calc_qn_weighting(qs, fock_sum - qs%ref%fock_sum)
             ! correct hmatel for cluster amplitude
             hmatel%r = hmatel%r * invdiagel * cluster%amplitude
             excitor_level = get_excitation_level(fexcit, qs%ref%f0)
