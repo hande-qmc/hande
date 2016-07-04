@@ -293,7 +293,7 @@ contains
                         call stochastic_death(rng, sys, qs, cdet%fock_sum, qs%psip_list%dat(1,idet),proj_energy_old, qs%shift(1), &
                                        qs%psip_list%pops(1,idet), qs%psip_list%nparticles(1), ndeath)
                         if (sys%read_in%comp) then
-                            call stochastic_death(rng, sys,  qs, cdet%fock_sum, qs%psip_list%dat(2,idet), proj_energy_old, &
+                            call stochastic_death(rng, sys,  qs, cdet%fock_sum, qs%psip_list%dat(1,idet), proj_energy_old, &
                                             qs%shift(1), qs%psip_list%pops(2,idet), qs%psip_list%nparticles(2), ndeath_im)
                             ndeath = abs(ndeath) + abs(ndeath_im)
                             ndeath_im = 0_int_p
