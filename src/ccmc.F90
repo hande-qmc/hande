@@ -2292,6 +2292,7 @@ contains
 
     end subroutine linked_spawner_ccmc
 
+
     subroutine partition_cluster(rng, sys, f0, cluster, left_cluster, right_cluster, ppart, &
                                  ldet, rdet, allowed, sign_change, part_number)
 
