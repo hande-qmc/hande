@@ -12,14 +12,14 @@ fciqmc {
         rng_seed = 7,
         init_pop = 100,
         mc_cycles = 10,
-        nreports =  50,
+        nreports = 50,
         target_population = 77000,
         state_size = -500,
-        shift_damping=0.2,
+        shift_damping = 0.2,
         spawned_state_size = -100,
         quasi_newton = true,
-        quasi_newton_thresh = 1e-1,
-        quasi_newton_value=5e-1,
+        quasi_newton_threshold = 1e-1,
+        quasi_newton_value = 5e-1,
     },
 }
 
