@@ -92,7 +92,7 @@ def free_energy_error_analysis(data, results, dtau):
 
 Parameters
 ----------
-data : :class:`pandas.DatFrame`
+data : :class:`pandas.DataFrame`
     Raw dmqmc data.
 results : :class:`pandas.DataFrame`
     The mean estimates, obtained by averaging over beta loops, as a function of
@@ -353,6 +353,12 @@ None.
             if 'tau' in md['qmc'] and md['qmc']['tau'] != tau:
                 warnings.warn('Tau values in input files not consistent.')
 
+    # Discard beta loops which didn't reach final iteration.
+    grouped = pyhande.utils.groupby_beta_loops(data, name='Beta')
+    niterations = len(grouped.get_group(0))
+    last_group = len(grouped) - 1
+    if len(grouped.get_group(last_group) < niterations):
+        data.drop(grouped.get_group(last_group).index, inplace=True)
     # Make the Beta column a MultiIndex.
     data.set_index('Beta', inplace=True, append=True)
     # The number of beta loops contributing to each beta value.
