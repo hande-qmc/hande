@@ -1507,11 +1507,6 @@ contains
         type(estimators_t) :: dummy_estimators
         real(p), intent(in) :: trial_wfn_dat(0)
 
-        ! [review] - JSS: I think it's a shame estimators_t doesn't work for both DMQMC and ground-state QMC, especially as the
-        ! [review] - JSS: fields of interest are very similar.  It's not clear why this separation is done...
-        ! [reply] - CJCS: True, it seems like it's largely a question of naming the various fields well for clarity- unsure if
-        ! [reply] - CJCS: there's a better solution in which we can use the same type for both but maintain an intuitive naming
-        ! [reply] - CJCS: scheme.
         dummy_estimators%proj_energy = energy
         dummy_estimators%D0_population = trace
 
