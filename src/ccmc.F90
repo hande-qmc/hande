@@ -356,6 +356,7 @@ contains
         type(restart_info_t) :: ri, ri_shift
         character(36) :: uuid_restart
         type(estimators_t) :: estimators_cycle
+        real(p) :: proj_energy_cycle, D0_population_cycle
 
         real :: t1, t2
 
@@ -615,6 +616,7 @@ contains
                 !$omp        D0_normalisation, D0_pos, nD0_select, qs,               &
                 !$omp        sys, bloom_threshold, bloom_stats,                      &
                 !$omp        estimators_cycle, min_cluster_size,       &
+                !$omp        proj_energy_cycle, D0_population_cycle,   &
                 !$omp        nclusters, nstochastic_clusters, nattempts_spawn,       &
                 !$omp        nsingle_excitors, ccmc_in, ldet, rdet, left_cluster,    &
                 !$omp        right_cluster, nprocs, ms_stats, qmc_in, load_bal_in,   &
@@ -624,6 +626,8 @@ contains
                 seen_D0 = .false.
                 estimators_cycle%D0_population = 0.0_p
                 estimators_cycle%proj_energy = 0.0_p
+                proj_energy_cycle = 0.0_p
+                D0_population_cycle = 0.0_p
                 !$omp do schedule(dynamic,200) reduction(+:D0_population_cycle,proj_energy_cycle,nattempts_spawn)
                 do iattempt = 1, nclusters
 
@@ -674,6 +678,8 @@ contains
                             call update_proj_energy_ptr(sys, qs%ref%f0, qs%trial%wfn_dat, cdet(it), &
                                      [cluster(it)%cluster_to_det_sign*cluster(it)%amplitude/cluster(it)%pselect], &
                                      estimators_cycle, connection, hmatel)
+                            D0_population_cycle = estimators_cycle%D0_population
+                            proj_energy_cycle = estimators_cycle%proj_energy
                         end if
 
                         ! Spawning
