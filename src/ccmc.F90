@@ -756,8 +756,8 @@ contains
                 !$omp end parallel
 
                 qs%psip_list%nparticles = qs%psip_list%nparticles + nparticles_change
-                qs%estimators%D0_population = qs%estimators%D0_population + estimators_cycle%D0_population
-                qs%estimators%proj_energy = qs%estimators%proj_energy + estimators_cycle%proj_energy
+                qs%estimators%D0_population = qs%estimators%D0_population + D0_population_cycle
+                qs%estimators%proj_energy = qs%estimators%proj_energy + proj_energy_cycle
 
                 ! Calculate the number of spawning events before the particles are redistributed,
                 ! otherwise sending particles to other processors is counted as a spawning event.
